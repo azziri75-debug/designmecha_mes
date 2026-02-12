@@ -19,16 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 1. Add missing columns to Processes and ProductProcesses
-    # Use batch_alter_table for SQLite compatibility just in case, though usually not needed for add_column
-    with op.batch_alter_table('processes', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('course_type', sa.String(), server_default="INTERNAL", nullable=True))
-        
-    with op.batch_alter_table('product_processes', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('partner_name', sa.String(), nullable=True))
-        batch_op.add_column(sa.Column('equipment_name', sa.String(), nullable=True))
-        batch_op.add_column(sa.Column('attachment_file', sa.String(), nullable=True))
-        batch_op.add_column(sa.Column('course_type', sa.String(), nullable=True))
+    # 1. Add missing columns -> SKIPPED (Already added by d370ccfbd1a7 and 32718ae85cd1)
+    # The columns (course_type, partner_name, etc.) exist.
+    pass
 
     # 2. Re-structure Sales & Production Tables
     # Drop old tables (with dependencies first)
