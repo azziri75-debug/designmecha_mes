@@ -20,7 +20,7 @@ class Estimate(Base):
     __tablename__ = "estimates"
 
     id = Column(Integer, primary_key=True, index=True)
-    partner_id = Column(Integer, ForeignKey("partners.id"), nullable=False)
+    partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)
     estimate_date = Column(Date, default=func.now())
     valid_until = Column(Date, nullable=True) # 유효기간
     total_amount = Column(Float, default=0.0) # 총 견적 금액
@@ -51,7 +51,7 @@ class SalesOrder(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_no = Column(String, unique=True, index=True) # 수주번호 (자동생성 예정)
-    partner_id = Column(Integer, ForeignKey("partners.id"), nullable=False)
+    partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)
     order_date = Column(Date, default=func.now())
     delivery_date = Column(Date, nullable=True) # 납기일
     total_amount = Column(Float, default=0.0)
