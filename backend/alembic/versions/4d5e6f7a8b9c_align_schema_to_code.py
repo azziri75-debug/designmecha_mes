@@ -81,9 +81,10 @@ def upgrade() -> None:
         op.execute("DROP TYPE IF EXISTS orderstatus CASCADE")
         op.execute("DROP TYPE IF EXISTS orderitemstatus CASCADE")
         
-        # Create enums
-        sa.Enum('PENDING', 'CONFIRMED', 'CANCELLED', name='orderstatus').create(bind)
-        sa.Enum('PENDING', 'IN_PRODUCTION', 'COMPLETED', 'SHIPPED', name='orderitemstatus').create(bind)
+        # Create enums - Removed manual creation, let create_table handle it
+        # sa.Enum('PENDING', 'CONFIRMED', 'CANCELLED', name='orderstatus').create(bind)
+        # sa.Enum('PENDING', 'IN_PRODUCTION', 'COMPLETED', 'SHIPPED', name='orderitemstatus').create(bind)
+        pass
 
     op.create_table('sales_orders',
         sa.Column('id', sa.Integer(), nullable=False),
