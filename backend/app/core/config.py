@@ -21,9 +21,11 @@ class Settings(BaseSettings):
         import os
         env_db_url = os.getenv("DATABASE_URL")
         if env_db_url:
-            # Fix for asyncpg: replace postgres:// with postgresql+asyncpg://
+            # Fix for asyncpg: ensure we use postgresql+asyncpg:// scheme
             if env_db_url.startswith("postgres://"):
                  return env_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif env_db_url.startswith("postgresql://"):
+                 return env_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
             return env_db_url
             
         # Use SQLite for development fallback
