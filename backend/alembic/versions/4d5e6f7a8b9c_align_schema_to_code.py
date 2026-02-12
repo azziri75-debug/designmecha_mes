@@ -77,6 +77,10 @@ def upgrade() -> None:
     
     bind = op.get_bind()
     if bind.engine.name == 'postgresql':
+        # Drop old enums if they exist
+        op.execute("DROP TYPE IF EXISTS orderstatus CASCADE")
+        op.execute("DROP TYPE IF EXISTS orderitemstatus CASCADE")
+        
         # Create enums
         sa.Enum('PENDING', 'CONFIRMED', 'CANCELLED', name='orderstatus').create(bind)
         sa.Enum('PENDING', 'IN_PRODUCTION', 'COMPLETED', 'SHIPPED', name='orderitemstatus').create(bind)
