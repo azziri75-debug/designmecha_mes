@@ -22,7 +22,7 @@ class Partner(Base):
     email = Column(String, nullable=True)
     attachment_file = Column(JSON, nullable=True) # List of {name, url} objects
     
-    contacts = relationship("Contact", back_populates="partner", lazy="selectin")
+    contacts = relationship("Contact", back_populates="partner", lazy="selectin", cascade="all, delete-orphan")
     products = relationship("Product", back_populates="partner")
 
 class Contact(Base):
