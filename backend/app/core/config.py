@@ -17,6 +17,15 @@ class Settings(BaseSettings):
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
+        # Check if DATABASE_URL env var is set (e.g. from Render)
+        import os
+        env_db_url = os.getenv("DATABASE_URL")
+        if env_db_url:
+            # Fix for asyncpg: replace postgres:// with postgresql+asyncpg://
+            if env_db_url.startswith("postgres://"):
+                 return env_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+            return env_db_url
+            
         # Use SQLite for development fallback
         return "sqlite+aiosqlite:///./mes_erp_v2.db"
 
