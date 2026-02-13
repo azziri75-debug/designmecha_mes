@@ -35,7 +35,7 @@ async def read_pending_purchase_items(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )\
-        .where(ProductionPlanItem.course_type == 'PURCHASE')\
+        .where(ProductionPlanItem.course_type.in_(['PURCHASE', '구매', 'Purchase']))\
         .where(ProductionPlanItem.id.notin_(subquery))\
         .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
         
@@ -59,7 +59,7 @@ async def read_pending_outsourcing_items(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )\
-        .where(ProductionPlanItem.course_type == 'OUTSOURCING')\
+        .where(ProductionPlanItem.course_type.in_(['OUTSOURCING', '외주', 'Outsourcing']))\
         .where(ProductionPlanItem.id.notin_(subquery))\
         .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
         
