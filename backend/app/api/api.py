@@ -11,6 +11,7 @@ api_router.include_router(production.router, prefix="/production", tags=["produc
 api_router.include_router(quality.router, prefix="/quality", tags=["quality"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 
-from app.api.endpoints import upload, debug
+from app.api.endpoints import upload, debug, production
 api_router.include_router(upload.router, tags=["upload"])
 api_router.include_router(debug.router, prefix="/debug", tags=["debug"])
+api_router.include_router(production.router, prefix="/production", tags=["production"])

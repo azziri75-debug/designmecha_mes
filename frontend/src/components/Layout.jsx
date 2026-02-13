@@ -38,10 +38,9 @@ const Layout = () => {
         { icon: LayoutDashboard, label: '대시보드', to: '/' },
         { icon: Users, label: '기초 정보 (거래처/사원)', to: '/basics' },
         { icon: Package, label: '제품 및 공정 관리', to: '/products' },
-        { icon: DollarSign, label: '영업 관리', to: '/sales' },
-        { icon: Package, label: '구매/자재', to: '/material' },
-
+        { icon: DollarSign, label: '영업 관리 (견적/수주)', to: '/sales' },
         { icon: Factory, label: '생산 관리 (계획/지시)', to: '/production' },
+        { icon: Package, label: '구매/외주 관리', to: '/material' },
         { icon: ClipboardCheck, label: '품질 관리', to: '/quality' },
         { icon: Truck, label: '납품 및 재고', to: '/inventory' },
         { icon: BarChart3, label: '리포트 및 통계', to: '/reports' },

@@ -24,6 +24,24 @@ const SalesPage = () => {
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [editingEstimate, setEditingEstimate] = useState(null);
 
+    // Expand States
+    const [expandedEstimates, setExpandedEstimates] = useState(new Set());
+    const [expandedOrders, setExpandedOrders] = useState(new Set());
+
+    const toggleEstimate = (id) => {
+        const newSet = new Set(expandedEstimates);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setExpandedEstimates(newSet);
+    };
+
+    const toggleOrder = (id) => {
+        const newSet = new Set(expandedOrders);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setExpandedOrders(newSet);
+    };
+
     // File Viewer
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
@@ -159,6 +177,7 @@ const SalesPage = () => {
                         <table className="w-full text-left text-sm text-gray-400">
                             <thead className="bg-gray-900/50 text-gray-200 uppercase font-medium">
                                 <tr>
+                                    <th className="px-6 py-3 w-4"></th> {/* Helper for expansion */}
                                     {activeTab === 'estimates' ? (
                                         <>
                                             <th className="px-6 py-3">견적일자</th>
@@ -186,90 +205,165 @@ const SalesPage = () => {
                             <tbody className="divide-y divide-gray-700">
                                 {activeTab === 'estimates' ? (
                                     estimates.map((est) => (
-                                        <tr key={est.id} className="hover:bg-gray-700/50 transition-colors">
-                                            <td className="px-6 py-4">{est.estimate_date}</td>
-                                            <td className="px-6 py-4 font-medium text-white">{est.partner?.name}</td>
-                                            <td className="px-6 py-4">{est.total_amount?.toLocaleString()} 원</td>
-                                            <td className="px-6 py-4">{est.items?.length || 0} 건</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    {/* Existing Files */}
-                                                    {est.attachment_file && (() => {
-                                                        let files = [];
-                                                        try {
-                                                            files = typeof est.attachment_file === 'string' ? JSON.parse(est.attachment_file) : est.attachment_file;
-                                                        } catch (e) { files = [] }
+                                        <React.Fragment key={est.id}>
+                                            <tr
+                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer"
+                                                onClick={() => toggleEstimate(est.id)}
+                                            >
+                                                <td className="px-6 py-4 text-center">
+                                                    {expandedEstimates.has(est.id) ? '▼' : '▶'}
+                                                </td>
+                                                <td className="px-6 py-4">{est.estimate_date}</td>
+                                                <td className="px-6 py-4 font-medium text-white">{est.partner?.name}</td>
+                                                <td className="px-6 py-4">{est.total_amount?.toLocaleString()} 원</td>
+                                                <td className="px-6 py-4">{est.items?.length || 0} 건</td>
+                                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex items-center gap-2">
+                                                        {est.attachment_file && (() => {
+                                                            let files = [];
+                                                            try {
+                                                                files = typeof est.attachment_file === 'string' ? JSON.parse(est.attachment_file) : est.attachment_file;
+                                                            } catch (e) { files = [] }
 
-                                                        if (Array.isArray(files) && files.length > 0) {
-                                                            return (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setViewingFiles(files);
-                                                                        setFileModalTitle(`견적서 첨부파일 (${est.partner.name})`);
-                                                                        setShowFileModal(true);
-                                                                    }}
-                                                                    className="text-blue-400 hover:text-blue-300 underline text-xs"
-                                                                >
-                                                                    {files.length}개 파일
-                                                                </button>
-                                                            );
-                                                        }
-                                                        return <span className="text-gray-600">-</span>;
-                                                    })()}
+                                                            if (Array.isArray(files) && files.length > 0) {
+                                                                return (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setViewingFiles(files);
+                                                                            setFileModalTitle(`견적서 첨부파일 (${est.partner.name})`);
+                                                                            setShowFileModal(true);
+                                                                        }}
+                                                                        className="text-blue-400 hover:text-blue-300 underline text-xs"
+                                                                    >
+                                                                        {files.length}개 파일
+                                                                    </button>
+                                                                );
+                                                            }
+                                                            return <span className="text-gray-600">-</span>;
+                                                        })()}
 
-                                                    {/* Excel Generate Button */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleExcelExport(est.id);
+                                                            }}
+                                                            className="p-1 text-green-500 hover:text-green-400 hover:bg-green-900/20 rounded"
+                                                            title="엑셀 생성 및 저장"
+                                                        >
+                                                            <FileSpreadsheet className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 truncate max-w-[200px]">{est.note}</td>
+                                                <td className="px-6 py-4 flex items-center" onClick={(e) => e.stopPropagation()}>
                                                     <button
-                                                        onClick={() => handleExcelExport(est.id)}
-                                                        className="p-1 text-green-500 hover:text-green-400 hover:bg-green-900/20 rounded"
-                                                        title="엑셀 생성 및 저장"
+                                                        onClick={() => handleEdit(est)}
+                                                        className="text-blue-400 hover:underline text-xs mr-3"
                                                     >
-                                                        <FileSpreadsheet className="w-4 h-4" />
+                                                        수정
                                                     </button>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 truncate max-w-[200px]">{est.note}</td>
-                                            <td className="px-6 py-4 flex items-center">
-                                                <button
-                                                    onClick={() => handleEdit(est)}
-                                                    className="text-blue-400 hover:underline text-xs mr-3"
-                                                >
-                                                    수정
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(est.id)}
-                                                    className="text-red-400 hover:underline text-xs"
-                                                >
-                                                    삭제
-                                                </button>
-                                            </td>
-                                        </tr>
+                                                    <button
+                                                        onClick={() => handleDelete(est.id)}
+                                                        className="text-red-400 hover:underline text-xs"
+                                                    >
+                                                        삭제
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {expandedEstimates.has(est.id) && (
+                                                <tr className="bg-gray-800/50">
+                                                    <td colSpan="8" className="px-6 py-4">
+                                                        <div className="ml-8 p-4 bg-gray-900 rounded-lg border border-gray-700">
+                                                            <h4 className="text-sm font-semibold mb-2 text-gray-300">견적 품목 상세</h4>
+                                                            <table className="w-full text-sm text-gray-400">
+                                                                <thead>
+                                                                    <tr className="border-b border-gray-700">
+                                                                        <th className="py-2 text-left">품목명</th>
+                                                                        <th className="py-2 text-right">수량</th>
+                                                                        <th className="py-2 text-right">단가</th>
+                                                                        <th className="py-2 text-right">공급가액</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-gray-800">
+                                                                    {est.items?.map((item, idx) => (
+                                                                        <tr key={idx}>
+                                                                            <td className="py-2">{item.product_name || item.name}</td>
+                                                                            <td className="py-2 text-right">{item.quantity}</td>
+                                                                            <td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td>
+                                                                            <td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))
                                 ) : (
                                     orders.map((ord) => (
-                                        <tr key={ord.id} className="hover:bg-gray-700/50 transition-colors">
-                                            <td className="px-6 py-4 font-mono text-xs text-gray-300">{ord.order_no}</td>
-                                            <td className="px-6 py-4">{ord.order_date}</td>
-                                            <td className="px-6 py-4 text-orange-400">{ord.delivery_date || '-'}</td>
-                                            <td className="px-6 py-4 font-medium text-white">{ord.partner?.name}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={cn(
-                                                    "px-2 py-0.5 rounded text-xs font-medium",
-                                                    ord.status === 'PENDING' ? "bg-yellow-900/50 text-yellow-400 border border-yellow-700" :
-                                                        ord.status === 'CONFIRMED' ? "bg-blue-900/50 text-blue-400 border border-blue-700" :
-                                                            "bg-gray-800 text-gray-400"
-                                                )}>
-                                                    {ord.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">{ord.total_amount?.toLocaleString()} 원</td>
-                                            <td className="px-6 py-4">{ord.items?.length || 0} 건</td>
-                                            <td className="px-6 py-4 truncate max-w-[200px]">{ord.note}</td>
-                                        </tr>
+                                        <React.Fragment key={ord.id}>
+                                            <tr
+                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer"
+                                                onClick={() => toggleOrder(ord.id)}
+                                            >
+                                                <td className="px-6 py-4 text-center">
+                                                    {expandedOrders.has(ord.id) ? '▼' : '▶'}
+                                                </td>
+                                                <td className="px-6 py-4 font-mono text-xs text-gray-300">{ord.order_no}</td>
+                                                <td className="px-6 py-4">{ord.order_date}</td>
+                                                <td className="px-6 py-4 text-orange-400">{ord.delivery_date || '-'}</td>
+                                                <td className="px-6 py-4 font-medium text-white">{ord.partner?.name}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded text-xs font-medium",
+                                                        ord.status === 'PENDING' ? "bg-yellow-900/50 text-yellow-400 border border-yellow-700" :
+                                                            ord.status === 'CONFIRMED' ? "bg-blue-900/50 text-blue-400 border border-blue-700" :
+                                                                "bg-gray-800 text-gray-400"
+                                                    )}>
+                                                        {ord.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">{ord.total_amount?.toLocaleString()} 원</td>
+                                                <td className="px-6 py-4">{ord.items?.length || 0} 건</td>
+                                                <td className="px-6 py-4 truncate max-w-[200px]">{ord.note}</td>
+                                            </tr>
+                                            {expandedOrders.has(ord.id) && (
+                                                <tr className="bg-gray-800/50">
+                                                    <td colSpan="9" className="px-6 py-4">
+                                                        <div className="ml-8 p-4 bg-gray-900 rounded-lg border border-gray-700">
+                                                            <h4 className="text-sm font-semibold mb-2 text-gray-300">수주 품목 상세</h4>
+                                                            <table className="w-full text-sm text-gray-400">
+                                                                <thead>
+                                                                    <tr className="border-b border-gray-700">
+                                                                        <th className="py-2 text-left">품목명</th>
+                                                                        <th className="py-2 text-right">수량</th>
+                                                                        <th className="py-2 text-right">단가</th>
+                                                                        <th className="py-2 text-right">공급가액</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-gray-800">
+                                                                    {ord.items?.map((item, idx) => (
+                                                                        <tr key={idx}>
+                                                                            <td className="py-2">{item.product_name || item.name}</td>
+                                                                            <td className="py-2 text-right">{item.quantity}</td>
+                                                                            <td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td>
+                                                                            <td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))
                                 )}
                                 {(!loading && ((activeTab === 'estimates' && estimates.length === 0) || (activeTab === 'orders' && orders.length === 0))) && (
                                     <tr>
-                                        <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
+                                        <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
                                             데이터가 없습니다.
                                         </td>
                                     </tr>

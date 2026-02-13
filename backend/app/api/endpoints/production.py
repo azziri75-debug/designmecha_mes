@@ -1,116 +1,98 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from typing import Any, List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-from typing import List
 
-from app.api.deps import get_db
-from app.models.sales import ProductionPlan, SalesOrder, SalesOrderItem, WorkOrder
-from app.models.product import Product, ProductProcess
-from app.schemas.production import ProductionPlanResponse, ProductionPlanUpdate, WorkOrderResponse, WorkOrderUpdate
+from app.api import deps
+from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
+from app.models.sales import SalesOrder, SalesOrderItem
+from app.models.product import Product, ProductProcess, Process
+from app.schemas import production as schemas
 
 router = APIRouter()
 
-@router.get("/plans/", response_model=List[ProductionPlanResponse])
+@router.get("/plans", response_model=List[schemas.ProductionPlan])
 async def read_production_plans(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
-):
-    result = await db.execute(
-        select(ProductionPlan)
-        .options(selectinload(ProductionPlan.work_orders))
-        .offset(skip).limit(limit)
-    )
-    return result.scalars().all()
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Retrieve production plans.
+    """
+    result = await db.execute(select(ProductionPlan).offset(skip).limit(limit))
+    plans = result.scalars().all()
+    return plans
 
-@router.post("/plans/{plan_id}/generate-work-orders")
-async def generate_work_orders(
-    plan_id: int,
-    db: AsyncSession = Depends(get_db)
-):
-    # 1. Get Plan & Order & Product
-    result = await db.execute(
-        select(ProductionPlan)
-        .options(selectinload(ProductionPlan.sales_order_item).selectinload(SalesOrderItem.product))
-        .where(ProductionPlan.id == plan_id)
-    )
-    plan = result.scalar_one_or_none()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Production Plan not found")
-    
-    if plan.work_orders:
-         raise HTTPException(status_code=400, detail="Work Orders already generated")
-
-    product = plan.sales_order_item.product
-    
-    # 2. Get Standard Processes for Product
-    # Note: Need to fetch standard_processes relation. 
-    # Since we didn't eager load it above, let's fetch it now or use a separate query.
-    # Better to just query ProductProcess directly.
-    result = await db.execute(
-        select(ProductProcess)
-        .where(ProductProcess.product_id == product.id)
-        .options(selectinload(ProductProcess.process))
-        .order_by(ProductProcess.sequence)
-    )
-    product_processes = result.scalars().all()
-    
-    if not product_processes:
-        raise HTTPException(status_code=400, detail="No standard processes defined for this product")
-
-    # 3. Create Work Orders
-    for pp in product_processes:
-        work_order = WorkOrder(
-            production_plan_id=plan.id,
-            process_name=pp.process.name,
-            sequence=pp.sequence,
-            status="PENDING"
-        )
-        db.add(work_order)
-    
-    plan.status = "IN_PROGRESS"
-    await db.commit()
-    
-    # Return updated plan
-    await db.refresh(plan)
-    # Re-fetch with work_orders
-    result = await db.execute(
-        select(ProductionPlan)
-        .options(selectinload(ProductionPlan.work_orders))
-        .where(ProductionPlan.id == plan_id)
-    )
-    return result.scalar_one()
-
-# --- Work Order Endpoints ---
-@router.put("/work-orders/{work_order_id}", response_model=WorkOrderResponse)
-async def update_work_order(
-    work_order_id: int,
-    update_data: WorkOrderUpdate,
-    db: AsyncSession = Depends(get_db)
-):
-    result = await db.execute(select(WorkOrder).where(WorkOrder.id == work_order_id))
-    work_order = result.scalar_one_or_none()
-    if not work_order:
-        raise HTTPException(status_code=404, detail="Work Order not found")
-    
-    for key, value in update_data.model_dump(exclude_unset=True).items():
-        setattr(work_order, key, value)
+@router.post("/plans", response_model=schemas.ProductionPlan)
+async def create_production_plan(
+    plan_in: schemas.ProductionPlanCreate,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Create a production plan from a Sales Order.
+    Auto-generates plan items based on Product Processes.
+    """
+    # 1. Check if Order exists
+    result = await db.execute(select(SalesOrder).where(SalesOrder.id == plan_in.order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Sales Order not found")
         
-    await db.commit()
-    await db.refresh(work_order)
-    return work_order
+    # 2. Check if Plan already exists for this order
+    # (Assuming 1 Plan per Order for simplicity, though model allows duplicate order_id if not unique)
+    result = await db.execute(select(ProductionPlan).where(ProductionPlan.order_id == plan_in.order_id))
+    existing_plan = result.scalar_one_or_none()
+    if existing_plan:
+        raise HTTPException(status_code=400, detail="Production Plan already exists for this Order")
 
-# --- PDF Generation (Stub) ---
-@router.get("/plans/{plan_id}/pdf")
-async def generate_work_order_pdf(
-    plan_id: int,
-    db: AsyncSession = Depends(get_db)
-):
-    # This is a stub for PDF generation.
-    # In a real implementation, we would use WeasyPrint or ReportLab here.
-    # returning a dummy PDF content for now.
+    # 3. Create Plan Header
+    plan = ProductionPlan(
+        order_id=plan_in.order_id,
+        plan_date=plan_in.plan_date,
+        status=ProductionStatus.PLANNED
+    )
+    db.add(plan)
+    await db.flush() # intent: get plan.id
     
-    pdf_content = b"%PDF-1.4... Dummy PDF Content ..."
+    # 4. Generate Items
+    # Fetch Order Items
+    result = await db.execute(select(SalesOrderItem).where(SalesOrderItem.order_id == plan_in.order_id))
+    order_items = result.scalars().all()
     
-    return Response(content=pdf_content, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=work_order_{plan_id}.pdf"})
+    for item in order_items:
+        # Fetch Product Processes with Process Name
+        stmt = (
+            select(ProductProcess, Process.name)
+            .join(Process, ProductProcess.process_id == Process.id)
+            .where(ProductProcess.product_id == item.product_id)
+            .order_by(ProductProcess.sequence)
+        )
+        result = await db.execute(stmt)
+        processes = result.all()
+        
+        if not processes:
+            # Create a default item if no process defined? 
+            # For now, just skip.
+            continue
+            
+        for proc, proc_name in processes:
+             plan_item = ProductionPlanItem(
+                 plan_id=plan.id,
+                 product_id=item.product_id,
+                 process_name=proc_name,
+                 sequence=proc.sequence,
+                 course_type=proc.course_type or proc.process.course_type or "INTERNAL", # fallback logic
+                 partner_name=proc.partner_name,
+                 work_center=proc.equipment_name,
+                 estimated_time=proc.estimated_time,
+                 quantity=item.quantity, # Set target quantity from Order
+                 status=ProductionStatus.PLANNED
+             )
+             db.add(plan_item)
+
+    await db.commit()
+    await db.refresh(plan)
+    return plan
+

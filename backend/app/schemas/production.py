@@ -1,47 +1,71 @@
-from pydantic import BaseModel
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
+from pydantic import BaseModel
+from enum import Enum
 
-# WorkOrder Schemas
-class WorkOrderBase(BaseModel):
+class ProductionStatus(str, Enum):
+    PENDING = "PENDING"
+    PLANNED = "PLANNED"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CANCELED = "CANCELED"
+
+# --- Item Schemas ---
+class ProductionPlanItemBase(BaseModel):
+    product_id: int
     process_name: str
     sequence: int
-    worker_id: Optional[int] = None
-    status: str = "PENDING"
-    work_date: Optional[date] = None
-    good_quantity: int = 0
-    bad_quantity: int = 0
+    course_type: str = "INTERNAL"
+    
+    partner_name: Optional[str] = None
+    work_center: Optional[str] = None
+    estimated_time: Optional[float] = None
+    
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    worker_name: Optional[str] = None
+    note: Optional[str] = None
+    status: ProductionStatus = ProductionStatus.PLANNED
 
-class WorkOrderCreate(WorkOrderBase):
-    production_plan_id: int
+class ProductionPlanItemCreate(ProductionPlanItemBase):
+    pass
 
-class WorkOrderUpdate(BaseModel):
-    worker_id: Optional[int] = None
-    status: Optional[str] = None
-    work_date: Optional[date] = None
-    good_quantity: Optional[int] = None
-    bad_quantity: Optional[int] = None
+class ProductionPlanItemUpdate(BaseModel):
+    partner_name: Optional[str] = None
+    work_center: Optional[str] = None
+    estimated_time: Optional[float] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    worker_name: Optional[str] = None
+    note: Optional[str] = None
+    status: Optional[ProductionStatus] = None
 
-class WorkOrderResponse(WorkOrderBase):
+class ProductionPlanItem(ProductionPlanItemBase):
     id: int
-    production_plan_id: int
+    plan_id: int
 
     class Config:
         from_attributes = True
 
-# ProductionPlan Schemas
+# --- Plan Schemas ---
 class ProductionPlanBase(BaseModel):
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
-    status: str = "PLANNED"
+    plan_date: date
+    status: ProductionStatus = ProductionStatus.PLANNED
 
-class ProductionPlanUpdate(ProductionPlanBase):
-    pass
+class ProductionPlanCreate(BaseModel):
+    order_id: int
+    plan_date: date
 
-class ProductionPlanResponse(ProductionPlanBase):
+class ProductionPlanUpdate(BaseModel):
+    plan_date: Optional[date] = None
+    status: Optional[ProductionStatus] = None
+
+class ProductionPlan(ProductionPlanBase):
     id: int
     order_id: int
-    work_orders: List[WorkOrderResponse] = []
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    items: List[ProductionPlanItem] = []
 
     class Config:
         from_attributes = True

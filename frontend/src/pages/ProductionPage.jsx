@@ -1,145 +1,204 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+    Box, Typography, Button, Paper, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse
+} from '@mui/material';
+import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon } from '@mui/icons-material';
 import api from '../lib/api';
-import { Play, FileText, Printer, CheckCircle2, Clock } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { cn } from '../lib/utils';
 
 const ProductionPage = () => {
+    const [tabIndex, setTabIndex] = useState(0);
+    const [orders, setOrders] = useState([]);
     const [plans, setPlans] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        fetchOrders();
         fetchPlans();
     }, []);
 
+    const fetchOrders = async () => {
+        try {
+            const response = await api.get('/sales/orders?status=CONFIRMED');
+            setOrders(response.data);
+        } catch (error) {
+            console.error("Failed to fetch orders", error);
+        }
+    };
+
     const fetchPlans = async () => {
-        setLoading(true);
         try {
-            const res = await api.get('/production/plans/');
-            setPlans(res.data);
+            const response = await api.get('/production/plans');
+            setPlans(response.data);
         } catch (error) {
-            console.error("Failed to fetch production plans", error);
-        } finally {
-            setLoading(false);
+            console.error("Failed to fetch plans", error);
         }
     };
 
-    const handleGenerateWorkOrders = async (planId) => {
+    const handleCreatePlan = async (orderId) => {
+        if (!window.confirm("이 수주에 대한 생산 계획을 수립하시겠습니까?")) return;
+
         try {
-            await api.post(`/production/plans/${planId}/generate-work-orders`);
-            fetchPlans(); // Refresh
-            alert("작업지시서가 생성되었습니다.");
+            await api.post('/production/plans', {
+                order_id: orderId,
+                plan_date: new Date().toISOString().split('T')[0]
+            });
+            alert("생산 계획이 생성되었습니다.");
+            fetchOrders();
+            fetchPlans();
+            setTabIndex(1);
         } catch (error) {
-            console.error("Failed to generate work orders", error);
-            alert("작업지시서 생성 실패: " + (error.response?.data?.detail || error.message));
+            console.error("Failed to create plan", error);
+            alert("생산 계획 생성 실패: " + (error.response?.data?.detail || error.message));
         }
     };
 
-    const handlePrintPdf = async (planId) => {
-        try {
-            const res = await api.get(`/production/plans/${planId}/pdf`, { responseType: 'blob' });
-            const url = window.URL.createObjectURL(new Blob([res.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `work_order_${planId}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        } catch (error) {
-            console.error("Failed to download PDF", error);
-            alert("PDF 다운로드 실패");
-        }
+    const handleTabChange = (event, newValue) => {
+        setTabIndex(newValue);
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">생산 관리</h2>
-            </div>
+        <Box sx={{ width: '100%' }}>
+            <Typography variant="h4" gutterBottom component="div" sx={{ mb: 4, fontWeight: 'bold', color: '#1a237e' }}>
+                생산 관리
+            </Typography>
 
-            <div className="grid grid-cols-1 gap-6">
-                {loading ? (
-                    <div className="text-center py-8 text-gray-400">Loading...</div>
-                ) : (
-                    plans.map((plan) => (
-                        <Card key={plan.id} className="border-l-4 border-l-blue-500">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <div className="space-y-1">
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                        <span className="font-mono text-blue-400">#{plan.id}</span>
-                                        <span className="text-gray-300">
-                                            {plan.order ? `Order: ${plan.order.order_no}` : 'No Order'}
-                                        </span>
-                                    </CardTitle>
-                                    <div className="text-sm text-gray-500">
-                                        담당: 관리자 | 시작일: {plan.start_date || '-'} | 종료일: {plan.end_date || '-'}
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className={cn(
-                                        "px-3 py-1 rounded-full text-xs font-medium border",
-                                        plan.status === 'PLANNED' ? "bg-gray-500/10 text-gray-400 border-gray-500/20" :
-                                            plan.status === 'IN_PROGRESS' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                                                "bg-green-500/10 text-green-400 border-green-500/20"
-                                    )}>
-                                        {plan.status}
-                                    </span>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                {/* Work Orders List */}
-                                {plan.work_orders && plan.work_orders.length > 0 ? (
-                                    <div className="mt-4 space-y-3">
-                                        <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-                                            <FileText className="w-4 h-4" /> 작업 지시 목록
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                            {plan.work_orders.map((wo) => (
-                                                <div key={wo.id} className="bg-gray-900/50 p-3 rounded-lg border border-gray-700/50 flex flex-col gap-2">
-                                                    <div className="flex justify-between items-start">
-                                                        <span className="font-medium text-gray-200">{wo.process_name}</span>
-                                                        <span className="text-xs text-gray-500">#{wo.sequence}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-end mt-auto">
-                                                        <span className="text-xs text-gray-500 capitalize">{wo.status.toLowerCase()}</span>
-                                                        <div className="flex gap-2 text-xs">
-                                                            <span className="text-emerald-400">양품: {wo.good_quantity}</span>
-                                                            <span className="text-red-400">불량: {wo.bad_quantity}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <div className="mt-4 flex justify-end">
-                                            <button
-                                                onClick={() => handlePrintPdf(plan.id)}
-                                                className="flex items-center gap-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 px-3 py-2 rounded-md transition-colors"
-                                            >
-                                                <Printer className="w-4 h-4" />
-                                                <span>작업지시서 출력 (PDF)</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="mt-4 flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-700 rounded-lg text-gray-500 gap-2">
-                                        <Clock className="w-8 h-8 opacity-50" />
-                                        <p className="text-sm">생성된 작업 지시가 없습니다.</p>
-                                        <button
-                                            onClick={() => handleGenerateWorkOrders(plan.id)}
-                                            className="mt-2 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                                        >
-                                            <Play className="w-4 h-4" />
-                                            <span>작업 지시 생성</span>
-                                        </button>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    ))
-                )}
-            </div>
-        </div>
+            <Paper sx={{ width: '100%', mb: 2 }}>
+                <Tabs value={tabIndex} onChange={handleTabChange} indicatorColor="primary" textColor="primary">
+                    <Tab label="생산 대기 수주" />
+                    <Tab label="진행 중인 생산 계획" />
+                </Tabs>
+
+                <Box sx={{ p: 3 }}>
+                    {tabIndex === 0 && (
+                        <UnplannedOrdersTable orders={orders} plans={plans} onCreatePlan={handleCreatePlan} />
+                    )}
+                    {tabIndex === 1 && (
+                        <ProductionPlansTable plans={plans} orders={orders} />
+                    )}
+                </Box>
+            </Paper>
+        </Box>
     );
 };
+
+const UnplannedOrdersTable = ({ orders, plans, onCreatePlan }) => {
+    const planOrderIds = plans.map(p => p.order_id);
+    const unplannedOrders = orders.filter(o => !planOrderIds.includes(o.id));
+
+    return (
+        <TableContainer>
+            <Table>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>수주번호</TableCell>
+                        <TableCell>거래처</TableCell>
+                        <TableCell>수주일</TableCell>
+                        <TableCell>납기일</TableCell>
+                        <TableCell>금액</TableCell>
+                        <TableCell>작업</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {unplannedOrders.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} align="center">생산 대기 중인 수주가 없습니다.</TableCell></TableRow>
+                    ) : (
+                        unplannedOrders.map((order) => (
+                            <TableRow key={order.id}>
+                                <TableCell>{order.order_no}</TableCell>
+                                <TableCell>{order.partner?.name}</TableCell>
+                                <TableCell>{order.order_date}</TableCell>
+                                <TableCell>{order.delivery_date}</TableCell>
+                                <TableCell>{order.total_amount?.toLocaleString()}</TableCell>
+                                <TableCell>
+                                    <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order.id)}>
+                                        계획 수립
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+};
+
+const ProductionPlansTable = ({ plans, orders }) => {
+    return (
+        <TableContainer>
+            <Table>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>계획일</TableCell>
+                        <TableCell>수주번호</TableCell>
+                        <TableCell>상태</TableCell>
+                        <TableCell>생성일</TableCell>
+                        <TableCell>관리</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {plans.map((plan) => (
+                        <Row key={plan.id} plan={plan} orders={orders} />
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+};
+
+const Row = ({ plan, orders }) => {
+    const [open, setOpen] = useState(false);
+    const order = orders?.find(o => o.id === plan.order_id);
+
+    return (
+        <React.Fragment>
+            <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
+                <TableCell>{plan.plan_date}</TableCell>
+                <TableCell>{order ? order.order_no : plan.order_id}</TableCell>
+                <TableCell><Chip label={plan.status} color="primary" variant="outlined" /></TableCell>
+                <TableCell>{new Date(plan.created_at).toLocaleDateString()}</TableCell>
+                <TableCell>
+                    <IconButton size="small" onClick={() => setOpen(!open)}>
+                        {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+                    </IconButton>
+                </TableCell>
+            </TableRow>
+            <TableRow>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                    <Collapse in={open} timeout="auto" unmountOnExit>
+                        <Box sx={{ margin: 1 }}>
+                            <Typography variant="h6" gutterBottom component="div">
+                                생산 공정 목록
+                            </Typography>
+                            <Table size="small" aria-label="purchases">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>공정명</TableCell>
+                                        <TableCell>순서</TableCell>
+                                        <TableCell>제품</TableCell>
+                                        <TableCell>수량</TableCell>
+                                        <TableCell>상태</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {plan.items?.map((item) => (
+                                        <TableRow key={item.id}>
+                                            <TableCell>{item.process_name}</TableCell>
+                                            <TableCell>{item.sequence}</TableCell>
+                                            <TableCell>{item.product_id}</TableCell>
+                                            <TableCell>{item.quantity}</TableCell>
+                                            <TableCell>{item.status}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </Box>
+                    </Collapse>
+                </TableCell>
+            </TableRow>
+        </React.Fragment>
+    )
+}
 
 export default ProductionPage;
