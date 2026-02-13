@@ -1,7 +1,7 @@
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import selectinload
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func, or_
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
@@ -35,7 +35,10 @@ async def read_pending_purchase_items(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )\
-        .where(ProductionPlanItem.course_type.in_(['PURCHASE', '구매', 'Purchase']))\
+        .where(or_(
+            ProductionPlanItem.course_type.ilike('%PURCHASE%'),
+            ProductionPlanItem.course_type.like('%구매%')
+        ))\
         .where(ProductionPlanItem.id.notin_(subquery))\
         .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
         
@@ -59,7 +62,10 @@ async def read_pending_outsourcing_items(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )\
-        .where(ProductionPlanItem.course_type.in_(['OUTSOURCING', '외주', 'Outsourcing']))\
+        .where(or_(
+            ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
+            ProductionPlanItem.course_type.like('%외주%')
+        ))\
         .where(ProductionPlanItem.id.notin_(subquery))\
         .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
         
