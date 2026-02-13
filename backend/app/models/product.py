@@ -11,7 +11,6 @@ class Product(Base):
     specification = Column(String, nullable=True) # 규격
     material = Column(String, nullable=True) # 재질
     unit = Column(String, default="EA") # 단위
-    unit = Column(String, default="EA") # 단위
     drawing_file = Column(String, nullable=True) # 도면 파일 경로
     note = Column(Text, nullable=True) # 비고
     
