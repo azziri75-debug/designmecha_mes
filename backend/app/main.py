@@ -1,3 +1,4 @@
+print("DEBUG: Starting app/main.py", flush=True)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.api import api_router

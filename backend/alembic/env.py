@@ -1,4 +1,5 @@
 import asyncio
+print("DEBUG: Starting alembic/env.py", flush=True)
 from logging.config import fileConfig
 
 from sqlalchemy import pool
