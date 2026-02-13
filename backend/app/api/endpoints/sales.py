@@ -343,6 +343,7 @@ async def read_orders(
     skip: int = 0,
     limit: int = 100,
     partner_id: Optional[int] = None,
+    status: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(SalesOrder).options(
@@ -351,6 +352,9 @@ async def read_orders(
     )
     if partner_id:
         query = query.where(SalesOrder.partner_id == partner_id)
+    if status:
+        query = query.where(SalesOrder.status == status)
+
     query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit)
     
     result = await db.execute(query)
