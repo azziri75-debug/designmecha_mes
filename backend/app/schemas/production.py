@@ -44,6 +44,11 @@ class ProductionPlanItemUpdate(BaseModel):
     note: Optional[str] = None
     status: Optional[ProductionStatus] = None
 
+# --- Plan Schemas (Moved Base Up) ---
+class ProductionPlanBase(BaseModel):
+    plan_date: date
+    status: ProductionStatus = ProductionStatus.PLANNED
+
 # --- Plan Schemas (Forward Declaration for Item) ---
 class ProductionPlanSimple(ProductionPlanBase):
     id: int
@@ -65,9 +70,6 @@ class ProductionPlanItem(ProductionPlanItemBase):
         from_attributes = True
 
 # --- Plan Schemas ---
-class ProductionPlanBase(BaseModel):
-    plan_date: date
-    status: ProductionStatus = ProductionStatus.PLANNED
 
 class ProductionPlanCreate(BaseModel):
     order_id: int
