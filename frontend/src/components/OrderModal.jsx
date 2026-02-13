@@ -57,7 +57,120 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
         }
     }, [isOpen, orderToEdit]);
 
-    // ... (rest of code)
+    // Data Fetching
+    useEffect(() => {
+        if (formData.partner_id) {
+            fetchPartnerProducts(formData.partner_id);
+            fetchPartnerEstimates(formData.partner_id);
+        } else {
+            setPartnerProducts([]);
+            setPartnerEstimates([]);
+        }
+    }, [formData.partner_id]);
+
+    const fetchPartnerProducts = async (partnerId) => {
+        setLoadingProducts(true);
+        try {
+            // Fetch ALL products for now to allow selecting common products.
+            // Backend filtering by partner_id is strict (only returns products LINKED to partner).
+            // If we want to show common products + partner specific, we might need backend change or just fetch all.
+            // For now, let's fetch all (no partner_id param) and let user search/select.
+            // Or better, fetch all and if needed, frontend filter. 
+            // Given the complaint "can't see products", strict filtering is likely the cause.
+            const response = await api.get('/product/products/');
+            setPartnerProducts(response.data);
+        } catch (error) {
+            console.error("Failed to fetch products", error);
+        } finally {
+            setLoadingProducts(false);
+        }
+    };
+
+    const fetchPartnerEstimates = async (partnerId) => {
+        try {
+            const response = await api.get('/sales/estimates/', {
+                params: { partner_id: partnerId }
+            });
+            setPartnerEstimates(response.data);
+        } catch (error) {
+            console.error("Failed to fetch estimates", error);
+        }
+    };
+
+    // Handler for Product Select
+    const handleProductSelect = (product) => {
+        const newItem = {
+            product_id: product.id,
+            product_name: product.name,
+            product_spec: product.specification,
+            unit: product.unit,
+            quantity: 0,
+            unit_price: 0,
+            note: ''
+        };
+        // Try to fetch recent price
+        api.get('/sales/history/price', {
+            params: { product_id: product.id, partner_id: formData.partner_id }
+        }).then(res => {
+            if (res.data.price) {
+                newItem.unit_price = res.data.price;
+                // Force update
+                setFormData(prev => {
+                    const newItems = [...prev.items];
+                    // Find the item we just added? No, we haven't added it yet.
+                    // We need to add it with price.
+                    // Actually handleProductSelect adds it.
+                    // Let's just add it with 0 then update?
+                    // Better wait for price? No, async UX is tricky.
+                    // Let's add with price if fast, or update later.
+                    // Simple: Add then update.
+                    return prev;
+                });
+                // Actually, let's just use the response to set initial price before adding if possible?
+                // Or just update the item in the list after adding.
+                // Let's simplistic approach: Add first, then update if price found.
+                updateItem(formData.items.length, 'unit_price', res.data.price);
+            }
+        });
+
+        setFormData(prev => ({
+            ...prev,
+            items: [...prev.items, newItem]
+        }));
+        setShowProductSelect(false);
+    };
+
+    // Handler for Estimate Select
+    const handleEstimateSelect = (estimate) => {
+        const newItems = estimate.items.map(item => ({
+            product_id: item.product_id,
+            product_name: item.product?.name || item.product_id, // Fallback
+            product_spec: item.product?.specification || '',
+            unit: item.product?.unit || 'EA',
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            note: item.note || ''
+        }));
+
+        setFormData(prev => ({
+            ...prev,
+            items: [...prev.items, ...newItems],
+            // Optional: Copy note/terms from estimate?
+            note: prev.note ? prev.note + '\n' + (estimate.note || '') : (estimate.note || '')
+        }));
+        setShowEstimateSelect(false);
+    };
+
+    const updateItem = (index, field, value) => {
+        const newItems = [...formData.items];
+        newItems[index][field] = value;
+        setFormData({ ...formData, items: newItems });
+    };
+
+    const removeItem = (index) => {
+        const newItems = formData.items.filter((_, i) => i !== index);
+        setFormData({ ...formData, items: newItems });
+    };
 
     const handleSubmit = async () => {
         if (!formData.partner_id) return alert("거래처를 선택해주세요.");
