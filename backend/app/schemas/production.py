@@ -3,6 +3,9 @@ from datetime import date, datetime
 from pydantic import BaseModel
 from enum import Enum
 
+from app.schemas.sales import SalesOrder
+from app.schemas.product import ProductResponse
+
 class ProductionStatus(str, Enum):
     PENDING = "PENDING"
     PLANNED = "PLANNED"
@@ -44,6 +47,7 @@ class ProductionPlanItemUpdate(BaseModel):
 class ProductionPlanItem(ProductionPlanItemBase):
     id: int
     plan_id: int
+    product: Optional[ProductResponse] = None
 
     class Config:
         from_attributes = True
@@ -68,6 +72,7 @@ class ProductionPlan(ProductionPlanBase):
     order_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    order: Optional[SalesOrder] = None
     items: List[ProductionPlanItem] = []
 
     class Config:
