@@ -178,6 +178,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
         setLoading(true);
         try {
             const payload = {
+                order_id: order ? order.id : undefined,
                 plan_date: planDate,
                 items: items.map((item) => ({
                     product_id: item.product_id,
@@ -189,14 +190,14 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                     estimated_time: parseFloat(item.estimated_time) || 0,
                     quantity: parseInt(item.quantity) || 0,
                     note: item.note,
-                    production_plan_id: plan ? plan.id : undefined
+                    status: 'PLANNED'
                 }))
             };
 
             if (plan) {
                 await api.put(`/production/plans/${plan.id}`, payload);
             } else {
-                await api.post('/production/plan', payload);
+                await api.post('/production/plans', payload);
             }
             onSuccess();
             onClose();
