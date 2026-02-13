@@ -145,6 +145,7 @@ const PurchasePage = () => {
                                             onChange={handleSelectAllPending}
                                         />
                                     </TableCell>
+                                    <TableCell>수주번호</TableCell>
                                     <TableCell>품목명</TableCell>
                                     <TableCell>규격</TableCell>
                                     <TableCell>수량</TableCell>
@@ -156,18 +157,24 @@ const PurchasePage = () => {
                             </TableHead>
                             <TableBody>
                                 {pendingItems.length === 0 ? (
-                                    <TableRow><TableCell colSpan={8} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={9} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
                                 ) : (
                                     pendingItems.map((item) => (
                                         <TableRow key={item.id} hover onClick={() => handleSelectPendingItem(item.id)} sx={{ cursor: 'pointer' }}>
                                             <TableCell padding="checkbox">
                                                 <Checkbox checked={selectedPendingItems.includes(item.id)} />
                                             </TableCell>
+                                            <TableCell>
+                                                <Box>
+                                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{item.plan?.order?.order_no || '-'}</Typography>
+                                                    <Typography variant="caption" color="textSecondary">{item.plan?.order?.partner?.name || '-'}</Typography>
+                                                </Box>
+                                            </TableCell>
                                             <TableCell>{item.product?.name}</TableCell>
                                             <TableCell>{item.product?.specification}</TableCell>
                                             <TableCell>{item.quantity}</TableCell>
                                             <TableCell>{item.product?.unit}</TableCell>
-                                            <TableCell>{item.start_date || '-'}</TableCell>
+                                            <TableCell>{item.start_date || item.plan?.plan_date || '-'}</TableCell>
                                             <TableCell>{item.partner_name || '-'}</TableCell>
                                             <TableCell>{item.note}</TableCell>
                                         </TableRow>

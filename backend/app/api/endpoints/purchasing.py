@@ -7,7 +7,8 @@ from datetime import datetime
 
 from app.api import deps
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
-from app.models.production import ProductionPlanItem
+from app.models.production import ProductionPlanItem, ProductionPlan
+from app.models.sales import SalesOrder
 from app.models.product import Product, ProductProcess, Process
 from app.schemas import purchasing as schemas
 from app.schemas import production as prod_schemas
@@ -30,7 +31,10 @@ async def read_pending_purchase_items(
     subquery = select(PurchaseOrderItem.production_plan_item_id).where(PurchaseOrderItem.production_plan_item_id.isnot(None))
     
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
-        .options(selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process))\
+        .options(
+            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        )\
         .where(ProductionPlanItem.course_type == 'PURCHASE')\
         .where(ProductionPlanItem.id.notin_(subquery))\
         .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
@@ -51,7 +55,10 @@ async def read_pending_outsourcing_items(
     subquery = select(OutsourcingOrderItem.production_plan_item_id).where(OutsourcingOrderItem.production_plan_item_id.isnot(None))
     
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
-        .options(selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process))\
+        .options(
+            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        )\
         .where(ProductionPlanItem.course_type == 'OUTSOURCING')\
         .where(ProductionPlanItem.id.notin_(subquery))\
         .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))

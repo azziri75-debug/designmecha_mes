@@ -44,10 +44,22 @@ class ProductionPlanItemUpdate(BaseModel):
     note: Optional[str] = None
     status: Optional[ProductionStatus] = None
 
+# --- Plan Schemas (Forward Declaration for Item) ---
+class ProductionPlanSimple(ProductionPlanBase):
+    id: int
+    order_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    order: Optional[SalesOrder] = None
+
+    class Config:
+        from_attributes = True
+
 class ProductionPlanItem(ProductionPlanItemBase):
     id: int
     plan_id: int
     product: Optional[ProductResponse] = None
+    plan: Optional[ProductionPlanSimple] = None
 
     class Config:
         from_attributes = True
