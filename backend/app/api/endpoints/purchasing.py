@@ -211,7 +211,7 @@ async def update_purchase_order(
 async def delete_purchase_order(
     order_id: int,
     db: AsyncSession = Depends(deps.get_db),
-) -> Any:
+):
     query = select(PurchaseOrder).where(PurchaseOrder.id == order_id)
     result = await db.execute(query)
     db_order = result.scalar_one_or_none()
@@ -294,7 +294,7 @@ async def read_outsourcing_orders(
 async def delete_outsourcing_order(
     order_id: int,
     db: AsyncSession = Depends(deps.get_db),
-) -> Any:
+):
     query = select(OutsourcingOrder).where(OutsourcingOrder.id == order_id)
     result = await db.execute(query)
     db_order = result.scalar_one_or_none()
