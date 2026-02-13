@@ -16,6 +16,7 @@ class ProductionPlanItemBase(BaseModel):
     process_name: str
     sequence: int
     course_type: str = "INTERNAL"
+    quantity: int = 1
     
     partner_name: Optional[str] = None
     work_center: Optional[str] = None
@@ -55,10 +56,12 @@ class ProductionPlanBase(BaseModel):
 class ProductionPlanCreate(BaseModel):
     order_id: int
     plan_date: date
+    items: Optional[List[ProductionPlanItemCreate]] = None
 
 class ProductionPlanUpdate(BaseModel):
     plan_date: Optional[date] = None
     status: Optional[ProductionStatus] = None
+    items: Optional[List[ProductionPlanItemCreate]] = None
 
 class ProductionPlan(ProductionPlanBase):
     id: int

@@ -3,14 +3,20 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse
 } from '@mui/material';
-import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon } from '@mui/icons-material';
+import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
 import api from '../lib/api';
+import ProductionPlanModal from '../components/ProductionPlanModal';
 
 const ProductionPage = () => {
     const [tabIndex, setTabIndex] = useState(0);
     const [orders, setOrders] = useState([]);
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    // Modal State
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [selectedPlan, setSelectedPlan] = useState(null);
 
     useEffect(() => {
         fetchOrders();
@@ -35,27 +41,56 @@ const ProductionPage = () => {
         }
     };
 
-    const handleCreatePlan = async (orderId) => {
-        if (!window.confirm("이 수주에 대한 생산 계획을 수립하시겠습니까?")) return;
+    const handleCreateClick = (order) => {
+        setSelectedOrder(order);
+        setSelectedPlan(null);
+        setModalOpen(true);
+    };
 
+    const handleEditClick = (plan) => {
+        setSelectedPlan(plan);
+        setSelectedOrder(null);
+        setModalOpen(true);
+    };
+
+    const handleDeletePlan = async (planId) => {
+        if (!window.confirm("정말로 이 생산 계획을 삭제하시겠습니까? 관련 수주는 대기 상태로 복원됩니다.")) return;
         try {
-            await api.post('/production/plans', {
-                order_id: orderId,
-                plan_date: new Date().toISOString().split('T')[0]
-            });
-            alert("생산 계획이 생성되었습니다.");
-            fetchOrders();
+            await api.delete(`/production/plans/${planId}`);
+            alert("삭제되었습니다.");
             fetchPlans();
-            setTabIndex(1);
+            fetchOrders();
         } catch (error) {
-            console.error("Failed to create plan", error);
-            alert("생산 계획 생성 실패: " + (error.response?.data?.detail || error.message));
+            console.error("Delete failed", error);
+            alert("삭제 실패: " + (error.response?.data?.detail || error.message));
         }
+    };
+
+    const handleCompletePlan = async (planId) => {
+        if (!window.confirm("이 계획을 '완료' 처리하시겠습니까?")) return;
+        try {
+            await api.patch(`/production/plans/${planId}/status?status=COMPLETED`);
+            alert("완료 처리되었습니다.");
+            fetchPlans();
+        } catch (error) {
+            console.error("Complete failed", error);
+            alert("완료 처리 실패");
+        }
+    };
+
+    const handleSuccess = () => {
+        fetchOrders();
+        fetchPlans();
+        if (tabIndex === 0) setTabIndex(1);
     };
 
     const handleTabChange = (event, newValue) => {
         setTabIndex(newValue);
     };
+
+    // Filter plans by status based on tab
+    const inProgressPlans = plans.filter(p => p.status !== 'COMPLETED' && p.status !== 'CANCELED');
+    const completedPlans = plans.filter(p => p.status === 'COMPLETED');
 
     return (
         <Box sx={{ width: '100%' }}>
@@ -67,17 +102,40 @@ const ProductionPage = () => {
                 <Tabs value={tabIndex} onChange={handleTabChange} indicatorColor="primary" textColor="primary">
                     <Tab label="생산 대기 수주" />
                     <Tab label="진행 중인 생산 계획" />
+                    <Tab label="생산 완료" />
                 </Tabs>
 
                 <Box sx={{ p: 3 }}>
                     {tabIndex === 0 && (
-                        <UnplannedOrdersTable orders={orders} plans={plans} onCreatePlan={handleCreatePlan} />
+                        <UnplannedOrdersTable orders={orders} plans={plans} onCreatePlan={handleCreateClick} />
                     )}
                     {tabIndex === 1 && (
-                        <ProductionPlansTable plans={plans} orders={orders} />
+                        <ProductionPlansTable
+                            plans={inProgressPlans}
+                            orders={orders}
+                            onEdit={handleEditClick}
+                            onDelete={handleDeletePlan}
+                            onComplete={handleCompletePlan}
+                            readonly={false}
+                        />
+                    )}
+                    {tabIndex === 2 && (
+                        <ProductionPlansTable
+                            plans={completedPlans}
+                            orders={orders}
+                            readonly={true}
+                        />
                     )}
                 </Box>
             </Paper>
+
+            <ProductionPlanModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onSuccess={handleSuccess}
+                order={selectedOrder}
+                plan={selectedPlan}
+            />
         </Box>
     );
 };
@@ -111,7 +169,7 @@ const UnplannedOrdersTable = ({ orders, plans, onCreatePlan }) => {
                                 <TableCell>{order.delivery_date}</TableCell>
                                 <TableCell>{order.total_amount?.toLocaleString()}</TableCell>
                                 <TableCell>
-                                    <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order.id)}>
+                                    <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order)}>
                                         계획 수립
                                     </Button>
                                 </TableCell>
@@ -124,7 +182,7 @@ const UnplannedOrdersTable = ({ orders, plans, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, orders }) => {
+const ProductionPlansTable = ({ plans, orders, onEdit, onDelete, onComplete, readonly }) => {
     return (
         <TableContainer>
             <Table>
@@ -133,21 +191,34 @@ const ProductionPlansTable = ({ plans, orders }) => {
                         <TableCell>계획일</TableCell>
                         <TableCell>수주번호</TableCell>
                         <TableCell>상태</TableCell>
-                        <TableCell>생성일</TableCell>
+                        <TableCell>공정 수</TableCell>
                         <TableCell>관리</TableCell>
+                        <TableCell>상세</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                    {plans.map((plan) => (
-                        <Row key={plan.id} plan={plan} orders={orders} />
-                    ))}
+                    {plans.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} align="center">데이터가 없습니다.</TableCell></TableRow>
+                    ) : (
+                        plans.map((plan) => (
+                            <Row
+                                key={plan.id}
+                                plan={plan}
+                                orders={orders}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                                onComplete={onComplete}
+                                readonly={readonly}
+                            />
+                        ))
+                    )}
                 </TableBody>
             </Table>
         </TableContainer>
     );
 };
 
-const Row = ({ plan, orders }) => {
+const Row = ({ plan, orders, onEdit, onDelete, onComplete, readonly }) => {
     const [open, setOpen] = useState(false);
     const order = orders?.find(o => o.id === plan.order_id);
 
@@ -156,8 +227,23 @@ const Row = ({ plan, orders }) => {
             <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
                 <TableCell>{plan.plan_date}</TableCell>
                 <TableCell>{order ? order.order_no : plan.order_id}</TableCell>
-                <TableCell><Chip label={plan.status} color="primary" variant="outlined" /></TableCell>
-                <TableCell>{new Date(plan.created_at).toLocaleDateString()}</TableCell>
+                <TableCell><Chip label={plan.status} color={plan.status === 'COMPLETED' ? "success" : "primary"} variant="outlined" /></TableCell>
+                <TableCell>{plan.items?.length || 0}</TableCell>
+                <TableCell>
+                    {!readonly && (
+                        <>
+                            <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
+                                <EditIcon />
+                            </IconButton>
+                            <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="삭제">
+                                <DeleteIcon />
+                            </IconButton>
+                            <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="생산 완료">
+                                <CheckIcon />
+                            </IconButton>
+                        </>
+                    )}
+                </TableCell>
                 <TableCell>
                     <IconButton size="small" onClick={() => setOpen(!open)}>
                         {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
@@ -177,7 +263,11 @@ const Row = ({ plan, orders }) => {
                                         <TableCell>공정명</TableCell>
                                         <TableCell>순서</TableCell>
                                         <TableCell>제품</TableCell>
+                                        <TableCell>유형</TableCell>
+                                        <TableCell>외주/구매처</TableCell>
+                                        <TableCell>작업장</TableCell>
                                         <TableCell>수량</TableCell>
+                                        <TableCell>예상시간</TableCell>
                                         <TableCell>상태</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -186,8 +276,12 @@ const Row = ({ plan, orders }) => {
                                         <TableRow key={item.id}>
                                             <TableCell>{item.process_name}</TableCell>
                                             <TableCell>{item.sequence}</TableCell>
-                                            <TableCell>{item.product_id}</TableCell>
+                                            <TableCell>{item.product?.name || item.product_id}</TableCell>
+                                            <TableCell>{item.course_type}</TableCell>
+                                            <TableCell>{item.partner_name}</TableCell>
+                                            <TableCell>{item.work_center}</TableCell>
                                             <TableCell>{item.quantity}</TableCell>
+                                            <TableCell>{item.estimated_time}</TableCell>
                                             <TableCell>{item.status}</TableCell>
                                         </TableRow>
                                     ))}

@@ -287,7 +287,7 @@ const SalesPage = () => {
                                                                 <tbody className="divide-y divide-gray-800">
                                                                     {est.items?.map((item, idx) => (
                                                                         <tr key={idx}>
-                                                                            <td className="py-2">{item.product_name || item.name}</td>
+                                                                            <td className="py-2">{item.product?.name || item.product_name || item.name}</td>
                                                                             <td className="py-2 text-right">{item.quantity}</td>
                                                                             <td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td>
                                                                             <td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>
@@ -346,7 +346,7 @@ const SalesPage = () => {
                                                                 <tbody className="divide-y divide-gray-800">
                                                                     {ord.items?.map((item, idx) => (
                                                                         <tr key={idx}>
-                                                                            <td className="py-2">{item.product_name || item.name}</td>
+                                                                            <td className="py-2">{item.product?.name || item.product_name || item.name}</td>
                                                                             <td className="py-2 text-right">{item.quantity}</td>
                                                                             <td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td>
                                                                             <td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>

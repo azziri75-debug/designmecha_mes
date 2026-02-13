@@ -58,40 +58,60 @@ async def create_production_plan(
     await db.flush() # intent: get plan.id
     
     # 4. Generate Items
-    # Fetch Order Items
-    result = await db.execute(select(SalesOrderItem).where(SalesOrderItem.order_id == plan_in.order_id))
-    order_items = result.scalars().all()
-    
-    for item in order_items:
-        # Fetch Product Processes with Process Name
-        stmt = (
-            select(ProductProcess, Process.name, Process.course_type)
-            .join(Process, ProductProcess.process_id == Process.id)
-            .where(ProductProcess.product_id == item.product_id)
-            .order_by(ProductProcess.sequence)
-        )
-        result = await db.execute(stmt)
-        processes = result.all()
-        
-        if not processes:
-            # Create a default item if no process defined? 
-            # For now, just skip.
-            continue
-            
-        for proc, proc_name, proc_course_type in processes:
+    if plan_in.items:
+         for item_in in plan_in.items:
              plan_item = ProductionPlanItem(
                  plan_id=plan.id,
-                 product_id=item.product_id,
-                 process_name=proc_name,
-                 sequence=proc.sequence,
-                 course_type=proc.course_type or proc_course_type or "INTERNAL", # fallback logic
-                 partner_name=proc.partner_name,
-                 work_center=proc.equipment_name,
-                 estimated_time=proc.estimated_time,
-                 quantity=item.quantity, # Set target quantity from Order
-                 status=ProductionStatus.PLANNED
+                 product_id=item_in.product_id,
+                 process_name=item_in.process_name,
+                 sequence=item_in.sequence,
+                 course_type=item_in.course_type,
+                 partner_name=item_in.partner_name,
+                 work_center=item_in.work_center,
+                 estimated_time=item_in.estimated_time,
+                 start_date=item_in.start_date,
+                 end_date=item_in.end_date,
+                 worker_name=item_in.worker_name,
+                 note=item_in.note,
+                 status=item_in.status,
+                 quantity=item_in.quantity
              )
              db.add(plan_item)
+    else:
+        # Fetch Order Items
+        result = await db.execute(select(SalesOrderItem).where(SalesOrderItem.order_id == plan_in.order_id))
+        order_items = result.scalars().all()
+        
+        for item in order_items:
+            # Fetch Product Processes with Process Name
+            stmt = (
+                select(ProductProcess, Process.name, Process.course_type)
+                .join(Process, ProductProcess.process_id == Process.id)
+                .where(ProductProcess.product_id == item.product_id)
+                .order_by(ProductProcess.sequence)
+            )
+            result = await db.execute(stmt)
+            processes = result.all()
+            
+            if not processes:
+                # Create a default item if no process defined? 
+                # For now, just skip.
+                continue
+                
+            for proc, proc_name, proc_course_type in processes:
+                 plan_item = ProductionPlanItem(
+                     plan_id=plan.id,
+                     product_id=item.product_id,
+                     process_name=proc_name,
+                     sequence=proc.sequence,
+                     course_type=proc.course_type or proc_course_type or "INTERNAL", # fallback logic
+                     partner_name=proc.partner_name,
+                     work_center=proc.equipment_name,
+                     estimated_time=proc.estimated_time,
+                     quantity=item.quantity, # Set target quantity from Order
+                     status=ProductionStatus.PLANNED
+                 )
+                 db.add(plan_item)
 
     await db.commit()
     await db.refresh(plan)
@@ -104,3 +124,106 @@ async def create_production_plan(
     plan = result.scalar_one()
     return plan
 
+@router.put("/plans/{plan_id}", response_model=schemas.ProductionPlan)
+async def update_production_plan(
+    plan_id: int,
+    plan_in: schemas.ProductionPlanUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Update a production plan.
+    If items are provided, existing items are replaced.
+    """
+    # 1. Fetch Plan
+    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id))
+    plan = result.scalar_one_or_none()
+    
+    if not plan:
+        raise HTTPException(status_code=404, detail="Production Plan not found")
+
+    # 2. Update Header
+    update_data = plan_in.model_dump(exclude_unset=True)
+    items_data = update_data.pop("items", None)
+    
+    for field, value in update_data.items():
+        setattr(plan, field, value)
+        
+    # 3. Update Items (Replace Strategy)
+    if items_data is not None:
+        # Delete existing items
+        # SQLAlchemy cascade="all, delete-orphan" on relationship handles deletion from DB
+        # when we remove them from the list, IF configured. 
+        # But explicitly deleting is clearer for async session sometimes.
+        # Let's try clearing the list which should trigger delete-orphan.
+        plan.items.clear()
+        
+        # Add new items
+        for item_in in plan_in.items:
+            # We need to map schema to model. Schema has product_id, process_name, etc.
+            new_item = ProductionPlanItem(
+                plan_id=plan.id, # Should be set auto by relationship but explicit is fine
+                product_id=item_in.product_id,
+                process_name=item_in.process_name,
+                sequence=item_in.sequence,
+                course_type=item_in.course_type,
+                partner_name=item_in.partner_name,
+                work_center=item_in.work_center,
+                estimated_time=item_in.estimated_time,
+                start_date=item_in.start_date,
+                end_date=item_in.end_date,
+                worker_name=item_in.worker_name,
+                note=item_in.note,
+                status=item_in.status,
+                quantity=item_in.quantity
+            )
+            # Fix: Schema missing quantity. For now, use 1 or try to copy? 
+            # Better to fix schema first. 
+            # Assuming schema has quantity now? No I didn't add it.
+            # I must add quantity to ProductionPlanItemBase.
+            plan.items.append(new_item)
+
+    await db.commit()
+    await db.refresh(plan)
+    
+    # Re-fetch for response
+    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id))
+    plan = result.scalar_one()
+    return plan
+
+@router.delete("/plans/{plan_id}", status_code=204)
+async def delete_production_plan(
+    plan_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Delete a production plan.
+    """
+    result = await db.execute(select(ProductionPlan).where(ProductionPlan.id == plan_id))
+    plan = result.scalar_one_or_none()
+    
+    if not plan:
+        raise HTTPException(status_code=404, detail="Production Plan not found")
+        
+    await db.delete(plan)
+    await db.commit()
+    return None
+
+@router.patch("/plans/{plan_id}/status", response_model=schemas.ProductionPlan)
+async def update_production_plan_status(
+    plan_id: int,
+    status: ProductionStatus,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Update production plan status.
+    """
+    result = await db.execute(select(ProductionPlan).where(ProductionPlan.id == plan_id))
+    plan = result.scalar_one_or_none()
+    
+    if not plan:
+        raise HTTPException(status_code=404, detail="Production Plan not found")
+        
+    plan.status = status
+    await db.commit()
+    await db.refresh(plan)
+    return plan
