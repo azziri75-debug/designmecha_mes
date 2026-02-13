@@ -7,7 +7,8 @@ from datetime import datetime
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_db
-from app.models.sales import SalesOrder, SalesOrderItem, ProductionPlan
+from app.models.sales import SalesOrder, SalesOrderItem
+from app.models.production import ProductionPlan
 from app.models.product import Product
 from app.models.basics import Partner
 
