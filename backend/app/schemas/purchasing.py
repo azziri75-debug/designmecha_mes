@@ -11,6 +11,7 @@ class PurchaseOrderItemBase(BaseModel):
     quantity: int
     unit_price: float
     note: Optional[str] = None
+    production_plan_item_id: Optional[int] = None
 
 class PurchaseOrderItemCreate(PurchaseOrderItemBase):
     pass
@@ -22,11 +23,13 @@ class PurchaseOrderItemUpdate(BaseModel):
     unit_price: Optional[float] = None
     received_quantity: Optional[int] = None
     note: Optional[str] = None
+    production_plan_item_id: Optional[int] = None
 
 class PurchaseOrderItem(PurchaseOrderItemBase):
     id: int
     purchase_order_id: int
     received_quantity: int
+    production_plan_item_id: Optional[int] = None
     product: Optional[Product] = None
 
     class Config:

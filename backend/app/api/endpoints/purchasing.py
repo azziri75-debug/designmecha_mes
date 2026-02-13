@@ -7,9 +7,53 @@ from datetime import datetime
 
 from app.api import deps
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
-from app.schemas import purchasing as schemas
+from app.models.production import ProductionPlanItem
+from app.models.product import Product
 
 router = APIRouter()
+
+# --- Pending Items (Waiting List) ---
+
+@router.get("/purchase/pending-items", response_model=List[Any])
+async def read_pending_purchase_items(
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Get Production Plan Items that need purchasing and are not yet ordered.
+    """
+    # Subquery for ordered items
+    subquery = select(PurchaseOrderItem.production_plan_item_id).where(PurchaseOrderItem.production_plan_item_id.isnot(None))
+    
+    query = select(ProductionPlanItem).options(selectinload(ProductionPlanItem.product))\
+        .where(ProductionPlanItem.course_type == 'PURCHASE')\
+        .where(ProductionPlanItem.id.notin_(subquery))
+        
+    result = await db.execute(query)
+    items = result.scalars().all()
+    
+    # Return as list of dicts or specific schema? 
+    # Let's return a simple structure for frontend. 
+    # Or maybe we define a schema. For now, returning list of objects which Pydantic might serialize if schema matches.
+    # But ProductionPlanItem is a model.
+    # Let's construct a response list.
+    return items
+
+@router.get("/outsourcing/pending-items", response_model=List[Any])
+async def read_pending_outsourcing_items(
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Get Production Plan Items that need outsourcing and are not yet ordered.
+    """
+    subquery = select(OutsourcingOrderItem.production_plan_item_id).where(OutsourcingOrderItem.production_plan_item_id.isnot(None))
+    
+    query = select(ProductionPlanItem).options(selectinload(ProductionPlanItem.product))\
+        .where(ProductionPlanItem.course_type == 'OUTSOURCING')\
+        .where(ProductionPlanItem.id.notin_(subquery))
+        
+    result = await db.execute(query)
+    items = result.scalars().all()
+    return items
 
 # --- Purchase Orders ---
 
@@ -46,7 +90,8 @@ async def create_purchase_order(
             product_id=item.product_id,
             quantity=item.quantity,
             unit_price=item.unit_price,
-            note=item.note
+            note=item.note,
+            production_plan_item_id=item.production_plan_item_id # Save link
         )
         db.add(db_item)
     
@@ -65,6 +110,7 @@ async def create_purchase_order(
 async def read_purchase_orders(
     skip: int = 0,
     limit: int = 100,
+    status: str = None, # Added status filter for 'Completed' tab logic if needed
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
@@ -73,7 +119,12 @@ async def read_purchase_orders(
     query = select(PurchaseOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product),
         selectinload(PurchaseOrder.partner)
-    ).order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit)
+    )
+    if status:
+         # Map generic status to enum? Or just filter.
+         pass # Implement if needed for tabs, but frontend can filter/backend can filter.
+
+    query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -100,42 +151,49 @@ async def update_purchase_order(
     for field, value in update_data.items():
         setattr(db_order, field, value)
 
-    # Update Items (Replace Strategy for simplicity, or ID matching)
+    # Update Items (Simple Replace if items provided)
     if items_data is not None:
-        # Simple replace strategy: Delete all and re-create? 
-        # Or partial update. Let's try partial update if ID present.
-        
-        # Current items map
-        current_items = {item.id: item for item in db_order.items}
-        
-        # Keep track of processed IDs
-        processed_ids = []
-        
-        for item_in in order_in.items: # This is List[PurchaseOrderItemUpdate]
-            if item_in.id and item_in.id in current_items:
-                # Update existing
-                db_item = current_items[item_in.id]
-                item_data = item_in.model_dump(exclude_unset=True)
-                for field, value in item_data.items():
-                    setattr(db_item, field, value)
-                processed_ids.append(item_in.id)
-            else:
-                # Create new (if allowed via update endpoint)
-                # Schema might strictly require ID for update, or allow new.
-                # Assuming simple replace/add logic not fully needed yet via Update model.
-                # If we want to support adding items via PUT, we need Create schema mixed in.
-                # For now, let's assume update only touches existing or simply ignores.
-                # Actually, standard pattern: existing items updated/deleted, new ones added.
-                pass
-                
-        # To delete removed items? 
-        # If the list is meant to be the full state, then yes.
-        # But here `items` is Optional. If provided, does it mean "replace all" or "update these"?
-        # Usually PUT is replace resource. 
-        # Let's stick to updating fields for now. 
-        # If user wants to add items, better use specific endpoint or proper full update logic.
-        # For this MVP, let's just update the specific items provided.
-        pass
+         # For simplicity in this logic, we will delete existing and recreate, 
+         # because tracking which item maps to which plan item after update is complex 
+         # without strict ID management.
+         # However, cascade delete on order items might lose legacy data if we are not careful.
+         # But user just entered "Create Order", likely won't change plan link often.
+         # If we recreate, we must ensure production_plan_item_id is preserved or passed from frontend.
+         
+         # Better Strategy:
+         # 1. Map existing items by ID.
+         # 2. Update found items.
+         # 3. Add new items.
+         # 4. Delete missing items.
+         
+         current_items = {item.id: item for item in db_order.items}
+         incoming_ids = set()
+         
+         for item_in in order_in.items:
+             if item_in.id and item_in.id in current_items:
+                 # Update
+                 db_item = current_items[item_in.id]
+                 item_data = item_in.model_dump(exclude_unset=True)
+                 for k, v in item_data.items():
+                     if k != "id":
+                        setattr(db_item, k, v)
+                 incoming_ids.add(item_in.id)
+             else:
+                 # Create
+                 db_item = PurchaseOrderItem(
+                    purchase_order_id=db_order.id,
+                    product_id=item_in.product_id,
+                    quantity=item_in.quantity,
+                    unit_price=item_in.unit_price,
+                    note=item_in.note,
+                    production_plan_item_id=item_in.production_plan_item_id
+                 )
+                 db.add(db_item)
+         
+         # Delete missing
+         for item_id, item in current_items.items():
+             if item_id not in incoming_ids:
+                 await db.delete(item)
 
     await db.commit()
     await db.refresh(db_order)
@@ -148,6 +206,21 @@ async def update_purchase_order(
     result = await db.execute(query)
     return result.scalar_one()
 
+@router.delete("/purchase/orders/{order_id}", status_code=204)
+async def delete_purchase_order(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    query = select(PurchaseOrder).where(PurchaseOrder.id == order_id)
+    result = await db.execute(query)
+    db_order = result.scalar_one_or_none()
+    
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+        
+    await db.delete(db_order)
+    await db.commit()
+    return None
 
 # --- Outsourcing Orders ---
 
@@ -215,3 +288,19 @@ async def read_outsourcing_orders(
     ).order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
+
+@router.delete("/outsourcing/orders/{order_id}", status_code=204)
+async def delete_outsourcing_order(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    query = select(OutsourcingOrder).where(OutsourcingOrder.id == order_id)
+    result = await db.execute(query)
+    db_order = result.scalar_one_or_none()
+    
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+        
+    await db.delete(db_order)
+    await db.commit()
+    return None

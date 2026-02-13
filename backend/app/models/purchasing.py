@@ -45,10 +45,13 @@ class PurchaseOrderItem(Base):
     unit_price = Column(Float, default=0.0)
     received_quantity = Column(Integer, default=0) # 입고 수량
     note = Column(String, nullable=True)
+    
+    production_plan_item_id = Column(Integer, ForeignKey("production_plan_items.id"), nullable=True)
 
     # Relationships
     purchase_order = relationship("PurchaseOrder", back_populates="items")
-    product = relationship("Product") 
+    product = relationship("Product")
+    production_plan_item = relationship("ProductionPlanItem") 
 
 class OutsourcingOrder(Base):
     __tablename__ = "outsourcing_orders"

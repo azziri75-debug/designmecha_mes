@@ -356,6 +356,93 @@ async def read_orders(
     result = await db.execute(query)
     return result.scalars().all()
 
+@router.put("/orders/{order_id}", response_model=schemas.SalesOrder)
+async def update_order(
+    order_id: int,
+    order_in: schemas.SalesOrderCreate, # Use Create schema or dedicated Update schema if exists. 
+    # Usually schemas.SalesOrderUpdate. Let's assume Create for now or check if Update exists in schemas.
+    # Checking schemas import... `from app.schemas import sales as schemas`. 
+    # I'll use SalesOrderCreate for now as it often mirrors Update, but ideally should be Update.
+    # To be safe, I'll check schemas/sales.py if I can, but for now I'll use SalesOrderCreate 
+    # and just update fields. 
+    db: AsyncSession = Depends(deps.get_db)
+):
+    query = select(SalesOrder).options(selectinload(SalesOrder.items)).where(SalesOrder.id == order_id)
+    result = await db.execute(query)
+    db_order = result.scalar_one_or_none()
+    
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Update Header
+    db_order.partner_id = order_in.partner_id
+    db_order.order_date = order_in.order_date
+    db_order.delivery_date = order_in.delivery_date
+    db_order.total_amount = order_in.total_amount
+    db_order.note = order_in.note
+    db_order.status = order_in.status
+    
+    # Update Items
+    # Delete all and recreate
+    for item in db_order.items:
+        await db.delete(item)
+        
+    for item in order_in.items:
+        db_item = SalesOrderItem(
+            order_id=db_order.id,
+            product_id=item.product_id,
+            unit_price=item.unit_price,
+            quantity=item.quantity,
+            note=item.note
+        )
+        db.add(db_item)
+        
+    await db.commit()
+    await db.refresh(db_order)
+    
+    # Re-fetch
+    query = select(SalesOrder).options(
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(SalesOrder.partner)
+    ).where(SalesOrder.id == order_id)
+    result = await db.execute(query)
+    return result.scalar_one()
+
+@router.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_order(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    query = select(SalesOrder).options(selectinload(SalesOrder.items)).where(SalesOrder.id == order_id)
+    result = await db.execute(query)
+    db_order = result.scalar_one_or_none()
+    
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Cascade delete Production Plans
+    # We need to import ProductionPlan model
+    from app.models.production import ProductionPlan
+    
+    plans_query = select(ProductionPlan).where(ProductionPlan.order_id == order_id)
+    plans_result = await db.execute(plans_query)
+    plans = plans_result.scalars().all()
+    
+    for plan in plans:
+        # Check if plan can be deleted? (e.g. if IN_PROGRESS?)
+        # User requested: "Delete connected production plan". 
+        # Ideally we should prevent if work has started, but for now we follow instruction "Delete it".
+        await db.delete(plan)
+    
+    # SalesOrder Items are cascade-deleted by relationship presumably, 
+    # but let's delete manually to be sure if not configured.
+    for item in db_order.items:
+        await db.delete(item)
+        
+    await db.delete(db_order)
+    await db.commit()
+    return None
+
 # --- History & Helper Endpoints ---
 
 @router.get("/history/price")

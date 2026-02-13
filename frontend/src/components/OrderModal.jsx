@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Search, FileText, Download } from 'lucide-react';
 import api from '../lib/api';
 
-const OrderModal = ({ isOpen, onClose, onSuccess, partners }) => {
+const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }) => {
     // Form State
     const [formData, setFormData] = useState({
         partner_id: '',
@@ -23,120 +23,41 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners }) => {
 
     useEffect(() => {
         if (isOpen) {
-            setFormData({
-                partner_id: '',
-                order_date: new Date().toISOString().split('T')[0],
-                delivery_date: '',
-                items: [],
-                note: '',
-                status: 'PENDING'
-            });
+            if (orderToEdit) {
+                // Edit Mode
+                setFormData({
+                    partner_id: orderToEdit.partner_id,
+                    order_date: orderToEdit.order_date,
+                    delivery_date: orderToEdit.delivery_date || '',
+                    items: orderToEdit.items.map(item => ({
+                        product_id: item.product_id,
+                        product_name: item.product?.name || item.product_name,
+                        product_spec: item.product?.specification || item.product_spec,
+                        unit: item.product?.unit || item.unit,
+                        quantity: item.quantity,
+                        unit_price: item.unit_price,
+                        note: item.note || ''
+                    })),
+                    note: orderToEdit.note || '',
+                    status: orderToEdit.status || 'PENDING'
+                });
+            } else {
+                // Create Mode
+                setFormData({
+                    partner_id: '',
+                    order_date: new Date().toISOString().split('T')[0],
+                    delivery_date: '',
+                    items: [],
+                    note: '',
+                    status: 'PENDING'
+                });
+            }
             setPartnerProducts([]);
             setPartnerEstimates([]);
         }
-    }, [isOpen]);
+    }, [isOpen, orderToEdit]);
 
-    // Fetch products when partner changes
-    useEffect(() => {
-        if (formData.partner_id) {
-            fetchPartnerProducts(formData.partner_id);
-            fetchPartnerEstimates(formData.partner_id);
-        } else {
-            setPartnerProducts([]);
-            setPartnerEstimates([]);
-        }
-    }, [formData.partner_id]);
-
-    const fetchPartnerProducts = async (partnerId) => {
-        setLoadingProducts(true);
-        try {
-            const res = await api.get('/product/products/', { params: { partner_id: partnerId } });
-            setPartnerProducts(res.data);
-        } catch (error) {
-            console.error("Failed to fetch products", error);
-        } finally {
-            setLoadingProducts(false);
-        }
-    };
-
-    const fetchPartnerEstimates = async (partnerId) => {
-        try {
-            const res = await api.get('/sales/estimates/', { params: { partner_id: partnerId } });
-            setPartnerEstimates(res.data);
-        } catch (error) {
-            console.error("Failed to fetch estimates", error);
-        }
-    };
-
-    const handleProductSelect = async (product) => {
-        if (formData.items.some(item => item.product_id === product.id)) {
-            alert("이미 추가된 품목입니다.");
-            return;
-        }
-
-        let recentPrice = 0;
-        try {
-            const res = await api.get('/sales/history/price', {
-                params: { product_id: product.id, partner_id: formData.partner_id }
-            });
-            recentPrice = res.data.price || 0;
-        } catch (e) { console.error(e); }
-
-        const newItem = {
-            product_id: product.id,
-            product_name: product.name,
-            product_spec: product.specification,
-            unit: product.unit,
-            quantity: 1,
-            unit_price: recentPrice,
-            note: ''
-        };
-
-        setFormData(prev => ({
-            ...prev,
-            items: [...prev.items, newItem]
-        }));
-        setShowProductSelect(false);
-    };
-
-    const handleEstimateSelect = (estimate) => {
-        // Import items from estimate
-        // Map EstimateItem -> SalesOrderItem structure
-        const newItems = estimate.items.map(item => ({
-            product_id: item.product_id,
-            product_name: item.product.name,
-            product_spec: item.product.specification,
-            unit: item.product.unit,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            note: item.note || ''
-        }));
-
-        // Merge or Replace? Let's append but check duplicates
-        // Actually for order from estimate, replacing might be better or appending unique.
-        // Let's Replace for simplicity as user usually converts 1 quote to 1 order
-        if (formData.items.length > 0) {
-            if (!confirm("기존 입력된 품목이 삭제되고 견적 내용으로 대체됩니다. 계속하시겠습니까?")) return;
-        }
-
-        setFormData(prev => ({
-            ...prev,
-            items: newItems,
-            note: prev.note || estimate.note // Keep existing note if present? or overwrite?
-        }));
-        setShowEstimateSelect(false);
-    };
-
-    const updateItem = (index, field, value) => {
-        const newItems = [...formData.items];
-        newItems[index][field] = value;
-        setFormData(prev => ({ ...prev, items: newItems }));
-    };
-
-    const removeItem = (index) => {
-        const newItems = formData.items.filter((_, i) => i !== index);
-        setFormData(prev => ({ ...prev, items: newItems }));
-    };
+    // ... (rest of code)
 
     const handleSubmit = async () => {
         if (!formData.partner_id) return alert("거래처를 선택해주세요.");
@@ -151,13 +72,18 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners }) => {
         };
 
         try {
-            await api.post('/sales/orders/', payload);
-            alert("수주가 등록되었습니다.");
+            if (orderToEdit) {
+                await api.put(`/sales/orders/${orderToEdit.id}`, payload);
+                alert("수주가 수정되었습니다.");
+            } else {
+                await api.post('/sales/orders/', payload);
+                alert("수주가 등록되었습니다.");
+            }
             onSuccess();
             onClose();
         } catch (error) {
-            console.error("Registration failed", error);
-            alert("등록 실패: " + (error.response?.data?.detail || error.message));
+            console.error("Save failed", error);
+            alert("저장 실패: " + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -167,7 +93,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners }) => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div className="p-6 border-b border-gray-700 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white">신규 수주 등록</h2>
+                    <h2 className="text-xl font-bold text-white">{orderToEdit ? "수주 수정" : "신규 수주 등록"}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
                     </button>

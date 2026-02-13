@@ -23,6 +23,7 @@ const SalesPage = () => {
     const [showEstimateModal, setShowEstimateModal] = useState(false);
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [editingEstimate, setEditingEstimate] = useState(null);
+    const [editingOrder, setEditingOrder] = useState(null);
 
     // Expand States
     const [expandedEstimates, setExpandedEstimates] = useState(new Set());
@@ -92,8 +93,6 @@ const SalesPage = () => {
         }
     };
 
-
-
     const handleEdit = (estimate) => {
         setEditingEstimate(estimate);
         setShowEstimateModal(true);
@@ -105,6 +104,23 @@ const SalesPage = () => {
             await api.delete(`/sales/estimates/${estimateId}`);
             alert("삭제되었습니다.");
             fetchEstimates();
+        } catch (error) {
+            console.error("Delete failed", error);
+            alert("삭제 실패");
+        }
+    };
+
+    const handleEditOrder = (order) => {
+        setEditingOrder(order);
+        setShowOrderModal(true);
+    };
+
+    const handleDeleteOrder = async (orderId) => {
+        if (!window.confirm("정말로 삭제하시겠습니까? 관련 생산 계획도 함께 삭제됩니다.")) return;
+        try {
+            await api.delete(`/sales/orders/${orderId}`);
+            alert("삭제되었습니다.");
+            fetchOrders();
         } catch (error) {
             console.error("Delete failed", error);
             alert("삭제 실패");
@@ -198,6 +214,7 @@ const SalesPage = () => {
                                             <th className="px-6 py-3">총 금액</th>
                                             <th className="px-6 py-3">품목 수</th>
                                             <th className="px-6 py-3">비고</th>
+                                            <th className="px-6 py-3">관리</th>
                                         </>
                                     )}
                                 </tr>
@@ -272,7 +289,7 @@ const SalesPage = () => {
                                             </tr>
                                             {expandedEstimates.has(est.id) && (
                                                 <tr className="bg-gray-800/50">
-                                                    <td colSpan="8" className="px-6 py-4">
+                                                    <td colSpan="9" className="px-6 py-4">
                                                         <div className="ml-8 p-4 bg-gray-900 rounded-lg border border-gray-700">
                                                             <h4 className="text-sm font-semibold mb-2 text-gray-300">견적 품목 상세</h4>
                                                             <table className="w-full text-sm text-gray-400">
@@ -328,10 +345,24 @@ const SalesPage = () => {
                                                 <td className="px-6 py-4">{ord.total_amount?.toLocaleString()} 원</td>
                                                 <td className="px-6 py-4">{ord.items?.length || 0} 건</td>
                                                 <td className="px-6 py-4 truncate max-w-[200px]">{ord.note}</td>
+                                                <td className="px-6 py-4 flex items-center" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={() => handleEditOrder(ord)}
+                                                        className="text-blue-400 hover:underline text-xs mr-3"
+                                                    >
+                                                        수정
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteOrder(ord.id)}
+                                                        className="text-red-400 hover:underline text-xs"
+                                                    >
+                                                        삭제
+                                                    </button>
+                                                </td>
                                             </tr>
                                             {expandedOrders.has(ord.id) && (
                                                 <tr className="bg-gray-800/50">
-                                                    <td colSpan="9" className="px-6 py-4">
+                                                    <td colSpan="10" className="px-6 py-4">
                                                         <div className="ml-8 p-4 bg-gray-900 rounded-lg border border-gray-700">
                                                             <h4 className="text-sm font-semibold mb-2 text-gray-300">수주 품목 상세</h4>
                                                             <table className="w-full text-sm text-gray-400">
@@ -363,7 +394,7 @@ const SalesPage = () => {
                                 )}
                                 {(!loading && ((activeTab === 'estimates' && estimates.length === 0) || (activeTab === 'orders' && orders.length === 0))) && (
                                     <tr>
-                                        <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
+                                        <td colSpan="10" className="px-6 py-12 text-center text-gray-500">
                                             데이터가 없습니다.
                                         </td>
                                     </tr>
@@ -394,9 +425,13 @@ const SalesPage = () => {
 
             <OrderModal
                 isOpen={showOrderModal}
-                onClose={() => setShowOrderModal(false)}
+                onClose={() => {
+                    setShowOrderModal(false);
+                    setEditingOrder(null);
+                }}
                 onSuccess={fetchOrders}
                 partners={partners}
+                orderToEdit={editingOrder}
             />
         </div>
     );
