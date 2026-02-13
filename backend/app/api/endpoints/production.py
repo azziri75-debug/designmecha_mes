@@ -22,7 +22,7 @@ async def read_production_plans(
     """
     Retrieve production plans.
     """
-    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items)).offset(skip).limit(limit))
+    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product)).offset(skip).limit(limit))
     plans = result.scalars().all()
     return plans
 
@@ -120,7 +120,7 @@ async def create_production_plan(
     # (Though refresh might not load them, return plan triggers Pydantic which triggers access)
     # Ideally we re-fetch with options, or trust that they are in session.
     # To be safe for async, let's re-fetch.
-    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan.id))
+    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product)).where(ProductionPlan.id == plan.id))
     plan = result.scalar_one()
     return plan
 
@@ -186,7 +186,7 @@ async def update_production_plan(
     await db.refresh(plan)
     
     # Re-fetch for response
-    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id))
+    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product)).where(ProductionPlan.id == plan_id))
     plan = result.scalar_one()
     return plan
 

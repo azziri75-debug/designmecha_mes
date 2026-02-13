@@ -290,12 +290,16 @@ const Row = ({ plan, orders, onEdit, onDelete, onComplete, readonly }) => {
 
     return (
         <React.Fragment>
-            <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
+            <TableRow
+                sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer' }}
+                onClick={() => setOpen(!open)}
+                hover
+            >
                 <TableCell>{plan.plan_date}</TableCell>
                 <TableCell>{order ? order.order_no : plan.order_id}</TableCell>
                 <TableCell><Chip label={plan.status} color={plan.status === 'COMPLETED' ? "success" : "primary"} variant="outlined" /></TableCell>
                 <TableCell>{plan.items?.length || 0}</TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                     {!readonly && (
                         <>
                             <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
@@ -311,7 +315,7 @@ const Row = ({ plan, orders, onEdit, onDelete, onComplete, readonly }) => {
                     )}
                 </TableCell>
                 <TableCell>
-                    <IconButton size="small" onClick={() => setOpen(!open)}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
                         {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
                     </IconButton>
                 </TableCell>
