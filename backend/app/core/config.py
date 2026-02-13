@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+from typing import Optional, List
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "MES ERP System"
@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     
     # CORS
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = ["*"]
+    BACKEND_CORS_ORIGINS: List[str] = ["*"]
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
