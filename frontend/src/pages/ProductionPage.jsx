@@ -228,7 +228,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, orders, onEdit, onDelete, onComplete, readonly }) => {
+const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, readonly }) => {
     return (
         <TableContainer>
             <Table>
@@ -236,21 +236,23 @@ const ProductionPlansTable = ({ plans, orders, onEdit, onDelete, onComplete, rea
                     <TableRow>
                         <TableCell>계획일</TableCell>
                         <TableCell>수주번호</TableCell>
+                        <TableCell>거래처</TableCell>
+                        <TableCell>수주일</TableCell>
+                        <TableCell>납기일</TableCell>
+                        <TableCell>금액</TableCell>
                         <TableCell>상태</TableCell>
                         <TableCell>공정 수</TableCell>
                         <TableCell>관리</TableCell>
-                        <TableCell>상세</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {plans.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} align="center">데이터가 없습니다.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9} align="center">데이터가 없습니다.</TableCell></TableRow>
                     ) : (
                         plans.map((plan) => (
                             <Row
                                 key={plan.id}
                                 plan={plan}
-                                orders={orders}
                                 onEdit={onEdit}
                                 onDelete={onDelete}
                                 onComplete={onComplete}
@@ -264,9 +266,9 @@ const ProductionPlansTable = ({ plans, orders, onEdit, onDelete, onComplete, rea
     );
 };
 
-const Row = ({ plan, orders, onEdit, onDelete, onComplete, readonly }) => {
+const Row = ({ plan, onEdit, onDelete, onComplete, readonly }) => {
     const [open, setOpen] = useState(false);
-    const order = orders?.find(o => o.id === plan.order_id);
+    const order = plan.order; // Used order from plan (eager loaded)
 
     // Group items by product
     const groupedItems = plan.items?.reduce((acc, item) => {
@@ -297,6 +299,10 @@ const Row = ({ plan, orders, onEdit, onDelete, onComplete, readonly }) => {
             >
                 <TableCell>{plan.plan_date}</TableCell>
                 <TableCell>{order ? order.order_no : plan.order_id}</TableCell>
+                <TableCell>{order?.partner?.name || '-'}</TableCell>
+                <TableCell>{order?.order_date || '-'}</TableCell>
+                <TableCell>{order?.delivery_date || '-'}</TableCell>
+                <TableCell>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
                 <TableCell><Chip label={plan.status} color={plan.status === 'COMPLETED' ? "success" : "primary"} variant="outlined" /></TableCell>
                 <TableCell>{plan.items?.length || 0}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
@@ -314,14 +320,9 @@ const Row = ({ plan, orders, onEdit, onDelete, onComplete, readonly }) => {
                         </>
                     )}
                 </TableCell>
-                <TableCell>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
-                        {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-                    </IconButton>
-                </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
                             <Typography variant="h6" gutterBottom component="div">

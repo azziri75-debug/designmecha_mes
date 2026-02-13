@@ -22,7 +22,14 @@ async def read_production_plans(
     """
     Retrieve production plans.
     """
-    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product)).offset(skip).limit(limit))
+    result = await db.execute(
+        select(ProductionPlan)
+        .options(
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        )
+        .offset(skip).limit(limit)
+    )
     plans = result.scalars().all()
     return plans
 
