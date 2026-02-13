@@ -282,6 +282,14 @@ async def create_outsourcing_order(
             note=item.note
         )
         db.add(db_item)
+        
+        # Update ProductionPlanItem status if linked
+        if item.production_plan_item_id:
+            from app.models.production import ProductionStatus
+            plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+            if plan_item:
+                plan_item.status = ProductionStatus.IN_PROGRESS
+                db.add(plan_item)
     
     await db.commit()
     await db.refresh(db_order)
