@@ -9,6 +9,7 @@ from app.api import deps
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
 from app.models.production import ProductionPlanItem
 from app.models.product import Product
+from app.schemas import purchasing as schemas
 
 router = APIRouter()
 
