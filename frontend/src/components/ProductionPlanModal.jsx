@@ -109,11 +109,118 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
         }]);
     };
 
-    // ... (keep drag handlers same) ...
+    // Drag Handlers
+    const handleDragStart = (e, productId, index) => {
+        dragItem.current = { productId, index };
+    };
 
-    // ... (keep handleSubmit same) ...
+    const handleDragEnter = (e, productId, index) => {
+        dragOverItem.current = { productId, index };
+    };
 
-    // ... (keep grouping logic same) ...
+    const handleDragEnd = () => {
+        if (!dragItem.current || !dragOverItem.current) {
+            dragItem.current = null;
+            dragOverItem.current = null;
+            return;
+        }
+
+        const sourcePid = dragItem.current.productId;
+        const targetPid = dragOverItem.current.productId;
+
+        if (sourcePid !== targetPid) {
+            dragItem.current = null;
+            dragOverItem.current = null;
+            return;
+        }
+
+        const sourceIndex = dragItem.current.index;
+        const targetIndex = dragOverItem.current.index;
+
+        if (sourceIndex === targetIndex) {
+            dragItem.current = null;
+            dragOverItem.current = null;
+            return;
+        }
+
+        // Reorder logic
+        const grouped = {};
+        items.forEach(item => {
+            if (!grouped[item.product_id]) grouped[item.product_id] = [];
+            grouped[item.product_id].push(item);
+        });
+
+        const group = grouped[sourcePid];
+        const movedItem = group[sourceIndex];
+        group.splice(sourceIndex, 1);
+        group.splice(targetIndex, 0, movedItem);
+
+        // Re-assign sequence
+        group.forEach((item, idx) => {
+            item.sequence = idx + 1;
+        });
+
+        // Flatten back to items preserving product order
+        const newItems = [];
+        const productIds = [...new Set(items.map(i => i.product_id))];
+        productIds.forEach(pid => {
+            if (grouped[pid]) {
+                newItems.push(...grouped[pid]);
+            }
+        });
+
+        setItems(newItems);
+        dragItem.current = null;
+        dragOverItem.current = null;
+    };
+
+    const handleSubmit = async () => {
+        setLoading(true);
+        try {
+            const payload = {
+                plan_date: planDate,
+                items: items.map((item) => ({
+                    product_id: item.product_id,
+                    process_name: item.process_name,
+                    sequence: item.sequence,
+                    course_type: item.course_type,
+                    partner_name: item.partner_name,
+                    work_center: item.work_center,
+                    estimated_time: parseFloat(item.estimated_time) || 0,
+                    quantity: parseInt(item.quantity) || 0,
+                    note: item.note,
+                    production_plan_id: plan ? plan.id : undefined
+                }))
+            };
+
+            if (plan) {
+                await api.put(`/production/plans/${plan.id}`, payload);
+            } else {
+                await api.post('/production/plan', payload);
+            }
+            onSuccess();
+            onClose();
+        } catch (error) {
+            console.error("Failed to save plan", error);
+            alert("저장 실패: " + (error.response?.data?.detail || error.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Grouping Logic
+    const groupedItems = items.reduce((acc, item, index) => {
+        if (!acc[item.product_id]) {
+            acc[item.product_id] = {
+                product_name: item.product_name,
+                product_spec: item.product_spec,
+                product_unit: item.product_unit,
+                items: []
+            };
+        }
+        acc[item.product_id].items.push({ ...item, originalIndex: index });
+        return acc;
+    }, {});
 
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="xl" fullWidth>
