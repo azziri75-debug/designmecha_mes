@@ -202,8 +202,14 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
             onSuccess();
             onClose();
         } catch (error) {
-            console.error("Failed to save plan", error);
-            alert("저장 실패: " + (error.response?.data?.detail || error.message));
+            console.error("Failed to save plan FULL ERROR:", error);
+            if (error.response) {
+                console.error("Response Data:", error.response.data);
+                console.error("Response Status:", error.response.status);
+                alert(`저장 실패 (${error.response.status}): ${JSON.stringify(error.response.data.detail || error.response.data)}`);
+            } else {
+                alert("저장 실패: " + error.message);
+            }
         } finally {
             setLoading(false);
         }

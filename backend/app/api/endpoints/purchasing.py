@@ -37,12 +37,17 @@ async def read_pending_purchase_items(
             ProductionPlanItem.course_type.ilike('%PURCHASE%'),
             ProductionPlanItem.course_type.like('%구매%')
         ))\
-        .where(PurchaseOrderItem.id.is_(None))\
-        .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
+        .where(PurchaseOrderItem.id.is_(None))
+        # .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED])) # Temporarily removed for debugging
+        
+    # Debug: Print Query
+    # print(f"[DEBUG] Query: {query}")
         
     result = await db.execute(query)
     items = result.scalars().all()
-    print(f"[DEBUG] Pending Purchase Items Query Result: {len(items)} items found.")
+    print(f"[DEBUG] Pending Purchase Items: Found {len(items)} items.")
+    for i in items:
+        print(f"  - Item {i.id}: {i.process_name} ({i.course_type}) PlanID: {i.plan_id}")
     return items
 
 @router.get("/outsourcing/pending-items", response_model=List[prod_schemas.ProductionPlanItem])
@@ -64,12 +69,14 @@ async def read_pending_outsourcing_items(
             ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
             ProductionPlanItem.course_type.like('%외주%')
         ))\
-        .where(OutsourcingOrderItem.id.is_(None))\
-        .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
+        .where(OutsourcingOrderItem.id.is_(None))
+        # .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED])) # Temporarily removed for debugging
         
     result = await db.execute(query)
     items = result.scalars().all()
-    print(f"[DEBUG] Pending Outsourcing Items Query Result: {len(items)} items found.")
+    print(f"[DEBUG] Pending Outsourcing Items: Found {len(items)} items.")
+    for i in items:
+        print(f"  - Item {i.id}: {i.process_name} ({i.course_type}) PlanID: {i.plan_id}")
     return items
 
 # --- Purchase Orders ---
