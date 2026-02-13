@@ -48,9 +48,20 @@ async def global_exception_handler(request: Request, exc: Exception):
     import traceback
     error_details = traceback.format_exc()
     print(f"Global Exception: {exc}\n{error_details}")
+    
+    # Force CORS headers to ensure the frontend can read the error
+    origin = request.headers.get("origin")
+    headers = {
+        "Access-Control-Allow-Origin": origin if origin else "*",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*",
+    }
+    
     return JSONResponse(
         status_code=500,
-        content={"message": "Internal Server Error", "detail": str(exc)},
+        content={"message": "Internal Server Error", "detail": str(exc), "trace": error_details.splitlines()[-1]},
+        headers=headers
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
