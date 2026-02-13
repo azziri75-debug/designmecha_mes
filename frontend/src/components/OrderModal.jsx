@@ -71,13 +71,10 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
     const fetchPartnerProducts = async (partnerId) => {
         setLoadingProducts(true);
         try {
-            // Fetch ALL products for now to allow selecting common products.
-            // Backend filtering by partner_id is strict (only returns products LINKED to partner).
-            // If we want to show common products + partner specific, we might need backend change or just fetch all.
-            // For now, let's fetch all (no partner_id param) and let user search/select.
-            // Or better, fetch all and if needed, frontend filter. 
-            // Given the complaint "can't see products", strict filtering is likely the cause.
-            const response = await api.get('/product/products/');
+            // Strict filtering by partner_id as requested by user.
+            const response = await api.get('/product/products/', {
+                params: { partner_id: partnerId }
+            });
             setPartnerProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
@@ -265,9 +262,20 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                 type="text"
                                 value={formData.note}
                                 onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                                className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5"
+                                className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5 mb-2"
                                 placeholder="특이사항 입력"
                             />
+
+                            <label className="block text-sm font-medium text-gray-400 mb-1">상태</label>
+                            <select
+                                value={formData.status}
+                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5"
+                            >
+                                <option value="PENDING">대기 (PENDING)</option>
+                                <option value="CONFIRMED">확정 (CONFIRMED) - 생산 가능</option>
+                                <option value="CANCELLEED">취소 (CANCELED)</option>
+                            </select>
                         </div>
                     </div>
 
