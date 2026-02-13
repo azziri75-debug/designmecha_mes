@@ -24,6 +24,8 @@ class Partner(Base):
     
     contacts = relationship("Contact", back_populates="partner", lazy="selectin", cascade="all, delete-orphan")
     products = relationship("Product", back_populates="partner")
+    purchase_orders = relationship("PurchaseOrder", back_populates="partner")
+    outsourcing_orders = relationship("OutsourcingOrder", back_populates="partner")
 
 class Contact(Base):
     __tablename__ = "contacts"

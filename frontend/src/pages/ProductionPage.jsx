@@ -155,30 +155,79 @@ const UnplannedOrdersTable = ({ orders, plans, onCreatePlan }) => {
                         <TableCell>납기일</TableCell>
                         <TableCell>금액</TableCell>
                         <TableCell>작업</TableCell>
+                        <TableCell>상세</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {unplannedOrders.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} align="center">생산 대기 중인 수주가 없습니다.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} align="center">생산 대기 중인 수주가 없습니다.</TableCell></TableRow>
                     ) : (
                         unplannedOrders.map((order) => (
-                            <TableRow key={order.id}>
-                                <TableCell>{order.order_no}</TableCell>
-                                <TableCell>{order.partner?.name}</TableCell>
-                                <TableCell>{order.order_date}</TableCell>
-                                <TableCell>{order.delivery_date}</TableCell>
-                                <TableCell>{order.total_amount?.toLocaleString()}</TableCell>
-                                <TableCell>
-                                    <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order)}>
-                                        계획 수립
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
+                            <UnplannedOrderRow key={order.id} order={order} onCreatePlan={onCreatePlan} />
                         ))
                     )}
                 </TableBody>
             </Table>
         </TableContainer>
+    );
+};
+
+const UnplannedOrderRow = ({ order, onCreatePlan }) => {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <React.Fragment>
+            <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
+                <TableCell>{order.order_no}</TableCell>
+                <TableCell>{order.partner?.name}</TableCell>
+                <TableCell>{order.order_date}</TableCell>
+                <TableCell>{order.delivery_date}</TableCell>
+                <TableCell>{order.total_amount?.toLocaleString()}</TableCell>
+                <TableCell>
+                    <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order)}>
+                        계획 수립
+                    </Button>
+                </TableCell>
+                <TableCell>
+                    <IconButton size="small" onClick={() => setOpen(!open)}>
+                        {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+                    </IconButton>
+                </TableCell>
+            </TableRow>
+            <TableRow>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                    <Collapse in={open} timeout="auto" unmountOnExit>
+                        <Box sx={{ margin: 1 }}>
+                            <Typography variant="h6" gutterBottom component="div">
+                                수주 품목 목록
+                            </Typography>
+                            <Table size="small" aria-label="purchases">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>품명</TableCell>
+                                        <TableCell>규격</TableCell>
+                                        <TableCell>단위</TableCell>
+                                        <TableCell>수량</TableCell>
+                                        <TableCell>비고</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {order.items?.map((item) => (
+                                        <TableRow key={item.id}>
+                                            <TableCell>{item.product?.name}</TableCell>
+                                            <TableCell>{item.product?.specification}</TableCell>
+                                            <TableCell>{item.product?.unit}</TableCell>
+                                            <TableCell>{item.quantity}</TableCell>
+                                            <TableCell>{item.note}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </Box>
+                    </Collapse>
+                </TableCell>
+            </TableRow>
+        </React.Fragment>
     );
 };
 

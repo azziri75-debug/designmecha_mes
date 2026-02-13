@@ -2,7 +2,7 @@ import asyncio
 from app.db.base import Base
 from app.api.deps import engine
 # Import all models to ensure they are registered with Base
-from app.models import basics, product, sales, quality
+from app.models import basics, product, sales, quality, purchasing
 
 async def init_models():
     async with engine.begin() as conn:
