@@ -95,7 +95,27 @@ async def create_purchase_order(
             production_plan_item_id=item.production_plan_item_id # Save link
         )
         db.add(db_item)
-    
+        
+        # Update ProductionPlanItem status if linked
+        if item.production_plan_item_id:
+            from app.models.production import ProductionStatus
+            # Fetch the item to update status. 
+            # We can use update statement or fetch object.
+            # Since we are in a loop, update statement is efficient but we need to check if it exists?
+            # It should exist if ID is valid.
+            # Let's use direct update on the model class or fetch.
+            # Fetching is safer to ensure it exists.
+            
+            # Use `await db.get(...)`? No, session.get is sync in some versions or async in 1.4+?
+            # async_session.get is available.
+            plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+            if plan_item:
+                plan_item.status = ProductionStatus.IN_PROGRESS # Or keep it PLANNED until received?
+                # User request: "Update status to 'IN_PROGRESS' or 'ORDERED'"
+                # ProductionStatus enum has: PENDING, PLANNED, IN_PROGRESS, COMPLETED, CANCELED.
+                # Let's use IN_PROGRESS to indicate "Ordered/Work Started".
+                db.add(plan_item)
+
     await db.commit()
     await db.refresh(db_order)
 

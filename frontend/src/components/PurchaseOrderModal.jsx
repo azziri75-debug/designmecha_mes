@@ -7,7 +7,7 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import api from '../lib/api';
 
-const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order }) => {
+const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems }) => {
     const [partners, setPartners] = useState([]);
     const [products, setProducts] = useState([]);
 
@@ -36,7 +36,26 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order }) => {
                     product_id: item.product.id
                 }))
             });
-        } else {
+        } else if (isOpen && initialItems && initialItems.length > 0) {
+            // Pre-fill from pending items
+            // Try to auto-detect partner from first item
+            const firstPartnerName = initialItems[0].partner_name;
+            const foundPartner = partners.find(p => p.name === firstPartnerName);
+
+            setFormData({
+                partner_id: foundPartner ? foundPartner.id : '',
+                order_date: new Date().toISOString().split('T')[0],
+                delivery_date: '',
+                note: '',
+                items: initialItems.map(item => ({
+                    product_id: item.product_id,
+                    quantity: item.quantity,
+                    unit_price: 0, // Could fetch last price if needed
+                    note: item.note,
+                    production_plan_item_id: item.id
+                }))
+            });
+        } else if (isOpen) {
             setFormData({
                 partner_id: '',
                 order_date: new Date().toISOString().split('T')[0],
@@ -45,7 +64,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order }) => {
                 items: []
             });
         }
-    }, [order, isOpen]);
+    }, [order, isOpen, initialItems, partners]);
 
     const fetchPartners = async () => {
         try {
