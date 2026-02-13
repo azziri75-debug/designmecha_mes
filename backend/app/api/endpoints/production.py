@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api import deps
 from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
@@ -21,7 +22,7 @@ async def read_production_plans(
     """
     Retrieve production plans.
     """
-    result = await db.execute(select(ProductionPlan).offset(skip).limit(limit))
+    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items)).offset(skip).limit(limit))
     plans = result.scalars().all()
     return plans
 
@@ -64,7 +65,7 @@ async def create_production_plan(
     for item in order_items:
         # Fetch Product Processes with Process Name
         stmt = (
-            select(ProductProcess, Process.name)
+            select(ProductProcess, Process.name, Process.course_type)
             .join(Process, ProductProcess.process_id == Process.id)
             .where(ProductProcess.product_id == item.product_id)
             .order_by(ProductProcess.sequence)
@@ -77,13 +78,13 @@ async def create_production_plan(
             # For now, just skip.
             continue
             
-        for proc, proc_name in processes:
+        for proc, proc_name, proc_course_type in processes:
              plan_item = ProductionPlanItem(
                  plan_id=plan.id,
                  product_id=item.product_id,
                  process_name=proc_name,
                  sequence=proc.sequence,
-                 course_type=proc.course_type or proc.process.course_type or "INTERNAL", # fallback logic
+                 course_type=proc.course_type or proc_course_type or "INTERNAL", # fallback logic
                  partner_name=proc.partner_name,
                  work_center=proc.equipment_name,
                  estimated_time=proc.estimated_time,
@@ -94,5 +95,12 @@ async def create_production_plan(
 
     await db.commit()
     await db.refresh(plan)
+    # Ensure items are loaded for response
+    # Explicitly load items to avoid missing greenlet if accessed later
+    # (Though refresh might not load them, return plan triggers Pydantic which triggers access)
+    # Ideally we re-fetch with options, or trust that they are in session.
+    # To be safe for async, let's re-fetch.
+    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan.id))
+    plan = result.scalar_one()
     return plan
 
