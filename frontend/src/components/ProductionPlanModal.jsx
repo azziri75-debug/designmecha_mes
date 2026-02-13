@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    TextField, Paper, IconButton, Typography, Box, Select, MenuItem
+    TextField, Paper, IconButton, Typography, Box, Select, MenuItem, Divider
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import api from '../lib/api';
@@ -17,16 +17,14 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
             if (plan) {
                 // Edit Mode
                 setPlanDate(plan.plan_date);
-                // Map existing items to state
                 setItems(plan.items.map(item => ({
                     ...item,
-                    cid: Math.random().toString(36).substr(2, 9) // Client ID for key
+                    cid: Math.random().toString(36).substr(2, 9)
                 })));
             } else if (order) {
-                // Create Mode - Generate defaults from Order
+                // Create Mode
                 setPlanDate(new Date().toISOString().split('T')[0]);
                 const defaultItems = [];
-
                 order.items.forEach(orderItem => {
                     const product = orderItem.product;
                     const processes = product?.standard_processes || [];
@@ -48,7 +46,6 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                             });
                         });
                     } else {
-                        // Fallback if no processes defined
                         defaultItems.push({
                             cid: Math.random().toString(36).substr(2, 9),
                             product_id: orderItem.product_id,
@@ -80,24 +77,22 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
         setItems(newItems);
     };
 
-    const handleAddItem = () => {
-        // Add a blank item (need to select product?)
-        // For simplicity, just add a generic row, user can ignore product_id if not strict
-        // But backend needs product_id.
-        // Let's pick the first product from order as default or leave blank if possible.
-        // Actually, without product_id, backend might fail.
-        // Let's take the first available product from order/plan.
-        const defaultProductId = order?.items[0]?.product_id || plan?.items[0]?.product_id || 0;
-        const defaultProductName = order?.items[0]?.product?.name || plan?.items[0]?.product?.name || "";
+    const handleAddProcessToProduct = (productId, productName) => {
+        // Find max sequence for this product
+        const productItems = items.filter(i => i.product_id === productId);
+        const maxSeq = productItems.reduce((max, item) => Math.max(max, parseInt(item.sequence) || 0), 0);
+
+        // Find default quantity from other items of same product
+        const defaultQty = productItems.length > 0 ? productItems[0].quantity : 0;
 
         setItems([...items, {
             cid: Math.random().toString(36).substr(2, 9),
-            product_id: defaultProductId,
-            product_name: defaultProductName,
+            product_id: productId,
+            product_name: productName,
             process_name: "",
-            sequence: items.length + 1,
+            sequence: maxSeq + 1,
             course_type: "INTERNAL",
-            quantity: 0,
+            quantity: defaultQty,
             partner_name: "",
             work_center: "",
             estimated_time: 0,
@@ -119,17 +114,15 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                     work_center: item.work_center,
                     estimated_time: parseFloat(item.estimated_time),
                     quantity: parseInt(item.quantity),
-                    note: item.note,
-                    status: item.status || "PLANNED" // Preserve status if editing
+                    note: item.note, // Work Content
+                    status: item.status || "PLANNED"
                 }))
             };
 
             if (plan) {
-                // Update
                 await api.put(`/production/plans/${plan.id}`, payload);
                 alert("생산 계획이 수정되었습니다.");
             } else if (order) {
-                // Create
                 await api.post('/production/plans', {
                     order_id: order.id,
                     ...payload
@@ -145,6 +138,20 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
             setLoading(false);
         }
     };
+
+    // Group items by Product ID
+    const groupedItems = items.reduce((acc, item) => {
+        const key = item.product_id;
+        if (!acc[key]) {
+            acc[key] = {
+                product_name: item.product_name,
+                items: []
+            };
+        }
+        // Store original index to handle updates correctly
+        acc[key].items.push({ ...item, originalIndex: items.findIndex(i => i.cid === item.cid) });
+        return acc;
+    }, {});
 
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="xl" fullWidth>
@@ -164,98 +171,135 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                 </Box>
 
                 <Typography variant="h6" gutterBottom>공정 구성 (Process Composition)</Typography>
-                <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
-                    <Table size="small" stickyHeader>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>제품</TableCell>
-                                <TableCell>공정명</TableCell>
-                                <TableCell>순서</TableCell>
-                                <TableCell>유형</TableCell>
-                                <TableCell>외주/구매처</TableCell>
-                                <TableCell>작업장</TableCell>
-                                <TableCell>수량</TableCell>
-                                <TableCell>시간(분)</TableCell>
-                                <TableCell>관리</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {items.map((item, index) => (
-                                <TableRow key={item.cid}>
-                                    <TableCell>{item.product_name}</TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            value={item.process_name}
-                                            onChange={(e) => handleItemChange(index, 'process_name', e.target.value)}
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            type="number"
-                                            value={item.sequence}
-                                            onChange={(e) => handleItemChange(index, 'sequence', e.target.value)}
-                                            size="small"
-                                            sx={{ width: 60 }}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Select
-                                            value={item.course_type}
-                                            onChange={(e) => handleItemChange(index, 'course_type', e.target.value)}
-                                            size="small"
-                                        >
-                                            <MenuItem value="INTERNAL">사내</MenuItem>
-                                            <MenuItem value="OUTSOURCING">외주</MenuItem>
-                                        </Select>
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            value={item.partner_name || ''}
-                                            onChange={(e) => handleItemChange(index, 'partner_name', e.target.value)}
-                                            size="small"
-                                            disabled={item.course_type !== 'OUTSOURCING'}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            value={item.work_center || ''}
-                                            onChange={(e) => handleItemChange(index, 'work_center', e.target.value)}
-                                            size="small"
-                                            disabled={item.course_type === 'OUTSOURCING'}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            type="number"
-                                            value={item.quantity}
-                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                            size="small"
-                                            sx={{ width: 80 }}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            type="number"
-                                            value={item.estimated_time || 0}
-                                            onChange={(e) => handleItemChange(index, 'estimated_time', e.target.value)}
-                                            size="small"
-                                            sx={{ width: 80 }}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <IconButton size="small" color="error" onClick={() => handleDeleteItem(index)}>
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-                <Button startIcon={<AddIcon />} onClick={handleAddItem} sx={{ mt: 1 }}>
-                    공정 추가
-                </Button>
+
+                <Box sx={{ maxHeight: 600, overflowY: 'auto' }}>
+                    {Object.entries(groupedItems).map(([productId, group]) => (
+                        <Paper key={productId} variant="outlined" sx={{ mb: 3, p: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="subtitle1" fontWeight="bold">
+                                    품목명: {group.product_name}
+                                </Typography>
+                                <Button
+                                    size="small"
+                                    startIcon={<AddIcon />}
+                                    onClick={() => handleAddProcessToProduct(parseInt(productId), group.product_name)}
+                                >
+                                    공정 추가
+                                </Button>
+                            </Box>
+
+                            <TableContainer>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                                            <TableCell width="15%">공정명</TableCell>
+                                            <TableCell width="5%">순서</TableCell>
+                                            <TableCell width="10%">공정관리 구분</TableCell> {/* Renamed from 유형 */}
+                                            <TableCell width="12%">외주/구매처</TableCell>
+                                            <TableCell width="10%">작업장</TableCell>
+                                            <TableCell width="15%">작업내용</TableCell> {/* New Column */}
+                                            <TableCell width="8%">수량</TableCell>
+                                            <TableCell width="8%">시간(분)</TableCell>
+                                            <TableCell width="5%">관리</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {group.items.map((item) => (
+                                            <TableRow key={item.cid}>
+                                                <TableCell>
+                                                    <TextField
+                                                        value={item.process_name}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'process_name', e.target.value)}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <TextField
+                                                        type="number"
+                                                        value={item.sequence}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'sequence', e.target.value)}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Select
+                                                        value={item.course_type}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'course_type', e.target.value)}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                    >
+                                                        <MenuItem value="INTERNAL">사내</MenuItem>
+                                                        <MenuItem value="OUTSOURCING">외주</MenuItem>
+                                                    </Select>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <TextField
+                                                        value={item.partner_name || ''}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'partner_name', e.target.value)}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                        disabled={item.course_type !== 'OUTSOURCING'}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <TextField
+                                                        value={item.work_center || ''}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'work_center', e.target.value)}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                        disabled={item.course_type === 'OUTSOURCING'}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <TextField
+                                                        value={item.note || ''}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'note', e.target.value)}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                        placeholder="작업 내용 입력"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <TextField
+                                                        type="number"
+                                                        value={item.quantity}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'quantity', e.target.value)}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <TextField
+                                                        type="number"
+                                                        value={item.estimated_time || 0}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'estimated_time', e.target.value)}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <IconButton size="small" color="error" onClick={() => handleDeleteItem(item.originalIndex)}>
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Paper>
+                    ))}
+                </Box>
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
