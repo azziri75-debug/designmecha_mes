@@ -2,8 +2,8 @@ from typing import List, Optional
 from datetime import date, datetime
 from pydantic import BaseModel
 from app.models.purchasing import PurchaseStatus, OutsourcingStatus
-from app.schemas.basics import Partner
-from app.schemas.product import Product
+from app.schemas.basics import PartnerResponse as Partner
+from app.schemas.product import ProductResponse as Product
 
 # --- Purchase Order Items ---
 class PurchaseOrderItemBase(BaseModel):
