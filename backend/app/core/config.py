@@ -13,7 +13,11 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     
     # CORS
-    BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    BACKEND_CORS_ORIGINS: List[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://designmecha-mes.vercel.app"
+    ]
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
