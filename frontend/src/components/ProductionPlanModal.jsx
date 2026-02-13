@@ -98,7 +98,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
             product_name: productName,
             product_spec: productSpec,
             product_unit: productUnit,
-            process_name: "",
+            process_name: "추가 공정",
             sequence: maxSeq + 1,
             course_type: "INTERNAL",
             quantity: defaultQty,
@@ -109,140 +109,11 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
         }]);
     };
 
-    // Drag and Drop Handlers
-    const handleDragStart = (e, productId, index) => {
-        dragItem.current = { productId, index };
-    };
+    // ... (keep drag handlers same) ...
 
-    const handleDragEnter = (e, productId, index) => {
-        dragOverItem.current = { productId, index };
-    };
+    // ... (keep handleSubmit same) ...
 
-    const handleDragEnd = () => {
-        if (!dragItem.current || !dragOverItem.current) return;
-
-        const { productId: srcPid, index: srcIdx } = dragItem.current;
-        const { productId: destPid, index: destIdx } = dragOverItem.current;
-
-        if (srcPid !== destPid || srcIdx === destIdx) {
-            dragItem.current = null;
-            dragOverItem.current = null;
-            return;
-        }
-
-        // 1. Get all items for this product
-        const productItems = items.filter(i => i.product_id === srcPid);
-        // 2. Separate other items
-        const otherItems = items.filter(i => i.product_id !== srcPid);
-
-        // 3. Reorder productItems
-        const itemToMove = productItems[srcIdx];
-        productItems.splice(srcIdx, 1);
-        productItems.splice(destIdx, 0, itemToMove);
-
-        // 4. Update sequences
-        const updatedProductItems = productItems.map((item, index) => ({
-            ...item,
-            sequence: index + 1
-        }));
-
-        // 5. Merge back (Need to maintain relative order of blocks? 
-        // Actually, since we render by group, just appending is fine, 
-        // BUT to keep state clean, let's put them back where they were?
-        // Simplest is to just concatenate `otherItems` + `updatedProductItems`.
-        // However, `otherItems` might be mixed. 
-        // Better: Map the original `items` list? No, `items` is flat.
-        // If we just concatenate, the groups in UI will still be valid.
-        // Let's just create a new list by iterating existing items and replacing the chunk for this product.
-
-        // Easier approach: Rebuild items list by grouping implicitly.
-        const newItems = [...otherItems, ...updatedProductItems];
-        // Note: This changes the global order of products in `items` array if we are not careful.
-        // But `groupedItems` in render will sort it out.
-        // However, if we want to preserve product order, we should be careful.
-        // Let's assume preservation of product order is not strictly required as `groupedItems` keys (product IDs) determine display order?
-        // Actually `groupedItems` uses `Object.entries` which might not guarantee order.
-        // Let's try to do it safely:
-        // We can just filter `items` for this product, modify them, and then reconstruct `items` 
-        // by mapping original `items` and replacing the ones for this product... wait that's hard if indices changed.
-
-        // Revised Approach:
-        // Filter `items` to get `productItems` (sorted by sequence usually).
-        // Modifying `productItems` creates a new list.
-        // We want to replace the old items of this product with the new items.
-        // Since `items` might have products interleaved (unlikely if created from order loop), 
-        // but let's just append `updatedProductItems` to `items.filter(p => p.id !== pid)`.
-        // The display logic groups by ID anyway.
-
-        setItems([...otherItems, ...updatedProductItems]);
-
-        dragItem.current = null;
-        dragOverItem.current = null;
-    };
-
-    const handleSubmit = async () => {
-        setLoading(true);
-        try {
-            const payload = {
-                plan_date: planDate,
-                items: items.map(item => ({
-                    product_id: item.product_id,
-                    process_name: item.process_name,
-                    sequence: parseInt(item.sequence),
-                    course_type: item.course_type,
-                    partner_name: item.partner_name,
-                    work_center: item.work_center,
-                    estimated_time: parseFloat(item.estimated_time),
-                    quantity: parseInt(item.quantity),
-                    note: item.note,
-                    status: item.status || "PLANNED"
-                }))
-            };
-
-            if (plan) {
-                await api.put(`/production/plans/${plan.id}`, payload);
-                alert("생산 계획이 수정되었습니다.");
-            } else if (order) {
-                await api.post('/production/plans', {
-                    order_id: order.id,
-                    ...payload
-                });
-                alert("생산 계획이 등록되었습니다.");
-            }
-            onSuccess();
-            onClose();
-        } catch (error) {
-            console.error("Save failed", error);
-            alert("저장 실패: " + (error.response?.data?.detail || error.message));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Group items by Product ID
-    const groupedItems = items.reduce((acc, item) => {
-        const key = item.product_id;
-        if (!acc[key]) {
-            acc[key] = {
-                product_name: item.product_name,
-                product_spec: item.product_spec,
-                product_unit: item.product_unit,
-                items: []
-            };
-        }
-        // Store original index to handle updates correctly
-        // Wait, if I use `items` state index, it might not be stable if I reorder.
-        // I should pass the *item object* itself to change handler or use `cid`.
-        // `handleItemChange` uses index. 
-        // If I render from `groupedItems`, the `originalIndex` must be the index in `items` state.
-        acc[key].items.push({ ...item, originalIndex: items.findIndex(i => i.cid === item.cid) });
-        return acc;
-    }, {});
-
-    // Sort items within groups by sequence for display
-    Object.values(groupedItems).forEach(group => {
-        group.items.sort((a, b) => a.sequence - b.sequence);
-    });
+    // ... (keep grouping logic same) ...
 
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="xl" fullWidth>
@@ -292,9 +163,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                     <TableHead>
                                         <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                                             <TableCell width="5%" align="center"></TableCell> {/* Drag Handle Column */}
-                                            <TableCell width="15%">공정명</TableCell>
                                             <TableCell width="5%">순서</TableCell>
-                                            <TableCell width="10%">구분</TableCell> {/* Renamed to 구분 */}
+                                            <TableCell width="15%">공정명</TableCell>
+                                            <TableCell width="10%">구분</TableCell>
                                             <TableCell width="12%">외주/구매처</TableCell>
                                             <TableCell width="10%">작업장</TableCell>
                                             <TableCell width="15%">작업내용</TableCell>
@@ -323,8 +194,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <TextField
-                                                        value={item.process_name}
-                                                        onChange={(e) => handleItemChange(item.originalIndex, 'process_name', e.target.value)}
+                                                        type="number"
+                                                        value={item.sequence}
+                                                        disabled
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
@@ -332,12 +204,12 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <TextField
-                                                        type="number"
-                                                        value={item.sequence}
-                                                        disabled // Sequence is automated
+                                                        value={item.process_name}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'process_name', e.target.value)}
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
+                                                        disabled={true}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
@@ -350,7 +222,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                     >
                                                         <MenuItem value="INTERNAL">사내</MenuItem>
                                                         <MenuItem value="OUTSOURCING">외주</MenuItem>
-                                                        <MenuItem value="PURCHASE">구매</MenuItem> {/* Added Purchase */}
+                                                        <MenuItem value="PURCHASE">구매</MenuItem>
                                                     </Select>
                                                 </TableCell>
                                                 <TableCell>
@@ -360,7 +232,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
-                                                        // Disable logic: disabled if INTERNAL? User might want to specify supplier for PURCHASE
+                                                        placeholder={item.course_type === 'INTERNAL' ? '' : '업체명'}
                                                         disabled={item.course_type === 'INTERNAL'}
                                                     />
                                                 </TableCell>
@@ -371,6 +243,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
+                                                        placeholder={item.course_type === 'INTERNAL' ? '작업장' : ''}
                                                         disabled={item.course_type !== 'INTERNAL'}
                                                     />
                                                 </TableCell>
@@ -381,7 +254,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
-                                                        placeholder="작업 내용 입력"
+                                                        placeholder="작업 내용"
                                                     />
                                                 </TableCell>
                                                 <TableCell>
