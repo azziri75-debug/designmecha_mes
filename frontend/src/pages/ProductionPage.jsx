@@ -268,6 +268,26 @@ const Row = ({ plan, orders, onEdit, onDelete, onComplete, readonly }) => {
     const [open, setOpen] = useState(false);
     const order = orders?.find(o => o.id === plan.order_id);
 
+    // Group items by product
+    const groupedItems = plan.items?.reduce((acc, item) => {
+        if (!acc[item.product_id]) {
+            acc[item.product_id] = {
+                product_name: item.product?.name || item.product_id,
+                product_spec: item.product?.specification || "",
+                product_unit: item.product?.unit || "EA",
+                items: []
+            };
+        }
+        acc[item.product_id].items.push(item);
+        return acc;
+    }, {}) || {};
+
+    const typeMap = {
+        'INTERNAL': '사내',
+        'PURCHASE': '구매',
+        'OUTSOURCING': '외주'
+    };
+
     return (
         <React.Fragment>
             <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
@@ -301,38 +321,60 @@ const Row = ({ plan, orders, onEdit, onDelete, onComplete, readonly }) => {
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
                             <Typography variant="h6" gutterBottom component="div">
-                                생산 공정 목록
+                                생산 공정 상세
                             </Typography>
-                            <Table size="small" aria-label="purchases">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>공정명</TableCell>
-                                        <TableCell>순서</TableCell>
-                                        <TableCell>제품</TableCell>
-                                        <TableCell>유형</TableCell>
-                                        <TableCell>외주/구매처</TableCell>
-                                        <TableCell>작업장</TableCell>
-                                        <TableCell>수량</TableCell>
-                                        <TableCell>예상시간</TableCell>
-                                        <TableCell>상태</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {plan.items?.map((item) => (
-                                        <TableRow key={item.id}>
-                                            <TableCell>{item.process_name}</TableCell>
-                                            <TableCell>{item.sequence}</TableCell>
-                                            <TableCell>{item.product?.name || item.product_id}</TableCell>
-                                            <TableCell>{item.course_type}</TableCell>
-                                            <TableCell>{item.partner_name}</TableCell>
-                                            <TableCell>{item.work_center}</TableCell>
-                                            <TableCell>{item.quantity}</TableCell>
-                                            <TableCell>{item.estimated_time}</TableCell>
-                                            <TableCell>{item.status}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+
+                            {Object.entries(groupedItems).map(([productId, group]) => (
+                                <Paper key={productId} variant="outlined" sx={{ mb: 2, p: 2, backgroundColor: '#fafafa' }}>
+                                    <Box sx={{ mb: 1 }}>
+                                        <Typography variant="subtitle1" fontWeight="bold" display="inline" sx={{ mr: 2, color: '#1565c0' }}>
+                                            품명: {group.product_name}
+                                        </Typography>
+                                        <Typography variant="body2" color="textSecondary" display="inline" sx={{ mr: 2 }}>
+                                            규격: {group.product_spec || '-'}
+                                        </Typography>
+                                        <Typography variant="body2" color="textSecondary" display="inline">
+                                            수량: {group.items.length > 0 ? group.items[0].quantity : 0} {group.product_unit}
+                                        </Typography>
+                                    </Box>
+
+                                    <Table size="small" aria-label="process-list">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell width="5%">순번</TableCell>
+                                                <TableCell width="15%">공정명</TableCell>
+                                                <TableCell width="10%">구분</TableCell>
+                                                <TableCell width="15%">외주/구매처</TableCell>
+                                                <TableCell width="10%">작업장</TableCell>
+                                                <TableCell width="20%">작업내용</TableCell>
+                                                <TableCell width="10%">예상시간</TableCell>
+                                                <TableCell width="10%">상태</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {group.items.sort((a, b) => a.sequence - b.sequence).map((item) => (
+                                                <TableRow key={item.id}>
+                                                    <TableCell>{item.sequence}</TableCell>
+                                                    <TableCell>{item.process_name}</TableCell>
+                                                    <TableCell>
+                                                        <Chip
+                                                            label={typeMap[item.course_type] || item.course_type}
+                                                            size="small"
+                                                            color={item.course_type === 'INTERNAL' ? 'default' : 'info'}
+                                                            variant={item.course_type === 'INTERNAL' ? 'outlined' : 'filled'}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>{item.partner_name}</TableCell>
+                                                    <TableCell>{item.work_center}</TableCell>
+                                                    <TableCell>{item.note}</TableCell>
+                                                    <TableCell>{item.estimated_time}</TableCell>
+                                                    <TableCell>{item.status}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </Paper>
+                            ))}
                         </Box>
                     </Collapse>
                 </TableCell>

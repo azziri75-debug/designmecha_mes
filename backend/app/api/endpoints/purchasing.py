@@ -21,22 +21,21 @@ async def read_pending_purchase_items(
 ) -> Any:
     """
     Get Production Plan Items that need purchasing and are not yet ordered.
+    Includes items from PLANNED and IN_PROGRESS plans.
     """
+    from app.models.production import ProductionPlan, ProductionStatus
+
     # Subquery for ordered items
     subquery = select(PurchaseOrderItem.production_plan_item_id).where(PurchaseOrderItem.production_plan_item_id.isnot(None))
     
-    query = select(ProductionPlanItem).options(selectinload(ProductionPlanItem.product))\
+    query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
+        .options(selectinload(ProductionPlanItem.product))\
         .where(ProductionPlanItem.course_type == 'PURCHASE')\
-        .where(ProductionPlanItem.id.notin_(subquery))
+        .where(ProductionPlanItem.id.notin_(subquery))\
+        .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED, ProductionStatus.PENDING]))
         
     result = await db.execute(query)
     items = result.scalars().all()
-    
-    # Return as list of dicts or specific schema? 
-    # Let's return a simple structure for frontend. 
-    # Or maybe we define a schema. For now, returning list of objects which Pydantic might serialize if schema matches.
-    # But ProductionPlanItem is a model.
-    # Let's construct a response list.
     return items
 
 @router.get("/outsourcing/pending-items", response_model=List[Any])
@@ -46,11 +45,15 @@ async def read_pending_outsourcing_items(
     """
     Get Production Plan Items that need outsourcing and are not yet ordered.
     """
+    from app.models.production import ProductionPlan, ProductionStatus
+
     subquery = select(OutsourcingOrderItem.production_plan_item_id).where(OutsourcingOrderItem.production_plan_item_id.isnot(None))
     
-    query = select(ProductionPlanItem).options(selectinload(ProductionPlanItem.product))\
+    query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
+        .options(selectinload(ProductionPlanItem.product))\
         .where(ProductionPlanItem.course_type == 'OUTSOURCING')\
-        .where(ProductionPlanItem.id.notin_(subquery))
+        .where(ProductionPlanItem.id.notin_(subquery))\
+        .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED, ProductionStatus.PENDING]))
         
     result = await db.execute(query)
     items = result.scalars().all()
