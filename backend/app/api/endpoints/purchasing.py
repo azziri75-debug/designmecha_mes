@@ -27,10 +27,8 @@ async def read_pending_purchase_items(
     """
     from app.models.production import ProductionPlan, ProductionStatus
 
-    # Subquery for ordered items
-    subquery = select(PurchaseOrderItem.production_plan_item_id).where(PurchaseOrderItem.production_plan_item_id.isnot(None))
-    
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
+        .outerjoin(PurchaseOrderItem, PurchaseOrderItem.production_plan_item_id == ProductionPlanItem.id)\
         .options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
@@ -39,11 +37,12 @@ async def read_pending_purchase_items(
             ProductionPlanItem.course_type.ilike('%PURCHASE%'),
             ProductionPlanItem.course_type.like('%구매%')
         ))\
-        .where(ProductionPlanItem.id.notin_(subquery))\
+        .where(PurchaseOrderItem.id.is_(None))\
         .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
         
     result = await db.execute(query)
     items = result.scalars().all()
+    print(f"[DEBUG] Pending Purchase Items Query Result: {len(items)} items found.")
     return items
 
 @router.get("/outsourcing/pending-items", response_model=List[prod_schemas.ProductionPlanItem])
@@ -55,9 +54,8 @@ async def read_pending_outsourcing_items(
     """
     from app.models.production import ProductionPlan, ProductionStatus
 
-    subquery = select(OutsourcingOrderItem.production_plan_item_id).where(OutsourcingOrderItem.production_plan_item_id.isnot(None))
-    
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
+        .outerjoin(OutsourcingOrderItem, OutsourcingOrderItem.production_plan_item_id == ProductionPlanItem.id)\
         .options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
@@ -66,11 +64,12 @@ async def read_pending_outsourcing_items(
             ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
             ProductionPlanItem.course_type.like('%외주%')
         ))\
-        .where(ProductionPlanItem.id.notin_(subquery))\
+        .where(OutsourcingOrderItem.id.is_(None))\
         .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
         
     result = await db.execute(query)
     items = result.scalars().all()
+    print(f"[DEBUG] Pending Outsourcing Items Query Result: {len(items)} items found.")
     return items
 
 # --- Purchase Orders ---
