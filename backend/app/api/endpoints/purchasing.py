@@ -32,7 +32,7 @@ async def read_pending_purchase_items(
         .options(selectinload(ProductionPlanItem.product))\
         .where(ProductionPlanItem.course_type == 'PURCHASE')\
         .where(ProductionPlanItem.id.notin_(subquery))\
-        .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED, ProductionStatus.PENDING]))
+        .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
         
     result = await db.execute(query)
     items = result.scalars().all()
@@ -53,7 +53,7 @@ async def read_pending_outsourcing_items(
         .options(selectinload(ProductionPlanItem.product))\
         .where(ProductionPlanItem.course_type == 'OUTSOURCING')\
         .where(ProductionPlanItem.id.notin_(subquery))\
-        .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED, ProductionStatus.PENDING]))
+        .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED]))
         
     result = await db.execute(query)
     items = result.scalars().all()

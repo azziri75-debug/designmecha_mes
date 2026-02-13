@@ -127,7 +127,14 @@ async def create_production_plan(
     # (Though refresh might not load them, return plan triggers Pydantic which triggers access)
     # Ideally we re-fetch with options, or trust that they are in session.
     # To be safe for async, let's re-fetch.
-    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product)).where(ProductionPlan.id == plan.id))
+    result = await db.execute(
+        select(ProductionPlan)
+        .options(
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        )
+        .where(ProductionPlan.id == plan.id)
+    )
     plan = result.scalar_one()
     return plan
 
