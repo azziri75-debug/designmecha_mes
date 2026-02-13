@@ -142,8 +142,7 @@ async def read_purchase_orders(
         selectinload(PurchaseOrder.partner)
     )
     if status:
-         # Map generic status to enum? Or just filter.
-         pass # Implement if needed for tabs, but frontend can filter/backend can filter.
+        query = query.where(PurchaseOrder.status == status)
 
     query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit)
     result = await db.execute(query)
@@ -306,6 +305,7 @@ async def create_outsourcing_order(
 async def read_outsourcing_orders(
     skip: int = 0,
     limit: int = 100,
+    status: str = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
@@ -314,7 +314,11 @@ async def read_outsourcing_orders(
     query = select(OutsourcingOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product),
         selectinload(OutsourcingOrder.partner)
-    ).order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit)
+    )
+    if status:
+        query = query.where(OutsourcingOrder.status == status)
+
+    query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
 

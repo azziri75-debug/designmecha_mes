@@ -20,17 +20,28 @@ const OutsourcingPage = () => {
     useEffect(() => {
         if (tabValue === 0) {
             fetchPendingItems();
-        } else {
+        } else if (tabValue === 1) {
             fetchOrders();
+        } else {
+            fetchCompletedOrders();
         }
     }, [tabValue]);
 
     const fetchOrders = async () => {
         try {
             const response = await api.get('/purchasing/outsourcing/orders');
-            setOrders(response.data);
+            setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
         } catch (error) {
             console.error("Failed to fetch outsourcing orders", error);
+        }
+    };
+
+    const fetchCompletedOrders = async () => {
+        try {
+            const response = await api.get('/purchasing/outsourcing/orders', { params: { status: 'COMPLETED' } });
+            setOrders(response.data);
+        } catch (error) {
+            console.error("Failed to fetch completed outsourcing orders", error);
         }
     };
 
@@ -70,7 +81,8 @@ const OutsourcingPage = () => {
 
     const handleSuccess = () => {
         if (tabValue === 0) fetchPendingItems();
-        else fetchOrders();
+        else if (tabValue === 1) fetchOrders();
+        else fetchCompletedOrders();
         setModalOpen(false);
     };
 
@@ -102,6 +114,7 @@ const OutsourcingPage = () => {
                 <Tabs value={tabValue} onChange={handleTabChange}>
                     <Tab label="미발주 현황 (Pending)" />
                     <Tab label="발주 현황 (Ordered)" />
+                    <Tab label="완료 내역 (Completed)" />
                 </Tabs>
             </Box>
 
@@ -162,12 +175,14 @@ const OutsourcingPage = () => {
                 </>
             )}
 
-            {tabValue === 1 && (
+            {(tabValue === 1 || tabValue === 2) && (
                 <>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                        <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
-                            신규 외주 발주 직접 등록
-                        </Button>
+                        {tabValue === 1 && (
+                            <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
+                                신규 외주 발주 직접 등록
+                            </Button>
+                        )}
                     </Box>
                     <TableContainer component={Paper}>
                         <Table>
@@ -184,7 +199,7 @@ const OutsourcingPage = () => {
                             </TableHead>
                             <TableBody>
                                 {orders.length === 0 ? (
-                                    <TableRow><TableCell colSpan={7} align="center">외주 발주 내역이 없습니다.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={7} align="center">{tabValue === 1 ? "진행 중인 외주 발주 내역이 없습니다." : "완료된 외주 발주 내역이 없습니다."}</TableCell></TableRow>
                                 ) : (
                                     orders.map((order) => (
                                         <TableRow key={order.id}>

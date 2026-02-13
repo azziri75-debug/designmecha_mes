@@ -20,17 +20,29 @@ const PurchasePage = () => {
     useEffect(() => {
         if (tabValue === 0) {
             fetchPendingItems();
+        } else if (tabValue === 1) {
+            fetchOrders(); // Fetch active orders
         } else {
-            fetchOrders();
+            fetchCompletedOrders(); // Fetch completed orders
         }
     }, [tabValue]);
 
     const fetchOrders = async () => {
         try {
             const response = await api.get('/purchasing/purchase/orders');
-            setOrders(response.data);
+            // Client-side filter for now as backend filter is exact match
+            setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
         } catch (error) {
             console.error("Failed to fetch purchase orders", error);
+        }
+    };
+
+    const fetchCompletedOrders = async () => {
+        try {
+            const response = await api.get('/purchasing/purchase/orders', { params: { status: 'COMPLETED' } });
+            setOrders(response.data);
+        } catch (error) {
+            console.error("Failed to fetch completed orders", error);
         }
     };
 
@@ -73,7 +85,8 @@ const PurchasePage = () => {
 
     const handleSuccess = () => {
         if (tabValue === 0) fetchPendingItems();
-        else fetchOrders();
+        else if (tabValue === 1) fetchOrders();
+        else fetchCompletedOrders();
         setModalOpen(false);
     };
 
@@ -105,6 +118,7 @@ const PurchasePage = () => {
                 <Tabs value={tabValue} onChange={handleTabChange}>
                     <Tab label="미발주 현황 (Pending)" />
                     <Tab label="발주 현황 (Ordered)" />
+                    <Tab label="입고 완료 (Completed)" />
                 </Tabs>
             </Box>
 
@@ -165,12 +179,14 @@ const PurchasePage = () => {
                 </>
             )}
 
-            {tabValue === 1 && (
+            {(tabValue === 1 || tabValue === 2) && (
                 <>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                        <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
-                            신규 발주 직접 등록
-                        </Button>
+                        {tabValue === 1 && (
+                            <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
+                                신규 발주 직접 등록
+                            </Button>
+                        )}
                     </Box>
                     <TableContainer component={Paper}>
                         <Table>
@@ -187,7 +203,7 @@ const PurchasePage = () => {
                             </TableHead>
                             <TableBody>
                                 {orders.length === 0 ? (
-                                    <TableRow><TableCell colSpan={7} align="center">발주 내역이 없습니다.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={7} align="center">{tabValue === 1 ? "진행 중인 발주 내역이 없습니다." : "완료된 발주 내역이 없습니다."}</TableCell></TableRow>
                                 ) : (
                                     orders.map((order) => (
                                         <TableRow key={order.id}>

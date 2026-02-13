@@ -16,6 +16,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
         order_date: new Date().toISOString().split('T')[0],
         delivery_date: '',
         note: '',
+        status: 'PENDING',
         items: []
     });
 
@@ -31,6 +32,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                 order_date: order.order_date,
                 delivery_date: order.delivery_date || '',
                 note: order.note || '',
+                status: order.status || 'PENDING',
                 items: order.items.map(item => ({
                     ...item,
                     product_id: item.product.id
@@ -47,6 +49,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                 order_date: new Date().toISOString().split('T')[0],
                 delivery_date: '',
                 note: '',
+                status: 'PENDING',
                 items: initialItems.map(item => ({
                     product_id: item.product_id,
                     quantity: item.quantity,
@@ -61,6 +64,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                 order_date: new Date().toISOString().split('T')[0],
                 delivery_date: '',
                 note: '',
+                status: 'PENDING',
                 items: []
             });
         }
@@ -173,6 +177,19 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                         onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                         fullWidth
                     />
+                    {order && (
+                        <TextField
+                            select
+                            label="상태"
+                            value={formData.status}
+                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                            fullWidth
+                        >
+                            <MenuItem value="PENDING">대기 (PENDING)</MenuItem>
+                            <MenuItem value="ORDERED">발주 (ORDERED)</MenuItem>
+                            <MenuItem value="COMPLETED">입고 완료 (COMPLETED)</MenuItem>
+                        </TextField>
+                    )}
                 </Box>
 
                 <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>발주 품목</Typography>
