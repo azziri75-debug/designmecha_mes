@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     
     # CORS
-    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"]
+    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = ["*"]
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
