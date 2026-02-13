@@ -194,7 +194,7 @@ async def update_production_plan(
 async def delete_production_plan(
     plan_id: int,
     db: AsyncSession = Depends(deps.get_db),
-) -> Any:
+):
     """
     Delete a production plan.
     """
