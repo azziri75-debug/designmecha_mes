@@ -12,6 +12,7 @@ const OutsourcingPage = () => {
     const [orders, setOrders] = useState([]);
     const [pendingItems, setPendingItems] = useState([]);
     const [selectedPendingItems, setSelectedPendingItems] = useState([]);
+    const [expandedOrderId, setExpandedOrderId] = useState(null);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -209,28 +210,73 @@ const OutsourcingPage = () => {
                                     <TableRow><TableCell colSpan={7} align="center">{tabValue === 1 ? "진행 중인 외주 발주 내역이 없습니다." : "완료된 외주 발주 내역이 없습니다."}</TableCell></TableRow>
                                 ) : (
                                     orders.map((order) => (
-                                        <TableRow key={order.id}>
-                                            <TableCell>{order.order_no}</TableCell>
-                                            <TableCell>{order.order_date}</TableCell>
-                                            <TableCell>{order.partner?.name}</TableCell>
-                                            <TableCell>{order.items.length}</TableCell>
-                                            <TableCell>{order.delivery_date}</TableCell>
-                                            <TableCell>
-                                                <Chip
-                                                    label={order.status}
-                                                    size="small"
-                                                    color={order.status === 'COMPLETED' ? "success" : order.status === 'PENDING' ? "warning" : "primary"}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <IconButton size="small" onClick={() => handleEditClick(order)}>
-                                                    <EditIcon />
-                                                </IconButton>
-                                                <IconButton size="small">
-                                                    <PrintIcon />
-                                                </IconButton>
-                                            </TableCell>
-                                        </TableRow>
+                                        <React.Fragment key={order.id}>
+                                            <TableRow
+                                                hover
+                                                onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                                                onDoubleClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEditClick(order);
+                                                }}
+                                                sx={{ cursor: 'pointer', backgroundColor: expandedOrderId === order.id ? 'action.hover' : 'inherit' }}
+                                            >
+                                                <TableCell>{order.order_no}</TableCell>
+                                                <TableCell>{order.order_date}</TableCell>
+                                                <TableCell>{order.partner?.name}</TableCell>
+                                                <TableCell>{order.items.length} 품목</TableCell>
+                                                <TableCell>{order.delivery_date}</TableCell>
+                                                <TableCell>
+                                                    <Chip
+                                                        label={order.status}
+                                                        size="small"
+                                                        color={order.status === 'COMPLETED' ? "success" : order.status === 'PENDING' ? "warning" : "primary"}
+                                                    />
+                                                </TableCell>
+                                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                                    <IconButton size="small" onClick={() => handleEditClick(order)}>
+                                                        <EditIcon />
+                                                    </IconButton>
+                                                    <IconButton size="small">
+                                                        <PrintIcon />
+                                                    </IconButton>
+                                                </TableCell>
+                                            </TableRow>
+                                            {expandedOrderId === order.id && (
+                                                <TableRow>
+                                                    <TableCell colSpan={7} sx={{ py: 0, bgcolor: '#f5f5f5' }}>
+                                                        <Box sx={{ margin: 2 }}>
+                                                            <Typography variant="subtitle2" gutterBottom component="div" color="primary">
+                                                                * 외주 발주 상세 내역
+                                                            </Typography>
+                                                            <Table size="small" aria-label="outsourcing-orders">
+                                                                <TableHead>
+                                                                    <TableRow>
+                                                                        <TableCell>공정명/품목</TableCell>
+                                                                        <TableCell>규격</TableCell>
+                                                                        <TableCell>수량</TableCell>
+                                                                        <TableCell>단가</TableCell>
+                                                                        <TableCell>금액</TableCell>
+                                                                        <TableCell>비고</TableCell>
+                                                                    </TableRow>
+                                                                </TableHead>
+                                                                <TableBody>
+                                                                    {order.items.map((item) => (
+                                                                        <TableRow key={item.id}>
+                                                                            <TableCell>{item.product?.name}</TableCell>
+                                                                            <TableCell>{item.product?.specification}</TableCell>
+                                                                            <TableCell>{item.quantity} {item.product?.unit}</TableCell>
+                                                                            <TableCell>{item.unit_price?.toLocaleString()}</TableCell>
+                                                                            <TableCell>{(item.quantity * item.unit_price)?.toLocaleString()}</TableCell>
+                                                                            <TableCell>{item.note}</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </Box>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </React.Fragment>
                                     ))
                                 )}
                             </TableBody>
