@@ -79,6 +79,8 @@ class OutsourcingOrderItemCreate(OutsourcingOrderItemBase):
 
 class OutsourcingOrderItemUpdate(BaseModel):
     id: Optional[int] = None
+    product_id: Optional[int] = None
+    production_plan_item_id: Optional[int] = None
     quantity: Optional[int] = None
     unit_price: Optional[float] = None
     note: Optional[str] = None
