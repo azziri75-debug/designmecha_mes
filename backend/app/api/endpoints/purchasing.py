@@ -147,7 +147,7 @@ async def create_purchase_order(
 
     # Re-fetch with eager load
     query = select(PurchaseOrder).options(
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(PurchaseOrder.partner)
     ).where(PurchaseOrder.id == db_order.id)
     result = await db.execute(query)
@@ -164,7 +164,7 @@ async def read_purchase_orders(
     Retrieve purchase orders.
     """
     query = select(PurchaseOrder).options(
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(PurchaseOrder.partner)
     )
     if status:
@@ -246,7 +246,7 @@ async def update_purchase_order(
     
     # Re-fetch
     query = select(PurchaseOrder).options(
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(PurchaseOrder.partner)
     ).where(PurchaseOrder.id == order_id)
     result = await db.execute(query)
@@ -321,7 +321,7 @@ async def create_outsourcing_order(
 
     # Re-fetch
     query = select(OutsourcingOrder).options(
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product),
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(OutsourcingOrder.partner)
     ).where(OutsourcingOrder.id == db_order.id)
     result = await db.execute(query)
@@ -338,7 +338,7 @@ async def read_outsourcing_orders(
     Retrieve outsourcing orders.
     """
     query = select(OutsourcingOrder).options(
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product),
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(OutsourcingOrder.partner)
     )
     if status:
