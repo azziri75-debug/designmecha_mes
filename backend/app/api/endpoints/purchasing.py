@@ -348,6 +348,71 @@ async def read_outsourcing_orders(
     result = await db.execute(query)
     return result.scalars().all()
 
+@router.put("/outsourcing/orders/{order_id}", response_model=schemas.OutsourcingOrder)
+async def update_outsourcing_order(
+    order_id: int,
+    order_in: schemas.OutsourcingOrderUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Update an Outsourcing Order.
+    """
+    query = select(OutsourcingOrder).options(selectinload(OutsourcingOrder.items)).where(OutsourcingOrder.id == order_id)
+    result = await db.execute(query)
+    db_order = result.scalar_one_or_none()
+    
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Outsourcing Order not found")
+
+    # Update Header
+    update_data = order_in.model_dump(exclude_unset=True)
+    items_data = update_data.pop("items", None)
+
+    for field, value in update_data.items():
+        setattr(db_order, field, value)
+
+    # Update Items
+    if items_data is not None:
+         current_items = {item.id: item for item in db_order.items}
+         incoming_ids = set()
+         
+         for item_in in order_in.items:
+             if item_in.id and item_in.id in current_items:
+                 # Update
+                 db_item = current_items[item_in.id]
+                 item_data = item_in.model_dump(exclude_unset=True)
+                 for k, v in item_data.items():
+                     if k != "id":
+                        setattr(db_item, k, v)
+                 incoming_ids.add(item_in.id)
+             else:
+                 # Create
+                 db_item = OutsourcingOrderItem(
+                    outsourcing_order_id=db_order.id,
+                    production_plan_item_id=item_in.production_plan_item_id,
+                    product_id=item_in.product_id,
+                    quantity=item_in.quantity,
+                    unit_price=item_in.unit_price,
+                    note=item_in.note
+                 )
+                 db.add(db_item)
+         
+         # Delete missing
+         for item_id, item in current_items.items():
+             if item_id not in incoming_ids:
+                 await db.delete(item)
+
+    await db.commit()
+    await db.refresh(db_order)
+    
+    # Re-fetch
+    query = select(OutsourcingOrder).options(
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+        selectinload(OutsourcingOrder.partner)
+    ).where(OutsourcingOrder.id == order_id)
+    result = await db.execute(query)
+    return result.scalar_one()
+
 @router.delete("/outsourcing/orders/{order_id}", status_code=204)
 async def delete_outsourcing_order(
     order_id: int,
