@@ -8,7 +8,8 @@ from datetime import datetime
 from app.api import deps
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
 from app.models.production import ProductionPlanItem, ProductionPlan
-from app.models.sales import SalesOrder
+from app.models.production import ProductionPlanItem, ProductionPlan
+from app.models.sales import SalesOrder, SalesOrderItem
 from app.models.product import Product, ProductProcess, Process
 from app.schemas import purchasing as schemas
 from app.schemas import production as prod_schemas
@@ -31,7 +32,8 @@ async def read_pending_purchase_items(
         .outerjoin(PurchaseOrderItem, PurchaseOrderItem.production_plan_item_id == ProductionPlanItem.id)\
         .options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
-            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
         )\
         .where(or_(
             ProductionPlanItem.course_type.ilike('%PURCHASE%'),
@@ -63,7 +65,8 @@ async def read_pending_outsourcing_items(
         .outerjoin(OutsourcingOrderItem, OutsourcingOrderItem.production_plan_item_id == ProductionPlanItem.id)\
         .options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
-            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
         )\
         .where(or_(
             ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
