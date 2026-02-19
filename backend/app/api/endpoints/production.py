@@ -9,8 +9,11 @@ from app.api import deps
 from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
 from app.models.sales import SalesOrder, SalesOrderItem
 from app.models.product import Product, ProductProcess, Process
-from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem
+from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, PurchaseStatus, OutsourcingStatus
+from app.models.basics import Partner
 from app.schemas import production as schemas
+from datetime import datetime
+import uuid
 
 router = APIRouter()
 
@@ -122,6 +125,83 @@ async def create_production_plan(
                      status=ProductionStatus.PLANNED
                  )
                  db.add(plan_item)
+
+    await db.flush() # Ensure plan items have IDs
+
+    # 5. Auto-Create Purchase/Outsourcing Orders
+    # Re-fetch items directly from DB to be safe with IDs
+    result = await db.execute(select(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan.id))
+    created_items = result.scalars().all()
+
+    purchase_group = {}
+    outsourcing_group = {}
+
+    for item in created_items:
+        if item.course_type == "PURCHASE":
+            p_name = item.partner_name or "Unknown"
+            if p_name not in purchase_group:
+                 purchase_group[p_name] = []
+            purchase_group[p_name].append(item)
+        elif item.course_type == "OUTSOURCING":
+            p_name = item.partner_name or "Unknown"
+            if p_name not in outsourcing_group:
+                 outsourcing_group[p_name] = []
+            outsourcing_group[p_name].append(item)
+
+    # Create Purchase Orders
+    for p_name, items in purchase_group.items():
+        # Find Partner
+        stmt = select(Partner).where(Partner.name == p_name)
+        result = await db.execute(stmt)
+        partner = result.scalar_one_or_none()
+
+        po = PurchaseOrder(
+            partner_id=partner.id if partner else None,
+            order_date=plan_in.plan_date,
+            status=PurchaseStatus.PENDING,
+            order_no=f"PO-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}",
+            total_amount=0
+        )
+        db.add(po)
+        await db.flush() # Get PO ID
+
+        for item in items:
+            poi = PurchaseOrderItem(
+                purchase_order_id=po.id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                unit_price=0,
+                production_plan_item_id=item.id,
+                received_quantity=0
+            )
+            db.add(poi)
+
+    # Create Outsourcing Orders
+    for p_name, items in outsourcing_group.items():
+        stmt = select(Partner).where(Partner.name == p_name)
+        result = await db.execute(stmt)
+        partner = result.scalar_one_or_none()
+
+        oo = OutsourcingOrder(
+            partner_id=partner.id if partner else None,
+            order_date=plan_in.plan_date,
+            status=OutsourcingStatus.PENDING,
+            order_no=f"OO-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}",
+            total_amount=0
+        )
+        db.add(oo)
+        await db.flush() # Get OO ID
+
+        for item in items:
+            ooi = OutsourcingOrderItem(
+                outsourcing_order_id=oo.id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                unit_price=0,
+                production_plan_item_id=item.id,
+                status=OutsourcingStatus.PENDING
+            )
+            db.add(ooi)
 
     await db.commit()
     await db.refresh(plan)
