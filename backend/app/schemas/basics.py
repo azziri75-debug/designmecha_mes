@@ -47,6 +47,14 @@ class PartnerResponse(PartnerBase):
     class Config:
         from_attributes = True
 
+class PartnerSimple(BaseModel):
+    id: int
+    name: str
+    partner_type: List[str]
+    
+    class Config:
+        from_attributes = True
+
 # Staff Schemas
 class StaffBase(BaseModel):
     name: str

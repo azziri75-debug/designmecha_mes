@@ -105,11 +105,13 @@ class SalesOrderUpdate(BaseModel):
     status: Optional[str] = None
     items: Optional[List[SalesOrderItemCreate]] = None
 
+from app.schemas.basics import PartnerResponse as Partner, PartnerSimple
+
 class SalesOrderSimple(SalesOrderBase):
     id: int
     order_no: Optional[str] = None
     created_at: datetime
-    partner: Optional[Partner] = None
+    partner: Optional[PartnerSimple] = None
     # items removed to prevent deep recursion in ProductionPlan
 
     class Config:
