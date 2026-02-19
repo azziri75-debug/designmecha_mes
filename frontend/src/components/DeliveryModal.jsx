@@ -1,0 +1,217 @@
+import React, { useState, useEffect } from 'react';
+import { X, Save, Truck, Calendar, CheckCircle } from 'lucide-react';
+import api from '../lib/api';
+
+const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        actual_delivery_date: '',
+        delivery_method: '',
+        transaction_date: '',
+        production_completion_date: '', // Read-only or editable if not set? usually from plan
+        items: []
+    });
+
+    useEffect(() => {
+        if (order) {
+            // Pre-fill
+            setFormData({
+                actual_delivery_date: order.actual_delivery_date || new Date().toISOString().split('T')[0],
+                delivery_method: order.delivery_method || '',
+                transaction_date: order.transaction_date || new Date().toISOString().split('T')[0],
+                production_completion_date: '', // logic to fetch from connected plan? Or just user input?
+                // For items, we need to map them to edit delivered_quantity
+                items: order.items.map(item => ({
+                    ...item,
+                    current_delivered_quantity: item.quantity // Default to full quantity for convenience
+                }))
+            });
+        }
+    }, [order]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            // 1. Update Order Status and Header Info
+            const payload = {
+                actual_delivery_date: formData.actual_delivery_date,
+                delivery_method: formData.delivery_method,
+                transaction_date: formData.transaction_date,
+                status: 'DELIVERY_COMPLETED',
+                // We also need to update items if we want to save delivered_quantity
+                items: formData.items.map(item => ({
+                    product_id: item.product.id,
+                    unit_price: item.unit_price,
+                    quantity: item.quantity,
+                    delivered_quantity: item.current_delivered_quantity,
+                    note: item.note
+                }))
+            };
+
+            await api.put(`/sales/orders/${order.id}`, payload);
+
+            alert("납품 완료 처리되었습니다.");
+            onSuccess();
+            onClose();
+        } catch (error) {
+            console.error("Delivery update failed", error);
+            alert("처리 중 오류가 발생했습니다.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div className="p-6 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-gray-800 z-10">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Truck className="w-5 h-5 text-blue-400" />
+                        납품 처리 (수주번호: {order?.order_no})
+                    </h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* Header Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <Calendar className="w-4 h-4" /> 납품 정보
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">실제 납품일</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5 focus:ring-2 focus:ring-blue-500 transition-all"
+                                        value={formData.actual_delivery_date}
+                                        onChange={(e) => setFormData({ ...formData, actual_delivery_date: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">거래명세서 일자</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5 focus:ring-2 focus:ring-blue-500 transition-all"
+                                        value={formData.transaction_date}
+                                        onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">납품 방법</label>
+                                    <select
+                                        className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5 focus:ring-2 focus:ring-blue-500 transition-all"
+                                        value={formData.delivery_method}
+                                        onChange={(e) => setFormData({ ...formData, delivery_method: e.target.value })}
+                                    >
+                                        <option value="">선택하세요</option>
+                                        <option value="직접납품">직접 납품 (Direct)</option>
+                                        <option value="택배">택배 (Courier)</option>
+                                        <option value="화물">화물 (Freight)</option>
+                                        <option value="퀵서비스">퀵서비스 (Quick)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4" /> 생산 정보 (참고)
+                            </h3>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">생산 완료일 (User Input)</label>
+                                <input
+                                    type="date"
+                                    className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5 focus:ring-2 focus:ring-blue-500 transition-all"
+                                    value={formData.production_completion_date}
+                                    onChange={(e) => setFormData({ ...formData, production_completion_date: e.target.value })}
+                                    placeholder="기록용"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">* 실제 생산 계획의 완료일과는 별개로 납품 시 기록하는 완료일입니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Items Table */}
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">납품 품목 및 수량</h3>
+                        <div className="bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+                            <table className="w-full text-sm text-gray-300">
+                                <thead className="bg-gray-800 text-gray-400">
+                                    <tr>
+                                        <th className="px-4 py-2 text-left">품목명</th>
+                                        <th className="px-4 py-2 text-right">수주 수량</th>
+                                        <th className="px-4 py-2 text-right">단가</th>
+                                        <th className="px-4 py-2 text-right">납품 수량 (이번)</th>
+                                        <th className="px-4 py-2 text-right">금액</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-700">
+                                    {formData.items.map((item, idx) => (
+                                        <tr key={idx}>
+                                            <td className="px-4 py-2">{item.product.name}</td>
+                                            <td className="px-4 py-2 text-right">{item.quantity}</td>
+                                            <td className="px-4 py-2 text-right">{item.unit_price.toLocaleString()}</td>
+                                            <td className="px-4 py-2">
+                                                <input
+                                                    type="number"
+                                                    className="w-24 bg-gray-700 border-gray-600 rounded text-right px-2 py-1 text-white ml-auto block"
+                                                    value={item.current_delivered_quantity}
+                                                    onChange={(e) => {
+                                                        const newItems = [...formData.items];
+                                                        newItems[idx].current_delivered_quantity = parseInt(e.target.value) || 0;
+                                                        setFormData({ ...formData, items: newItems });
+                                                    }}
+                                                />
+                                            </td>
+                                            <td className="px-4 py-2 text-right">
+                                                {(item.current_delivered_quantity * item.unit_price).toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot className="bg-gray-800 font-semibold text-white">
+                                    <tr>
+                                        <td colSpan="3" className="px-4 py-2 text-right">총 납품 금액</td>
+                                        <td colSpan="2" className="px-4 py-2 text-right text-blue-400">
+                                            {formData.items.reduce((sum, item) => sum + (item.current_delivered_quantity * item.unit_price), 0).toLocaleString()} 원
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="pt-4 border-t border-gray-700 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                            취소
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium shadow-lg shadow-green-900/20 flex items-center gap-2"
+                        >
+                            <Truck className="w-4 h-4" />
+                            {loading ? '처리 중...' : '납품 완료 처리'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default DeliveryModal;

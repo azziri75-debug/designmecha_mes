@@ -309,6 +309,9 @@ async def create_order(
         partner_id=order_in.partner_id,
         order_date=order_in.order_date or datetime.now().date(),
         delivery_date=order_in.delivery_date,
+        actual_delivery_date=order_in.actual_delivery_date,
+        delivery_method=order_in.delivery_method,
+        transaction_date=order_in.transaction_date,
         total_amount=order_in.total_amount,
         note=order_in.note,
         status=order_in.status
@@ -322,7 +325,8 @@ async def create_order(
             product_id=item.product_id,
             unit_price=item.unit_price,
             quantity=item.quantity,
-            note=item.note
+            note=item.note,
+            delivered_quantity=item.delivered_quantity
         )
         db.add(db_item)
     
@@ -344,6 +348,8 @@ async def read_orders(
     limit: int = 100,
     partner_id: Optional[int] = None,
     status: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(SalesOrder).options(
@@ -354,6 +360,10 @@ async def read_orders(
         query = query.where(SalesOrder.partner_id == partner_id)
     if status:
         query = query.where(SalesOrder.status == status)
+    if start_date:
+        query = query.where(SalesOrder.order_date >= start_date)
+    if end_date:
+        query = query.where(SalesOrder.order_date <= end_date)
 
     query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit)
     
@@ -363,12 +373,7 @@ async def read_orders(
 @router.put("/orders/{order_id}", response_model=schemas.SalesOrder)
 async def update_order(
     order_id: int,
-    order_in: schemas.SalesOrderCreate, # Use Create schema or dedicated Update schema if exists. 
-    # Usually schemas.SalesOrderUpdate. Let's assume Create for now or check if Update exists in schemas.
-    # Checking schemas import... `from app.schemas import sales as schemas`. 
-    # I'll use SalesOrderCreate for now as it often mirrors Update, but ideally should be Update.
-    # To be safe, I'll check schemas/sales.py if I can, but for now I'll use SalesOrderCreate 
-    # and just update fields. 
+    order_in: schemas.SalesOrderUpdate, # Use Update schema
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(SalesOrder).options(selectinload(SalesOrder.items)).where(SalesOrder.id == order_id)
@@ -379,12 +384,39 @@ async def update_order(
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Update Header
-    db_order.partner_id = order_in.partner_id
-    db_order.order_date = order_in.order_date
-    db_order.delivery_date = order_in.delivery_date
-    db_order.total_amount = order_in.total_amount
-    db_order.note = order_in.note
-    db_order.status = order_in.status
+    if order_in.partner_id is not None: db_order.partner_id = order_in.partner_id
+    if order_in.order_date is not None: db_order.order_date = order_in.order_date
+    if order_in.delivery_date is not None: db_order.delivery_date = order_in.delivery_date
+    if order_in.actual_delivery_date is not None: db_order.actual_delivery_date = order_in.actual_delivery_date
+    if order_in.delivery_method is not None: db_order.delivery_method = order_in.delivery_method
+    if order_in.transaction_date is not None: db_order.transaction_date = order_in.transaction_date
+    if order_in.total_amount is not None: db_order.total_amount = order_in.total_amount
+    if order_in.note is not None: db_order.note = order_in.note
+    if order_in.status is not None: db_order.status = order_in.status
+    
+    # Update Items
+    if order_in.items is not None:
+        # Delete all and recreate (Simple Strategy)
+        # Verify if we need to preserve IDs? 
+        # For delivery update, we might be sending delivered_quantity.
+        # If we recreate, we lose previous delivered_quantity if not passed back.
+        # But Create schema doesn't have delivered_quantity?
+        # Check SalesOrderItemCreate: No delivered_quantity.
+        # SalesOrderItemSimple has it.
+        # If we use SalesOrderItemCreate, we reset delivered_quantity to 0 (default in model).
+        # THIS IS A PROBLEM for Partial Delivery.
+        # But user said "Double click... record... Delivery Complete".
+        # This implies a one-time event or they enter the full amount.
+        # If they enter full amount, we need to save it. 
+        # But logic below recreates items using `SalesOrderItem` (model default 0).
+        # I need to handle `delivered_quantity` if passed.
+        # Schema `SalesOrderItemCreate` does NOT have `delivered_quantity`.
+        # I should add it to schema or handle it.
+        # Given simpler scope, let's assume they update full status.
+        # But "actual delivery quantity" was requested.
+        # So I MUST update `SalesOrderItemCreate` schema or handle it here.
+        # Modifying schema is better.
+        pass
     
     # Update Items
     # Delete all and recreate
@@ -397,7 +429,8 @@ async def update_order(
             product_id=item.product_id,
             unit_price=item.unit_price,
             quantity=item.quantity,
-            note=item.note
+            note=item.note,
+            delivered_quantity=item.delivered_quantity
         )
         db.add(db_item)
         

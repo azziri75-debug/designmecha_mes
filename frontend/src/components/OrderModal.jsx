@@ -273,8 +273,10 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                 className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5"
                             >
                                 <option value="PENDING">대기 (PENDING)</option>
-                                <option value="CONFIRMED">확정 (CONFIRMED) - 생산 가능</option>
-                                <option value="CANCELLEED">취소 (CANCELED)</option>
+                                <option value="CONFIRMED">확정 (CONFIRMED)</option>
+                                <option value="PRODUCTION_COMPLETED">생산 완료 (PRODUCTION_COMPLETED)</option>
+                                <option value="DELIVERY_COMPLETED">납품 완료 (DELIVERY_COMPLETED)</option>
+                                <option value="CANCELLED">취소 (CANCELLED)</option>
                             </select>
                         </div>
                     </div>

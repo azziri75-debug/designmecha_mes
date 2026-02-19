@@ -126,83 +126,6 @@ async def create_production_plan(
                  )
                  db.add(plan_item)
 
-    await db.flush() # Ensure plan items have IDs
-
-    # 5. Auto-Create Purchase/Outsourcing Orders
-    # Re-fetch items directly from DB to be safe with IDs
-    result = await db.execute(select(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan.id))
-    created_items = result.scalars().all()
-
-    purchase_group = {}
-    outsourcing_group = {}
-
-    for item in created_items:
-        if item.course_type == "PURCHASE":
-            p_name = item.partner_name or "Unknown"
-            if p_name not in purchase_group:
-                 purchase_group[p_name] = []
-            purchase_group[p_name].append(item)
-        elif item.course_type == "OUTSOURCING":
-            p_name = item.partner_name or "Unknown"
-            if p_name not in outsourcing_group:
-                 outsourcing_group[p_name] = []
-            outsourcing_group[p_name].append(item)
-
-    # Create Purchase Orders
-    for p_name, items in purchase_group.items():
-        # Find Partner
-        stmt = select(Partner).where(Partner.name == p_name)
-        result = await db.execute(stmt)
-        partner = result.scalar_one_or_none()
-
-        po = PurchaseOrder(
-            partner_id=partner.id if partner else None,
-            order_date=plan_in.plan_date,
-            status=PurchaseStatus.PENDING,
-            order_no=f"PO-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}",
-            total_amount=0
-        )
-        db.add(po)
-        await db.flush() # Get PO ID
-
-        for item in items:
-            poi = PurchaseOrderItem(
-                purchase_order_id=po.id,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                unit_price=0,
-                production_plan_item_id=item.id,
-                received_quantity=0
-            )
-            db.add(poi)
-
-    # Create Outsourcing Orders
-    for p_name, items in outsourcing_group.items():
-        stmt = select(Partner).where(Partner.name == p_name)
-        result = await db.execute(stmt)
-        partner = result.scalar_one_or_none()
-
-        oo = OutsourcingOrder(
-            partner_id=partner.id if partner else None,
-            order_date=plan_in.plan_date,
-            status=OutsourcingStatus.PENDING,
-            order_no=f"OO-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}",
-            total_amount=0
-        )
-        db.add(oo)
-        await db.flush() # Get OO ID
-
-        for item in items:
-            ooi = OutsourcingOrderItem(
-                outsourcing_order_id=oo.id,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                unit_price=0,
-                production_plan_item_id=item.id,
-                status=OutsourcingStatus.PENDING
-            )
-            db.add(ooi)
-
     await db.commit()
     await db.refresh(plan)
     # Ensure items are loaded for response
@@ -315,6 +238,22 @@ async def delete_production_plan(
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
         
+    # Check for linked orders (Safety Check)
+    # We need to see if any items have linked PurchaseOrderItem or OutsourcingOrderItem
+    # Since we can't easily query "items.purchase_items" without joining, let's do a check.
+    
+    # Check Purchase Orders
+    stmt_po = select(PurchaseOrderItem).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
+    result_po = await db.execute(stmt_po)
+    if result_po.first():
+         raise HTTPException(status_code=400, detail="Cannot delete plan with linked Purchase Orders. Please delete the orders first.")
+
+    # Check Outsourcing Orders
+    stmt_oo = select(OutsourcingOrderItem).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
+    result_oo = await db.execute(stmt_oo)
+    if result_oo.first():
+         raise HTTPException(status_code=400, detail="Cannot delete plan with linked Outsourcing Orders. Please delete the orders first.")
+
     await db.delete(plan)
     await db.commit()
     return None
@@ -342,6 +281,36 @@ async def update_production_plan_status(
         
     plan.status = status
     
+    # Check for linked orders if Completing
+    if status == ProductionStatus.COMPLETED:
+        # Check Purchase Orders Status
+        # We want to ensure all linked PO items are RECEIVED or Orders are COMPLETED?
+        # User said: "check then complete". 
+        # If any mapped PO item is NOT Received, warn?
+        # Let's check if any linked PO Item belongs to a PO that is NOT Completed/Confirmed?
+        # Or simpler: Check if any linked item exists that is not fully processed.
+        # Given "PurchaseOrderItem" has "received_quantity", we could check if received >= quantity.
+        # But for now, let's just check if any linked Order is still PENDING.
+        
+        # Check Purchase Orders
+        # Join PlanItem -> PurchaseOrderItem -> PurchaseOrder
+        stmt_po = select(PurchaseOrder).join(PurchaseOrderItem).join(ProductionPlanItem).where(
+            ProductionPlanItem.plan_id == plan_id,
+            PurchaseOrder.status.in_([PurchaseStatus.PENDING]) 
+        )
+        result_po = await db.execute(stmt_po)
+        if result_po.first():
+             raise HTTPException(status_code=400, detail="Cannot complete plan with PENDING Purchase Orders. Please complete/confirm orders first.")
+
+        # Check Outsourcing Orders
+        stmt_oo = select(OutsourcingOrder).join(OutsourcingOrderItem).join(ProductionPlanItem).where(
+            ProductionPlanItem.plan_id == plan_id,
+            OutsourcingOrder.status.in_([OutsourcingStatus.PENDING])
+        )
+        result_oo = await db.execute(stmt_oo)
+        if result_oo.first():
+             raise HTTPException(status_code=400, detail="Cannot complete plan with PENDING Outsourcing Orders. Please complete/confirm orders first.")
+
     # Sync with Sales Order
     if status == ProductionStatus.COMPLETED and plan.order:
         from app.models.sales import OrderStatus

@@ -58,6 +58,7 @@ class SalesOrderItemBase(BaseModel):
     product_id: int
     unit_price: float
     quantity: int
+    delivered_quantity: int = 0
     note: Optional[str] = None
 
 class SalesOrderItemCreate(SalesOrderItemBase):
@@ -87,6 +88,9 @@ class SalesOrderBase(BaseModel):
     partner_id: int
     order_date: Optional[date] = None
     delivery_date: Optional[date] = None
+    actual_delivery_date: Optional[date] = None
+    delivery_method: Optional[str] = None
+    transaction_date: Optional[date] = None
     total_amount: float
     note: Optional[str] = None
     status: Optional[str] = "PENDING"
@@ -100,6 +104,9 @@ class SalesOrderUpdate(BaseModel):
     partner_id: Optional[int] = None
     order_date: Optional[date] = None
     delivery_date: Optional[date] = None
+    actual_delivery_date: Optional[date] = None
+    delivery_method: Optional[str] = None
+    transaction_date: Optional[date] = None
     total_amount: Optional[float] = None
     note: Optional[str] = None
     status: Optional[str] = None

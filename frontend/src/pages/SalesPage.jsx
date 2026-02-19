@@ -48,6 +48,11 @@ const SalesPage = () => {
     const [viewingFiles, setViewingFiles] = useState([]);
     const [fileModalTitle, setFileModalTitle] = useState('');
 
+    // Filters
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+
     useEffect(() => {
         fetchPartners();
     }, []);
@@ -58,7 +63,8 @@ const SalesPage = () => {
         } else {
             fetchOrders();
         }
-    }, [activeTab]);
+    }, [activeTab, startDate, endDate, statusFilter]);
+    // Note: Re-fetching on filter change
 
     const fetchPartners = async () => {
         try {
@@ -84,7 +90,12 @@ const SalesPage = () => {
     const fetchOrders = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/sales/orders/');
+            const params = {};
+            if (startDate) params.start_date = startDate;
+            if (endDate) params.end_date = endDate;
+            if (statusFilter) params.status = statusFilter;
+
+            const res = await api.get('/sales/orders/', { params });
             setOrders(res.data);
         } catch (error) {
             console.error("Failed to fetch orders", error);
@@ -184,7 +195,45 @@ const SalesPage = () => {
                 </button>
             </div>
 
-            {/* Content */}
+            {/* Content & Filters */}
+            {activeTab === 'orders' && (
+                <Card className="p-4 flex flex-wrap gap-4 items-end mb-4">
+                    <div className="space-y-1">
+                        <label className="text-xs text-gray-400">시작일</label>
+                        <input
+                            type="date"
+                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs text-gray-400">종료일</label>
+                        <input
+                            type="date"
+                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs text-gray-400">상태</label>
+                        <select
+                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                            <option value="">전체 (Status)</option>
+                            <option value="PENDING">대기</option>
+                            <option value="CONFIRMED">확정</option>
+                            <option value="PRODUCTION_COMPLETED">생산 완료</option>
+                            <option value="DELIVERY_COMPLETED">납품 완료</option>
+                            <option value="CANCELLED">취소</option>
+                        </select>
+                    </div>
+                </Card>
+            )}
+
             <Card className="p-0 overflow-hidden min-h-[500px]">
                 {loading ? (
                     <div className="p-8 text-center text-gray-400">로딩 중...</div>

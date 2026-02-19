@@ -8,6 +8,7 @@ class OrderStatus(str, enum.Enum):
     PENDING = "PENDING"       # 대기
     CONFIRMED = "CONFIRMED"   # 확정 (수주 승인)
     PRODUCTION_COMPLETED = "PRODUCTION_COMPLETED" # 생산 완료
+    DELIVERY_COMPLETED = "DELIVERY_COMPLETED" # 납품 완료
     CANCELLED = "CANCELLED"   # 취소
 
 class OrderItemStatus(str, enum.Enum):
@@ -54,7 +55,10 @@ class SalesOrder(Base):
     order_no = Column(String, unique=True, index=True) # 수주번호 (자동생성 예정)
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)
     order_date = Column(Date, default=func.now())
-    delivery_date = Column(Date, nullable=True) # 납기일
+    delivery_date = Column(Date, nullable=True) # 납기일 (Planned)
+    actual_delivery_date = Column(Date, nullable=True) # 실제 납품일
+    delivery_method = Column(String, nullable=True) # 납품 방법
+    transaction_date = Column(Date, nullable=True) # 거래명세서 일자
     total_amount = Column(Float, default=0.0)
     note = Column(Text, nullable=True)
     status = Column(SqEnum(OrderStatus), default=OrderStatus.PENDING)

@@ -11,6 +11,7 @@ import ProductsPage from './pages/ProductsPage';
 import ProductionPage from './pages/ProductionPage';
 import PurchasePage from './pages/PurchasePage';
 import OutsourcingPage from './pages/OutsourcingPage';
+import DeliveryPage from './pages/DeliveryPage';
 
 const App = () => {
   return (
@@ -24,7 +25,7 @@ const App = () => {
         <Route path="purchase" element={<PurchasePage />} />
         <Route path="outsourcing" element={<OutsourcingPage />} />
         <Route path="quality" element={<div className="p-4 text-white">Quality Module (Coming Soon)</div>} />
-        <Route path="inventory" element={<div className="p-4 text-white">Inventory Module (Coming Soon)</div>} />
+        <Route path="inventory" element={<DeliveryPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
