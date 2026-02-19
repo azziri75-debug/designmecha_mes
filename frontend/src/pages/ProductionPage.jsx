@@ -25,7 +25,7 @@ const ProductionPage = () => {
 
     const fetchOrders = async () => {
         try {
-            const response = await api.get('/sales/orders?status=CONFIRMED');
+            const response = await api.get('/sales/orders'); // Fetch all to include PENDING
             setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch orders", error);
@@ -182,7 +182,11 @@ const ProductionPage = () => {
 
 const UnplannedOrdersTable = ({ orders, plans, onCreatePlan }) => {
     const planOrderIds = plans.map(p => p.order_id);
-    const unplannedOrders = orders.filter(o => !planOrderIds.includes(o.id));
+    // Filter out planned orders AND filter by status (PENDING or CONFIRMED)
+    const unplannedOrders = orders.filter(o =>
+        !planOrderIds.includes(o.id) &&
+        (o.status === 'PENDING' || o.status === 'CONFIRMED')
+    );
 
     return (
         <TableContainer>

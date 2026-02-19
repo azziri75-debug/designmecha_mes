@@ -238,21 +238,25 @@ async def delete_production_plan(
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
         
-    # Check for linked orders (Safety Check)
-    # We need to see if any items have linked PurchaseOrderItem or OutsourcingOrderItem
-    # Since we can't easily query "items.purchase_items" without joining, let's do a check.
+    # Check for linked orders (Safety Check) -> Changed to Unlink Strategy
+    # We un-link the Purchase/Outsourcing Orders instead of blocking deletion.
+    # This keeps the financial record (PO/OO) but removes the Production Plan.
     
-    # Check Purchase Orders
+    # Unlink Purchase Orders
     stmt_po = select(PurchaseOrderItem).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
     result_po = await db.execute(stmt_po)
-    if result_po.first():
-         raise HTTPException(status_code=400, detail="Cannot delete plan with linked Purchase Orders. Please delete the orders first.")
+    po_items = result_po.scalars().all()
+    for po_item in po_items:
+        po_item.production_plan_item_id = None
+        db.add(po_item)
 
-    # Check Outsourcing Orders
+    # Unlink Outsourcing Orders
     stmt_oo = select(OutsourcingOrderItem).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
     result_oo = await db.execute(stmt_oo)
-    if result_oo.first():
-         raise HTTPException(status_code=400, detail="Cannot delete plan with linked Outsourcing Orders. Please delete the orders first.")
+    oo_items = result_oo.scalars().all()
+    for oo_item in oo_items:
+        oo_item.production_plan_item_id = None
+        db.add(oo_item)
 
     await db.delete(plan)
     await db.commit()
