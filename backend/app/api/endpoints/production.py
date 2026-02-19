@@ -16,7 +16,7 @@ router = APIRouter()
 @router.get("/plans", response_model=List[schemas.ProductionPlan])
 async def read_production_plans(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 1000,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
