@@ -114,41 +114,7 @@ const ProductionPage = () => {
         }
     };
 
-    // ... existing code ...
 
-    // In render:
-    // ...
-    {
-        tabIndex === 2 && (
-            <ProductionPlansTable
-                plans={completedPlans}
-                orders={orders}
-                onEdit={handleEditClick}
-                onDelete={handleDeletePlan}
-                readonly={false} // Enable buttons
-            />
-        )
-    }
-    // ...
-
-    // ... inside Row component ...
-    <TableCell onClick={(e) => e.stopPropagation()}>
-        {!readonly && (
-            <>
-                <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
-                    <EditIcon />
-                </IconButton>
-                <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="삭제">
-                    <DeleteIcon />
-                </IconButton>
-                {plan.status !== 'COMPLETED' && (
-                    <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="생산 완료">
-                        <CheckIcon />
-                    </IconButton>
-                )}
-            </>
-        )}
-    </TableCell>
 
     const handleSuccess = () => {
         fetchOrders();
@@ -195,6 +161,8 @@ const ProductionPage = () => {
                         <ProductionPlansTable
                             plans={completedPlans}
                             orders={orders}
+                            onEdit={handleEditClick}
+                            onDelete={handleDeletePlan}
                             readonly={false}
                         />
                     )}
