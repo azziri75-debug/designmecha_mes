@@ -76,7 +76,6 @@ class ProductionPlanItem(ProductionPlanItemBase):
     id: int
     plan_id: int
     product: Optional[ProductSimple] = None
-    plan: Optional[ProductionPlanSimple] = None
     
     purchase_items: List[PurchaseOrderItemSimple] = []
     outsourcing_items: List[OutsourcingOrderItemSimple] = []

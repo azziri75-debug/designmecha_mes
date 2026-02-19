@@ -67,8 +67,7 @@ class ProductUpdate(BaseModel):
 
 class ProductSimple(ProductBase):
     id: int
-    current_inventory: int = 0
-
+    
     class Config:
         from_attributes = True
 
