@@ -110,7 +110,7 @@ class SalesOrderSimple(SalesOrderBase):
     order_no: Optional[str] = None
     created_at: datetime
     partner: Optional[Partner] = None
-    items: List[SalesOrderItemSimple] = []
+    # items removed to prevent deep recursion in ProductionPlan
 
     class Config:
         from_attributes = True
