@@ -161,7 +161,8 @@ async def create_production_plan(
                      # Let's create a PurchaseOrder for the plan.
                      
                      # We need to import PurchaseOrder, PurchaseOrderItem
-                     from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
+                     # Moved to top of file/function to avoid UnboundLocalError
+                     # from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
                      
                      # Create Header (Group by Partner?)
                      # If partner is known (proc.partner_name), we can group?
@@ -195,7 +196,7 @@ async def create_production_plan(
                      
                  # 2. Outsourcing
                  if "OUTSOURCING" in proc.course_type or "외주" in proc.course_type:
-                     from app.models.purchasing import OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
+                     # from app.models.purchasing import OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
                      
                      oo = OutsourcingOrder(
                          order_no=f"OS-AUTO-{plan.id}-{plan_item.id}",
