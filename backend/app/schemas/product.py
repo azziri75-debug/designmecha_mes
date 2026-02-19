@@ -65,6 +65,13 @@ class ProductUpdate(BaseModel):
     note: Optional[str] = None
     standard_processes: Optional[List[ProductProcessCreate]] = None
 
+class ProductSimple(ProductBase):
+    id: int
+    current_inventory: int = 0
+
+    class Config:
+        from_attributes = True
+
 class ProductResponse(ProductBase):
     id: int
     standard_processes: List[ProductProcessResponse] = []

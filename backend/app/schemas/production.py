@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from enum import Enum
 
 from app.schemas.sales import SalesOrder
-from app.schemas.product import ProductResponse
+from app.schemas.product import ProductResponse, ProductSimple
 
 class ProductionStatus(str, Enum):
     PENDING = "PENDING"
@@ -75,7 +75,7 @@ from app.schemas.purchasing import PurchaseOrderItemSimple, OutsourcingOrderItem
 class ProductionPlanItem(ProductionPlanItemBase):
     id: int
     plan_id: int
-    product: Optional[ProductResponse] = None
+    product: Optional[ProductSimple] = None
     plan: Optional[ProductionPlanSimple] = None
     
     purchase_items: List[PurchaseOrderItemSimple] = []
