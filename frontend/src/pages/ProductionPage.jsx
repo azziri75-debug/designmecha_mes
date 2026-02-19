@@ -54,6 +54,23 @@ const ProductionPage = () => {
     };
 
     const handleDeletePlan = async (planId) => {
+        const plan = plans.find(p => p.id === planId);
+
+        if (plan && plan.status === 'COMPLETED') {
+            if (!window.confirm("생산 완료된 내역입니다. 삭제하지 않고 '진행 중' 상태로 되돌리시겠습니까?\n(관련 수주 상태도 '생산 완료'에서 '확정'으로 변경됩니다.)")) return;
+            try {
+                // Revert status to IN_PROGRESS
+                await api.patch(`/production/plans/${planId}/status?status=IN_PROGRESS`);
+                alert("상태가 '진행 중'으로 변경되었습니다.");
+                fetchPlans();
+                fetchOrders();
+            } catch (error) {
+                console.error("Revert failed", error);
+                alert("상태 변경 실패: " + (error.response?.data?.detail || error.message));
+            }
+            return;
+        }
+
         if (!window.confirm("정말로 이 생산 계획을 삭제하시겠습니까? 관련 수주는 대기 상태로 복원됩니다.")) return;
         try {
             await api.delete(`/production/plans/${planId}`);
