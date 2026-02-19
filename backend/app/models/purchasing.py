@@ -51,7 +51,7 @@ class PurchaseOrderItem(Base):
     # Relationships
     purchase_order = relationship("PurchaseOrder", back_populates="items")
     product = relationship("Product")
-    production_plan_item = relationship("ProductionPlanItem") 
+    production_plan_item = relationship("ProductionPlanItem", back_populates="purchase_items") 
 
 class OutsourcingOrder(Base):
     __tablename__ = "outsourcing_orders"
@@ -90,5 +90,5 @@ class OutsourcingOrderItem(Base):
 
     # Relationships
     outsourcing_order = relationship("OutsourcingOrder", back_populates="items")
-    production_plan_item = relationship("ProductionPlanItem")
+    production_plan_item = relationship("ProductionPlanItem", back_populates="outsourcing_items")
     product = relationship("Product")

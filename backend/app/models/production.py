@@ -64,6 +64,10 @@ class ProductionPlanItem(Base):
     plan = relationship("ProductionPlan", back_populates="items")
     product = relationship("Product")
     work_orders = relationship("WorkOrder", back_populates="plan_item")
+    
+    # Links to Purchasing/Outsourcing
+    purchase_items = relationship("app.models.purchasing.PurchaseOrderItem", back_populates="production_plan_item")
+    outsourcing_items = relationship("app.models.purchasing.OutsourcingOrderItem", back_populates="production_plan_item")
 
 class WorkOrder(Base):
     """

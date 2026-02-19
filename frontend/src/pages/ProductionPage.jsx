@@ -67,7 +67,43 @@ const ProductionPage = () => {
     };
 
     const handleCompletePlan = async (planId) => {
-        if (!window.confirm("이 계획을 '완료' 처리하시겠습니까?")) return;
+        const plan = plans.find(p => p.id === planId);
+        if (!plan) return;
+
+        // Check dependencies
+        let hasIncompleteDependencies = false;
+        let warningMessage = "";
+
+        if (plan.items) {
+            for (const item of plan.items) {
+                // Check Purchase Items
+                if (item.purchase_items && item.purchase_items.length > 0) {
+                    const incompletePurchase = item.purchase_items.some(pi => pi.purchase_order?.status !== 'COMPLETED' && pi.purchase_order?.status !== 'PARTIAL');
+                    // Or check received_quantity vs quantity? Status is safer if synced.
+                    // Backend PurchaseOrder status: PENDING, ORDERED, PARTIAL, COMPLETED.
+                    if (incompletePurchase) {
+                        hasIncompleteDependencies = true;
+                        warningMessage += `- [구매] ${item.product?.name || '품목'}의 자재 발주가 완료되지 않았습니다.\n`;
+                    }
+                }
+                // Check Outsourcing Items
+                if (item.outsourcing_items && item.outsourcing_items.length > 0) {
+                    const incompleteOutsourcing = item.outsourcing_items.some(oi => oi.outsourcing_order?.status !== 'COMPLETED');
+                    if (incompleteOutsourcing) {
+                        hasIncompleteDependencies = true;
+                        warningMessage += `- [외주] ${item.product?.name || '품목'}의 외주 발주가 완료되지 않았습니다.\n`;
+                    }
+                }
+            }
+        }
+
+        let confirmMessage = "이 계획을 '완료' 처리하시겠습니까?";
+        if (hasIncompleteDependencies) {
+            confirmMessage = "다음 항목의 발주/외주가 완료되지 않았습니다:\n\n" + warningMessage + "\n그래도 완료하시겠습니까?";
+        }
+
+        if (!window.confirm(confirmMessage)) return;
+
         try {
             await api.patch(`/production/plans/${planId}/status?status=COMPLETED`);
             alert("완료 처리되었습니다.");
@@ -77,6 +113,42 @@ const ProductionPage = () => {
             alert("완료 처리 실패");
         }
     };
+
+    // ... existing code ...
+
+    // In render:
+    // ...
+    {
+        tabIndex === 2 && (
+            <ProductionPlansTable
+                plans={completedPlans}
+                orders={orders}
+                onEdit={handleEditClick}
+                onDelete={handleDeletePlan}
+                readonly={false} // Enable buttons
+            />
+        )
+    }
+    // ...
+
+    // ... inside Row component ...
+    <TableCell onClick={(e) => e.stopPropagation()}>
+        {!readonly && (
+            <>
+                <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
+                    <EditIcon />
+                </IconButton>
+                <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="삭제">
+                    <DeleteIcon />
+                </IconButton>
+                {plan.status !== 'COMPLETED' && (
+                    <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="생산 완료">
+                        <CheckIcon />
+                    </IconButton>
+                )}
+            </>
+        )}
+    </TableCell>
 
     const handleSuccess = () => {
         fetchOrders();
@@ -123,7 +195,7 @@ const ProductionPage = () => {
                         <ProductionPlansTable
                             plans={completedPlans}
                             orders={orders}
-                            readonly={true}
+                            readonly={false}
                         />
                     )}
                 </Box>
@@ -314,9 +386,11 @@ const Row = ({ plan, onEdit, onDelete, onComplete, readonly }) => {
                             <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="삭제">
                                 <DeleteIcon />
                             </IconButton>
-                            <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="생산 완료">
-                                <CheckIcon />
-                            </IconButton>
+                            {plan.status !== 'COMPLETED' && (
+                                <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="생산 완료">
+                                    <CheckIcon />
+                                </IconButton>
+                            )}
                         </>
                     )}
                 </TableCell>

@@ -26,6 +26,8 @@ async def read_production_plans(
         select(ProductionPlan)
         .options(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process)
         )
@@ -132,6 +134,8 @@ async def create_production_plan(
         select(ProductionPlan)
         .options(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process)
         )
@@ -201,11 +205,16 @@ async def update_production_plan(
     await db.commit()
     await db.refresh(plan)
     
+    await db.commit()
+    await db.refresh(plan)
+    
     # Re-fetch for response
     result = await db.execute(
         select(ProductionPlan)
         .options(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process)
         )
@@ -240,14 +249,39 @@ async def update_production_plan_status(
 ) -> Any:
     """
     Update production plan status.
+    If COMPLETED, update SalesOrder status to PRODUCTION_COMPLETED.
     """
-    result = await db.execute(select(ProductionPlan).where(ProductionPlan.id == plan_id))
+    # Eager load order to update its status
+    result = await db.execute(
+        select(ProductionPlan)
+        .options(selectinload(ProductionPlan.order))
+        .where(ProductionPlan.id == plan_id)
+    )
     plan = result.scalar_one_or_none()
     
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
         
     plan.status = status
+    
+    # Sync with Sales Order
+    if status == ProductionStatus.COMPLETED and plan.order:
+        from app.models.sales import OrderStatus
+        plan.order.status = OrderStatus.PRODUCTION_COMPLETED
+        db.add(plan.order)
+        
     await db.commit()
-    await db.refresh(plan)
-    return plan
+    
+    # Re-fetch with full options for response
+    result = await db.execute(
+        select(ProductionPlan)
+        .options(
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process)
+        )
+        .where(ProductionPlan.id == plan_id)
+    )
+    return result.scalar_one()

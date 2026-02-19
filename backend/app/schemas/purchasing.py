@@ -126,3 +126,38 @@ class OutsourcingOrder(OutsourcingOrderBase):
 
     class Config:
         from_attributes = True
+
+# --- Simple Schemas for Production Plan Response ---
+class PurchaseOrderSimple(BaseModel):
+    id: int
+    order_no: str
+    status: PurchaseStatus
+    
+    class Config:
+        from_attributes = True
+
+class PurchaseOrderItemSimple(BaseModel):
+    id: int
+    purchase_order_id: int
+    status: Optional[str] = None 
+    purchase_order: Optional[PurchaseOrderSimple] = None
+
+    class Config:
+        from_attributes = True
+
+class OutsourcingOrderSimple(BaseModel):
+    id: int
+    order_no: str
+    status: OutsourcingStatus
+
+    class Config:
+        from_attributes = True
+
+class OutsourcingOrderItemSimple(BaseModel):
+    id: int
+    outsourcing_order_id: int
+    status: Optional[str] = None
+    outsourcing_order: Optional[OutsourcingOrderSimple] = None
+
+    class Config:
+        from_attributes = True

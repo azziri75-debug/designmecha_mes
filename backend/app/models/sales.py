@@ -7,6 +7,7 @@ import enum
 class OrderStatus(str, enum.Enum):
     PENDING = "PENDING"       # 대기
     CONFIRMED = "CONFIRMED"   # 확정 (수주 승인)
+    PRODUCTION_COMPLETED = "PRODUCTION_COMPLETED" # 생산 완료
     CANCELLED = "CANCELLED"   # 취소
 
 class OrderItemStatus(str, enum.Enum):

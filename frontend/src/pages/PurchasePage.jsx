@@ -3,7 +3,7 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import PurchaseOrderModal from '../components/PurchaseOrderModal';
 
@@ -71,6 +71,18 @@ const PurchasePage = () => {
         setSelectedOrder(order);
         setInitialModalItems([]);
         setModalOpen(true);
+    };
+
+    const handleDeleteOrder = async (orderId) => {
+        if (!window.confirm("정말로 이 발주를 삭제하시겠습니까?")) return;
+        try {
+            await api.delete(`/purchasing/purchase/orders/${orderId}`);
+            alert("삭제되었습니다.");
+            handleSuccess();
+        } catch (error) {
+            console.error("Delete failed", error);
+            alert("삭제 실패: " + (error.response?.data?.detail || error.message));
+        }
     };
 
     const handleCreateFromPending = () => {
@@ -239,6 +251,9 @@ const PurchasePage = () => {
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                                     <IconButton size="small" onClick={() => handleEditClick(order)}>
                                                         <EditIcon />
+                                                    </IconButton>
+                                                    <IconButton size="small" color="error" onClick={() => handleDeleteOrder(order.id)}>
+                                                        <DeleteIcon />
                                                     </IconButton>
                                                     <IconButton size="small">
                                                         <PrintIcon />
