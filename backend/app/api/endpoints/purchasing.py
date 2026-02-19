@@ -7,8 +7,7 @@ from datetime import datetime
 
 from app.api import deps
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
-from app.models.production import ProductionPlanItem, ProductionPlan
-from app.models.production import ProductionPlanItem, ProductionPlan
+from app.models.production import ProductionPlanItem, ProductionPlan, ProductionStatus
 from app.models.sales import SalesOrder, SalesOrderItem
 from app.models.product import Product, ProductProcess, Process
 from app.schemas import purchasing as schemas
@@ -26,7 +25,8 @@ async def read_pending_purchase_items(
     Get Production Plan Items that need purchasing and are not yet ordered.
     Includes items from PLANNED and IN_PROGRESS plans.
     """
-    from app.models.production import ProductionPlan, ProductionStatus
+    # Local import removed
+    # from app.models.production import ProductionPlan, ProductionStatus
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .outerjoin(PurchaseOrderItem, PurchaseOrderItem.production_plan_item_id == ProductionPlanItem.id)\
@@ -59,7 +59,8 @@ async def read_pending_outsourcing_items(
     """
     Get Production Plan Items that need outsourcing and are not yet ordered.
     """
-    from app.models.production import ProductionPlan, ProductionStatus
+    # Local import removed
+    # from app.models.production import ProductionPlan, ProductionStatus
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .outerjoin(OutsourcingOrderItem, OutsourcingOrderItem.production_plan_item_id == ProductionPlanItem.id)\
@@ -124,7 +125,7 @@ async def create_purchase_order(
         
         # Update ProductionPlanItem status if linked
         if item.production_plan_item_id:
-            from app.models.production import ProductionStatus
+            # from app.models.production import ProductionStatus
             # Fetch the item to update status. 
             # We can use update statement or fetch object.
             # Since we are in a loop, update statement is efficient but we need to check if it exists?
@@ -310,7 +311,7 @@ async def create_outsourcing_order(
         
         # Update ProductionPlanItem status if linked
         if item.production_plan_item_id:
-            from app.models.production import ProductionStatus
+            # from app.models.production import ProductionStatus
             plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
             if plan_item:
                 plan_item.status = ProductionStatus.IN_PROGRESS
