@@ -33,7 +33,9 @@ async def read_pending_purchase_items(
         .options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+            selectinload(ProductionPlanItem.purchase_items),
+            selectinload(ProductionPlanItem.outsourcing_items)
         )\
         .where(or_(
             ProductionPlanItem.course_type.ilike('%PURCHASE%'),
@@ -67,7 +69,9 @@ async def read_pending_outsourcing_items(
         .options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+            selectinload(ProductionPlanItem.purchase_items),
+            selectinload(ProductionPlanItem.outsourcing_items)
         )\
         .where(or_(
             ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
