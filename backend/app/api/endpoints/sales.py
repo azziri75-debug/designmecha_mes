@@ -10,7 +10,7 @@ from app.schemas import sales as schemas
 from app.models.product import Product, ProductProcess
 from app.models.basics import Partner
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 import os
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side
