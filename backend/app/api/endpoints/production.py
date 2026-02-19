@@ -111,117 +111,73 @@ async def create_production_plan(
                 # For now, just skip.
                 continue
                 
-             for proc, proc_name, proc_course_type in processes:
-                  # Use local variable to ensure consistent logic
-                  final_course_type = proc.course_type or proc_course_type or "INTERNAL"
-                  
-                  plan_item = ProductionPlanItem(
-                      plan_id=plan.id,
-                      product_id=item.product_id,
-                      process_name=proc_name,
-                      sequence=proc.sequence,
-                      course_type=final_course_type,
-                      partner_name=proc.partner_name,
-                      work_center=proc.equipment_name,
-                      estimated_time=proc.estimated_time,
-                      quantity=item.quantity, # Set target quantity from Order
-                      status=ProductionStatus.PLANNED
-                  )
-                  db.add(plan_item)
-                  await db.flush() # Need ID for linking
+            for proc, proc_name, proc_course_type in processes:
+                # Use local variable to ensure consistent logic
+                final_course_type = proc.course_type or proc_course_type or "INTERNAL"
+                
+                plan_item = ProductionPlanItem(
+                    plan_id=plan.id,
+                    product_id=item.product_id,
+                    process_name=proc_name,
+                    sequence=proc.sequence,
+                    course_type=final_course_type,
+                    partner_name=proc.partner_name,
+                    work_center=proc.equipment_name,
+                    estimated_time=proc.estimated_time,
+                    quantity=item.quantity, # Set target quantity from Order
+                    status=ProductionStatus.PLANNED
+                )
+                db.add(plan_item)
+                await db.flush() # Need ID for linking
 
-                  # --- Auto-Create Purchase/Outsourcing Orders (Restored) ---
-                  # Use final_course_type for check
-                  
-                  # 1. Purchase
-                  if "PURCHASE" in final_course_type or "구매" in final_course_type:
-                      # Check if pending order exists? No, just create a new pending item or order?
-                      # The request is "Auto register".
-                      # We should create a PurchaseOrderItem linked to this plan_item, 
-                      # but NOT a Purchase Header yet (that's for "Ordering").
-                      # Wait, previous logic might have been creating headers too?
-                      # Ideally we just create the link so it appears in "Unordered List".
-                      # The "Unordered List" query checks for items with NO linked PO Item.
-                      # So if we want it to appear there, we do NOTHING?
-                      # User said: "생산계획 수립시 외주와 구매공정은 자동으로 등록하도록 다시 수정할것."
-                      # "Register automatically" might mean "Show in the list" (which it does if we do nothing) OR "Create the Order Header".
-                      # In the previous context (Request 1), "Auto-order creation" meant "Created PurchaseOrder".
-                      # The user originally complained it "disappeared from Unordered List".
-                      # Now they want it "Auto registered".
-                      # If I create a PurchaseOrder, it goes to "Pending Order" list (Purchasing Page).
-                      # If I do nothing, it goes to "Unordered List" (Purchasing Page).
-                      # User complaint #2: "생산계획 수립시 자동발주 동작 안함."
-                      # This implies they WANT it to be automatically ordered (created PO).
-                      # So I should create PurchaseOrder (Pending) and link it.
-                      
-                      # Create Purchase Order Header (if grouping strategy? For now 1 Plan = 1 PO? Or 1 Plan Item = 1 PO?)
-                      # Let's create one PO per Plan or per Item?
-                      # Simple strategy: Create one PENDING PurchaseOrder for this Plan (if needed) or per item.
-                      # Let's create individual order items added to a new or existing Pending Order?
-                      # EASIEST: Create a new PurchaseOrder for this plan's items.
-                      
-                      # Actually, let's look at `purchasing.py`.
-                      # `create_purchase_order` creates a header and items.
-                      # Here we are inside `create_production_plan`.
-                      # Let's create a PurchaseOrder for the plan.
-                      
-                      # We need to import PurchaseOrder, PurchaseOrderItem
-                      # Moved to top of file/function to avoid UnboundLocalError
-                      # from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
-                      
-                      # Create Header (Group by Partner?)
-                      # If partner is known (proc.partner_name), we can group?
-                      # Let's just create one PO per item for simplicity or logic I used before.
-                      # Wait, if I create a PO, it is "ORDERED" (or Pending PO).
-                      # If it is Pending PO, does it show in "Unordered List"? NO.
-                      # "Unordered List" shows items with NO PO.
-                      # "Pending Order List" shows items WITH Pending PO.
-                      # User likely wants it to go straight to "Pending Order List".
-                      
-                      # Logic:
-                      po = PurchaseOrder(
-                          order_no=f"PO-AUTO-{plan.id}-{plan_item.id}", # Temp ID
-                          partner_id=None, # We don't have ID, only name. Leave null or find?
-                          order_date=datetime.now().date(),
-                          delivery_date=plan_in.plan_date,
-                          status=PurchaseStatus.PENDING,
-                          note=f"Auto-generated from Plan {plan.id}"
-                      )
-                      db.add(po)
-                      await db.flush()
-                      
-                      po_item = PurchaseOrderItem(
-                          purchase_order_id=po.id,
-                          product_id=item.product_id,
-                          quantity=item.quantity,
-                          unit_price=0, # Unknown
-                          production_plan_item_id=plan_item.id
-                      )
-                      db.add(po_item)
-                      
-                  # 2. Outsourcing
-                  if "OUTSOURCING" in final_course_type or "외주" in final_course_type:
-                      # from app.models.purchasing import OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
-                      
-                      oo = OutsourcingOrder(
-                         order_no=f"OS-AUTO-{plan.id}-{plan_item.id}",
-                         partner_id=None,
-                         order_date=datetime.now().date(),
-                         delivery_date=plan_in.plan_date,
-                         status=OutsourcingStatus.PENDING,
-                         note=f"Auto-generated from Plan {plan.id}"
-                     )
-                     db.add(oo)
-                     await db.flush()
-                     
-                     oo_item = OutsourcingOrderItem(
-                         outsourcing_order_id=oo.id,
-                         production_plan_item_id=plan_item.id,
-                         product_id=item.product_id,
-                         quantity=item.quantity,
-                         unit_price=0
-                     )
-                     db.add(oo_item)
+                # --- Auto-Create Purchase/Outsourcing Orders (Restored) ---
+                # Use final_course_type for check
+                
+                # 1. Purchase
+                if "PURCHASE" in final_course_type or "구매" in final_course_type:
+                    # Logic:
+                    po = PurchaseOrder(
+                        order_no=f"PO-AUTO-{plan.id}-{plan_item.id}", # Temp ID
+                        partner_id=None, # We don't have ID, only name. Leave null or find?
+                        order_date=datetime.now().date(),
+                        delivery_date=plan_in.plan_date,
+                        status=PurchaseStatus.PENDING,
+                        note=f"Auto-generated from Plan {plan.id}"
+                    )
+                    db.add(po)
+                    await db.flush()
+                    
+                    po_item = PurchaseOrderItem(
+                        purchase_order_id=po.id,
+                        product_id=item.product_id,
+                        quantity=item.quantity,
+                        unit_price=0, # Unknown
+                        production_plan_item_id=plan_item.id
+                    )
+                    db.add(po_item)
+                    
+                # 2. Outsourcing
+                if "OUTSOURCING" in final_course_type or "외주" in final_course_type:
+                    
+                    oo = OutsourcingOrder(
+                        order_no=f"OS-AUTO-{plan.id}-{plan_item.id}",
+                        partner_id=None,
+                        order_date=datetime.now().date(),
+                        delivery_date=plan_in.plan_date,
+                        status=OutsourcingStatus.PENDING,
+                        note=f"Auto-generated from Plan {plan.id}"
+                    )
+                    db.add(oo)
+                    await db.flush()
+                    
+                    oo_item = OutsourcingOrderItem(
+                        outsourcing_order_id=oo.id,
+                        production_plan_item_id=plan_item.id,
+                        product_id=item.product_id,
+                        quantity=item.quantity,
+                        unit_price=0
+                    )
+                    db.add(oo_item)
 
     await db.commit()
     await db.refresh(plan)
