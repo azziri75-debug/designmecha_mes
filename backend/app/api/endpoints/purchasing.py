@@ -168,9 +168,14 @@ async def read_purchase_orders(
     """
     Retrieve purchase orders.
     """
+    # Local import for deep loading
+    from app.models.production import ProductionPlanItem, ProductionPlan
+
     query = select(PurchaseOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
-        selectinload(PurchaseOrder.partner)
+        selectinload(PurchaseOrder.partner),
+        # Load related SO info
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order)
     )
     if status:
         query = query.where(PurchaseOrder.status == status)
@@ -342,9 +347,14 @@ async def read_outsourcing_orders(
     """
     Retrieve outsourcing orders.
     """
+    # Local import
+    from app.models.production import ProductionPlanItem, ProductionPlan
+
     query = select(OutsourcingOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
-        selectinload(OutsourcingOrder.partner)
+        selectinload(OutsourcingOrder.partner),
+        # Load related SO info
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order)
     )
     if status:
         query = query.where(OutsourcingOrder.status == status)

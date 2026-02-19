@@ -120,7 +120,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                     product_id: item.product_id,
                     quantity: parseInt(item.quantity),
                     unit_price: parseFloat(item.unit_price),
-                    note: item.note
+                    note: item.note,
+                    production_plan_item_id: item.production_plan_item_id // Include link
                 }))
             };
 

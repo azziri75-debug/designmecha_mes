@@ -35,6 +35,14 @@ class PurchaseOrder(Base):
     partner = relationship("Partner", back_populates="purchase_orders")
     items = relationship("PurchaseOrderItem", back_populates="purchase_order", cascade="all, delete-orphan")
 
+    @property
+    def related_sales_order_info(self):
+        so_numbers = set()
+        for item in self.items:
+            if item.production_plan_item and item.production_plan_item.plan and item.production_plan_item.plan.order:
+                so_numbers.add(item.production_plan_item.plan.order.order_no)
+        return ", ".join(sorted(so_numbers)) if so_numbers else None
+
 class PurchaseOrderItem(Base):
     __tablename__ = "purchase_order_items"
 
@@ -70,6 +78,14 @@ class OutsourcingOrder(Base):
     # Relationships
     partner = relationship("Partner", back_populates="outsourcing_orders")
     items = relationship("OutsourcingOrderItem", back_populates="outsourcing_order", cascade="all, delete-orphan")
+
+    @property
+    def related_sales_order_info(self):
+        so_numbers = set()
+        for item in self.items:
+            if item.production_plan_item and item.production_plan_item.plan and item.production_plan_item.plan.order:
+                so_numbers.add(item.production_plan_item.plan.order.order_no)
+        return ", ".join(sorted(so_numbers)) if so_numbers else None
 
 class OutsourcingOrderItem(Base):
     __tablename__ = "outsourcing_order_items"

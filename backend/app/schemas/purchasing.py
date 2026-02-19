@@ -62,6 +62,7 @@ class PurchaseOrder(PurchaseOrderBase):
     updated_at: Optional[datetime] = None
     partner: Optional[Partner] = None
     items: List[PurchaseOrderItem] = []
+    related_sales_order_info: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -123,6 +124,7 @@ class OutsourcingOrder(OutsourcingOrderBase):
     updated_at: Optional[datetime] = None
     partner: Optional[Partner] = None
     items: List[OutsourcingOrderItem] = []
+    related_sales_order_info: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -116,7 +116,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     quantity: parseInt(item.quantity),
                     unit_price: parseFloat(item.unit_price),
                     note: item.note,
-                    production_plan_item_id: item.production_plan_item_id
+                    production_plan_item_id: item.production_plan_item_id // Include link
                 }))
             };
 
