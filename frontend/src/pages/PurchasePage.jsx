@@ -213,6 +213,7 @@ const PurchasePage = () => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell>발주번호</TableCell>
+                                    <TableCell>수주번호</TableCell>
                                     <TableCell>발주일자</TableCell>
                                     <TableCell>공급사</TableCell>
                                     <TableCell>품목 수</TableCell>
@@ -237,6 +238,7 @@ const PurchasePage = () => {
                                                 sx={{ cursor: 'pointer', backgroundColor: expandedOrderId === order.id ? 'action.hover' : 'inherit' }}
                                             >
                                                 <TableCell>{order.order_no}</TableCell>
+                                                <TableCell>{order.related_sales_order_info || '-'}</TableCell>
                                                 <TableCell>{order.order_date}</TableCell>
                                                 <TableCell>{order.partner?.name}</TableCell>
                                                 <TableCell>{order.items.length} 품목</TableCell>
