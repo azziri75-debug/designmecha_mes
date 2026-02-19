@@ -29,7 +29,18 @@ async def main():
                 .limit(10)
             )
             plans = result.scalars().all()
-            print(f"Success! Retrieved {len(plans)} plans.")
+            print(f"SQL Success! Retrieved {len(plans)} plans.")
+            
+            from app.schemas.production import ProductionPlan as ProductionPlanSchema
+            print("--- Attempting Pydantic Validation ---")
+            for plan in plans:
+                try:
+                    pydantic_plan = ProductionPlanSchema.model_validate(plan)
+                    # print(f"Validated Plan ID: {pydantic_plan.id}")
+                except Exception as pe:
+                    print(f"Pydantic Validation Failed for Plan ID {plan.id}: {pe}")
+                    raise pe
+            print("--- Pydantic Validation Success ---")
         except Exception as e:
             print("--- Query Failed ---")
             import traceback

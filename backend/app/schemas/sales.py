@@ -2,7 +2,7 @@ from typing import List, Optional, Any, Union
 from pydantic import BaseModel
 from datetime import date, datetime
 from app.schemas.basics import PartnerResponse as Partner
-from app.schemas.product import ProductResponse as Product
+from app.schemas.product import ProductResponse as Product, ProductSimple
 
 # --- Estimate Schemas ---
 
@@ -18,7 +18,7 @@ class EstimateItemCreate(EstimateItemBase):
 class EstimateItem(EstimateItemBase):
     id: int
     estimate_id: int
-    product: Optional[Product] = None
+    product: Optional[ProductSimple] = None
 
     class Config:
         from_attributes = True
@@ -68,7 +68,7 @@ class SalesOrderItem(SalesOrderItemBase):
     order_id: int
     delivered_quantity: int
     status: str
-    product: Optional[Product] = None
+    product: Optional[ProductSimple] = None
 
     class Config:
         from_attributes = True
