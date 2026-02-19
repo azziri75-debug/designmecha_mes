@@ -63,12 +63,22 @@ class SalesOrderItemBase(BaseModel):
 class SalesOrderItemCreate(SalesOrderItemBase):
     pass
 
-class SalesOrderItem(SalesOrderItemBase):
+class SalesOrderItemSimple(SalesOrderItemBase):
     id: int
     order_id: int
     delivered_quantity: int
     status: str
     product: Optional[ProductSimple] = None
+
+    class Config:
+        from_attributes = True
+
+class SalesOrderItem(SalesOrderItemBase):
+    id: int
+    order_id: int
+    delivered_quantity: int
+    status: str
+    product: Optional[Product] = None
 
     class Config:
         from_attributes = True
@@ -94,6 +104,16 @@ class SalesOrderUpdate(BaseModel):
     note: Optional[str] = None
     status: Optional[str] = None
     items: Optional[List[SalesOrderItemCreate]] = None
+
+class SalesOrderSimple(SalesOrderBase):
+    id: int
+    order_no: Optional[str] = None
+    created_at: datetime
+    partner: Optional[Partner] = None
+    items: List[SalesOrderItemSimple] = []
+
+    class Config:
+        from_attributes = True
 
 class SalesOrder(SalesOrderBase):
     id: int

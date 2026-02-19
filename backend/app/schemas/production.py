@@ -3,7 +3,7 @@ from datetime import date, datetime
 from pydantic import BaseModel
 from enum import Enum
 
-from app.schemas.sales import SalesOrder
+from app.schemas.sales import SalesOrder, SalesOrderSimple
 from app.schemas.product import ProductResponse, ProductSimple
 
 class ProductionStatus(str, Enum):
@@ -55,7 +55,7 @@ class ProductionPlanSimple(ProductionPlanBase):
     order_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    order: Optional[SalesOrder] = None
+    order: Optional[SalesOrderSimple] = None
 
     class Config:
         from_attributes = True
@@ -101,7 +101,7 @@ class ProductionPlan(ProductionPlanBase):
     order_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    order: Optional[SalesOrder] = None
+    order: Optional[SalesOrderSimple] = None
     items: List[ProductionPlanItem] = []
 
     class Config:
