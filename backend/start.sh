@@ -7,7 +7,8 @@ set -e
 # Note: If build.sh already runs this, it's redundant but safe.
 # Render Build Command might run it, but running here ensures it happens on deploy.
 # If build.sh runs it, we can comment it out here.
-# alembic upgrade head 
+# Run migrations on startup
+alembic upgrade head 
 
 # Start Uvicorn with explicit host and port
 # Render sets PORT environment variable.
