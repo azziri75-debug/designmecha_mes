@@ -100,6 +100,7 @@ async def create_purchase_order(
     # Generate Order No
     date_str = datetime.now().strftime("%Y%m%d")
     from sqlalchemy import func
+    from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem # Import here to avoid circular dependency
     query = select(func.count()).filter(PurchaseOrder.order_date == datetime.now().date())
     result = await db.execute(query)
     count = result.scalar() or 0
@@ -293,6 +294,7 @@ async def create_outsourcing_order(
     # Generate Order No
     date_str = datetime.now().strftime("%Y%m%d")
     from sqlalchemy import func
+    from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem # Import here
     query = select(func.count()).filter(OutsourcingOrder.order_date == datetime.now().date())
     result = await db.execute(query)
     count = result.scalar() or 0

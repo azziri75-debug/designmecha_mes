@@ -90,6 +90,54 @@ async def create_production_plan(
                  quantity=item_in.quantity
              )
              db.add(plan_item)
+             await db.flush() # Need ID for linking
+
+             # --- Auto-Create Purchase/Outsourcing Orders (Copied Logic) ---
+             final_course_type = item_in.course_type or "INTERNAL"
+             
+             # 1. Purchase
+             if "PURCHASE" in final_course_type or "구매" in final_course_type:
+                 po = PurchaseOrder(
+                     order_no=f"PO-AUTO-{plan.id}-{plan_item.id}",
+                     partner_id=None,
+                     order_date=datetime.now().date(),
+                     delivery_date=plan.plan_date,
+                     status=PurchaseStatus.PENDING,
+                     note=f"Auto-generated from Plan {plan.id}"
+                 )
+                 db.add(po)
+                 await db.flush()
+                 
+                 po_item = PurchaseOrderItem(
+                     purchase_order_id=po.id,
+                     product_id=item_in.product_id,
+                     quantity=item_in.quantity,
+                     unit_price=0,
+                     production_plan_item_id=plan_item.id
+                 )
+                 db.add(po_item)
+                 
+             # 2. Outsourcing
+             if "OUTSOURCING" in final_course_type or "외주" in final_course_type:
+                 oo = OutsourcingOrder(
+                     order_no=f"OS-AUTO-{plan.id}-{plan_item.id}",
+                     partner_id=None,
+                     order_date=datetime.now().date(),
+                     delivery_date=plan.plan_date,
+                     status=OutsourcingStatus.PENDING,
+                     note=f"Auto-generated from Plan {plan.id}"
+                 )
+                 db.add(oo)
+                 await db.flush()
+                 
+                 oo_item = OutsourcingOrderItem(
+                     outsourcing_order_id=oo.id,
+                     production_plan_item_id=plan_item.id,
+                     product_id=item_in.product_id,
+                     quantity=item_in.quantity,
+                     unit_price=0
+                 )
+                 db.add(oo_item)
     else:
         # Fetch Order Items
         result = await db.execute(select(SalesOrderItem).where(SalesOrderItem.order_id == plan_in.order_id))
