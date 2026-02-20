@@ -204,9 +204,16 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
         } catch (error) {
             console.error("Failed to save plan FULL ERROR:", error);
             if (error.response) {
+                const detail = error.response.data.detail || error.response.data;
+                if (error.response.status === 400 && detail === "Production Plan already exists for this Order") {
+                    alert("이미 해당 수주에 대한 생산 계획이 존재합니다. 목록을 갱신합니다.");
+                    onSuccess(); // Refresh lists
+                    onClose();   // Close modal
+                    return;
+                }
                 console.error("Response Data:", error.response.data);
                 console.error("Response Status:", error.response.status);
-                alert(`저장 실패 (${error.response.status}): ${JSON.stringify(error.response.data.detail || error.response.data)}`);
+                alert(`저장 실패 (${error.response.status}): ${JSON.stringify(detail)}`);
             } else {
                 alert("저장 실패: " + error.message);
             }
