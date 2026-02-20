@@ -129,7 +129,7 @@ async def create_purchase_order(
         
         # Update ProductionPlanItem status if linked
         if item.production_plan_item_id:
-            from app.models.production import ProductionStatus
+            from app.models.production import ProductionStatus, ProductionPlanItem
             # Fetch the item to update status. 
             # We can use update statement or fetch object.
             # Since we are in a loop, update statement is efficient but we need to check if it exists?

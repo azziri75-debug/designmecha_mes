@@ -60,22 +60,14 @@ class ProductionPlanSimple(ProductionPlanBase):
     class Config:
         from_attributes = True
 
-class ProductionPlanItem(ProductionPlanItemBase):
-    id: int
-    plan_id: int
-    product: Optional[ProductResponse] = None
-    plan: Optional[ProductionPlanSimple] = None
-
-    class Config:
-        from_attributes = True
-
 # Forward refs for Purchasing
 from app.schemas.purchasing import PurchaseOrderItemSimple, OutsourcingOrderItemSimple
 
 class ProductionPlanItem(ProductionPlanItemBase):
     id: int
     plan_id: int
-    product: Optional[ProductSimple] = None
+    product: Optional[ProductResponse] = None
+    plan: Optional[ProductionPlanSimple] = None
     
     purchase_items: List[PurchaseOrderItemSimple] = []
     outsourcing_items: List[OutsourcingOrderItemSimple] = []
