@@ -30,6 +30,8 @@ class EstimateBase(BaseModel):
     total_amount: float
     note: Optional[str] = None
     attachment_file: Optional[Union[List[Any], str]] = None # JSON list or stringified JSON
+    sheet_metadata: Optional[dict] = None # 견적서 편집 상태
+
 
 class EstimateCreate(EstimateBase):
     items: List[EstimateItemCreate]
@@ -41,6 +43,7 @@ class EstimateUpdate(BaseModel):
     total_amount: Optional[float] = None
     note: Optional[str] = None
     attachment_file: Optional[Union[List[Any], str]] = None
+    sheet_metadata: Optional[dict] = None
     items: Optional[List[EstimateItemCreate]] = None
 
 class Estimate(EstimateBase):

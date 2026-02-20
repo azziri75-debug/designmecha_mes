@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
-import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, FileSpreadsheet, Printer } from 'lucide-react';
 import { cn } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import EstimateModal from '../components/EstimateModal';
 import OrderModal from '../components/OrderModal';
+import EstimateSheetModal from '../components/EstimateSheetModal';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -24,6 +25,10 @@ const SalesPage = () => {
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [editingEstimate, setEditingEstimate] = useState(null);
     const [editingOrder, setEditingOrder] = useState(null);
+
+    // Sheet Modal
+    const [showSheetModal, setShowSheetModal] = useState(false);
+    const [sheetEstimate, setSheetEstimate] = useState(null);
 
     // Expand States
     const [expandedEstimates, setExpandedEstimates] = useState(new Set());
@@ -323,6 +328,16 @@ const SalesPage = () => {
                                                 <td className="px-6 py-4 truncate max-w-[200px]">{est.note}</td>
                                                 <td className="px-6 py-4 flex items-center" onClick={(e) => e.stopPropagation()}>
                                                     <button
+                                                        onClick={() => {
+                                                            setSheetEstimate(est);
+                                                            setShowSheetModal(true);
+                                                        }}
+                                                        className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded mr-2"
+                                                        title="견적서 인쇄/미리보기"
+                                                    >
+                                                        <Printer className="w-4 h-4" />
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleEdit(est)}
                                                         className="text-blue-400 hover:underline text-xs mr-3"
                                                     >
@@ -481,6 +496,16 @@ const SalesPage = () => {
                 onSuccess={fetchOrders}
                 partners={partners}
                 orderToEdit={editingOrder}
+            />
+
+            <EstimateSheetModal
+                isOpen={showSheetModal}
+                onClose={() => {
+                    setShowSheetModal(false);
+                    setSheetEstimate(null);
+                }}
+                estimate={sheetEstimate}
+                onSave={fetchEstimates}
             />
         </div>
     );

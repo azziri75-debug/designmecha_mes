@@ -71,8 +71,10 @@ const autoHyphen = (value, type) => {
 
 const BasicsPageContent = () => {
     const [activeTab, setActiveTab] = useState('partners');
+
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
+    const [company, setCompany] = useState(null);
     const [loading, setLoading] = useState(true);
 
     // Modal States
@@ -112,269 +114,445 @@ const BasicsPageContent = () => {
                     setPartners([]);
                 }
             } else {
-                const res = await api.get('/basics/staff/');
-                if (Array.isArray(res.data)) {
-                    setStaff(res.data);
-                } else {
-                    setStaff([]);
-                }
+                console.error("Invalid data format for partners:", res.data);
+                setPartners([]);
             }
-        } catch (error) {
-            console.error("Failed to fetch data", error);
-            setPartners([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        let finalValue = value;
-
-        if (name === 'registration_number') {
-            finalValue = autoHyphen(value, 'bizNum').slice(0, 12); // Limit length
-        } else if (name === 'phone' || name === 'mobile') {
-            finalValue = autoHyphen(value, 'phone').slice(0, 13); // Limit length
-        }
-
-        setFormData(prev => ({ ...prev, [name]: finalValue }));
-    };
-
-    const handleCheckboxChange = (e) => {
-        const { value, checked } = e.target;
-        setFormData(prev => {
-            const currentTypes = prev.partner_type || [];
-            if (checked) {
-                return { ...prev, partner_type: [...currentTypes, value] };
+        } else if (activeTab === 'staff') {
+            const res = await api.get('/basics/staff/');
+            if (Array.isArray(res.data)) {
+                setStaff(res.data);
             } else {
-                return { ...prev, partner_type: currentTypes.filter(type => type !== value) };
+                setStaff([]);
             }
-        });
-    };
-
-    const handleFileUpload = async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-            const res = await api.post('/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            return { name: res.data.filename, url: res.data.url };
-        } catch (error) {
-            console.error("File upload failed", error);
-            alert("파일 업로드 실패");
-            return null;
+        } else if (activeTab === 'company') {
+            const res = await api.get('/basics/company');
+            setCompany(res.data || {});
+            setFormData(res.data || {});
         }
-    };
+    } catch (error) {
+        console.error("Failed to fetch data", error);
+        setPartners([]);
+    } finally {
+        setLoading(false);
+    }
+};
 
-    const openCreateModal = () => {
-        if (activeTab === 'partners') {
-            setModalType('create');
-            setFormData({ partner_type: ['CUSTOMER'] });
+const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    let finalValue = value;
+
+    if (name === 'registration_number') {
+        finalValue = autoHyphen(value, 'bizNum').slice(0, 12); // Limit length
+    } else if (name === 'phone' || name === 'mobile') {
+        finalValue = autoHyphen(value, 'phone').slice(0, 13); // Limit length
+    }
+
+    setFormData(prev => ({ ...prev, [name]: finalValue }));
+};
+
+const handleCheckboxChange = (e) => {
+    const { value, checked } = e.target;
+    setFormData(prev => {
+        const currentTypes = prev.partner_type || [];
+        if (checked) {
+            return { ...prev, partner_type: [...currentTypes, value] };
         } else {
-            setModalType('create_staff');
-            setFormData({ is_active: true });
+            return { ...prev, partner_type: currentTypes.filter(type => type !== value) };
         }
-        setShowModal(true);
-    };
+    });
+};
 
-    const openEditPartnerModal = (partner) => {
-        setModalType('edit');
-        setSelectedPartner(partner);
-        // Ensure partner_type is an array
-        const types = Array.isArray(partner.partner_type) ? partner.partner_type :
-            (typeof partner.partner_type === 'string' ? JSON.parse(partner.partner_type) : []);
-        setFormData({ ...partner, partner_type: types });
-        setShowModal(true);
-    };
+const handleFileUpload = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+        const res = await api.post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return { name: res.data.filename, url: res.data.url };
+    } catch (error) {
+        console.error("File upload failed", error);
+        alert("파일 업로드 실패");
+        return null;
+    }
+};
 
-    const openAddContactModal = (partner) => {
-        setModalType('add_contact');
-        setSelectedPartner(partner);
-        setFormData({});
-        setShowModal(true);
-    };
+const openCreateModal = () => {
+    if (activeTab === 'partners') {
+        setModalType('create');
+        setFormData({ partner_type: ['CUSTOMER'] });
+    } else {
+        setModalType('create_staff');
+        setFormData({ is_active: true });
+    }
+    setShowModal(true);
+};
 
-    const openEditContactModal = (partner, contact) => {
-        setModalType('edit_contact');
-        setSelectedPartner(partner);
-        setSelectedContact(contact);
-        setFormData(contact);
-        setShowModal(true);
-    };
+const openEditPartnerModal = (partner) => {
+    setModalType('edit');
+    setSelectedPartner(partner);
+    // Ensure partner_type is an array
+    const types = Array.isArray(partner.partner_type) ? partner.partner_type :
+        (typeof partner.partner_type === 'string' ? JSON.parse(partner.partner_type) : []);
+    setFormData({ ...partner, partner_type: types });
+    setShowModal(true);
+};
 
-    const openEditStaffModal = (staffMember) => {
-        setModalType('edit_staff');
-        setSelectedStaff(staffMember);
-        setFormData(staffMember);
-        setShowModal(true);
-    };
+const openAddContactModal = (partner) => {
+    setModalType('add_contact');
+    setSelectedPartner(partner);
+    setFormData({});
+    setShowModal(true);
+};
 
-    const handleDeletePartner = async (id) => {
-        if (window.confirm("정말 삭제하시겠습니까? 관련 데이터가 모두 삭제될 수 있습니다.")) {
-            try {
-                await api.delete(`/basics/partners/${id}`);
-                alert("삭제되었습니다.");
-                fetchData();
-            } catch (error) {
-                console.error("Delete failed", error);
-                alert("삭제 실패");
-            }
-        }
-    };
+const openEditContactModal = (partner, contact) => {
+    setModalType('edit_contact');
+    setSelectedPartner(partner);
+    setSelectedContact(contact);
+    setFormData(contact);
+    setShowModal(true);
+};
 
-    const handleDeleteContact = async (id) => {
-        if (window.confirm("정말 삭제하시겠습니까?")) {
-            try {
-                await api.delete(`/basics/contacts/${id}`);
-                alert("삭제되었습니다.");
-                fetchData();
-            } catch (error) {
-                console.error("Delete failed", error);
-                alert("삭제 실패");
-            }
-        }
-    };
+const openEditStaffModal = (staffMember) => {
+    setModalType('edit_staff');
+    setSelectedStaff(staffMember);
+    setFormData(staffMember);
+    setShowModal(true);
+};
 
-    const handleDeleteStaff = async (id) => {
-        if (window.confirm("정말 삭제하시겠습니까?")) {
-            try {
-                await api.delete(`/basics/staff/${id}`);
-                alert("삭제되었습니다.");
-                fetchData();
-            } catch (error) {
-                console.error("Delete failed", error);
-                alert("삭제 실패");
-            }
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+const handleDeletePartner = async (id) => {
+    if (window.confirm("정말 삭제하시겠습니까? 관련 데이터가 모두 삭제될 수 있습니다.")) {
         try {
-            if (activeTab === 'partners') {
-                if (modalType === 'create') {
-                    await api.post('/basics/partners/', {
-                        ...formData,
-                        partner_type: formData.partner_type || ['CUSTOMER']
-                    });
-                } else if (modalType === 'edit') {
-                    await api.put(`/basics/partners/${selectedPartner.id}`, formData);
-                } else if (modalType === 'add_contact') {
-                    await api.post(`/basics/contacts/?partner_id=${selectedPartner.id}`, formData);
-                } else if (modalType === 'edit_contact') {
-                    await api.put(`/basics/contacts/${selectedContact.id}`, formData);
-                }
-            } else {
-                if (modalType === 'create_staff') {
-                    await api.post('/basics/staff/', formData);
-                } else if (modalType === 'edit_staff') {
-                    await api.put(`/basics/staff/${selectedStaff.id}`, formData);
-                }
-            }
-            alert("처리되었습니다.");
-            setShowModal(false);
-            setFormData({});
+            await api.delete(`/basics/partners/${id}`);
+            alert("삭제되었습니다.");
             fetchData();
         } catch (error) {
-            console.error("Submit failed", error);
-            alert("처리 실패: " + (error.response?.data?.detail || error.message));
+            console.error("Delete failed", error);
+            alert("삭제 실패");
         }
-    };
+    }
+};
 
-    const toggleExpand = (id) => {
-        setExpandedPartnerId(expandedPartnerId === id ? null : id);
-    };
-
-    // Filter Logic
-    const filteredPartners = partners.filter(partner => {
-        if (filterType === 'ALL') return true;
-        // Check if partner_type array includes the filter type
-        const types = Array.isArray(partner.partner_type) ? partner.partner_type : [];
-        return types.includes(filterType);
-    });
-
-    const getPartnerTypeLabel = (type) => {
-        switch (type) {
-            case 'CUSTOMER': return '고객사';
-            case 'SUPPLIER': return '공급사';
-            case 'SUBCONTRACTOR': return '외주처';
-            default: return type;
+const handleDeleteContact = async (id) => {
+    if (window.confirm("정말 삭제하시겠습니까?")) {
+        try {
+            await api.delete(`/basics/contacts/${id}`);
+            alert("삭제되었습니다.");
+            fetchData();
+        } catch (error) {
+            console.error("Delete failed", error);
+            alert("삭제 실패");
         }
-    };
+    }
+};
 
-    return (
-        <div className="space-y-6 relative">
-            <div className="flex items-center justify-between">
-                <div className="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
-                    <button
-                        onClick={() => setActiveTab('partners')}
-                        className={cn(
-                            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                            activeTab === 'partners'
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                        )}
-                    >
-                        거래처 관리
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('staff')}
-                        className={cn(
-                            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                            activeTab === 'staff'
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                        )}
-                    >
-                        사원 관리
-                    </button>
-                </div>
+const handleDeleteStaff = async (id) => {
+    if (window.confirm("정말 삭제하시겠습니까?")) {
+        try {
+            await api.delete(`/basics/staff/${id}`);
+            alert("삭제되었습니다.");
+            fetchData();
+        } catch (error) {
+            console.error("Delete failed", error);
+            alert("삭제 실패");
+        }
+    }
+};
+
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+        if (activeTab === 'partners') {
+            if (modalType === 'create') {
+                await api.post('/basics/partners/', {
+                    ...formData,
+                    partner_type: formData.partner_type || ['CUSTOMER']
+                });
+            } else if (modalType === 'edit') {
+                await api.put(`/basics/partners/${selectedPartner.id}`, formData);
+            } else if (modalType === 'add_contact') {
+                await api.post(`/basics/contacts/?partner_id=${selectedPartner.id}`, formData);
+            } else if (modalType === 'edit_contact') {
+                await api.put(`/basics/contacts/${selectedContact.id}`, formData);
+            }
+        } else {
+            if (modalType === 'create_staff') {
+                await api.post('/basics/staff/', formData);
+            } else if (modalType === 'edit_staff') {
+                await api.put(`/basics/staff/${selectedStaff.id}`, formData);
+            }
+        }
+        alert("처리되었습니다.");
+        setShowModal(false);
+        setFormData({});
+        fetchData();
+    } catch (error) {
+        console.error("Submit failed", error);
+        alert("처리 실패: " + (error.response?.data?.detail || error.message));
+    }
+};
+
+const toggleExpand = (id) => {
+    setExpandedPartnerId(expandedPartnerId === id ? null : id);
+};
+
+// Filter Logic
+const filteredPartners = partners.filter(partner => {
+    if (filterType === 'ALL') return true;
+    // Check if partner_type array includes the filter type
+    const types = Array.isArray(partner.partner_type) ? partner.partner_type : [];
+    return types.includes(filterType);
+});
+
+const getPartnerTypeLabel = (type) => {
+    switch (type) {
+        case 'CUSTOMER': return '고객사';
+        case 'SUPPLIER': return '공급사';
+        case 'SUBCONTRACTOR': return '외주처';
+        default: return type;
+    }
+};
+
+return (
+    <div className="space-y-6 relative">
+        <div className="flex items-center justify-between">
+            <div className="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
                 <button
-                    type="button"
-                    onClick={openCreateModal}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20"
+                    onClick={() => setActiveTab('partners')}
+                    className={cn(
+                        "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                        activeTab === 'partners'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    )}
                 >
-                    <Plus className="w-4 h-4" />
-                    <span>신규 등록</span>
+                    거래처 관리
+                </button>
+                <button
+                    onClick={() => setActiveTab('staff')}
+                    className={cn(
+                        "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                        activeTab === 'staff'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    )}
+                >
+                    사원 관리
+                </button>
+                <button
+                    onClick={() => setActiveTab('company')}
+                    className={cn(
+                        "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                        activeTab === 'company'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    )}
+                >
+                    회사 정보
                 </button>
             </div>
+            <button
+                type="button"
+                onClick={openCreateModal}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20"
+            >
+                <Plus className="w-4 h-4" />
+                <span>신규 등록</span>
+            </button>
+        </div>
 
-            <Card>
-                <div className="p-4 border-b border-gray-700 flex flex-col md:flex-row items-center gap-4 justify-between">
-                    <div className="relative flex-1 max-w-sm w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="검색..."
-                            className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    {activeTab === 'partners' && (
-                        <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 overflow-x-auto">
-                            {[
-                                { id: 'ALL', label: '전체' },
-                                { id: 'CUSTOMER', label: '고객사' },
-                                { id: 'SUPPLIER', label: '공급사' },
-                                { id: 'SUBCONTRACTOR', label: '외주처' }
-                            ].map(type => (
-                                <button
-                                    key={type.id}
-                                    onClick={() => setFilterType(type.id)}
-                                    className={cn(
-                                        "px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
-                                        filterType === type.id
-                                            ? 'bg-gray-700 text-white shadow-sm'
-                                            : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                                    )}
-                                >
-                                    {type.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+        <Card>
+            <div className="p-4 border-b border-gray-700 flex flex-col md:flex-row items-center gap-4 justify-between">
+                <div className="relative flex-1 max-w-sm w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="검색..."
+                        className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                 </div>
+
+                {activeTab === 'partners' && (
+                    <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 overflow-x-auto">
+                        {[
+                            { id: 'ALL', label: '전체' },
+                            { id: 'CUSTOMER', label: '고객사' },
+                            { id: 'SUPPLIER', label: '공급사' },
+                            { id: 'SUBCONTRACTOR', label: '외주처' }
+                        ].map(type => (
+                            <button
+                                key={type.id}
+                                onClick={() => setFilterType(type.id)}
+                                className={cn(
+                                    "px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
+                                    filterType === type.id
+                                        ? 'bg-gray-700 text-white shadow-sm'
+                                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                )}
+                            >
+                                {type.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {activeTab === 'company' ? (
+                <div className="p-8">
+                    <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        try {
+                            await api.post('/basics/company', formData);
+                            alert("저장되었습니다.");
+                            fetchData();
+                        } catch (error) {
+                            console.error("Save failed", error);
+                            alert("저장 실패");
+                        }
+                    }} className="max-w-4xl mx-auto space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-6">
+                                <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">기본 정보</h3>
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-400">회사명</label>
+                                        <input name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-400">대표자명</label>
+                                        <input name="owner_name" value={formData.owner_name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-400">사업자등록번호</label>
+                                        <input name="registration_number" value={formData.registration_number || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" maxLength="12" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-400">주소</label>
+                                        <input name="address" value={formData.address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">연락처 정보</h3>
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-400">전화번호</label>
+                                        <input name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-400">팩스</label>
+                                        <input name="fax" value={formData.fax || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-400">이메일</label>
+                                        <input name="email" type="email" value={formData.email || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">이미지 (로고/직인)</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Logo Upload */}
+                                <div className="space-y-4">
+                                    <label className="text-sm font-medium text-gray-400 block">회사 로고</label>
+                                    <div className="flex items-start gap-4">
+                                        {formData.logo_image && (
+                                            <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
+                                                <img
+                                                    src={typeof formData.logo_image === 'string' ? JSON.parse(formData.logo_image).url : formData.logo_image.url}
+                                                    alt="Logo"
+                                                    className="max-w-full max-h-full object-contain"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(p => ({ ...p, logo_image: null }))}
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div className="flex-1">
+                                            <div className="w-full bg-gray-900 border border-gray-700 border-dashed text-gray-400 text-sm rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-500 hover:bg-gray-800 transition-all relative">
+                                                <Upload className="w-6 h-6 mb-1" />
+                                                <span>로고 이미지 업로드</span>
+                                                <span className="text-xs text-gray-500">권장: 투명 배경 PNG</span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            const data = await handleFileUpload(file);
+                                                            if (data) setFormData(p => ({ ...p, logo_image: data }));
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Stamp Upload */}
+                                <div className="space-y-4">
+                                    <label className="text-sm font-medium text-gray-400 block">회사 직인 (도장)</label>
+                                    <div className="flex items-start gap-4">
+                                        {formData.stamp_image && (
+                                            <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
+                                                <img
+                                                    src={typeof formData.stamp_image === 'string' ? JSON.parse(formData.stamp_image).url : formData.stamp_image.url}
+                                                    alt="Stamp"
+                                                    className="max-w-full max-h-full object-contain"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(p => ({ ...p, stamp_image: null }))}
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div className="flex-1">
+                                            <div className="w-full bg-gray-900 border border-gray-700 border-dashed text-gray-400 text-sm rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-500 hover:bg-gray-800 transition-all relative">
+                                                <Upload className="w-6 h-6 mb-1" />
+                                                <span>직인 이미지 업로드</span>
+                                                <span className="text-xs text-gray-500">권장: 투명 배경 PNG, 정사각형</span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            const data = await handleFileUpload(file);
+                                                            if (data) setFormData(p => ({ ...p, stamp_image: data }));
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4 border-t border-gray-700">
+                            <button
+                                type="submit"
+                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
+                            >
+                                <Smartphone className="w-4 h-4" /> {/* Just reuse icon or Save icon */}
+                                <span>정보 저장</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            ) : (
 
                 <div className="">
                     <table className="w-full text-left text-sm text-gray-400 border-collapse table-fixed">
@@ -586,10 +764,12 @@ const BasicsPageContent = () => {
                         </tbody>
                     </table>
                 </div>
-            </Card>
+            )}
+        </Card>
 
-            {/* Modal Overlay */}
-            {showModal && (
+        {/* Modal Overlay */}
+        {
+            showModal && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
                     <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg shadow-2xl overflow-hidden animation-fade-in">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
@@ -849,16 +1029,17 @@ const BasicsPageContent = () => {
                         </form>
                     </div>
                 </div>
-            )}
-            {/* File Viewer Modal - Portaled to body */}
-            <FileViewerModal
-                isOpen={showFileModal}
-                onClose={() => setShowFileModal(false)}
-                files={viewingFiles}
-                title={fileModalTitle}
-            />
-        </div>
-    );
+            )
+        }
+        {/* File Viewer Modal - Portaled to body */}
+        <FileViewerModal
+            isOpen={showFileModal}
+            onClose={() => setShowFileModal(false)}
+            files={viewingFiles}
+            title={fileModalTitle}
+        />
+    </div >
+);
 };
 
 const BasicsPage = () => {

@@ -28,6 +28,7 @@ class Estimate(Base):
     total_amount = Column(Float, default=0.0) # 총 견적 금액
     note = Column(Text, nullable=True)
     attachment_file = Column(JSON, nullable=True) # 첨부파일 (JSON List of {name, url})
+    sheet_metadata = Column(JSON, nullable=True) # 견적서 편집 상태 저장 (JSON)
     created_at = Column(DateTime, default=func.now())
 
     partner = relationship("Partner")

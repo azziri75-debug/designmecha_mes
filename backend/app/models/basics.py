@@ -49,3 +49,18 @@ class Staff(Base):
     main_duty = Column(String, nullable=True) # 주업무 (생산, 관리 등)
     phone = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+
+class Company(Base):
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    owner_name = Column(String, nullable=True) # 대표자
+    address = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    fax = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    registration_number = Column(String, nullable=True) # 사업자번호
+    logo_image = Column(JSON, nullable=True) # {name, url}
+    stamp_image = Column(JSON, nullable=True) # {name, url}
+

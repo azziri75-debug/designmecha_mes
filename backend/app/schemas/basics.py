@@ -74,3 +74,27 @@ class StaffResponse(StaffBase):
 
     class Config:
         from_attributes = True
+
+# Company Schemas
+class CompanyBase(BaseModel):
+    name: str
+    owner_name: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    fax: Optional[str] = None
+    email: Optional[EmailStr] = None
+    registration_number: Optional[str] = None
+    logo_image: Optional[dict] = None
+    stamp_image: Optional[dict] = None
+
+class CompanyCreate(CompanyBase):
+    pass
+
+class CompanyUpdate(CompanyBase):
+    pass
+
+class CompanyResponse(CompanyBase):
+    id: int
+
+    class Config:
+        from_attributes = True

@@ -192,3 +192,39 @@ async def delete_contact(
     await db.delete(contact)
     await db.commit()
     return {"message": "Contact deleted successfully"}
+
+# --- Company Endpoints ---
+from app.models.basics import Company
+from app.schemas.basics import CompanyCreate, CompanyResponse, CompanyUpdate
+
+@router.get("/company", response_model=Optional[CompanyResponse])
+async def read_company(
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Company).limit(1))
+    company = result.scalar_one_or_none()
+    return company
+
+@router.post("/company", response_model=CompanyResponse)
+async def create_or_update_company(
+    company_in: CompanyCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    # Check if company exists
+    result = await db.execute(select(Company).limit(1))
+    existing_company = result.scalar_one_or_none()
+
+    if existing_company:
+        # Update
+        for key, value in company_in.model_dump(exclude_unset=True).items():
+            setattr(existing_company, key, value)
+        await db.commit()
+        await db.refresh(existing_company)
+        return existing_company
+    else:
+        # Create
+        new_company = Company(**company_in.model_dump())
+        db.add(new_company)
+        await db.commit()
+        await db.refresh(new_company)
+        return new_company
