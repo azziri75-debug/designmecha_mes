@@ -209,7 +209,7 @@ const OutsourcingPage = () => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell>발주번호</TableCell>
-                                    <TableCell>수주번호</TableCell>
+                                    <TableCell>수주번호 (고객사)</TableCell>
                                     <TableCell>발주일자</TableCell>
                                     <TableCell>외주처</TableCell>
                                     <TableCell>품목 수</TableCell>
@@ -234,7 +234,12 @@ const OutsourcingPage = () => {
                                                 sx={{ cursor: 'pointer', backgroundColor: expandedOrderId === order.id ? 'action.hover' : 'inherit' }}
                                             >
                                                 <TableCell>{order.order_no}</TableCell>
-                                                <TableCell>{order.related_sales_order_info || '-'}</TableCell>
+                                                <TableCell>
+                                                    <Box>
+                                                        <Typography variant="body2">{order.related_sales_order_info || '-'}</Typography>
+                                                        <Typography variant="caption" color="textSecondary">{order.related_customer_names || '-'}</Typography>
+                                                    </Box>
+                                                </TableCell>
                                                 <TableCell>{order.order_date}</TableCell>
                                                 <TableCell>{order.partner?.name}</TableCell>
                                                 <TableCell>{order.items.length} 품목</TableCell>

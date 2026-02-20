@@ -63,6 +63,7 @@ class PurchaseOrder(PurchaseOrderBase):
     partner: Optional[Partner] = None
     items: List[PurchaseOrderItem] = []
     related_sales_order_info: Optional[str] = None
+    related_customer_names: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -125,6 +126,7 @@ class OutsourcingOrder(OutsourcingOrderBase):
     partner: Optional[Partner] = None
     items: List[OutsourcingOrderItem] = []
     related_sales_order_info: Optional[str] = None
+    related_customer_names: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -43,6 +43,14 @@ class PurchaseOrder(Base):
                 so_numbers.add(item.production_plan_item.plan.order.order_no)
         return ", ".join(sorted(so_numbers)) if so_numbers else None
 
+    @property
+    def related_customer_names(self):
+        names = set()
+        for item in self.items:
+            if item.production_plan_item and item.production_plan_item.plan and item.production_plan_item.plan.order and item.production_plan_item.plan.order.partner:
+                names.add(item.production_plan_item.plan.order.partner.name)
+        return ", ".join(sorted(names)) if names else None
+
 class PurchaseOrderItem(Base):
     __tablename__ = "purchase_order_items"
 
@@ -86,6 +94,14 @@ class OutsourcingOrder(Base):
             if item.production_plan_item and item.production_plan_item.plan and item.production_plan_item.plan.order:
                 so_numbers.add(item.production_plan_item.plan.order.order_no)
         return ", ".join(sorted(so_numbers)) if so_numbers else None
+
+    @property
+    def related_customer_names(self):
+        names = set()
+        for item in self.items:
+            if item.production_plan_item and item.production_plan_item.plan and item.production_plan_item.plan.order and item.production_plan_item.plan.order.partner:
+                names.add(item.production_plan_item.plan.order.partner.name)
+        return ", ".join(sorted(names)) if names else None
 
 class OutsourcingOrderItem(Base):
     __tablename__ = "outsourcing_order_items"
