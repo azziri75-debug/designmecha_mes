@@ -320,7 +320,7 @@ async def create_outsourcing_order(
         
         # Update ProductionPlanItem status if linked
         if item.production_plan_item_id:
-            from app.models.production import ProductionStatus
+            from app.models.production import ProductionStatus, ProductionPlanItem
             plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
             if plan_item:
                 plan_item.status = ProductionStatus.IN_PROGRESS
