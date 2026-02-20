@@ -29,7 +29,7 @@ async def read_production_plans(
     result = await db.execute(
         select(ProductionPlan)
         .options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
