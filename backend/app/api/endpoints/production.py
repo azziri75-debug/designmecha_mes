@@ -189,6 +189,7 @@ async def create_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner), # Deep load for Schema
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )
         .where(ProductionPlan.id == plan.id)
@@ -261,12 +262,14 @@ async def update_production_plan(
     await db.refresh(plan)
     
     # Re-fetch for response
+    # Re-fetch with full options for response
     result = await db.execute(
         select(ProductionPlan)
         .options(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner), # Deep Load
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )
         .where(ProductionPlan.id == plan_id)
@@ -322,10 +325,14 @@ async def update_production_plan_status(
     Update production plan status.
     If COMPLETED, update SalesOrder status to PRODUCTION_COMPLETED.
     """
-    # Eager load order to update its status
+    # Eager load items and linked orders
     result = await db.execute(
         select(ProductionPlan)
-        .options(selectinload(ProductionPlan.order))
+        .options(
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+        )
         .where(ProductionPlan.id == plan_id)
     )
     plan = result.scalar_one_or_none()
@@ -335,35 +342,56 @@ async def update_production_plan_status(
         
     plan.status = status
     
-    # Check for linked orders if Completing
+    # Auto-Complete Logic
     if status == ProductionStatus.COMPLETED:
-        # Check Purchase Orders Status
-        # We want to ensure all linked PO items are RECEIVED or Orders are COMPLETED?
-        # User said: "check then complete". 
-        # If any mapped PO item is NOT Received, warn?
-        # Let's check if any linked PO Item belongs to a PO that is NOT Completed/Confirmed?
-        # Or simpler: Check if any linked item exists that is not fully processed.
-        # Given "PurchaseOrderItem" has "received_quantity", we could check if received >= quantity.
-        # But for now, let's just check if any linked Order is still PENDING.
+        affected_po_ids = set()
+        affected_oo_ids = set()
         
-        # Check Purchase Orders
-        # Join PlanItem -> PurchaseOrderItem -> PurchaseOrder
-        stmt_po = select(PurchaseOrder).join(PurchaseOrderItem).join(ProductionPlanItem).where(
-            ProductionPlanItem.plan_id == plan_id,
-            PurchaseOrder.status.in_([PurchaseStatus.PENDING]) 
-        )
-        result_po = await db.execute(stmt_po)
-        if result_po.first():
-             raise HTTPException(status_code=400, detail="Cannot complete plan with PENDING Purchase Orders. Please complete/confirm orders first.")
+        for item in plan.items:
+            # 1. Update Purchase Items
+            for po_item in item.purchase_items:
+                # Set received quantity to full
+                if po_item.quantity > po_item.received_quantity:
+                    po_item.received_quantity = po_item.quantity
+                    db.add(po_item)
+                affected_po_ids.add(po_item.purchase_order_id)
+                
+            # 2. Update Outsourcing Items
+            for oo_item in item.outsourcing_items:
+                if oo_item.status != OutsourcingStatus.COMPLETED:
+                    oo_item.status = OutsourcingStatus.COMPLETED
+                    db.add(oo_item)
+                affected_oo_ids.add(oo_item.outsourcing_order_id)
+        
+        await db.flush()
+        
+        # 3. Check and Complete Purchase Orders
+        for po_id in affected_po_ids:
+            po_query = select(PurchaseOrder).options(selectinload(PurchaseOrder.items)).where(PurchaseOrder.id == po_id)
+            po_result = await db.execute(po_query)
+            po = po_result.scalar_one_or_none()
+            
+            if po:
+                # Check if all items are fully received
+                all_received = all(i.received_quantity >= i.quantity for i in po.items)
+                if all_received:
+                    po.status = PurchaseStatus.COMPLETED
+                    po.delivery_date = datetime.now().date() # Set actual delivery date?
+                    db.add(po)
 
-        # Check Outsourcing Orders
-        stmt_oo = select(OutsourcingOrder).join(OutsourcingOrderItem).join(ProductionPlanItem).where(
-            ProductionPlanItem.plan_id == plan_id,
-            OutsourcingOrder.status.in_([OutsourcingStatus.PENDING])
-        )
-        result_oo = await db.execute(stmt_oo)
-        if result_oo.first():
-             raise HTTPException(status_code=400, detail="Cannot complete plan with PENDING Outsourcing Orders. Please complete/confirm orders first.")
+        # 4. Check and Complete Outsourcing Orders
+        for oo_id in affected_oo_ids:
+            oo_query = select(OutsourcingOrder).options(selectinload(OutsourcingOrder.items)).where(OutsourcingOrder.id == oo_id)
+            oo_result = await db.execute(oo_query)
+            oo = oo_result.scalar_one_or_none()
+            
+            if oo:
+                # Check if all items are completed
+                all_completed = all(i.status == OutsourcingStatus.COMPLETED for i in oo.items)
+                if all_completed:
+                    oo.status = OutsourcingStatus.COMPLETED
+                    oo.delivery_date = datetime.now().date()
+                    db.add(oo)
 
     # Sync with Sales Order
     if plan.order:
@@ -371,8 +399,7 @@ async def update_production_plan_status(
         if status == ProductionStatus.COMPLETED:
             plan.order.status = OrderStatus.PRODUCTION_COMPLETED
         elif status == ProductionStatus.IN_PROGRESS or status == ProductionStatus.PLANNED:
-            # If reverting from COMPLETED, set back to CONFIRMED (or whatever meant "In Production")
-            # Assuming 'CONFIRMED' is the state before Completion.
+            # If reverting from COMPLETED, set back to CONFIRMED
             plan.order.status = OrderStatus.CONFIRMED
             
         db.add(plan.order)
@@ -386,6 +413,7 @@ async def update_production_plan_status(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner), # Deep Load
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )
         .where(ProductionPlan.id == plan_id)
