@@ -3,9 +3,10 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse
 } from '@mui/material';
-import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
+import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import ProductionPlanModal from '../components/ProductionPlanModal';
+import ProductionSheetModal from '../components/ProductionSheetModal';
 
 const ProductionPage = () => {
     const [tabIndex, setTabIndex] = useState(0);
@@ -17,6 +18,15 @@ const ProductionPage = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [selectedPlan, setSelectedPlan] = useState(null);
+
+    // Sheet Modal State
+    const [sheetModalOpen, setSheetModalOpen] = useState(false);
+    const [sheetPlan, setSheetPlan] = useState(null);
+
+    const handlePrintClick = (plan) => {
+        setSheetPlan(plan);
+        setSheetModalOpen(true);
+    };
 
     useEffect(() => {
         fetchOrders();
@@ -171,6 +181,7 @@ const ProductionPage = () => {
                             onEdit={handleEditClick}
                             onDelete={handleDeletePlan}
                             onComplete={handleCompletePlan}
+                            onPrint={handlePrintClick}
                             readonly={false}
                         />
                     )}
@@ -180,6 +191,7 @@ const ProductionPage = () => {
                             orders={orders}
                             onEdit={handleEditClick}
                             onDelete={handleDeletePlan}
+                            onPrint={handlePrintClick}
                             readonly={false}
                         />
                     )}
@@ -192,6 +204,13 @@ const ProductionPage = () => {
                 onSuccess={handleSuccess}
                 order={selectedOrder}
                 plan={selectedPlan}
+            />
+
+            <ProductionSheetModal
+                isOpen={sheetModalOpen}
+                onClose={() => setSheetModalOpen(false)}
+                plan={sheetPlan}
+                onSave={fetchPlans}
             />
         </Box>
     );
@@ -289,7 +308,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, readonly }) => {
+const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, readonly }) => {
     return (
         <TableContainer>
             <Table>
@@ -317,6 +336,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, readonly })
                                 onEdit={onEdit}
                                 onDelete={onDelete}
                                 onComplete={onComplete}
+                                onPrint={onPrint}
                                 readonly={readonly}
                             />
                         ))
@@ -327,7 +347,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, readonly })
     );
 };
 
-const Row = ({ plan, onEdit, onDelete, onComplete, readonly }) => {
+const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, readonly }) => {
     const [open, setOpen] = useState(false);
     const order = plan.order; // Used order from plan (eager loaded)
 
@@ -369,6 +389,9 @@ const Row = ({ plan, onEdit, onDelete, onComplete, readonly }) => {
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     {!readonly && (
                         <>
+                            <IconButton size="small" color="primary" onClick={() => onPrint(plan)} title="생산관리시트출력">
+                                <PrintIcon />
+                            </IconButton>
                             <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
                                 <EditIcon />
                             </IconButton>

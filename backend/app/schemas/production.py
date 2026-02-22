@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union, Any
 from datetime import date, datetime
 from pydantic import BaseModel
 from enum import Enum
@@ -48,6 +48,8 @@ class ProductionPlanItemUpdate(BaseModel):
 class ProductionPlanBase(BaseModel):
     plan_date: date
     status: ProductionStatus = ProductionStatus.PLANNED
+    attachment_file: Optional[Union[List[Any], str]] = None
+    sheet_metadata: Optional[dict] = None
 
 # --- Plan Schemas (Forward Declaration for Item) ---
 class ProductionPlanSimple(ProductionPlanBase):
@@ -85,6 +87,8 @@ class ProductionPlanCreate(BaseModel):
 class ProductionPlanUpdate(BaseModel):
     plan_date: Optional[date] = None
     status: Optional[ProductionStatus] = None
+    attachment_file: Optional[Union[List[Any], str]] = None
+    sheet_metadata: Optional[dict] = None
     items: Optional[List[ProductionPlanItemCreate]] = None
 
 class ProductionPlan(ProductionPlanBase):

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, Date, DateTime, Boolean, Enum
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, Date, DateTime, Boolean, Enum, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base import Base
@@ -22,6 +22,9 @@ class ProductionPlan(Base):
     plan_date = Column(Date, nullable=False) # 계획 수립일
     
     status = Column(Enum(ProductionStatus), default=ProductionStatus.PLANNED)
+    
+    attachment_file = Column(JSON, nullable=True) # 생산관리시트 PDF 파일
+    sheet_metadata = Column(JSON, nullable=True) # 폼 저장 상태
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
