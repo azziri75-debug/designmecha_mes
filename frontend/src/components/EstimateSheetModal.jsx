@@ -3,7 +3,7 @@ import { X, Save, Download, Printer, Edit2, RotateCcw } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
-import { cn } from '../lib/utils';
+import { cn, getImageUrl } from '../lib/utils';
 
 const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
     const [company, setCompany] = useState(null);
@@ -278,8 +278,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                                     <span className="inline-block w-12 text-gray-500">성명</span> {company?.owner_name || company?.representative}
                                                     {(metadata.show_stamp && (company?.stamp_image || company?.logo_image)) && (
                                                         <img
-                                                            src={(typeof company.stamp_image === 'string' ? JSON.parse(company.stamp_image).url : company.stamp_image?.url) ||
-                                                                (typeof company.logo_image === 'string' ? JSON.parse(company.logo_image).url : company.logo_image?.url)}
+                                                            src={getImageUrl((typeof company.stamp_image === 'string' ? JSON.parse(company.stamp_image).url : company.stamp_image?.url) ||
+                                                                (typeof company.logo_image === 'string' ? JSON.parse(company.logo_image).url : company.logo_image?.url))}
                                                             alt="Stamp"
                                                             className="absolute -top-3 -right-2 w-12 h-12 object-contain opacity-80 mix-blend-multiply"
                                                         />
