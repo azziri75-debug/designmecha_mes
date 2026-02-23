@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox
+    TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import PurchaseOrderModal from '../components/PurchaseOrderModal';
+import PurchaseSheetModal from '../components/PurchaseSheetModal';
 
 const PurchasePage = () => {
     const [tabValue, setTabValue] = useState(0);
@@ -17,6 +18,11 @@ const PurchasePage = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [initialModalItems, setInitialModalItems] = useState([]);
+
+    // 견적의뢰서/구매발주서 모달
+    const [sheetModalOpen, setSheetModalOpen] = useState(false);
+    const [sheetOrder, setSheetOrder] = useState(null);
+    const [sheetType, setSheetType] = useState('purchase_order');
 
     useEffect(() => {
         if (tabValue === 0) {
@@ -256,15 +262,34 @@ const PurchasePage = () => {
                                                     />
                                                 </TableCell>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <IconButton size="small" onClick={() => handleEditClick(order)}>
-                                                        <EditIcon />
-                                                    </IconButton>
-                                                    <IconButton size="small" color="error" onClick={() => handleDeleteOrder(order.id)}>
-                                                        <DeleteIcon />
-                                                    </IconButton>
-                                                    <IconButton size="small">
-                                                        <PrintIcon />
-                                                    </IconButton>
+                                                    <Tooltip title="수정">
+                                                        <IconButton size="small" onClick={() => handleEditClick(order)}>
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="삭제">
+                                                        <IconButton size="small" color="error" onClick={() => handleDeleteOrder(order.id)}>
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="견적의뢰서">
+                                                        <IconButton size="small" color="info" onClick={() => {
+                                                            setSheetOrder(order);
+                                                            setSheetType('estimate_request');
+                                                            setSheetModalOpen(true);
+                                                        }}>
+                                                            <DescIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="구매발주서">
+                                                        <IconButton size="small" color="success" onClick={() => {
+                                                            setSheetOrder(order);
+                                                            setSheetType('purchase_order');
+                                                            setSheetModalOpen(true);
+                                                        }}>
+                                                            <PrintIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
                                                 </TableCell>
                                             </TableRow>
                                             {expandedOrderId === order.id && (
@@ -317,6 +342,17 @@ const PurchasePage = () => {
                 onSuccess={handleSuccess}
                 order={selectedOrder}
                 initialItems={initialModalItems}
+            />
+
+            <PurchaseSheetModal
+                isOpen={sheetModalOpen}
+                onClose={() => setSheetModalOpen(false)}
+                order={sheetOrder}
+                sheetType={sheetType}
+                onSave={() => {
+                    if (tabValue === 1) fetchOrders();
+                    else fetchCompletedOrders();
+                }}
             />
         </Box>
     );
