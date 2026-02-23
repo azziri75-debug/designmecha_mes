@@ -113,9 +113,9 @@ const ProductsPage = () => {
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (file) {
-            const url = await handleFileUpload(file);
-            if (url) {
-                setProductFormData(prev => ({ ...prev, drawing_file: url }));
+            const fileData = await handleFileUpload(file);
+            if (fileData) {
+                setProductFormData(prev => ({ ...prev, drawing_file: JSON.stringify(fileData) }));
             }
         }
     };
@@ -526,7 +526,7 @@ const ProductsPage = () => {
                                                                                                 try {
                                                                                                     fileList = pp.attachment_file ? JSON.parse(pp.attachment_file) : [];
                                                                                                     if (!Array.isArray(fileList)) fileList = [pp.attachment_file];
-                                                                                                } catch (e) {
+                                                                                                } catch {
                                                                                                     fileList = pp.attachment_file ? [pp.attachment_file] : [];
                                                                                                 }
 
@@ -685,7 +685,15 @@ const ProductsPage = () => {
                                     <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} />
                                     <div className="flex flex-col items-center gap-2 text-gray-500">
                                         <Upload className="w-6 h-6" />
-                                        <span className="text-sm">{productFormData.drawing_file ? productFormData.drawing_file : "클릭하여 파일 업로드"}</span>
+                                        <span className="text-sm">{(() => {
+                                            if (!productFormData.drawing_file) return "클릭하여 파일 업로드";
+                                            try {
+                                                const parsed = typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file;
+                                                return parsed.name || "파일이 등록되었습니다";
+                                            } catch {
+                                                return "파일이 등록되었습니다";
+                                            }
+                                        })()}</span>
                                     </div>
                                 </div>
                             </div>
@@ -949,7 +957,7 @@ const ProductsPage = () => {
                                                                             try {
                                                                                 existingFiles = p.attachment_file ? JSON.parse(p.attachment_file) : [];
                                                                                 if (!Array.isArray(existingFiles)) existingFiles = [p.attachment_file];
-                                                                            } catch (e) {
+                                                                            } catch {
                                                                                 existingFiles = p.attachment_file ? [p.attachment_file] : [];
                                                                             }
 
@@ -978,7 +986,7 @@ const ProductsPage = () => {
                                                                 try {
                                                                     fileList = p.attachment_file ? JSON.parse(p.attachment_file) : [];
                                                                     if (!Array.isArray(fileList)) fileList = [p.attachment_file];
-                                                                } catch (e) {
+                                                                } catch {
                                                                     fileList = p.attachment_file ? [p.attachment_file] : [];
                                                                 }
 

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional
 
 from app.api.deps import get_db
@@ -66,6 +67,8 @@ async def update_partner(
     
     for key, value in partner_update.model_dump(exclude_unset=True).items():
         setattr(partner, key, value)
+        if key in ["attachment_file", "partner_type"]:
+            flag_modified(partner, key)
     
     await db.commit()
     await db.refresh(partner)

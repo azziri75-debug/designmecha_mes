@@ -340,8 +340,9 @@ const SalesPage = () => {
                                                                                     href={getImageUrl(file.url)}
                                                                                     target="_blank"
                                                                                     rel="noopener noreferrer"
+                                                                                    download={file.name}
                                                                                     className="text-blue-400 hover:text-blue-300 hover:underline block text-xs truncate max-w-[150px]"
-                                                                                    title={file.name}
+                                                                                    title={`${file.name} - 클릭하여 다운로드`}
                                                                                 >
                                                                                     {file.name}
                                                                                 </a>

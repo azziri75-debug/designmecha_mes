@@ -425,7 +425,7 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, 
                         if (fileList.length > 0) {
                             return fileList.map((file, idx) => (
                                 <div key={idx} className="flex items-center gap-2 mb-1">
-                                    <a href={getImageUrl(file.url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline block text-xs truncate max-w-[150px]" title={file.name}>
+                                    <a href={getImageUrl(file.url)} target="_blank" rel="noopener noreferrer" download={file.name} className="text-blue-500 hover:underline block text-xs truncate max-w-[150px]" title={`${file.name} - 클릭하여 다운로드`}>
                                         {file.name}
                                     </a>
                                     {!readonly && (

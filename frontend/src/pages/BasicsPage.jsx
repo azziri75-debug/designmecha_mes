@@ -74,7 +74,7 @@ const BasicsPageContent = () => {
 
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
-    const [company, setCompany] = useState(null);
+    const [company, setCompany] = useState(null); // eslint-disable-line no-unused-vars
     const [loading, setLoading] = useState(true);
 
     // Modal States
@@ -619,7 +619,7 @@ const BasicsPageContent = () => {
                                                                 const parsed = typeof rawFiles === 'string' ? JSON.parse(rawFiles) : rawFiles;
                                                                 fileList = Array.isArray(parsed) ? parsed : [parsed];
                                                             }
-                                                        } catch (e) {
+                                                        } catch {
                                                             // Fallback: treat as single file string/object if parse fails
                                                             fileList = rawFiles ? [rawFiles] : [];
                                                         }
@@ -848,7 +848,7 @@ const BasicsPageContent = () => {
                                                                             : formData.attachment_file
                                                                     ) : [];
                                                                     if (!Array.isArray(existingFiles)) existingFiles = [existingFiles].filter(Boolean); // handle legacy single obj/string
-                                                                } catch (e) {
+                                                                } catch {
                                                                     existingFiles = formData.attachment_file ? [formData.attachment_file] : [];
                                                                 }
 
@@ -889,7 +889,7 @@ const BasicsPageContent = () => {
                                                                 : formData.attachment_file
                                                         ) : [];
                                                         if (!Array.isArray(fileList)) fileList = [fileList].filter(Boolean);
-                                                    } catch (e) {
+                                                    } catch {
                                                         fileList = [];
                                                     }
 
