@@ -21,8 +21,9 @@ class CORSStaticFiles(StaticFiles):
             await send(message)
         await super().__call__(scope, receive, cors_send)
 
-# Mount static files
-UPLOAD_DIR = "uploads"
+# Mount static files — use absolute path to avoid CWD issues in deployment
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/
+UPLOAD_DIR = os.path.join(_BASE_DIR, "uploads")
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 

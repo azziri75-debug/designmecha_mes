@@ -9,7 +9,9 @@ import mimetypes
 
 router = APIRouter()
 
-UPLOAD_DIR = "uploads"
+# Use absolute path based on project root to avoid CWD issues
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # backend/
+UPLOAD_DIR = os.path.join(_BASE_DIR, "uploads")
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
@@ -51,9 +53,10 @@ async def download_file(path: str, filename: str = None):
             raise HTTPException(status_code=400, detail="Invalid path")
             
         file_path = os.path.join(UPLOAD_DIR, clean_path)
+        print(f"[DOWNLOAD DEBUG] path param='{path}', clean_path='{clean_path}', file_path='{file_path}', exists={os.path.exists(file_path)}")
         
         if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="File not found")
+            raise HTTPException(status_code=404, detail=f"File not found: {clean_path}")
             
         if not filename: # Changed from download_filename to filename to match parameter
             # Try to extract from path if not provided
@@ -94,9 +97,10 @@ async def preview_file(path: str):
             raise HTTPException(status_code=400, detail="Invalid path")
             
         file_path = os.path.join(UPLOAD_DIR, clean_path)
+        print(f"[PREVIEW DEBUG] path param='{path}', clean_path='{clean_path}', file_path='{file_path}', exists={os.path.exists(file_path)}")
         
         if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="File not found")
+            raise HTTPException(status_code=404, detail=f"File not found: {clean_path}")
             
         # Determine media type for browser preview
         media_type, _ = mimetypes.guess_type(file_path)
