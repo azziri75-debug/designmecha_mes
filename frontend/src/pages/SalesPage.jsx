@@ -323,10 +323,12 @@ const SalesPage = () => {
                                                 <td className="px-6 py-4">{est.items?.length || 0} 건</td>
                                                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center gap-2">
-                                                        {est.attachment_file && (() => {
+                                                        {(() => {
                                                             let files = [];
                                                             try {
-                                                                files = typeof est.attachment_file === 'string' ? JSON.parse(est.attachment_file) : est.attachment_file;
+                                                                if (est.attachment_file) {
+                                                                    files = typeof est.attachment_file === 'string' ? JSON.parse(est.attachment_file) : est.attachment_file;
+                                                                }
                                                             } catch (e) { files = [] }
 
                                                             if (Array.isArray(files) && files.length > 0) {
