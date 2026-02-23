@@ -14,6 +14,12 @@ from app.models.basics import Partner
 from app.schemas import production as schemas
 from datetime import datetime
 import uuid
+import json
+import os
+import urllib.parse
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from openpyxl.utils import get_column_letter
 
 router = APIRouter()
 
@@ -324,6 +330,240 @@ async def update_production_plan(
     )
     plan = result.scalar_one()
     return plan
+
+@router.post("/plans/{plan_id}/export_excel", response_model=schemas.ProductionPlan)
+async def export_production_plan_excel(
+    plan_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Generate an Excel file for the Production Plan and attach it.
+    """
+    # 1. Fetch Plan with all relations
+    result = await db.execute(
+        select(ProductionPlan)
+        .options(
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        )
+        .where(ProductionPlan.id == plan_id)
+    )
+    plan = result.scalar_one_or_none()
+    
+    if not plan:
+        raise HTTPException(status_code=404, detail="Production Plan not found")
+
+    # 2. Parse Metadata
+    metadata = {}
+    if plan.sheet_metadata:
+        try:
+            metadata = json.loads(plan.sheet_metadata) if isinstance(plan.sheet_metadata, str) else plan.sheet_metadata
+        except:
+            pass
+            
+    order = plan.order
+
+    # 3. Create Workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "생산관리시트"
+
+    # Define Styles
+    header_font = Font(name='Malgun Gothic', size=14, bold=True)
+    bold_font = Font(name='Malgun Gothic', size=10, bold=True)
+    normal_font = Font(name='Malgun Gothic', size=10)
+    
+    center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left_align = Alignment(horizontal='left', vertical='center', wrap_text=True)
+    
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    gray_fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+
+    def style_range(ws, cell_range, border=thin_border, font=normal_font, alignment=center_align, fill=None):
+        for row in ws[cell_range]:
+            for cell in row:
+                cell.border = border
+                cell.font = font
+                cell.alignment = alignment
+                if fill:
+                    cell.fill = fill
+
+    col_widths = {'A': 10, 'B': 10, 'C': 15, 'D': 25, 'E': 15, 'F': 12, 'G': 12, 'H': 10, 'I': 10, 'J': 10}
+    for col, width in col_widths.items():
+        ws.column_dimensions[col].width = width
+
+    ws.merge_cells('A1:J2')
+    title_cell = ws['A1']
+    title_cell.value = "생산관리시트"
+    title_cell.font = header_font
+    title_cell.alignment = center_align
+
+    ws.merge_cells('B4:E4')
+    ws.merge_cells('G4:J4')
+    ws['A4'] = "고객"
+    ws['B4'] = order.partner.name if order and order.partner else "-"
+    ws['F4'] = "수주일"
+    ws['G4'] = str(order.order_date) if order and order.order_date else "-"
+    
+    ws.merge_cells('B5:E5')
+    ws.merge_cells('G5:J5')
+    ws['A5'] = "품명"
+    unique_products = []
+    seen = set()
+    for item in plan.items:
+        if item.product and item.product.id not in seen:
+            seen.add(item.product.id)
+            unique_products.append({"product": item.product, "quantity": item.quantity, "note": item.note})
+            
+    summary_prod_name = "-"
+    if unique_products:
+        summary_prod_name = unique_products[0]["product"].name
+        if len(unique_products) > 1:
+            summary_prod_name += f" 외 {len(unique_products) - 1}건"
+            
+    ws['B5'] = summary_prod_name
+    ws['F5'] = "요구납기일"
+    ws['G5'] = str(order.delivery_date) if order and order.delivery_date else "-"
+
+    ws.merge_cells('B6:E6')
+    ws.merge_cells('G6:J6')
+    ws['A6'] = "수주금액"
+    ws['B6'] = metadata.get('order_amount', str(order.total_amount) if order else "-")
+    ws['F6'] = "수주담당자"
+    ws['G6'] = metadata.get('manager', "-")
+
+    style_range(ws, 'A4:A6', font=bold_font, fill=gray_fill)
+    style_range(ws, 'F4:F6', font=bold_font, fill=gray_fill)
+    style_range(ws, 'A4:J6')
+
+    start_row = 8
+    ws.merge_cells(f'A{start_row}:C{start_row}')
+    ws.merge_cells(f'D{start_row}:F{start_row}')
+    ws.merge_cells(f'G{start_row}:H{start_row}')
+    ws.merge_cells(f'I{start_row}:J{start_row}')
+    
+    ws[f'A{start_row}'] = "품명"
+    ws[f'D{start_row}'] = "규격"
+    ws[f'G{start_row}'] = "재질"
+    ws[f'I{start_row}'] = "수량"
+    style_range(ws, f'A{start_row}:J{start_row}', font=bold_font, fill=gray_fill)
+
+    curr_row = start_row + 1
+    for prod_info in unique_products:
+        ws.merge_cells(f'A{curr_row}:C{curr_row}')
+        ws.merge_cells(f'D{curr_row}:F{curr_row}')
+        ws.merge_cells(f'G{curr_row}:H{curr_row}')
+        ws.merge_cells(f'I{curr_row}:J{curr_row}')
+        
+        ws[f'A{curr_row}'] = prod_info["product"].name
+        ws[f'D{curr_row}'] = prod_info["product"].code or "-"
+        ws[f'G{curr_row}'] = prod_info["product"].material or "-"
+        ws[f'I{curr_row}'] = prod_info["quantity"]
+        
+        style_range(ws, f'A{curr_row}:J{curr_row}', alignment=center_align)
+        ws[f'A{curr_row}'].alignment = left_align
+        curr_row += 1
+
+    while curr_row < start_row + 4:
+        ws.merge_cells(f'A{curr_row}:C{curr_row}')
+        ws.merge_cells(f'D{curr_row}:F{curr_row}')
+        ws.merge_cells(f'G{curr_row}:H{curr_row}')
+        ws.merge_cells(f'I{curr_row}:J{curr_row}')
+        style_range(ws, f'A{curr_row}:J{curr_row}')
+        curr_row += 1
+
+    memo_row = curr_row + 1
+    ws.merge_cells(f'A{memo_row}:A{memo_row+1}')
+    ws.merge_cells(f'B{memo_row}:J{memo_row+1}')
+    ws[f'A{memo_row}'] = "Memo"
+    ws[f'B{memo_row}'] = metadata.get('memo', "")
+    style_range(ws, f'A{memo_row}:A{memo_row+1}', font=bold_font, fill=gray_fill)
+    style_range(ws, f'B{memo_row}:J{memo_row+1}', alignment=left_align)
+
+    proc_start_row = memo_row + 3
+    headers = ["구분", "순번", "공정", "공정내용", "업체", "품명", "규격", "수량", "시작", "종료"]
+    for i, h in enumerate(headers):
+        cell = ws.cell(row=proc_start_row, column=i+1, value=h)
+        cell.font = bold_font
+        cell.fill = gray_fill
+        cell.border = thin_border
+        cell.alignment = center_align
+
+    proc_row = proc_start_row + 1
+    def get_type_label(ctype):
+        if not ctype: return "-"
+        if "INTERNAL" in ctype or "자가" in ctype: return "자가"
+        if "OUTSOURCING" in ctype or "외주" in ctype: return "외주"
+        if "PURCHASE" in ctype or "구매" in ctype: return "구매"
+        return ctype
+        
+    for idx, item in enumerate(plan.items):
+        ws.cell(row=proc_row, column=1, value=get_type_label(item.course_type))
+        ws.cell(row=proc_row, column=2, value=item.sequence or (idx + 1))
+        ws.cell(row=proc_row, column=3, value=item.process_name or "-")
+        
+        note_cell = ws.cell(row=proc_row, column=4, value=item.note or "-")
+        note_cell.alignment = left_align
+        
+        partner_cell = ws.cell(row=proc_row, column=5, value=item.partner_name or "-")
+        partner_cell.alignment = left_align
+        
+        ws.cell(row=proc_row, column=6, value="-")
+        ws.cell(row=proc_row, column=7, value="-")
+        ws.cell(row=proc_row, column=8, value=item.quantity)
+        ws.cell(row=proc_row, column=9, value=str(item.start_date) if item.start_date else "-")
+        ws.cell(row=proc_row, column=10, value=str(item.end_date) if item.end_date else "-")
+        
+        style_range(ws, f'A{proc_row}:J{proc_row}')
+        proc_row += 1
+
+    upload_dir = "uploads/production"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    filename = f"ProductionSheet_{plan.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    file_path = os.path.join(upload_dir, filename)
+    wb.save(file_path)
+
+    file_url = f"/uploads/production/{urllib.parse.quote(filename)}"
+    new_attachment = {
+        "url": file_url,
+        "name": filename
+    }
+
+    current_attachments = []
+    if plan.attachment_file:
+        try:
+           current_attachments = json.loads(plan.attachment_file) if isinstance(plan.attachment_file, str) else plan.attachment_file
+           if not isinstance(current_attachments, list):
+               current_attachments = [current_attachments]
+        except:
+            pass
+
+    current_attachments.append(new_attachment)
+    plan.attachment_file = current_attachments
+
+    db.add(plan)
+    await db.commit()
+    
+    result = await db.execute(
+        select(ProductionPlan)
+        .options(
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner), 
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        )
+        .where(ProductionPlan.id == plan.id)
+    )
+    return result.scalar_one()
 
 @router.delete("/plans/{plan_id}", status_code=204)
 async def delete_production_plan(

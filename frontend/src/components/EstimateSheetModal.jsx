@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Save, Download, Printer, Edit2, RotateCcw } from 'lucide-react';
+import { X, Save, Download, Printer, Edit2, RotateCcw, FileSpreadsheet } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
@@ -137,6 +137,30 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         }
     };
 
+    const handleExcelExport = async () => {
+        try {
+            setSaving(true);
+
+            // 1. Sync metadata
+            await api.put(`/sales/estimates/${estimate.id}`, {
+                sheet_metadata: metadata
+            });
+
+            // 2. Export Excel
+            await api.post(`/sales/estimates/${estimate.id}/export_excel`);
+
+            alert("엑셀 파일이 생성되어 첨부파일에 저장되었습니다.");
+            if (onSave) onSave();
+            onClose();
+        } catch (error) {
+            console.error("Excel Generation failed", error);
+            const errDetail = error.response?.data?.detail || error.message || "알 수 없는 오류";
+            alert(`엑셀 생성 및 저장 실패:\n${typeof errDetail === 'object' ? JSON.stringify(errDetail) : errDetail}`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     if (!isOpen || !estimate) return null;
 
     // Helper for currency formatting
@@ -172,7 +196,15 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
                         >
                             <Save className="w-4 h-4" />
-                            {saving ? "저장 중..." : "저장 및 첨부"}
+                            {saving ? "저장 중..." : "PDF 저장 및 첨부"}
+                        </button>
+                        <button
+                            onClick={handleExcelExport}
+                            disabled={saving}
+                            className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-green-900/20 ml-2"
+                        >
+                            <FileSpreadsheet className="w-4 h-4" />
+                            {saving ? "저장 중..." : "엑셀 저장 및 첨부"}
                         </button>
                         <button onClick={onClose} className="text-gray-400 hover:text-white p-2">
                             <X className="w-6 h-6" />

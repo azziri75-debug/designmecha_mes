@@ -4,7 +4,7 @@ import { X, Download, ExternalLink, FileText, ArrowLeft, Loader2, Image as Image
 import { cn } from '../lib/utils';
 import api from '../lib/api'; // Assuming you have an axios instance or similar
 
-const FileViewerModal = ({ isOpen, onClose, files, title }) => {
+const FileViewerModal = ({ isOpen, onClose, files, title, onDeleteFile }) => {
     // State for internal preview
     const [previewFile, setPreviewFile] = useState(null);
     const [previewContent, setPreviewContent] = useState(null);
@@ -212,11 +212,20 @@ const FileViewerModal = ({ isOpen, onClose, files, title }) => {
                                                 </div>
                                                 <button
                                                     onClick={() => handlePreviewClick(file)}
-                                                    className="truncate hover:text-blue-400 hover:underline cursor-pointer transition-colors text-left"
+                                                    className="truncate hover:text-blue-400 hover:underline cursor-pointer transition-colors text-left font-semibold"
                                                     title={`${name} 미리보기`}
                                                 >
                                                     {name}
                                                 </button>
+                                                {onDeleteFile && (
+                                                    <button
+                                                        onClick={() => onDeleteFile(index)}
+                                                        className="ml-auto text-red-500 hover:text-red-400 bg-red-900/20 hover:bg-red-900/40 p-1 rounded transition-colors"
+                                                        title="이 첨부파일 삭제"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-2 mt-1">

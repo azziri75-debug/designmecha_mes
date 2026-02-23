@@ -52,6 +52,7 @@ const SalesPage = () => {
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
     const [fileModalTitle, setFileModalTitle] = useState('');
+    const [viewingTargetId, setViewingTargetId] = useState(null); // Track ID for deletion
 
     // Filters
     const [startDate, setStartDate] = useState('');
@@ -156,6 +157,37 @@ const SalesPage = () => {
         } catch (error) {
             console.error("Excel export failed", error);
             alert("엑셀 생성 실패");
+        }
+    };
+
+    const handleDeleteEstimateAttachment = async (indexToRemove) => {
+        if (!viewingTargetId) return;
+        if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
+
+        try {
+            const est = estimates.find(e => e.id === viewingTargetId);
+            if (!est) return;
+
+            const files = typeof est.attachment_file === 'string' ? JSON.parse(est.attachment_file) : est.attachment_file;
+            const currentFiles = Array.isArray(files) ? files : [files];
+            const newFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
+
+            const res = await api.put(`/sales/estimates/${viewingTargetId}`, {
+                attachment_file: newFiles
+            });
+
+            const updatedEstimate = res.data;
+            setEstimates(prev => prev.map(e => e.id === viewingTargetId ? updatedEstimate : e));
+            setViewingFiles(newFiles);
+
+            if (newFiles.length === 0) {
+                setShowFileModal(false);
+            }
+
+            alert("첨부파일이 삭제되었습니다.");
+        } catch (error) {
+            console.error("Failed to delete attachment", error);
+            alert("첨부파일 삭제 실패");
         }
     };
 
@@ -302,6 +334,7 @@ const SalesPage = () => {
                                                                         onClick={() => {
                                                                             setViewingFiles(files);
                                                                             setFileModalTitle(`견적서 첨부파일 (${est.partner.name})`);
+                                                                            setViewingTargetId(est.id); // Save ID for deletion
                                                                             setShowFileModal(true);
                                                                         }}
                                                                         className="text-blue-400 hover:text-blue-300 underline text-xs"
@@ -471,9 +504,13 @@ const SalesPage = () => {
 
             <FileViewerModal
                 isOpen={showFileModal}
-                onClose={() => setShowFileModal(false)}
+                onClose={() => {
+                    setShowFileModal(false);
+                    setViewingTargetId(null);
+                }}
                 files={viewingFiles}
                 title={fileModalTitle}
+                onDeleteFile={handleDeleteEstimateAttachment}
             />
 
             <EstimateModal

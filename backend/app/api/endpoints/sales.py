@@ -94,12 +94,11 @@ async def read_estimate(
         raise HTTPException(status_code=404, detail="Estimate not found")
     return estimate
 
-@router.post("/estimates/{estimate_id}/export_excel")
+@router.post("/estimates/{estimate_id}/export_excel", response_model=schemas.Estimate)
 async def export_estimate_excel(
     estimate_id: int,
     db: AsyncSession = Depends(deps.get_db)
 ):
-    # Eager load items and partner for Excel generation
     query = select(Estimate).options(
         selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
         selectinload(Estimate.partner)
@@ -111,70 +110,137 @@ async def export_estimate_excel(
         raise HTTPException(status_code=404, detail="Estimate not found")
 
     try:
-        # Load Template or Create New
+        from openpyxl.styles import PatternFill
+        import urllib.parse
+        
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "견적서"
 
-        # --- Styles ---
-        center_align = Alignment(horizontal='center', vertical='center')
-        border_style = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+        header_font = Font(name='Malgun Gothic', size=16, bold=True)
+        bold_font = Font(name='Malgun Gothic', size=10, bold=True)
+        normal_font = Font(name='Malgun Gothic', size=10)
         
-        # --- Header ---
-        ws.merge_cells('A1:G2')
+        center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        left_align = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        right_align = Alignment(horizontal='right', vertical='center')
+        
+        thin_border = Border(
+            left=Side(style='thin'), right=Side(style='thin'),
+            top=Side(style='thin'), bottom=Side(style='thin')
+        )
+        gray_fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+
+        def style_range(ws, cell_range, border=thin_border, font=normal_font, alignment=center_align, fill=None):
+            for row in ws[cell_range]:
+                for cell in row:
+                    cell.border = border
+                    cell.font = font
+                    cell.alignment = alignment
+                    if fill:
+                        cell.fill = fill
+
+        col_widths = {'A': 5, 'B': 25, 'C': 15, 'D': 8, 'E': 8, 'F': 12, 'G': 12, 'H': 15}
+        for col, width in col_widths.items():
+            ws.column_dimensions[col].width = width
+
+        ws.merge_cells('A1:H2')
         ws['A1'] = "견  적  서"
-        ws['A1'].font = Font(size=20, bold=True)
+        ws['A1'].font = header_font
         ws['A1'].alignment = center_align
 
-        # --- Info ---
+        ws.merge_cells('A4:D4')
         ws['A4'] = f"일자: {estimate.estimate_date}"
+        ws['A4'].alignment = left_align
+        
+        ws.merge_cells('A5:D5')
         ws['A5'] = f"수신: {estimate.partner.name if estimate.partner else ''} 귀하"
+        ws['A5'].alignment = left_align
+        ws['A5'].font = bold_font
         
-        # Supplier Info (Simple Box)
+        ws.merge_cells('A6:D6')
+        ws['A6'] = f"합계금액: {estimate.total_amount:,.0f} 원 (VAT 별도)"
+        ws['A6'].alignment = left_align
+        ws['A6'].font = bold_font
+        
+        ws.merge_cells('E4:E6')
         ws['E4'] = "공급자"
-        ws['E5'] = "상호: (주)디자인메카"
-        ws['E6'] = "대표: 조인호"
+        ws['E4'].font = bold_font
+        ws['E4'].alignment = center_align
+        ws['E4'].fill = gray_fill
+        ws['E4'].border = thin_border
         
-        # --- Items Table ---
-        headers = ["번호", "품명", "규격", "수량", "단위", "단가", "금액", "비고"]
-        for idx, h in enumerate(headers):
-            cell = ws.cell(row=8, column=idx+1)
-            cell.value = h
-            cell.font = Font(bold=True)
-            cell.border = border_style
-            cell.alignment = center_align
+        ws.merge_cells('F4:H4')
+        ws['F4'] = "상호: (주)디자인메카"
+        ws.merge_cells('F5:H5')
+        ws['F5'] = "대표: 조인호"
+        ws.merge_cells('F6:H6')
+        ws['F6'] = "등록번호: xxx-xx-xxxxx" # placeholder if actual doesn't exist
+        
+        style_range(ws, 'F4:H6', alignment=left_align)
+        
+        ws['A8'] = "번호"
+        ws['B8'] = "품명"
+        ws['C8'] = "규격"
+        ws['D8'] = "수량"
+        ws['E8'] = "단위"
+        ws['F8'] = "단가"
+        ws['G8'] = "금액"
+        ws['H8'] = "비고"
+        style_range(ws, 'A8:H8', font=bold_font, fill=gray_fill)
 
-        # Rows
         row_idx = 9
         for idx, item in enumerate(estimate.items):
-            ws.cell(row=row_idx, column=1, value=idx+1).border = border_style
-            ws.cell(row=row_idx, column=2, value=item.product.name if item.product else "").border = border_style
-            ws.cell(row=row_idx, column=3, value=item.product.specification if item.product else "").border = border_style
-            ws.cell(row=row_idx, column=4, value=item.quantity).border = border_style
-            ws.cell(row=row_idx, column=5, value=item.product.unit if item.product else "").border = border_style
-            ws.cell(row=row_idx, column=6, value=item.unit_price).border = border_style
-            ws.cell(row=row_idx, column=7, value=item.quantity * item.unit_price).border = border_style
-            ws.cell(row=row_idx, column=8, value=item.note).border = border_style
+            ws.cell(row=row_idx, column=1, value=idx+1)
+            
+            pname = item.product.name if item.product else "-"
+            ws.cell(row=row_idx, column=2, value=pname).alignment = left_align
+            
+            spec = item.product.code if item.product else "-"
+            ws.cell(row=row_idx, column=3, value=spec)
+            
+            ws.cell(row=row_idx, column=4, value=item.quantity)
+            ws.cell(row=row_idx, column=5, value="EA")
+            
+            ws.cell(row=row_idx, column=6, value=f"{item.unit_price:,.0f}").alignment = right_align
+            ws.cell(row=row_idx, column=7, value=f"{(item.quantity * item.unit_price):,.0f}").alignment = right_align
+            
+            ws.cell(row=row_idx, column=8, value=item.note or "-").alignment = left_align
+            
+            style_range(ws, f'A{row_idx}:H{row_idx}')
             row_idx += 1
 
-        # Total
-        ws.cell(row=row_idx, column=1, value="합계").border = border_style
-        ws.merge_cells(start_row=row_idx, start_column=2, end_row=row_idx, end_column=6)
-        ws.cell(row=row_idx, column=7, value=estimate.total_amount).border = border_style
-        ws.cell(row=row_idx, column=8, value="").border = border_style
+        ws.merge_cells(f'A{row_idx}:E{row_idx}')
+        ws[f'A{row_idx}'] = "합계"
+        ws[f'A{row_idx}'].font = bold_font
+        ws[f'A{row_idx}'].fill = gray_fill
+        ws[f'A{row_idx}'].alignment = center_align
+        ws.cell(row=row_idx, column=6, value="")
+        ws.cell(row=row_idx, column=7, value=f"{estimate.total_amount:,.0f}").alignment = right_align
+        ws.cell(row=row_idx, column=7).font = bold_font
+        ws.cell(row=row_idx, column=8, value="")
+        style_range(ws, f'A{row_idx}:H{row_idx}')
         
-        # Save File
-        filename = f"Estimate_{estimate.partner.name if estimate.partner else 'Unk'}_{estimate.estimate_date}_{uuid.uuid4().hex[:8]}.xlsx"
+        row_idx += 2
+        ws.merge_cells(f'A{row_idx}:A{row_idx+1}')
+        ws.merge_cells(f'B{row_idx}:H{row_idx+1}')
+        ws[f'A{row_idx}'] = "특기사항"
+        ws[f'A{row_idx}'].font = bold_font
+        ws[f'A{row_idx}'].fill = gray_fill
+        ws[f'A{row_idx}'].alignment = center_align
+        ws[f'B{row_idx}'] = estimate.note or ""
+        ws[f'B{row_idx}'].alignment = left_align
+        style_range(ws, f'A{row_idx}:H{row_idx+1}')
+
+        filename = f"Estimate_{estimate.partner.name if estimate.partner else 'Unk'}_{estimate.estimate_date}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         
-        # Ensure directory exists
         upload_dir = "uploads/estimates"
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, filename)
         
         wb.save(file_path)
 
-        # Update Estimate Attachment
-        file_url = f"/static/estimates/{filename}"
+        file_url = f"/uploads/estimates/{urllib.parse.quote(filename)}"
         new_file = {"name": filename, "url": file_url}
         
         current_files = []
@@ -194,14 +260,12 @@ async def export_estimate_excel(
         await db.commit()
         await db.refresh(estimate)
         
-        # Re-fetch for return to avoid lazy load issues on returned object if any
-        # though refresh might be enough for simple fields, items/partner might be detached/expired.
-        # But we are returning 'estimate' which is an ORM object. 
-        # Ideally we return a Schema or just the object if it's still attached.
-        # Since we just committed, session is expired if expire_on_commit=True.
-        # Our sessionmaker has expire_on_commit=False, so it should be fine.
-        
-        return estimate
+        query = select(Estimate).options(
+            selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Estimate.partner)
+        ).where(Estimate.id == estimate_id)
+        result = await db.execute(query)
+        return result.scalar_one()
 
     except Exception as e:
         print(f"Excel Export Error: {e}")

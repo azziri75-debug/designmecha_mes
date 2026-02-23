@@ -142,6 +142,26 @@ const ProductionPage = () => {
         }
     };
 
+    const handleDeleteAttachment = async (plan, idxToRemove) => {
+        if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
+
+        try {
+            const files = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file;
+            const currentFiles = Array.isArray(files) ? files : [files];
+            const newFiles = currentFiles.filter((_, idx) => idx !== idxToRemove);
+
+            await api.put(`/production/plans/${plan.id}`, {
+                attachment_file: newFiles
+            });
+
+            alert("첨부파일이 삭제되었습니다.");
+            fetchPlans(); // Refresh the list
+        } catch (e) {
+            console.error("Delete attachment failed", e);
+            alert("첨부파일 삭제 실패");
+        }
+    };
+
 
 
     const handleSuccess = () => {
@@ -394,9 +414,20 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, readonly }) => {
                             const files = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file;
                             const fileList = Array.isArray(files) ? files : [files];
                             return fileList.map((file, idx) => (
-                                <a key={idx} href={getImageUrl(file.url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline block text-xs">
-                                    {file.name}
-                                </a>
+                                <div key={idx} className="flex items-center gap-2 mb-1">
+                                    <a href={getImageUrl(file.url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline block text-xs truncate max-w-[150px]" title={file.name}>
+                                        {file.name}
+                                    </a>
+                                    {!readonly && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteAttachment(plan, idx); }}
+                                            className="text-red-500 hover:text-red-700 bg-red-50/50 rounded-full p-0.5"
+                                            title="파일 삭제"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
                             ));
                         } catch (e) {
                             return null;
