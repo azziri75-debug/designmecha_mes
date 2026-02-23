@@ -187,7 +187,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                             type="checkbox"
                             checked={metadata.show_stamp}
                             onChange={(e) => handleMetadataChange('show_stamp', e.target.checked)}
-                            className="rounded border-gray-600 bg-gray-700 text-blue-600"
+                            className="rounded border-gray-600 bg-gray-700 text-[#2563eb]"
                         />
                         직인 표시
                     </label>
@@ -211,16 +211,16 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 </div>
 
                 {/* Preview Area (A4 Container) */}
-                <div className="flex-1 overflow-auto bg-gray-500 p-8 flex justify-center">
+                <div className="flex-1 overflow-auto bg-[#f9fafb]0 p-8 flex justify-center">
                     <div
                         ref={sheetRef}
-                        className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top"
+                        className="bg-[#fff] text-[#000] w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top"
                         style={{ fontFamily: '"Malgun Gothic", "Sunny", sans-serif' }}
                     >
                         {/* Title */}
                         <div className="text-center mb-8 relative">
                             <h1 className="text-4xl font-bold underline decoration-double underline-offset-4 tracking-[1em] indent-[1em]">{metadata.title}</h1>
-                            {/* <div className="absolute right-0 top-0 text-xs border border-black p-1">
+                            {/* <div className="absolute right-0 top-0 text-xs border border-[#000] p-1">
                                 문서번호: {}
                             </div> */}
                         </div>
@@ -229,7 +229,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         <div className="flex justify-between items-start mb-6 gap-4">
                             {/* Left: Recipient */}
                             <div className="flex-1 space-y-2">
-                                <div className="flex items-end gap-2 text-lg border-b border-black pb-1 mb-2">
+                                <div className="flex items-end gap-2 text-lg border-b border-[#000] pb-1 mb-2">
                                     <input
                                         value={metadata.recipient}
                                         onChange={(e) => handleMetadataChange('recipient', e.target.value)}
@@ -254,7 +254,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                             </div>
 
                             {/* Right: Supplier (Company Info) */}
-                            <div className="w-[85mm] border-2 border-black p-2 relative">
+                            <div className="w-[85mm] border-2 border-[#000] p-2 relative">
                                 <table className="w-full text-xs leading-relaxed">
                                     <colgroup>
                                         <col className="w-6" />
@@ -262,16 +262,16 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                     </colgroup>
                                     <tbody>
                                         <tr>
-                                            <td rowSpan="5" className="text-center align-middle font-bold text-lg w-8 border-r border-black writing-vertical bg-gray-100">공<br />급<br />자</td>
-                                            <td className="pl-2 border-b border-gray-300 py-1">
-                                                <span className="inline-block w-12 text-gray-500">등록번호</span> {company?.registration_number}
+                                            <td rowSpan="5" className="text-center align-middle font-bold text-lg w-8 border-r border-[#000] writing-vertical bg-[#f3f4f6]">공<br />급<br />자</td>
+                                            <td className="pl-2 border-b border-[#d1d5db] py-1">
+                                                <span className="inline-block w-12 text-[#6b7280]">등록번호</span> {company?.registration_number}
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td className="pl-2 border-b border-gray-300 py-1 flex justify-between items-center pr-2">
-                                                <span><span className="inline-block w-12 text-gray-500">상호</span> {company?.name}</span>
+                                            <td className="pl-2 border-b border-[#d1d5db] py-1 flex justify-between items-center pr-2">
+                                                <span><span className="inline-block w-12 text-[#6b7280]">상호</span> {company?.name}</span>
                                                 <span className="relative">
-                                                    <span className="inline-block w-12 text-gray-500">성명</span> {company?.owner_name || company?.representative}
+                                                    <span className="inline-block w-12 text-[#6b7280]">성명</span> {company?.owner_name || company?.representative}
                                                     {(metadata.show_stamp && (company?.stamp_image || company?.logo_image)) && (
                                                         <img
                                                             crossOrigin="anonymous"
@@ -285,18 +285,18 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td className="pl-2 border-b border-gray-300 py-1">
-                                                <span className="inline-block w-12 text-gray-500">주소</span> {company?.address}
+                                            <td className="pl-2 border-b border-[#d1d5db] py-1">
+                                                <span className="inline-block w-12 text-[#6b7280]">주소</span> {company?.address}
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td className="pl-2 border-b border-gray-300 py-1">
-                                                <span className="inline-block w-12 text-gray-500">업태</span> {company?.business_type || '제조'} / {company?.business_item || '정밀가공'}
+                                            <td className="pl-2 border-b border-[#d1d5db] py-1">
+                                                <span className="inline-block w-12 text-[#6b7280]">업태</span> {company?.business_type || '제조'} / {company?.business_item || '정밀가공'}
                                             </td>
                                         </tr>
                                         <tr>
                                             <td className="pl-2 py-1">
-                                                <span className="inline-block w-12 text-gray-500">연락처</span> {company?.phone} / {company?.fax}
+                                                <span className="inline-block w-12 text-[#6b7280]">연락처</span> {company?.phone} / {company?.fax}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -305,7 +305,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Grand Total */}
-                        <div className="border-t-2 border-b-2 border-black py-2 mb-6 flex items-center">
+                        <div className="border-t-2 border-b-2 border-[#000] py-2 mb-6 flex items-center">
                             <span className="font-bold text-lg w-24 text-center">합계금액</span>
                             <span className="flex-1 text-right text-xl font-bold font-mono tracking-wider pr-4">
                                 ￦ {fmt(grandTotal)} <span className="text-sm font-normal ml-2">(VAT 포함)</span>
@@ -313,61 +313,61 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Item Table */}
-                        <table className="w-full border-collapse border border-black mb-6 text-sm">
+                        <table className="w-full border-collapse border border-[#000] mb-6 text-sm">
                             <thead>
-                                <tr className="bg-gray-100 text-center">
-                                    <th className="border border-black py-2 w-10">No</th>
-                                    <th className="border border-black py-2">품명</th>
-                                    <th className="border border-black py-2 w-24">규격/사양</th>
-                                    <th className="border border-black py-2 w-12">수량</th>
-                                    <th className="border border-black py-2 w-24">단가</th>
-                                    <th className="border border-black py-2 w-28">공급가액</th>
-                                    <th className="border border-black py-2 w-24">세액</th>
-                                    <th className="border border-black py-2 w-24">비고</th>
+                                <tr className="bg-[#f3f4f6] text-center">
+                                    <th className="border border-[#000] py-2 w-10">No</th>
+                                    <th className="border border-[#000] py-2">품명</th>
+                                    <th className="border border-[#000] py-2 w-24">규격/사양</th>
+                                    <th className="border border-[#000] py-2 w-12">수량</th>
+                                    <th className="border border-[#000] py-2 w-24">단가</th>
+                                    <th className="border border-[#000] py-2 w-28">공급가액</th>
+                                    <th className="border border-[#000] py-2 w-24">세액</th>
+                                    <th className="border border-[#000] py-2 w-24">비고</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {estimate.items.map((item, idx) => (
                                     <tr key={idx} className="text-center">
-                                        <td className="border border-black py-1">{idx + 1}</td>
-                                        <td className="border border-black py-1 text-left px-2">{item.product?.name || item.product_name}</td>
-                                        <td className="border border-black py-1">{item.product?.code || item.spec || '-'}</td>
-                                        <td className="border border-black py-1">{fmt(item.quantity)}</td>
-                                        <td className="border border-black py-1 text-right px-2">{fmt(item.unit_price)}</td>
-                                        <td className="border border-black py-1 text-right px-2">{fmt(item.quantity * item.unit_price)}</td>
-                                        <td className="border border-black py-1 text-right px-2">{fmt((item.quantity * item.unit_price) * 0.1)}</td>
-                                        <td className="border border-black py-1 text-xs">{item.note}</td>
+                                        <td className="border border-[#000] py-1">{idx + 1}</td>
+                                        <td className="border border-[#000] py-1 text-left px-2">{item.product?.name || item.product_name}</td>
+                                        <td className="border border-[#000] py-1">{item.product?.code || item.spec || '-'}</td>
+                                        <td className="border border-[#000] py-1">{fmt(item.quantity)}</td>
+                                        <td className="border border-[#000] py-1 text-right px-2">{fmt(item.unit_price)}</td>
+                                        <td className="border border-[#000] py-1 text-right px-2">{fmt(item.quantity * item.unit_price)}</td>
+                                        <td className="border border-[#000] py-1 text-right px-2">{fmt((item.quantity * item.unit_price) * 0.1)}</td>
+                                        <td className="border border-[#000] py-1 text-xs">{item.note}</td>
                                     </tr>
                                 ))}
                                 {/* Empty rows to fill space if needed */}
                                 {Array.from({ length: Math.max(0, 10 - estimate.items.length) }).map((_, i) => (
                                     <tr key={`empty-${i}`} className="text-center text-transparent">
-                                        <td className="border border-black py-1">.</td>
-                                        <td className="border border-black py-1">.</td>
-                                        <td className="border border-black py-1">.</td>
-                                        <td className="border border-black py-1">.</td>
-                                        <td className="border border-black py-1">.</td>
-                                        <td className="border border-black py-1">.</td>
-                                        <td className="border border-black py-1">.</td>
-                                        <td className="border border-black py-1">.</td>
+                                        <td className="border border-[#000] py-1">.</td>
+                                        <td className="border border-[#000] py-1">.</td>
+                                        <td className="border border-[#000] py-1">.</td>
+                                        <td className="border border-[#000] py-1">.</td>
+                                        <td className="border border-[#000] py-1">.</td>
+                                        <td className="border border-[#000] py-1">.</td>
+                                        <td className="border border-[#000] py-1">.</td>
+                                        <td className="border border-[#000] py-1">.</td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot>
-                                <tr className="bg-gray-50 font-bold text-center">
-                                    <td colSpan="3" className="border border-black py-2">소 계</td>
-                                    <td className="border border-black py-2">{fmt(estimate.items.reduce((s, i) => s + i.quantity, 0))}</td>
-                                    <td className="border border-black py-2"></td>
-                                    <td className="border border-black py-2 text-right px-2">{fmt(totalAmount)}</td>
-                                    <td className="border border-black py-2 text-right px-2">{fmt(vat)}</td>
-                                    <td className="border border-black py-2"></td>
+                                <tr className="bg-[#f9fafb] font-bold text-center">
+                                    <td colSpan="3" className="border border-[#000] py-2">소 계</td>
+                                    <td className="border border-[#000] py-2">{fmt(estimate.items.reduce((s, i) => s + i.quantity, 0))}</td>
+                                    <td className="border border-[#000] py-2"></td>
+                                    <td className="border border-[#000] py-2 text-right px-2">{fmt(totalAmount)}</td>
+                                    <td className="border border-[#000] py-2 text-right px-2">{fmt(vat)}</td>
+                                    <td className="border border-[#000] py-2"></td>
                                 </tr>
                             </tfoot>
                         </table>
 
                         {/* Footer Notes */}
                         <div className="mt-8">
-                            <h4 className="font-bold border-b border-black w-24 mb-2">특이사항</h4>
+                            <h4 className="font-bold border-b border-[#000] w-24 mb-2">특이사항</h4>
                             <textarea
                                 value={metadata.footer_note}
                                 onChange={(e) => handleMetadataChange('footer_note', e.target.value)}
@@ -376,7 +376,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Footer Stamp/Date */}
-                        <div className="mt-12 text-center text-sm text-gray-500">
+                        <div className="mt-12 text-center text-sm text-[#6b7280]">
                             {/* Optional footer branding or date */}
                         </div>
                     </div>

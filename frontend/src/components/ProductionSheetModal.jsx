@@ -204,15 +204,15 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                 </div>
 
                 {/* Preview Area (A4 Container) */}
-                <div className="flex-1 overflow-auto bg-gray-500 p-8 flex justify-center">
+                <div className="flex-1 overflow-auto bg-[#f9fafb]0 p-8 flex justify-center">
                     <div
                         ref={sheetRef}
-                        className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top"
+                        className="bg-[#fff] text-[#000] w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top"
                         style={{ fontFamily: '"Malgun Gothic", "Sunny", sans-serif' }}
                     >
                         {/* Title and Logo/Stamp */}
                         <div className="mb-2 relative flex justify-between items-center h-12">
-                            <span className="text-sm font-bold border border-black px-4 py-1">생산관리</span>
+                            <span className="text-sm font-bold border border-[#000] px-4 py-1">생산관리</span>
                             <div className="flex items-center gap-4">
                                 {company?.logo_image && (
                                     <img
@@ -234,7 +234,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                         </div>
 
                         {/* Top Info Table */}
-                        <table className="w-full border-collapse border border-black text-sm mb-4">
+                        <table className="w-full border-collapse border border-[#000] text-sm mb-4">
                             <colgroup>
                                 <col className="w-[15%]" />
                                 <col className="w-[35%]" />
@@ -243,28 +243,28 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                             </colgroup>
                             <tbody>
                                 <tr className="text-center">
-                                    <td className="border border-black bg-gray-100 py-1.5 font-bold">고객</td>
-                                    <td className="border border-black py-1.5">{customerName}</td>
-                                    <td className="border border-black bg-gray-100 py-1.5 font-bold">수주일</td>
-                                    <td className="border border-black py-1.5">{orderDate}</td>
+                                    <td className="border border-[#000] bg-[#f3f4f6] py-1.5 font-bold">고객</td>
+                                    <td className="border border-[#000] py-1.5">{customerName}</td>
+                                    <td className="border border-[#000] bg-[#f3f4f6] py-1.5 font-bold">수주일</td>
+                                    <td className="border border-[#000] py-1.5">{orderDate}</td>
                                 </tr>
                                 <tr className="text-center">
-                                    <td className="border border-black bg-gray-100 py-1.5 font-bold">품명</td>
-                                    <td className="border border-black py-1.5">{summaryProductName}</td>
-                                    <td className="border border-black bg-gray-100 py-1.5 font-bold">요구납기일</td>
-                                    <td className="border border-black py-1.5">{deliveryDate}</td>
+                                    <td className="border border-[#000] bg-[#f3f4f6] py-1.5 font-bold">품명</td>
+                                    <td className="border border-[#000] py-1.5">{summaryProductName}</td>
+                                    <td className="border border-[#000] bg-[#f3f4f6] py-1.5 font-bold">요구납기일</td>
+                                    <td className="border border-[#000] py-1.5">{deliveryDate}</td>
                                 </tr>
                                 <tr className="text-center">
-                                    <td className="border border-black bg-gray-100 py-1.5 font-bold">수주금액</td>
-                                    <td className="border border-black p-0">
+                                    <td className="border border-[#000] bg-[#f3f4f6] py-1.5 font-bold">수주금액</td>
+                                    <td className="border border-[#000] p-0">
                                         <input
                                             value={metadata.order_amount}
                                             onChange={(e) => handleMetadataChange('order_amount', e.target.value)}
                                             className="w-full h-full text-center outline-none bg-transparent"
                                         />
                                     </td>
-                                    <td className="border border-black bg-gray-100 py-1.5 font-bold">수주담당자</td>
-                                    <td className="border border-black p-0">
+                                    <td className="border border-[#000] bg-[#f3f4f6] py-1.5 font-bold">수주담당자</td>
+                                    <td className="border border-[#000] p-0">
                                         <input
                                             value={metadata.manager}
                                             onChange={(e) => handleMetadataChange('manager', e.target.value)}
@@ -276,7 +276,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                         </table>
 
                         {/* Middle Table (Products) */}
-                        <table className="w-full border-collapse border border-black text-sm mb-0">
+                        <table className="w-full border-collapse border border-[#000] text-sm mb-0">
                             <colgroup>
                                 <col className="w-[20%]" />
                                 <col className="w-[30%]" />
@@ -285,40 +285,40 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                                 <col className="w-[25%]" />
                             </colgroup>
                             <thead>
-                                <tr className="bg-gray-100 text-center">
-                                    <th className="border border-black font-bold py-1.5">품명</th>
-                                    <th className="border border-black font-bold py-1.5">규격</th>
-                                    <th className="border border-black font-bold py-1.5">재질</th>
-                                    <th className="border border-black font-bold py-1.5">수량</th>
-                                    <th className="border border-black font-bold py-1.5">비고</th>
+                                <tr className="bg-[#f3f4f6] text-center">
+                                    <th className="border border-[#000] font-bold py-1.5">품명</th>
+                                    <th className="border border-[#000] font-bold py-1.5">규격</th>
+                                    <th className="border border-[#000] font-bold py-1.5">재질</th>
+                                    <th className="border border-[#000] font-bold py-1.5">수량</th>
+                                    <th className="border border-[#000] font-bold py-1.5">비고</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {uniqueProducts.map((p, idx) => (
                                     <tr key={idx} className="text-center h-8">
-                                        <td className="border border-black px-1 text-left">{p.product.name}</td>
-                                        <td className="border border-black px-1">{p.product.code || '-'}</td>
-                                        <td className="border border-black px-1">{p.product.material || '-'}</td>
-                                        <td className="border border-black px-1">{fmt(p.quantity)}</td>
-                                        <td className="border border-black px-1 text-xs">{p.note}</td>
+                                        <td className="border border-[#000] px-1 text-left">{p.product.name}</td>
+                                        <td className="border border-[#000] px-1">{p.product.code || '-'}</td>
+                                        <td className="border border-[#000] px-1">{p.product.material || '-'}</td>
+                                        <td className="border border-[#000] px-1">{fmt(p.quantity)}</td>
+                                        <td className="border border-[#000] px-1 text-xs">{p.note}</td>
                                     </tr>
                                 ))}
                                 {/* Fill empty rows to make it 3 rows minimum like image */}
                                 {Array.from({ length: Math.max(0, 3 - uniqueProducts.length) }).map((_, i) => (
                                     <tr key={`empty-prod-${i}`} className="text-center h-8">
-                                        <td className="border border-black">0</td>
-                                        <td className="border border-black">0</td>
-                                        <td className="border border-black">0</td>
-                                        <td className="border border-black">0</td>
-                                        <td className="border border-black"></td>
+                                        <td className="border border-[#000]">0</td>
+                                        <td className="border border-[#000]">0</td>
+                                        <td className="border border-[#000]">0</td>
+                                        <td className="border border-[#000]">0</td>
+                                        <td className="border border-[#000]"></td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
 
                         {/* Memo Row */}
-                        <div className="flex border-x border-b border-black mb-8 min-h-[60px]">
-                            <div className="w-[15%] border-r border-black flex items-center justify-center bg-white text-sm">
+                        <div className="flex border-x border-b border-[#000] mb-8 min-h-[60px]">
+                            <div className="w-[15%] border-r border-[#000] flex items-center justify-center bg-[#fff] text-sm">
                                 Memo
                             </div>
                             <div className="w-[85%]">
@@ -331,7 +331,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                         </div>
 
                         {/* Bottom Table (Processes) */}
-                        <table className="w-full border-collapse border border-black text-xs">
+                        <table className="w-full border-collapse border border-[#000] text-xs">
                             <colgroup>
                                 <col className="w-[8%]" />
                                 <col className="w-[6%]" />
@@ -345,47 +345,47 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                                 <col className="w-[6%]" />
                             </colgroup>
                             <thead>
-                                <tr className="bg-gray-100 text-center">
-                                    <th className="border border-black font-bold py-1.5">구분</th>
-                                    <th className="border border-black font-bold py-1.5">순번</th>
-                                    <th className="border border-black font-bold py-1.5">공정</th>
-                                    <th className="border border-black font-bold py-1.5">공정내용</th>
-                                    <th className="border border-black font-bold py-1.5">업체</th>
-                                    <th className="border border-black font-bold py-1.5">품명</th>
-                                    <th className="border border-black font-bold py-1.5">규격</th>
-                                    <th className="border border-black font-bold py-1.5">수량</th>
-                                    <th className="border border-black font-bold py-1.5">시작</th>
-                                    <th className="border border-black font-bold py-1.5">종료</th>
+                                <tr className="bg-[#f3f4f6] text-center">
+                                    <th className="border border-[#000] font-bold py-1.5">구분</th>
+                                    <th className="border border-[#000] font-bold py-1.5">순번</th>
+                                    <th className="border border-[#000] font-bold py-1.5">공정</th>
+                                    <th className="border border-[#000] font-bold py-1.5">공정내용</th>
+                                    <th className="border border-[#000] font-bold py-1.5">업체</th>
+                                    <th className="border border-[#000] font-bold py-1.5">품명</th>
+                                    <th className="border border-[#000] font-bold py-1.5">규격</th>
+                                    <th className="border border-[#000] font-bold py-1.5">수량</th>
+                                    <th className="border border-[#000] font-bold py-1.5">시작</th>
+                                    <th className="border border-[#000] font-bold py-1.5">종료</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {(plan.items || []).map((item, idx) => (
                                     <tr key={item.id || idx} className="text-center h-7">
-                                        <td className="border border-black">{getTypeLabel(item.course_type)}</td>
-                                        <td className="border border-black">{item.sequence || (idx + 1)}</td>
-                                        <td className="border border-black">{item.process_name}</td>
-                                        <td className="border border-black px-1 text-left truncate max-w-[120px]">{item.note || '-'}</td>
-                                        <td className="border border-black px-1 text-left truncate max-w-[100px]">{item.partner_name || '-'}</td>
-                                        <td className="border border-black">-</td>
-                                        <td className="border border-black">-</td>
-                                        <td className="border border-black">{fmt(item.quantity) || '-'}</td>
-                                        <td className="border border-black"></td>
-                                        <td className="border border-black"></td>
+                                        <td className="border border-[#000]">{getTypeLabel(item.course_type)}</td>
+                                        <td className="border border-[#000]">{item.sequence || (idx + 1)}</td>
+                                        <td className="border border-[#000]">{item.process_name}</td>
+                                        <td className="border border-[#000] px-1 text-left truncate max-w-[120px]">{item.note || '-'}</td>
+                                        <td className="border border-[#000] px-1 text-left truncate max-w-[100px]">{item.partner_name || '-'}</td>
+                                        <td className="border border-[#000]">-</td>
+                                        <td className="border border-[#000]">-</td>
+                                        <td className="border border-[#000]">{fmt(item.quantity) || '-'}</td>
+                                        <td className="border border-[#000]"></td>
+                                        <td className="border border-[#000]"></td>
                                     </tr>
                                 ))}
                                 {/* Fill empty rows to make it look full if needed. E.g up to 16 */}
                                 {Array.from({ length: Math.max(0, 16 - (plan.items?.length || 0)) }).map((_, i) => (
                                     <tr key={`empty-proc-${i}`} className="text-center h-7">
-                                        <td className="border border-black bg-gray-50">-</td>
-                                        <td className="border border-black bg-gray-50">-</td>
-                                        <td className="border border-black bg-gray-50">-</td>
-                                        <td className="border border-black bg-gray-50">-</td>
-                                        <td className="border border-black bg-gray-50">-</td>
-                                        <td className="border border-black bg-gray-50">-</td>
-                                        <td className="border border-black bg-gray-50">-</td>
-                                        <td className="border border-black bg-gray-50">-</td>
-                                        <td className="border border-black bg-gray-50"></td>
-                                        <td className="border border-black bg-gray-50"></td>
+                                        <td className="border border-[#000] bg-[#f9fafb]">-</td>
+                                        <td className="border border-[#000] bg-[#f9fafb]">-</td>
+                                        <td className="border border-[#000] bg-[#f9fafb]">-</td>
+                                        <td className="border border-[#000] bg-[#f9fafb]">-</td>
+                                        <td className="border border-[#000] bg-[#f9fafb]">-</td>
+                                        <td className="border border-[#000] bg-[#f9fafb]">-</td>
+                                        <td className="border border-[#000] bg-[#f9fafb]">-</td>
+                                        <td className="border border-[#000] bg-[#f9fafb]">-</td>
+                                        <td className="border border-[#000] bg-[#f9fafb]"></td>
+                                        <td className="border border-[#000] bg-[#f9fafb]"></td>
                                     </tr>
                                 ))}
                             </tbody>
