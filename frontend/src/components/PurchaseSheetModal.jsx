@@ -10,7 +10,7 @@ import { getImageUrl } from '../lib/utils';
  * - sheetType: 'estimate_request' (견적의뢰서) | 'purchase_order' (구매발주서)
  * - order: 구매 발주 데이터 (items, partner, order_no 등)
  */
-const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_order', onSave }) => {
+const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_order', orderType = 'purchase', onSave }) => {
     const [company, setCompany] = useState(null);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState(sheetType);
@@ -116,7 +116,8 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                 } catch { currentAttachments = []; }
 
                 const newAttachments = [...currentAttachments, { name: uploadRes.data.filename, url: uploadRes.data.url }];
-                await api.put(`/purchasing/purchase/orders/${order.id}`, {
+                const apiBase = orderType === 'outsourcing' ? '/purchasing/outsourcing/orders' : '/purchasing/purchase/orders';
+                await api.put(`${apiBase}/${order.id}`, {
                     attachment_file: newAttachments,
                 });
 

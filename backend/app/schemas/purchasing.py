@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date, datetime
 from pydantic import BaseModel
 from app.models.purchasing import PurchaseStatus, OutsourcingStatus
@@ -52,6 +52,7 @@ class PurchaseOrderUpdate(BaseModel):
     delivery_date: Optional[date] = None
     note: Optional[str] = None
     status: Optional[PurchaseStatus] = None
+    attachment_file: Optional[Any] = None
     items: Optional[List[PurchaseOrderItemUpdate]] = None
 
 class PurchaseOrder(PurchaseOrderBase):
@@ -62,6 +63,7 @@ class PurchaseOrder(PurchaseOrderBase):
     updated_at: Optional[datetime] = None
     partner: Optional[Partner] = None
     items: List[PurchaseOrderItem] = []
+    attachment_file: Optional[Any] = None
     related_sales_order_info: Optional[str] = None
     related_customer_names: Optional[str] = None
 
@@ -115,6 +117,7 @@ class OutsourcingOrderUpdate(BaseModel):
     delivery_date: Optional[date] = None
     note: Optional[str] = None
     status: Optional[OutsourcingStatus] = None
+    attachment_file: Optional[Any] = None
     items: Optional[List[OutsourcingOrderItemUpdate]] = None
 
 class OutsourcingOrder(OutsourcingOrderBase):
@@ -125,6 +128,7 @@ class OutsourcingOrder(OutsourcingOrderBase):
     updated_at: Optional[datetime] = None
     partner: Optional[Partner] = None
     items: List[OutsourcingOrderItem] = []
+    attachment_file: Optional[Any] = None
     related_sales_order_info: Optional[str] = None
     related_customer_names: Optional[str] = None
 

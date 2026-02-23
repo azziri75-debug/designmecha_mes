@@ -207,6 +207,11 @@ async def update_purchase_order(
     update_data = order_in.model_dump(exclude_unset=True)
     items_data = update_data.pop("items", None)
 
+    # Handle attachment_file JSON serialization
+    if "attachment_file" in update_data and update_data["attachment_file"] is not None:
+        import json
+        update_data["attachment_file"] = json.dumps(update_data["attachment_file"], ensure_ascii=False)
+
     for field, value in update_data.items():
         setattr(db_order, field, value)
 
@@ -257,10 +262,12 @@ async def update_purchase_order(
     await db.commit()
     await db.refresh(db_order)
     
-    # Re-fetch
+    # Re-fetch with full eager loading for related_sales_order_info/related_customer_names
+    from app.models.production import ProductionPlanItem, ProductionPlan
     query = select(PurchaseOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
-        selectinload(PurchaseOrder.partner)
+        selectinload(PurchaseOrder.partner),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
     ).where(PurchaseOrder.id == order_id)
     result = await db.execute(query)
     return result.scalar_one()
@@ -389,6 +396,11 @@ async def update_outsourcing_order(
     update_data = order_in.model_dump(exclude_unset=True)
     items_data = update_data.pop("items", None)
 
+    # Handle attachment_file JSON serialization
+    if "attachment_file" in update_data and update_data["attachment_file"] is not None:
+        import json
+        update_data["attachment_file"] = json.dumps(update_data["attachment_file"], ensure_ascii=False)
+
     for field, value in update_data.items():
         setattr(db_order, field, value)
 
@@ -426,10 +438,12 @@ async def update_outsourcing_order(
     await db.commit()
     await db.refresh(db_order)
     
-    # Re-fetch
+    # Re-fetch with full eager loading
+    from app.models.production import ProductionPlanItem, ProductionPlan
     query = select(OutsourcingOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
-        selectinload(OutsourcingOrder.partner)
+        selectinload(OutsourcingOrder.partner),
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
     ).where(OutsourcingOrder.id == order_id)
     result = await db.execute(query)
     return result.scalar_one()

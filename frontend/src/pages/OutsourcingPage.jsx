@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox
+    TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import OutsourcingOrderModal from '../components/OutsourcingOrderModal';
+import PurchaseSheetModal from '../components/PurchaseSheetModal';
+import FileViewerModal from '../components/FileViewerModal';
 
 const OutsourcingPage = () => {
     const [tabValue, setTabValue] = useState(0);
@@ -17,6 +19,16 @@ const OutsourcingPage = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [initialModalItems, setInitialModalItems] = useState([]);
+
+    // 견적의뢰서/구매발주서 모달
+    const [sheetModalOpen, setSheetModalOpen] = useState(false);
+    const [sheetOrder, setSheetOrder] = useState(null);
+    const [sheetType, setSheetType] = useState('purchase_order');
+
+    // 첨부파일 뷰어 모달
+    const [showFileModal, setShowFileModal] = useState(false);
+    const [viewingFiles, setViewingFiles] = useState([]);
+    const [viewingFileTitle, setViewingFileTitle] = useState('');
 
     useEffect(() => {
         if (tabValue === 0) {
@@ -252,15 +264,50 @@ const OutsourcingPage = () => {
                                                     />
                                                 </TableCell>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <IconButton size="small" onClick={() => handleEditClick(order)}>
-                                                        <EditIcon />
-                                                    </IconButton>
-                                                    <IconButton size="small" color="error" onClick={() => handleDeleteOrder(order.id)}>
-                                                        <DeleteIcon />
-                                                    </IconButton>
-                                                    <IconButton size="small">
-                                                        <PrintIcon />
-                                                    </IconButton>
+                                                    <Tooltip title="수정">
+                                                        <IconButton size="small" onClick={() => handleEditClick(order)}>
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="삭제">
+                                                        <IconButton size="small" color="error" onClick={() => handleDeleteOrder(order.id)}>
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="견적의뢰서">
+                                                        <IconButton size="small" color="info" onClick={() => {
+                                                            setSheetOrder(order);
+                                                            setSheetType('estimate_request');
+                                                            setSheetModalOpen(true);
+                                                        }}>
+                                                            <DescIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="구매발주서">
+                                                        <IconButton size="small" color="success" onClick={() => {
+                                                            setSheetOrder(order);
+                                                            setSheetType('purchase_order');
+                                                            setSheetModalOpen(true);
+                                                        }}>
+                                                            <PrintIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    {(() => {
+                                                        let files = [];
+                                                        try { files = order.attachment_file ? (typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file) : []; } catch { files = []; }
+                                                        if (!Array.isArray(files)) files = [];
+                                                        return files.length > 0 ? (
+                                                            <Tooltip title={`첨부파일 ${files.length}개`}>
+                                                                <IconButton size="small" onClick={() => {
+                                                                    setViewingFiles(files);
+                                                                    setViewingFileTitle(order.order_no);
+                                                                    setShowFileModal(true);
+                                                                }}>
+                                                                    <AttachIcon fontSize="small" color="action" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        ) : null;
+                                                    })()}
                                                 </TableCell>
                                             </TableRow>
                                             {expandedOrderId === order.id && (
@@ -313,6 +360,25 @@ const OutsourcingPage = () => {
                 onSuccess={handleSuccess}
                 order={selectedOrder}
                 initialItems={initialModalItems}
+            />
+
+            <PurchaseSheetModal
+                isOpen={sheetModalOpen}
+                onClose={() => setSheetModalOpen(false)}
+                order={sheetOrder}
+                sheetType={sheetType}
+                orderType="outsourcing"
+                onSave={() => {
+                    if (tabValue === 1) fetchOrders();
+                    else fetchCompletedOrders();
+                }}
+            />
+
+            <FileViewerModal
+                isOpen={showFileModal}
+                onClose={() => setShowFileModal(false)}
+                files={viewingFiles}
+                title={viewingFileTitle}
             />
         </Box>
     );

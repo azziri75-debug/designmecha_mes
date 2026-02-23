@@ -3,10 +3,11 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import PurchaseOrderModal from '../components/PurchaseOrderModal';
 import PurchaseSheetModal from '../components/PurchaseSheetModal';
+import FileViewerModal from '../components/FileViewerModal';
 
 const PurchasePage = () => {
     const [tabValue, setTabValue] = useState(0);
@@ -23,6 +24,11 @@ const PurchasePage = () => {
     const [sheetModalOpen, setSheetModalOpen] = useState(false);
     const [sheetOrder, setSheetOrder] = useState(null);
     const [sheetType, setSheetType] = useState('purchase_order');
+
+    // 첨부파일 뷰어 모달
+    const [showFileModal, setShowFileModal] = useState(false);
+    const [viewingFiles, setViewingFiles] = useState([]);
+    const [viewingFileTitle, setViewingFileTitle] = useState('');
 
     useEffect(() => {
         if (tabValue === 0) {
@@ -290,6 +296,22 @@ const PurchasePage = () => {
                                                             <PrintIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
+                                                    {(() => {
+                                                        let files = [];
+                                                        try { files = order.attachment_file ? (typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file) : []; } catch { files = []; }
+                                                        if (!Array.isArray(files)) files = [];
+                                                        return files.length > 0 ? (
+                                                            <Tooltip title={`첨부파일 ${files.length}개`}>
+                                                                <IconButton size="small" onClick={() => {
+                                                                    setViewingFiles(files);
+                                                                    setViewingFileTitle(order.order_no);
+                                                                    setShowFileModal(true);
+                                                                }}>
+                                                                    <AttachIcon fontSize="small" color="action" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        ) : null;
+                                                    })()}
                                                 </TableCell>
                                             </TableRow>
                                             {expandedOrderId === order.id && (
@@ -353,6 +375,13 @@ const PurchasePage = () => {
                     if (tabValue === 1) fetchOrders();
                     else fetchCompletedOrders();
                 }}
+            />
+
+            <FileViewerModal
+                isOpen={showFileModal}
+                onClose={() => setShowFileModal(false)}
+                files={viewingFiles}
+                title={viewingFileTitle}
             />
         </Box>
     );
