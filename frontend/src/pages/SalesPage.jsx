@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
-import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, FileSpreadsheet, Printer } from 'lucide-react';
+import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, FileSpreadsheet, Printer, X } from 'lucide-react';
 import { cn, getImageUrl } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import EstimateModal from '../components/EstimateModal';

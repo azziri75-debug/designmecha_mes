@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Box, Typography, Button, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse
-} from '@mui/material';
+import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon } from '@mui/icons-material';
+import { X } from 'lucide-react';
 import api from '../lib/api';
 import { getImageUrl } from '../lib/utils';
 import ProductionPlanModal from '../components/ProductionPlanModal';
@@ -13,7 +11,6 @@ const ProductionPage = () => {
     const [tabIndex, setTabIndex] = useState(0);
     const [orders, setOrders] = useState([]);
     const [plans, setPlans] = useState([]);
-    const [loading, setLoading] = useState(false);
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -28,11 +25,6 @@ const ProductionPage = () => {
         setSheetPlan(plan);
         setSheetModalOpen(true);
     };
-
-    useEffect(() => {
-        fetchOrders();
-        fetchPlans();
-    }, []);
 
     const fetchOrders = async () => {
         try {
@@ -51,6 +43,12 @@ const ProductionPage = () => {
             console.error("Failed to fetch plans", error);
         }
     };
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchOrders();
+        fetchPlans();
+    }, []);
 
     const handleCreateClick = (order) => {
         setSelectedOrder(order);
@@ -203,6 +201,7 @@ const ProductionPage = () => {
                             onDelete={handleDeletePlan}
                             onComplete={handleCompletePlan}
                             onPrint={handlePrintClick}
+                            onDeleteAttachment={handleDeleteAttachment}
                             readonly={false}
                         />
                     )}
@@ -213,6 +212,7 @@ const ProductionPage = () => {
                             onEdit={handleEditClick}
                             onDelete={handleDeletePlan}
                             onPrint={handlePrintClick}
+                            onDeleteAttachment={handleDeleteAttachment}
                             readonly={false}
                         />
                     )}
@@ -329,7 +329,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, readonly }) => {
+const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, readonly }) => {
     return (
         <TableContainer>
             <Table>
@@ -349,7 +349,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, re
                 </TableHead>
                 <TableBody>
                     {plans.length === 0 ? (
-                        <TableRow><TableCell colSpan={9} align="center">데이터가 없습니다.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={10} align="center">데이터가 없습니다.</TableCell></TableRow>
                     ) : (
                         plans.map((plan) => (
                             <Row
@@ -359,6 +359,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, re
                                 onDelete={onDelete}
                                 onComplete={onComplete}
                                 onPrint={onPrint}
+                                onDeleteAttachment={onDeleteAttachment}
                                 readonly={readonly}
                             />
                         ))
@@ -369,7 +370,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, re
     );
 };
 
-const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, readonly }) => {
+const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, readonly }) => {
     const [open, setOpen] = useState(false);
     const order = plan.order; // Used order from plan (eager loaded)
 
@@ -409,10 +410,19 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, readonly }) => {
                 <TableCell><Chip label={plan.status} color={plan.status === 'COMPLETED' ? "success" : "primary"} variant="outlined" /></TableCell>
                 <TableCell>{plan.items?.length || 0}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                    {plan.attachment_file && (() => {
+                    {(() => {
+                        let files = [];
                         try {
-                            const files = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file;
-                            const fileList = Array.isArray(files) ? files : [files];
+                            if (plan.attachment_file) {
+                                files = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file;
+                            }
+                        } catch {
+                            files = [];
+                        }
+
+                        const fileList = Array.isArray(files) ? files : [files].filter(Boolean);
+
+                        if (fileList.length > 0) {
                             return fileList.map((file, idx) => (
                                 <div key={idx} className="flex items-center gap-2 mb-1">
                                     <a href={getImageUrl(file.url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline block text-xs truncate max-w-[150px]" title={file.name}>
@@ -420,7 +430,7 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, readonly }) => {
                                     </a>
                                     {!readonly && (
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); handleDeleteAttachment(plan, idx); }}
+                                            onClick={(e) => { e.stopPropagation(); onDeleteAttachment(plan, idx); }}
                                             className="text-red-500 hover:text-red-700 bg-red-50/50 rounded-full p-0.5"
                                             title="파일 삭제"
                                         >
@@ -429,9 +439,8 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, readonly }) => {
                                     )}
                                 </div>
                             ));
-                        } catch (e) {
-                            return null;
                         }
+                        return null;
                     })()}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
