@@ -12,7 +12,7 @@ from app.schemas.quality import InspectionResultCreate, InspectionResultResponse
 
 router = APIRouter()
 
-_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # backend/
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # backend/
 UPLOAD_DIR = os.path.join(_BASE_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 

@@ -10,8 +10,10 @@ import mimetypes
 router = APIRouter()
 
 # Use absolute path based on project root to avoid CWD issues
-_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # backend/
+# __file__ = backend/app/api/endpoints/upload.py → need 4 dirname to reach backend/
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # backend/
 UPLOAD_DIR = os.path.join(_BASE_DIR, "uploads")
+print(f"[UPLOAD INIT] _BASE_DIR={_BASE_DIR}, UPLOAD_DIR={UPLOAD_DIR}")
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
@@ -43,13 +45,17 @@ async def upload_file(file: UploadFile = File(...)):
 @router.get("/download")
 async def download_file(path: str, filename: str = None):
     try:
-        # Strip /static/ first to handle frontend paths
+        # Strip common prefixes to get the relative path within uploads/
         clean_path = path
-        if path.startswith("/static/"):
-            clean_path = path.replace("/static/", "", 1)
+        for prefix in ["/static/", "static/", "/uploads/", "uploads/"]:
+            if clean_path.startswith(prefix):
+                clean_path = clean_path[len(prefix):]
+                break
+        # Also strip leading slash if still present
+        clean_path = clean_path.lstrip("/")
         
-        # Security: Prevent directory traversal on the clean path
-        if ".." in clean_path or clean_path.startswith("/"):
+        # Security: Prevent directory traversal
+        if ".." in clean_path:
             raise HTTPException(status_code=400, detail="Invalid path")
             
         file_path = os.path.join(UPLOAD_DIR, clean_path)
@@ -87,13 +93,17 @@ async def download_file(path: str, filename: str = None):
 @router.get("/preview")
 async def preview_file(path: str):
     try:
-        # Strip /static/ first to handle frontend paths
+        # Strip common prefixes to get the relative path within uploads/
         clean_path = path
-        if path.startswith("/static/"):
-            clean_path = path.replace("/static/", "", 1)
+        for prefix in ["/static/", "static/", "/uploads/", "uploads/"]:
+            if clean_path.startswith(prefix):
+                clean_path = clean_path[len(prefix):]
+                break
+        # Also strip leading slash if still present
+        clean_path = clean_path.lstrip("/")
         
-        # Security: Prevent directory traversal on the clean path
-        if ".." in clean_path or clean_path.startswith("/"):
+        # Security: Prevent directory traversal
+        if ".." in clean_path:
             raise HTTPException(status_code=400, detail="Invalid path")
             
         file_path = os.path.join(UPLOAD_DIR, clean_path)
