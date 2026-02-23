@@ -51,7 +51,6 @@ const SalesPage = () => {
     // File Viewer
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
-    const [fileModalTitle, setFileModalTitle] = useState('');
     const [viewingTargetId, setViewingTargetId] = useState(null); // Track ID for deletion
 
     // Filters
@@ -61,6 +60,7 @@ const SalesPage = () => {
 
     useEffect(() => {
         fetchPartners();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -118,7 +118,7 @@ const SalesPage = () => {
     const handleDelete = async (estimateId) => {
         if (!window.confirm("정말로 삭제하시겠습니까?")) return;
         try {
-            await api.delete(`/ sales / estimates / ${estimateId} `);
+            await api.delete(`/sales/estimates/${estimateId}`);
             alert("삭제되었습니다.");
             fetchEstimates();
         } catch (error) {
@@ -135,7 +135,7 @@ const SalesPage = () => {
     const handleDeleteOrder = async (orderId) => {
         if (!window.confirm("정말로 삭제하시겠습니까? 관련 생산 계획도 함께 삭제됩니다.")) return;
         try {
-            await api.delete(`/ sales / orders / ${orderId} `);
+            await api.delete(`/sales/orders/${orderId}`);
             alert("삭제되었습니다.");
             fetchOrders();
         } catch (error) {
@@ -147,7 +147,7 @@ const SalesPage = () => {
     const handleExcelExport = async (estimateId) => {
         try {
             // Trigger Excel Generation
-            const res = await api.post(`/ sales / estimates / ${estimateId}/export_excel`);
+            const res = await api.post(`/sales/estimates/${estimateId}/export_excel`);
             const updatedEstimate = res.data;
 
             // Refresh list to show new attachment
@@ -329,7 +329,7 @@ const SalesPage = () => {
                                                                 if (est.attachment_file) {
                                                                     files = typeof est.attachment_file === 'string' ? JSON.parse(est.attachment_file) : est.attachment_file;
                                                                 }
-                                                            } catch (e) { files = [] }
+                                                            } catch { files = [] }
 
                                                             if (Array.isArray(files) && files.length > 0) {
                                                                 return (
@@ -526,7 +526,6 @@ const SalesPage = () => {
                     setViewingTargetId(null);
                 }}
                 files={viewingFiles}
-                title={fileModalTitle}
                 onDeleteFile={handleDeleteEstimateAttachment}
             />
 
