@@ -458,6 +458,7 @@ const BasicsPageContent = () => {
                                             {formData.logo_image && (
                                                 <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
                                                     <img
+                                                        crossOrigin="anonymous"
                                                         src={getImageUrl(typeof formData.logo_image === 'string' ? JSON.parse(formData.logo_image).url : formData.logo_image.url)}
                                                         alt="Logo"
                                                         className="max-w-full max-h-full object-contain"
@@ -500,6 +501,7 @@ const BasicsPageContent = () => {
                                             {formData.stamp_image && (
                                                 <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
                                                     <img
+                                                        crossOrigin="anonymous"
                                                         src={getImageUrl(typeof formData.stamp_image === 'string' ? JSON.parse(formData.stamp_image).url : formData.stamp_image.url)}
                                                         alt="Stamp"
                                                         className="max-w-full max-h-full object-contain"

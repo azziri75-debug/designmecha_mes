@@ -278,6 +278,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                                     <span className="inline-block w-12 text-gray-500">성명</span> {company?.owner_name || company?.representative}
                                                     {(metadata.show_stamp && (company?.stamp_image || company?.logo_image)) && (
                                                         <img
+                                                            crossOrigin="anonymous"
                                                             src={getImageUrl((typeof company.stamp_image === 'string' ? JSON.parse(company.stamp_image).url : company.stamp_image?.url) ||
                                                                 (typeof company.logo_image === 'string' ? JSON.parse(company.logo_image).url : company.logo_image?.url))}
                                                             alt="Stamp"

@@ -9,6 +9,8 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    const [company, setCompany] = useState(null);
+
     // Editable State (Metadata)
     const [metadata, setMetadata] = useState({
         order_amount: "", // 수주금액 (수동 입력 가능하도록)
@@ -20,9 +22,19 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
 
     useEffect(() => {
         if (isOpen && plan) {
+            fetchCompany();
             initializeData();
         }
     }, [isOpen, plan]);
+
+    const fetchCompany = async () => {
+        try {
+            const res = await api.get('/basics/company');
+            setCompany(res.data);
+        } catch (error) {
+            console.error("Failed to fetch company info", error);
+        }
+    };
 
     const initializeData = () => {
         if (plan) {
@@ -198,9 +210,27 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                         className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top"
                         style={{ fontFamily: '"Malgun Gothic", "Sunny", sans-serif' }}
                     >
-                        {/* Title */}
-                        <div className="mb-2">
+                        {/* Title and Logo/Stamp */}
+                        <div className="mb-2 relative flex justify-between items-center h-12">
                             <span className="text-sm font-bold border border-black px-4 py-1">생산관리</span>
+                            <div className="flex items-center gap-4">
+                                {company?.logo_image && (
+                                    <img
+                                        crossOrigin="anonymous"
+                                        src={getImageUrl(typeof company.logo_image === 'string' ? JSON.parse(company.logo_image).url : company.logo_image.url)}
+                                        alt="Logo"
+                                        className="h-8 object-contain"
+                                    />
+                                )}
+                                {company?.stamp_image && (
+                                    <img
+                                        crossOrigin="anonymous"
+                                        src={getImageUrl(typeof company.stamp_image === 'string' ? JSON.parse(company.stamp_image).url : company.stamp_image.url)}
+                                        alt="Stamp"
+                                        className="h-10 w-10 object-contain opacity-80 mix-blend-multiply"
+                                    />
+                                )}
+                            </div>
                         </div>
 
                         {/* Top Info Table */}

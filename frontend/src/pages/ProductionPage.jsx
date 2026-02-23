@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon } from '@mui/icons-material';
 import api from '../lib/api';
+import { getImageUrl } from '../lib/utils';
 import ProductionPlanModal from '../components/ProductionPlanModal';
 import ProductionSheetModal from '../components/ProductionSheetModal';
 
@@ -322,6 +323,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, re
                         <TableCell>금액</TableCell>
                         <TableCell>상태</TableCell>
                         <TableCell>공정 수</TableCell>
+                        <TableCell>첨부파일</TableCell>
                         <TableCell>관리</TableCell>
                     </TableRow>
                 </TableHead>
@@ -386,6 +388,21 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, readonly }) => {
                 <TableCell>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
                 <TableCell><Chip label={plan.status} color={plan.status === 'COMPLETED' ? "success" : "primary"} variant="outlined" /></TableCell>
                 <TableCell>{plan.items?.length || 0}</TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                    {plan.attachment_file && (() => {
+                        try {
+                            const files = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file;
+                            const fileList = Array.isArray(files) ? files : [files];
+                            return fileList.map((file, idx) => (
+                                <a key={idx} href={getImageUrl(file.url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline block text-xs">
+                                    {file.name}
+                                </a>
+                            ));
+                        } catch (e) {
+                            return null;
+                        }
+                    })()}
+                </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     {!readonly && (
                         <>

@@ -11,12 +11,22 @@ app = FastAPI(
 from fastapi.staticfiles import StaticFiles
 import os
 
+class CORSStaticFiles(StaticFiles):
+    async def __call__(self, scope, receive, send):
+        async def cors_send(message):
+            if message["type"] == "http.response.start":
+                headers = dict(message.get("headers", []))
+                headers[b"access-control-allow-origin"] = b"*"
+                message["headers"] = list(headers.items())
+            await send(message)
+        await super().__call__(scope, receive, cors_send)
+
 # Mount static files
 UPLOAD_DIR = "uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
-app.mount("/static", StaticFiles(directory=UPLOAD_DIR), name="static")
+app.mount("/static", CORSStaticFiles(directory=UPLOAD_DIR), name="static")
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:
