@@ -118,7 +118,6 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                 const newAttachments = [...currentAttachments, { name: fileName, url: fileUrl }];
 
                 await api.put(`/production/plans/${plan.id}`, {
-                    ...plan,
                     attachment_file: newAttachments,
                     sheet_metadata: metadata
                 });

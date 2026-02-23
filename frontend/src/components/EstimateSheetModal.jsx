@@ -121,10 +121,6 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 const newAttachments = [...currentAttachments, { name: fileName, url: fileUrl }];
 
                 await api.put(`/sales/estimates/${estimate.id}`, {
-                    ...estimate, // Careful with full update, better use specific fields if backend supports PATCH or ignore other fields
-                    // Actually our update schema permits partial updates if we send only fields.
-                    // But here we are sending full object? No, we should send only changes.
-                    // Let's create an update object.
                     attachment_file: newAttachments,
                     sheet_metadata: metadata
                 });
