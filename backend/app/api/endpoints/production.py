@@ -549,6 +549,9 @@ async def export_production_plan_excel(
     current_attachments.append(new_attachment)
     plan.attachment_file = current_attachments
 
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(plan, "attachment_file")
+
     db.add(plan)
     await db.commit()
     

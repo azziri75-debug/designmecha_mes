@@ -256,6 +256,10 @@ async def export_estimate_excel(
         current_files.append(new_file)
         
         estimate.attachment_file = current_files
+        
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(estimate, "attachment_file")
+
         db.add(estimate)
         await db.commit()
         await db.refresh(estimate)
