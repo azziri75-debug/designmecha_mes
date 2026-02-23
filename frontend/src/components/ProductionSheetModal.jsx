@@ -128,7 +128,8 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
             }
         } catch (error) {
             console.error("PDF Generation failed", error);
-            alert("PDF 생성 및 저장 실패");
+            const errDetail = error.response?.data?.detail || error.message || "알 수 없는 오류";
+            alert(`PDF 생성 및 저장 실패:\n${typeof errDetail === 'object' ? JSON.stringify(errDetail) : errDetail}`);
         } finally {
             setSaving(false);
         }
