@@ -160,28 +160,29 @@ const SalesPage = () => {
         }
     };
 
-    const handleDeleteEstimateAttachment = async (indexToRemove) => {
-        if (!viewingTargetId) return;
+    const handleDeleteEstimateAttachment = async (estimateId, indexToRemove) => {
+        if (!estimateId) return;
         if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
 
         try {
-            const est = estimates.find(e => e.id === viewingTargetId);
+            const est = estimates.find(e => e.id === estimateId);
             if (!est) return;
 
             const files = typeof est.attachment_file === 'string' ? JSON.parse(est.attachment_file) : est.attachment_file;
             const currentFiles = Array.isArray(files) ? files : [files];
             const newFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
 
-            const res = await api.put(`/sales/estimates/${viewingTargetId}`, {
+            const res = await api.put(`/sales/estimates/${estimateId}`, {
                 attachment_file: newFiles
             });
 
             const updatedEstimate = res.data;
-            setEstimates(prev => prev.map(e => e.id === viewingTargetId ? updatedEstimate : e));
-            setViewingFiles(newFiles);
+            setEstimates(prev => prev.map(e => e.id === estimateId ? updatedEstimate : e));
 
-            if (newFiles.length === 0) {
-                setShowFileModal(false);
+            // Still update viewingFiles if modal is open just in case
+            if (viewingTargetId === estimateId) {
+                setViewingFiles(newFiles);
+                if (newFiles.length === 0) setShowFileModal(false);
             }
 
             alert("첨부파일이 삭제되었습니다.");
@@ -330,17 +331,31 @@ const SalesPage = () => {
 
                                                             if (Array.isArray(files) && files.length > 0) {
                                                                 return (
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setViewingFiles(files);
-                                                                            setFileModalTitle(`견적서 첨부파일 (${est.partner.name})`);
-                                                                            setViewingTargetId(est.id); // Save ID for deletion
-                                                                            setShowFileModal(true);
-                                                                        }}
-                                                                        className="text-blue-400 hover:text-blue-300 underline text-xs"
-                                                                    >
-                                                                        {files.length}개 파일
-                                                                    </button>
+                                                                    <div className="flex flex-col gap-1">
+                                                                        {files.map((file, idx) => (
+                                                                            <div key={idx} className="flex items-center gap-2">
+                                                                                <a
+                                                                                    href={getImageUrl(file.url)}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="text-blue-400 hover:text-blue-300 hover:underline block text-xs truncate max-w-[150px]"
+                                                                                    title={file.name}
+                                                                                >
+                                                                                    {file.name}
+                                                                                </a>
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleDeleteEstimateAttachment(est.id, idx);
+                                                                                    }}
+                                                                                    className="text-red-500 hover:text-red-400 bg-red-900/20 rounded-full p-0.5"
+                                                                                    title="파일 삭제"
+                                                                                >
+                                                                                    <X className="w-3 h-3" />
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
                                                                 );
                                                             }
                                                             return <span className="text-gray-600">-</span>;

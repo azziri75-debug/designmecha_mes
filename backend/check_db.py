@@ -1,16 +1,9 @@
-from app.db.base import Base
-from app.models.basics import Partner
-from app.api.deps import engine
-import asyncio
-from sqlalchemy.future import select
+import sqlite3
+conn = sqlite3.connect('mes.db')
+print("ESTIMATES:")
+res1 = conn.execute('SELECT id, attachment_file FROM estimates ORDER BY id DESC LIMIT 5').fetchall()
+for r in res1: print(r)
 
-async def check():
-    async with engine.begin() as conn:
-        print("Connecting...")
-        # Try a simple query
-        result = await conn.execute(select(Partner).limit(1))
-        print("Query executed.")
-        print(f"Partners found: {result.scalars().all()}")
-
-if __name__ == "__main__":
-    asyncio.run(check())
+print("PRODUCTION PLANS:")
+res2 = conn.execute('SELECT id, attachment_file FROM production_plans ORDER BY id DESC LIMIT 5').fetchall()
+for r in res2: print(r)

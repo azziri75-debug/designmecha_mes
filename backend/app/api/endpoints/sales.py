@@ -196,7 +196,7 @@ async def export_estimate_excel(
             pname = item.product.name if item.product else "-"
             ws.cell(row=row_idx, column=2, value=pname).alignment = left_align
             
-            spec = item.product.code if item.product else "-"
+            spec = item.product.specification if item.product else "-"
             ws.cell(row=row_idx, column=3, value=spec)
             
             ws.cell(row=row_idx, column=4, value=item.quantity)

@@ -455,7 +455,6 @@ async def export_production_plan_excel(
     ws[f'I{start_row}'] = "수량"
     style_range(ws, f'A{start_row}:J{start_row}', font=bold_font, fill=gray_fill)
 
-    curr_row = start_row + 1
     for prod_info in unique_products:
         ws.merge_cells(f'A{curr_row}:C{curr_row}')
         ws.merge_cells(f'D{curr_row}:F{curr_row}')
@@ -463,7 +462,7 @@ async def export_production_plan_excel(
         ws.merge_cells(f'I{curr_row}:J{curr_row}')
         
         ws[f'A{curr_row}'] = prod_info["product"].name
-        ws[f'D{curr_row}'] = prod_info["product"].code or "-"
+        ws[f'D{curr_row}'] = prod_info["product"].specification or "-"
         ws[f'G{curr_row}'] = prod_info["product"].material or "-"
         ws[f'I{curr_row}'] = prod_info["quantity"]
         
