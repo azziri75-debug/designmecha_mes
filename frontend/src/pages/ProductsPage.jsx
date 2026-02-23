@@ -406,6 +406,7 @@ const ProductsPage = () => {
                                     <th className="px-6 py-3">재질</th>
                                     <th className="px-6 py-3">단위</th>
                                     <th className="px-6 py-3">공정 수</th>
+                                    <th className="px-6 py-3">도면/첨부</th>
                                     <th className="px-6 py-3">비고</th>
                                     <th className="px-6 py-3 text-right">관리</th>
                                 </tr>
@@ -437,6 +438,32 @@ const ProductsPage = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-gray-500 truncate max-w-xs" title={product.note}>{product.note || '-'}</td>
+                                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                                {(() => {
+                                                    let fileObj = null;
+                                                    try {
+                                                        fileObj = product.drawing_file ? (typeof product.drawing_file === 'string' ? JSON.parse(product.drawing_file) : product.drawing_file) : null;
+                                                    } catch { fileObj = null; }
+                                                    if (fileObj && fileObj.url) {
+                                                        return (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setViewingFiles([fileObj]);
+                                                                    setFileModalTitle(`${product.name} - 도면`);
+                                                                    setShowFileModal(true);
+                                                                }}
+                                                                className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors"
+                                                                title="도면/첨부파일 보기"
+                                                            >
+                                                                <FileText className="w-3 h-3" />
+                                                                도면
+                                                            </button>
+                                                        );
+                                                    }
+                                                    return <span className="text-gray-600 text-xs">-</span>;
+                                                })()}
+                                            </td>
                                             <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                                 <button
                                                     onClick={() => handleEditProduct(product)}

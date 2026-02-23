@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon } from '@mui/icons-material';
-import { X } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import api from '../lib/api';
-import { getImageUrl } from '../lib/utils';
 import ProductionPlanModal from '../components/ProductionPlanModal';
 import ProductionSheetModal from '../components/ProductionSheetModal';
+import FileViewerModal from '../components/FileViewerModal';
 
 const ProductionPage = () => {
     const [tabIndex, setTabIndex] = useState(0);
@@ -20,6 +20,11 @@ const ProductionPage = () => {
     // Sheet Modal State
     const [sheetModalOpen, setSheetModalOpen] = useState(false);
     const [sheetPlan, setSheetPlan] = useState(null);
+
+    // File viewer modal
+    const [showFileModal, setShowFileModal] = useState(false);
+    const [viewingFiles, setViewingFiles] = useState([]);
+    const [viewingFileTitle, setViewingFileTitle] = useState('');
 
     const handlePrintClick = (plan) => {
         setSheetPlan(plan);
@@ -202,6 +207,11 @@ const ProductionPage = () => {
                             onComplete={handleCompletePlan}
                             onPrint={handlePrintClick}
                             onDeleteAttachment={handleDeleteAttachment}
+                            onOpenFiles={(files, plan) => {
+                                setViewingFiles(files);
+                                setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
+                                setShowFileModal(true);
+                            }}
                             readonly={false}
                         />
                     )}
@@ -213,7 +223,12 @@ const ProductionPage = () => {
                             onDelete={handleDeletePlan}
                             onPrint={handlePrintClick}
                             onDeleteAttachment={handleDeleteAttachment}
-                            readonly={false}
+                            onOpenFiles={(files, plan) => {
+                                setViewingFiles(files);
+                                setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
+                                setShowFileModal(true);
+                            }}
+                            readonly
                         />
                     )}
                 </Box>
@@ -232,6 +247,13 @@ const ProductionPage = () => {
                 onClose={() => setSheetModalOpen(false)}
                 plan={sheetPlan}
                 onSave={fetchPlans}
+            />
+
+            <FileViewerModal
+                isOpen={showFileModal}
+                onClose={() => setShowFileModal(false)}
+                files={viewingFiles}
+                title={viewingFileTitle}
             />
         </Box>
     );
@@ -329,7 +351,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, readonly }) => {
+const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, readonly }) => {
     return (
         <TableContainer>
             <Table>
@@ -360,6 +382,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, on
                                 onComplete={onComplete}
                                 onPrint={onPrint}
                                 onDeleteAttachment={onDeleteAttachment}
+                                onOpenFiles={onOpenFiles}
                                 readonly={readonly}
                             />
                         ))
@@ -370,7 +393,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, on
     );
 };
 
-const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, readonly }) => {
+const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onOpenFiles, readonly }) => {
     const [open, setOpen] = useState(false);
     const order = plan.order; // Used order from plan (eager loaded)
 
@@ -419,28 +442,23 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, 
                         } catch {
                             files = [];
                         }
-
                         const fileList = Array.isArray(files) ? files : [files].filter(Boolean);
-
                         if (fileList.length > 0) {
-                            return fileList.map((file, idx) => (
-                                <div key={idx} className="flex items-center gap-2 mb-1">
-                                    <a href={getImageUrl(file.url)} target="_blank" rel="noopener noreferrer" download={file.name} className="text-blue-500 hover:underline block text-xs truncate max-w-[150px]" title={`${file.name} - 클릭하여 다운로드`}>
-                                        {file.name}
-                                    </a>
-                                    {!readonly && (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onDeleteAttachment(plan, idx); }}
-                                            className="text-red-500 hover:text-red-700 bg-red-50/50 rounded-full p-0.5"
-                                            title="파일 삭제"
-                                        >
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    )}
-                                </div>
-                            ));
+                            return (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onOpenFiles(fileList, plan);
+                                    }}
+                                    className="flex items-center gap-1.5 text-blue-500 hover:text-blue-400 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors"
+                                    title="첨부파일 보기/다운로드"
+                                >
+                                    <FileText className="w-3 h-3" />
+                                    {fileList.length}개
+                                </button>
+                            );
                         }
-                        return null;
+                        return <span className="text-gray-500 text-xs">-</span>;
                     })()}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>

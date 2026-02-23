@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, FileSpreadsheet, Printer, X } from 'lucide-react';
-import { cn, getImageUrl } from '../lib/utils';
+import { cn } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import EstimateModal from '../components/EstimateModal';
 import OrderModal from '../components/OrderModal';
@@ -333,35 +333,22 @@ const SalesPage = () => {
 
                                                             if (Array.isArray(files) && files.length > 0) {
                                                                 return (
-                                                                    <div className="flex flex-col gap-1">
-                                                                        {files.map((file, idx) => (
-                                                                            <div key={idx} className="flex items-center gap-2">
-                                                                                <a
-                                                                                    href={getImageUrl(file.url)}
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    download={file.name}
-                                                                                    className="text-blue-400 hover:text-blue-300 hover:underline block text-xs truncate max-w-[150px]"
-                                                                                    title={`${file.name} - 클릭하여 다운로드`}
-                                                                                >
-                                                                                    {file.name}
-                                                                                </a>
-                                                                                <button
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        handleDeleteEstimateAttachment(est.id, idx);
-                                                                                    }}
-                                                                                    className="text-red-500 hover:text-red-400 bg-red-900/20 rounded-full p-0.5"
-                                                                                    title="파일 삭제"
-                                                                                >
-                                                                                    <X className="w-3 h-3" />
-                                                                                </button>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setViewingFiles(files);
+                                                                            setViewingTargetId(est.id);
+                                                                            setShowFileModal(true);
+                                                                        }}
+                                                                        className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors"
+                                                                        title="첨부파일 보기/다운로드"
+                                                                    >
+                                                                        <FileText className="w-3 h-3" />
+                                                                        {files.length}개
+                                                                    </button>
                                                                 );
                                                             }
-                                                            return <span className="text-gray-600">-</span>;
+                                                            return <span className="text-gray-600 text-xs">-</span>;
                                                         })()}
 
                                                         <button
