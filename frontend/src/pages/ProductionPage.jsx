@@ -250,12 +250,12 @@ const ProductionPage = () => {
                             onDelete={handleDeletePlan}
                             onPrint={handlePrintClick}
                             onDeleteAttachment={handleDeleteAttachment}
+                            viewingFileTitle={plan?.order?.order_no || '첨부 파일'}
                             onOpenFiles={(files, plan) => {
                                 setViewingFiles(files);
                                 setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
                                 setShowFileModal(true);
                             }}
-                            readonly
                         />
                     )}
                 </Box>
