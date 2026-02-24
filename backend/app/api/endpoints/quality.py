@@ -8,9 +8,14 @@ import os
 from datetime import datetime, date
 
 from app.api.deps import get_db
+from app.models.quality import InspectionResult, Attachment, QualityDefect
 from app.models.sales import SalesOrder
 from app.models.production import ProductionPlan, ProductionPlanItem
 from app.models.product import Product
+from app.schemas.quality import (
+    InspectionResultCreate, InspectionResultResponse, AttachmentResponse,
+    QualityDefectCreate, QualityDefectResponse, QualityDefectUpdate
+)
 from sqlalchemy import desc, or_, and_
 
 router = APIRouter()
