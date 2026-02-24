@@ -1,7 +1,7 @@
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, cast, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -69,7 +69,7 @@ async def create_production_plan(
         # Check if ACTIVE Plan already exists for this order
         result = await db.execute(select(ProductionPlan).where(
             ProductionPlan.order_id == plan_in.order_id,
-            ProductionPlan.status != ProductionStatus.CANCELED
+            cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
         ))
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Active Production Plan already exists for this Order")
@@ -83,7 +83,7 @@ async def create_production_plan(
         # Check if ACTIVE Plan already exists for this stock production
         result = await db.execute(select(ProductionPlan).where(
             ProductionPlan.stock_production_id == plan_in.stock_production_id,
-            ProductionPlan.status != ProductionStatus.CANCELED
+            cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
         ))
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Active Production Plan already exists for this Stock Production request")
