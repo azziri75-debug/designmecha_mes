@@ -10,11 +10,13 @@ import FileViewerModal from '../components/FileViewerModal';
 const ProductionPage = () => {
     const [tabIndex, setTabIndex] = useState(0);
     const [orders, setOrders] = useState([]);
+    const [stockProductions, setStockProductions] = useState([]);
     const [plans, setPlans] = useState([]);
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [selectedStockProduction, setSelectedStockProduction] = useState(null);
     const [selectedPlan, setSelectedPlan] = useState(null);
 
     // Sheet Modal State
@@ -49,14 +51,25 @@ const ProductionPage = () => {
         }
     };
 
+    const fetchStockProductions = async () => {
+        try {
+            const response = await api.get('/production/stock-productions');
+            setStockProductions(response.data.filter(sp => sp.status === 'PENDING'));
+        } catch (error) {
+            console.error("Failed to fetch stock productions", error);
+        }
+    };
+
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchOrders();
+        fetchStockProductions();
         fetchPlans();
     }, []);
 
-    const handleCreateClick = (order) => {
+    const handleCreateClick = (order, stockProd = null) => {
         setSelectedOrder(order);
+        setSelectedStockProduction(stockProd);
         setSelectedPlan(null);
         setModalOpen(true);
     };
@@ -64,6 +77,7 @@ const ProductionPage = () => {
     const handleEditClick = (plan) => {
         setSelectedPlan(plan);
         setSelectedOrder(null);
+        setSelectedStockProduction(null);
         setModalOpen(true);
     };
 
@@ -176,6 +190,7 @@ const ProductionPage = () => {
 
     const handleSuccess = () => {
         fetchOrders();
+        fetchStockProductions();
         fetchPlans();
         if (tabIndex === 0) setTabIndex(1);
     };
@@ -203,7 +218,12 @@ const ProductionPage = () => {
 
                 <Box sx={{ p: 3 }}>
                     {tabIndex === 0 && (
-                        <UnplannedOrdersTable orders={orders} plans={plans} onCreatePlan={handleCreateClick} />
+                        <UnplannedOrdersTable
+                            orders={orders}
+                            stockProductions={stockProductions}
+                            plans={plans}
+                            onCreatePlan={handleCreateClick}
+                        />
                     )}
                     {tabIndex === 1 && (
                         <ProductionPlansTable
@@ -246,6 +266,7 @@ const ProductionPage = () => {
                 onClose={() => setModalOpen(false)}
                 onSuccess={handleSuccess}
                 order={selectedOrder}
+                stockProduction={selectedStockProduction}
                 plan={selectedPlan}
             />
 
@@ -266,12 +287,18 @@ const ProductionPage = () => {
     );
 };
 
-const UnplannedOrdersTable = ({ orders, plans, onCreatePlan }) => {
+const UnplannedOrdersTable = ({ orders, stockProductions, plans, onCreatePlan }) => {
     const planOrderIds = plans.map(p => p.order_id);
+    const planStockProdIds = plans.map(p => p.stock_production_id);
+
     // Filter out planned orders AND filter by status (PENDING or CONFIRMED)
     const unplannedOrders = orders.filter(o =>
         !planOrderIds.includes(o.id) &&
         (o.status === 'PENDING' || o.status === 'CONFIRMED')
+    );
+
+    const unplannedStockProductions = stockProductions.filter(sp =>
+        !planStockProdIds.includes(sp.id)
     );
 
     return (
@@ -288,12 +315,17 @@ const UnplannedOrdersTable = ({ orders, plans, onCreatePlan }) => {
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                    {unplannedOrders.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} align="center">생산 대기 중인 수주가 없습니다.</TableCell></TableRow>
+                    {unplannedOrders.length === 0 && unplannedStockProductions.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} align="center">생산 대기 중인 항목이 없습니다.</TableCell></TableRow>
                     ) : (
-                        unplannedOrders.map((order) => (
-                            <UnplannedOrderRow key={order.id} order={order} onCreatePlan={onCreatePlan} />
-                        ))
+                        <>
+                            {unplannedOrders.map((order) => (
+                                <UnplannedOrderRow key={`order-${order.id}`} order={order} onCreatePlan={onCreatePlan} />
+                            ))}
+                            {unplannedStockProductions.map((sp) => (
+                                <UnplannedStockProductionRow key={`sp-${sp.id}`} stockProduction={sp} onCreatePlan={onCreatePlan} />
+                            ))}
+                        </>
                     )}
                 </TableBody>
             </Table>
@@ -310,7 +342,10 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
                 sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5' } }}
                 onClick={() => setOpen(!open)}
             >
-                <TableCell>{order.order_no}</TableCell>
+                <TableCell>
+                    <Chip label="수주" size="small" variant="outlined" sx={{ mr: 1 }} />
+                    {order.order_no}
+                </TableCell>
                 <TableCell>{order.partner?.name}</TableCell>
                 <TableCell>{order.order_date}</TableCell>
                 <TableCell>{order.delivery_date}</TableCell>
@@ -355,6 +390,32 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
                 </TableCell>
             </TableRow>
         </React.Fragment>
+    );
+};
+
+const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
+    return (
+        <TableRow sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+            <TableCell>
+                <Chip label="재고생산" size="small" sx={{ mr: 1, bgcolor: '#e8f5e9', color: '#2e7d32' }} />
+                {stockProduction.production_no}
+            </TableCell>
+            <TableCell>사내 (자체 생산)</TableCell>
+            <TableCell>{stockProduction.request_date}</TableCell>
+            <TableCell>{stockProduction.target_date || '-'}</TableCell>
+            <TableCell sx={{ color: '#666', fontStyle: 'italic' }}>-</TableCell>
+            <TableCell>
+                <Button
+                    variant="outlined"
+                    color="success"
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={() => onCreatePlan(null, stockProduction)}
+                >
+                    계획 수립
+                </Button>
+            </TableCell>
+        </TableRow>
     );
 };
 
@@ -517,9 +578,9 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onOpenFiles, readonl
                                                 <TableCell width="5%">순번</TableCell>
                                                 <TableCell width="15%">공정명</TableCell>
                                                 <TableCell width="10%">구분</TableCell>
-                                                <TableCell width="15%">외주/구매처</TableCell>
-                                                <TableCell width="10%">작업장</TableCell>
-                                                <TableCell width="20%">작업내용</TableCell>
+                                                <TableCell width="15%">외주/구매/작업자</TableCell>
+                                                <TableCell width="15%">배정 장비</TableCell>
+                                                <TableCell width="15%">작업내용</TableCell>
                                                 <TableCell width="10%">예상시간</TableCell>
                                                 <TableCell width="10%">상태</TableCell>
                                             </TableRow>
@@ -537,11 +598,30 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onOpenFiles, readonl
                                                             variant={item.course_type === 'INTERNAL' ? 'outlined' : 'filled'}
                                                         />
                                                     </TableCell>
-                                                    <TableCell>{item.partner_name}</TableCell>
-                                                    <TableCell>{item.work_center}</TableCell>
+                                                    <TableCell>
+                                                        {item.course_type === 'INTERNAL' ? (
+                                                            item.worker?.name || <span className="text-gray-400 italic">미배정</span>
+                                                        ) : (
+                                                            item.partner_name || '-'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {item.course_type === 'INTERNAL' ? (
+                                                            item.equipment?.name || <span className="text-gray-400 italic">미배정</span>
+                                                        ) : (
+                                                            <span className="text-gray-500 font-light">사외</span>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell>{item.note}</TableCell>
                                                     <TableCell>{item.estimated_time}</TableCell>
-                                                    <TableCell>{item.status}</TableCell>
+                                                    <TableCell>
+                                                        <Chip
+                                                            label={item.status}
+                                                            size="small"
+                                                            variant="outlined"
+                                                            color={item.status === 'COMPLETED' ? 'success' : 'default'}
+                                                        />
+                                                    </TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>

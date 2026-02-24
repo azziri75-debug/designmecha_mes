@@ -7,12 +7,13 @@ import {
 import { Delete as DeleteIcon, Add as AddIcon, DragIndicator } from '@mui/icons-material';
 import api from '../lib/api';
 
-const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
+const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProduction, plan }) => {
     const [items, setItems] = useState([]);
     const [planDate, setPlanDate] = useState(new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
     const [partners, setPartners] = useState([]);
     const [staffList, setStaffList] = useState([]);
+    const [equipments, setEquipments] = useState([]);
 
     // Drag and Drop Refs
     const dragItem = useRef(null);
@@ -20,9 +21,10 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
 
     useEffect(() => {
         if (isOpen) {
-            // Fetch partners and staff
+            // Fetch partners, staff, and equipments
             api.get('/basics/partners/').then(res => setPartners(res.data)).catch(() => { });
             api.get('/basics/staff/').then(res => setStaffList(res.data)).catch(() => { });
+            api.get('/basics/equipments/').then(res => setEquipments(res.data)).catch(() => { });
             if (plan) {
                 // Edit Mode
                 setPlanDate(plan.plan_date);
@@ -32,46 +34,50 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                     product_spec: item.product?.specification || "", // Ensure spec is captured
                     product_unit: item.product?.unit || "EA"
                 })));
-            } else if (order) {
+            } else if (order || stockProduction) {
                 // Create Mode
                 setPlanDate(new Date().toISOString().split('T')[0]);
                 const defaultItems = [];
-                order.items.forEach(orderItem => {
-                    const product = orderItem.product;
+                const sourceItems = order ? order.items : [{ product: stockProduction.product, quantity: stockProduction.quantity, product_id: stockProduction.product_id }];
+
+                sourceItems.forEach(sourceItem => {
+                    const product = sourceItem.product;
                     const processes = product?.standard_processes || [];
 
                     if (processes.length > 0) {
                         processes.sort((a, b) => a.sequence - b.sequence).forEach(proc => {
                             defaultItems.push({
                                 cid: Math.random().toString(36).substr(2, 9),
-                                product_id: orderItem.product_id,
-                                product_name: product.name,
-                                product_spec: product.specification || "",
-                                product_unit: product.unit || "EA",
+                                product_id: sourceItem.product_id,
+                                product_name: product?.name || "Unknown",
+                                product_spec: product?.specification || "",
+                                product_unit: product?.unit || "EA",
                                 process_name: proc.process?.name || "Unknown",
                                 sequence: proc.sequence,
                                 course_type: proc.process?.course_type || "INTERNAL",
                                 partner_name: proc.partner_name || "",
-                                work_center: proc.equipment_name || "",
+                                worker_id: null,
+                                equipment_id: null,
                                 estimated_time: proc.estimated_time || 0,
-                                quantity: orderItem.quantity,
+                                quantity: sourceItem.quantity,
                                 note: ""
                             });
                         });
                     } else {
                         defaultItems.push({
                             cid: Math.random().toString(36).substr(2, 9),
-                            product_id: orderItem.product_id,
+                            product_id: sourceItem.product_id,
                             product_name: product?.name || "Unknown",
-                            product_spec: product.specification || "",
-                            product_unit: product.unit || "EA",
+                            product_spec: product?.specification || "",
+                            product_unit: product?.unit || "EA",
                             process_name: "기본 공정",
                             sequence: 1,
                             course_type: "INTERNAL",
                             partner_name: "",
-                            work_center: "",
+                            worker_id: null,
+                            equipment_id: null,
                             estimated_time: 0,
-                            quantity: orderItem.quantity,
+                            quantity: sourceItem.quantity,
                             note: ""
                         });
                     }
@@ -184,6 +190,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
         try {
             const payload = {
                 order_id: order ? order.id : undefined,
+                stock_production_id: stockProduction ? stockProduction.id : undefined,
                 plan_date: planDate,
                 items: items.map((item) => ({
                     product_id: item.product_id,
@@ -191,7 +198,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                     sequence: item.sequence,
                     course_type: item.course_type,
                     partner_name: item.partner_name,
-                    work_center: item.work_center,
+                    worker_id: item.worker_id || null,
+                    equipment_id: item.equipment_id || null,
                     estimated_time: parseFloat(item.estimated_time) || 0,
                     quantity: parseInt(item.quantity) || 0,
                     note: item.note,
@@ -290,10 +298,10 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                         <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                                             <TableCell width="5%" align="center"></TableCell> {/* Drag Handle Column */}
                                             <TableCell width="5%">순서</TableCell>
-                                            <TableCell width="15%">공정명</TableCell>
+                                            <TableCell width="12%">공정명</TableCell>
                                             <TableCell width="10%">구분</TableCell>
-                                            <TableCell width="12%">외주/구매처</TableCell>
-                                            <TableCell width="10%">작업장</TableCell>
+                                            <TableCell width="12%">외주/구매/작업자</TableCell>
+                                            <TableCell width="12%">배정 장비</TableCell>
                                             <TableCell width="15%">작업내용</TableCell>
                                             <TableCell width="8%">수량</TableCell>
                                             <TableCell width="8%">시간(분)</TableCell>
@@ -354,19 +362,18 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                 <TableCell>
                                                     {item.course_type === 'INTERNAL' ? (
                                                         <Select
-                                                            value={item.worker_name || item.partner_name || ''}
+                                                            value={item.worker_id || ''}
                                                             onChange={(e) => {
-                                                                handleItemChange(item.originalIndex, 'worker_name', e.target.value);
-                                                                handleItemChange(item.originalIndex, 'partner_name', '');
+                                                                handleItemChange(item.originalIndex, 'worker_id', e.target.value);
                                                             }}
                                                             size="small"
                                                             fullWidth
                                                             variant="standard"
                                                             displayEmpty
                                                         >
-                                                            <MenuItem value=""><em>사원 선택</em></MenuItem>
+                                                            <MenuItem value=""><em>작업자 선택</em></MenuItem>
                                                             {staffList.filter(s => s.is_active).map(s => (
-                                                                <MenuItem key={s.id} value={s.name}>{s.name} {s.role ? `(${s.role})` : ''}</MenuItem>
+                                                                <MenuItem key={s.id} value={s.id}>{s.name} {s.role ? `(${s.role})` : ''}</MenuItem>
                                                             ))}
                                                         </Select>
                                                     ) : (
@@ -374,7 +381,6 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                             value={item.partner_name || ''}
                                                             onChange={(e) => {
                                                                 handleItemChange(item.originalIndex, 'partner_name', e.target.value);
-                                                                handleItemChange(item.originalIndex, 'worker_name', '');
                                                             }}
                                                             size="small"
                                                             fullWidth
@@ -394,14 +400,23 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <TextField
-                                                        value={item.work_center || ''}
-                                                        onChange={(e) => handleItemChange(item.originalIndex, 'work_center', e.target.value)}
-                                                        size="small"
-                                                        fullWidth
-                                                        variant="standard"
-                                                        placeholder={item.course_type === 'INTERNAL' ? '작업장' : ''}
-                                                    />
+                                                    {item.course_type === 'INTERNAL' ? (
+                                                        <Select
+                                                            value={item.equipment_id || ''}
+                                                            onChange={(e) => handleItemChange(item.originalIndex, 'equipment_id', e.target.value)}
+                                                            size="small"
+                                                            fullWidth
+                                                            variant="standard"
+                                                            displayEmpty
+                                                        >
+                                                            <MenuItem value=""><em>장비 선택</em></MenuItem>
+                                                            {equipments.filter(eq => eq.is_active).map(eq => (
+                                                                <MenuItem key={eq.id} value={eq.id}>{eq.name} ({eq.code || 'No Code'})</MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    ) : (
+                                                        <Typography variant="caption" color="textSecondary">사외 공정</Typography>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     <TextField

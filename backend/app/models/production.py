@@ -18,7 +18,8 @@ class ProductionPlan(Base):
     __tablename__ = "production_plans"
 
     id = Column(Integer, primary_key=True, index=True)
-    order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=False) # 수주 참조
+    order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True) # 수주 참조 (재고생산의 경우 null)
+    stock_production_id = Column(Integer, ForeignKey("stock_productions.id"), nullable=True) # 재고생산 참조
     plan_date = Column(Date, nullable=False) # 계획 수립일
     
     status = Column(Enum(ProductionStatus), default=ProductionStatus.PLANNED)
@@ -30,7 +31,8 @@ class ProductionPlan(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
-    order = relationship("SalesOrder", backref="production_plan")
+    order = relationship("SalesOrder")
+    stock_production = relationship("StockProduction")
     items = relationship("ProductionPlanItem", back_populates="plan", cascade="all, delete-orphan", lazy="selectin")
 
 class ProductionPlanItem(Base):
@@ -58,7 +60,8 @@ class ProductionPlanItem(Base):
     start_date = Column(Date, nullable=True) # 계획 시작일
     end_date = Column(Date, nullable=True) # 계획 종료일
     
-    worker_name = Column(String, nullable=True) # 작업자
+    worker_id = Column(Integer, ForeignKey("staff.id"), nullable=True) # 작업자 ID로 변경 (기존 name 병행 가능하나 ID 우선)
+    equipment_id = Column(Integer, ForeignKey("equipments.id"), nullable=True) # 배정 장비
     
     status = Column(Enum(ProductionStatus), default=ProductionStatus.PLANNED)
     note = Column(Text, nullable=True)
@@ -66,6 +69,8 @@ class ProductionPlanItem(Base):
     # Key Relationship
     plan = relationship("ProductionPlan", back_populates="items")
     product = relationship("Product")
+    worker = relationship("Staff")
+    equipment = relationship("Equipment")
     work_orders = relationship("WorkOrder", back_populates="plan_item")
     
     # Links to Purchasing/Outsourcing

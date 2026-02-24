@@ -1,10 +1,11 @@
 from typing import Optional, List, Union, Any
 from datetime import date, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from enum import Enum
 
 from app.schemas.sales import SalesOrder, SalesOrderSimple
 from app.schemas.product import ProductResponse, ProductSimple
+from app.schemas.inventory import StockProductionResponse
 
 class ProductionStatus(str, Enum):
     PENDING = "PENDING"
@@ -27,7 +28,8 @@ class ProductionPlanItemBase(BaseModel):
     
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    worker_name: Optional[str] = None
+    worker_id: Optional[int] = None
+    equipment_id: Optional[int] = None
     note: Optional[str] = None
     status: ProductionStatus = ProductionStatus.PLANNED
 
@@ -40,11 +42,13 @@ class ProductionPlanItemUpdate(BaseModel):
     estimated_time: Optional[float] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    worker_name: Optional[str] = None
+    worker_id: Optional[int] = None
+    equipment_id: Optional[int] = None
     note: Optional[str] = None
     status: Optional[ProductionStatus] = None
+    quantity: Optional[int] = None
 
-# --- Plan Schemas (Moved Base Up) ---
+# --- Plan Schemas (Base) ---
 class ProductionPlanBase(BaseModel):
     plan_date: date
     status: ProductionStatus = ProductionStatus.PLANNED
@@ -54,13 +58,14 @@ class ProductionPlanBase(BaseModel):
 # --- Plan Schemas (Forward Declaration for Item) ---
 class ProductionPlanSimple(ProductionPlanBase):
     id: int
-    order_id: int
+    order_id: Optional[int] = None
+    stock_production_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
+    stock_production: Optional[StockProductionResponse] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Forward refs for Purchasing
 from app.schemas.purchasing import PurchaseOrderItemSimple, OutsourcingOrderItemSimple
@@ -69,18 +74,19 @@ class ProductionPlanItem(ProductionPlanItemBase):
     id: int
     plan_id: int
     product: Optional[ProductResponse] = None
-    plan: Optional[ProductionPlanSimple] = None
+    # Removed plan to avoid circularity if possible, or use Pydantic forward refs
+    # plan: Optional[ProductionPlanSimple] = None
     
     purchase_items: List[PurchaseOrderItemSimple] = []
     outsourcing_items: List[OutsourcingOrderItemSimple] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Plan Schemas ---
 
 class ProductionPlanCreate(BaseModel):
-    order_id: int
+    order_id: Optional[int] = None
+    stock_production_id: Optional[int] = None
     plan_date: date
     items: Optional[List[ProductionPlanItemCreate]] = None
 
@@ -93,11 +99,12 @@ class ProductionPlanUpdate(BaseModel):
 
 class ProductionPlan(ProductionPlanBase):
     id: int
-    order_id: int
+    order_id: Optional[int] = None
+    stock_production_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
+    stock_production: Optional[StockProductionResponse] = None
     items: List[ProductionPlanItem] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -54,27 +54,35 @@ async def create_production_plan(
     Create a production plan from a Sales Order.
     Auto-generates plan items based on Product Processes.
     """
-    # 1. Check if Order exists
-    result = await db.execute(select(SalesOrder).where(SalesOrder.id == plan_in.order_id))
-    order = result.scalar_one_or_none()
-    if not order:
-        raise HTTPException(status_code=404, detail="Sales Order not found")
-        
-    # 2. Check if Plan already exists for this order
-    # (Assuming 1 Plan per Order for simplicity, though model allows duplicate order_id if not unique)
-    result = await db.execute(select(ProductionPlan).where(ProductionPlan.order_id == plan_in.order_id))
-    existing_plan = result.scalar_one_or_none()
-    if existing_plan:
-        raise HTTPException(status_code=400, detail="Production Plan already exists for this Order")
+    # 1. Check if Order or StockProduction exists
+    if plan_in.order_id:
+        result = await db.execute(select(SalesOrder).where(SalesOrder.id == plan_in.order_id))
+        order = result.scalar_one_or_none()
+        if not order:
+            raise HTTPException(status_code=404, detail="Sales Order not found")
+            
+        # Check if Plan already exists for this order
+        result = await db.execute(select(ProductionPlan).where(ProductionPlan.order_id == plan_in.order_id))
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Production Plan already exists for this Order")
+    elif plan_in.stock_production_id:
+        from app.models.inventory import StockProduction
+        result = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
+        sp = result.scalar_one_or_none()
+        if not sp:
+            raise HTTPException(status_code=404, detail="Stock Production request not found")
+    else:
+        raise HTTPException(status_code=400, detail="Either order_id or stock_production_id is required")
 
     # 3. Create Plan Header
     plan = ProductionPlan(
         order_id=plan_in.order_id,
+        stock_production_id=plan_in.stock_production_id,
         plan_date=plan_in.plan_date,
         status=ProductionStatus.PLANNED
     )
     db.add(plan)
-    await db.flush() # intent: get plan.id
+    await db.flush()
     
     # 4. Generate Items
     if plan_in.items:
@@ -90,55 +98,80 @@ async def create_production_plan(
                 estimated_time=item_in.estimated_time,
                 start_date=item_in.start_date,
                 end_date=item_in.end_date,
-                worker_name=item_in.worker_name,
+                worker_id=item_in.worker_id,
+                equipment_id=item_in.equipment_id,
                 note=item_in.note,
                 status=item_in.status,
                 quantity=item_in.quantity
             )
             db.add(plan_item)
     else:
-        # Fetch Order Items
-        result = await db.execute(select(SalesOrderItem).where(SalesOrderItem.order_id == plan_in.order_id))
-        order_items = result.scalars().all()
-        
-        for item in order_items:
-            # Fetch Product Processes with Process Name
+        # Default logic for Sales Order (already exists) or Stock Production
+        # If stock production, it's usually just one product.
+        if plan_in.stock_production_id:
+            # Fetch StockProduction to get product_id and quantity
+            from app.models.inventory import StockProduction
+            res = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
+            sp = res.scalar_one()
+            
+            # Fetch processes
             stmt = (
                 select(ProductProcess, Process.name, Process.course_type)
                 .join(Process, ProductProcess.process_id == Process.id)
-                .where(ProductProcess.product_id == item.product_id)
+                .where(ProductProcess.product_id == sp.product_id)
                 .order_by(ProductProcess.sequence)
             )
             result = await db.execute(stmt)
             processes = result.all()
             
-            if not processes:
-                # Create a default item if no process defined? 
-                # For now, just skip.
-                continue
-                
             for proc, proc_name, proc_course_type in processes:
-                # Use local variable to ensure consistent logic
                 final_course_type = proc.course_type or proc_course_type or "INTERNAL"
-                
                 plan_item = ProductionPlanItem(
                     plan_id=plan.id,
-                    product_id=item.product_id,
+                    product_id=sp.product_id,
                     process_name=proc_name,
                     sequence=proc.sequence,
                     course_type=final_course_type,
                     partner_name=proc.partner_name,
                     work_center=proc.equipment_name,
                     estimated_time=proc.estimated_time,
-                    quantity=item.quantity, # Set target quantity from Order
+                    quantity=sp.quantity,
                     status=ProductionStatus.PLANNED
                 )
                 db.add(plan_item)
+        else:
+            # Sales Order logic (restored)
+            result = await db.execute(select(SalesOrderItem).where(SalesOrderItem.order_id == plan_in.order_id))
+            order_items = result.scalars().all()
+            for item in order_items:
+                stmt = (
+                    select(ProductProcess, Process.name, Process.course_type)
+                    .join(Process, ProductProcess.process_id == Process.id)
+                    .where(ProductProcess.product_id == item.product_id)
+                    .order_by(ProductProcess.sequence)
+                )
+                result = await db.execute(stmt)
+                processes = result.all()
+                for proc, proc_name, proc_course_type in processes:
+                    final_course_type = proc.course_type or proc_course_type or "INTERNAL"
+                    plan_item = ProductionPlanItem(
+                        plan_id=plan.id,
+                        product_id=item.product_id,
+                        process_name=proc_name,
+                        sequence=proc.sequence,
+                        course_type=final_course_type,
+                        partner_name=proc.partner_name,
+                        work_center=proc.equipment_name,
+                        estimated_time=proc.estimated_time,
+                        quantity=item.quantity,
+                        status=ProductionStatus.PLANNED
+                    )
+                    db.add(plan_item)
 
     await db.commit()
     await db.refresh(plan)
     
-    # Reload logic...
+    # Reload logic (Update options to include stock_production)
     result = await db.execute(
         select(ProductionPlan)
         .options(
@@ -146,7 +179,8 @@ async def create_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
         )
         .where(ProductionPlan.id == plan.id)
     )
@@ -161,7 +195,6 @@ async def update_production_plan(
 ) -> Any:
     """
     Update a production plan.
-    If items are provided, existing items are replaced.
     """
     # 1. Fetch Plan
     result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id))
@@ -187,28 +220,25 @@ async def update_production_plan(
         plan.items.clear()
         
         # Add new items
-        for item_in in plan_in.items:
-            # We need to map schema to model. Schema has product_id, process_name, etc.
+        for item_in in items_data:
+            # Schema was missing quantity. Added it now.
             new_item = ProductionPlanItem(
-                plan_id=plan.id, # Should be set auto by relationship but explicit is fine
-                product_id=item_in.product_id,
-                process_name=item_in.process_name,
-                sequence=item_in.sequence,
-                course_type=item_in.course_type,
-                partner_name=item_in.partner_name,
-                work_center=item_in.work_center,
-                estimated_time=item_in.estimated_time,
-                start_date=item_in.start_date,
-                end_date=item_in.end_date,
-                worker_name=item_in.worker_name,
-                note=item_in.note,
-                status=item_in.status,
-                quantity=item_in.quantity
+                plan_id=plan.id,
+                product_id=item_in.get("product_id") or item_in.get("product", {}).get("id"),
+                process_name=item_in.get("process_name"),
+                sequence=item_in.get("sequence"),
+                course_type=item_in.get("course_type", "INTERNAL"),
+                partner_name=item_in.get("partner_name"),
+                work_center=item_in.get("work_center"),
+                estimated_time=item_in.get("estimated_time"),
+                start_date=item_in.get("start_date"),
+                end_date=item_in.get("end_date"),
+                worker_id=item_in.get("worker_id"),
+                equipment_id=item_in.get("equipment_id"),
+                note=item_in.get("note"),
+                status=item_in.get("status", ProductionStatus.PLANNED),
+                quantity=item_in.get("quantity", 1)
             )
-            # Fix: Schema missing quantity. For now, use 1 or try to copy? 
-            # Better to fix schema first. 
-            # Assuming schema has quantity now? No I didn't add it.
-            # I must add quantity to ProductionPlanItemBase.
             plan.items.append(new_item)
 
     await db.commit()
@@ -606,16 +636,40 @@ async def update_production_plan_status(
                     oo.delivery_date = datetime.now().date()
                     db.add(oo)
 
-    # Sync with Sales Order
-    if plan.order:
-        from app.models.sales import OrderStatus
-        if status == ProductionStatus.COMPLETED:
+    # Sync with Sales Order or Stock Production
+    if status == ProductionStatus.COMPLETED:
+        # 1. Update Stocks (For each product)
+        for item in plan.items:
+            from app.models.inventory import Stock
+            # Update current stock and decrement in_production_quantity
+            stock_query = select(Stock).where(Stock.product_id == item.product_id)
+            s_res = await db.execute(stock_query)
+            stock = s_res.scalar_one_or_none()
+            if not stock:
+                stock = Stock(product_id=item.product_id, current_quantity=item.quantity)
+                db.add(stock)
+            else:
+                stock.current_quantity += item.quantity
+                # Note: We need to be careful with in_production_quantity logic. 
+                # For simplicity, if it's the last process or we consider the whole plan:
+                # Let's assume on Plan completion, we decrement from production.
+                if stock.in_production_quantity >= item.quantity:
+                    stock.in_production_quantity -= item.quantity
+        
+        # 2. Update Source Status
+        if plan.order:
+            from app.models.sales import OrderStatus
             plan.order.status = OrderStatus.PRODUCTION_COMPLETED
-        elif status == ProductionStatus.IN_PROGRESS or status == ProductionStatus.PLANNED:
-            # If reverting from COMPLETED, set back to CONFIRMED
-            plan.order.status = OrderStatus.CONFIRMED
-            
-        db.add(plan.order)
+            db.add(plan.order)
+        elif plan.stock_production:
+            from app.models.inventory import StockProductionStatus
+            plan.stock_production.status = StockProductionStatus.COMPLETED
+            db.add(plan.stock_production)
+    elif status == ProductionStatus.IN_PROGRESS:
+        if plan.order:
+            from app.models.sales import OrderStatus
+            plan.order.status = OrderStatus.CONFIRMED # Or stay CONFIRMED
+            db.add(plan.order)
         
     await db.commit()
     

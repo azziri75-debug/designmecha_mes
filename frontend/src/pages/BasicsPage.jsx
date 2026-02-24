@@ -74,6 +74,7 @@ const BasicsPageContent = () => {
 
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
+    const [equipments, setEquipments] = useState([]);
     const [company, setCompany] = useState(null); // eslint-disable-line no-unused-vars
     const [loading, setLoading] = useState(true);
 
@@ -83,6 +84,7 @@ const BasicsPageContent = () => {
     const [selectedPartner, setSelectedPartner] = useState(null);
     const [selectedContact, setSelectedContact] = useState(null);
     const [selectedStaff, setSelectedStaff] = useState(null); // For editing staff
+    const [selectedEquipment, setSelectedEquipment] = useState(null);
 
     // File Viewer Modal State
     const [showFileModal, setShowFileModal] = useState(false);
@@ -120,10 +122,11 @@ const BasicsPageContent = () => {
                 } else {
                     setStaff([]);
                 }
-            } else if (activeTab === 'company') {
-                const res = await api.get('/basics/company');
                 setCompany(res.data || {});
                 setFormData(res.data || {});
+            } else if (activeTab === 'equipments') {
+                const res = await api.get('/basics/equipments/');
+                setEquipments(res.data || []);
             }
         } catch (error) {
             console.error("Failed to fetch data", error);
@@ -177,9 +180,12 @@ const BasicsPageContent = () => {
         if (activeTab === 'partners') {
             setModalType('create');
             setFormData({ partner_type: ['CUSTOMER'] });
-        } else {
+        } else if (activeTab === 'staff') {
             setModalType('create_staff');
             setFormData({ is_active: true });
+        } else if (activeTab === 'equipments') {
+            setModalType('create_equipment');
+            setFormData({ is_active: true, status: 'IDLE' });
         }
         setShowModal(true);
     };
@@ -213,6 +219,13 @@ const BasicsPageContent = () => {
         setModalType('edit_staff');
         setSelectedStaff(staffMember);
         setFormData(staffMember);
+        setShowModal(true);
+    };
+
+    const openEditEquipmentModal = (eq) => {
+        setModalType('edit_equipment');
+        setSelectedEquipment(eq);
+        setFormData(eq);
         setShowModal(true);
     };
 
@@ -271,11 +284,17 @@ const BasicsPageContent = () => {
                 } else if (modalType === 'edit_contact') {
                     await api.put(`/basics/contacts/${selectedContact.id}`, formData);
                 }
-            } else {
+            } else if (activeTab === 'staff') {
                 if (modalType === 'create_staff') {
                     await api.post('/basics/staff/', formData);
                 } else if (modalType === 'edit_staff') {
                     await api.put(`/basics/staff/${selectedStaff.id}`, formData);
+                }
+            } else if (activeTab === 'equipments') {
+                if (modalType === 'create_equipment') {
+                    await api.post('/basics/equipments/', formData);
+                } else if (modalType === 'edit_equipment') {
+                    await api.put(`/basics/equipments/${selectedEquipment.id}`, formData);
                 }
             }
             alert("처리되었습니다.");
@@ -345,6 +364,17 @@ const BasicsPageContent = () => {
                         )}
                     >
                         회사 정보
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('equipments')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                            activeTab === 'equipments'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                        )}
+                    >
+                        장비 관리
                     </button>
                 </div>
                 <button
@@ -565,7 +595,7 @@ const BasicsPageContent = () => {
                                             <th className="px-6 py-3 w-[20%]">이메일</th>
                                             <th className="px-6 py-3 text-center w-[80px]">첨부</th>
                                         </>
-                                    ) : (
+                                    ) : activeTab === 'staff' ? (
                                         <>
                                             <th className="px-6 py-3">이름</th>
                                             <th className="px-6 py-3">구분</th>
@@ -573,6 +603,15 @@ const BasicsPageContent = () => {
                                             <th className="px-6 py-3">주업무</th>
                                             <th className="px-6 py-3">전화번호</th>
                                             <th className="px-6 py-3">상태</th>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <th className="px-6 py-3">장비명</th>
+                                            <th className="px-6 py-3">코드</th>
+                                            <th className="px-6 py-3">규격/사양</th>
+                                            <th className="px-6 py-3">상태</th>
+                                            <th className="px-6 py-3">구매일</th>
+                                            <th className="px-6 py-3">위치</th>
                                         </>
                                     )}
                                     <th className="px-6 py-3 text-right">관리</th>
@@ -721,7 +760,7 @@ const BasicsPageContent = () => {
                                     )) : (
                                         <tr><td colSpan="6" className="text-center py-8">데이터가 없습니다.</td></tr>
                                     )
-                                ) : (
+                                ) : activeTab === 'staff' ? (
                                     staff.length > 0 ? staff.map((member) => (
                                         <tr key={member.id} className="hover:bg-gray-700/50 transition-colors">
                                             <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
@@ -766,6 +805,52 @@ const BasicsPageContent = () => {
                                         </tr>
                                     )) : (
                                         <tr><td colSpan="6" className="text-center py-8">등록된 사원이 없습니다.</td></tr>
+                                    )
+                                ) : (
+                                    equipments.length > 0 ? equipments.map((eq) => (
+                                        <tr key={eq.id} className="hover:bg-gray-700/50 transition-colors">
+                                            <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                                                    <Factory className="w-4 h-4 text-orange-400" />
+                                                </div>
+                                                {eq.name}
+                                            </td>
+                                            <td className="px-6 py-4 font-mono text-xs">{eq.code}</td>
+                                            <td className="px-6 py-4">{eq.spec || '-'}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={cn(
+                                                    "px-2 py-1 rounded-full text-xs font-medium",
+                                                    eq.status === 'RUNNING' ? "bg-green-500/10 text-green-400" :
+                                                        eq.status === 'IDLE' ? "bg-blue-500/10 text-blue-400" :
+                                                            "bg-red-500/10 text-red-400"
+                                                )}>
+                                                    {eq.status === 'RUNNING' ? '가동중' : eq.status === 'IDLE' ? '대기' : '정지/수리'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">{eq.purchase_date || '-'}</td>
+                                            <td className="px-6 py-4 text-xs">{eq.location || '-'}</td>
+                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => openEditEquipmentModal(eq)}
+                                                    className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (window.confirm("삭제하시겠습니까?")) {
+                                                            await api.delete(`/basics/equipments/${eq.id}`);
+                                                            fetchData();
+                                                        }
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                >
+                                                    <Trash className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan="7" className="text-center py-8">등록된 장비가 없습니다.</td></tr>
                                     )
                                 )}
                             </tbody>
@@ -1081,6 +1166,49 @@ const BasicsPageContent = () => {
                                             {formData.user_type === 'ADMIN' && (
                                                 <p className="text-xs text-purple-400">※ 관리자는 모든 메뉴에 접근할 수 있습니다.</p>
                                             )}
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Equipment Forms */}
+                                {(modalType === 'create_equipment' || modalType === 'edit_equipment') && (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">장비명 <span className="text-red-500">*</span></label>
+                                                <input name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">장비코드</label>
+                                                <input name="code" value={formData.code || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: MACH-01" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">사양/스펙</label>
+                                            <input name="spec" value={formData.spec || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 50KN, Max 3000rpm" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">상태</label>
+                                                <select
+                                                    name="status"
+                                                    value={formData.status || 'IDLE'}
+                                                    onChange={handleInputChange}
+                                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                >
+                                                    <option value="IDLE">대기 (IDLE)</option>
+                                                    <option value="RUNNING">가동중 (RUNNING)</option>
+                                                    <option value="DOWN">정지/고장 (DOWN)</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">구매일</label>
+                                                <input type="date" name="purchase_date" value={formData.purchase_date || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">설치 위치</label>
+                                            <input name="location" value={formData.location || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 1공장 2층" />
                                         </div>
                                     </>
                                 )}

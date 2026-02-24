@@ -67,3 +67,52 @@ class Company(Base):
     logo_image = Column(JSON, nullable=True) # {name, url}
     stamp_image = Column(JSON, nullable=True) # {name, url}
 
+class Equipment(Base):
+    """공정 장비 (Master Data)"""
+    __tablename__ = "equipments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    code = Column(String, unique=True, index=True) # 장비 코드
+    spec = Column(String, nullable=True) # 사양/모델명
+    process_id = Column(Integer, ForeignKey("processes.id"), nullable=True) # 주 공정
+    
+    status = Column(String, default="IDLE") # IDLE, RUNNING, DOWN, REPAIR
+    purchase_date = Column(Date, nullable=True)
+    location = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+
+    history = relationship("EquipmentHistory", back_populates="equipment", cascade="all, delete-orphan")
+
+class EquipmentHistory(Base):
+    """장비 고장 및 수리 이력"""
+    __tablename__ = "equipment_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    equipment_id = Column(Integer, ForeignKey("equipments.id"), nullable=False)
+    
+    history_date = Column(Date, default=func.now())
+    history_type = Column(String, nullable=False) # FAILURE, REPAIR, INSPECTION
+    
+    description = Column(Text, nullable=False) # 상세 내용
+    cost = Column(Float, default=0.0) # 비용
+    worker_name = Column(String, nullable=True) # 담당자/업체명
+    
+    attachment_file = Column(JSON, nullable=True) # 증빙 서류/사진 (list of {name, url})
+    
+    created_at = Column(DateTime, default=func.now())
+
+    equipment = relationship("Equipment", back_populates="history")
+
+class FormTemplate(Base):
+    """문서 양식 (견적서, 생산시트 등)"""
+    __tablename__ = "form_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    form_type = Column(String, unique=True, index=True) # ESTIMATE, PRODUCTION_SHEET, PURCHASE_ORDER, OUTSOURCING_ORDER
+    name = Column(String, nullable=False)
+    
+    layout_data = Column(JSON, nullable=False) # 레이아웃/스타일 설정
+    is_active = Column(Boolean, default=True)
+    updated_at = Column(DateTime, onupdate=func.now())
+

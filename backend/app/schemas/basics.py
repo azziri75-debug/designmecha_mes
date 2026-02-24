@@ -101,3 +101,64 @@ class CompanyResponse(CompanyBase):
 
     class Config:
         from_attributes = True
+
+# Equipment Schemas
+class EquipmentHistoryBase(BaseModel):
+    history_date: Optional[date] = None
+    history_type: str
+    description: str
+    cost: Optional[float] = 0.0
+    worker_name: Optional[str] = None
+    attachment_file: Optional[List[dict]] = None
+
+class EquipmentHistoryCreate(EquipmentHistoryBase):
+    pass
+
+class EquipmentHistoryResponse(EquipmentHistoryBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class EquipmentBase(BaseModel):
+    name: str
+    code: Optional[str] = None
+    spec: Optional[str] = None
+    process_id: Optional[int] = None
+    status: Optional[str] = "IDLE"
+    purchase_date: Optional[date] = None
+    location: Optional[str] = None
+    is_active: bool = True
+
+class EquipmentCreate(EquipmentBase):
+    pass
+
+class EquipmentUpdate(EquipmentBase):
+    pass
+
+class EquipmentResponse(EquipmentBase):
+    id: int
+    history: List[EquipmentHistoryResponse] = []
+    class Config:
+        from_attributes = True
+
+# FormTemplate Schemas
+class FormTemplateBase(BaseModel):
+    form_type: str
+    name: str
+    layout_data: dict
+    is_active: bool = True
+
+class FormTemplateCreate(FormTemplateBase):
+    pass
+
+class FormTemplateUpdate(BaseModel):
+    name: Optional[str] = None
+    layout_data: Optional[dict] = None
+    is_active: Optional[bool] = None
+
+class FormTemplateResponse(FormTemplateBase):
+    id: int
+    updated_at: Optional[datetime] = None
+    class Config:
+        from_attributes = True

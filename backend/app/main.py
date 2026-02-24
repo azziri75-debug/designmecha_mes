@@ -183,6 +183,122 @@ async def startup_event():
                 """))
                 print("Startup: Created quality_defects table (Postgres)")
 
+        # 4. New Tables Expansion
+        # Define table names to check
+        new_tables = [
+            ("stocks", """
+                CREATE TABLE stocks (
+                    id SERIAL PRIMARY KEY,
+                    product_id INTEGER NOT NULL UNIQUE REFERENCES products(id),
+                    current_quantity INTEGER DEFAULT 0,
+                    in_production_quantity INTEGER DEFAULT 0,
+                    location VARCHAR,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            """),
+            ("stock_productions", """
+                CREATE TABLE stock_productions (
+                    id SERIAL PRIMARY KEY,
+                    production_no VARCHAR UNIQUE,
+                    product_id INTEGER NOT NULL REFERENCES products(id),
+                    quantity INTEGER NOT NULL,
+                    request_date DATE DEFAULT CURRENT_DATE,
+                    target_date DATE,
+                    status VARCHAR DEFAULT 'PENDING',
+                    note TEXT,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            """),
+            ("equipments", """
+                CREATE TABLE equipments (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR NOT NULL,
+                    code VARCHAR UNIQUE,
+                    spec VARCHAR,
+                    process_id INTEGER REFERENCES processes(id),
+                    status VARCHAR DEFAULT 'IDLE',
+                    purchase_date DATE,
+                    location VARCHAR,
+                    is_active BOOLEAN DEFAULT TRUE
+                )
+            """),
+            ("equipment_histories", """
+                CREATE TABLE equipment_histories (
+                    id SERIAL PRIMARY KEY,
+                    equipment_id INTEGER NOT NULL REFERENCES equipments(id),
+                    history_date DATE DEFAULT CURRENT_DATE,
+                    history_type VARCHAR NOT NULL,
+                    description TEXT NOT NULL,
+                    cost DOUBLE PRECISION DEFAULT 0.0,
+                    worker_name VARCHAR,
+                    attachment_file JSONB,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            """),
+            ("form_templates", """
+                CREATE TABLE form_templates (
+                    id SERIAL PRIMARY KEY,
+                    form_type VARCHAR UNIQUE NOT NULL,
+                    name VARCHAR NOT NULL,
+                    layout_data JSONB NOT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        ]
+
+        is_sqlite = "sqlite" in db_url
+        for t_name, create_sql in new_tables:
+            if is_sqlite:
+                check_sql = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{t_name}'"
+                # Use simplified types for sqlite if needed, but for now we'll assume standard ones work mostly
+                sql = create_sql.replace("SERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")\
+                                .replace("JSONB", "JSON")\
+                                .replace("CURRENT_DATE", "CURRENT_TIMESTAMP")\
+                                .replace("DOUBLE PRECISION", "FLOAT")\
+                                .replace("TIMESTAMP WITH TIME ZONE", "TIMESTAMP")
+            else:
+                check_sql = f"SELECT to_regclass('public.{t_name}')"
+                sql = create_sql
+
+            r = await db.execute(text(check_sql))
+            if not r.scalar():
+                await db.execute(text(sql))
+                print(f"Startup: Created {t_name} table")
+
+        # 5. Alter existing tables for enhancements
+        # ProductionPlan: make order_id nullable, add stock_production_id
+        if is_sqlite:
+            # SQLite alter is limited, usually need to check column existence
+            r = await db.execute(text("PRAGMA table_info(production_plans)"))
+            cols = [c[1] for c in r.fetchall()]
+            if "stock_production_id" not in cols:
+                await db.execute(text("ALTER TABLE production_plans ADD COLUMN stock_production_id INTEGER REFERENCES stock_productions(id)"))
+            
+            # Note: making order_id nullable in sqlite via ALTER is not possible, we'll ignore for dev or handle via app logic
+            
+            r = await db.execute(text("PRAGMA table_info(production_plan_items)"))
+            cols = [c[1] for c in r.fetchall()]
+            if "equipment_id" not in cols:
+                await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN equipment_id INTEGER REFERENCES equipments(id)"))
+            if "worker_id" not in cols:
+                await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN worker_id INTEGER REFERENCES staff(id)"))
+        else:
+            # Postgres
+            await db.execute(text("ALTER TABLE production_plans ALTER COLUMN order_id DROP NOT NULL"))
+            
+            r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plans' AND column_name='stock_production_id'"))
+            if not r.scalar():
+                await db.execute(text("ALTER TABLE production_plans ADD COLUMN stock_production_id INTEGER REFERENCES stock_productions(id)"))
+
+            r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plan_items' AND column_name='equipment_id'"))
+            if not r.scalar():
+                await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN equipment_id INTEGER REFERENCES equipments(id)"))
+            
+            r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plan_items' AND column_name='worker_id'"))
+            if not r.scalar():
+                await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN worker_id INTEGER REFERENCES staff(id)"))
+
         await db.commit()
 
 

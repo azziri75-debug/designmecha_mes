@@ -13,7 +13,9 @@ import {
     DollarSign,
     LogOut,
     Shield,
-    User
+    User,
+    FileText,
+    Boxes
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -49,7 +51,8 @@ const Layout = () => {
         { icon: ShoppingCart, label: '자재 구매 관리', to: '/purchase', menuKey: 'purchase' },
         { icon: Truck, label: '외주 발주 관리', to: '/outsourcing', menuKey: 'outsourcing' },
         { icon: ClipboardCheck, label: '품질 관리', to: '/quality', menuKey: 'quality' },
-        { icon: Truck, label: '납품 및 재고', to: '/inventory', menuKey: 'inventory' },
+        { icon: Boxes, label: '재고 및 재고생산 관리', to: '/inventory', menuKey: 'inventory' },
+        { icon: FileText, label: '양식 및 레이아웃 관리', to: '/forms', menuKey: 'basics' }, // basics permission for now
     ];
 
     // Filter nav items based on user permissions

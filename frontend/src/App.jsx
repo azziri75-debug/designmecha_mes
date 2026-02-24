@@ -12,6 +12,8 @@ import PurchasePage from './pages/PurchasePage';
 import OutsourcingPage from './pages/OutsourcingPage';
 import DeliveryPage from './pages/DeliveryPage';
 import QualityPage from './pages/QualityPage';
+import InventoryPage from './pages/InventoryPage';
+import FormManagementPage from './pages/FormManagementPage';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -51,7 +53,8 @@ const App = () => {
         <Route path="purchase" element={<ProtectedRoute menuKey="purchase"><PurchasePage /></ProtectedRoute>} />
         <Route path="outsourcing" element={<ProtectedRoute menuKey="outsourcing"><OutsourcingPage /></ProtectedRoute>} />
         <Route path="quality" element={<ProtectedRoute menuKey="quality"><QualityPage /></ProtectedRoute>} />
-        <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><DeliveryPage /></ProtectedRoute>} />
+        <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
+        <Route path="forms" element={<ProtectedRoute menuKey="basics"><FormManagementPage /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

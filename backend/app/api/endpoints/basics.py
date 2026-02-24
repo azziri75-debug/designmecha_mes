@@ -7,12 +7,14 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.api.deps import get_db
-from app.models.basics import Partner, Staff, Contact, Company
+from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate
 from app.schemas.basics import (
     PartnerCreate, PartnerResponse, PartnerUpdate,
     StaffCreate, StaffResponse, StaffUpdate,
     ContactCreate, ContactResponse, ContactUpdate,
-    CompanyCreate, CompanyResponse, CompanyUpdate
+    CompanyCreate, CompanyResponse, CompanyUpdate,
+    EquipmentCreate, EquipmentResponse, EquipmentUpdate, EquipmentHistoryCreate, EquipmentHistoryResponse,
+    FormTemplateCreate, FormTemplateResponse, FormTemplateUpdate
 )
 
 router = APIRouter()
@@ -262,3 +264,78 @@ async def create_or_update_company(
         await db.commit()
         await db.refresh(new_company)
         return new_company
+
+# --- Equipment Endpoints ---
+
+@router.get("/equipments/", response_model=List[EquipmentResponse])
+async def read_equipments(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Equipment).options(selectinload(Equipment.history)))
+    return result.scalars().all()
+
+@router.post("/equipments/", response_model=EquipmentResponse)
+async def create_equipment(eq_in: EquipmentCreate, db: AsyncSession = Depends(get_db)):
+    new_eq = Equipment(**eq_in.model_dump())
+    db.add(new_eq)
+    await db.commit()
+    await db.refresh(new_eq)
+    return new_eq
+
+@router.put("/equipments/{eq_id}", response_model=EquipmentResponse)
+async def update_equipment(eq_id: int, eq_in: EquipmentUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Equipment).where(Equipment.id == eq_id))
+    eq = result.scalar_one_or_none()
+    if not eq: raise HTTPException(status_code=404)
+    for k, v in eq_in.model_dump(exclude_unset=True).items():
+        setattr(eq, k, v)
+    await db.commit()
+    return eq
+
+@router.delete("/equipments/{eq_id}")
+async def delete_equipment(eq_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Equipment).where(Equipment.id == eq_id))
+    eq = result.scalar_one_or_none()
+    if not eq: raise HTTPException(status_code=404)
+    await db.delete(eq)
+    await db.commit()
+    return {"status": "success"}
+
+# --- Equipment History Endpoints ---
+
+@router.post("/equipments/{eq_id}/history", response_model=EquipmentHistoryResponse)
+async def create_equipment_history(eq_id: int, h_in: EquipmentHistoryCreate, db: AsyncSession = Depends(get_db)):
+    new_h = EquipmentHistory(**h_in.model_dump(), equipment_id=eq_id)
+    db.add(new_h)
+    await db.commit()
+    await db.refresh(new_h)
+    return new_h
+
+# --- Form Template Endpoints ---
+
+@router.get("/form-templates/", response_model=List[FormTemplateResponse])
+async def read_form_templates(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(FormTemplate))
+    return result.scalars().all()
+
+@router.get("/form-templates/{form_type}", response_model=FormTemplateResponse)
+async def read_form_template(form_type: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(FormTemplate).where(FormTemplate.form_type == form_type))
+    template = result.scalar_one_or_none()
+    if not template: raise HTTPException(status_code=404)
+    return template
+
+@router.post("/form-templates/", response_model=FormTemplateResponse)
+async def create_or_update_form_template(tm_in: FormTemplateCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(FormTemplate).where(FormTemplate.form_type == tm_in.form_type))
+    existing = result.scalar_one_or_none()
+    if existing:
+        for k, v in tm_in.model_dump(exclude_unset=True).items():
+            setattr(existing, k, v)
+        await db.commit()
+        await db.refresh(existing)
+        return existing
+    else:
+        new_tm = FormTemplate(**tm_in.model_dump())
+        db.add(new_tm)
+        await db.commit()
+        await db.refresh(new_tm)
+        return new_tm
