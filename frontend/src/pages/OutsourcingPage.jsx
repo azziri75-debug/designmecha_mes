@@ -187,8 +187,12 @@ const OutsourcingPage = () => {
                                             </TableCell>
                                             <TableCell>
                                                 <Box>
-                                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{item.plan?.order?.order_no || '-'}</Typography>
-                                                    <Typography variant="caption" color="textSecondary">{item.plan?.order?.partner?.name || '-'}</Typography>
+                                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                        {item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="textSecondary">
+                                                        {item.plan?.order?.partner?.name || (item.plan?.stock_production ? '사내 생산(재고)' : '-')}
+                                                    </Typography>
                                                 </Box>
                                             </TableCell>
                                             <TableCell>{item.process_name || item.product?.name}</TableCell>

@@ -27,6 +27,7 @@ async def read_pending_purchase_items(
     """
     # Local import restored to avoid circular dependency
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem
+    from app.models.inventory import StockProduction
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .outerjoin(PurchaseOrderItem, PurchaseOrderItem.production_plan_item_id == ProductionPlanItem.id)\
@@ -34,6 +35,7 @@ async def read_pending_purchase_items(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.purchase_items),
             selectinload(ProductionPlanItem.outsourcing_items)
         )\
@@ -63,6 +65,7 @@ async def read_pending_outsourcing_items(
     """
     # Local import restored
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem
+    from app.models.inventory import StockProduction
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .outerjoin(OutsourcingOrderItem, OutsourcingOrderItem.production_plan_item_id == ProductionPlanItem.id)\
@@ -70,6 +73,7 @@ async def read_pending_outsourcing_items(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.purchase_items),
             selectinload(ProductionPlanItem.outsourcing_items)
         )\
