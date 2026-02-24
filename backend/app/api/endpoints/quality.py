@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from typing import List
+from typing import List, Optional
 import shutil
 import os
-from datetime import datetime
+from datetime import datetime, date
 
 from app.api.deps import get_db
 from app.models.quality import InspectionResult, Attachment, QualityDefect
