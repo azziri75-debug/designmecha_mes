@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, insert
+from sqlalchemy import select, update, insert, func
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date

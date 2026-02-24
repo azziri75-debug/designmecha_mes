@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
+from datetime import date, datetime
 from app.models.basics import PartnerType
 
 # Contact Schemas
