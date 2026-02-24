@@ -11,7 +11,7 @@ from app.api.deps import get_db
 from app.models.quality import InspectionResult, Attachment, QualityDefect
 from app.models.sales import SalesOrder
 from app.models.production import ProductionPlan, ProductionPlanItem
-from app.models.product import Product
+from app.models.product import Product, ProductProcess
 from app.schemas.quality import (
     InspectionResultCreate, InspectionResultResponse, AttachmentResponse,
     QualityDefectCreate, QualityDefectResponse, QualityDefectUpdate
@@ -45,7 +45,7 @@ async def create_defect(
         selectinload(QualityDefect.order).selectinload(SalesOrder.partner),
         selectinload(QualityDefect.plan).selectinload(ProductionPlan.order),
         selectinload(QualityDefect.plan_item).options(
-            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes),
+            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlanItem.purchase_items),
             selectinload(ProductionPlanItem.outsourcing_items)
         )
@@ -109,7 +109,7 @@ async def update_defect(
         selectinload(QualityDefect.order).selectinload(SalesOrder.partner),
         selectinload(QualityDefect.plan).selectinload(ProductionPlan.order),
         selectinload(QualityDefect.plan_item).options(
-            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes),
+            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlanItem.purchase_items),
             selectinload(ProductionPlanItem.outsourcing_items)
         )
