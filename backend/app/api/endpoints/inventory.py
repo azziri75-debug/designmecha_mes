@@ -7,6 +7,7 @@ from datetime import date
 
 from app.api.deps import get_db
 from app.models.inventory import Stock, StockProduction, StockProductionStatus
+from app.models.product import Product, ProductProcess
 from app.schemas.inventory import (
     StockResponse, StockUpdate,
     StockProductionResponse, StockProductionCreate, StockProductionUpdate
@@ -60,7 +61,9 @@ async def read_stock_productions(
     status: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(StockProduction).options(selectinload(StockProduction.product))
+    query = select(StockProduction).options(
+        selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+    )
     if status:
         query = query.where(StockProduction.status == status)
     
@@ -97,8 +100,10 @@ async def create_stock_production(
     await db.commit()
     await db.refresh(new_prod)
     
-    # Reload with product
-    query = select(StockProduction).where(StockProduction.id == new_prod.id).options(selectinload(StockProduction.product))
+    # Reload with product and its relations to avoid MissingGreenlet
+    query = select(StockProduction).where(StockProduction.id == new_prod.id).options(
+        selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+    )
     result = await db.execute(query)
     return result.scalar_one()
 
@@ -144,7 +149,9 @@ async def update_stock_production(
     await db.commit()
     await db.refresh(db_prod)
     
-    query = select(StockProduction).where(StockProduction.id == prod_id).options(selectinload(StockProduction.product))
+    query = select(StockProduction).where(StockProduction.id == prod_id).options(
+        selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+    )
     result = await db.execute(query)
     return result.scalar_one()
 

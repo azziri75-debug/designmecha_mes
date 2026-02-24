@@ -1,18 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-from typing import List, Optional
+from sqlalchemy.orm import selectinload, joinedload
+from typing import List, Optional, Any
 import shutil
 import os
 from datetime import datetime, date
 
 from app.api.deps import get_db
-from app.models.quality import InspectionResult, Attachment, QualityDefect
-from app.schemas.quality import (
-    InspectionResultCreate, InspectionResultResponse, AttachmentResponse,
-    QualityDefectCreate, QualityDefectResponse, QualityDefectUpdate
-)
+from app.models.sales import SalesOrder
+from app.models.production import ProductionPlan, ProductionPlanItem
+from app.models.product import Product
 from sqlalchemy import desc, or_, and_
 
 router = APIRouter()
@@ -38,11 +36,10 @@ async def create_defect(
     await db.commit()
     await db.refresh(new_defect)
     
-    # Eager load for response
     query = select(QualityDefect).options(
-        selectinload(QualityDefect.order),
-        selectinload(QualityDefect.plan),
-        selectinload(QualityDefect.plan_item)
+        selectinload(QualityDefect.order).selectinload(SalesOrder.partner),
+        selectinload(QualityDefect.plan).selectinload(ProductionPlan.order),
+        selectinload(QualityDefect.plan_item).selectinload(ProductionPlanItem.product)
     ).where(QualityDefect.id == new_defect.id)
     result = await db.execute(query)
     return result.scalar_one()
