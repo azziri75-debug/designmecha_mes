@@ -776,6 +776,7 @@ async def update_production_plan_status(
                 stock.in_production_quantity += sp.quantity
             sp.status = StockProductionStatus.IN_PROGRESS
             db.add(sp)
+        elif plan.order:
             for item in plan.order.items:
                 stock_query = select(Stock).where(Stock.product_id == item.product_id)
                 s_res = await db.execute(stock_query)
@@ -819,8 +820,10 @@ async def update_production_plan_status(
                 db.add(oo)
 
     elif status == ProductionStatus.IN_PROGRESS:
+        if plan.order:
             plan.order.status = OrderStatus.CONFIRMED 
             db.add(plan.order)
+        elif plan.stock_production:
             plan.stock_production.status = StockProductionStatus.IN_PROGRESS
             db.add(plan.stock_production)
         
