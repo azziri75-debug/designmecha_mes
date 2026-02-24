@@ -122,11 +122,18 @@ const BasicsPageContent = () => {
                 } else {
                     setStaff([]);
                 }
-                setCompany(res.data || {});
-                setFormData(res.data || {});
             } else if (activeTab === 'equipments') {
                 const res = await api.get('/basics/equipments/');
                 setEquipments(res.data || []);
+            } else if (activeTab === 'company') {
+                const res = await api.get('/basics/company');
+                if (res.data) {
+                    setCompany(res.data);
+                    setFormData(res.data);
+                } else {
+                    setCompany({});
+                    setFormData({});
+                }
             }
         } catch (error) {
             console.error("Failed to fetch data", error);
