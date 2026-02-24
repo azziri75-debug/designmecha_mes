@@ -122,7 +122,6 @@ async def create_production_plan(
         # If stock production, it's usually just one product.
         if plan_in.stock_production_id:
             # Fetch StockProduction to get product_id and quantity
-            from app.models.inventory import StockProduction
             res = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
             sp = res.scalar_one()
             
