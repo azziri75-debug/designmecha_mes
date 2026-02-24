@@ -167,13 +167,48 @@ async def delete_stock_production(prod_id: int, db: AsyncSession = Depends(get_d
     if not db_prod:
         raise HTTPException(status_code=404, detail="Not found")
     
+    # 1. Manual Cleanup for linked ProductionPlans and their items
+    from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder
+    from app.models.quality import QualityDefect
+    
+    # Find linked plans
+    plan_stmt = select(ProductionPlan).where(ProductionPlan.stock_production_id == prod_id)
+    plan_res = await db.execute(plan_stmt)
+    plans = plan_res.scalars().all()
+    
+    for plan in plans:
+        # Delete Quality Defects linked to this plan
+        await db.execute(
+            select(QualityDefect).where(QualityDefect.plan_id == plan.id)
+        )
+        # We need to explicitly delete them to satisfy FK constraints if CASCADE isn't enough in asyncpg
+        qd_result = await db.execute(select(QualityDefect).where(QualityDefect.plan_id == plan.id))
+        for qd in qd_result.scalars().all():
+            await db.delete(qd)
+            
+        # Delete Work Orders linked to this plan's items
+        wo_result = await db.execute(
+            select(WorkOrder).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan.id)
+        )
+        for wo in wo_result.scalars().all():
+            await db.delete(wo)
+            
+        # Delete the plan itself
+        await db.delete(plan)
+    
+    # 2. Stock Recovery
     if db_prod.status != "CANCELLED":
-        # Rollback in_production_quantity
         stock_query = select(Stock).where(Stock.product_id == db_prod.product_id)
         s_res = await db.execute(stock_query)
         stock = s_res.scalar_one_or_none()
+        
         if stock:
-            stock.in_production_quantity -= db_prod.quantity
+            if db_prod.status == "COMPLETED":
+                # If completed, recovery means subtracting from current stock
+                stock.current_quantity -= db_prod.quantity
+            else:
+                # If pending/in_progress, recovery means subtracting from production stock
+                stock.in_production_quantity -= db_prod.quantity
 
     await db.delete(db_prod)
     await db.commit()

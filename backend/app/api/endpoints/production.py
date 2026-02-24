@@ -48,15 +48,8 @@ async def read_production_plans(
     return plans
 
 @router.post("/plans", response_model=schemas.ProductionPlan)
-async def create_production_plan(
-    plan_in: schemas.ProductionPlanCreate,
-    db: AsyncSession = Depends(deps.get_db),
-) -> Any:
-    # 0. Local imports to avoid circularity
-    from app.models.inventory import StockProduction
-    
     """
-    Create a production plan from a Sales Order.
+    Create a production plan from a Sales Order or Stock Production.
     Auto-generates plan items based on Product Processes.
     """
     # 1. Check if Order or StockProduction exists
@@ -74,7 +67,6 @@ async def create_production_plan(
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Active Production Plan already exists for this Order")
     elif plan_in.stock_production_id:
-        from app.models.inventory import StockProduction
         result = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
         sp = result.scalar_one_or_none()
         if not sp:
