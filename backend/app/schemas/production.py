@@ -74,8 +74,7 @@ class ProductionPlanItem(ProductionPlanItemBase):
     id: int
     plan_id: int
     product: Optional[ProductResponse] = None
-    # Removed plan to avoid circularity if possible, or use Pydantic forward refs
-    # plan: Optional[ProductionPlanSimple] = None
+    plan: Optional[ProductionPlanSimple] = None
     
     purchase_items: List[PurchaseOrderItemSimple] = []
     outsourcing_items: List[OutsourcingOrderItemSimple] = []

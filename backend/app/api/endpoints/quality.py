@@ -26,7 +26,14 @@ async def create_defect(
     defect_in: QualityDefectCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    new_defect = QualityDefect(**defect_in.model_dump())
+    update_data = defect_in.model_dump()
+    # Remove timezone from defect_date if present
+    if update_data.get('defect_date') and hasattr(update_data['defect_date'], 'tzinfo'):
+        update_data['defect_date'] = update_data['defect_date'].replace(tzinfo=None)
+    if update_data.get('resolution_date') and hasattr(update_data['resolution_date'], 'tzinfo'):
+        update_data['resolution_date'] = update_data['resolution_date'].replace(tzinfo=None)
+        
+    new_defect = QualityDefect(**update_data)
     db.add(new_defect)
     await db.commit()
     await db.refresh(new_defect)
@@ -79,6 +86,12 @@ async def update_defect(
         raise HTTPException(status_code=404, detail="Defect not found")
         
     update_data = defect_in.model_dump(exclude_unset=True)
+    # Remove timezone from dates if present
+    if update_data.get('defect_date') and hasattr(update_data['defect_date'], 'tzinfo'):
+        update_data['defect_date'] = update_data['defect_date'].replace(tzinfo=None)
+    if update_data.get('resolution_date') and hasattr(update_data['resolution_date'], 'tzinfo'):
+        update_data['resolution_date'] = update_data['resolution_date'].replace(tzinfo=None)
+
     for field, value in update_data.items():
         setattr(db_defect, field, value)
         

@@ -50,6 +50,9 @@ async def create_production_plan(
     plan_in: schemas.ProductionPlanCreate,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
+    # 0. Local imports to avoid circularity
+    from app.models.inventory import StockProduction
+    
     """
     Create a production plan from a Sales Order.
     Auto-generates plan items based on Product Processes.
@@ -180,7 +183,7 @@ async def create_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            selectinload(ProductionPlan.stock_production).selectinload(getattr(ProductionPlan, 'stock_production').property.mapper.class_.product)
         )
         .where(ProductionPlan.id == plan.id)
     )
