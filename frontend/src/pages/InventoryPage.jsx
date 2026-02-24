@@ -9,7 +9,9 @@ import {
     Clock,
     Filter,
     ArrowUpRight,
-    ArrowDownLeft
+    ArrowDownLeft,
+    Pencil,
+    Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -26,6 +28,7 @@ const InventoryPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [showProdModal, setShowProdModal] = useState(false);
+    const [editingProduction, setEditingProduction] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -57,6 +60,23 @@ const InventoryPage = () => {
         p.production_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.product?.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleEdit = (prod) => {
+        setEditingProduction(prod);
+        setShowProdModal(true);
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("정말 이 생산 요청을 삭제하시겠습니까? 관련 재고 정보가 롤백됩니다.")) return;
+        try {
+            await api.delete(`/inventory/productions/${id}`);
+            alert("삭제되었습니다.");
+            fetchData();
+        } catch (err) {
+            console.error("Delete failed", err);
+            alert("삭제 실패: " + (err.response?.data?.detail || err.message));
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -176,6 +196,7 @@ const InventoryPage = () => {
                                         <th className="px-6 py-4 font-medium">요청일 / 완료예정일</th>
                                         <th className="px-6 py-4 font-medium">상태</th>
                                         <th className="px-6 py-4 font-medium">비고</th>
+                                        <th className="px-6 py-4 font-medium text-right">관리</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
@@ -204,6 +225,26 @@ const InventoryPage = () => {
                                                 </Badge>
                                             </td>
                                             <td className="px-6 py-4 text-gray-500 truncate max-w-[150px]">{p.note || '-'}</td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                                        onClick={() => handleEdit(p)}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                                        onClick={() => handleDelete(p.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                     {filteredProductions.length === 0 && (

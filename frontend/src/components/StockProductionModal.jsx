@@ -3,7 +3,7 @@ import { X, Search, Check, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 
-const StockProductionModal = ({ isOpen, onClose, onSuccess }) => {
+const StockProductionModal = ({ isOpen, onClose, onSuccess, initialData }) => {
     const [step, setStep] = useState(1); // 1: Partner, 2: Product & Details
     const [partners, setPartners] = useState([]);
     const [products, setProducts] = useState([]);
@@ -23,9 +23,21 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess }) => {
     useEffect(() => {
         if (isOpen) {
             fetchPartners();
-            resetModal();
+            if (initialData) {
+                setSelectedPartner(initialData.partner);
+                setSelectedProduct(initialData.product);
+                setFormData({
+                    quantity: initialData.quantity,
+                    request_date: initialData.request_date,
+                    target_date: initialData.target_date || '',
+                    note: initialData.note || ''
+                });
+                setStep(2);
+            } else {
+                resetModal();
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, initialData]);
 
     const resetModal = () => {
         setStep(1);
@@ -93,12 +105,17 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess }) => {
                 partner_id: selectedPartner?.id,
                 ...formData
             };
-            await api.post('/inventory/productions', payload);
-            alert("재고 생산 요청이 등록되었습니다.");
+            if (initialData) {
+                await api.put(`/inventory/productions/${initialData.id}`, payload);
+                alert("재고 생산 요청이 수정되었습니다.");
+            } else {
+                await api.post('/inventory/productions', payload);
+                alert("재고 생산 요청이 등록되었습니다.");
+            }
             onSuccess();
         } catch (error) {
-            console.error("Failed to create stock production", error);
-            alert("등록 실패: " + (error.response?.data?.detail || error.message));
+            console.error("Failed to save stock production", error);
+            alert("저장 실패: " + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -109,7 +126,7 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
                 <div className="p-6 border-b border-gray-700 flex justify-between items-center">
                     <h2 className="text-xl font-bold text-white">
-                        {step === 1 ? "거래처 선택" : "생산 제품 및 정보 입력"}
+                        {initialData ? "재고 생산 요청 수정" : (step === 1 ? "거래처 선택" : "생산 제품 및 정보 입력")}
                     </h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -252,7 +269,7 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess }) => {
                             className="px-6 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-500 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={!selectedProduct}
                         >
-                            재고 생산 요청
+                            {initialData ? "수정 완료" : "재고 생산 요청"}
                         </button>
                     )}
                 </div>

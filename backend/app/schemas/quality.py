@@ -62,8 +62,8 @@ class QualityDefectResponse(QualityDefectBase):
     defect_date: datetime
     created_at: datetime
     order: Optional[SalesOrderSimple] = None
-    plan: Optional[Any] = None
-    plan_item: Optional[Any] = None
+    plan: Optional[ProductionPlanResponse] = None
+    plan_item: Optional[ProductionPlanItemResponse] = None
 
     class Config:
         from_attributes = True
