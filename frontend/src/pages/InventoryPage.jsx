@@ -20,6 +20,7 @@ import { Badge } from '../components/ui/badge';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
 import StockProductionModal from '../components/StockProductionModal';
+import StockEditModal from '../components/StockEditModal';
 
 const InventoryPage = () => {
     const [activeTab, setActiveTab] = useState('status'); // 'status', 'productions'
@@ -28,7 +29,9 @@ const InventoryPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [showProdModal, setShowProdModal] = useState(false);
+    const [showStockEditModal, setShowStockEditModal] = useState(false);
     const [editingProduction, setEditingProduction] = useState(null);
+    const [editingStock, setEditingStock] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -64,6 +67,11 @@ const InventoryPage = () => {
     const handleEdit = (prod) => {
         setEditingProduction(prod);
         setShowProdModal(true);
+    };
+
+    const handleStockEdit = (stock) => {
+        setEditingStock(stock);
+        setShowStockEditModal(true);
     };
 
     const handleDelete = async (id) => {
@@ -158,9 +166,20 @@ const InventoryPage = () => {
                                         <h3 className="font-bold text-lg text-white">{stock.product?.name}</h3>
                                         <p className="text-xs text-gray-500">{stock.product?.code} | {stock.product?.specification}</p>
                                     </div>
-                                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                                        {stock.location || '기본창고'}
-                                    </Badge>
+                                    <div className="flex flex-col items-end gap-2">
+                                        <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+                                            {stock.location || '기본창고'}
+                                        </Badge>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs text-gray-400 hover:text-white hover:bg-gray-800"
+                                            onClick={() => handleStockEdit(stock)}
+                                        >
+                                            <Pencil className="w-3 h-3 mr-1" />
+                                            수량 수정
+                                        </Button>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 mt-6">
                                     <div className="bg-gray-800/50 p-3 rounded-lg">
@@ -275,6 +294,19 @@ const InventoryPage = () => {
                     setEditingProduction(null);
                     fetchData();
                     setActiveTab('productions');
+                }}
+            />
+            <StockEditModal
+                isOpen={showStockEditModal}
+                onClose={() => {
+                    setShowStockEditModal(false);
+                    setEditingStock(null);
+                }}
+                initialData={editingStock}
+                onSuccess={() => {
+                    setShowStockEditModal(false);
+                    setEditingStock(null);
+                    fetchData();
                 }}
             />
         </div>

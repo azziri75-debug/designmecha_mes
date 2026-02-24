@@ -53,8 +53,10 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
     await db.commit()
     await db.refresh(stock)
     
-    # Reload with product
-    query = select(Stock).where(Stock.id == stock.id).options(selectinload(Stock.product))
+    # Reload with product and its standard processes
+    query = select(Stock).where(Stock.id == stock.id).options(
+        selectinload(Stock.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+    )
     result = await db.execute(query)
     return result.scalar_one()
 

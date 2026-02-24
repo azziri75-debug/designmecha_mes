@@ -76,7 +76,8 @@ async def create_production_plan(
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
                     selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                     selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
-                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
                 )
                 .where(ProductionPlan.order_id == plan_in.order_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
             )
@@ -100,7 +101,8 @@ async def create_production_plan(
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
                     selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                     selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
-                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
                 )
                 .where(ProductionPlan.stock_production_id == plan_in.stock_production_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
             )
@@ -213,7 +215,8 @@ async def create_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
         )
         .where(ProductionPlan.id == plan.id)
     )
@@ -625,7 +628,8 @@ async def update_production_plan_status(
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
         )
         .where(ProductionPlan.id == plan_id)
     )
