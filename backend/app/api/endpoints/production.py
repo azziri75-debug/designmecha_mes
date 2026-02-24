@@ -533,6 +533,22 @@ async def delete_production_plan(
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
     
+    # 0. Manual Cleanup for linked records that might have FK constraints
+    from app.models.quality import QualityDefect
+    from app.models.production import WorkOrder
+    
+    # Delete Quality Defects linked to this plan
+    qd_stmt = select(QualityDefect).where(QualityDefect.plan_id == plan_id)
+    qd_result = await db.execute(qd_stmt)
+    for qd in qd_result.scalars().all():
+        await db.delete(qd)
+        
+    # Delete Work Orders linked to this plan's items
+    wo_stmt = select(WorkOrder).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
+    wo_result = await db.execute(wo_stmt)
+    for wo in wo_result.scalars().all():
+        await db.delete(wo)
+    
     # Find linked Purchase Order Items
     stmt_po = select(PurchaseOrderItem).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
     result_po = await db.execute(stmt_po)
