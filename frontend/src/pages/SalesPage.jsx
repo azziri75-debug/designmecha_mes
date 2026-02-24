@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
-import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, FileSpreadsheet, Printer, X } from 'lucide-react';
+import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, Printer, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import EstimateModal from '../components/EstimateModal';
@@ -144,22 +144,6 @@ const SalesPage = () => {
         }
     };
 
-    const handleExcelExport = async (estimateId) => {
-        try {
-            // Trigger Excel Generation
-            const res = await api.post(`/sales/estimates/${estimateId}/export_excel`);
-            const updatedEstimate = res.data;
-
-            // Refresh list to show new attachment
-            setEstimates(prev => prev.map(e => e.id === estimateId ? updatedEstimate : e));
-
-            alert("엑셀 파일이 생성되어 첨부파일에 저장되었습니다.");
-        } catch (error) {
-            console.error("Excel export failed", error);
-            alert("엑셀 생성 실패");
-        }
-    };
-
     const handleDeleteEstimateAttachment = async (estimateId, indexToRemove) => {
         if (!estimateId) return;
         if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
@@ -287,7 +271,7 @@ const SalesPage = () => {
                                             <th className="px-6 py-3">거래처</th>
                                             <th className="px-6 py-3">총 금액</th>
                                             <th className="px-6 py-3">품목 수</th>
-                                            <th className="px-6 py-3">첨부파일 / 엑셀</th>
+                                            <th className="px-6 py-3">첨부파일</th>
                                             <th className="px-6 py-3">비고</th>
                                             <th className="px-6 py-3">관리</th>
                                         </>
@@ -351,16 +335,6 @@ const SalesPage = () => {
                                                             return <span className="text-gray-600 text-xs">-</span>;
                                                         })()}
 
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleExcelExport(est.id);
-                                                            }}
-                                                            className="p-1 text-green-500 hover:text-green-400 hover:bg-green-900/20 rounded"
-                                                            title="엑셀 생성 및 저장"
-                                                        >
-                                                            <FileSpreadsheet className="w-4 h-4" />
-                                                        </button>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 truncate max-w-[200px]">{est.note}</td>
