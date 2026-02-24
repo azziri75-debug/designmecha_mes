@@ -183,7 +183,7 @@ async def create_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).selectinload(getattr(ProductionPlan, 'stock_production').property.mapper.class_.product)
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
         )
         .where(ProductionPlan.id == plan.id)
     )
