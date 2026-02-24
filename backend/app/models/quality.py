@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boo
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base import Base
+import enum
 
 class InspectionProcess(Base):
     """공정별 필요한 품질 검사 항목 정의 (Master Data)"""
