@@ -7,11 +7,11 @@ from sqlalchemy.orm import selectinload
 
 from app.api import deps
 from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
-from app.models.sales import SalesOrder, SalesOrderItem
+from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
 from app.models.product import Product, ProductProcess, Process
 from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, PurchaseStatus, OutsourcingStatus
 from app.models.basics import Partner
-from app.models.inventory import StockProduction, StockProductionStatus
+from app.models.inventory import StockProduction, StockProductionStatus, Stock
 from app.schemas import production as schemas
 from datetime import datetime
 import uuid
@@ -696,7 +696,6 @@ async def update_production_plan_status(
     # Sync with Sales Order or Stock Production
     if status == ProductionStatus.COMPLETED:
         # 1. Update Stocks
-        from app.models.inventory import Stock, StockProductionStatus
         
         if plan.stock_production:
             # For Stock Production: Update exact product and quantity from the request
@@ -721,7 +720,6 @@ async def update_production_plan_status(
             # If this production has linked outsourcing items, update them and their orders
             for item in plan.items:
                 for oo_item in item.outsourcing_items:
-                    from app.models.purchasing import OutsourcingStatus
                     oo_item.status = OutsourcingStatus.COMPLETED
                     db.add(oo_item)
                     
@@ -766,9 +764,6 @@ async def update_production_plan_status(
             
     # Rollback Logic (COMPLETED -> IN_PROGRESS)
     elif old_status == ProductionStatus.COMPLETED and status == ProductionStatus.IN_PROGRESS:
-        from app.models.inventory import Stock, StockProductionStatus
-        from app.models.purchasing import OutsourcingStatus, PurchaseStatus, PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder
-
         # 1. Rollback Stocks
         if plan.stock_production:
             sp = plan.stock_production
@@ -781,8 +776,6 @@ async def update_production_plan_status(
                 stock.in_production_quantity += sp.quantity
             sp.status = StockProductionStatus.IN_PROGRESS
             db.add(sp)
-        elif plan.order:
-            from app.models.sales import OrderStatus
             for item in plan.order.items:
                 stock_query = select(Stock).where(Stock.product_id == item.product_id)
                 s_res = await db.execute(stock_query)
@@ -826,12 +819,8 @@ async def update_production_plan_status(
                 db.add(oo)
 
     elif status == ProductionStatus.IN_PROGRESS:
-        if plan.order:
-            from app.models.sales import OrderStatus
             plan.order.status = OrderStatus.CONFIRMED 
             db.add(plan.order)
-        elif plan.stock_production:
-            from app.models.inventory import StockProductionStatus
             plan.stock_production.status = StockProductionStatus.IN_PROGRESS
             db.add(plan.stock_production)
         

@@ -573,18 +573,24 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onOpenFiles, readonl
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     {!readonly && (
                         <>
-                            <IconButton size="small" color="primary" onClick={() => onPrint(plan)} title="생산관리시트출력">
-                                <PrintIcon />
-                            </IconButton>
-                            <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
-                                <EditIcon />
-                            </IconButton>
-                            <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="삭제">
-                                <DeleteIcon />
-                            </IconButton>
-                            {plan.status !== 'COMPLETED' && (
-                                <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="생산 완료">
-                                    <CheckIcon />
+                            {plan.status !== 'COMPLETED' ? (
+                                <>
+                                    <IconButton size="small" color="primary" onClick={() => onPrint(plan)} title="생산관리시트출력">
+                                        <PrintIcon />
+                                    </IconButton>
+                                    <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
+                                        <EditIcon />
+                                    </IconButton>
+                                    <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="삭제">
+                                        <DeleteIcon />
+                                    </IconButton>
+                                    <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="생산 완료">
+                                        <CheckIcon />
+                                    </IconButton>
+                                </>
+                            ) : (
+                                <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="생산 완료 취소 (삭제)">
+                                    <DeleteIcon />
                                 </IconButton>
                             )}
                         </>
