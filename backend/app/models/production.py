@@ -85,7 +85,7 @@ class WorkOrder(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     # Link to Plan Item
-    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id"), nullable=True)
+    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id", ondelete="CASCADE"), nullable=True)
     
     # Snapshot or override info
     process_name = Column(String, nullable=False)

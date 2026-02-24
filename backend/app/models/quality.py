@@ -55,8 +55,8 @@ class QualityDefect(Base):
     
     # Relationships to Sales and Production
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=False)
-    plan_id = Column(Integer, ForeignKey("production_plans.id"), nullable=False)
-    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id"), nullable=False) # 공정
+    plan_id = Column(Integer, ForeignKey("production_plans.id", ondelete="CASCADE"), nullable=False)
+    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id", ondelete="CASCADE"), nullable=False) # 공정
     
     defect_date = Column(DateTime, default=func.now())
     defect_reason = Column(String, nullable=False) # 불량 내용/사유
