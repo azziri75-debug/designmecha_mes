@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Check, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
+import { cn } from '../lib/utils';
 
 const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
     const [plans, setPlans] = useState([]);

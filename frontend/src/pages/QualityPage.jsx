@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { Plus, Search, Calendar, AlertTriangle, CheckCircle, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import Card from '../components/Card';
+import { Card } from '../components/ui/card';
 import DefectRegistrationModal from '../components/DefectRegistrationModal';
 import DefectDetailModal from '../components/DefectDetailModal';
 
