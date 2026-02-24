@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Plus, Search, Building2, User, MoreHorizontal, X, UserPlus, Phone, Mail, Pencil, Trash, Smartphone, Upload, FileText, MapPin } from 'lucide-react';
+import { Plus, Search, Building2, User, MoreHorizontal, X, UserPlus, Phone, Mail, Pencil, Trash, Smartphone, Upload, FileText, MapPin, Factory } from 'lucide-react';
 import { cn, getImageUrl } from '../lib/utils';
 
 import FileViewerModal from '../components/FileViewerModal';

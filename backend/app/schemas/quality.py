@@ -55,14 +55,14 @@ class QualityDefectUpdate(BaseModel):
     resolution_date: Optional[datetime] = None
 
 from app.schemas.sales import SalesOrderSimple
-from app.schemas.production import ProductionPlan as ProductionPlanResponse, ProductionPlanItem as ProductionPlanItemResponse
+from app.schemas.production import ProductionPlanSimple, ProductionPlanItem as ProductionPlanItemResponse
 
 class QualityDefectResponse(QualityDefectBase):
     id: int
     defect_date: datetime
     created_at: datetime
     order: Optional[SalesOrderSimple] = None
-    plan: Optional[ProductionPlanResponse] = None
+    plan: Optional[ProductionPlanSimple] = None
     plan_item: Optional[ProductionPlanItemResponse] = None
 
     class Config:
