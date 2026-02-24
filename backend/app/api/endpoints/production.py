@@ -639,6 +639,7 @@ async def update_production_plan_status(
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
         
+    old_status = plan.status
     plan.status = status
     
     # Auto-Complete Logic
@@ -763,6 +764,67 @@ async def update_production_plan_status(
             plan.order.status = OrderStatus.PRODUCTION_COMPLETED
             db.add(plan.order)
             
+    # Rollback Logic (COMPLETED -> IN_PROGRESS)
+    elif old_status == ProductionStatus.COMPLETED and status == ProductionStatus.IN_PROGRESS:
+        from app.models.inventory import Stock, StockProductionStatus
+        from app.models.purchasing import OutsourcingStatus, PurchaseStatus, PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder
+
+        # 1. Rollback Stocks
+        if plan.stock_production:
+            sp = plan.stock_production
+            stock_query = select(Stock).where(Stock.product_id == sp.product_id)
+            s_res = await db.execute(stock_query)
+            stock = s_res.scalar_one_or_none()
+            if stock:
+                # Subtract from current, add back to in_production
+                stock.current_quantity = max(0, stock.current_quantity - sp.quantity)
+                stock.in_production_quantity += sp.quantity
+            sp.status = StockProductionStatus.IN_PROGRESS
+            db.add(sp)
+        elif plan.order:
+            from app.models.sales import OrderStatus
+            for item in plan.order.items:
+                stock_query = select(Stock).where(Stock.product_id == item.product_id)
+                s_res = await db.execute(stock_query)
+                stock = s_res.scalar_one_or_none()
+                if stock:
+                    stock.current_quantity = max(0, stock.current_quantity - item.quantity)
+                    stock.in_production_quantity += item.quantity
+            plan.order.status = OrderStatus.CONFIRMED
+            db.add(plan.order)
+
+        # 2. Rollback Linked Orders (Back to PENDING)
+        affected_po_ids = set()
+        affected_oo_ids = set()
+        for item in plan.items:
+            for po_item in item.purchase_items:
+                # Revert received quantity? 
+                # (User said "대기 상태로 변경", which usually means received_quantity = 0 or status = PENDING)
+                po_item.received_quantity = 0
+                db.add(po_item)
+                affected_po_ids.add(po_item.purchase_order_id)
+            
+            for oo_item in item.outsourcing_items:
+                oo_item.status = OutsourcingStatus.PENDING
+                db.add(oo_item)
+                affected_oo_ids.add(oo_item.outsourcing_order_id)
+        
+        await db.flush()
+
+        # Update PurchaseOrder statuses
+        for po_id in affected_po_ids:
+            po = await db.get(PurchaseOrder, po_id)
+            if po:
+                po.status = PurchaseStatus.PENDING
+                db.add(po)
+        
+        # Update OutsourcingOrder statuses
+        for oo_id in affected_oo_ids:
+            oo = await db.get(OutsourcingOrder, oo_id)
+            if oo:
+                oo.status = OutsourcingStatus.PENDING
+                db.add(oo)
+
     elif status == ProductionStatus.IN_PROGRESS:
         if plan.order:
             from app.models.sales import OrderStatus

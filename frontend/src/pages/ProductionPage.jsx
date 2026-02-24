@@ -85,10 +85,10 @@ const ProductionPage = () => {
         const plan = plans.find(p => p.id === planId);
 
         if (plan && plan.status === 'COMPLETED') {
-            if (!window.confirm("생산 완료된 내역입니다. 삭제하지 않고 '진행 중' 상태로 되돌리시겠습니까?\n(관련 수주 상태도 '생산 완료'에서 '확정'으로 변경됩니다.)")) return;
+            if (!window.confirm("생산 완료된 내역입니다. 진행 중 상태로 되돌리시겠습니까?\n\n[주의]\n- 추가된 재고가 차감됩니다.\n- 연계된 자재/외주 발주가 '대기' 상태로 원복됩니다.")) return;
             try {
                 await api.patch(`/production/plans/${planId}/status?status=IN_PROGRESS`);
-                alert("상태가 '진행 중'으로 변경되었습니다.");
+                alert("상태가 '진행 중'으로 변경되었으며 재고 및 발주 내역이 원복되었습니다.");
                 fetchPlans();
                 fetchOrders();
             } catch (error) {
