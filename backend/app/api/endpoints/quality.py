@@ -52,9 +52,9 @@ async def read_defects(
     db: AsyncSession = Depends(get_db)
 ):
     query = select(QualityDefect).options(
-        selectinload(QualityDefect.order),
-        selectinload(QualityDefect.plan),
-        selectinload(QualityDefect.plan_item)
+        selectinload(QualityDefect.order).selectinload(SalesOrder.partner),
+        selectinload(QualityDefect.plan).selectinload(ProductionPlan.order),
+        selectinload(QualityDefect.plan_item).selectinload(ProductionPlanItem.product)
     )
     
     if status:
@@ -95,11 +95,11 @@ async def update_defect(
     await db.commit()
     await db.refresh(db_defect)
     
-    # Eager load
+    # Reload with all relations
     query = select(QualityDefect).options(
-        selectinload(QualityDefect.order),
-        selectinload(QualityDefect.plan),
-        selectinload(QualityDefect.plan_item)
+        selectinload(QualityDefect.order).selectinload(SalesOrder.partner),
+        selectinload(QualityDefect.plan).selectinload(ProductionPlan.order),
+        selectinload(QualityDefect.plan_item).selectinload(ProductionPlanItem.product)
     ).where(QualityDefect.id == defect_id)
     result = await db.execute(query)
     return result.scalar_one()
