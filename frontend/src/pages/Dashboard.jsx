@@ -20,7 +20,8 @@ const todayStr = () => new Date().toLocaleDateString('ko-KR', { year: 'numeric',
 const STATUS_LABELS = {
     PENDING: '대기', CONFIRMED: '확정', PRODUCTION_COMPLETED: '생산완료',
     DELIVERY_COMPLETED: '납품완료', PLANNED: '계획', IN_PROGRESS: '진행중',
-    COMPLETED: '완료', CANCELED: '취소', ORDERED: '발주'
+    COMPLETED: '완료', CANCELED: '취소', ORDERED: '발주',
+    PASS: '합격', FAIL: '불합격', INSP_COMPLETED: '검사완료'
 };
 
 const PIE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1'];
@@ -124,12 +125,14 @@ const Dashboard = () => {
     const [partners, setPartners] = useState([]);
     const [products, setProducts] = useState([]);
     const [staff, setStaff] = useState([]);
+    const [stockProductions, setStockProductions] = useState([]);
+    const [defects, setDefects] = useState([]);
 
     useEffect(() => {
         const fetchAll = async () => {
             setLoading(true);
             try {
-                const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes] = await Promise.allSettled([
+                const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes] = await Promise.allSettled([
                     api.get('/sales/orders/'),
                     api.get('/production/plans'),
                     api.get('/purchasing/purchase/orders'),
@@ -138,7 +141,9 @@ const Dashboard = () => {
                     api.get('/purchasing/outsourcing/pending-items'),
                     api.get('/basics/partners/'),
                     api.get('/product/products'),
-                    api.get('/basics/staff/')
+                    api.get('/basics/staff/'),
+                    api.get('/inventory/productions'),
+                    api.get('/quality/defects/')
                 ]);
                 if (ordRes.status === 'fulfilled') setOrders(ordRes.value.data);
                 if (planRes.status === 'fulfilled') setPlans(planRes.value.data);
@@ -149,6 +154,8 @@ const Dashboard = () => {
                 if (partRes.status === 'fulfilled') setPartners(partRes.value.data);
                 if (prodRes.status === 'fulfilled') setProducts(prodRes.value.data);
                 if (staffRes.status === 'fulfilled') setStaff(staffRes.value.data);
+                if (spRes.status === 'fulfilled') setStockProductions(spRes.value.data);
+                if (defRes.status === 'fulfilled') setDefects(defRes.value.data);
             } catch (e) { console.error(e); }
             setLoading(false);
         };
@@ -242,9 +249,21 @@ const Dashboard = () => {
             monthlyRevenue,
             topCustomers,
             recentOrders,
-            urgentDeliveries
+            urgentDeliveries,
+            // Enhanced stats
+            activeStockProds: stockProductions.filter(sp => sp.status === 'IN_PROGRESS' || sp.status === 'PENDING').length,
+            unresolvedDefects: defects.filter(d => d.status !== 'RESOLVED').length,
+            defectStatusData: (() => {
+                const counts = {};
+                defects.forEach(d => {
+                    const label = STATUS_LABELS[d.status] || d.status;
+                    counts[label] = (counts[label] || 0) + 1;
+                });
+                return Object.entries(counts).map(([name, value]) => ({ name, value }));
+            })(),
+            recentDefects: [...defects].sort((a, b) => (b.defect_date || '').localeCompare(a.defect_date || '')).slice(0, 5)
         };
-    }, [orders, plans, purchaseOrders, outsourcingOrders, pendingPurchase, pendingOutsourcing, partners, products, staff]);
+    }, [orders, plans, purchaseOrders, outsourcingOrders, pendingPurchase, pendingOutsourcing, partners, products, staff, stockProductions, defects]);
 
     if (loading) {
         return (
@@ -282,7 +301,9 @@ const Dashboard = () => {
                 <StatCard title="생산 진행" value={fmt(stats.activePlans)} sub={`총 ${stats.totalPlans}건 중`} icon={Factory} color="amber" onClick={() => navigate('/production')} />
                 <StatCard title="미발주 (자재)" value={fmt(stats.pendingPurchaseCount)} sub="발주 대기" icon={Package} color={stats.pendingPurchaseCount > 0 ? 'red' : 'green'} onClick={() => navigate('/purchase')} />
                 <StatCard title="미발주 (외주)" value={fmt(stats.pendingOutsourcingCount)} sub="외주 대기" icon={Truck} color={stats.pendingOutsourcingCount > 0 ? 'red' : 'green'} onClick={() => navigate('/outsourcing')} />
+                <StatCard title="품질 결함" value={fmt(stats.unresolvedDefects)} sub="미해결 내역" icon={AlertTriangle} color={stats.unresolvedDefects > 0 ? 'red' : 'blue'} onClick={() => navigate('/quality')} />
                 <StatCard title="납품 대기" value={fmt(stats.prodCompOrders)} sub={`납품완료 ${stats.deliveredOrders}건`} icon={Truck} color="purple" onClick={() => navigate('/inventory')} />
+                <StatCard title="재고 생산" value={fmt(stats.activeStockProds)} sub="진행 중" icon={Layers} color="cyan" onClick={() => navigate('/inventory')} />
             </div>
 
             {/* ── KPI Cards Row 2: Master Data ── */}
@@ -498,6 +519,67 @@ const Dashboard = () => {
                                 납품완료 {stats.deliveredOrders}건 / 전체 {stats.totalOrders}건
                             </p>
                         </div>
+                    </div>
+                </ChartCard>
+            </div>
+
+            {/* ── Quality Row ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Quality Defect Status */}
+                <ChartCard title="품질 결함 현황" icon={AlertTriangle}>
+                    <div className="h-56 flex items-center justify-center">
+                        {stats.defectStatusData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={stats.defectStatusData} cx="50%" cy="50%"
+                                        innerRadius={45} outerRadius={70} paddingAngle={3}
+                                        dataKey="value" nameKey="name"
+                                        stroke="none"
+                                    >
+                                        {stats.defectStatusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[(i + 3) % PIE_COLORS.length]} />)}
+                                    </Pie>
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend formatter={(v) => <span className="text-gray-400 text-[10px]">{v}</span>} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : <p className="text-gray-500 text-sm">결함 데이터 없음</p>}
+                    </div>
+                </ChartCard>
+
+                {/* Recent Defects List */}
+                <ChartCard title="최근 발생 품질 결함" icon={ClipboardList} className="lg:col-span-2">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-[11px] text-gray-300">
+                            <thead>
+                                <tr className="border-b border-gray-700/50">
+                                    <th className="text-left py-2 px-2 text-gray-500 font-medium">발생일</th>
+                                    <th className="text-left py-2 px-2 text-gray-500 font-medium">품목 / 공정</th>
+                                    <th className="text-left py-2 px-2 text-gray-500 font-medium">결함 사유</th>
+                                    <th className="text-center py-2 px-2 text-gray-500 font-medium">상태</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-800/50">
+                                {stats.recentDefects.map(d => (
+                                    <tr key={d.id} className="hover:bg-gray-700/30 transition-colors cursor-pointer" onClick={() => navigate('/quality')}>
+                                        <td className="py-2 px-2 text-gray-500">{new Date(d.defect_date).toLocaleDateString()}</td>
+                                        <td className="py-2 px-2">
+                                            <div className="font-medium text-white">{d.plan_item?.product?.name || d.order?.items?.[0]?.product?.name || '-'}</div>
+                                            <div className="text-[10px] text-gray-500">{d.plan_item?.process_name || '-'}</div>
+                                        </td>
+                                        <td className="py-2 px-2 text-gray-400 truncate max-w-[150px]">{d.defect_reason}</td>
+                                        <td className="py-2 px-2 text-center">
+                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${d.status === 'RESOLVED' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-red-900/40 text-red-400'}`}>
+                                                {d.status === 'RESOLVED' ? '해결' : '미해결'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {stats.recentDefects.length === 0 && (
+                                    <tr><td colSpan="4" className="py-8 text-center text-gray-600">결함 내역 없음</td></tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </ChartCard>
             </div>
