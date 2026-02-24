@@ -246,8 +246,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 <div className="flex-1 overflow-auto bg-[#f9fafb]0 p-8 flex justify-center">
                     <div
                         ref={sheetRef}
-                        className="bg-[#fff] text-[#000] w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top"
-                        style={{ fontFamily: '"Malgun Gothic", "Sunny", sans-serif' }}
+                        className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top"
+                        style={{ fontFamily: '"Malgun Gothic", "Sunny", sans-serif', backgroundColor: '#ffffff', color: '#000000' }}
                     >
                         {/* Title */}
                         <div className="text-center mb-8 relative">
@@ -271,7 +271,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                     <span>귀하</span>
                                 </div>
                                 <div className="text-sm space-y-1">
-                                    <p className="flex"><span className="w-16">참조:</span> <input value={metadata.reference} onChange={(e) => handleMetadataChange('reference', e.target.value)} className="flex-1 outline-none bg-transparent border-b border-dotted border-gray-400" /></p>
+                                    <p className="flex"><span className="w-16">참조:</span> <input value={metadata.reference} onChange={(e) => handleMetadataChange('reference', e.target.value)} className="flex-1 outline-none bg-transparent border-b border-dotted" style={{ borderColor: '#9ca3af' }} /></p>
                                     <p className="flex"><span className="w-16">견적일:</span> <span>{estimate.estimate_date || today}</span></p>
                                     <p className="flex"><span className="w-16">견적번호:</span> <span>{estimate.id}</span></p>
                                 </div>
@@ -294,14 +294,14 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                     </colgroup>
                                     <tbody>
                                         <tr>
-                                            <td rowSpan="5" className="text-center align-middle font-bold text-lg w-8 border-r border-[#000] writing-vertical bg-[#f3f4f6]">공<br />급<br />자</td>
+                                            <td rowSpan="5" className="text-center align-middle font-bold text-lg w-8 border-r border-[#000] writing-vertical" style={{ backgroundColor: '#f3f4f6' }}>공<br />급<br />자</td>
                                             <td className="pl-2 border-b border-[#d1d5db] py-1">
-                                                <span className="inline-block w-12 text-[#6b7280]">등록번호</span> {company?.registration_number}
+                                                <span className="inline-block w-12" style={{ color: '#6b7280' }}>등록번호</span> {company?.registration_number}
                                             </td>
                                         </tr>
                                         <tr>
                                             <td className="pl-2 border-b border-[#d1d5db] py-1 flex justify-between items-center pr-2">
-                                                <span><span className="inline-block w-12 text-[#6b7280]">상호</span> {company?.name}</span>
+                                                <span><span className="inline-block w-12" style={{ color: '#6b7280' }}>상호</span> {company?.name}</span>
                                                 <span className="relative">
                                                     <span className="inline-block w-12 text-[#6b7280]">성명</span> {company?.owner_name || company?.representative}
                                                     {(metadata.show_stamp && (company?.stamp_image || company?.logo_image)) && (
@@ -318,7 +318,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                         </tr>
                                         <tr>
                                             <td className="pl-2 border-b border-[#d1d5db] py-1">
-                                                <span className="inline-block w-12 text-[#6b7280]">주소</span> {company?.address}
+                                                <span className="inline-block w-12" style={{ color: '#6b7280' }}>주소</span> {company?.address}
                                             </td>
                                         </tr>
                                         <tr>
@@ -328,7 +328,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                         </tr>
                                         <tr>
                                             <td className="pl-2 py-1">
-                                                <span className="inline-block w-12 text-[#6b7280]">연락처</span> {company?.phone} / {company?.fax}
+                                                <span className="inline-block w-12" style={{ color: '#6b7280' }}>연락처</span> {company?.phone} / {company?.fax}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -347,7 +347,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         {/* Item Table */}
                         <table className="w-full border-collapse border border-[#000] mb-6 text-sm">
                             <thead>
-                                <tr className="bg-[#f3f4f6] text-center">
+                                <tr className="text-center" style={{ backgroundColor: '#f3f4f6' }}>
                                     <th className="border border-[#000] py-2 w-10">No</th>
                                     <th className="border border-[#000] py-2">품명</th>
                                     <th className="border border-[#000] py-2 w-24">규격/사양</th>
@@ -386,7 +386,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 ))}
                             </tbody>
                             <tfoot>
-                                <tr className="bg-[#f9fafb] font-bold text-center">
+                                <tr className="font-bold text-center" style={{ backgroundColor: '#f9fafb' }}>
                                     <td colSpan="3" className="border border-[#000] py-2">소 계</td>
                                     <td className="border border-[#000] py-2">{fmt(estimate.items.reduce((s, i) => s + i.quantity, 0))}</td>
                                     <td className="border border-[#000] py-2"></td>
@@ -408,7 +408,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Footer Stamp/Date */}
-                        <div className="mt-12 text-center text-sm text-[#6b7280]">
+                        <div className="mt-12 text-center text-sm" style={{ color: '#6b7280' }}>
                             {/* Optional footer branding or date */}
                         </div>
                     </div>
