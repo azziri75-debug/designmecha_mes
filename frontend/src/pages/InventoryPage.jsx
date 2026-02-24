@@ -95,7 +95,10 @@ const InventoryPage = () => {
                     <Button
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                         size="sm"
-                        onClick={() => setShowProdModal(true)}
+                        onClick={() => {
+                            setEditingProduction(null);
+                            setShowProdModal(true);
+                        }}
                     >
                         <Plus className="w-4 h-4 mr-2" />
                         재고 생산 요청
@@ -262,9 +265,14 @@ const InventoryPage = () => {
             )}
             <StockProductionModal
                 isOpen={showProdModal}
-                onClose={() => setShowProdModal(false)}
+                onClose={() => {
+                    setShowProdModal(false);
+                    setEditingProduction(null);
+                }}
+                initialData={editingProduction}
                 onSuccess={() => {
                     setShowProdModal(false);
+                    setEditingProduction(null);
                     fetchData();
                     setActiveTab('productions');
                 }}

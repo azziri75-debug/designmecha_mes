@@ -11,6 +11,7 @@ from app.models.sales import SalesOrder, SalesOrderItem
 from app.models.product import Product, ProductProcess, Process
 from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, PurchaseStatus, OutsourcingStatus
 from app.models.basics import Partner
+from app.models.inventory import StockProduction, StockProductionStatus
 from app.schemas import production as schemas
 from datetime import datetime
 import uuid
@@ -65,16 +66,27 @@ async def create_production_plan(
         if not order:
             raise HTTPException(status_code=404, detail="Sales Order not found")
             
-        # Check if Plan already exists for this order
-        result = await db.execute(select(ProductionPlan).where(ProductionPlan.order_id == plan_in.order_id))
+        # Check if ACTIVE Plan already exists for this order
+        result = await db.execute(select(ProductionPlan).where(
+            ProductionPlan.order_id == plan_in.order_id,
+            ProductionPlan.status != ProductionStatus.CANCELED
+        ))
         if result.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Production Plan already exists for this Order")
+            raise HTTPException(status_code=400, detail="Active Production Plan already exists for this Order")
     elif plan_in.stock_production_id:
         from app.models.inventory import StockProduction
         result = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
         sp = result.scalar_one_or_none()
         if not sp:
             raise HTTPException(status_code=404, detail="Stock Production request not found")
+        
+        # Check if ACTIVE Plan already exists for this stock production
+        result = await db.execute(select(ProductionPlan).where(
+            ProductionPlan.stock_production_id == plan_in.stock_production_id,
+            ProductionPlan.status != ProductionStatus.CANCELED
+        ))
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Active Production Plan already exists for this Stock Production request")
     else:
         raise HTTPException(status_code=400, detail="Either order_id or stock_production_id is required")
 

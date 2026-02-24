@@ -43,8 +43,7 @@ async def read_pending_purchase_items(
             ProductionPlanItem.course_type.ilike('%PURCHASE%'),
             ProductionPlanItem.course_type.like('%구매%')
         ))\
-        .where(PurchaseOrderItem.id.is_(None))
-        # .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED])) # Temporarily removed for debugging
+        .where(ProductionPlan.status != ProductionStatus.CANCELED)
         
     # Debug: Print Query
     # print(f"[DEBUG] Query: {query}")
@@ -81,8 +80,7 @@ async def read_pending_outsourcing_items(
             ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
             ProductionPlanItem.course_type.like('%외주%')
         ))\
-        .where(OutsourcingOrderItem.id.is_(None))
-        # .where(ProductionPlan.status.notin_([ProductionStatus.CANCELED])) # Temporarily removed for debugging
+        .where(ProductionPlan.status != ProductionStatus.CANCELED)
         
     result = await db.execute(query)
     items = result.scalars().all()

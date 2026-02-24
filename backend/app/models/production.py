@@ -19,7 +19,7 @@ class ProductionPlan(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True) # 수주 참조 (재고생산의 경우 null)
-    stock_production_id = Column(Integer, ForeignKey("stock_productions.id"), nullable=True) # 재고생산 참조
+    stock_production_id = Column(Integer, ForeignKey("stock_productions.id", ondelete="CASCADE"), nullable=True) # 재고생산 참조
     plan_date = Column(Date, nullable=False) # 계획 수립일
     
     status = Column(Enum(ProductionStatus), default=ProductionStatus.PLANNED)
