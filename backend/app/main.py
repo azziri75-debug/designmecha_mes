@@ -84,12 +84,12 @@ async def root():
 @app.on_event("startup")
 async def startup_event():
     """Ensure admin user exists on startup"""
-    from app.db.base import SessionLocal
+    from app.api.deps import AsyncSessionLocal
     from app.models.basics import Staff
     from sqlalchemy.future import select
     import json
     
-    async with SessionLocal() as db:
+    async with AsyncSessionLocal() as db:
         ALL_MENUS = ["basics", "products", "sales", "production", "purchase", "outsourcing", "quality", "inventory"]
         result = await db.execute(select(Staff).where(Staff.name == "이준호"))
         admin = result.scalar_one_or_none()
