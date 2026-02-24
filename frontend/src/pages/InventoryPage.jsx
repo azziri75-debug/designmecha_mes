@@ -157,53 +157,75 @@ const InventoryPage = () => {
                     <p className="text-gray-500 mt-4">데이터를 불러오는 중입니다...</p>
                 </div>
             ) : activeTab === 'status' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredStocks.map((stock) => (
-                        <Card key={stock.id} className="bg-gray-900 border-gray-800 hover:border-gray-700 transition-all border-l-4 border-l-blue-500">
-                            <CardContent className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="font-bold text-lg text-white">{stock.product?.name}</h3>
-                                        <p className="text-xs text-gray-500">{stock.product?.code} | {stock.product?.specification}</p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                        <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                                            {stock.location || '기본창고'}
-                                        </Badge>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 text-xs text-gray-400 hover:text-white hover:bg-gray-800"
-                                            onClick={() => handleStockEdit(stock)}
-                                        >
-                                            <Pencil className="w-3 h-3 mr-1" />
-                                            수량 수정
-                                        </Button>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 mt-6">
-                                    <div className="bg-gray-800/50 p-3 rounded-lg">
-                                        <p className="text-xs text-gray-400 mb-1">현재고</p>
-                                        <p className="text-xl font-bold text-white">{stock.current_quantity.toLocaleString()}</p>
-                                    </div>
-                                    <div className="bg-gray-800/50 p-3 rounded-lg">
-                                        <p className="text-xs text-gray-400 mb-1">생산중</p>
-                                        <p className="text-xl font-bold text-yellow-500">{stock.in_production_quantity.toLocaleString()}</p>
-                                    </div>
-                                </div>
-                                <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
-                                    <span>최근 업데이트</span>
-                                    <span>{new Date(stock.updated_at).toLocaleDateString()}</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                    {filteredStocks.length === 0 && (
-                        <div className="col-span-full py-20 text-center bg-gray-900/50 rounded-xl border border-dashed border-gray-800">
-                            <p className="text-gray-500">재고 내역이 없습니다.</p>
+                <Card className="bg-gray-900 border-gray-800">
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-800/50 text-gray-400 uppercase text-xs">
+                                    <tr>
+                                        <th className="px-6 py-4 font-medium">품목명</th>
+                                        <th className="px-6 py-4 font-medium">코드 / 규격</th>
+                                        <th className="px-6 py-4 font-medium">보관 위치</th>
+                                        <th className="px-6 py-4 font-medium text-right">현재고</th>
+                                        <th className="px-6 py-4 font-medium text-right">생산중</th>
+                                        <th className="px-6 py-4 font-medium">최근 업데이트</th>
+                                        <th className="px-6 py-4 font-medium text-right">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-800">
+                                    {filteredStocks.map((stock) => (
+                                        <tr key={stock.id} className="hover:bg-gray-800/30 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="text-white font-bold">{stock.product?.name}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-xs text-gray-300">{stock.product?.code}</div>
+                                                <div className="text-xs text-gray-500">{stock.product?.specification}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+                                                    {stock.location || '기본창고'}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-lg font-bold text-white">
+                                                {stock.current_quantity.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <span className={cn(
+                                                    "font-semibold",
+                                                    stock.in_production_quantity > 0 ? "text-yellow-500" : "text-gray-600"
+                                                )}>
+                                                    {stock.in_production_quantity.toLocaleString()}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-500 text-xs">
+                                                {new Date(stock.updated_at).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                                    onClick={() => handleStockEdit(stock)}
+                                                >
+                                                    <Pencil className="w-4 h-4 mr-2" />
+                                                    수정
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredStocks.length === 0 && (
+                                        <tr>
+                                            <td colSpan="7" className="px-6 py-10 text-center text-gray-500 italic">
+                                                재고 내역이 없습니다.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
-                    )}
-                </div>
+                    </CardContent>
+                </Card>
             ) : (
                 <Card className="bg-gray-900 border-gray-800">
                     <CardContent className="p-0">

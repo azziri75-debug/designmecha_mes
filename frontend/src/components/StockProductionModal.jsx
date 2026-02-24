@@ -98,6 +98,7 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess, initialData }) => {
     const handleSubmit = async () => {
         if (!selectedProduct) return alert("제품을 선택해주세요.");
         if (formData.quantity <= 0) return alert("생산 수량을 입력해주세요.");
+        if (!formData.target_date) return alert("완료 예정일을 입력해주세요.");
 
         try {
             const payload = {

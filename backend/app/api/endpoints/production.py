@@ -629,7 +629,8 @@ async def update_production_plan_status(
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
         )
         .where(ProductionPlan.id == plan_id)
     )
@@ -714,6 +715,32 @@ async def update_production_plan_status(
             # Sync StockProduction status
             sp.status = StockProductionStatus.COMPLETED
             db.add(sp)
+            
+            # --- Sync Outsourcing Orders ---
+            # If this production has linked outsourcing items, update them and their orders
+            for item in plan.items:
+                for oo_item in item.outsourcing_items:
+                    from app.models.purchasing import OutsourcingStatus
+                    oo_item.status = OutsourcingStatus.COMPLETED
+                    db.add(oo_item)
+                    
+                    oo = oo_item.outsourcing_order
+                    if oo:
+                        # Check if ALL items in this OutsourcingOrder are COMPLETED
+                        all_completed = True
+                        for other_item in oo.items:
+                            # Use current in-memory status if available, else DB status
+                            current_item_status = other_item.status
+                            if other_item.id == oo_item.id:
+                                current_item_status = OutsourcingStatus.COMPLETED
+                                
+                            if current_item_status != OutsourcingStatus.COMPLETED:
+                                all_completed = False
+                                break
+                        
+                        if all_completed:
+                            oo.status = OutsourcingStatus.COMPLETED
+                            db.add(oo)
             
         elif plan.order:
             from app.models.sales import OrderStatus
