@@ -38,7 +38,7 @@ class StockProduction(Base):
     request_date = Column(Date, default=func.now()) # 등록일
     target_date = Column(Date, nullable=True)      # 완공 목표일
     
-    status = Column(SqEnum(StockProductionStatus), default=StockProductionStatus.PENDING)
+    status = Column(SqEnum(StockProductionStatus, native_enum=False), default=StockProductionStatus.PENDING)
     note = Column(Text, nullable=True)
     
     created_at = Column(DateTime, default=func.now())

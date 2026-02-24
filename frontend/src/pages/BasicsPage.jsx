@@ -292,7 +292,12 @@ const BasicsPageContent = () => {
                 }
             } else if (activeTab === 'equipments') {
                 if (modalType === 'create_equipment') {
-                    await api.post('/basics/equipments/', formData);
+                    // Auto-generate code if empty
+                    const finalData = { ...formData };
+                    if (!finalData.code) {
+                        finalData.code = `EQ-${new Date().getTime().toString().slice(-6)}`;
+                    }
+                    await api.post('/basics/equipments/', finalData);
                 } else if (modalType === 'edit_equipment') {
                     await api.put(`/basics/equipments/${selectedEquipment.id}`, formData);
                 }
@@ -871,7 +876,9 @@ const BasicsPageContent = () => {
                                         modalType === 'edit' ? '거래처 정보 수정' :
                                             modalType === 'add_contact' ? '담당자 추가' :
                                                 modalType === 'edit_contact' ? '담당자 수정' :
-                                                    modalType === 'create_staff' ? '신규 사원 등록' : '사원 정보 수정'}
+                                                    modalType === 'create_staff' ? '신규 사원 등록' :
+                                                        modalType === 'create_equipment' ? '신규 생산 장비 등록' :
+                                                            modalType === 'edit_equipment' ? '장비 정보 수정' : '사원 정보 수정'}
                                 </h3>
                                 <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white transition-colors">
                                     <X className="w-5 h-5" />
