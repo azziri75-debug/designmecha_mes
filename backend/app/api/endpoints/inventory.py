@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date
 
-from app.db.session import get_db
+from app.api.deps import get_db
 from app.models.inventory import Stock, StockProduction, StockProductionStatus
 from app.schemas.inventory import (
     StockResponse, StockUpdate,
