@@ -24,8 +24,20 @@ export const CardTitle = ({ children, className }) => (
     </h3>
 );
 
+export const CardDescription = ({ children, className }) => (
+    <p className={cn("text-sm text-gray-500", className)}>
+        {children}
+    </p>
+);
+
 export const CardContent = ({ children, className }) => (
     <div className={cn("p-6", className)}>
+        {children}
+    </div>
+);
+
+export const CardFooter = ({ children, className }) => (
+    <div className={cn("p-6 pt-0 border-t border-gray-700 flex items-center", className)}>
         {children}
     </div>
 );
