@@ -41,3 +41,36 @@ class Attachment(Base):
     file_path = Column(String, nullable=False)
     file_type = Column(String, nullable=True) # IMAGE, PDF etc.
     upload_date = Column(DateTime, default=func.now())
+
+class DefectStatus(str, enum.Enum):
+    OCCURRED = "OCCURRED"   # 발생
+    RESOLVED = "RESOLVED"   # 처리완료
+
+class QualityDefect(Base):
+    """불량 발생 및 처리 내역"""
+    __tablename__ = "quality_defects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Relationships to Sales and Production
+    order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=False)
+    plan_id = Column(Integer, ForeignKey("production_plans.id"), nullable=False)
+    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id"), nullable=False) # 공정
+    
+    defect_date = Column(DateTime, default=func.now())
+    defect_reason = Column(String, nullable=False) # 불량 내용/사유
+    quantity = Column(Integer, default=0) # 불량 수량
+    amount = Column(Float, default=0.0) # 불량 금액 (손실액)
+    
+    status = Column(String, default=DefectStatus.OCCURRED) # OCCURRED, RESOLVED
+    
+    # Resolution Info
+    resolution_date = Column(DateTime, nullable=True)
+    resolution_note = Column(Text, nullable=True) # 처리 내용
+    
+    created_at = Column(DateTime, default=func.now())
+
+    # Relationships
+    order = relationship("SalesOrder")
+    plan = relationship("ProductionPlan")
+    plan_item = relationship("ProductionPlanItem")

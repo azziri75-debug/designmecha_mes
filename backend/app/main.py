@@ -136,6 +136,53 @@ async def startup_event():
                 await db.execute(text("ALTER TABLE sales_orders ADD COLUMN attachment_file JSONB"))
                 print("Startup: Added attachment_file to sales_orders (Postgres)")
             
+        # 3. Migration for quality_defects
+        # Check if table exists
+        if "sqlite" in db_url:
+            table_check = await db.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='quality_defects'"))
+            if not table_check.fetchone():
+                await db.execute(text("""
+                    CREATE TABLE quality_defects (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        order_id INTEGER NOT NULL,
+                        plan_id INTEGER NOT NULL,
+                        plan_item_id INTEGER NOT NULL,
+                        defect_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        defect_reason VARCHAR NOT NULL,
+                        quantity INTEGER DEFAULT 0,
+                        amount FLOAT DEFAULT 0.0,
+                        status VARCHAR DEFAULT 'OCCURRED',
+                        resolution_date TIMESTAMP,
+                        resolution_note TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(order_id) REFERENCES sales_orders(id),
+                        FOREIGN KEY(plan_id) REFERENCES production_plans(id),
+                        FOREIGN KEY(plan_item_id) REFERENCES production_plan_items(id)
+                    )
+                """))
+                print("Startup: Created quality_defects table (SQLite)")
+        else:
+            # Postgres (Assuming table creation via DDL or similar check)
+            table_check = await db.execute(text("SELECT to_regclass('public.quality_defects')"))
+            if not table_check.scalar():
+                await db.execute(text("""
+                    CREATE TABLE quality_defects (
+                        id SERIAL PRIMARY KEY,
+                        order_id INTEGER NOT NULL REFERENCES sales_orders(id),
+                        plan_id INTEGER NOT NULL REFERENCES production_plans(id),
+                        plan_item_id INTEGER NOT NULL REFERENCES production_plan_items(id),
+                        defect_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        defect_reason TEXT NOT NULL,
+                        quantity INTEGER DEFAULT 0,
+                        amount DOUBLE PRECISION DEFAULT 0.0,
+                        status VARCHAR DEFAULT 'OCCURRED',
+                        resolution_date TIMESTAMP WITH TIME ZONE,
+                        resolution_note TEXT,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """))
+                print("Startup: Created quality_defects table (Postgres)")
+
         await db.commit()
 
 
