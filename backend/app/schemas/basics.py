@@ -62,6 +62,9 @@ class StaffBase(BaseModel):
     main_duty: Optional[str] = None
     phone: Optional[str] = None
     is_active: bool = True
+    user_type: Optional[str] = "USER"  # ADMIN or USER
+    password: Optional[str] = None
+    menu_permissions: Optional[List[str]] = []
 
 class StaffCreate(StaffBase):
     pass

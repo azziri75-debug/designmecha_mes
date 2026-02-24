@@ -568,6 +568,7 @@ const BasicsPageContent = () => {
                                     ) : (
                                         <>
                                             <th className="px-6 py-3">이름</th>
+                                            <th className="px-6 py-3">구분</th>
                                             <th className="px-6 py-3">부서/직책</th>
                                             <th className="px-6 py-3">주업무</th>
                                             <th className="px-6 py-3">전화번호</th>
@@ -728,6 +729,14 @@ const BasicsPageContent = () => {
                                                     <User className="w-4 h-4 text-purple-400" />
                                                 </div>
                                                 {member.name}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={cn(
+                                                    "px-2 py-1 rounded-full text-xs font-medium",
+                                                    member.user_type === 'ADMIN' ? "bg-purple-500/10 text-purple-400" : "bg-blue-500/10 text-blue-400"
+                                                )}>
+                                                    {member.user_type === 'ADMIN' ? '관리자' : '사용자'}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">{member.role}</td>
                                             <td className="px-6 py-4">{member.main_duty || '-'}</td>
@@ -1005,6 +1014,73 @@ const BasicsPageContent = () => {
                                                 className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-800"
                                             />
                                             <label className="text-sm font-medium text-gray-300">재직 중</label>
+                                        </div>
+
+                                        {/* 구분 (ADMIN/USER) */}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">구분 <span className="text-red-500">*</span></label>
+                                            <select
+                                                name="user_type"
+                                                value={formData.user_type || 'USER'}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, user_type: e.target.value }))}
+                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                            >
+                                                <option value="USER">사용자</option>
+                                                <option value="ADMIN">관리자</option>
+                                            </select>
+                                        </div>
+
+                                        {/* 비밀번호 */}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">로그인 비밀번호</label>
+                                            <input
+                                                type="text"
+                                                name="password"
+                                                value={formData.password || ''}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                placeholder="비밀번호 입력"
+                                            />
+                                        </div>
+
+                                        {/* 메뉴 접근 권한 */}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">메뉴 접근 권한</label>
+                                            <div className="grid grid-cols-2 gap-2 bg-gray-900/50 rounded-lg p-3 border border-gray-700">
+                                                {[
+                                                    { key: 'basics', label: '기초 정보' },
+                                                    { key: 'products', label: '제품 관리' },
+                                                    { key: 'sales', label: '영업 관리' },
+                                                    { key: 'production', label: '생산 관리' },
+                                                    { key: 'purchase', label: '자재 구매' },
+                                                    { key: 'outsourcing', label: '외주 발주' },
+                                                    { key: 'quality', label: '품질 관리' },
+                                                    { key: 'inventory', label: '납품/재고' },
+                                                ].map(menu => {
+                                                    const perms = formData.menu_permissions || [];
+                                                    const isAdmin = formData.user_type === 'ADMIN';
+                                                    return (
+                                                        <label key={menu.key} className={cn("flex items-center gap-2 text-sm", isAdmin ? "text-gray-500" : "text-gray-300")}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isAdmin || perms.includes(menu.key)}
+                                                                disabled={isAdmin}
+                                                                onChange={(e) => {
+                                                                    const newPerms = e.target.checked
+                                                                        ? [...perms, menu.key]
+                                                                        : perms.filter(k => k !== menu.key);
+                                                                    setFormData(prev => ({ ...prev, menu_permissions: newPerms }));
+                                                                }}
+                                                                className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-800"
+                                                            />
+                                                            {menu.label}
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                            {formData.user_type === 'ADMIN' && (
+                                                <p className="text-xs text-purple-400">※ 관리자는 모든 메뉴에 접근할 수 있습니다.</p>
+                                            )}
                                         </div>
                                     </>
                                 )}

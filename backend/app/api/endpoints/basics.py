@@ -9,8 +9,39 @@ from typing import List, Optional
 from app.api.deps import get_db
 from app.models.basics import Partner, Staff
 from app.schemas.basics import PartnerCreate, PartnerResponse, StaffCreate, StaffResponse, StaffUpdate, PartnerUpdate
+from pydantic import BaseModel
 
 router = APIRouter()
+
+# --- Login ---
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@router.post("/login")
+async def login(
+    req: LoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Staff).where(Staff.name == req.username))
+    staff = result.scalar_one_or_none()
+    
+    if not staff:
+        raise HTTPException(status_code=401, detail="사원 이름이 존재하지 않습니다.")
+    if not staff.is_active:
+        raise HTTPException(status_code=401, detail="비활성화된 계정입니다.")
+    if staff.password != req.password:
+        raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다.")
+    
+    # Return staff info (no JWT for simplicity)
+    return {
+        "id": staff.id,
+        "name": staff.name,
+        "role": staff.role,
+        "user_type": staff.user_type or "USER",
+        "menu_permissions": staff.menu_permissions or [],
+        "message": "로그인 성공"
+    }
 
 # --- Partner Endpoints ---
 @router.post("/partners/", response_model=PartnerResponse)
