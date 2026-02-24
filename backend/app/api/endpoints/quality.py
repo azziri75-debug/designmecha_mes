@@ -15,6 +15,8 @@ from app.schemas.quality import (
 )
 from sqlalchemy import desc, or_, and_
 
+router = APIRouter()
+
 # --- ... existing code ...
 
 # --- Quality Defects ---
@@ -107,8 +109,6 @@ async def delete_defect(
     await db.delete(db_defect)
     await db.commit()
     return {"status": "success"}
-
-router = APIRouter()
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # backend/
 UPLOAD_DIR = os.path.join(_BASE_DIR, "uploads")
