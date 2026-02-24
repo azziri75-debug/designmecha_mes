@@ -51,6 +51,7 @@ const Layout = () => {
         { icon: ShoppingCart, label: '자재 구매 관리', to: '/purchase', menuKey: 'purchase' },
         { icon: Truck, label: '외주 발주 관리', to: '/outsourcing', menuKey: 'outsourcing' },
         { icon: ClipboardCheck, label: '품질 관리', to: '/quality', menuKey: 'quality' },
+        { icon: Truck, label: '납품 관리', to: '/delivery', menuKey: 'sales' },
         { icon: Boxes, label: '재고 및 재고생산 관리', to: '/inventory', menuKey: 'inventory' },
         { icon: FileText, label: '양식 관리', to: '/forms', menuKey: 'basics' }, // basics permission for now
     ];

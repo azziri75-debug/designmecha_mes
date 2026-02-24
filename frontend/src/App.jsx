@@ -53,6 +53,7 @@ const App = () => {
         <Route path="purchase" element={<ProtectedRoute menuKey="purchase"><PurchasePage /></ProtectedRoute>} />
         <Route path="outsourcing" element={<ProtectedRoute menuKey="outsourcing"><OutsourcingPage /></ProtectedRoute>} />
         <Route path="quality" element={<ProtectedRoute menuKey="quality"><QualityPage /></ProtectedRoute>} />
+        <Route path="delivery" element={<ProtectedRoute menuKey="sales"><DeliveryPage /></ProtectedRoute>} />
         <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
         <Route path="forms" element={<ProtectedRoute menuKey="basics"><FormManagementPage /></ProtectedRoute>} />
       </Route>

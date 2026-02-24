@@ -671,33 +671,49 @@ async def update_production_plan_status(
 
     # Sync with Sales Order or Stock Production
     if status == ProductionStatus.COMPLETED:
-        # 1. Update Stocks (For each product)
-        for item in plan.items:
-            from app.models.inventory import Stock
-            # Update current stock and decrement in_production_quantity
-            stock_query = select(Stock).where(Stock.product_id == item.product_id)
+        # 1. Update Stocks
+        from app.models.inventory import Stock, StockProductionStatus
+        
+        if plan.stock_production:
+            # For Stock Production: Update exact product and quantity from the request
+            sp = plan.stock_production
+            stock_query = select(Stock).where(Stock.product_id == sp.product_id)
             s_res = await db.execute(stock_query)
             stock = s_res.scalar_one_or_none()
+            
             if not stock:
-                stock = Stock(product_id=item.product_id, current_quantity=item.quantity)
+                stock = Stock(product_id=sp.product_id, current_quantity=sp.quantity)
                 db.add(stock)
             else:
-                stock.current_quantity += item.quantity
-                # Note: We need to be careful with in_production_quantity logic. 
-                # For simplicity, if it's the last process or we consider the whole plan:
-                # Let's assume on Plan completion, we decrement from production.
-                if stock.in_production_quantity >= item.quantity:
-                    stock.in_production_quantity -= item.quantity
-        
-        # 2. Update Source Status
-        if plan.order:
+                stock.current_quantity += sp.quantity
+                if stock.in_production_quantity >= sp.quantity:
+                    stock.in_production_quantity -= sp.quantity
+            
+            # Sync StockProduction status
+            sp.status = StockProductionStatus.COMPLETED
+            db.add(sp)
+            
+        elif plan.order:
             from app.models.sales import OrderStatus
+            # For Sales Order: Update stocks for all items in the order
+            # (Assuming the plan covers the entire order, or at least we treat its completion as the order items being ready)
+            for item in plan.order.items:
+                stock_query = select(Stock).where(Stock.product_id == item.product_id)
+                s_res = await db.execute(stock_query)
+                stock = s_res.scalar_one_or_none()
+                
+                if not stock:
+                    stock = Stock(product_id=item.product_id, current_quantity=item.quantity)
+                    db.add(stock)
+                else:
+                    stock.current_quantity += item.quantity
+                    if stock.in_production_quantity >= item.quantity:
+                        stock.in_production_quantity -= item.quantity
+            
+            # Sync Sales Order status
             plan.order.status = OrderStatus.PRODUCTION_COMPLETED
             db.add(plan.order)
-        elif plan.stock_production:
-            from app.models.inventory import StockProductionStatus
-            plan.stock_production.status = StockProductionStatus.COMPLETED
-            db.add(plan.stock_production)
+            
     elif status == ProductionStatus.IN_PROGRESS:
         if plan.order:
             from app.models.sales import OrderStatus
