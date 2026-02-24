@@ -53,8 +53,8 @@ const ProductionPage = () => {
 
     const fetchStockProductions = async () => {
         try {
-            const response = await api.get('/production/stock-productions');
-            setStockProductions(response.data.filter(sp => sp.status === 'PENDING'));
+            const response = await api.get('/inventory/productions?status=PENDING');
+            setStockProductions(response.data);
         } catch (error) {
             console.error("Failed to fetch stock productions", error);
         }

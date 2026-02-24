@@ -171,6 +171,7 @@ const InventoryPage = () => {
                                     <tr>
                                         <th className="px-6 py-4 font-medium">관리번호</th>
                                         <th className="px-6 py-4 font-medium">품목명 / 규격</th>
+                                        <th className="px-6 py-4 font-medium">거래처</th>
                                         <th className="px-6 py-4 font-medium">요청수량</th>
                                         <th className="px-6 py-4 font-medium">요청일 / 완료예정일</th>
                                         <th className="px-6 py-4 font-medium">상태</th>
@@ -185,6 +186,7 @@ const InventoryPage = () => {
                                                 <div className="text-white font-medium">{p.product?.name}</div>
                                                 <div className="text-xs text-gray-500">{p.product?.specification}</div>
                                             </td>
+                                            <td className="px-6 py-4 text-gray-300">{p.partner?.name || '-'}</td>
                                             <td className="px-6 py-4 text-white font-semibold">{p.quantity.toLocaleString()}</td>
                                             <td className="px-6 py-4">
                                                 <div className="text-gray-300">{p.request_date}</div>

@@ -33,6 +33,7 @@ class StockProduction(Base):
     production_no = Column(String, unique=True, index=True) # 재고생산번호 (SP-YYYYMMDD-XXX)
     
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True) # 보충 요청 거래처
     quantity = Column(Integer, nullable=False) # 요청 수량
     
     request_date = Column(Date, default=func.now()) # 등록일
@@ -44,4 +45,5 @@ class StockProduction(Base):
     created_at = Column(DateTime, default=func.now())
 
     product = relationship("Product")
+    partner = relationship("app.models.basics.Partner") # Use string reference to avoid circularities
     # ProductionPlan과의 역참조는 production.py에서 정의됨 (backref 또는 relationship)

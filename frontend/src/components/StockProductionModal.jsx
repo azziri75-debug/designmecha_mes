@@ -90,6 +90,7 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess }) => {
         try {
             const payload = {
                 product_id: selectedProduct.id,
+                partner_id: selectedPartner?.id,
                 ...formData
             };
             await api.post('/inventory/productions', payload);

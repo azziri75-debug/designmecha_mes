@@ -62,7 +62,8 @@ async def read_stock_productions(
     db: AsyncSession = Depends(get_db)
 ):
     query = select(StockProduction).options(
-        selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+        selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(StockProduction.partner)
     )
     if status:
         query = query.where(StockProduction.status == status)
@@ -102,7 +103,8 @@ async def create_stock_production(
     
     # Reload with product and its relations to avoid MissingGreenlet
     query = select(StockProduction).where(StockProduction.id == new_prod.id).options(
-        selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+        selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(StockProduction.partner)
     )
     result = await db.execute(query)
     return result.scalar_one()
@@ -150,7 +152,8 @@ async def update_stock_production(
     await db.refresh(db_prod)
     
     query = select(StockProduction).where(StockProduction.id == prod_id).options(
-        selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+        selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(StockProduction.partner)
     )
     result = await db.execute(query)
     return result.scalar_one()

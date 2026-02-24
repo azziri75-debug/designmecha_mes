@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date, datetime
 from typing import Optional, List
 from .product import ProductResponse
+from .basics import PartnerResponse
 
 class StockBase(BaseModel):
     product_id: int
@@ -27,6 +28,7 @@ class StockResponse(StockBase):
 
 class StockProductionBase(BaseModel):
     product_id: int
+    partner_id: Optional[int] = None
     quantity: int
     target_date: Optional[date] = None
     note: Optional[str] = None
@@ -47,4 +49,5 @@ class StockProductionResponse(StockProductionBase):
     status: str
     created_at: datetime
     product: Optional[ProductResponse] = None
+    partner: Optional[PartnerResponse] = None
     model_config = ConfigDict(from_attributes=True)
