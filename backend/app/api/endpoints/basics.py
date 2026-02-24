@@ -1,15 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional
+from pydantic import BaseModel
 
 from app.api.deps import get_db
-from app.models.basics import Partner, Staff
-from app.schemas.basics import PartnerCreate, PartnerResponse, StaffCreate, StaffResponse, StaffUpdate, PartnerUpdate
-from pydantic import BaseModel
+from app.models.basics import Partner, Staff, Contact, Company
+from app.schemas.basics import (
+    PartnerCreate, PartnerResponse, PartnerUpdate,
+    StaffCreate, StaffResponse, StaffUpdate,
+    ContactCreate, ContactResponse, ContactUpdate,
+    CompanyCreate, CompanyResponse, CompanyUpdate
+)
 
 router = APIRouter()
 
@@ -174,8 +178,6 @@ async def delete_staff(
     return {"message": "Staff deleted successfully"}
 
 # --- Contact Endpoints ---
-from app.models.basics import Contact
-from app.schemas.basics import ContactCreate, ContactResponse, ContactUpdate
 
 @router.post("/contacts/", response_model=ContactResponse)
 async def create_contact(
@@ -228,8 +230,6 @@ async def delete_contact(
     return {"message": "Contact deleted successfully"}
 
 # --- Company Endpoints ---
-from app.models.basics import Company
-from app.schemas.basics import CompanyCreate, CompanyResponse, CompanyUpdate
 
 @router.get("/company", response_model=Optional[CompanyResponse])
 async def read_company(
