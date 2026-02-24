@@ -38,7 +38,8 @@ async def read_production_plans(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
         )
         .offset(skip).limit(limit)
     )
@@ -82,7 +83,7 @@ async def create_production_plan(
         order_id=plan_in.order_id,
         stock_production_id=plan_in.stock_production_id,
         plan_date=plan_in.plan_date,
-        status=ProductionStatus.PLANNED
+        status=ProductionStatus.IN_PROGRESS
     )
     db.add(plan)
     await db.flush()
@@ -576,6 +577,7 @@ async def update_production_plan_status(
         select(ProductionPlan)
         .options(
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
         )
@@ -671,8 +673,12 @@ async def update_production_plan_status(
     elif status == ProductionStatus.IN_PROGRESS:
         if plan.order:
             from app.models.sales import OrderStatus
-            plan.order.status = OrderStatus.CONFIRMED # Or stay CONFIRMED
+            plan.order.status = OrderStatus.CONFIRMED 
             db.add(plan.order)
+        elif plan.stock_production:
+            from app.models.inventory import StockProductionStatus
+            plan.stock_production.status = StockProductionStatus.IN_PROGRESS
+            db.add(plan.stock_production)
         
     await db.commit()
     
@@ -684,7 +690,8 @@ async def update_production_plan_status(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
         )
         .where(ProductionPlan.id == plan_id)
     )

@@ -192,6 +192,11 @@ const PurchasePage = () => {
                                             <TableCell>
                                                 <Box>
                                                     <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                        {item.plan?.order ? (
+                                                            <Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }} />
+                                                        ) : item.plan?.stock_production ? (
+                                                            <Chip label="재고" size="small" variant="outlined" color="success" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }} />
+                                                        ) : null}
                                                         {item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}
                                                     </Typography>
                                                     <Typography variant="caption" color="textSecondary">

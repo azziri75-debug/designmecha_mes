@@ -85,7 +85,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                 setItems(defaultItems);
             }
         }
-    }, [isOpen, order, plan]);
+    }, [isOpen, order, stockProduction, plan]);
 
     const handleItemChange = (index, field, value) => {
         const newItems = [...items];

@@ -394,28 +394,64 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
 };
 
 const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
+    const [open, setOpen] = useState(false);
+
     return (
-        <TableRow sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-            <TableCell>
-                <Chip label="재고생산" size="small" sx={{ mr: 1, bgcolor: '#e8f5e9', color: '#2e7d32' }} />
-                {stockProduction.production_no}
-            </TableCell>
-            <TableCell>사내 (자체 생산)</TableCell>
-            <TableCell>{stockProduction.request_date}</TableCell>
-            <TableCell>{stockProduction.target_date || '-'}</TableCell>
-            <TableCell sx={{ color: '#666', fontStyle: 'italic' }}>-</TableCell>
-            <TableCell>
-                <Button
-                    variant="outlined"
-                    color="success"
-                    size="small"
-                    startIcon={<AddIcon />}
-                    onClick={() => onCreatePlan(null, stockProduction)}
-                >
-                    계획 수립
-                </Button>
-            </TableCell>
-        </TableRow>
+        <React.Fragment>
+            <TableRow
+                sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5' } }}
+                onClick={() => setOpen(!open)}
+            >
+                <TableCell>
+                    <Chip label="재고생산" size="small" sx={{ mr: 1, bgcolor: '#e8f5e9', color: '#2e7d32' }} />
+                    {stockProduction.production_no}
+                </TableCell>
+                <TableCell>사내 (자체 생산)</TableCell>
+                <TableCell>{stockProduction.request_date}</TableCell>
+                <TableCell>{stockProduction.target_date || '-'}</TableCell>
+                <TableCell sx={{ color: '#666', fontStyle: 'italic' }}>-</TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Button
+                        variant="outlined"
+                        color="success"
+                        size="small"
+                        startIcon={<AddIcon />}
+                        onClick={() => onCreatePlan(null, stockProduction)}
+                    >
+                        계획 수립
+                    </Button>
+                </TableCell>
+            </TableRow>
+            <TableRow>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                    <Collapse in={open} timeout="auto" unmountOnExit>
+                        <Box sx={{ margin: 1 }}>
+                            <Typography variant="h6" gutterBottom component="div">
+                                재고 생산 품목 상세
+                            </Typography>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>품명</TableCell>
+                                        <TableCell>규격</TableCell>
+                                        <TableCell>단위</TableCell>
+                                        <TableCell>수량</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    <TableRow>
+                                        <TableCell>{stockProduction.product?.name}</TableCell>
+                                        <TableCell>{stockProduction.product?.specification}</TableCell>
+                                        <TableCell>{stockProduction.product?.unit}</TableCell>
+                                        <TableCell>{stockProduction.quantity}</TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </Box>
+                    </Collapse>
+                </TableCell>
+            </TableRow>
+        </React.Fragment>
     );
 };
 
@@ -493,8 +529,14 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onOpenFiles, readonl
                 hover
             >
                 <TableCell>{plan.plan_date}</TableCell>
-                <TableCell>{order ? order.order_no : plan.order_id}</TableCell>
-                <TableCell>{order?.partner?.name || '-'}</TableCell>
+                <TableCell>
+                    {plan.order ? (
+                        <><Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, fontSize: '0.7rem', height: 20 }} /> {plan.order.order_no}</>
+                    ) : plan.stock_production ? (
+                        <><Chip label="재고" size="small" variant="outlined" color="success" sx={{ mr: 0.5, fontSize: '0.7rem', height: 20 }} /> {plan.stock_production.production_no}</>
+                    ) : plan.order_id || plan.stock_production_id}
+                </TableCell>
+                <TableCell>{plan.order?.partner?.name || '사내 생산(재고)'}</TableCell>
                 <TableCell>{order?.order_date || '-'}</TableCell>
                 <TableCell>{order?.delivery_date || '-'}</TableCell>
                 <TableCell>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
