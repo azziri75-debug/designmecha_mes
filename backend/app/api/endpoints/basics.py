@@ -277,8 +277,14 @@ async def create_equipment(eq_in: EquipmentCreate, db: AsyncSession = Depends(ge
     new_eq = Equipment(**eq_in.model_dump())
     db.add(new_eq)
     await db.commit()
-    await db.refresh(new_eq)
-    return new_eq
+    
+    # Reload with history for serialization
+    result = await db.execute(
+        select(Equipment)
+        .options(selectinload(Equipment.history))
+        .where(Equipment.id == new_eq.id)
+    )
+    return result.scalar_one()
 
 @router.put("/equipments/{eq_id}", response_model=EquipmentResponse)
 async def update_equipment(eq_id: int, eq_in: EquipmentUpdate, db: AsyncSession = Depends(get_db)):
@@ -288,7 +294,14 @@ async def update_equipment(eq_id: int, eq_in: EquipmentUpdate, db: AsyncSession 
     for k, v in eq_in.model_dump(exclude_unset=True).items():
         setattr(eq, k, v)
     await db.commit()
-    return eq
+    
+    # Reload with history
+    result = await db.execute(
+        select(Equipment)
+        .options(selectinload(Equipment.history))
+        .where(Equipment.id == eq_id)
+    )
+    return result.scalar_one()
 
 @router.delete("/equipments/{eq_id}")
 async def delete_equipment(eq_id: int, db: AsyncSession = Depends(get_db)):

@@ -44,7 +44,11 @@ async def create_defect(
     query = select(QualityDefect).options(
         selectinload(QualityDefect.order).selectinload(SalesOrder.partner),
         selectinload(QualityDefect.plan).selectinload(ProductionPlan.order),
-        selectinload(QualityDefect.plan_item).selectinload(ProductionPlanItem.product)
+        selectinload(QualityDefect.plan_item).options(
+            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes),
+            selectinload(ProductionPlanItem.purchase_items),
+            selectinload(ProductionPlanItem.outsourcing_items)
+        )
     ).where(QualityDefect.id == new_defect.id)
     result = await db.execute(query)
     return result.scalar_one()
@@ -104,7 +108,11 @@ async def update_defect(
     query = select(QualityDefect).options(
         selectinload(QualityDefect.order).selectinload(SalesOrder.partner),
         selectinload(QualityDefect.plan).selectinload(ProductionPlan.order),
-        selectinload(QualityDefect.plan_item).selectinload(ProductionPlanItem.product)
+        selectinload(QualityDefect.plan_item).options(
+            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes),
+            selectinload(ProductionPlanItem.purchase_items),
+            selectinload(ProductionPlanItem.outsourcing_items)
+        )
     ).where(QualityDefect.id == defect_id)
     result = await db.execute(query)
     return result.scalar_one()
