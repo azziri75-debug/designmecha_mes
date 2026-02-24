@@ -52,6 +52,7 @@ const SalesPage = () => {
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
     const [viewingTargetId, setViewingTargetId] = useState(null); // Track ID for deletion
+    const [viewingTargetType, setViewingTargetType] = useState('estimate'); // 'estimate' or 'order'
 
     // Filters
     const [startDate, setStartDate] = useState('');
@@ -144,27 +145,31 @@ const SalesPage = () => {
         }
     };
 
-    const handleDeleteEstimateAttachment = async (estimateId, indexToRemove) => {
-        if (!estimateId) return;
+    const handleDeleteAttachment = async (targetId, indexToRemove) => {
+        if (!targetId) return;
         if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
 
         try {
-            const est = estimates.find(e => e.id === estimateId);
-            if (!est) return;
+            const isEstimate = viewingTargetType === 'estimate';
+            const endpoint = isEstimate ? `/sales/estimates/${targetId}` : `/sales/orders/${targetId}`;
+            const targetList = isEstimate ? estimates : orders;
+            const setList = isEstimate ? setEstimates : setOrders;
 
-            const files = typeof est.attachment_file === 'string' ? JSON.parse(est.attachment_file) : est.attachment_file;
+            const item = targetList.find(i => i.id === targetId);
+            if (!item) return;
+
+            const files = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
             const currentFiles = Array.isArray(files) ? files : [files];
             const newFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
 
-            const res = await api.put(`/sales/estimates/${estimateId}`, {
+            const res = await api.put(endpoint, {
                 attachment_file: newFiles
             });
 
-            const updatedEstimate = res.data;
-            setEstimates(prev => prev.map(e => e.id === estimateId ? updatedEstimate : e));
+            const updatedItem = res.data;
+            setList(prev => prev.map(i => i.id === targetId ? updatedItem : i));
 
-            // Still update viewingFiles if modal is open just in case
-            if (viewingTargetId === estimateId) {
+            if (viewingTargetId === targetId) {
                 setViewingFiles(newFiles);
                 if (newFiles.length === 0) setShowFileModal(false);
             }
@@ -284,6 +289,7 @@ const SalesPage = () => {
                                             <th className="px-6 py-3">상태</th>
                                             <th className="px-6 py-3">총 금액</th>
                                             <th className="px-6 py-3">품목 수</th>
+                                            <th className="px-6 py-3">첨부파일</th>
                                             <th className="px-6 py-3">비고</th>
                                             <th className="px-6 py-3">관리</th>
                                         </>
@@ -322,6 +328,7 @@ const SalesPage = () => {
                                                                             e.stopPropagation();
                                                                             setViewingFiles(files);
                                                                             setViewingTargetId(est.id);
+                                                                            setViewingTargetType('estimate');
                                                                             setShowFileModal(true);
                                                                         }}
                                                                         className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors"
@@ -420,6 +427,38 @@ const SalesPage = () => {
                                                 </td>
                                                 <td className="px-6 py-4">{ord.total_amount?.toLocaleString()} 원</td>
                                                 <td className="px-6 py-4">{ord.items?.length || 0} 건</td>
+                                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex items-center gap-2">
+                                                        {(() => {
+                                                            let files = [];
+                                                            try {
+                                                                if (ord.attachment_file) {
+                                                                    files = typeof ord.attachment_file === 'string' ? JSON.parse(ord.attachment_file) : ord.attachment_file;
+                                                                }
+                                                            } catch { files = [] }
+
+                                                            if (Array.isArray(files) && files.length > 0) {
+                                                                return (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setViewingFiles(files);
+                                                                            setViewingTargetId(ord.id);
+                                                                            setViewingTargetType('order'); // To handle deletion correctly
+                                                                            setShowFileModal(true);
+                                                                        }}
+                                                                        className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors"
+                                                                        title="첨부파일 보기/다운로드"
+                                                                    >
+                                                                        <FileText className="w-3 h-3" />
+                                                                        {files.length}개
+                                                                    </button>
+                                                                );
+                                                            }
+                                                            return <span className="text-gray-600 text-xs">-</span>;
+                                                        })()}
+                                                    </div>
+                                                </td>
                                                 <td className="px-6 py-4 truncate max-w-[200px]">{ord.note}</td>
                                                 <td className="px-6 py-4 flex items-center" onClick={(e) => e.stopPropagation()}>
                                                     <button
@@ -438,7 +477,7 @@ const SalesPage = () => {
                                             </tr>
                                             {expandedOrders.has(ord.id) && (
                                                 <tr className="bg-gray-800/50">
-                                                    <td colSpan="10" className="px-6 py-4">
+                                                    <td colSpan="11" className="px-6 py-4">
                                                         <div className="ml-8 p-4 bg-gray-900 rounded-lg border border-gray-700">
                                                             <h4 className="text-sm font-semibold mb-2 text-gray-300">수주 품목 상세</h4>
                                                             <table className="w-full text-sm text-gray-400">
@@ -488,7 +527,7 @@ const SalesPage = () => {
                     setViewingTargetId(null);
                 }}
                 files={viewingFiles}
-                onDeleteFile={handleDeleteEstimateAttachment}
+                onDeleteFile={handleDeleteAttachment}
             />
 
             <EstimateModal

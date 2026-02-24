@@ -382,7 +382,8 @@ async def create_order(
         transaction_date=order_in.transaction_date,
         total_amount=order_in.total_amount,
         note=order_in.note,
-        status=order_in.status
+        status=order_in.status,
+        attachment_file=order_in.attachment_file
     )
     db.add(db_order)
     await db.flush()
@@ -461,6 +462,7 @@ async def update_order(
     if order_in.total_amount is not None: db_order.total_amount = order_in.total_amount
     if order_in.note is not None: db_order.note = order_in.note
     if order_in.status is not None: db_order.status = order_in.status
+    if order_in.attachment_file is not None: db_order.attachment_file = order_in.attachment_file
     
     # Update Items
     if order_in.items is not None:

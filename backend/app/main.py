@@ -114,6 +114,28 @@ async def startup_event():
             db.add(admin)
             print("Startup: Updated admin '이준호' password to 6220")
             
+        # 2. Migration for sales_orders attachment_file
+        from sqlalchemy import text
+        # SQLite check
+        db_url = str(db.get_bind().url)
+        if "sqlite" in db_url:
+            table_info = await db.execute(text("PRAGMA table_info(sales_orders)"))
+            columns = [row[1] for row in table_info.fetchall()]
+            if "attachment_file" not in columns:
+                await db.execute(text("ALTER TABLE sales_orders ADD COLUMN attachment_file JSON"))
+                print("Startup: Added attachment_file to sales_orders (SQLite)")
+        else:
+            # Postgres check
+            check_sql = text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='sales_orders' AND column_name='attachment_file';
+            """)
+            result = await db.execute(check_sql)
+            if not result.fetchone():
+                await db.execute(text("ALTER TABLE sales_orders ADD COLUMN attachment_file JSONB"))
+                print("Startup: Added attachment_file to sales_orders (Postgres)")
+            
         await db.commit()
 
 

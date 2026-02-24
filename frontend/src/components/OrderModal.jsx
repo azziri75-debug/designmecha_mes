@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Search, FileText, Download } from 'lucide-react';
+import { X, Plus, Trash2, Search, FileText, Download, Upload } from 'lucide-react';
 import api from '../lib/api';
 
 const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }) => {
@@ -10,7 +10,8 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
         delivery_date: '',
         items: [],
         note: '',
-        status: 'PENDING'
+        status: 'PENDING',
+        attachment_file: []
     });
 
     const [partnerProducts, setPartnerProducts] = useState([]);
@@ -39,7 +40,8 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                         note: item.note || ''
                     })),
                     note: orderToEdit.note || '',
-                    status: orderToEdit.status || 'PENDING'
+                    status: orderToEdit.status || 'PENDING',
+                    attachment_file: orderToEdit.attachment_file ? (typeof orderToEdit.attachment_file === 'string' ? JSON.parse(orderToEdit.attachment_file) : orderToEdit.attachment_file) : []
                 });
             } else {
                 // Create Mode
@@ -49,7 +51,8 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                     delivery_date: '',
                     items: [],
                     note: '',
-                    status: 'PENDING'
+                    status: 'PENDING',
+                    attachment_file: []
                 });
             }
             setPartnerProducts([]);
@@ -169,6 +172,36 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
         setFormData({ ...formData, items: newItems });
     };
 
+    const handleFileUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        const uploadFormData = new FormData();
+        files.forEach(file => uploadFormData.append('files', file));
+
+        try {
+            const res = await api.post('/upload/', uploadFormData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            const newUploadedFiles = res.data.files; // List of {name, url}
+            setFormData(prev => ({
+                ...prev,
+                attachment_file: [...(prev.attachment_file || []), ...newUploadedFiles]
+            }));
+        } catch (error) {
+            console.error("Upload failed", error);
+            alert("파일 업로드 실패");
+        }
+    };
+
+    const removeAttachment = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            attachment_file: prev.attachment_file.filter((_, i) => i !== index)
+        }));
+    };
+
     const handleSubmit = async () => {
         if (!formData.partner_id) return alert("거래처를 선택해주세요.");
         if (formData.items.length === 0) return alert("품목을 최소 1개 이상 추가해주세요.");
@@ -270,7 +303,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                             <select
                                 value={formData.status}
                                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5"
+                                className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5 mb-4"
                             >
                                 <option value="PENDING">대기 (PENDING)</option>
                                 <option value="CONFIRMED">확정 (CONFIRMED)</option>
@@ -278,6 +311,40 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                 <option value="DELIVERY_COMPLETED">납품 완료 (DELIVERY_COMPLETED)</option>
                                 <option value="CANCELLED">취소 (CANCELLED)</option>
                             </select>
+
+                            {/* Attachments Section */}
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-sm font-medium text-gray-400">첨부파일</label>
+                                    <label className="cursor-pointer text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-900/20 px-2 py-1 rounded border border-blue-800/50">
+                                        <Upload className="w-3 h-3" />
+                                        파일 추가
+                                        <input type="file" multiple className="hidden" onChange={handleFileUpload} />
+                                    </label>
+                                </div>
+                                <div className="space-y-1.5">
+                                    {formData.attachment_file && formData.attachment_file.length > 0 ? (
+                                        formData.attachment_file.map((file, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-2 bg-gray-900/50 rounded border border-gray-700 text-xs">
+                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                    <FileText className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                                                    <span className="text-gray-300 truncate">{file.name}</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => removeAttachment(idx)}
+                                                    className="p-1 text-gray-500 hover:text-red-400 transition-colors"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-3 border border-dashed border-gray-700 rounded text-xs text-gray-600">
+                                            등록된 첨부파일이 없습니다.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
 

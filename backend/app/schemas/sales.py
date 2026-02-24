@@ -97,6 +97,7 @@ class SalesOrderBase(BaseModel):
     total_amount: float
     note: Optional[str] = None
     status: Optional[str] = "PENDING"
+    attachment_file: Optional[Union[List[Any], str]] = None # JSON list or stringified JSON
 
 class SalesOrderCreate(SalesOrderBase):
     items: List[SalesOrderItemCreate]
@@ -113,6 +114,7 @@ class SalesOrderUpdate(BaseModel):
     total_amount: Optional[float] = None
     note: Optional[str] = None
     status: Optional[str] = None
+    attachment_file: Optional[Union[List[Any], str]] = None
     items: Optional[List[SalesOrderItemCreate]] = None
 
 from app.schemas.basics import PartnerResponse as Partner, PartnerSimple

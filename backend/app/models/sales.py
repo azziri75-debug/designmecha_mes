@@ -63,6 +63,7 @@ class SalesOrder(Base):
     total_amount = Column(Float, default=0.0)
     note = Column(Text, nullable=True)
     status = Column(SqEnum(OrderStatus), default=OrderStatus.PENDING)
+    attachment_file = Column(JSON, nullable=True) # 첨부파일 (JSON List of {name, url})
     created_at = Column(DateTime, default=func.now())
 
     partner = relationship("Partner")
