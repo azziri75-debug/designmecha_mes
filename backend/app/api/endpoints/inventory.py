@@ -19,13 +19,17 @@ router = APIRouter()
 
 @router.get("/stocks", response_model=List[StockResponse])
 async def read_stocks(db: AsyncSession = Depends(get_db)):
-    query = select(Stock).options(selectinload(Stock.product))
+    query = select(Stock).options(
+        selectinload(Stock.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+    )
     result = await db.execute(query)
     return result.scalars().all()
 
 @router.get("/stocks/{product_id}", response_model=StockResponse)
 async def read_stock_by_product(product_id: int, db: AsyncSession = Depends(get_db)):
-    query = select(Stock).where(Stock.product_id == product_id).options(selectinload(Stock.product))
+    query = select(Stock).where(Stock.product_id == product_id).options(
+        selectinload(Stock.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+    )
     result = await db.execute(query)
     stock = result.scalar_one_or_none()
     if not stock:

@@ -69,7 +69,18 @@ async def create_production_plan(
             cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
         ))
         if result.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Active Production Plan already exists for this Order")
+            # Return existing active plan instead of error (Idempotency)
+            result = await db.execute(
+                select(ProductionPlan)
+                .options(
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+                )
+                .where(ProductionPlan.order_id == plan_in.order_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+            )
+            return result.scalar_one()
     elif plan_in.stock_production_id:
         result = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
         sp = result.scalar_one_or_none()
@@ -82,7 +93,18 @@ async def create_production_plan(
             cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
         ))
         if result.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Active Production Plan already exists for this Stock Production request")
+            # Return existing active plan instead of error (Idempotency)
+            result = await db.execute(
+                select(ProductionPlan)
+                .options(
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+                )
+                .where(ProductionPlan.stock_production_id == plan_in.stock_production_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+            )
+            return result.scalar_one()
     else:
         raise HTTPException(status_code=400, detail="Either order_id or stock_production_id is required")
 
@@ -600,7 +622,8 @@ async def update_production_plan_status(
         select(ProductionPlan)
         .options(
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
         )
@@ -730,7 +753,8 @@ async def update_production_plan_status(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
         )
         .where(ProductionPlan.id == plan_id)
     )
