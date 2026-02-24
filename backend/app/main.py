@@ -251,7 +251,6 @@ async def startup_event():
         for t_name, create_sql in new_tables:
             if is_sqlite:
                 check_sql = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{t_name}'"
-                # Use simplified types for sqlite if needed, but for now we'll assume standard ones work mostly
                 sql = create_sql.replace("SERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")\
                                 .replace("JSONB", "JSON")\
                                 .replace("CURRENT_DATE", "CURRENT_TIMESTAMP")\
@@ -267,15 +266,11 @@ async def startup_event():
                 print(f"Startup: Created {t_name} table")
 
         # 5. Alter existing tables for enhancements
-        # ProductionPlan: make order_id nullable, add stock_production_id
         if is_sqlite:
-            # SQLite alter is limited, usually need to check column existence
             r = await db.execute(text("PRAGMA table_info(production_plans)"))
             cols = [c[1] for c in r.fetchall()]
             if "stock_production_id" not in cols:
                 await db.execute(text("ALTER TABLE production_plans ADD COLUMN stock_production_id INTEGER REFERENCES stock_productions(id)"))
-            
-            # Note: making order_id nullable in sqlite via ALTER is not possible, we'll ignore for dev or handle via app logic
             
             r = await db.execute(text("PRAGMA table_info(production_plan_items)"))
             cols = [c[1] for c in r.fetchall()]
@@ -284,20 +279,36 @@ async def startup_event():
             if "worker_id" not in cols:
                 await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN worker_id INTEGER REFERENCES staff(id)"))
         else:
-            # Postgres
             await db.execute(text("ALTER TABLE production_plans ALTER COLUMN order_id DROP NOT NULL"))
-            
             r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plans' AND column_name='stock_production_id'"))
             if not r.scalar():
                 await db.execute(text("ALTER TABLE production_plans ADD COLUMN stock_production_id INTEGER REFERENCES stock_productions(id)"))
-
             r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plan_items' AND column_name='equipment_id'"))
             if not r.scalar():
                 await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN equipment_id INTEGER REFERENCES equipments(id)"))
-            
             r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plan_items' AND column_name='worker_id'"))
             if not r.scalar():
                 await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN worker_id INTEGER REFERENCES staff(id)"))
+
+        # 6. Initialize Default Form Templates
+        DEFAULT_FORMS = [
+            {"form_type": "ESTIMATE", "name": "견적서"},
+            {"form_type": "PRODUCTION_SHEET", "name": "생산관리시트"},
+            {"form_type": "ESTIMATE_REQUEST", "name": "견적의뢰서"},
+            {"form_type": "PURCHASE_ORDER", "name": "구매발주서"}
+        ]
+        for f in DEFAULT_FORMS:
+            chk = await db.execute(text(f"SELECT id FROM form_templates WHERE form_type='{f['form_type']}'"))
+            if not chk.scalar():
+                layout = {
+                    "header": {"title": f["name"], "show_logo": True},
+                    "table": {"columns": []},
+                    "footer": {"note": "감사합니다."}
+                }
+                await db.execute(text(
+                    "INSERT INTO form_templates (form_type, name, layout_data, is_active) VALUES (:ft, :nm, :ld, :ia)"
+                ), {"ft": f["form_type"], "nm": f["name"], "ld": json.dumps(layout), "ia": True})
+                print(f"Startup: Created default form template '{f['name']}'")
 
         await db.commit()
 

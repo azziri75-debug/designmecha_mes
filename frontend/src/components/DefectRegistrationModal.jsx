@@ -37,8 +37,8 @@ const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
         setLoading(true);
         try {
             const res = await api.get('/production/plans');
-            // Filter plans that are IN_PROGRESS or COMPLETED
-            const filtered = res.data.filter(p => p.status === 'IN_PROGRESS' || p.status === 'COMPLETED');
+            // Filter plans that are PLANNED, IN_PROGRESS or COMPLETED
+            const filtered = res.data.filter(p => ['PLANNED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED'].includes(p.status));
             setPlans(filtered);
         } catch (error) {
             console.error("Failed to fetch plans", error);
@@ -92,12 +92,12 @@ const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
                 <div className="flex-1 overflow-y-auto p-6">
                     {step === 1 ? (
                         <div className="space-y-4">
-                            <p className="text-sm text-gray-400 mb-4">불량이 발생한 수주건의 생산 계획을 선택하세요.</p>
+                            <p className="text-sm text-gray-400 mb-4">불량이 발생한 생산 계획을 선택하세요.</p>
                             {loading ? (
                                 <div className="text-center py-10">로딩 중...</div>
                             ) : plans.length === 0 ? (
                                 <div className="text-center py-10 text-gray-500 border border-dashed border-gray-700 rounded-lg">
-                                    진행 중이거나 완료된 생산 계획이 없습니다.
+                                    등록된 생산 계획이 없습니다.
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-3">
@@ -108,14 +108,22 @@ const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
                                             className="p-4 bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 text-left transition-colors flex justify-between items-center group"
                                         >
                                             <div>
-                                                <div className="text-xs text-blue-400 font-mono mb-1">{plan.order?.order_no}</div>
-                                                <div className="text-white font-medium">{plan.order?.partner?.name}</div>
+                                                <div className="text-xs text-blue-400 font-mono mb-1">
+                                                    {plan.order?.order_no || plan.stock_production?.production_no || '시스템 생성'}
+                                                </div>
+                                                <div className="text-white font-medium">
+                                                    {plan.order?.partner?.name || '내부 (재고 생산)'}
+                                                </div>
                                                 <div className="text-sm text-gray-400 mt-1">
-                                                    {plan.items?.[0]?.product?.name} {plan.items?.length > 1 ? `외 ${plan.items.length - 1}건` : ''}
+                                                    {plan.items?.[0]?.product?.name || plan.stock_production?.product?.name}
+                                                    {plan.items?.length > 1 ? `외 ${plan.items.length - 1}건` : ''}
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <span className="px-2 py-0.5 rounded text-[10px] bg-blue-900/50 text-blue-400 border border-blue-700">
+                                                <span className={cn(
+                                                    "px-2 py-0.5 rounded text-[10px] border",
+                                                    plan.status === 'COMPLETED' ? "bg-green-900/50 text-green-400 border-green-700" : "bg-blue-900/50 text-blue-400 border-blue-700"
+                                                )}>
                                                     {plan.status}
                                                 </span>
                                                 <div className="text-xs text-gray-500 mt-2 group-hover:text-white flex items-center gap-1">
@@ -132,12 +140,12 @@ const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
                             <div className="p-4 bg-gray-900 rounded-lg border border-gray-700">
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
-                                        <div className="text-gray-500">수주번호</div>
-                                        <div className="text-white">{selectedPlan.order?.order_no}</div>
+                                        <div className="text-gray-500">생산/수주번호</div>
+                                        <div className="text-white">{selectedPlan.order?.order_no || selectedPlan.stock_production?.production_no}</div>
                                     </div>
                                     <div>
-                                        <div className="text-gray-500">거래처</div>
-                                        <div className="text-white">{selectedPlan.order?.partner?.name}</div>
+                                        <div className="text-gray-500">구분</div>
+                                        <div className="text-white">{selectedPlan.order?.partner?.name || '재고 생산'}</div>
                                     </div>
                                 </div>
                             </div>

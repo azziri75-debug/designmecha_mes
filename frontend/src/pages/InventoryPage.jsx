@@ -17,6 +17,7 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
+import StockProductionModal from '../components/StockProductionModal';
 
 const InventoryPage = () => {
     const [activeTab, setActiveTab] = useState('status'); // 'status', 'productions'
@@ -24,6 +25,7 @@ const InventoryPage = () => {
     const [productions, setProductions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showProdModal, setShowProdModal] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -70,7 +72,11 @@ const InventoryPage = () => {
                     <Button variant="outline" onClick={fetchData} size="sm">
                         새로고침
                     </Button>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white" size="sm">
+                    <Button
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        size="sm"
+                        onClick={() => setShowProdModal(true)}
+                    >
                         <Plus className="w-4 h-4 mr-2" />
                         재고 생산 요청
                     </Button>
@@ -211,6 +217,15 @@ const InventoryPage = () => {
                     </CardContent>
                 </Card>
             )}
+            <StockProductionModal
+                isOpen={showProdModal}
+                onClose={() => setShowProdModal(false)}
+                onSuccess={() => {
+                    setShowProdModal(false);
+                    fetchData();
+                    setActiveTab('productions');
+                }}
+            />
         </div>
     );
 };

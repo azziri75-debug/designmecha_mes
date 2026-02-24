@@ -52,9 +52,9 @@ const FormManagementPage = () => {
                 <div>
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                         <FileText className="w-6 h-6 text-blue-500" />
-                        양식 및 레이아웃 관리
+                        양식 관리
                     </h2>
-                    <p className="text-gray-400">시스템에서 생성되는 PDF 문서의 출력 양식을 설정합니다.</p>
+                    <p className="text-gray-400">명세서, 시트 등 시스템에서 생성되는 문서의 출력 양식을 설정합니다.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={fetchTemplates}>
@@ -80,8 +80,8 @@ const FormManagementPage = () => {
                                 key={t.id}
                                 onClick={() => setSelectedTemplate(t)}
                                 className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${selectedTemplate?.id === t.id
-                                        ? "bg-blue-600/10 border-blue-500 text-blue-400"
-                                        : "bg-gray-800 border-transparent text-gray-400 hover:bg-gray-700"
+                                    ? "bg-blue-600/10 border-blue-500 text-blue-400"
+                                    : "bg-gray-800 border-transparent text-gray-400 hover:bg-gray-700"
                                     }`}
                             >
                                 <div className="text-sm font-bold">{t.name}</div>
