@@ -11,6 +11,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
     const [items, setItems] = useState([]);
     const [planDate, setPlanDate] = useState(new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
+    const [partners, setPartners] = useState([]);
+    const [staffList, setStaffList] = useState([]);
 
     // Drag and Drop Refs
     const dragItem = useRef(null);
@@ -18,6 +20,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
 
     useEffect(() => {
         if (isOpen) {
+            // Fetch partners and staff
+            api.get('/basics/partners/').then(res => setPartners(res.data)).catch(() => { });
+            api.get('/basics/staff/').then(res => setStaffList(res.data)).catch(() => { });
             if (plan) {
                 // Edit Mode
                 setPlanDate(plan.plan_date);
@@ -347,15 +352,46 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                     </Select>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <TextField
-                                                        value={item.partner_name || ''}
-                                                        onChange={(e) => handleItemChange(item.originalIndex, 'partner_name', e.target.value)}
-                                                        size="small"
-                                                        fullWidth
-                                                        variant="standard"
-                                                        placeholder={item.course_type === 'INTERNAL' ? '' : '업체명'}
-                                                        disabled={item.course_type === 'INTERNAL'}
-                                                    />
+                                                    {item.course_type === 'INTERNAL' ? (
+                                                        <Select
+                                                            value={item.worker_name || item.partner_name || ''}
+                                                            onChange={(e) => {
+                                                                handleItemChange(item.originalIndex, 'worker_name', e.target.value);
+                                                                handleItemChange(item.originalIndex, 'partner_name', '');
+                                                            }}
+                                                            size="small"
+                                                            fullWidth
+                                                            variant="standard"
+                                                            displayEmpty
+                                                        >
+                                                            <MenuItem value=""><em>사원 선택</em></MenuItem>
+                                                            {staffList.filter(s => s.is_active).map(s => (
+                                                                <MenuItem key={s.id} value={s.name}>{s.name} {s.role ? `(${s.role})` : ''}</MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    ) : (
+                                                        <Select
+                                                            value={item.partner_name || ''}
+                                                            onChange={(e) => {
+                                                                handleItemChange(item.originalIndex, 'partner_name', e.target.value);
+                                                                handleItemChange(item.originalIndex, 'worker_name', '');
+                                                            }}
+                                                            size="small"
+                                                            fullWidth
+                                                            variant="standard"
+                                                            displayEmpty
+                                                        >
+                                                            <MenuItem value=""><em>{item.course_type === 'OUTSOURCING' ? '외주처 선택' : '공급사 선택'}</em></MenuItem>
+                                                            {partners.filter(p => {
+                                                                const types = Array.isArray(p.partner_type) ? p.partner_type : [];
+                                                                if (item.course_type === 'OUTSOURCING') return types.includes('SUBCONTRACTOR') || types.includes('SUPPLIER');
+                                                                if (item.course_type === 'PURCHASE') return types.includes('SUPPLIER') || types.includes('SUBCONTRACTOR');
+                                                                return true;
+                                                            }).map(p => (
+                                                                <MenuItem key={p.id} value={p.name}>{p.name}</MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     <TextField
@@ -365,7 +401,6 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, plan }) => {
                                                         fullWidth
                                                         variant="standard"
                                                         placeholder={item.course_type === 'INTERNAL' ? '작업장' : ''}
-                                                        disabled={item.course_type !== 'INTERNAL'}
                                                     />
                                                 </TableCell>
                                                 <TableCell>

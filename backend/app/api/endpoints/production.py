@@ -78,72 +78,24 @@ async def create_production_plan(
     
     # 4. Generate Items
     if plan_in.items:
-         for item_in in plan_in.items:
-             plan_item = ProductionPlanItem(
-                 plan_id=plan.id,
-                 product_id=item_in.product_id,
-                 process_name=item_in.process_name,
-                 sequence=item_in.sequence,
-                 course_type=item_in.course_type,
-                 partner_name=item_in.partner_name,
-                 work_center=item_in.work_center,
-                 estimated_time=item_in.estimated_time,
-                 start_date=item_in.start_date,
-                 end_date=item_in.end_date,
-                 worker_name=item_in.worker_name,
-                 note=item_in.note,
-                 status=item_in.status,
-                 quantity=item_in.quantity
-             )
-             db.add(plan_item)
-             await db.flush() # Need ID for linking
-
-             # --- Auto-Create Purchase/Outsourcing Orders (Copied Logic) ---
-             final_course_type = item_in.course_type or "INTERNAL"
-             
-             # 1. Purchase
-             if "PURCHASE" in final_course_type or "구매" in final_course_type:
-                 po = PurchaseOrder(
-                     order_no=f"PO-AUTO-{plan.id}-{plan_item.id}",
-                     partner_id=None,
-                     order_date=datetime.now().date(),
-                     delivery_date=plan.plan_date,
-                     status=PurchaseStatus.PENDING,
-                     note=f"Auto-generated from Plan {plan.id}"
-                 )
-                 db.add(po)
-                 await db.flush()
-                 
-                 po_item = PurchaseOrderItem(
-                     purchase_order_id=po.id,
-                     product_id=item_in.product_id,
-                     quantity=item_in.quantity,
-                     unit_price=0,
-                     production_plan_item_id=plan_item.id
-                 )
-                 db.add(po_item)
-                 
-             # 2. Outsourcing
-             if "OUTSOURCING" in final_course_type or "외주" in final_course_type:
-                 oo = OutsourcingOrder(
-                     order_no=f"OS-AUTO-{plan.id}-{plan_item.id}",
-                     partner_id=None,
-                     order_date=datetime.now().date(),
-                     delivery_date=plan.plan_date,
-                     status=OutsourcingStatus.PENDING,
-                     note=f"Auto-generated from Plan {plan.id}"
-                 )
-                 db.add(oo)
-                 await db.flush()
-                 
-                 oo_item = OutsourcingOrderItem(
-                     outsourcing_order_id=oo.id,
-                     production_plan_item_id=plan_item.id,
-                     product_id=item_in.product_id,
-                     quantity=item_in.quantity,
-                     unit_price=0
-                 )
-                 db.add(oo_item)
+        for item_in in plan_in.items:
+            plan_item = ProductionPlanItem(
+                plan_id=plan.id,
+                product_id=item_in.product_id,
+                process_name=item_in.process_name,
+                sequence=item_in.sequence,
+                course_type=item_in.course_type,
+                partner_name=item_in.partner_name,
+                work_center=item_in.work_center,
+                estimated_time=item_in.estimated_time,
+                start_date=item_in.start_date,
+                end_date=item_in.end_date,
+                worker_name=item_in.worker_name,
+                note=item_in.note,
+                status=item_in.status,
+                quantity=item_in.quantity
+            )
+            db.add(plan_item)
     else:
         # Fetch Order Items
         result = await db.execute(select(SalesOrderItem).where(SalesOrderItem.order_id == plan_in.order_id))
@@ -182,56 +134,6 @@ async def create_production_plan(
                     status=ProductionStatus.PLANNED
                 )
                 db.add(plan_item)
-                await db.flush() # Need ID for linking
-
-                # --- Auto-Create Purchase/Outsourcing Orders (Restored) ---
-                # Use final_course_type for check
-                
-                # 1. Purchase
-                if "PURCHASE" in final_course_type or "구매" in final_course_type:
-                    # Logic:
-                    po = PurchaseOrder(
-                        order_no=f"PO-AUTO-{plan.id}-{plan_item.id}", # Temp ID
-                        partner_id=None, # We don't have ID, only name. Leave null or find?
-                        order_date=datetime.now().date(),
-                        delivery_date=plan_in.plan_date,
-                        status=PurchaseStatus.PENDING,
-                        note=f"Auto-generated from Plan {plan.id}"
-                    )
-                    db.add(po)
-                    await db.flush()
-                    
-                    po_item = PurchaseOrderItem(
-                        purchase_order_id=po.id,
-                        product_id=item.product_id,
-                        quantity=item.quantity,
-                        unit_price=0, # Unknown
-                        production_plan_item_id=plan_item.id
-                    )
-                    db.add(po_item)
-                    
-                # 2. Outsourcing
-                if "OUTSOURCING" in final_course_type or "외주" in final_course_type:
-                    
-                    oo = OutsourcingOrder(
-                        order_no=f"OS-AUTO-{plan.id}-{plan_item.id}",
-                        partner_id=None,
-                        order_date=datetime.now().date(),
-                        delivery_date=plan_in.plan_date,
-                        status=OutsourcingStatus.PENDING,
-                        note=f"Auto-generated from Plan {plan.id}"
-                    )
-                    db.add(oo)
-                    await db.flush()
-                    
-                    oo_item = OutsourcingOrderItem(
-                        outsourcing_order_id=oo.id,
-                        production_plan_item_id=plan_item.id,
-                        product_id=item.product_id,
-                        quantity=item.quantity,
-                        unit_price=0
-                    )
-                    db.add(oo_item)
 
     await db.commit()
     await db.refresh(plan)
@@ -240,10 +142,10 @@ async def create_production_plan(
     result = await db.execute(
         select(ProductionPlan)
         .options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner), # Deep load for Schema
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )
         .where(ProductionPlan.id == plan.id)
@@ -568,43 +470,63 @@ async def export_production_plan_excel(
     )
     return result.scalar_one()
 
-@router.delete("/plans/{plan_id}", status_code=204)
+@router.delete("/plans/{plan_id}", status_code=200)
 async def delete_production_plan(
     plan_id: int,
+    delete_related_orders: bool = False,
     db: AsyncSession = Depends(deps.get_db),
 ):
     """
     Delete a production plan.
+    If delete_related_orders=True, also delete linked PO/OO.
+    Otherwise, unlink them.
     """
     result = await db.execute(select(ProductionPlan).where(ProductionPlan.id == plan_id))
     plan = result.scalar_one_or_none()
     
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
-        
-    # Check for linked orders (Safety Check) -> Changed to Unlink Strategy
-    # We un-link the Purchase/Outsourcing Orders instead of blocking deletion.
-    # This keeps the financial record (PO/OO) but removes the Production Plan.
     
-    # Unlink Purchase Orders
+    # Find linked Purchase Order Items
     stmt_po = select(PurchaseOrderItem).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
     result_po = await db.execute(stmt_po)
     po_items = result_po.scalars().all()
-    for po_item in po_items:
-        po_item.production_plan_item_id = None
-        db.add(po_item)
-
-    # Unlink Outsourcing Orders
+    
+    # Find linked Outsourcing Order Items
     stmt_oo = select(OutsourcingOrderItem).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
     result_oo = await db.execute(stmt_oo)
     oo_items = result_oo.scalars().all()
-    for oo_item in oo_items:
-        oo_item.production_plan_item_id = None
-        db.add(oo_item)
+    
+    if delete_related_orders:
+        # Collect unique order IDs to delete
+        po_ids = set(item.purchase_order_id for item in po_items)
+        oo_ids = set(item.outsourcing_order_id for item in oo_items)
+        
+        # Delete Purchase Orders
+        for po_id in po_ids:
+            po_result = await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))
+            po = po_result.scalar_one_or_none()
+            if po:
+                await db.delete(po)
+        
+        # Delete Outsourcing Orders
+        for oo_id in oo_ids:
+            oo_result = await db.execute(select(OutsourcingOrder).where(OutsourcingOrder.id == oo_id))
+            oo = oo_result.scalar_one_or_none()
+            if oo:
+                await db.delete(oo)
+    else:
+        # Unlink only
+        for po_item in po_items:
+            po_item.production_plan_item_id = None
+            db.add(po_item)
+        for oo_item in oo_items:
+            oo_item.production_plan_item_id = None
+            db.add(oo_item)
 
     await db.delete(plan)
     await db.commit()
-    return None
+    return {"message": "Production Plan deleted successfully"}
 
 @router.patch("/plans/{plan_id}/status", response_model=schemas.ProductionPlan)
 async def update_production_plan_status(
@@ -701,10 +623,10 @@ async def update_production_plan_status(
     result = await db.execute(
         select(ProductionPlan)
         .options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner), # Deep Load
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )
         .where(ProductionPlan.id == plan_id)

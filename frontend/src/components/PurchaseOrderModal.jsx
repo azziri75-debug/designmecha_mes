@@ -73,7 +73,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
     const fetchPartners = async () => {
         try {
             const response = await api.get('/basics/partners');
-            setPartners(response.data.filter(p => p.partner_type.includes('SUPPLIER') || p.partner_type.includes('BOTH')));
+            setPartners(response.data.filter(p => {
+                const types = Array.isArray(p.partner_type) ? p.partner_type : [];
+                return types.includes('SUPPLIER') || types.includes('SUBCONTRACTOR');
+            }));
         } catch (error) {
             console.error("Failed to fetch partners", error);
         }
@@ -116,12 +119,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
         try {
             const payload = {
                 ...formData,
+                partner_id: formData.partner_id || null,
                 items: formData.items.map(item => ({
                     product_id: item.product_id,
-                    quantity: parseInt(item.quantity),
-                    unit_price: parseFloat(item.unit_price),
-                    note: item.note,
-                    production_plan_item_id: item.production_plan_item_id // Include link
+                    quantity: parseInt(item.quantity) || 0,
+                    unit_price: parseFloat(item.unit_price) || 0,
+                    note: item.note || '',
+                    production_plan_item_id: item.production_plan_item_id || null
                 }))
             };
 

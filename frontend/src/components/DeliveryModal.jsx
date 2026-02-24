@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Truck, Calendar, CheckCircle } from 'lucide-react';
+import { X, Save, Truck, Calendar, CheckCircle, Upload, FileText, Trash2 } from 'lucide-react';
 import api from '../lib/api';
+import { getImageUrl } from '../lib/utils';
 
 const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
     const [loading, setLoading] = useState(false);
@@ -8,38 +9,74 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
         actual_delivery_date: '',
         delivery_method: '',
         transaction_date: '',
-        production_completion_date: '', // Read-only or editable if not set? usually from plan
-        items: []
+        production_completion_date: '',
+        items: [],
+        attachment_file: []
     });
 
     useEffect(() => {
         if (order) {
-            // Pre-fill
+            let existingFiles = [];
+            try {
+                if (order.attachment_file) {
+                    existingFiles = typeof order.attachment_file === 'string'
+                        ? JSON.parse(order.attachment_file) : order.attachment_file;
+                    if (!Array.isArray(existingFiles)) existingFiles = [existingFiles];
+                }
+            } catch { existingFiles = []; }
+
             setFormData({
                 actual_delivery_date: order.actual_delivery_date || new Date().toISOString().split('T')[0],
                 delivery_method: order.delivery_method || '',
                 transaction_date: order.transaction_date || new Date().toISOString().split('T')[0],
-                production_completion_date: '', // logic to fetch from connected plan? Or just user input?
-                // For items, we need to map them to edit delivered_quantity
+                production_completion_date: '',
                 items: order.items.map(item => ({
                     ...item,
-                    current_delivered_quantity: item.quantity // Default to full quantity for convenience
-                }))
+                    current_delivered_quantity: item.quantity
+                })),
+                attachment_file: existingFiles
             });
         }
     }, [order]);
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await api.post('/upload', fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const newFile = { name: res.data.filename, url: res.data.url };
+            setFormData(prev => ({
+                ...prev,
+                attachment_file: [...prev.attachment_file, newFile]
+            }));
+        } catch (error) {
+            console.error("File upload failed", error);
+            alert("파일 업로드 실패");
+        }
+        e.target.value = '';
+    };
+
+    const handleRemoveFile = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            attachment_file: prev.attachment_file.filter((_, i) => i !== index)
+        }));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            // 1. Update Order Status and Header Info
             const payload = {
                 actual_delivery_date: formData.actual_delivery_date,
                 delivery_method: formData.delivery_method,
                 transaction_date: formData.transaction_date,
                 status: 'DELIVERY_COMPLETED',
-                // We also need to update items if we want to save delivered_quantity
+                attachment_file: formData.attachment_file,
                 items: formData.items.map(item => ({
                     product_id: item.product.id,
                     unit_price: item.unit_price,
@@ -127,7 +164,7 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                 <CheckCircle className="w-4 h-4" /> 생산 정보 (참고)
                             </h3>
                             <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">생산 완료일 (User Input)</label>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">생산 완료일</label>
                                 <input
                                     type="date"
                                     className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5 focus:ring-2 focus:ring-blue-500 transition-all"
@@ -187,6 +224,50 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                     </tr>
                                 </tfoot>
                             </table>
+                        </div>
+                    </div>
+
+                    {/* Attachment Files */}
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <FileText className="w-4 h-4" /> 첨부파일
+                        </h3>
+                        <div className="bg-gray-900/50 rounded-lg border border-gray-700 p-4 space-y-3">
+                            {formData.attachment_file.length > 0 && (
+                                <div className="space-y-2">
+                                    {formData.attachment_file.map((file, idx) => (
+                                        <div key={idx} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2 border border-gray-700">
+                                            <a
+                                                href={getImageUrl(file.url)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-2 truncate"
+                                            >
+                                                <FileText className="w-4 h-4 shrink-0" />
+                                                {file.name}
+                                            </a>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveFile(idx)}
+                                                className="text-gray-500 hover:text-red-400 p-1 shrink-0 transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="relative">
+                                <div className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 border border-dashed border-gray-500 rounded-lg px-4 py-3 cursor-pointer transition-colors">
+                                    <Upload className="w-5 h-5 text-gray-400" />
+                                    <span className="text-sm text-gray-400">파일 업로드 (클릭하여 선택)</span>
+                                </div>
+                                <input
+                                    type="file"
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={handleFileUpload}
+                                />
+                            </div>
                         </div>
                     </div>
 

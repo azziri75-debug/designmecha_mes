@@ -73,7 +73,6 @@ const ProductionPage = () => {
         if (plan && plan.status === 'COMPLETED') {
             if (!window.confirm("생산 완료된 내역입니다. 삭제하지 않고 '진행 중' 상태로 되돌리시겠습니까?\n(관련 수주 상태도 '생산 완료'에서 '확정'으로 변경됩니다.)")) return;
             try {
-                // Revert status to IN_PROGRESS
                 await api.patch(`/production/plans/${planId}/status?status=IN_PROGRESS`);
                 alert("상태가 '진행 중'으로 변경되었습니다.");
                 fetchPlans();
@@ -86,8 +85,16 @@ const ProductionPage = () => {
         }
 
         if (!window.confirm("정말로 이 생산 계획을 삭제하시겠습니까? 관련 수주는 대기 상태로 복원됩니다.")) return;
+
+        // Ask whether to also delete related orders
+        const deleteRelated = window.confirm(
+            "연관된 자재발주/외주발주 내역이 있을 수 있습니다.\n\n" +
+            "[확인] → 연관 발주 내역도 함께 삭제\n" +
+            "[취소] → 생산 계획만 삭제 (발주 내역 유지)"
+        );
+
         try {
-            await api.delete(`/production/plans/${planId}`);
+            await api.delete(`/production/plans/${planId}?delete_related_orders=${deleteRelated}`);
             alert("삭제되었습니다.");
             fetchPlans();
             fetchOrders();

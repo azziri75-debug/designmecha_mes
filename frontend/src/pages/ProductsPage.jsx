@@ -674,7 +674,7 @@ const ProductsPage = () => {
                                     required
                                 >
                                     <option value="">거래처 선택</option>
-                                    {partners.map(p => (
+                                    {partners.filter(p => Array.isArray(p.partner_type) && p.partner_type.includes('CUSTOMER')).map(p => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>

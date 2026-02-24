@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
-import { Search, Package, Truck, Calendar } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { Search, Package, Truck, Calendar, FileText } from 'lucide-react';
+import { cn, getImageUrl } from '../lib/utils';
 import DeliveryModal from '../components/DeliveryModal';
+import FileViewerModal from '../components/FileViewerModal';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -24,6 +25,9 @@ const DeliveryPage = () => {
     // Modal States
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [showFileModal, setShowFileModal] = useState(false);
+    const [viewingFiles, setViewingFiles] = useState([]);
+    const [fileModalTitle, setFileModalTitle] = useState('');
 
     useEffect(() => {
         fetchPartners();
@@ -157,6 +161,7 @@ const DeliveryPage = () => {
                                             <th className="px-6 py-3">실제 납품일</th>
                                             <th className="px-6 py-3">상태</th>
                                             <th className="px-6 py-3">품목 요약</th>
+                                            <th className="px-6 py-3 text-center">첨부</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-700">
@@ -185,11 +190,38 @@ const DeliveryPage = () => {
                                                         <span>{ord.items[0].product?.name} 외 {ord.items.length - 1}건</span>
                                                     ) : '-'}
                                                 </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    {(() => {
+                                                        let fileList = [];
+                                                        try {
+                                                            if (ord.attachment_file) {
+                                                                const parsed = typeof ord.attachment_file === 'string' ? JSON.parse(ord.attachment_file) : ord.attachment_file;
+                                                                fileList = Array.isArray(parsed) ? parsed : [parsed];
+                                                            }
+                                                        } catch { fileList = []; }
+                                                        if (fileList.length > 0) {
+                                                            return (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setViewingFiles(fileList);
+                                                                        setFileModalTitle(`${ord.order_no} 첨부파일`);
+                                                                        setShowFileModal(true);
+                                                                    }}
+                                                                    className="text-blue-400 hover:text-blue-300 transition-colors p-1"
+                                                                >
+                                                                    <FileText className="w-4 h-4" />
+                                                                </button>
+                                                            );
+                                                        }
+                                                        return <span className="text-gray-600">-</span>;
+                                                    })()}
+                                                </td>
                                             </tr>
                                         ))}
                                         {orders.length === 0 && (
                                             <tr>
-                                                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                                                <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                                                     데이터가 없습니다.
                                                 </td>
                                             </tr>
@@ -218,6 +250,14 @@ const DeliveryPage = () => {
                     }}
                     onSuccess={fetchOrders}
                     order={selectedOrder}
+                />
+            )}
+            {showFileModal && (
+                <FileViewerModal
+                    open={showFileModal}
+                    onClose={() => setShowFileModal(false)}
+                    files={viewingFiles}
+                    title={fileModalTitle}
                 />
             )}
         </div>
