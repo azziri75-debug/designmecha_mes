@@ -16,7 +16,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { cn } from '../lib/utils';
-import axios from 'axios';
+import api from '../lib/api';
 
 const InventoryPage = () => {
     const [activeTab, setActiveTab] = useState('status'); // 'status', 'productions'
@@ -33,10 +33,10 @@ const InventoryPage = () => {
         setLoading(true);
         try {
             if (activeTab === 'status') {
-                const res = await axios.get('/api/inventory/stocks');
+                const res = await api.get('/inventory/stocks');
                 setStocks(res.data);
             } else {
-                const res = await axios.get('/api/inventory/productions');
+                const res = await api.get('/inventory/productions');
                 setProductions(res.data);
             }
         } catch (err) {
