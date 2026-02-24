@@ -115,9 +115,29 @@ const ProductsPage = () => {
         if (file) {
             const fileData = await handleFileUpload(file);
             if (fileData) {
-                setProductFormData(prev => ({ ...prev, drawing_file: JSON.stringify(fileData) }));
+                let currentFiles = [];
+                try {
+                    const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
+                    currentFiles = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+                } catch {
+                    currentFiles = [];
+                }
+                const updatedFiles = [...currentFiles, fileData];
+                setProductFormData(prev => ({ ...prev, drawing_file: JSON.stringify(updatedFiles) }));
             }
         }
+    };
+
+    const handleRemoveFile = (index) => {
+        let currentFiles = [];
+        try {
+            const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
+            currentFiles = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+        } catch {
+            currentFiles = [];
+        }
+        const updatedFiles = currentFiles.filter((_, i) => i !== index);
+        setProductFormData(prev => ({ ...prev, drawing_file: updatedFiles.length > 0 ? JSON.stringify(updatedFiles) : null }));
     };
 
     const handleCreateProduct = async (e) => {
@@ -406,7 +426,7 @@ const ProductsPage = () => {
                                     <th className="px-6 py-3">재질</th>
                                     <th className="px-6 py-3">단위</th>
                                     <th className="px-6 py-3">공정 수</th>
-                                    <th className="px-6 py-3">도면/첨부</th>
+                                    <th className="px-6 py-3">첨부파일</th>
                                     <th className="px-6 py-3">비고</th>
                                     <th className="px-6 py-3 text-right">관리</th>
                                 </tr>
@@ -440,24 +460,25 @@ const ProductsPage = () => {
                                             <td className="px-6 py-4 text-gray-500 truncate max-w-xs" title={product.note}>{product.note || '-'}</td>
                                             <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                                 {(() => {
-                                                    let fileObj = null;
+                                                    let fileList = [];
                                                     try {
-                                                        fileObj = product.drawing_file ? (typeof product.drawing_file === 'string' ? JSON.parse(product.drawing_file) : product.drawing_file) : null;
-                                                    } catch { fileObj = null; }
-                                                    if (fileObj && fileObj.url) {
+                                                        const parsed = product.drawing_file ? (typeof product.drawing_file === 'string' ? JSON.parse(product.drawing_file) : product.drawing_file) : null;
+                                                        fileList = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+                                                    } catch { fileList = []; }
+                                                    if (fileList.length > 0) {
                                                         return (
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    setViewingFiles([fileObj]);
-                                                                    setFileModalTitle(`${product.name} - 도면`);
+                                                                    setViewingFiles(fileList);
+                                                                    setFileModalTitle(`${product.name} - 첨부파일`);
                                                                     setShowFileModal(true);
                                                                 }}
                                                                 className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors"
-                                                                title="도면/첨부파일 보기"
+                                                                title="첨부파일 보기"
                                                             >
                                                                 <FileText className="w-3 h-3" />
-                                                                도면
+                                                                첨부 {fileList.length}
                                                             </button>
                                                         );
                                                     }
@@ -707,20 +728,45 @@ const ProductsPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">도면 파일</label>
-                                <div className="border border-dashed border-gray-700 rounded-lg p-4 text-center hover:bg-gray-750 transition-colors relative">
+                                <label className="text-sm font-medium text-gray-300">첨부 파일</label>
+
+                                {/* File List */}
+                                {(() => {
+                                    let fileList = [];
+                                    try {
+                                        const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
+                                        fileList = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+                                    } catch { fileList = []; }
+
+                                    if (fileList.length > 0) {
+                                        return (
+                                            <div className="space-y-2 mb-3">
+                                                {fileList.map((file, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 group">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                                                            <span className="text-xs text-gray-300 truncate">{file.name}</span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveFile(idx)}
+                                                            className="text-gray-500 hover:text-red-400 transition-colors"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+
+                                <div className="border border-dashed border-gray-700 rounded-lg p-4 text-center hover:bg-gray-700/30 transition-colors relative">
                                     <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} />
                                     <div className="flex flex-col items-center gap-2 text-gray-500">
                                         <Upload className="w-6 h-6" />
-                                        <span className="text-sm">{(() => {
-                                            if (!productFormData.drawing_file) return "클릭하여 파일 업로드";
-                                            try {
-                                                const parsed = typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file;
-                                                return parsed.name || "파일이 등록되었습니다";
-                                            } catch {
-                                                return "파일이 등록되었습니다";
-                                            }
-                                        })()}</span>
+                                        <span className="text-sm">클릭하여 파일 추가</span>
                                     </div>
                                 </div>
                             </div>
