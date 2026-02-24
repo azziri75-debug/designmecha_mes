@@ -81,4 +81,39 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 async def root():
     return {"status": "ok", "message": "MES ERP Backend is running"}
 
+@app.on_event("startup")
+async def startup_event():
+    """Ensure admin user exists on startup"""
+    from app.db.base import SessionLocal
+    from app.models.basics import Staff
+    from sqlalchemy.future import select
+    import json
+    
+    async with SessionLocal() as db:
+        ALL_MENUS = ["basics", "products", "sales", "production", "purchase", "outsourcing", "quality", "inventory"]
+        result = await db.execute(select(Staff).where(Staff.name == "이준호"))
+        admin = result.scalar_one_or_none()
+        
+        if not admin:
+            admin = Staff(
+                name="이준호",
+                role="대표",
+                main_duty="총괄관리",
+                user_type="ADMIN",
+                password="6220",
+                menu_permissions=ALL_MENUS,
+                is_active=True
+            )
+            db.add(admin)
+            print("Startup: Created admin '이준호'")
+        else:
+            admin.password = "6220"
+            admin.user_type = "ADMIN"
+            admin.menu_permissions = ALL_MENUS
+            admin.is_active = True
+            db.add(admin)
+            print("Startup: Updated admin '이준호' password to 6220")
+            
+        await db.commit()
+
 
