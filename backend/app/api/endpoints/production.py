@@ -48,6 +48,10 @@ async def read_production_plans(
     return plans
 
 @router.post("/plans", response_model=schemas.ProductionPlan)
+async def create_production_plan(
+    plan_in: schemas.ProductionPlanCreate,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
     """
     Create a production plan from a Sales Order or Stock Production.
     Auto-generates plan items based on Product Processes.
