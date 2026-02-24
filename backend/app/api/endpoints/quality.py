@@ -63,7 +63,11 @@ async def read_defects(
     query = select(QualityDefect).options(
         selectinload(QualityDefect.order).selectinload(SalesOrder.partner),
         selectinload(QualityDefect.plan).selectinload(ProductionPlan.order),
-        selectinload(QualityDefect.plan_item).selectinload(ProductionPlanItem.product)
+        selectinload(QualityDefect.plan_item).options(
+            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(ProductionPlanItem.purchase_items),
+            selectinload(ProductionPlanItem.outsourcing_items)
+        )
     )
     
     if status:
