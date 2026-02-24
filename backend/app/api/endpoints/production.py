@@ -742,7 +742,6 @@ async def update_production_plan_status(
                             db.add(oo)
             
         elif plan.order:
-            from app.models.sales import OrderStatus
             # For Sales Order: Update stocks for all items in the order
             # (Assuming the plan covers the entire order, or at least we treat its completion as the order items being ready)
             for item in plan.order.items:
