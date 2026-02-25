@@ -750,9 +750,6 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                     <IconButton size="small" color="primary" onClick={() => onPrint(plan, 'PRODUCTION')} title="생산관리시트출력">
                                         <PrintIcon fontSize="small" />
                                     </IconButton>
-                                    <IconButton size="small" color="secondary" onClick={() => onPrint(plan, 'PRODUCTION_DETAIL')} title="세부내역출력">
-                                        <DescIcon fontSize="small" />
-                                    </IconButton>
                                     <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
                                         <EditIcon />
                                     </IconButton>

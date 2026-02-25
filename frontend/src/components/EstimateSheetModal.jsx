@@ -3,7 +3,7 @@ import { X, Save, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
-import { EditableText, StampOverlay } from './DocumentUtils';
+import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import { cn } from '../lib/utils';
 
 // Helper to convert number to Korean words for "일금 ... 원정"
@@ -14,7 +14,6 @@ const numberToKorean = (num) => {
     let result = '';
     let numStr = num.toString();
 
-    // Simple implementation for common MES amounts
     const parts = [];
     while (numStr.length > 0) {
         parts.push(numStr.substring(numStr.length - 4));
@@ -39,17 +38,16 @@ const numberToKorean = (num) => {
 
 const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
     const [company, setCompany] = useState(null);
-    const [template, setTemplate] = useState(null);
     const [saving, setSaving] = useState(false);
 
     const [metadata, setMetadata] = useState({
         title: "견 적 서",
         recipient: "",
-        reference: "",
         estimate_date: "",
         total_amount_text: "",
         notes: "1) 납기 : 발주 후 15일 이내",
-        show_stamp: true,
+        colWidths: [40, 240, 160, 50, 90, 100, 60],
+        items: []
     });
 
     const sheetRef = useRef(null);
@@ -57,7 +55,6 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
     useEffect(() => {
         if (isOpen && estimate) {
             fetchCompany();
-            fetchTemplate();
             initializeMetadata();
         }
     }, [isOpen, estimate]);
@@ -69,31 +66,53 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         } catch (err) { console.error('Failed to fetch company', err); }
     };
 
-    const fetchTemplate = async () => {
-        try {
-            const res = await api.get('/basics/form-templates/');
-            const tm = res.data.find(t => t.form_type === 'ESTIMATE');
-            if (tm) setTemplate(tm);
-        } catch (err) { console.error('Failed to fetch template', err); }
-    };
-
     const initializeMetadata = () => {
         if (!estimate) return;
-        const total = estimate.items?.reduce((s, i) => s + (i.quantity * (i.unit_price || 0)), 0) || 0;
-        setMetadata({
+        const items = (estimate.items || []).map((item, idx) => ({
+            idx: idx + 1,
+            name: item.product?.name || "",
+            spec: item.product?.specification || item.product?.code || "",
+            qty: item.quantity,
+            price: item.unit_price || 0,
+            total: item.quantity * (item.unit_price || 0),
+            note: item.note || ""
+        }));
+
+        while (items.length < 15) {
+            items.push({ idx: "", name: "", spec: "", qty: "", price: "", total: "", note: "" });
+        }
+
+        const total = items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+
+        setMetadata(prev => ({
+            ...prev,
             title: "견 적 서",
             recipient: (estimate.partner?.name || "") + "  " + (estimate.manager_name || ""),
-            reference: "",
             estimate_date: estimate.estimate_date || new Date().toISOString().split('T')[0].replace(/-/g, '. '),
             total_amount_text: numberToKorean(total),
             notes: estimate.note || "1) 납기 : 발주 후 15일 이내",
-            show_stamp: true,
-        });
+            items: items
+        }));
     };
 
     const handleMetaChange = (key, val) => setMetadata(prev => ({ ...prev, [key]: val }));
 
-    const fmt = (n) => n?.toLocaleString() || "0";
+    const updateItem = (rIdx, key, val) => {
+        const newItems = [...metadata.items];
+        newItems[rIdx][key] = val;
+        if (key === 'qty' || key === 'price') {
+            const q = parseFloat(newItems[rIdx].qty) || 0;
+            const p = parseFloat(newItems[rIdx].price) || 0;
+            newItems[rIdx].total = q * p;
+
+            // Update total text
+            const newTotal = newItems.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+            handleMetaChange('total_amount_text', numberToKorean(newTotal));
+        }
+        setMetadata(prev => ({ ...prev, items: newItems }));
+    };
+
+    const fmt = (n) => typeof n === 'number' ? n.toLocaleString() : n;
 
     const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
@@ -130,10 +149,20 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
 
     if (!isOpen || !estimate) return null;
 
-    const totalAmount = (estimate.items || []).reduce((s, i) => s + (i.quantity * (i.unit_price || 0)), 0);
+    const totalAmount = metadata.items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+
+    const columns = [
+        { key: 'idx', label: '번호', align: 'center' },
+        { key: 'name', label: '품 명', align: 'left' },
+        { key: 'spec', label: '규 격', align: 'center' },
+        { key: 'qty', label: '수 량', align: 'center' },
+        { key: 'price', label: '단 가', align: 'right' },
+        { key: 'total', label: '금 액', align: 'right' },
+        { key: 'note', label: '비 고', align: 'center' },
+    ];
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto font-sans">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
             <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
                 <div className="flex items-center justify-between p-4 border-b border-gray-700">
                     <h3 className="text-white font-bold flex items-center gap-2">견적서 미리보기 및 편집</h3>
@@ -145,7 +174,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[15mm] shadow-xl origin-top" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[15mm] shadow-xl origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
 
                         {/* Title Section */}
                         <div className="text-center mb-8 relative">
@@ -155,10 +184,10 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Top Info Section */}
-                        <div className="flex justify-between items-end mb-4">
+                        <div className="flex justify-between items-end mb-4 text-xs">
                             <div className="flex-1 space-y-4">
                                 <p className="text-sm font-bold border-b border-black inline-block min-w-[120px] pb-1">
-                                    {estimate.estimate_date || metadata.estimate_date}
+                                    <EditableText value={metadata.estimate_date} onChange={(v) => handleMetaChange('estimate_date', v)} />
                                 </p>
                                 <div className="space-y-1">
                                     <div className="flex items-end gap-2 text-xl font-bold border-b border-black pb-1 mb-4">
@@ -169,9 +198,9 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 </div>
                             </div>
 
-                            {/* Company Info Box (Targeting fidelity) */}
-                            <div className="w-[300px] border border-black flex text-[10px]">
-                                <div className="w-8 border-r border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
+                            {/* Company Info Box */}
+                            <div className="w-[300px] border border-black flex text-[9px]">
+                                <div className="w-8 border-r border-black bg-gray-50 flex flex-col items-center justify-center font-bold py-2">
                                     <div>공</div><div>급</div><div>자</div>
                                 </div>
                                 <div className="flex-1">
@@ -185,7 +214,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                                 <td className="bg-gray-50 border-r border-black font-bold p-1 text-center">상 호</td>
                                                 <td className="border-r border-black p-1 text-center">(주)디자인메카</td>
                                                 <td className="w-12 bg-gray-50 border-r border-black font-bold p-1 text-center">대표</td>
-                                                <td className="p-1 text-center relative">
+                                                <td className="p-1 text-center relative font-bold">
                                                     조인호
                                                     <StampOverlay url="/api/uploads/sample-stamp.png" className="w-12 h-12 -top-2 -left-2" />
                                                 </td>
@@ -197,7 +226,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                             <tr>
                                                 <td className="bg-gray-50 border-r border-black font-bold p-1 text-center">연락처</td>
                                                 <td colSpan="3" className="p-1 leading-tight">
-                                                    전화: 041-544-6220<br />팩스: 041-544-6207<br />juno@designmecha.co.kr
+                                                    전화: 041-544-6220 / 팩스: 041-544-6207<br />juno@designmecha.co.kr
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -207,67 +236,37 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Amount Bar */}
-                        <div className="flex border-t-2 border-b-2 border-black py-2 mb-6 font-bold text-sm bg-gray-50 px-4 justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <span>합 계 금 액 <span className="text-[10px] font-normal">(부가세 별도)</span></span>
-                                <EditableText value={metadata.total_amount_text} onChange={(v) => handleMetaChange('total_amount_text', v)} className="text-base tracking-[0.2em] min-w-[200px]" />
+                        <div className="flex border-t-2 border-b-2 border-black py-2 mb-4 font-bold text-sm bg-gray-50 px-4 justify-between items-center h-12">
+                            <div className="flex items-center gap-4 flex-1">
+                                <span className="whitespace-nowrap">합 계 금 액 <span className="text-[10px] font-normal">(부가세 별도)</span></span>
+                                <EditableText value={metadata.total_amount_text} onChange={(v) => handleMetaChange('total_amount_text', v)} className="text-base tracking-[0.1em] flex-1 min-w-[200px]" />
                             </div>
-                            <div className="text-xl">
-                                ₩ {fmt(totalAmount)} <span className="text-xs font-normal">( )</span>
+                            <div className="text-xl whitespace-nowrap min-w-[120px] text-right">
+                                ₩ {fmt(totalAmount)}
                             </div>
                         </div>
 
                         {/* Items Table */}
-                        <table className="w-full border-collapse border-t-2 border-b-2 border-black text-xs mb-1">
-                            <thead>
-                                <tr className="bg-gray-50 font-bold h-10">
-                                    <th className="border-b border-black w-10 text-center">번호</th>
-                                    <th className="border-b border-black px-2 text-left">품 명</th>
-                                    <th className="border-b border-black w-32 px-2 text-center">규 격</th>
-                                    <th className="border-b border-black w-16 text-center">수 량</th>
-                                    <th className="border-b border-black w-24 text-right px-2">단 가</th>
-                                    <th className="border-b border-black w-28 text-right px-2">금 액</th>
-                                    <th className="border-b border-black w-24 text-center px-2">비 고</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(estimate.items || []).map((item, idx) => (
-                                    <tr key={idx} className="h-9 border-b border-gray-200">
-                                        <td className="text-center">{idx + 1}</td>
-                                        <td className="px-2 font-bold">
-                                            <EditableText value={item.product?.name} autoFit maxWidth={200} />
-                                        </td>
-                                        <td className="px-2 font-bold text-center italic">
-                                            <EditableText value={item.product?.specification || item.product?.code} autoFit maxWidth={120} />
-                                        </td>
-                                        <td className="text-center">{fmt(item.quantity)}</td>
-                                        <td className="text-right px-2">{fmt(item.unit_price)}</td>
-                                        <td className="text-right px-2 font-bold">{fmt(item.quantity * item.unit_price)}</td>
-                                        <td className="text-center px-2 text-[10px] italic">
-                                            {item.note || '-'}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {[...Array(Math.max(0, 15 - (estimate.items?.length || 0)))].map((_, i) => (
-                                    <tr key={`empty-${i}`} className="h-9 border-b border-gray-100 last:border-black">
-                                        <td colSpan="7"></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr className="h-10 bg-gray-50 font-bold border-b-2 border-black">
-                                    <td colSpan="2" className="text-center">합 계</td>
-                                    <td colSpan="3"></td>
-                                    <td className="text-right px-2 text-sm">{fmt(totalAmount)}</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                        <ResizableTable
+                            columns={columns}
+                            data={metadata.items}
+                            colWidths={metadata.colWidths}
+                            onUpdateWidths={(w) => handleMetaChange('colWidths', w)}
+                            onUpdateData={updateItem}
+                            className="text-[10px]"
+                        />
+
+                        {/* Footer Summary */}
+                        <div className="flex border border-black border-t-0 font-bold bg-gray-50 text-[10px]">
+                            <div className="flex-1 py-1.5 px-4">합 계 (Total)</div>
+                            <div className="w-[100px] text-right py-1.5 px-4 text-xs">₩ {fmt(totalAmount)}</div>
+                            <div className="w-[60px]"></div>
+                        </div>
 
                         {/* Footer Section */}
-                        <div className="mt-8 text-xs">
+                        <div className="mt-6 text-xs">
                             <h4 className="font-bold border-b border-black w-20 mb-2">견적기준</h4>
-                            <div className="leading-relaxed whitespace-pre-wrap pl-2">
+                            <div className="leading-relaxed border border-black p-3 min-h-[120px]">
                                 <EditableText
                                     value={metadata.notes}
                                     onChange={(v) => handleMetaChange('notes', v)}
@@ -277,9 +276,9 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Bottom Branding */}
-                        <div className="absolute bottom-[15mm] left-0 right-0 text-center">
-                            <p className="text-[11px] font-bold text-gray-500 tracking-[0.2em]">
-                                세계 최초로 나노금속강화개질처리를 상용화 한 (주)디자인메카
+                        <div className="absolute bottom-[10mm] left-0 right-0 text-center">
+                            <p className="text-[10px] font-bold text-gray-400 tracking-[0.2em] uppercase">
+                                (주) 디자인메카
                             </p>
                         </div>
 
