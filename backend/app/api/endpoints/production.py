@@ -957,6 +957,18 @@ async def update_production_plan_item(
     for field, value in update_data.items():
         setattr(item, field, value)
 
+    # Sync cost for external items if they have linked PO/OO
+    if item.course_type in ["PURCHASE", "OUTSOURCING"]:
+        total_linked_cost = 0.0
+        # Load linked items if not already loaded (though they might be lazy loaded)
+        for pi in item.purchase_items:
+            total_linked_cost += (pi.quantity * pi.unit_price)
+        for oi in item.outsourcing_items:
+            total_linked_cost += (oi.quantity * oi.unit_price)
+        
+        if total_linked_cost > 0:
+            item.cost = total_linked_cost
+
     await db.commit()
     await db.refresh(item)
     

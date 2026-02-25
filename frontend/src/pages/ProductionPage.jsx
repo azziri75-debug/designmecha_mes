@@ -6,6 +6,8 @@ import api from '../lib/api';
 import ProductionPlanModal from '../components/ProductionPlanModal';
 import ProductionSheetModal from '../components/ProductionSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
+import OrderModal from '../components/OrderModal';
+import StockProductionModal from '../components/StockProductionModal';
 
 const ProductionPage = () => {
     const [tabIndex, setTabIndex] = useState(0);
@@ -40,10 +42,25 @@ const ProductionPage = () => {
     const [viewingFiles, setViewingFiles] = useState([]);
     const [viewingFileTitle, setViewingFileTitle] = useState('');
 
+    // View Item Modals
+    const [viewOrderOpen, setViewOrderOpen] = useState(false);
+    const [viewStockOpen, setViewStockOpen] = useState(false);
+    const [itemToView, setItemToView] = useState(null);
+
     const handlePrintClick = (plan, type = 'PRODUCTION') => {
         setSheetPlan(plan);
         setSheetType(type);
         setSheetModalOpen(true);
+    };
+
+    const handleViewOrder = (order) => {
+        setItemToView(order);
+        setViewOrderOpen(true);
+    };
+
+    const handleViewStockProduction = (sp) => {
+        setItemToView(sp);
+        setViewStockOpen(true);
     };
 
     const fetchOrders = async () => {
@@ -384,12 +401,34 @@ const ProductionPage = () => {
                 onSave={fetchPlans}
             />
 
-            <FileViewerModal
-                isOpen={showFileModal}
-                onClose={() => setShowFileModal(false)}
-                files={viewingFiles}
-                title={viewingFileTitle}
-            />
+            {showFileModal && (
+                <FileViewerModal
+                    isOpen={showFileModal}
+                    onClose={() => setShowFileModal(false)}
+                    files={viewingFiles}
+                    title={viewingFileTitle}
+                />
+            )}
+
+            {viewOrderOpen && (
+                <OrderModal
+                    isOpen={viewOrderOpen}
+                    onClose={() => setViewOrderOpen(false)}
+                    partners={partners}
+                    orderToEdit={itemToView}
+                    onSuccess={() => { }} // View only, so no success handler needed or just fetchPlans
+                />
+            )}
+
+            {viewStockOpen && (
+                <StockProductionModal
+                    isOpen={viewStockOpen}
+                    onClose={() => setViewStockOpen(false)}
+                    partners={partners}
+                    stockProductionToEdit={itemToView}
+                    onSuccess={() => { }}
+                />
+            )}
 
             <DefectInfoModal
                 isOpen={defectModalOpen}
@@ -611,21 +650,21 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, onShowDefects, readonly }) => {
+const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, onShowDefects, onShowOrder, onShowStock }) => {
     return (
         <TableContainer>
             <Table>
                 <TableHead>
                     <TableRow>
-                        <TableCell>계획일</TableCell>
-                        <TableCell>수주번호</TableCell>
+                        <TableCell />
+                        <TableCell>수주/재고번호</TableCell>
                         <TableCell>거래처</TableCell>
-                        <TableCell>수주일</TableCell>
                         <TableCell>납기일</TableCell>
                         <TableCell>금액</TableCell>
                         <TableCell>상태</TableCell>
                         <TableCell>불량</TableCell>
                         <TableCell>공정 수</TableCell>
+                        <TableCell>총 공정 비용</TableCell>
                         <TableCell>첨부파일</TableCell>
                         <TableCell>관리</TableCell>
                     </TableRow>
@@ -646,7 +685,8 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
                                 onDeleteAttachment={onDeleteAttachment}
                                 onOpenFiles={onOpenFiles}
                                 onShowDefects={onShowDefects}
-                                readonly={readonly}
+                                onShowOrder={onShowOrder}
+                                onShowStock={onShowStock}
                             />
                         ))
                     )}
@@ -656,9 +696,10 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
     );
 };
 
-const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles, onShowDefects, readonly }) => {
+const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles, onShowDefects, onShowOrder, onShowStock, readonly }) => {
     const [open, setOpen] = useState(false);
-    const order = plan.order; // Used order from plan (eager loaded)
+    const order = plan.order;
+    const sp = plan.stock_production;
 
     // Group items by product
     const groupedItems = plan.items?.reduce((acc, item) => {
@@ -687,32 +728,72 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                 onClick={() => setOpen(!open)}
                 hover
             >
-                <TableCell>{plan.plan_date}</TableCell>
                 <TableCell>
-                    {plan.order ? (
-                        <><Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, fontSize: '0.7rem', height: 20 }} /> {plan.order.order_no}</>
-                    ) : plan.stock_production ? (
-                        <><Chip label="재고" size="small" variant="outlined" color="success" sx={{ mr: 0.5, fontSize: '0.7rem', height: 20 }} /> {plan.stock_production.production_no}</>
-                    ) : plan.order_id || plan.stock_production_id}
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
+                        {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+                    </IconButton>
+                </TableCell>
+                <TableCell>
+                    {order ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Chip label="수주" size="small" sx={{ height: 20, fontSize: '0.65rem', backgroundColor: '#e3f2fd', color: '#1976d2', border: 'none' }} />
+                            <Typography
+                                variant="body2"
+                                color="primary"
+                                sx={{
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline',
+                                    '&:hover': { color: '#1565c0' }
+                                }}
+                                onClick={(e) => { e.stopPropagation(); onShowOrder(order); }}
+                            >
+                                {order.order_no}
+                            </Typography>
+                        </Box>
+                    ) : sp ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Chip label="재고" size="small" sx={{ height: 20, fontSize: '0.65rem', backgroundColor: '#f3e5f5', color: '#7b1fa2', border: 'none' }} />
+                            <Typography
+                                variant="body2"
+                                color="secondary"
+                                sx={{
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline',
+                                    '&:hover': { color: '#6a1b9a' }
+                                }}
+                                onClick={(e) => { e.stopPropagation(); onShowStock(sp); }}
+                            >
+                                {sp.production_no || `Stock-${sp.id}`}
+                            </Typography>
+                        </Box>
+                    ) : '-'}
                 </TableCell>
                 <TableCell>{plan.order?.partner?.name || '사내 생산(재고)'}</TableCell>
-                <TableCell>{order?.order_date || '-'}</TableCell>
                 <TableCell>{order?.delivery_date || '-'}</TableCell>
                 <TableCell>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
                 <TableCell><Chip label={plan.status} color={plan.status === 'COMPLETED' ? "success" : "primary"} variant="outlined" /></TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                    {defects && defects.length > 0 && (
-                        <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => onShowDefects(defects)}
-                            title="불량 내역 보기"
-                        >
-                            <AlertCircle className="w-5 h-5" />
-                        </IconButton>
-                    )}
+                <TableCell>{defects && defects.length > 0 && (
+                    <IconButton
+                        size="small"
+                        color="error"
+                        onClick={(e) => { e.stopPropagation(); onShowDefects(defects); }}
+                        title="불량 내역 보기"
+                    >
+                        <AlertCircle className="w-5 h-5" />
+                    </IconButton>
+                )}
                 </TableCell>
                 <TableCell>{plan.items?.length || 0}</TableCell>
+                <TableCell>
+                    {(() => {
+                        const totalCost = plan.items?.reduce((sum, item) => {
+                            // If external, count sum of PO/OO items? Or wait for backend field.
+                            // For now, let's use the field 'cost' if it exists.
+                            return sum + (item.cost || 0);
+                        }, 0) || 0;
+                        return <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>{totalCost.toLocaleString()} 원</Typography>;
+                    })()}
+                </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     {(() => {
                         let files = [];
@@ -786,8 +867,11 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                         <Typography variant="body2" color="textSecondary" display="inline" sx={{ mr: 2 }}>
                                             규격: {group.product_spec || '-'}
                                         </Typography>
-                                        <Typography variant="body2" color="textSecondary" display="inline">
+                                        <Typography variant="body2" color="textSecondary" display="inline" sx={{ mr: 2 }}>
                                             수량: {group.items.length > 0 ? group.items[0].quantity : 0} {group.product_unit}
+                                        </Typography>
+                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#c62828', bgcolor: '#ffebee', px: 1, py: 0.5, borderRadius: 1, display: 'inline-block' }}>
+                                            총 공정 비용: {group.items.reduce((sum, item) => sum + (item.cost || 0), 0).toLocaleString()} 원
                                         </Typography>
                                     </Box>
 
@@ -798,11 +882,12 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                 <TableCell width="15%">공정명</TableCell>
                                                 <TableCell width="10%">구분</TableCell>
                                                 <TableCell width="15%">외주/구매/작업자</TableCell>
-                                                <TableCell width="15%">배정 장비</TableCell>
+                                                <TableCell width="10%">배정 장비</TableCell>
                                                 <TableCell width="12%">작업내용</TableCell>
-                                                <TableCell width="8%">예상시간</TableCell>
+                                                <TableCell width="15%">작업기간</TableCell>
+                                                <TableCell width="10%">공정비용</TableCell>
                                                 <TableCell width="10%">상태</TableCell>
-                                                <TableCell width="10%">첨부파일</TableCell>
+                                                <TableCell width="5%">첨부</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
@@ -847,7 +932,14 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                         )}
                                                     </TableCell>
                                                     <TableCell>{item.note}</TableCell>
-                                                    <TableCell>{item.estimated_time}</TableCell>
+                                                    <TableCell sx={{ fontSize: '0.75rem' }}>
+                                                        {item.start_date || '-'} ~ {item.end_date || '-'}
+                                                    </TableCell>
+                                                    <TableCell align="right">
+                                                        <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                                                            {(item.cost || 0).toLocaleString()}
+                                                        </Typography>
+                                                    </TableCell>
                                                     <TableCell>
                                                         <select
                                                             disabled={item.course_type !== 'INTERNAL'}
@@ -857,7 +949,9 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                     await api.patch(`/production/plan-items/${item.id}`, { status: e.target.value });
                                                                     fetchPlans();
                                                                 } catch (err) {
-                                                                    alert("상태 변경 실패");
+                                                                    console.error("Status update error", err);
+                                                                    // Only alert if it's truly an error (axios throws on non-2xx)
+                                                                    alert("상태 변경 중 오류가 발생했습니다.");
                                                                 }
                                                             }}
                                                             style={{
@@ -905,7 +999,9 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                                 const formData = new FormData();
                                                                                 formData.append('file', file);
                                                                                 try {
-                                                                                    const uploadRes = await api.post('/upload', formData);
+                                                                                    const uploadRes = await api.post('/upload', formData, {
+                                                                                        headers: { 'Content-Type': 'multipart/form-data' }
+                                                                                    });
                                                                                     const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
                                                                                     const updatedFiles = [...fileList, newFile];
                                                                                     await api.patch(`/production/plan-items/${item.id}`, { attachment_file: updatedFiles });

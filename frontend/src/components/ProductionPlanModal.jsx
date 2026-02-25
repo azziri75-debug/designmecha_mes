@@ -59,6 +59,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                 worker_id: null,
                                 equipment_id: null,
                                 estimated_time: proc.estimated_time || 0,
+                                start_date: null,
+                                end_date: null,
+                                cost: 0,
                                 quantity: sourceItem.quantity,
                                 note: ""
                             });
@@ -77,6 +80,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                             worker_id: null,
                             equipment_id: null,
                             estimated_time: 0,
+                            start_date: null,
+                            end_date: null,
+                            cost: 0,
                             quantity: sourceItem.quantity,
                             note: ""
                         });
@@ -116,6 +122,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
             partner_name: "",
             work_center: "",
             estimated_time: 0,
+            start_date: null,
+            end_date: null,
+            cost: 0,
             note: ""
         }]);
     };
@@ -201,6 +210,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     worker_id: item.worker_id || null,
                     equipment_id: item.equipment_id || null,
                     estimated_time: parseFloat(item.estimated_time) || 0,
+                    start_date: item.start_date || null,
+                    end_date: item.end_date || null,
+                    cost: parseFloat(item.cost) || 0,
                     quantity: parseInt(item.quantity) || 0,
                     note: item.note,
                     status: 'PLANNED'
@@ -301,10 +313,12 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                             <TableCell width="12%">공정명</TableCell>
                                             <TableCell width="10%">구분</TableCell>
                                             <TableCell width="12%">외주/구매/작업자</TableCell>
-                                            <TableCell width="12%">배정 장비</TableCell>
-                                            <TableCell width="15%">작업내용</TableCell>
-                                            <TableCell width="8%">수량</TableCell>
-                                            <TableCell width="8%">시간(분)</TableCell>
+                                            <TableCell width="10%">배정 장비</TableCell>
+                                            <TableCell width="12%">작업내용</TableCell>
+                                            <TableCell width="10%">시작일</TableCell>
+                                            <TableCell width="10%">종료일</TableCell>
+                                            <TableCell width="10%">공정비용</TableCell>
+                                            <TableCell width="5%">수량</TableCell>
                                             <TableCell width="5%">관리</TableCell>
                                         </TableRow>
                                     </TableHead>
@@ -429,19 +443,44 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                 </TableCell>
                                                 <TableCell>
                                                     <TextField
-                                                        type="number"
-                                                        value={item.quantity}
-                                                        onChange={(e) => handleItemChange(item.originalIndex, 'quantity', e.target.value)}
+                                                        type="date"
+                                                        value={item.start_date || ''}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'start_date', e.target.value)}
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
+                                                        InputLabelProps={{ shrink: true }}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <TextField
+                                                        type="date"
+                                                        value={item.end_date || ''}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'end_date', e.target.value)}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                        InputLabelProps={{ shrink: true }}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
                                                     <TextField
                                                         type="number"
-                                                        value={item.estimated_time || 0}
-                                                        onChange={(e) => handleItemChange(item.originalIndex, 'estimated_time', e.target.value)}
+                                                        value={item.cost || 0}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'cost', e.target.value)}
+                                                        disabled={item.course_type !== 'INTERNAL'}
+                                                        size="small"
+                                                        fullWidth
+                                                        variant="standard"
+                                                        placeholder={item.course_type !== 'INTERNAL' ? '발주금액 자동연동' : '직접입력'}
+                                                        helperText={item.course_type !== 'INTERNAL' && item.purchase_items?.length ? `발주: ${item.purchase_items.reduce((s, pi) => s + (pi.quantity * pi.unit_price), 0).toLocaleString()}원` : ''}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <TextField
+                                                        type="number"
+                                                        value={item.quantity}
+                                                        onChange={(e) => handleItemChange(item.originalIndex, 'quantity', e.target.value)}
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"

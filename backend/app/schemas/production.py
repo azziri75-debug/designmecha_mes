@@ -32,6 +32,7 @@ class ProductionPlanItemBase(BaseModel):
     equipment_id: Optional[int] = None
     note: Optional[str] = None
     status: ProductionStatus = ProductionStatus.PLANNED
+    cost: Optional[float] = 0.0
     attachment_file: Optional[Union[List[Any], str]] = None
 
 class ProductionPlanItemCreate(ProductionPlanItemBase):
@@ -47,6 +48,7 @@ class ProductionPlanItemUpdate(BaseModel):
     equipment_id: Optional[int] = None
     note: Optional[str] = None
     status: Optional[ProductionStatus] = None
+    cost: Optional[float] = None
     attachment_file: Optional[Union[List[Any], str]] = None
     quantity: Optional[int] = None
 
