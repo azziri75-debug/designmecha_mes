@@ -4,19 +4,19 @@ import {
     Settings,
     Save,
     RefreshCcw,
-    Layout,
-    Eye,
-    CheckCircle2
+    Layout
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
 import api from '../lib/api';
+import VisualFormEditor from '../components/VisualFormEditor';
+import { cn } from '../lib/utils';
 
 const FormManagementPage = () => {
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [editorMode, setEditorMode] = useState('visual'); // 'visual', 'json'
 
     useEffect(() => {
         fetchTemplates();
@@ -38,7 +38,7 @@ const FormManagementPage = () => {
     const handleSave = async () => {
         if (!selectedTemplate) return;
         try {
-            await api.put(`/basics/form-templates/${selectedTemplate.form_type}`, selectedTemplate);
+            await api.post(`/basics/form-templates/`, selectedTemplate);
             alert("저장되었습니다.");
             fetchTemplates();
         } catch (err) {
@@ -54,7 +54,7 @@ const FormManagementPage = () => {
                         <FileText className="w-6 h-6 text-blue-500" />
                         양식 관리
                     </h2>
-                    <p className="text-gray-400">명세서, 시트 등 시스템에서 생성되는 문서의 출력 양식을 설정합니다.</p>
+                    <p className="text-gray-400">명세서, 시트 등 시스템에서 생성되는 문서의 출력 양식을 시각적으로 편집합니다.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={fetchTemplates}>
@@ -88,9 +88,6 @@ const FormManagementPage = () => {
                                 <div className="text-[10px] mt-1 opacity-60 font-mono">{t.form_type}</div>
                             </button>
                         ))}
-                        {templates.length === 0 && !loading && (
-                            <p className="text-xs text-center text-gray-600 py-10">등록된 양식이 없습니다.</p>
-                        )}
                     </CardContent>
                 </Card>
 
@@ -99,63 +96,62 @@ const FormManagementPage = () => {
                     <CardHeader className="border-b border-gray-800 flex flex-row items-center justify-between">
                         <div>
                             <CardTitle className="text-white">{selectedTemplate?.name || '양식을 선택하세요'}</CardTitle>
-                            <CardDescription>레이아웃 JSON 데이터를 직접 편집하거나 설정을 변경합니다.</CardDescription>
+                            <CardDescription>드래그 앤 드롭으로 블록을 배치하거나 상세 설정을 변경합니다.</CardDescription>
                         </div>
-                        <Badge variant="outline" className="text-blue-500 border-blue-500/30 bg-blue-500/5">
-                            Auto Save Disabled
-                        </Badge>
+                        <div className="flex bg-gray-800 p-1 rounded-lg">
+                            <button
+                                onClick={() => setEditorMode('visual')}
+                                className={cn(
+                                    "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                                    editorMode === 'visual' ? "bg-blue-600 text-white shadow-sm" : "text-gray-400 hover:text-white"
+                                )}
+                            >
+                                시각적 편집
+                            </button>
+                            <button
+                                onClick={() => setEditorMode('json')}
+                                className={cn(
+                                    "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                                    editorMode === 'json' ? "bg-blue-600 text-white shadow-sm" : "text-gray-400 hover:text-white"
+                                )}
+                            >
+                                JSON 직접 편집
+                            </button>
+                        </div>
                     </CardHeader>
                     <CardContent className="p-6">
                         {selectedTemplate ? (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-400">양식 명칭</label>
-                                        <input
-                                            value={selectedTemplate.name}
-                                            onChange={(e) => setSelectedTemplate({ ...selectedTemplate, name: e.target.value })}
-                                            className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-400">활성화 상태</label>
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedTemplate.is_active}
-                                                onChange={(e) => setSelectedTemplate({ ...selectedTemplate, is_active: e.target.checked })}
-                                                className="w-4 h-4 rounded text-blue-600 bg-gray-800 border-gray-700"
+                                {editorMode === 'visual' ? (
+                                    <VisualFormEditor
+                                        template={selectedTemplate}
+                                        onChange={(newVal) => setSelectedTemplate(newVal)}
+                                    />
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                                                    <Layout className="w-4 h-4" />
+                                                    레이아웃 데이터 (JSON)
+                                                </label>
+                                            </div>
+                                            <textarea
+                                                rows={20}
+                                                value={JSON.stringify(selectedTemplate.layout_data, null, 4)}
+                                                onChange={(e) => {
+                                                    try {
+                                                        const parsed = JSON.parse(e.target.value);
+                                                        setSelectedTemplate({ ...selectedTemplate, layout_data: parsed });
+                                                    } catch (err) {
+                                                        // ignore parse errors while typing
+                                                    }
+                                                }}
+                                                className="w-full bg-gray-950 border border-gray-800 text-blue-400 font-mono text-xs rounded-lg p-4 focus:ring-1 focus:ring-blue-500 outline-none"
                                             />
-                                            <span className="text-sm text-gray-300">문서 출력 시 이 양식 사용</span>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                                            <Layout className="w-4 h-4" />
-                                            레이아웃 데이터 (JSON)
-                                        </label>
-                                        <Button variant="ghost" size="sm" className="text-blue-400 h-8">
-                                            <Eye className="w-3 h-3 mr-1" />
-                                            미리보기
-                                        </Button>
-                                    </div>
-                                    <textarea
-                                        rows={15}
-                                        value={JSON.stringify(selectedTemplate.layout_data, null, 4)}
-                                        onChange={(e) => {
-                                            try {
-                                                const parsed = JSON.parse(e.target.value);
-                                                setSelectedTemplate({ ...selectedTemplate, layout_data: parsed });
-                                            } catch (err) {
-                                                // ignore parse errors while typing
-                                            }
-                                        }}
-                                        className="w-full bg-gray-950 border border-gray-800 text-blue-400 font-mono text-xs rounded-lg p-4 focus:ring-1 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
+                                )}
 
                                 <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                                     <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2 mb-2">
@@ -163,10 +159,8 @@ const FormManagementPage = () => {
                                         도움말
                                     </h4>
                                     <p className="text-xs text-gray-500 leading-relaxed">
-                                        - JSON 데이터를 직접 수정하여 문서의 여백, 폰트 크기, 표시 항목 등을 변경할 수 있습니다.<br />
-                                        - `header` 섹션은 회사 로고와 기본 정보를 제어합니다.<br />
-                                        - `table` 섹션은 제품 목록의 컬럼 너비와 순서를 제어합니다.<br />
-                                        - 잘못된 JSON 형식은 저장이 되지 않을 수 있으니 주의하십시오.
+                                        - 시각적 편집 모드에서 왼쪽의 블록을 클릭하여 추가하고, 드래그하여 순서를 바꿀 수 있습니다.<br />
+                                        - 상단의 **[설정 저장]** 버튼을 눌러야 실제 시스템에 반영됩니다.
                                     </p>
                                 </div>
                             </div>

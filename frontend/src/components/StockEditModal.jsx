@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 const StockEditModal = ({ isOpen, onClose, onSuccess, initialData }) => {
     const [formData, setFormData] = useState({
         current_quantity: 0,
+        in_production_quantity: 0,
         location: ''
     });
     const [loading, setLoading] = useState(false);
@@ -14,6 +15,7 @@ const StockEditModal = ({ isOpen, onClose, onSuccess, initialData }) => {
         if (isOpen && initialData) {
             setFormData({
                 current_quantity: initialData.current_quantity,
+                in_production_quantity: initialData.in_production_quantity || 0,
                 location: initialData.location || ''
             });
         }
@@ -24,9 +26,10 @@ const StockEditModal = ({ isOpen, onClose, onSuccess, initialData }) => {
         try {
             await api.put(`/inventory/stocks/${initialData.product_id}`, {
                 current_quantity: formData.current_quantity,
+                in_production_quantity: formData.in_production_quantity,
                 location: formData.location
             });
-            alert("재고 수량이 수정되었습니다.");
+            alert("재고 정보가 수정되었습니다.");
             onSuccess();
         } catch (error) {
             console.error("Failed to update stock", error);
@@ -42,7 +45,7 @@ const StockEditModal = ({ isOpen, onClose, onSuccess, initialData }) => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-gray-800 rounded-lg w-full max-w-md flex flex-col">
                 <div className="p-6 border-b border-gray-700 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white">실재고 수량 수정</h2>
+                    <h2 className="text-xl font-bold text-white">재고 정보 수정</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
                     </button>
@@ -57,14 +60,25 @@ const StockEditModal = ({ isOpen, onClose, onSuccess, initialData }) => {
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-400">현재고 수량</label>
-                        <input
-                            type="number"
-                            className="w-full bg-gray-700 border-gray-600 rounded text-white p-2.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                            value={formData.current_quantity}
-                            onChange={(e) => setFormData({ ...formData, current_quantity: parseInt(e.target.value) || 0 })}
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-400">현재고 수량</label>
+                            <input
+                                type="number"
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white p-2.5 focus:ring-1 focus:ring-blue-500 outline-none"
+                                value={formData.current_quantity}
+                                onChange={(e) => setFormData({ ...formData, current_quantity: parseInt(e.target.value) || 0 })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-400">생산 중 수량</label>
+                            <input
+                                type="number"
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white p-2.5 focus:ring-1 focus:ring-blue-500 outline-none"
+                                value={formData.in_production_quantity}
+                                onChange={(e) => setFormData({ ...formData, in_production_quantity: parseInt(e.target.value) || 0 })}
+                            />
+                        </div>
                     </div>
 
                     <div className="space-y-2">
