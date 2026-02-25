@@ -204,8 +204,8 @@ const OutsourcingPage = () => {
                                                 <Checkbox checked={selectedPendingItems.includes(item.id)} />
                                             </TableCell>
                                             <TableCell>
-                                                <Box sx={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); handleOpenSource(item); }}>
-                                                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main', textDecoration: 'underline' }}>
+                                                <Box>
+                                                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                                                         {item.plan?.order ? (
                                                             <Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem', color: 'primary.main' }} />
                                                         ) : item.plan?.stock_production ? (
@@ -274,12 +274,8 @@ const OutsourcingPage = () => {
                                             >
                                                 <TableCell>{order.order_no}</TableCell>
                                                 <TableCell>
-                                                    <Box onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        const firstItem = order.items?.[0]?.production_plan_item;
-                                                        if (firstItem) handleOpenSource({ plan: firstItem.plan });
-                                                    }} sx={{ cursor: 'pointer' }}>
-                                                        <Typography variant="body2" sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 'bold' }}>
+                                                    <Box>
+                                                        <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
                                                             {order.related_sales_order_info?.includes('PO') || order.related_sales_order_info?.includes('OS') ? (
                                                                 <span style={{ color: '#2e7d32' }}>[재고] </span>
                                                             ) : order.related_sales_order_info ? (

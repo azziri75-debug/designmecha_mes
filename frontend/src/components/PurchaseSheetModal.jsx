@@ -90,11 +90,38 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
             }));
 
             const canvas = await html2canvas(sheetRef.current, {
-                scale: 2,
+                scale: 3,
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
-                allowTaint: true
+                allowTaint: true,
+                onclone: (clonedDoc) => {
+                    const style = clonedDoc.createElement('style');
+                    style.innerHTML = `
+                        * {
+                            color-scheme: light !important;
+                            -webkit-print-color-adjust: exact !important;
+                        }
+                        body, div, p, span, table, td, th {
+                            font-family: "Malgun Gothic", sans-serif !important;
+                        }
+                        .bg-white { background-color: #ffffff !important; }
+                        .text-black { color: #000000 !important; }
+                        :root {
+                            --color-white: #ffffff !important;
+                            --color-black: #000000 !important;
+                        }
+                    `;
+                    clonedDoc.head.appendChild(style);
+
+                    const allElems = clonedDoc.getElementsByTagName("*");
+                    for (let i = 0; i < allElems.length; i++) {
+                        const node = allElems[i];
+                        if (node.style.color?.includes('oklch')) node.style.color = '#000000';
+                        if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
+                        if (node.style.borderColor?.includes('oklch')) node.style.borderColor = '#000000';
+                    }
+                }
             });
 
             const imgData = canvas.toDataURL('image/png');
@@ -164,9 +191,19 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         <button onClick={() => setActiveTab('purchase_order')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-colors", activeTab === 'purchase_order' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}>구매발주서</button>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => generatePDF('download')} disabled={saving} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors">다운로드</button>
-                        <button onClick={() => generatePDF('save')} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg">{saving ? '처리 중...' : 'PDF 저장 및 첨부'}</button>
-                        <button onClick={onClose} className="text-gray-400 hover:text-white p-2 flex items-center justify-center"><X className="w-6 h-6" /></button>
+                        <button
+                            onClick={() => generatePDF('save')}
+                            disabled={saving}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg"
+                        >
+                            {saving ? '처리 중...' : 'PDF 저장 및 첨부'}
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-white p-2 flex items-center justify-center"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
                     </div>
                 </div>
 
