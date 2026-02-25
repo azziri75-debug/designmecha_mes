@@ -3,7 +3,6 @@ import { X, Save, Download, Edit2, FileSpreadsheet } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
-import { getImageUrl } from '../lib/utils';
 
 const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     const [company, setCompany] = useState(null);
@@ -154,15 +153,22 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         switch (block.type) {
             case 'header':
                 return (
-                    <div className="mb-2 relative flex justify-between items-center h-12" key={block.id}>
-                        <span className="text-sm font-bold border border-black px-4 py-1">{config.title || "생산관리"}</span>
-                        <div className="flex items-center gap-4">
-                            {company?.logo_image && (
-                                <img crossOrigin="anonymous" src={getImageUrl(typeof company.logo_image === 'string' ? JSON.parse(company.logo_image).url : company.logo_image.url)} alt="Logo" className="h-8 object-contain" />
-                            )}
-                            {company?.stamp_image && (
-                                <img crossOrigin="anonymous" src={getImageUrl(typeof company.stamp_image === 'string' ? JSON.parse(company.stamp_image).url : company.stamp_image.url)} alt="Stamp" className="h-10 w-10 object-contain" />
-                            )}
+                    <div className="mb-4 relative flex justify-between items-center h-12 border-b-2 border-black" key={block.id}>
+                        <span className="text-xl font-bold px-4 py-1 underline decoration-double underline-offset-4 tracking-[0.5em]">{config.title || "생산관리시트"}</span>
+                    </div>
+                );
+            case 'approval':
+                const steps = config.steps || ["담당", "대표이사"];
+                return (
+                    <div className="flex justify-end mb-4" key={block.id}>
+                        <div className="flex border border-black text-[10px]">
+                            <div className="w-6 border-r border-black bg-gray-50 flex items-center justify-center font-bold writing-vertical py-2">결제</div>
+                            {steps.map((step, i) => (
+                                <div key={i} className={`w-14 flex flex-col ${i !== steps.length - 1 ? 'border-r border-black' : ''}`}>
+                                    <div className="border-b border-black bg-gray-50 py-0.5 text-center font-bold h-5 flex items-center justify-center">{step}</div>
+                                    <div className="h-8"></div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 );
@@ -191,7 +197,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                 );
             case 'productList':
                 return (
-                    <table className="w-full border-collapse border border-black text-sm mb-0" key={block.id}>
+                    <table className="w-full border-collapse border border-black text-sm mb-4" key={block.id}>
                         <thead>
                             <tr className="bg-gray-100 text-center">
                                 <th className="border border-black font-bold py-1.5">품명</th>
@@ -258,6 +264,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
 
     const blocks = template?.layout_data?.blocks || [
         { id: 'h1', type: 'header' },
+        { id: 'a1', type: 'approval' },
         { id: 'i1', type: 'infoTable' },
         { id: 'p1', type: 'productList' },
         { id: 'm1', type: 'memo' },

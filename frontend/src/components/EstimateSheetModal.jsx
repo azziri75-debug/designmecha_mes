@@ -16,9 +16,9 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         header_note: "아래와 같이 견적합니다.",
         footer_note: "1. 부가세 별도\n2. 납기 : 발주 후 협의\n3. 결제조건 : 현금 결제",
         show_stamp: true,
-        recipient: "", // 수신
-        reference: "", // 참조
-        valid_until: "", // 유효기간 (override)
+        recipient: "",
+        reference: "",
+        valid_until: "",
     });
 
     const sheetRef = useRef(null);
@@ -35,9 +35,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         try {
             const res = await api.get('/basics/company');
             setCompany(res.data);
-        } catch (error) {
-            console.error("Failed to fetch company info", error);
-        }
+        } catch (error) { console.error("Failed to fetch company info", error); }
     };
 
     const fetchTemplate = async () => {
@@ -45,9 +43,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             const res = await api.get('/basics/form-templates/');
             const estTemplate = res.data.find(t => t.form_type === 'ESTIMATE');
             if (estTemplate) setTemplate(estTemplate);
-        } catch (error) {
-            console.error("Failed to fetch template", error);
-        }
+        } catch (error) { console.error("Failed to fetch template", error); }
     };
 
     const initializeData = () => {
@@ -61,16 +57,13 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 reference: "",
                 valid_until: estimate.valid_until || "",
             };
-
             if (estimate.sheet_metadata) {
                 try {
                     const savedMeta = typeof estimate.sheet_metadata === 'string'
                         ? JSON.parse(estimate.sheet_metadata)
                         : estimate.sheet_metadata;
                     initialMetadata = { ...initialMetadata, ...savedMeta };
-                } catch (e) {
-                    console.error("Failed to parse metadata", e);
-                }
+                } catch (e) { console.error("Failed to parse metadata", e); }
             }
             setMetadata(initialMetadata);
         }
@@ -106,7 +99,6 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 const uploadRes = await api.post('/upload', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
-
                 let currentAttachments = [];
                 try {
                     if (estimate.attachment_file) {
@@ -116,7 +108,6 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         if (!Array.isArray(currentAttachments)) currentAttachments = [currentAttachments];
                     }
                 } catch (e) { currentAttachments = []; }
-
                 const newAttachments = [...currentAttachments, { name: uploadRes.data.filename, url: uploadRes.data.url }];
                 await api.put(`/sales/estimates/${estimate.id}`, {
                     attachment_file: newAttachments,
@@ -165,6 +156,21 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </h1>
                     </div>
                 );
+            case 'approval':
+                const steps = config.steps || ["담당", "대표이사"];
+                return (
+                    <div className="flex justify-end mb-6" key={block.id}>
+                        <div className="flex border border-black text-[10px]">
+                            <div className="w-6 border-r border-black bg-gray-50 flex items-center justify-center font-bold writing-vertical py-2">결제</div>
+                            {steps.map((step, i) => (
+                                <div key={i} className={`w-16 flex flex-col ${i !== steps.length - 1 ? 'border-r border-black' : ''}`}>
+                                    <div className="border-b border-black bg-gray-50 py-0.5 text-center font-bold">{step}</div>
+                                    <div className="h-10"></div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
             case 'infoTable':
                 return (
                     <div className="flex justify-between items-start mb-6 gap-4" key={block.id}>
@@ -196,36 +202,17 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 <tbody>
                                     <tr>
                                         <td rowSpan="5" className="text-center align-middle font-bold text-lg w-8 border-r border-[#000] writing-vertical" style={{ backgroundColor: '#f3f4f6' }}>공<br />급<br />자</td>
-                                        <td className="pl-2 border-b border-[#d1d5db] py-1">
-                                            <span className="inline-block w-12 text-gray-400">등록번호</span> {company?.registration_number}
-                                        </td>
+                                        <td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">등록번호</span> {company?.registration_number}</td>
                                     </tr>
                                     <tr>
                                         <td className="pl-2 border-b border-[#d1d5db] py-1 flex justify-between items-center pr-2">
                                             <span><span className="inline-block w-12 text-gray-400">상호</span> {company?.name}</span>
-                                            <span className="relative">
-                                                <span className="inline-block w-12 text-gray-400">성명</span> {company?.owner_name || company?.representative}
-                                                {(metadata.show_stamp && (company?.stamp_image || company?.logo_image)) && (
-                                                    <img
-                                                        crossOrigin="anonymous"
-                                                        src={getImageUrl((typeof company.stamp_image === 'string' ? JSON.parse(company.stamp_image).url : company.stamp_image?.url) ||
-                                                            (typeof company.logo_image === 'string' ? JSON.parse(company.logo_image).url : company.logo_image?.url))}
-                                                        alt="Stamp"
-                                                        className="absolute -top-3 -right-2 w-12 h-12 object-contain opacity-80 mix-blend-multiply"
-                                                    />
-                                                )}
-                                            </span>
+                                            <span><span className="inline-block w-12 text-gray-400">성명</span> {company?.owner_name || company?.representative}</span>
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">주소</span> {company?.address}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">업태</span> {company?.business_type || '제조'} / {company?.business_item || '정밀가공'}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="pl-2 py-1"><span className="inline-block w-12 text-gray-400">연락처</span> {company?.phone} / {company?.fax}</td>
-                                    </tr>
+                                    <tr><td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">주소</span> {company?.address}</td></tr>
+                                    <tr><td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">업태</span> {company?.business_type || '제조'} / {company?.business_item || '정밀가공'}</td></tr>
+                                    <tr><td className="pl-2 py-1"><span className="inline-block w-12 text-gray-400">연락처</span> {company?.phone} / {company?.fax}</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -236,9 +223,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                     <div key={block.id}>
                         <div className="border-t-2 border-b-2 border-[#000] py-2 mb-6 flex items-center">
                             <span className="font-bold text-lg w-24 text-center">합계금액</span>
-                            <span className="flex-1 text-right text-xl font-bold font-mono tracking-wider pr-4">
-                                ￦ {fmt(grandTotal)} <span className="text-sm font-normal ml-2">(VAT 포함)</span>
-                            </span>
+                            <span className="flex-1 text-right text-xl font-bold font-mono tracking-wider pr-4">￦ {fmt(grandTotal)} <span className="text-sm font-normal ml-2">(VAT 포함)</span></span>
                         </div>
                         <table className="w-full border-collapse border border-[#000] mb-6 text-sm">
                             <thead>
@@ -266,11 +251,6 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                         <td className="border border-[#000] py-1 text-xs">{item.note}</td>
                                     </tr>
                                 ))}
-                                {Array.from({ length: Math.max(0, 10 - estimate.items.length) }).map((_, i) => (
-                                    <tr key={`empty-${i}`} className="text-center text-transparent">
-                                        <td colSpan="8" className="border border-[#000] py-1">.</td>
-                                    </tr>
-                                ))}
                             </tbody>
                             <tfoot>
                                 <tr className="font-bold text-center bg-gray-50">
@@ -289,11 +269,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 return (
                     <div className="mt-8" key={block.id}>
                         <h4 className="font-bold border-b border-[#000] w-24 mb-2">특이사항</h4>
-                        <textarea
-                            value={metadata.footer_note}
-                            onChange={(e) => handleMetadataChange('footer_note', e.target.value)}
-                            className="w-full resize-none outline-none bg-transparent text-sm leading-relaxed min-h-[100px]"
-                        />
+                        <textarea value={metadata.footer_note} onChange={(e) => handleMetadataChange('footer_note', e.target.value)} className="w-full resize-none outline-none bg-transparent text-sm leading-relaxed min-h-[100px]" />
                     </div>
                 );
             default: return null;
@@ -312,35 +288,18 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
                 <div className="flex items-center justify-between p-4 border-b border-gray-700">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Edit2 className="w-5 h-5 text-blue-500" />
-                        견적서 미리보기 및 편집 (시각적 양식 적용)
+                        <Edit2 className="w-5 h-5 text-blue-500" /> 견적서 미리보기 및 편집 (시각적 양식 적용)
                     </h3>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => generatePDF('download')} disabled={saving} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition-colors">
-                            <Download className="w-4 h-4" /> 다운로드
-                        </button>
-                        <button onClick={() => generatePDF('save')} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20">
-                            <Save className="w-4 h-4" /> {saving ? "저장 중..." : "PDF 저장 및 첨부"}
-                        </button>
-                        <button onClick={handleExcelExport} disabled={saving} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-green-900/20 ml-2">
-                            <FileSpreadsheet className="w-4 h-4" /> {saving ? "저장 중..." : "엑셀 저장 및 첨부"}
-                        </button>
-                        <button onClick={onClose} className="text-gray-400 hover:text-white p-2">
-                            <X className="w-6 h-6" />
-                        </button>
+                        <button onClick={() => generatePDF('download')} disabled={saving} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition-colors"><Download className="w-4 h-4" /> 다운로드</button>
+                        <button onClick={() => generatePDF('save')} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"><Save className="w-4 h-4" /> {saving ? "저장 중..." : "PDF 저장 및 첨부"}</button>
+                        <button onClick={handleExcelExport} disabled={saving} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-green-900/20 ml-2"><FileSpreadsheet className="w-4 h-4" /> {saving ? "저장 중..." : "엑셀 저장 및 첨부"}</button>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white p-2"><X className="w-6 h-6" /></button>
                     </div>
                 </div>
-
                 <div className="p-4 bg-gray-800 border-b border-gray-700 flex gap-4 overflow-x-auto text-sm">
-                    <label className="flex items-center gap-2 text-gray-300">
-                        <input type="checkbox" checked={metadata.show_stamp} onChange={(e) => handleMetadataChange('show_stamp', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-[#2563eb]" /> 직인 표시
-                    </label>
-                    <div className="flex items-center gap-2">
-                        <span className="text-gray-400">제목:</span>
-                        <input value={metadata.title} onChange={(e) => handleMetadataChange('title', e.target.value)} className="bg-gray-700 border-gray-600 rounded px-2 py-1 text-white w-32" />
-                    </div>
+                    <div className="flex items-center gap-2 text-gray-400">제목: <input value={metadata.title} onChange={(e) => handleMetadataChange('title', e.target.value)} className="bg-gray-700 border-gray-600 rounded px-2 py-1 text-white w-32" /></div>
                 </div>
-
                 <div className="flex-1 overflow-auto bg-gray-950 p-8 flex justify-center">
                     <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
                         {blocks.map(block => renderBlock(block))}
