@@ -130,31 +130,34 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             }));
 
             const canvas = await html2canvas(sheetRef.current, {
-                scale: 3, // High scale for better WYSIWYG results
+                scale: 3,
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
                 allowTaint: true,
+                windowWidth: 794,
+                windowHeight: 1123,
                 onclone: (clonedDoc) => {
                     const style = clonedDoc.createElement('style');
                     style.innerHTML = `
-                        * {
-                            color-scheme: light !important;
-                            -webkit-print-color-adjust: exact !important;
-                        }
-                        body, div, p, span, table, td, th {
-                            font-family: "Malgun Gothic", sans-serif !important;
-                        }
-                        .bg-white { background-color: #ffffff !important; }
-                        .text-black { color: #000000 !important; }
-                        :root {
-                            --color-white: #ffffff !important;
-                            --color-black: #000000 !important;
-                        }
-                    `;
+                            * {
+                                color-scheme: light !important;
+                                -webkit-print-color-adjust: exact !important;
+                                --oklch-none: 0 0 0;
+                            }
+                            body, div, p, span, table, td, th {
+                                font-family: "Malgun Gothic", sans-serif !important;
+                            }
+                            .bg-white { background-color: #ffffff !important; }
+                            .text-black { color: #000000 !important; }
+                            :root {
+                                --color-white: #ffffff !important;
+                                --color-black: #000000 !important;
+                            }
+                        `;
                     clonedDoc.head.appendChild(style);
 
-                    // Robust CSS Cleansing for all styles
+                    // Robust CSS Cleansing for all styles including CSS Variables
                     try {
                         const styleSheets = clonedDoc.styleSheets;
                         for (let i = 0; i < styleSheets.length; i++) {
@@ -169,14 +172,16 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 }
                             } catch (e) { /* ignore cross-origin */ }
                         }
-                    } catch (e) { console.error(e); }
+                    } catch (e) { console.error("CSS Cleansing error:", e); }
 
                     const allElems = clonedDoc.getElementsByTagName("*");
                     for (let i = 0; i < allElems.length; i++) {
                         const node = allElems[i];
-                        if (node.style.color?.includes('oklch')) node.style.color = '#000000';
-                        if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
-                        if (node.style.borderColor?.includes('oklch')) node.style.borderColor = '#000000';
+                        if (node.style) {
+                            if (node.style.color?.includes('oklch')) node.style.color = '#000000';
+                            if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
+                            if (node.style.borderColor?.includes('oklch')) node.style.borderColor = '#000000';
+                        }
                     }
                 }
             });

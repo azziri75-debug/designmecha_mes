@@ -194,12 +194,15 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                     logging: false,
                     backgroundColor: '#ffffff',
                     allowTaint: true,
+                    windowWidth: 794, // 210mm at 96dpi approx
+                    windowHeight: 1123, // 297mm at 96dpi approx
                     onclone: (clonedDoc) => {
                         const style = clonedDoc.createElement('style');
                         style.innerHTML = `
                             * {
                                 color-scheme: light !important;
                                 -webkit-print-color-adjust: exact !important;
+                                --oklch-none: 0 0 0; /* Fallback for some vars */
                             }
                             body, div, p, span, table, td, th {
                                 font-family: "Malgun Gothic", sans-serif !important;
@@ -218,7 +221,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                         `;
                         clonedDoc.head.appendChild(style);
 
-                        // Robust CSS Cleansing for all styles
+                        // Robust CSS Cleansing for all styles including CSS Variables
                         try {
                             const styleSheets = clonedDoc.styleSheets;
                             for (let i = 0; i < styleSheets.length; i++) {
@@ -228,19 +231,26 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                                     for (let j = 0; j < rules.length; j++) {
                                         const rule = rules[j];
                                         if (rule.style && rule.style.cssText.includes('oklch')) {
+                                            // Replace oklch values with fallback (black/white or specific hex)
                                             rule.style.cssText = rule.style.cssText.replace(/oklch\([^)]+\)/g, '#000000');
                                         }
                                     }
-                                } catch (e) { /* ignore cross-origin */ }
+                                } catch (e) { /* ignore cross-origin items */ }
                             }
-                        } catch (e) { console.error(e); }
+                        } catch (e) { console.error("CSS Cleansing error:", e); }
 
+                        // Direct element style cleansing
                         const allElems = clonedDoc.getElementsByTagName("*");
                         for (let j = 0; j < allElems.length; j++) {
                             const node = allElems[j];
-                            if (node.style.color?.includes('oklch')) node.style.color = '#000000';
-                            if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
-                            if (node.style.borderColor?.includes('oklch')) node.style.borderColor = '#000000';
+                            if (node.style) {
+                                if (node.style.color?.includes('oklch')) node.style.color = '#000000';
+                                if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
+                                if (node.style.borderColor?.includes('oklch')) node.style.borderColor = '#000000';
+
+                                // Explicitly check computed style for variables if needed, 
+                                // but rule-based cleansing is usually enough.
+                            }
                         }
                     }
                 });

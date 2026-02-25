@@ -954,7 +954,14 @@ async def update_production_plan_item(
     """
     Update a single production plan item (status, attachment, etc).
     """
-    result = await db.execute(select(ProductionPlanItem).where(ProductionPlanItem.id == item_id))
+    result = await db.execute(
+        select(ProductionPlanItem)
+        .options(
+            selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+        )
+        .where(ProductionPlanItem.id == item_id)
+    )
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Plan Item not found")
