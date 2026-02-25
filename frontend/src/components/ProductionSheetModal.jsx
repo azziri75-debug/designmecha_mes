@@ -193,7 +193,20 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                     useCORS: true,
                     logging: false,
                     backgroundColor: '#ffffff',
-                    allowTaint: true
+                    allowTaint: true,
+                    onclone: (clonedDoc) => {
+                        // Fix for html2canvas oklch crash
+                        const elements = clonedDoc.getElementsByTagName("*");
+                        for (let i = 0; i < elements.length; i++) {
+                            const el = elements[i];
+                            const style = window.getComputedStyle(el);
+                            // If elements have oklch in computed style, html2canvas might crash
+                            // We can't easily change computed style, but we can override with inline style
+                            if (style.color.includes('oklch')) el.style.color = '#000000';
+                            if (style.backgroundColor.includes('oklch')) el.style.backgroundColor = '#ffffff';
+                            if (style.borderColor.includes('oklch')) el.style.borderColor = '#000000';
+                        }
+                    }
                 });
 
                 const imgData = canvas.toDataURL('image/png');

@@ -39,8 +39,14 @@ async def read_production_plans(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            selectinload(ProductionPlan.order).options(
+                selectinload(SalesOrder.partner),
+                selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
+            ),
+            selectinload(ProductionPlan.stock_production).options(
+                selectinload(StockProduction.product),
+                selectinload(StockProduction.partner)
+            )
         )
         .offset(skip).limit(limit)
     )

@@ -30,7 +30,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                     partner_id: orderToEdit.partner_id,
                     order_date: orderToEdit.order_date,
                     delivery_date: orderToEdit.delivery_date || '',
-                    items: orderToEdit.items.map(item => ({
+                    items: (orderToEdit.items || []).map(item => ({
                         product_id: item.product_id,
                         product_name: item.product?.name || item.product_name,
                         product_spec: item.product?.specification || item.product_spec,
