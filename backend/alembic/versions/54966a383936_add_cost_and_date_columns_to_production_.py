@@ -20,10 +20,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Add columns to production_plan_items
-    op.add_column('production_plan_items', sa.Column('start_date', sa.Date(), nullable=True))
-    op.add_column('production_plan_items', sa.Column('end_date', sa.Date(), nullable=True))
-    op.add_column('production_plan_items', sa.Column('cost', sa.Float(), nullable=True, server_default='0.0'))
+    # Add columns to production_plan_items idempotently using raw SQL for Postgres
+    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS start_date DATE')
+    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS end_date DATE')
+    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS cost FLOAT DEFAULT 0.0')
 
 
 def downgrade() -> None:
