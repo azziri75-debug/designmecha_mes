@@ -83,7 +83,6 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            // Ensure images (stamps, logos) are loaded
             const images = sheetRef.current.getElementsByTagName('img');
             await Promise.all(Array.from(images).map(img => {
                 if (img.complete) return Promise.resolve();
@@ -143,8 +142,18 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         { key: 'total', label: '금액', subLabel: 'Total Amount', align: 'right' },
     ];
 
-    // Get Actual Stamp URL
-    const stampUrl = company?.stamp_image?.url || company?.stamp_file?.[0]?.url || "/api/uploads/sample-stamp.png";
+    // Normalized Stamp URL Binding
+    let stampUrl = null;
+    if (company?.stamp_image?.url) {
+        stampUrl = company.stamp_image.url;
+    } else if (Array.isArray(company?.stamp_image)) {
+        stampUrl = company.stamp_image[0]?.url;
+    } else if (company?.stamp_file?.[0]?.url) {
+        stampUrl = company.stamp_file[0].url;
+    }
+    if (stampUrl && !stampUrl.startsWith('http') && !stampUrl.startsWith('/')) {
+        stampUrl = '/' + stampUrl;
+    }
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
@@ -162,25 +171,25 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[12mm] shadow-xl relative" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl relative" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
 
-                        {/* Header Box - Adjusted width and alignment */}
+                        {/* Header Box - Tighten width */}
                         <div className="flex justify-between items-center mb-8 h-16">
-                            <div className="w-[180px] text-[10px] space-y-0.5 self-end pb-2">
-                                <p className="flex items-center gap-1 leading-none">구매발주번호 : <EditableText value={metadata.order_no} onChange={(v) => handleMetaChange('order_no', v)} className="flex-1 border-b border-gray-100 min-h-0" /></p>
+                            <div className="w-[160px] text-[10px] space-y-0.5 self-end pb-2">
+                                <p className="flex items-center gap-1 leading-none">NO : <EditableText value={metadata.order_no} onChange={(v) => handleMetaChange('order_no', v)} className="flex-1 border-b border-gray-100 min-h-0" /></p>
                             </div>
 
                             <div className="flex-1 flex justify-center px-4">
-                                <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold tracking-[0.5em] indent-[0.5em] max-w-[300px] w-full text-center leading-none">
+                                <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold tracking-[0.5em] indent-[0.5em] max-w-[280px] w-full text-center leading-none">
                                     <EditableText value={metadata.title} onChange={(v) => handleMetaChange('title', v)} isHeader className="justify-center" />
                                 </div>
                             </div>
 
-                            <div className="flex border border-black text-[9px] h-full">
+                            <div className="flex border border-black text-[9px] h-full shadow-sm">
                                 <div className="w-8 border-r border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
-                                    <div className="leading-tight">신청</div><div className="leading-tight">부서</div><div className="leading-tight">결제</div>
+                                    <div className="leading-tight">결</div><div className="leading-tight">제</div>
                                 </div>
-                                {["신청", "담당", "대표"].map((step, i) => (
+                                {["담당", "검토", "대표"].map((step, i) => (
                                     <div key={i} className={cn("w-12 flex flex-col", i !== 2 && "border-r border-black")}>
                                         <div className="border-b border-black bg-gray-50 h-5 flex items-center justify-center font-bold">{step}</div>
                                         <div className="flex-1"></div>
@@ -190,96 +199,92 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         </div>
 
                         {/* Partner & Company Info */}
-                        <div className="flex justify-between mb-6 text-xs items-start">
-                            <div className="space-y-2 flex-1">
-                                <div className="flex items-end gap-2 text-xl font-bold border-b-2 border-black pb-1 mb-2 max-w-[280px]">
+                        <div className="flex justify-between mb-6 text-xs items-start px-2">
+                            <div className="space-y-4 flex-1">
+                                <div className="flex items-end gap-2 text-xl font-bold border-b-2 border-black pb-1 mb-2 max-w-[260px]">
                                     <EditableText value={order.partner?.name || '공급처'} className="flex-1" />
                                     <span className="text-sm pb-1 font-normal">귀하</span>
                                 </div>
-                                <div className="space-y-0.5 text-[10px] text-gray-600">
-                                    <p className="flex items-center gap-1">TEL. : <span className="text-black">{order.partner?.phone || '-'}</span></p>
-                                    <p className="flex items-center gap-1">FAX. : <span className="text-black">{order.partner?.fax || '-'}</span></p>
-                                    <p className="flex items-center gap-1 pt-1 opacity-70">Date : <span className="text-black font-bold">{order.order_date || '2026. 02. 25.'}</span></p>
+                                <div className="space-y-1 text-[10px] text-gray-500">
+                                    <p>TEL : <span className="text-black">{order.partner?.phone || '-'}</span></p>
+                                    <p>FAX : <span className="text-black">{order.partner?.fax || '-'}</span></p>
+                                    <p className="pt-2">발주일 : <span className="text-black font-bold">{order.order_date || '-'}</span></p>
                                 </div>
                             </div>
-                            <div className="text-right w-[240px]">
-                                <h2 className="text-xl font-bold leading-tight">{company?.name || '디자인메카'}</h2>
-                                <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-none mt-0.5">Designmecha CO., LTD</p>
-                                <div className="text-[9px] mt-3 space-y-0.5 text-gray-800">
-                                    <p>주소 : {company?.address || '충남 아산시 탕정면 갈산리 100 선문대'}</p>
-                                    <p>TEL : {company?.phone || '041-544-6220'}, FAX : {company?.fax || '041-530-2338'}</p>
+                            <div className="text-right w-[220px]">
+                                <h2 className="text-xl font-bold font-serif">{company?.name || '디자인메카'}</h2>
+                                <p className="text-[9px] text-gray-400 tracking-widest uppercase">Designmecha Enterprise</p>
+                                <div className="text-[9px] mt-4 space-y-0.5 text-gray-800">
+                                    <p>{company?.address || '충남 아산시 음봉면 월암로 336-39'}</p>
+                                    <p>T. {company?.phone || '041-544-6220'} / F. {company?.fax || '-'}</p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Resizable Table */}
-                        <ResizableTable
-                            columns={columns}
-                            data={metadata.items}
-                            colWidths={metadata.colWidths}
-                            onUpdateWidths={(w) => handleMetaChange('colWidths', w)}
-                            onUpdateData={updateItem}
-                            className="text-[10px]"
-                        />
+                        {/* Items Table */}
+                        <div className="px-2">
+                            <ResizableTable
+                                columns={columns}
+                                data={metadata.items}
+                                colWidths={metadata.colWidths}
+                                onUpdateWidths={(w) => handleMetaChange('colWidths', w)}
+                                onUpdateData={updateItem}
+                                className="text-[10px]"
+                            />
+                        </div>
 
                         {/* Summary Row */}
-                        <div className="flex border-2 border-black border-t-0 font-bold text-[10px] bg-gray-50 h-10 items-center">
-                            <div className="border-r border-black flex-1 text-center uppercase">합계 (VAT 별도)</div>
+                        <div className="mx-2 flex border-2 border-black border-t-0 font-bold text-[10px] bg-gray-50 h-10 items-center">
+                            <div className="border-r border-black flex-1 text-center uppercase tracking-widest">합계 (VAT 별도)</div>
                             <div className="w-[40px] border-r border-black text-center">{fmt(metadata.items.reduce((s, i) => s + (parseFloat(i.qty) || 0), 0))}</div>
                             <div className="w-[80px] border-r border-black"></div>
                             <div className="w-[100px] text-right px-2 text-xs">{fmt(totalAmount)} 원</div>
                         </div>
 
                         {/* Footer Notes */}
-                        <div className="mt-8 text-[10px]">
-                            <div className="border border-black p-4 mb-3 min-h-[100px]">
-                                <h4 className="font-bold border-b-2 border-black w-20 mb-3 pb-1">특기 사항</h4>
+                        <div className="mt-8 text-[10px] px-2">
+                            <div className="border border-black p-4 mb-4 min-h-[120px] bg-gray-50/10">
+                                <h4 className="font-bold border-b border-black w-20 mb-3 pb-1 italic">Note.</h4>
                                 <EditableText
                                     value={metadata.special_notes}
                                     onChange={(v) => handleMetaChange('special_notes', v)}
-                                    className="leading-relaxed items-start min-h-[50px] whitespace-pre-wrap"
-                                    placeholder="발주 시 주의사항을 입력하세요..."
+                                    className="leading-relaxed items-start min-h-[80px] whitespace-pre-wrap"
+                                    placeholder="상세 내용을 입력하세요..."
                                 />
                             </div>
 
                             <div className="flex border-2 border-black">
                                 <div className="w-20 border-r-2 border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
-                                    <div className="leading-tight">납품</div><div className="leading-tight">조건</div>
+                                    <div>발주</div><div>조건</div>
                                 </div>
                                 <div className="flex-1 grid grid-cols-2 text-[9px]">
                                     <div className="border-b border-r border-black p-2 flex items-center gap-2">
-                                        <span className="font-bold whitespace-nowrap">◆ 납품기일 :</span>
+                                        <span className="font-bold">◆ 납기기한 :</span>
                                         <EditableText value={metadata.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} className="flex-1 border-b border-gray-50 min-h-0" />
                                     </div>
-                                    <div className="border-b border-black p-2 row-span-4 flex flex-col items-center justify-center relative bg-gray-50/30">
-                                        <p className="text-[11px] font-bold mb-2 italic text-blue-900 opacity-70">위와 같이 발주합니다.</p>
-                                        <div className="flex items-center gap-1 font-bold text-lg relative group">
+                                    <div className="border-b border-black p-2 row-span-4 flex flex-col items-center justify-center relative bg-blue-50/20">
+                                        <p className="text-[11px] font-bold mb-2 opacity-60">위와 같이 발주함.</p>
+                                        <div className="flex items-center gap-1 font-bold text-lg relative">
                                             <span>{company?.name || '디자인메카'}</span>
-                                            <span className="text-red-500 opacity-60 relative ml-1">
+                                            <span className="text-red-500 relative ml-1 text-sm font-normal">
                                                 (인)
-                                                <StampOverlay url={stampUrl} className="w-16 h-16 -top-4 -left-4" />
+                                                {stampUrl && <StampOverlay url={stampUrl} className="w-16 h-16 -top-4 -left-4" />}
                                             </span>
                                         </div>
                                     </div>
                                     <div className="border-b border-r border-black p-2 flex items-center gap-2">
-                                        <span className="font-bold whitespace-nowrap">◆ 납품장소 :</span>
+                                        <span className="font-bold">◆ 납품장소 :</span>
                                         <EditableText value={metadata.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} className="flex-1 border-b border-gray-50 min-h-0" />
                                     </div>
                                     <div className="border-b border-r border-black p-2 flex items-center gap-2">
-                                        <span className="font-bold whitespace-nowrap">◆ 유효기간 :</span>
+                                        <span className="font-bold">◆ 유효기간 :</span>
                                         <EditableText value={metadata.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} className="flex-1 border-b border-gray-50 min-h-0" />
                                     </div>
                                     <div className="border-r border-black p-2 flex items-center gap-2">
-                                        <span className="font-bold whitespace-nowrap">◆ 결제조건 :</span>
+                                        <span className="font-bold">◆ 결제조건 :</span>
                                         <EditableText value={metadata.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} className="flex-1 border-b border-gray-50 min-h-0" />
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div className="absolute bottom-[10mm] left-0 right-0 text-center">
-                            <div className="text-[10px] text-gray-300 font-bold tracking-[1.5em] mb-1 uppercase opacity-50">
-                                디자인메카
                             </div>
                         </div>
 

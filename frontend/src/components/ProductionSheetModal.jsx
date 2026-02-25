@@ -9,9 +9,33 @@ import { cn } from '../lib/utils';
 /**
  * Production Page Component (A4 single page)
  */
-const PageFrame = React.forwardRef(({ metadata, group, company, isFirst, pageNum, totalPages }, ref) => {
+const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPages, colWidths, onUpdateWidths, onUpdateData, groupIdx }, ref) => {
+    const columns = [
+        { key: 'idx', label: 'NO', align: 'center' },
+        { key: 'name', label: '공정명', align: 'left' },
+        { key: 'course_label', label: '구분', align: 'center' },
+        { key: 'partner_worker', label: '외주.구매/작업자', align: 'center' },
+        { key: 'equipment', label: '배정장비', align: 'center' },
+        { key: 'detail', label: '작업내용', align: 'left' },
+        { key: 'start_date', label: '시작일', align: 'center' },
+        { key: 'end_date', label: '종료일', align: 'center' },
+        { key: 'status', label: '상태', align: 'center' },
+        { key: 'note', label: '비고', align: 'left' },
+    ];
+
+    const tableData = group.processes.map((proc, pIdx) => ({
+        ...proc,
+        idx: pIdx + 1,
+        course_label: proc.course === 'INTERNAL' ? '사내' : '사외'
+    }));
+
+    // Fill empty rows
+    while (tableData.length < 15) {
+        tableData.push({ idx: "", name: "", course_label: "", partner_worker: "", equipment: "", detail: "", start_date: "", end_date: "", status: "", note: "" });
+    }
+
     return (
-        <div ref={ref} className="bg-white text-black w-[210mm] h-[297mm] p-[10mm] shadow-xl origin-top relative mb-8 last:mb-0 overflow-hidden" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+        <div ref={ref} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top relative mb-8 last:mb-0 overflow-hidden" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header Area */}
             <div className="text-center py-4 border-b-2 border-black mb-6">
                 <h1 className="text-4xl font-bold tracking-[1em] indent-[1em]">
@@ -21,8 +45,8 @@ const PageFrame = React.forwardRef(({ metadata, group, company, isFirst, pageNum
 
             <div className="flex justify-between items-start border-b border-black pb-2 mb-4 text-[11px] font-bold">
                 <div className="space-y-1">
-                    <p>수주/생산번호 : <span>{metadata.order_no}</span></p>
-                    <p>발주 거래처 : <span>{metadata.partner_name}</span></p>
+                    <p>수주/생산번호 : <span className="text-blue-700">{metadata.order_no}</span></p>
+                    <p>발주 거래처 : <span className="text-blue-700">{metadata.partner_name}</span></p>
                     <p className="text-[9px] text-gray-300 uppercase tracking-widest font-normal">DESIGNMECHA PRODUCTION MANAGEMENT</p>
                 </div>
                 <div className="text-right space-y-1">
@@ -36,82 +60,25 @@ const PageFrame = React.forwardRef(({ metadata, group, company, isFirst, pageNum
             <div className="border-2 border-black mb-4">
                 <div className="bg-gray-100 p-2 border-b border-black flex justify-between font-bold text-[11px]">
                     <span className="flex-1">[품명] {group.product_name}</span>
-                    <span className="flex-1 text-center">[규격] {group.product_spec}</span>
+                    <span className="flex-1 text-center font-mono">[규격] {group.product_spec}</span>
                     <span className="w-24 text-right">[수량] {group.quantity} EA</span>
                 </div>
             </div>
 
-            {/* Table Area */}
-            <div className="border border-black">
-                <table className="w-full border-collapse table-fixed text-[9px]">
-                    <thead>
-                        <tr className="bg-gray-50 border-b border-black h-8 text-center font-bold">
-                            <th className="border-r border-black w-7">NO</th>
-                            <th className="border-r border-black w-24">공정명</th>
-                            <th className="border-r border-black w-12">구분</th>
-                            <th className="border-r border-black w-32">외주.구매/작업자</th>
-                            <th className="border-r border-black w-24">배정장비</th>
-                            <th className="border-r border-black">작업내용</th>
-                            <th className="border-r border-black w-20">시작일</th>
-                            <th className="border-r border-black w-20">종료일</th>
-                            <th className="border-r border-black w-16">상태</th>
-                            <th className="w-20">비고</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {group.processes.map((proc, pIdx) => (
-                            <tr key={pIdx} className="border-b border-gray-200 last:border-0 h-10">
-                                <td className="border-r border-black text-center">{pIdx + 1}</td>
-                                <td className="border-r border-black px-1 font-bold">
-                                    <EditableText value={proc.name} onChange={(v) => { }} autoFit maxWidth={90} className="justify-center" />
-                                </td>
-                                <td className="border-r border-black text-center">{proc.course === 'INTERNAL' ? '사내' : '사외'}</td>
-                                <td className="border-r border-black px-1 text-center">
-                                    <EditableText value={proc.partner_worker} onChange={(v) => { }} className="justify-center" />
-                                </td>
-                                <td className="border-r border-black px-1 text-center font-mono">
-                                    <EditableText value={proc.equipment} onChange={(v) => { }} className="justify-center" />
-                                </td>
-                                <td className="border-r border-black px-1 text-blue-800 italic">
-                                    <EditableText value={proc.detail} onChange={(v) => { }} placeholder="-" />
-                                </td>
-                                <td className="border-r border-black px-1 text-center text-[8px]">
-                                    <EditableText value={proc.start_date} onChange={(v) => { }} />
-                                </td>
-                                <td className="border-r border-black px-1 text-center text-[8px]">
-                                    <EditableText value={proc.end_date} onChange={(v) => { }} />
-                                </td>
-                                <td className="border-r border-black text-center font-bold">
-                                    <span className={cn(
-                                        "px-1 rounded text-[7px]",
-                                        proc.status === 'COMPLETED' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                                    )}>
-                                        {proc.status}
-                                    </span>
-                                </td>
-                                <td className="px-1">
-                                    <EditableText value={proc.note} onChange={(v) => { }} />
-                                </td>
-                            </tr>
-                        ))}
-                        {/* Fill empty rows to maintain layout if needed */}
-                        {Array.from({ length: Math.max(0, 15 - group.processes.length) }).map((_, i) => (
-                            <tr key={'empty-' + i} className="border-b border-gray-200 last:border-0 h-10">
-                                <td className="border-r border-black"></td><td className="border-r border-black"></td>
-                                <td className="border-r border-black"></td><td className="border-r border-black"></td>
-                                <td className="border-r border-black"></td><td className="border-r border-black"></td>
-                                <td className="border-r border-black"></td><td className="border-r border-black"></td>
-                                <td className="border-r border-black"></td><td className=""></td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            {/* Table Area - Now using ResizableTable */}
+            <ResizableTable
+                columns={columns}
+                data={tableData}
+                colWidths={colWidths}
+                onUpdateWidths={onUpdateWidths}
+                onUpdateData={(rIdx, key, val) => onUpdateData(groupIdx, rIdx, key, val)}
+                className="text-[9px]"
+            />
 
             {/* Footer */}
             <div className="absolute bottom-[10mm] left-0 right-0 px-[10mm] flex justify-between items-end text-[9px] text-gray-400">
                 <span>Page {pageNum} of {totalPages}</span>
-                <span className="font-bold uppercase tracking-widest">{company?.name || '디자인메카'}</span>
+                <span className="font-bold uppercase tracking-widest leading-none">{company?.name || '디자인메카'}</span>
             </div>
         </div>
     );
@@ -120,6 +87,9 @@ const PageFrame = React.forwardRef(({ metadata, group, company, isFirst, pageNum
 const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     const [company, setCompany] = useState(null);
     const [saving, setSaving] = useState(false);
+
+    // Initial widths for the 10 columns
+    const [colWidths, setColWidths] = useState([30, 80, 40, 120, 80, 200, 70, 70, 50, 80]);
 
     const [metadata, setMetadata] = useState({
         order_no: "",
@@ -149,14 +119,13 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         if (!plan) return;
 
         const groupedMap = new Map();
-
-        // Use a stable sort by sequence for ALL items before grouping
         const sortedItems = [...(plan.items || [])].sort((a, b) => a.sequence - b.sequence);
 
         sortedItems.forEach(item => {
             const pid = item.product_id;
             if (!groupedMap.has(pid)) {
                 groupedMap.set(pid, {
+                    product_id: pid,
                     product_name: item.product?.name || item.process_name,
                     product_spec: item.product?.specification || item.product?.code || "",
                     quantity: item.quantity,
@@ -173,11 +142,10 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                 start_date: item.start_date || "-",
                 end_date: item.end_date || "-",
                 status: item.status,
-                note: "" // separate notes col
+                note: ""
             });
         });
 
-        // Convert Map to array and sort groups by name? Or just keep order
         const groups = Array.from(groupedMap.values());
 
         setMetadata(prev => ({
@@ -190,6 +158,14 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         }));
     };
 
+    const handleUpdateData = (gIdx, rIdx, key, val) => {
+        const newGroups = [...metadata.groups];
+        if (newGroups[gIdx].processes[rIdx]) {
+            newGroups[gIdx].processes[rIdx][key] = val;
+        }
+        setMetadata(prev => ({ ...prev, groups: newGroups }));
+    };
+
     const generatePDF = async (action = 'save') => {
         if (pageRefs.current.length === 0) return;
         setSaving(true);
@@ -197,11 +173,11 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
 
-            for (let i = 0; i < pageRefs.current.length; i++) {
+            for (let i = 0; i < metadata.groups.length; i++) {
                 const page = pageRefs.current[i];
                 if (!page) continue;
 
-                // Ensure all images are loaded inside the page
+                // Wait for all images
                 const images = page.getElementsByTagName('img');
                 await Promise.all(Array.from(images).map(img => {
                     if (img.complete) return Promise.resolve();
@@ -255,7 +231,10 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
             <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col h-[95vh]">
                 <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                    <h3 className="text-white font-bold flex items-center gap-2">생산관리시트 품목별 출력 ({metadata.groups.length} 페이지)</h3>
+                    <h3 className="text-white font-bold flex items-center gap-2">생산관리시트 편집 ({metadata.groups.length} 페이지)</h3>
+                    <div className="flex items-center gap-2 text-[11px] text-gray-400 mr-4 italic">
+                        * 표 선을 드래그하여 간격을 조절할 수 있습니다.
+                    </div>
                     <div className="flex items-center gap-2">
                         <button onClick={() => generatePDF('download')} disabled={saving} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-1"><Download className="w-4 h-4" /> 다운로드</button>
                         <button onClick={() => generatePDF('save')} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Save className="w-4 h-4" /> {saving ? '처리 중...' : 'PDF 저장 및 첨부'}</button>
@@ -273,6 +252,10 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                             company={company}
                             pageNum={idx + 1}
                             totalPages={metadata.groups.length}
+                            colWidths={colWidths}
+                            onUpdateWidths={setColWidths}
+                            onUpdateData={handleUpdateData}
+                            groupIdx={idx}
                         />
                     ))}
                 </div>
