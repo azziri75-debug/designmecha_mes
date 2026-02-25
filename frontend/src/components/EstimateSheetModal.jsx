@@ -206,7 +206,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] flex flex-col shadow-xl origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
 
                         {/* Title Section - Ensure no cut-off */}
                         <div className="text-center mb-10 relative flex justify-center items-center h-20">
@@ -303,9 +303,9 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                             <div className="w-[60px]"></div>
                         </div>
 
-                        {/* Footer Section - Avoid overlapping bottom watermark */}
-                        <div className="mt-6 text-xs px-2 pb-12">
-                            <h4 className="font-bold border-b-2 border-black w-24 mb-2 pb-1">견 적 기 준</h4>
+                        {/* Footer Section - Balanced Margin */}
+                        <div className="mt-auto px-2 pt-6">
+                            <h4 className="font-bold border-b-2 border-black w-24 mb-2 pb-1 text-[11px]">견 적 기 준</h4>
                             <div className="leading-relaxed border-2 border-black p-4 min-h-[100px] bg-gray-50/20">
                                 <EditableText
                                     value={metadata.notes}
@@ -315,7 +315,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                             </div>
                         </div>
 
-                        <div className="absolute bottom-[10mm] left-0 right-0 text-center opacity-40">
+                        {/* Bottom Decoration */}
+                        <div className="text-center opacity-40 mt-8 mb-2 shrink-0">
                             <div className="text-[10px] font-bold text-gray-400 tracking-[2em] uppercase">
                                 디자인메카
                             </div>

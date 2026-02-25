@@ -34,7 +34,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
     }
 
     return (
-        <div ref={ref} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top relative mb-8 last:mb-0 overflow-hidden" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+        <div ref={ref} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] flex flex-col shadow-xl origin-top relative mb-8 last:mb-0 overflow-hidden" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header Area */}
             <div className="text-center py-4 border-b-2 border-black mb-6">
                 <h1 className="text-4xl font-bold tracking-[1em] indent-[1em]">
@@ -64,18 +64,23 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
                 </div>
             </div>
 
-            {/* Table Area - Now using ResizableTable */}
-            <ResizableTable
-                columns={columns}
-                data={tableData}
-                colWidths={colWidths}
-                onUpdateWidths={onUpdateWidths}
-                onUpdateData={(rIdx, key, val) => onUpdateData(groupIdx, rIdx, key, val)}
-                className="text-[9px]"
-            />
+            {/* Table Area - Width Adjusted for 190mm inner width */}
+            <div className="w-full">
+                <ResizableTable
+                    columns={columns}
+                    data={tableData}
+                    colWidths={colWidths}
+                    onUpdateWidths={onUpdateWidths}
+                    onUpdateData={(rIdx, key, val) => onUpdateData(groupIdx, rIdx, key, val)}
+                    className="text-[9px]"
+                />
+            </div>
+
+            {/* Empty space pusher */}
+            <div className="flex-1"></div>
 
             {/* Footer */}
-            <div className="absolute bottom-[10mm] left-0 right-0 px-[10mm] flex justify-between items-end text-[9px] text-gray-400">
+            <div className="mt-4 flex justify-between items-end text-[9px] text-gray-400 shrink-0">
                 <span>Page {pageNum} of {totalPages}</span>
                 <span className="font-bold uppercase tracking-widest leading-none">{company?.name || '디자인메카'}</span>
             </div>
@@ -87,8 +92,8 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     const [company, setCompany] = useState(null);
     const [saving, setSaving] = useState(false);
 
-    // Initial widths for the 9 columns
-    const [colWidths, setColWidths] = useState([30, 80, 40, 110, 80, 210, 70, 70, 80]);
+    // Initial widths for the 9 columns - Fine-tuned to sum up to approx 718px (190mm)
+    const [colWidths, setColWidths] = useState([30, 80, 40, 110, 80, 150, 70, 70, 80]);
 
     const [metadata, setMetadata] = useState({
         order_no: "",
