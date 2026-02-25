@@ -202,10 +202,13 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                             * {
                                 color-scheme: light !important;
                                 -webkit-print-color-adjust: exact !important;
-                                --oklch-none: 0 0 0; /* Fallback for some vars */
+                                --oklch-none: 0 0 0;
                             }
-                            body, div, p, span, table, td, th {
-                                font-family: "Malgun Gothic", sans-serif !important;
+                            body {
+                                width: 210mm !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                overflow: hidden !important;
                             }
                             .bg-white { background-color: #ffffff !important; }
                             .text-black { color: #000000 !important; }
@@ -213,6 +216,12 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                             .border-gray-200 { border-color: #e5e7eb !important; }
                             .text-blue-700 { color: #1d4ed8 !important; }
                             .bg-gray-100 { background-color: #f3f4f6 !important; }
+                            
+                            /* Force table width to fit */
+                            table {
+                                width: 100% !important;
+                                table-layout: fixed !important;
+                            }
                             
                             :root {
                                 --color-white: #ffffff !important;

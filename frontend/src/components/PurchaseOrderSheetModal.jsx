@@ -93,11 +93,22 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                                 -webkit-print-color-adjust: exact !important;
                                 --oklch-none: 0 0 0;
                             }
-                            body, div, p, span, table, td, th {
+                            body {
+                                width: 210mm !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                overflow: hidden !important;
                                 font-family: "Malgun Gothic", sans-serif !important;
                             }
                             .bg-white { background-color: #ffffff !important; }
                             .text-black { color: #000000 !important; }
+                            
+                            /* Force table width to fit */
+                            table {
+                                width: 100% !important;
+                                table-layout: fixed !important;
+                            }
+                            
                             :root {
                                 --color-white: #ffffff !important;
                                 --color-black: #000000 !important;
