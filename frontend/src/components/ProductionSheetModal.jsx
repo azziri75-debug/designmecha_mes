@@ -13,8 +13,11 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     const [metadata, setMetadata] = useState({
         title: "생 산 관 리 시 트",
         order_no: "",
-        colWidths: [40, 300, 60, 140, 140, 60],
-        items: []
+        partner_name: "",
+        order_date: "",
+        delivery_date: "",
+        colWidths: [40, 150, 60, 200, 200, 70],
+        groups: [] // Grouped by product
     });
 
     const sheetRef = useRef(null);
@@ -36,35 +39,44 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     const initializeData = () => {
         if (!plan) return;
 
-        // Group items if they are broken down by process, or just use as is
-        // Usually plan.items contains the list of products to produce
-        const items = (plan.items || []).map((item, idx) => ({
-            idx: idx + 1,
-            name: item.product?.name || "",
-            spec: item.product?.specification || item.product?.code || "",
-            qty: item.quantity,
-            processes: "거친가공 / 열처리 / 정밀연마",
-            inspection: "외관 및 치수 검사",
-            status: "대기"
-        }));
-
-        while (items.length < 10) {
-            items.push({ idx: "", name: "", spec: "", qty: "", processes: "", inspection: "", status: "" });
-        }
+        // Group items by product
+        const grouped = (plan.items || []).reduce((acc, item) => {
+            const pid = item.product_id;
+            if (!acc[pid]) {
+                acc[pid] = {
+                    product_name: item.product?.name || item.process_name,
+                    product_spec: item.product?.specification || item.product?.code || "",
+                    quantity: item.quantity,
+                    processes: []
+                };
+            }
+            acc[pid].processes.push({
+                idx: item.sequence,
+                name: item.process_name,
+                course: item.course_type,
+                detail: item.note || "",
+                inspection: "외관/치수 검사",
+                status: item.status
+            });
+            return acc;
+        }, {});
 
         setMetadata(prev => ({
             ...prev,
             order_no: plan.order?.order_no || plan.stock_production?.production_no || "PLAN-" + plan.id,
-            items: items
+            partner_name: plan.order?.partner?.name || "사내 생산",
+            order_date: plan.order?.order_date || plan.plan_date,
+            delivery_date: plan.order?.delivery_date || "-",
+            groups: Object.values(grouped)
         }));
     };
 
     const handleMetaChange = (key, val) => setMetadata(prev => ({ ...prev, [key]: val }));
 
-    const updateItem = (rIdx, key, val) => {
-        const newItems = [...metadata.items];
-        newItems[rIdx][key] = val;
-        setMetadata(prev => ({ ...prev, items: newItems }));
+    const updateProcess = (gIdx, pIdx, key, val) => {
+        const newGroups = [...metadata.groups];
+        newGroups[gIdx].processes[pIdx][key] = val;
+        setMetadata(prev => ({ ...prev, groups: newGroups }));
     };
 
     const generatePDF = async (action = 'save') => {
@@ -102,20 +114,11 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
 
     if (!isOpen || !plan) return null;
 
-    const columns = [
-        { key: 'idx', label: 'NO', align: 'center' },
-        { key: 'name', label: '품명 / 상세규격', align: 'left' },
-        { key: 'qty', label: '수량', align: 'center' },
-        { key: 'processes', label: '공정확인', align: 'left' },
-        { key: 'inspection', label: '검사항목', align: 'left' },
-        { key: 'status', label: '상태', align: 'center' },
-    ];
-
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
             <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
                 <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                    <h3 className="text-white font-bold flex items-center gap-2">생산관리시트 편집</h3>
+                    <h3 className="text-white font-bold flex items-center gap-2">생산관리시트 통합 편집</h3>
                     <div className="flex items-center gap-2">
                         <button onClick={() => generatePDF('download')} disabled={saving} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors">다운로드</button>
                         <button onClick={() => generatePDF('save')} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20">{saving ? '저장 중...' : 'PDF 저장 및 첨부'}</button>
@@ -132,31 +135,70 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                             </h1>
                         </div>
 
-                        <div className="flex justify-between items-end border-b border-black pb-2 mb-4 text-sm font-bold">
+                        <div className="flex justify-between items-start border-b border-black pb-2 mb-4 text-xs font-bold">
                             <div className="space-y-1">
-                                <p>발주번호 : <EditableText value={metadata.order_no} onChange={(v) => handleMetaChange('order_no', v)} className="inline-block min-w-[150px]" /></p>
-                                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-normal">Production Work Order Sheet</p>
+                                <p>수주/생산번호 : <EditableText value={metadata.order_no} onChange={(v) => handleMetaChange('order_no', v)} className="inline-block min-w-[150px]" /></p>
+                                <p>발주 거래처 : <EditableText value={metadata.partner_name} onChange={(v) => handleMetaChange('partner_name', v)} className="inline-block min-w-[150px]" /></p>
+                                <p className="text-[9px] text-gray-400 uppercase tracking-widest font-normal">Production Work Order Sheet</p>
                             </div>
-                            <div className="text-right">
-                                <h2 className="text-lg font-bold">(주)디자인메카</h2>
+                            <div className="text-right space-y-1">
+                                <h2 className="text-lg font-bold">디자인메카</h2>
+                                <p>수주일 : <EditableText value={metadata.order_date} onChange={(v) => handleMetaChange('order_date', v)} className="inline-block" /></p>
+                                <p>납기일 : <EditableText value={metadata.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} className="inline-block" /></p>
                             </div>
                         </div>
 
-                        <ResizableTable
-                            columns={columns}
-                            data={metadata.items}
-                            colWidths={metadata.colWidths}
-                            onUpdateWidths={(w) => handleMetaChange('colWidths', w)}
-                            onUpdateData={updateItem}
-                            className="text-xs"
-                        />
+                        {/* Integrated List View */}
+                        <div className="space-y-6">
+                            {metadata.groups.map((group, gIdx) => (
+                                <div key={gIdx} className="border-2 border-black">
+                                    <div className="bg-gray-100 p-2 border-b-2 border-black flex justify-between font-bold text-[11px]">
+                                        <span>[품명] {group.product_name}</span>
+                                        <span>[규격] {group.product_spec}</span>
+                                        <span>[수량] {group.quantity} EA</span>
+                                    </div>
+                                    <table className="w-full border-collapse table-fixed">
+                                        <thead>
+                                            <tr className="bg-gray-50 border-b border-black text-[10px] h-8">
+                                                <th className="border-r border-black w-8">NO</th>
+                                                <th className="border-r border-black w-24">공정명</th>
+                                                <th className="border-r border-black w-14">구분</th>
+                                                <th className="border-r border-black">작업내용 / 특기사항</th>
+                                                <th className="border-r border-black w-24">검사항목</th>
+                                                <th className="w-16">상태</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {group.processes.map((proc, pIdx) => (
+                                                <tr key={pIdx} className="border-b border-gray-200 last:border-0 h-10 text-[10px]">
+                                                    <td className="border-r border-black text-center">{proc.idx}</td>
+                                                    <td className="border-r border-black px-1 font-bold">
+                                                        <EditableText value={proc.name} onChange={(v) => updateProcess(gIdx, pIdx, 'name', v)} autoFit maxWidth={90} />
+                                                    </td>
+                                                    <td className="border-r border-black text-center">{proc.course === 'INTERNAL' ? '사내' : '사외'}</td>
+                                                    <td className="border-r border-black px-1 text-blue-800 italic">
+                                                        <EditableText value={proc.detail} onChange={(v) => updateProcess(gIdx, pIdx, 'detail', v)} placeholder="작업내용 입력..." />
+                                                    </td>
+                                                    <td className="border-r border-black px-1">
+                                                        <EditableText value={proc.inspection} onChange={(v) => updateProcess(gIdx, pIdx, 'inspection', v)} autoFit maxWidth={90} />
+                                                    </td>
+                                                    <td className="text-center font-bold">
+                                                        <EditableText value={proc.status} onChange={(v) => updateProcess(gIdx, pIdx, 'status', v)} />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ))}
+                        </div>
 
                         {/* Footer / Branding */}
                         <div className="absolute bottom-[10mm] left-0 right-0 flex flex-col items-center">
                             <div className="text-[10px] text-gray-400 font-bold tracking-[1em] mb-4 uppercase">
-                                (주) 디자인메카
+                                디자인메카
                             </div>
-                            <StampOverlay url="/api/uploads/sample-stamp.png" className="w-20 h-20 opacity-20" />
+                            <StampOverlay url="/api/uploads/sample-stamp.png" className="w-16 h-16 opacity-20" />
                         </div>
                     </div>
                 </div>

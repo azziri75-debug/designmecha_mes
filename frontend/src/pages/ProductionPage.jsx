@@ -850,6 +850,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                     <TableCell>{item.estimated_time}</TableCell>
                                                     <TableCell>
                                                         <select
+                                                            disabled={item.course_type !== 'INTERNAL'}
                                                             value={item.status}
                                                             onChange={async (e) => {
                                                                 try {
@@ -864,7 +865,8 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                 borderRadius: '4px',
                                                                 fontSize: '0.75rem',
                                                                 border: '1px solid ' + (item.status === 'COMPLETED' ? '#4caf50' : '#ccc'),
-                                                                backgroundColor: item.status === 'COMPLETED' ? '#e8f5e9' : 'white'
+                                                                backgroundColor: item.status === 'COMPLETED' ? '#e8f5e9' : (item.course_type !== 'INTERNAL' ? '#f5f5f5' : 'white'),
+                                                                cursor: item.course_type !== 'INTERNAL' ? 'not-allowed' : 'pointer'
                                                             }}
                                                         >
                                                             <option value="PLANNED">계획</option>

@@ -181,7 +181,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                                 <p className="pt-1">Date : {order.order_date || '2026. 02. 25.'}</p>
                             </div>
                             <div className="text-right">
-                                <h2 className="text-lg font-bold">(주){company?.name || '디자인메카'}</h2>
+                                <h2 className="text-lg font-bold">{company?.name || '디자인메카'}</h2>
                                 <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-none">Designmecha CO., LTD</p>
                                 <div className="text-[9px] mt-2 space-y-0.5">
                                     <p>주소 : {company?.address || '충남 아산시 탕정면 갈산리 100 선문대 생산시스템기술연구소 내'}</p>
@@ -232,7 +232,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                                     <div className="border-b border-black p-2 row-span-4 flex flex-col items-center justify-center relative">
                                         <p className="text-[11px] font-bold mb-1 italic">위와 같이 발주합니다.</p>
                                         <div className="flex items-center gap-1 font-bold text-base relative">
-                                            <span>(주){company?.name || '디자인메카'}</span>
+                                            <span>{company?.name || '디자인메카'}</span>
                                             <span className="text-red-500 opacity-50 relative">
                                                 (인)
                                                 <StampOverlay url="/api/uploads/sample-stamp.png" className="w-14 h-14 -top-3 -left-3" />
@@ -256,7 +256,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         </div>
 
                         <div className="mt-6 text-center text-[9px] text-gray-400 font-bold border-t border-gray-100 pt-2 tracking-[1em] uppercase">
-                            (주) 디자인메카
+                            디자인메카
                         </div>
 
                     </div>

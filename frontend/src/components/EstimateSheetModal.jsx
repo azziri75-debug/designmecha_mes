@@ -212,7 +212,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                             </tr>
                                             <tr className="border-b border-black">
                                                 <td className="bg-gray-50 border-r border-black font-bold p-1 text-center">상 호</td>
-                                                <td className="border-r border-black p-1 text-center">(주)디자인메카</td>
+                                                <td className="border-r border-black p-1 text-center">디자인메카</td>
                                                 <td className="w-12 bg-gray-50 border-r border-black font-bold p-1 text-center">대표</td>
                                                 <td className="p-1 text-center relative font-bold">
                                                     조인호
@@ -278,7 +278,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         {/* Bottom Branding */}
                         <div className="absolute bottom-[10mm] left-0 right-0 text-center">
                             <p className="text-[10px] font-bold text-gray-400 tracking-[0.2em] uppercase">
-                                (주) 디자인메카
+                                디자인메카
                             </p>
                         </div>
 
