@@ -343,7 +343,6 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
-                                                        disabled={true}
                                                     />
                                                 </TableCell>
                                                 <TableCell>

@@ -872,13 +872,16 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                     <TableCell>
                                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                             {(() => {
-                                                                let files = [];
+                                                                let fileList = [];
                                                                 try {
                                                                     if (item.attachment_file) {
-                                                                        files = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
+                                                                        const parsed = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
+                                                                        fileList = Array.isArray(parsed) ? parsed : [parsed];
                                                                     }
-                                                                } catch { files = [item.attachment_file]; }
-                                                                const fileList = Array.isArray(files) ? files : [files].filter(Boolean);
+                                                                } catch {
+                                                                    fileList = item.attachment_file ? [item.attachment_file] : [];
+                                                                }
+                                                                fileList = fileList.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== '')));
 
                                                                 return (
                                                                     <>
@@ -902,7 +905,10 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                                     const updatedFiles = [...fileList, newFile];
                                                                                     await api.patch(`/production/plan-items/${item.id}`, { attachment_file: updatedFiles });
                                                                                     fetchPlans();
-                                                                                } catch (err) { alert("파일 업로드 실패"); }
+                                                                                } catch (err) {
+                                                                                    console.error("Upload failed", err);
+                                                                                    alert("파일 업로드 실패");
+                                                                                }
                                                                             }}
                                                                         />
                                                                         <IconButton size="small" onClick={() => document.getElementById(`file-item-${item.id}`).click()}>

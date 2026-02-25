@@ -146,10 +146,7 @@ async def create_purchase_order(
             # async_session.get is available.
             plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
             if plan_item:
-                plan_item.status = ProductionStatus.IN_PROGRESS # Or keep it PLANNED until received?
-                # User request: "Update status to 'IN_PROGRESS' or 'ORDERED'"
-                # ProductionStatus enum has: PENDING, PLANNED, IN_PROGRESS, COMPLETED, CANCELED.
-                # Let's use IN_PROGRESS to indicate "Ordered/Work Started".
+                # Do not set status here, wait for ORDERED or COMPLETED status sync
                 db.add(plan_item)
 
     await db.commit()
@@ -264,6 +261,15 @@ async def update_purchase_order(
                  await db.delete(item)
 
     # --- Process Sync Logic ---
+    if db_order.status == PurchaseStatus.ORDERED:
+        from app.models.production import ProductionPlanItem, ProductionStatus
+        for item in db_order.items:
+            if item.production_plan_item_id:
+                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+                if plan_item and plan_item.status == ProductionStatus.PLANNED:
+                    plan_item.status = ProductionStatus.IN_PROGRESS
+                    db.add(plan_item)
+
     if db_order.status == PurchaseStatus.COMPLETED:
         from app.models.production import ProductionPlanItem, ProductionStatus
         for item in db_order.items:
@@ -348,7 +354,7 @@ async def create_outsourcing_order(
             from app.models.production import ProductionStatus, ProductionPlanItem
             plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
             if plan_item:
-                plan_item.status = ProductionStatus.IN_PROGRESS
+                # Do not set status here
                 db.add(plan_item)
     
     await db.commit()
@@ -450,6 +456,15 @@ async def update_outsourcing_order(
                  await db.delete(item)
 
     # --- Process Sync Logic ---
+    if db_order.status == OutsourcingStatus.ORDERED:
+        from app.models.production import ProductionPlanItem, ProductionStatus
+        for item in db_order.items:
+            if item.production_plan_item_id:
+                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+                if plan_item and plan_item.status == ProductionStatus.PLANNED:
+                    plan_item.status = ProductionStatus.IN_PROGRESS
+                    db.add(plan_item)
+
     if db_order.status == OutsourcingStatus.COMPLETED:
         from app.models.production import ProductionPlanItem, ProductionStatus
         for item in db_order.items:

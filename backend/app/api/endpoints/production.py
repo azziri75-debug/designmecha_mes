@@ -150,17 +150,53 @@ async def create_production_plan(
             res = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
             sp = res.scalar_one()
             
-            # Fetch processes
+            # Fetch processes and Product
             stmt = (
-                select(ProductProcess, Process.name, Process.course_type)
+                select(ProductProcess, Process.name, Process.course_type, Product.drawing_file)
                 .join(Process, ProductProcess.process_id == Process.id)
+                .join(Product, ProductProcess.product_id == Product.id)
                 .where(ProductProcess.product_id == sp.product_id)
                 .order_by(ProductProcess.sequence)
             )
             result = await db.execute(stmt)
             processes = result.all()
             
-            for proc, proc_name, proc_course_type in processes:
+            import json
+            for proc, proc_name, proc_course_type, prod_drawing in processes:
+                # Merge attachments: process attachment + product drawing
+                final_attachments = []
+                
+                # Add product drawing files
+                if prod_drawing:
+                    try:
+                        parsed = json.loads(prod_drawing) if isinstance(prod_drawing, str) else prod_drawing
+                        if isinstance(parsed, list): final_attachments.extend(parsed)
+                        else: final_attachments.append(parsed)
+                    except: final_attachments.append(prod_drawing)
+                
+                # Add process attachment files
+                if proc.attachment_file:
+                    try:
+                        parsed = json.loads(proc.attachment_file) if isinstance(proc.attachment_file, str) else proc.attachment_file
+                        if isinstance(parsed, list): final_attachments.extend(parsed)
+                        else: final_attachments.append(parsed)
+                    except: final_attachments.append(proc.attachment_file)
+                
+                # Deduplicate and format
+                unique_attachments = []
+                seen_urls = set()
+                for att in final_attachments:
+                    if isinstance(att, dict) and att.get('url'):
+                        if att['url'] not in seen_urls:
+                            unique_attachments.append(att)
+                            seen_urls.add(att['url'])
+                    elif isinstance(att, str):
+                        if att not in seen_urls:
+                            unique_attachments.append(att)
+                            seen_urls.add(att)
+
+                final_attachment_json = json.dumps(unique_attachments, ensure_ascii=False) if unique_attachments else None
+
                 final_course_type = proc.course_type or proc_course_type or "INTERNAL"
                 plan_item = ProductionPlanItem(
                     plan_id=plan.id,
@@ -171,7 +207,7 @@ async def create_production_plan(
                     partner_name=proc.partner_name,
                     work_center=proc.equipment_name,
                     estimated_time=proc.estimated_time,
-                    attachment_file=proc.attachment_file,
+                    attachment_file=final_attachment_json,
                     quantity=sp.quantity,
                     status=ProductionStatus.PLANNED
                 )
@@ -182,14 +218,50 @@ async def create_production_plan(
             order_items = result.scalars().all()
             for item in order_items:
                 stmt = (
-                    select(ProductProcess, Process.name, Process.course_type)
+                    select(ProductProcess, Process.name, Process.course_type, Product.drawing_file)
                     .join(Process, ProductProcess.process_id == Process.id)
+                    .join(Product, ProductProcess.product_id == Product.id)
                     .where(ProductProcess.product_id == item.product_id)
                     .order_by(ProductProcess.sequence)
                 )
                 result = await db.execute(stmt)
                 processes = result.all()
-                for proc, proc_name, proc_course_type in processes:
+                import json
+                for proc, proc_name, proc_course_type, prod_drawing in processes:
+                    # Merge attachments: process attachment + product drawing
+                    final_attachments = []
+                    
+                    # Add product drawing files
+                    if prod_drawing:
+                        try:
+                            parsed = json.loads(prod_drawing) if isinstance(prod_drawing, str) else prod_drawing
+                            if isinstance(parsed, list): final_attachments.extend(parsed)
+                            else: final_attachments.append(parsed)
+                        except: final_attachments.append(prod_drawing)
+                    
+                    # Add process attachment files
+                    if proc.attachment_file:
+                        try:
+                            parsed = json.loads(proc.attachment_file) if isinstance(proc.attachment_file, str) else proc.attachment_file
+                            if isinstance(parsed, list): final_attachments.extend(parsed)
+                            else: final_attachments.append(parsed)
+                        except: final_attachments.append(proc.attachment_file)
+                    
+                    # Deduplicate
+                    unique_attachments = []
+                    seen_urls = set()
+                    for att in final_attachments:
+                        if isinstance(att, dict) and att.get('url'):
+                            if att['url'] not in seen_urls:
+                                unique_attachments.append(att)
+                                seen_urls.add(att['url'])
+                        elif isinstance(att, str):
+                            if att not in seen_urls:
+                                unique_attachments.append(att)
+                                seen_urls.add(att)
+
+                    final_attachment_json = json.dumps(unique_attachments, ensure_ascii=False) if unique_attachments else None
+
                     final_course_type = proc.course_type or proc_course_type or "INTERNAL"
                     plan_item = ProductionPlanItem(
                         plan_id=plan.id,
@@ -200,7 +272,7 @@ async def create_production_plan(
                         partner_name=proc.partner_name,
                         work_center=proc.equipment_name,
                         estimated_time=proc.estimated_time,
-                        attachment_file=proc.attachment_file,
+                        attachment_file=final_attachment_json,
                         quantity=item.quantity,
                         status=ProductionStatus.PLANNED
                     )
