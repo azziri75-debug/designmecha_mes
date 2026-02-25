@@ -238,8 +238,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                             </div>
 
                             {/* Company Info Box - Ensure fixed width and no collapse */}
-                            <div className="w-[320px] shrink-0 border-2 border-black flex text-[9px] h-36">
-                                <div className="w-8 border-r-2 border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
+                            <div className="w-[320px] shrink-0 border-2 border-black flex text-[9px] h-36 overflow-hidden">
+                                <div className="w-8 border-r border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
                                     <div>공</div><div>급</div><div>자</div>
                                 </div>
                                 <div className="flex-1">
@@ -272,7 +272,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                                     />
                                                 </td>
                                             </tr>
-                                            <tr className="border-b border-black h-10">
+                                            <tr className="h-10">
                                                 <td className="bg-gray-50 border-r border-black font-bold p-1 text-center">연락처</td>
                                                 <td colSpan="3" className="p-1 leading-tight text-[8px]">
                                                     <EditableText
