@@ -154,6 +154,23 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                     `;
                     clonedDoc.head.appendChild(style);
 
+                    // Robust CSS Cleansing for all styles
+                    try {
+                        const styleSheets = clonedDoc.styleSheets;
+                        for (let i = 0; i < styleSheets.length; i++) {
+                            const sheet = styleSheets[i];
+                            try {
+                                const rules = sheet.cssRules || sheet.rules;
+                                for (let j = 0; j < rules.length; j++) {
+                                    const rule = rules[j];
+                                    if (rule.style && rule.style.cssText.includes('oklch')) {
+                                        rule.style.cssText = rule.style.cssText.replace(/oklch\([^)]+\)/g, '#000000');
+                                    }
+                                }
+                            } catch (e) { /* ignore cross-origin */ }
+                        }
+                    } catch (e) { console.error(e); }
+
                     const allElems = clonedDoc.getElementsByTagName("*");
                     for (let i = 0; i < allElems.length; i++) {
                         const node = allElems[i];

@@ -31,6 +31,7 @@ const OutsourcingPage = () => {
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
     const [viewingFileTitle, setViewingFileTitle] = useState('');
+    const [viewingTargetId, setViewingTargetId] = useState(null);
 
     // Source Information Modals
     const [sourceOrderModalOpen, setSourceOrderModalOpen] = useState(false);
@@ -101,6 +102,32 @@ const OutsourcingPage = () => {
         } catch (error) {
             console.error("Delete failed", error);
             alert("삭제 실패: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const handleDeleteAttachment = async (targetId, indexToRemove) => {
+        if (!targetId) return;
+        if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
+
+        try {
+            const order = orders.find(o => o.id === targetId);
+            if (!order) return;
+
+            const files = typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file;
+            const currentFiles = Array.isArray(files) ? files : [files];
+            const newFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
+
+            const res = await api.put(`/purchasing/outsourcing/orders/${targetId}`, { attachment_file: newFiles });
+            const updatedOrder = res.data;
+
+            setOrders(prev => prev.map(o => o.id === targetId ? updatedOrder : o));
+            setViewingFiles(newFiles);
+            if (newFiles.length === 0) setShowFileModal(false);
+
+            alert("첨부파일이 삭제되었습니다.");
+        } catch (error) {
+            console.error("Failed to delete attachment", error);
+            alert("첨부파일 삭제 실패");
         }
     };
 
@@ -335,6 +362,7 @@ const OutsourcingPage = () => {
                                                                 <IconButton size="small" onClick={() => {
                                                                     setViewingFiles(files);
                                                                     setViewingFileTitle(order.order_no);
+                                                                    setViewingTargetId(order.id);
                                                                     setShowFileModal(true);
                                                                 }}>
                                                                     <AttachIcon fontSize="small" color="action" />
@@ -413,6 +441,7 @@ const OutsourcingPage = () => {
                 onClose={() => setShowFileModal(false)}
                 files={viewingFiles}
                 title={viewingFileTitle}
+                onDeleteFile={(index) => handleDeleteAttachment(viewingTargetId, index)}
             />
 
             <OrderModal

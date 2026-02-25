@@ -41,6 +41,7 @@ const ProductionPage = () => {
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
     const [viewingFileTitle, setViewingFileTitle] = useState('');
+    const [onDeleteFile, setOnDeleteFile] = useState(null);
 
     // View Item Modals
     const [viewOrderOpen, setViewOrderOpen] = useState(false);
@@ -228,10 +229,36 @@ const ProductionPage = () => {
                 attachment_file: newFiles
             });
 
+            setViewingFiles(newFiles);
+            if (newFiles.length === 0) setShowFileModal(false);
+
             alert("첨부파일이 삭제되었습니다.");
             fetchPlans(); // Refresh the list
         } catch (e) {
             console.error("Delete attachment failed", e);
+            alert("첨부파일 삭제 실패");
+        }
+    };
+
+    const handleDeleteItemAttachment = async (item, idxToRemove) => {
+        if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
+
+        try {
+            const files = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
+            const currentFiles = Array.isArray(files) ? files : [files];
+            const newFiles = currentFiles.filter((_, idx) => idx !== idxToRemove);
+
+            await api.patch(`/production/plan-items/${item.id}`, {
+                attachment_file: newFiles
+            });
+
+            setViewingFiles(newFiles);
+            if (newFiles.length === 0) setShowFileModal(false);
+
+            alert("첨부파일이 삭제되었습니다.");
+            fetchPlans();
+        } catch (e) {
+            console.error("Delete item attachment failed", e);
             alert("첨부파일 삭제 실패");
         }
     };
@@ -352,6 +379,7 @@ const ProductionPage = () => {
                             onOpenFiles={(files, plan) => {
                                 setViewingFiles(files);
                                 setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
+                                setOnDeleteFile(() => (idx) => handleDeleteAttachment(plan, idx));
                                 setShowFileModal(true);
                             }}
                             onShowDefects={(d) => {
@@ -373,6 +401,7 @@ const ProductionPage = () => {
                             onOpenFiles={(files, plan) => {
                                 setViewingFiles(files);
                                 setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
+                                setOnDeleteFile(() => (idx) => handleDeleteAttachment(plan, idx));
                                 setShowFileModal(true);
                             }}
                             onShowDefects={(d) => {
@@ -404,9 +433,13 @@ const ProductionPage = () => {
             {showFileModal && (
                 <FileViewerModal
                     isOpen={showFileModal}
-                    onClose={() => setShowFileModal(false)}
+                    onClose={() => {
+                        setShowFileModal(false);
+                        setOnDeleteFile(null);
+                    }}
                     files={viewingFiles}
                     title={viewingFileTitle}
+                    onDeleteFile={onDeleteFile}
                 />
             )}
 
@@ -973,7 +1006,16 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                 return (
                                                                     <>
                                                                         {fileList.length > 0 && (
-                                                                            <IconButton size="small" color="primary" onClick={() => onOpenFiles(fileList, { order: { order_no: `${item.process_name} 첨부` } })}>
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                color="primary"
+                                                                                onClick={() => {
+                                                                                    setViewingFiles(fileList);
+                                                                                    setViewingFileTitle(`${item.process_name} 첨부 파일`);
+                                                                                    setOnDeleteFile(() => (idx) => handleDeleteItemAttachment(item, idx));
+                                                                                    setShowFileModal(true);
+                                                                                }}
+                                                                            >
                                                                                 <FileText className="w-4 h-4" />
                                                                             </IconButton>
                                                                         )}

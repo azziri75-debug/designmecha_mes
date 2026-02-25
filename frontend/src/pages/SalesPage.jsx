@@ -527,7 +527,7 @@ const SalesPage = () => {
                     setViewingTargetId(null);
                 }}
                 files={viewingFiles}
-                onDeleteFile={handleDeleteAttachment}
+                onDeleteFile={(index) => handleDeleteAttachment(viewingTargetId, index)}
             />
 
             <EstimateModal

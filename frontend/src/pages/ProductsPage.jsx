@@ -38,6 +38,7 @@ const ProductsPage = () => {
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
     const [fileModalTitle, setFileModalTitle] = useState('');
+    const [viewingTargetId, setViewingTargetId] = useState(null);
 
     useEffect(() => {
         if (activeTab === 'products') {
@@ -214,6 +215,32 @@ const ProductsPage = () => {
         } catch (error) {
             console.error("Failed to delete product", error);
             alert("삭제 실패: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const handleDeleteAttachment = async (targetId, indexToRemove) => {
+        if (!targetId) return;
+        if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
+
+        try {
+            const product = products.find(p => p.id === targetId);
+            if (!product) return;
+
+            const files = typeof product.attachment_file === 'string' ? JSON.parse(product.attachment_file) : product.attachment_file;
+            const currentFiles = Array.isArray(files) ? files : [files];
+            const newFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
+
+            const res = await api.put(`/product/products/${targetId}`, { attachment_file: newFiles });
+            const updatedProduct = res.data;
+
+            setProducts(prev => prev.map(p => p.id === targetId ? updatedProduct : p));
+            setViewingFiles(newFiles);
+            if (newFiles.length === 0) setShowFileModal(false);
+
+            alert("첨부파일이 삭제되었습니다.");
+        } catch (error) {
+            console.error("Failed to delete attachment", error);
+            alert("첨부파일 삭제 실패");
         }
     };
 
@@ -1138,6 +1165,7 @@ const ProductsPage = () => {
                 onClose={() => setShowFileModal(false)}
                 files={viewingFiles}
                 title={fileModalTitle}
+                onDeleteFile={(index) => handleDeleteAttachment(viewingTargetId, index)}
             />
         </div >
     );
