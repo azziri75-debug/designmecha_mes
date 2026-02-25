@@ -176,7 +176,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         {/* Header Box - Tighten width */}
                         <div className="flex justify-between items-center mb-8 h-16">
                             <div className="w-[160px] text-[10px] space-y-0.5 self-end pb-2">
-                                <p className="flex items-center gap-1 leading-none">NO : <EditableText value={metadata.order_no} onChange={(v) => handleMetaChange('order_no', v)} className="flex-1 border-b border-gray-100 min-h-0" /></p>
+                                <p className="flex items-center gap-1 leading-none">NO : <EditableText value={metadata.order_no} onChange={(v) => handleMetaChange('order_no', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f3f4f6' }} /></p>
                             </div>
 
                             <div className="flex-1 flex justify-center px-4">
@@ -186,12 +186,12 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                             </div>
 
                             <div className="flex border border-black text-[9px] h-full shadow-sm">
-                                <div className="w-8 border-r border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
+                                <div className="w-8 border-r border-black flex flex-col items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>
                                     <div className="leading-tight">결</div><div className="leading-tight">제</div>
                                 </div>
                                 {["담당", "검토", "대표"].map((step, i) => (
                                     <div key={i} className={cn("w-12 flex flex-col", i !== 2 && "border-r border-black")}>
-                                        <div className="border-b border-black bg-gray-50 h-5 flex items-center justify-center font-bold">{step}</div>
+                                        <div className="border-b border-black h-5 flex items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>{step}</div>
                                         <div className="flex-1"></div>
                                     </div>
                                 ))}
@@ -234,7 +234,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         </div>
 
                         {/* Summary Row */}
-                        <div className="mx-2 flex border-2 border-black border-t-0 font-bold text-[10px] bg-gray-50 h-10 items-center">
+                        <div className="mx-2 flex border-2 border-black border-t-0 font-bold text-[10px] h-10 items-center" style={{ backgroundColor: '#f9fafb' }}>
                             <div className="border-r border-black flex-1 text-center uppercase tracking-widest">합계 (VAT 별도)</div>
                             <div className="w-[40px] border-r border-black text-center">{fmt(metadata.items.reduce((s, i) => s + (parseFloat(i.qty) || 0), 0))}</div>
                             <div className="w-[80px] border-r border-black"></div>
@@ -254,15 +254,15 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                             </div>
 
                             <div className="flex border-2 border-black">
-                                <div className="w-20 border-r-2 border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
+                                <div className="w-20 border-r-2 border-black flex flex-col items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>
                                     <div>발주</div><div>조건</div>
                                 </div>
                                 <div className="flex-1 grid grid-cols-2 text-[9px]">
                                     <div className="border-b border-r border-black p-2 flex items-center gap-2">
                                         <span className="font-bold">◆ 납기기한 :</span>
-                                        <EditableText value={metadata.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} className="flex-1 border-b border-gray-50 min-h-0" />
+                                        <EditableText value={metadata.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f9fafb' }} />
                                     </div>
-                                    <div className="border-b border-black p-2 row-span-4 flex flex-col items-center justify-center relative bg-blue-50/20">
+                                    <div className="border-b border-black p-2 row-span-4 flex flex-col items-center justify-center relative" style={{ backgroundColor: 'rgba(239, 246, 255, 0.2)' }}>
                                         <p className="text-[11px] font-bold mb-2 opacity-60">위와 같이 발주함.</p>
                                         <div className="flex items-center gap-1 font-bold text-lg relative">
                                             <span>{company?.name || '디자인메카'}</span>
@@ -274,15 +274,15 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                                     </div>
                                     <div className="border-b border-r border-black p-2 flex items-center gap-2">
                                         <span className="font-bold">◆ 납품장소 :</span>
-                                        <EditableText value={metadata.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} className="flex-1 border-b border-gray-50 min-h-0" />
+                                        <EditableText value={metadata.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f9fafb' }} />
                                     </div>
                                     <div className="border-b border-r border-black p-2 flex items-center gap-2">
                                         <span className="font-bold">◆ 유효기간 :</span>
-                                        <EditableText value={metadata.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} className="flex-1 border-b border-gray-50 min-h-0" />
+                                        <EditableText value={metadata.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f9fafb' }} />
                                     </div>
                                     <div className="border-r border-black p-2 flex items-center gap-2">
                                         <span className="font-bold">◆ 결제조건 :</span>
-                                        <EditableText value={metadata.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} className="flex-1 border-b border-gray-50 min-h-0" />
+                                        <EditableText value={metadata.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f9fafb' }} />
                                     </div>
                                 </div>
                             </div>

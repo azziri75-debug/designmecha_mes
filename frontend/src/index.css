@@ -5,3 +5,11 @@
     @apply antialiased text-slate-900 bg-white;
   }
 }
+
+/* Fix for html2canvas oklch error in Tailwind v4 */
+:root {
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-400: #9ca3af;
+  --blue-900: #1e3a8a;
+}

@@ -44,9 +44,9 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
 
             <div className="flex justify-between items-start border-b border-black pb-2 mb-4 text-[11px] font-bold">
                 <div className="space-y-1">
-                    <p>수주/생산번호 : <span className="text-blue-700">{metadata.order_no}</span></p>
-                    <p>발주 거래처 : <span className="text-blue-700">{metadata.partner_name}</span></p>
-                    <p className="text-[9px] text-gray-300 uppercase tracking-widest font-normal">DESIGNMECHA PRODUCTION MANAGEMENT</p>
+                    <p>수주/생산번호 : <span style={{ color: '#1d4ed8' }}>{metadata.order_no}</span></p>
+                    <p>발주 거래처 : <span style={{ color: '#1d4ed8' }}>{metadata.partner_name}</span></p>
+                    <p className="uppercase tracking-widest font-normal" style={{ fontSize: '9px', color: '#d1d5db' }}>DESIGNMECHA PRODUCTION MANAGEMENT</p>
                 </div>
                 <div className="text-right space-y-1">
                     <h2 className="text-lg font-bold">{company?.name || '디자인메카'}</h2>
@@ -57,7 +57,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
 
             {/* Product Summary */}
             <div className="border-2 border-black mb-4">
-                <div className="bg-gray-100 p-2 border-b border-black flex justify-between font-bold text-[11px]">
+                <div className="p-2 border-b border-black flex justify-between font-bold text-[11px]" style={{ backgroundColor: '#f3f4f6' }}>
                     <span className="flex-1">[품명] {group.product_name}</span>
                     <span className="flex-1 text-center font-mono">[규격] {group.product_spec}</span>
                     <span className="w-24 text-right">[수량] {group.quantity} EA</span>
@@ -80,7 +80,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
             <div className="flex-1"></div>
 
             {/* Footer */}
-            <div className="mt-4 flex justify-between items-end text-[9px] text-gray-400 shrink-0">
+            <div className="mt-4 flex justify-between items-end shrink-0" style={{ fontSize: '9px', color: '#9ca3af' }}>
                 <span>Page {pageNum} of {totalPages}</span>
                 <span className="font-bold uppercase tracking-widest leading-none">{company?.name || '디자인메카'}</span>
             </div>

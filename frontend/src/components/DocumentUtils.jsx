@@ -164,7 +164,7 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, co
     return (
         <table className={cn("w-full border-collapse table-fixed border-t-2 border-b-2 border-black", className)}>
             <thead>
-                <tr className="bg-gray-50 font-bold border-b border-black">
+                <tr className="font-bold border-b border-black" style={{ backgroundColor: '#f9fafb' }}>
                     {columns.map((col, idx) => (
                         <th
                             key={idx}
@@ -185,7 +185,7 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, co
             </thead>
             <tbody>
                 {data.map((row, rIdx) => (
-                    <tr key={rIdx} className="h-8 border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                    <tr key={rIdx} className="h-8 border-b border-gray-100 last:border-0 hover:bg-[#f9fafb]">
                         {columns.map((col, cIdx) => (
                             <td key={cIdx} className="border-r border-black last:border-0 p-0 text-center">
                                 <EditableText

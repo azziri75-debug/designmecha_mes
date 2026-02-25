@@ -240,31 +240,31 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
 
                             {/* Company Info Box - Ensure fixed width and no collapse */}
                             <div className="w-[320px] shrink-0 border-2 border-black flex text-[9px] h-36 overflow-hidden">
-                                <div className="w-8 border-r border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
+                                <div className="w-8 border-r border-black flex flex-col items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>
                                     <div>공</div><div>급</div><div>자</div>
                                 </div>
                                 <div className="flex-1">
                                     <table className="w-full border-collapse h-full">
                                         <tbody>
                                             <tr className="border-b border-black h-8">
-                                                <td className="w-16 bg-gray-50 border-r border-black font-bold p-1 text-center">등록번호</td>
+                                                <td className="w-16 border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>등록번호</td>
                                                 <td colSpan="3" className="p-1 font-bold text-center text-[11px]">
                                                     <EditableText value={metadata.company_reg_no} onChange={(v) => handleMetaChange('company_reg_no', v)} className="justify-center" />
                                                 </td>
                                             </tr>
                                             <tr className="border-b border-black h-8">
-                                                <td className="bg-gray-50 border-r border-black font-bold p-1 text-center">상 호</td>
+                                                <td className="border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>상 호</td>
                                                 <td className="border-r border-black p-1 text-center font-bold">
                                                     <EditableText value={metadata.company_name} onChange={(v) => handleMetaChange('company_name', v)} className="justify-center" />
                                                 </td>
-                                                <td className="w-12 bg-gray-50 border-r border-black font-bold p-1 text-center">대표</td>
+                                                <td className="w-12 border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>대표</td>
                                                 <td className="p-1 text-center relative font-bold text-[11px]">
                                                     <EditableText value={metadata.company_ceo} onChange={(v) => handleMetaChange('company_ceo', v)} className="justify-center" />
                                                     {stampUrl && <StampOverlay url={stampUrl} className="w-12 h-12 -top-2 -left-2" />}
                                                 </td>
                                             </tr>
                                             <tr className="border-b border-black h-10">
-                                                <td className="bg-gray-50 border-r border-black font-bold p-1 text-center leading-tight">사업장<br />소재지</td>
+                                                <td className="border-r border-black font-bold p-1 text-center leading-tight" style={{ backgroundColor: '#f9fafb' }}>사업장<br />소재지</td>
                                                 <td colSpan="3" className="p-1 leading-tight text-[8px]">
                                                     <EditableText
                                                         value={metadata.company_address}
@@ -274,7 +274,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                                 </td>
                                             </tr>
                                             <tr className="h-10">
-                                                <td className="bg-gray-50 border-r border-black font-bold p-1 text-center">연락처</td>
+                                                <td className="border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>연락처</td>
                                                 <td colSpan="3" className="p-1 leading-tight text-[8px]">
                                                     <EditableText
                                                         value={metadata.company_contact}
@@ -290,10 +290,10 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Amount Bar */}
-                        <div className="mx-2 flex border-t-2 border-b-2 border-black py-2 mb-6 font-bold text-base bg-gray-50 px-6 justify-between items-center h-14">
+                        <div className="mx-2 flex border-t-2 border-b-2 border-black py-2 mb-6 font-bold text-base px-6 justify-between items-center h-14" style={{ backgroundColor: '#f9fafb' }}>
                             <div className="flex items-center gap-6 flex-1">
                                 <span className="whitespace-nowrap text-sm">합 계 금 액 <span className="text-[9px] font-normal opacity-60">(부가세 별도)</span></span>
-                                <EditableText value={metadata.total_amount_text} onChange={(v) => handleMetaChange('total_amount_text', v)} className="text-lg tracking-[0.1em] flex-1 text-blue-900" />
+                                <EditableText value={metadata.total_amount_text} onChange={(v) => handleMetaChange('total_amount_text', v)} className="text-lg tracking-[0.1em] flex-1" style={{ color: '#1e3a8a' }} />
                             </div>
                             <div className="text-2xl whitespace-nowrap min-w-[150px] text-right font-mono">
                                 ₩ {fmt(totalAmount)}
@@ -313,7 +313,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Footer Summary */}
-                        <div className="mx-2 flex border-2 border-black border-t-0 font-bold bg-gray-50 text-[10px] items-center h-10">
+                        <div className="mx-2 flex border-2 border-black border-t-0 font-bold text-[10px] items-center h-10" style={{ backgroundColor: '#f9fafb' }}>
                             <div className="flex-1 px-4 uppercase">합 계 (Total Amount)</div>
                             <div className="w-[100px] text-right px-4 text-sm font-mono tracking-tight">₩ {fmt(totalAmount)}</div>
                             <div className="w-[60px]"></div>
@@ -322,7 +322,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         {/* Footer Section - Balanced Margin */}
                         <div className="mt-auto px-2 pt-6">
                             <h4 className="font-bold border-b-2 border-black w-24 mb-2 pb-1 text-[11px]">견 적 기 준</h4>
-                            <div className="leading-relaxed border-2 border-black p-4 min-h-[100px] bg-gray-50/20">
+                            <div className="leading-relaxed border-2 border-black p-4 min-h-[100px]" style={{ backgroundColor: 'rgba(249, 250, 251, 0.2)' }}>
                                 <EditableText
                                     value={metadata.notes}
                                     onChange={(v) => handleMetaChange('notes', v)}
