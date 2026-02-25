@@ -156,6 +156,38 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </h1>
                     </div>
                 );
+            case 'boxedHeader':
+                return (
+                    <div className="flex justify-center mb-8" key={block.id}>
+                        <div className="border-2 border-black px-16 py-2 text-3xl font-bold tracking-[1em] indent-[1em]">
+                            {config.title || "견 적 서"}
+                        </div>
+                    </div>
+                );
+            case 'supplierTable':
+                return (
+                    <div className="flex justify-end mb-6" key={block.id}>
+                        <div className="w-[85mm] border-2 border-[#000] p-2 relative">
+                            <table className="w-full text-xs leading-relaxed">
+                                <tbody>
+                                    <tr>
+                                        <td rowSpan="5" className="text-center align-middle font-bold text-lg w-8 border-r border-[#000] writing-vertical" style={{ backgroundColor: '#f3f4f6' }}>공<br />급<br />자</td>
+                                        <td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">등록번호</span> {company?.registration_number}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="pl-2 border-b border-[#d1d5db] py-1 flex justify-between items-center pr-2">
+                                            <span><span className="inline-block w-12 text-gray-400">상호</span> {company?.name}</span>
+                                            <span><span className="inline-block w-12 text-gray-400">성명</span> {company?.owner_name || company?.representative}</span>
+                                        </td>
+                                    </tr>
+                                    <tr><td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">주소</span> {company?.address}</td></tr>
+                                    <tr><td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">업태</span> {company?.business_type || '제조'} / {company?.business_item || '정밀가공'}</td></tr>
+                                    <tr><td className="pl-2 py-1"><span className="inline-block w-12 text-gray-400">연락처</span> {company?.phone} / {company?.fax}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                );
             case 'approval':
                 const steps = config.steps || ["담당", "대표이사"];
                 return (
@@ -188,43 +220,26 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 <p className="flex"><span className="w-16">견적일:</span> <span>{estimate.estimate_date || today}</span></p>
                                 <p className="flex"><span className="w-16">견적번호:</span> <span>{estimate.id}</span></p>
                             </div>
-                            <div className="mt-4 text-sm whitespace-pre-wrap">
-                                <textarea
-                                    value={metadata.header_note}
-                                    onChange={(e) => handleMetadataChange('header_note', e.target.value)}
-                                    className="w-full resize-none outline-none bg-transparent"
-                                    rows={3}
-                                />
-                            </div>
-                        </div>
-                        <div className="w-[85mm] border-2 border-[#000] p-2 relative">
-                            <table className="w-full text-xs leading-relaxed">
-                                <tbody>
-                                    <tr>
-                                        <td rowSpan="5" className="text-center align-middle font-bold text-lg w-8 border-r border-[#000] writing-vertical" style={{ backgroundColor: '#f3f4f6' }}>공<br />급<br />자</td>
-                                        <td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">등록번호</span> {company?.registration_number}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="pl-2 border-b border-[#d1d5db] py-1 flex justify-between items-center pr-2">
-                                            <span><span className="inline-block w-12 text-gray-400">상호</span> {company?.name}</span>
-                                            <span><span className="inline-block w-12 text-gray-400">성명</span> {company?.owner_name || company?.representative}</span>
-                                        </td>
-                                    </tr>
-                                    <tr><td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">주소</span> {company?.address}</td></tr>
-                                    <tr><td className="pl-2 border-b border-[#d1d5db] py-1"><span className="inline-block w-12 text-gray-400">업태</span> {company?.business_type || '제조'} / {company?.business_item || '정밀가공'}</td></tr>
-                                    <tr><td className="pl-2 py-1"><span className="inline-block w-12 text-gray-400">연락처</span> {company?.phone} / {company?.fax}</td></tr>
-                                </tbody>
-                            </table>
                         </div>
                     </div>
                 );
+            case 'sumBox':
+                return (
+                    <div className="border-t-2 border-b-2 border-[#000] py-2 mb-6 flex items-center" key={block.id}>
+                        <span className="font-bold text-lg w-32 text-center">합계금액(VAT별도)</span>
+                        <span className="flex-1 text-right text-xl font-bold font-mono tracking-wider pr-4">￦ {fmt(totalAmount)}</span>
+                    </div>
+                );
             case 'productList':
+                const showSum = !template?.layout_data?.blocks?.some(b => b.type === 'sumBox');
                 return (
                     <div key={block.id}>
-                        <div className="border-t-2 border-b-2 border-[#000] py-2 mb-6 flex items-center">
-                            <span className="font-bold text-lg w-24 text-center">합계금액</span>
-                            <span className="flex-1 text-right text-xl font-bold font-mono tracking-wider pr-4">￦ {fmt(grandTotal)} <span className="text-sm font-normal ml-2">(VAT 포함)</span></span>
-                        </div>
+                        {showSum && (
+                            <div className="border-t-2 border-b-2 border-[#000] py-2 mb-6 flex items-center">
+                                <span className="font-bold text-lg w-24 text-center">합계금액</span>
+                                <span className="flex-1 text-right text-xl font-bold font-mono tracking-wider pr-4">￦ {fmt(grandTotal)} <span className="text-sm font-normal ml-2">(VAT 포함)</span></span>
+                            </div>
+                        )}
                         <table className="w-full border-collapse border border-[#000] mb-6 text-sm">
                             <thead>
                                 <tr className="text-center bg-gray-100">

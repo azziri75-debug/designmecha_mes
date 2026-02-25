@@ -3,8 +3,9 @@ import { X, Save, Download, Edit2, FileSpreadsheet } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
+import { getImageUrl } from '../lib/utils';
 
-const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
+const ProductionSheetModal = ({ isOpen, onClose, plan, sheetType = 'PRODUCTION', onSave }) => {
     const [company, setCompany] = useState(null);
     const [template, setTemplate] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -36,8 +37,9 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     const fetchTemplate = async () => {
         try {
             const res = await api.get('/basics/form-templates/');
-            const prodTemplate = res.data.find(t => t.form_type === 'PRODUCTION');
-            if (prodTemplate) setTemplate(prodTemplate);
+            const poTemplate = res.data.find(t => t.form_type === sheetType);
+            if (poTemplate) setTemplate(poTemplate);
+            else setTemplate(null);
         } catch (error) { console.error("Failed to fetch template", error); }
     };
 
@@ -155,6 +157,34 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                 return (
                     <div className="mb-4 relative flex justify-between items-center h-12 border-b-2 border-black" key={block.id}>
                         <span className="text-xl font-bold px-4 py-1 underline decoration-double underline-offset-4 tracking-[0.5em]">{config.title || "생산관리시트"}</span>
+                    </div>
+                );
+            case 'boxedHeader':
+                return (
+                    <div className="flex justify-center mb-4" key={block.id}>
+                        <div className="border-2 border-black px-12 py-1 text-2xl font-bold tracking-[1em] indent-[1em] bg-yellow-400">
+                            {config.title || "세 부 내 역"}
+                        </div>
+                    </div>
+                );
+            case 'drawing':
+                const firstAttachment = (plan.attachment_file && plan.attachment_file.length > 0)
+                    ? plan.attachment_file[0]
+                    : null;
+                return (
+                    <div className="mb-4" key={block.id}>
+                        <h4 className="text-sm font-bold border-b border-black mb-1">도면</h4>
+                        <div className="border border-black min-h-[150px] flex items-center justify-center bg-white relative overflow-hidden">
+                            {firstAttachment ? (
+                                <img
+                                    src={getImageUrl(firstAttachment.url)}
+                                    className="max-w-full max-h-[300px] object-contain"
+                                    alt="Drawing"
+                                />
+                            ) : (
+                                <div className="text-gray-300 italic text-xs">도면 파일 없음</div>
+                            )}
+                        </div>
                     </div>
                 );
             case 'approval':

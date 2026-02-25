@@ -172,6 +172,46 @@ const BlockRenderer = ({ block, config }) => {
                     </table>
                 </div>
             );
+        case 'boxedHeader':
+            return (
+                <div className="p-4 flex justify-center" key={block.id}>
+                    <div className="border-2 border-black px-12 py-2 text-2xl font-bold tracking-[1em] indent-[1em]">
+                        {config.title || "문서 제목"}
+                    </div>
+                </div>
+            );
+        case 'supplierTable':
+            return (
+                <div className="p-4 flex justify-end" key={block.id}>
+                    <div className="w-[85mm] border-2 border-black p-2 flex text-[10px]">
+                        <div className="w-8 border-r border-black flex items-center justify-center font-bold writing-vertical py-2 bg-gray-100 italic">공급자</div>
+                        <div className="flex-1 space-y-1 pl-1 italic text-gray-400">
+                            <div>등록번호: ...</div>
+                            <div>상호: ...</div>
+                            <div>주소: ...</div>
+                            <div>업태/종목: ...</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        case 'sumBox':
+            return (
+                <div className="p-4" key={block.id}>
+                    <div className="border-y-2 border-black py-2 flex items-center justify-between font-bold">
+                        <span className="text-lg">합계금액 (부가가치세 별도)</span>
+                        <span className="text-xl italic text-gray-400 font-mono">￦ 0,000,000</span>
+                    </div>
+                </div>
+            );
+        case 'drawing':
+            return (
+                <div className="p-4 flex flex-col gap-2 border border-dashed border-gray-600 rounded bg-gray-900/20" key={block.id}>
+                    <div className="text-xs font-bold text-gray-500 uppercase">도면 영역</div>
+                    <div className="h-48 flex items-center justify-center text-gray-400 italic">
+                        [ 도면 이미지가 표시되는 영역입니다 ]
+                    </div>
+                </div>
+            );
         case 'memo':
             return (
                 <div className="p-4 flex" key={block.id}>
@@ -243,11 +283,30 @@ const VisualFormEditor = ({ template, onChange }) => {
                         <Plus className="w-4 h-4 text-blue-500" /> 구성 요소 추가
                     </h4>
                     <div className="grid grid-cols-1 gap-1">
-                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('header')}><Type className="w-4 h-4" /> 헤더 (제목)</Button>
-                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('approval')}><CheckSquare className="w-4 h-4" /> 결제칸 (담당/대표)</Button>
-                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('infoTable')}><TableIcon className="w-4 h-4" /> 기본 정보 테이블</Button>
-                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('productList')}><Layout className="w-4 h-4" /> 품목 리스트</Button>
-                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('processTable')}><Settings2 className="w-4 h-4" /> 상세 공정 테이블</Button>
+                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('boxedHeader')}>
+                            <Type className="w-4 h-4" /> 박스 헤더 (발주서용)
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('approval')}>
+                            <CheckSquare className="w-4 h-4" /> 결제칸 (담당/대표)
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('infoTable')}>
+                            <TableIcon className="w-4 h-4" /> 기본 정보 테이블
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('supplierTable')}>
+                            <TableIcon className="w-4 h-4" /> 공급자 정보 테이블
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('sumBox')}>
+                            <Type className="w-4 h-4" /> 합계 금액 박스
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('productList')}>
+                            <Layout className="w-4 h-4" /> 품목 리스트
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('drawing')}>
+                            <Layout className="w-4 h-4" /> 도면 영역
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('processTable')}>
+                            <Settings2 className="w-4 h-4" /> 상세 공정 테이블
+                        </Button>
                         <Button variant="ghost" size="sm" className="justify-start gap-2 text-gray-400 hover:text-white" onClick={() => addBlock('memo')}><StickyNote className="w-4 h-4" /> 메모 섹션</Button>
                     </div>
                 </div>

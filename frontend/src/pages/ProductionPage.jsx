@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse } from '@mui/material';
-import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon } from '@mui/icons-material';
+import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon, Description as DescIcon } from '@mui/icons-material';
 import { X, FileText, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
 import ProductionPlanModal from '../components/ProductionPlanModal';
@@ -33,14 +33,16 @@ const ProductionPage = () => {
     // Sheet Modal State
     const [sheetModalOpen, setSheetModalOpen] = useState(false);
     const [sheetPlan, setSheetPlan] = useState(null);
+    const [sheetType, setSheetType] = useState('PRODUCTION');
 
     // File viewer modal
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
     const [viewingFileTitle, setViewingFileTitle] = useState('');
 
-    const handlePrintClick = (plan) => {
+    const handlePrintClick = (plan, type = 'PRODUCTION') => {
         setSheetPlan(plan);
+        setSheetType(type);
         setSheetModalOpen(true);
     };
 
@@ -378,6 +380,7 @@ const ProductionPage = () => {
                 isOpen={sheetModalOpen}
                 onClose={() => setSheetModalOpen(false)}
                 plan={sheetPlan}
+                sheetType={sheetType}
                 onSave={fetchPlans}
             />
 
@@ -744,8 +747,11 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                         <>
                             {plan.status !== 'COMPLETED' ? (
                                 <>
-                                    <IconButton size="small" color="primary" onClick={() => onPrint(plan)} title="생산관리시트출력">
-                                        <PrintIcon />
+                                    <IconButton size="small" color="primary" onClick={() => onPrint(plan, 'PRODUCTION')} title="생산관리시트출력">
+                                        <PrintIcon fontSize="small" />
+                                    </IconButton>
+                                    <IconButton size="small" color="secondary" onClick={() => onPrint(plan, 'PRODUCTION_DETAIL')} title="세부내역출력">
+                                        <DescIcon fontSize="small" />
                                     </IconButton>
                                     <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
                                         <EditIcon />
