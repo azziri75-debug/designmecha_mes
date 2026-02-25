@@ -225,9 +225,10 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         {/* Top Info Section */}
                         <div className="flex justify-between items-start mb-6 text-xs px-2">
                             <div className="flex-1 space-y-8 pr-4">
-                                <p className="text-[12px] font-bold border-b border-gray-100 inline-block min-w-[140px] pb-1">
-                                    Date : <EditableText value={metadata.estimate_date} onChange={(v) => handleMetaChange('estimate_date', v)} className="inline-block" />
-                                </p>
+                                <div className="text-[12px] font-bold border-b border-gray-100 flex items-center gap-2 min-w-[140px] pb-1">
+                                    <span>Date :</span>
+                                    <EditableText value={metadata.estimate_date} onChange={(v) => handleMetaChange('estimate_date', v)} className="flex-1" />
+                                </div>
                                 <div className="space-y-2">
                                     <div className="flex items-end gap-2 text-2xl font-bold border-b-2 border-black pb-1 mb-2 max-w-[350px]">
                                         <EditableText value={metadata.recipient} onChange={(v) => handleMetaChange('recipient', v)} className="flex-1" />
