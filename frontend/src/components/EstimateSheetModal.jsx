@@ -253,14 +253,18 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                             </tr>
                                             <tr className="border-b border-black h-10">
                                                 <td className="bg-gray-50 border-r border-black font-bold p-1 text-center leading-tight">사업장<br />소재지</td>
-                                                <td colSpan="3" className="p-1 leading-tight text-[8px] flex items-center h-full">
-                                                    충남 아산시 음봉면 월암로 336-39<br />(www.designmecha.co.kr)
+                                                <td colSpan="3" className="p-1 leading-tight text-[8px]">
+                                                    <div className="flex items-center h-full">
+                                                        충남 아산시 음봉면 월암로 336-39<br />(www.designmecha.co.kr)
+                                                    </div>
                                                 </td>
                                             </tr>
-                                            <tr className="h-full">
+                                            <tr className="h-10">
                                                 <td className="bg-gray-50 border-r border-black font-bold p-1 text-center">연락처</td>
-                                                <td colSpan="3" className="p-1 leading-tight text-[8px] flex items-center h-full">
-                                                    TEL : 041-544-6220 / FAX : 041-544-6207<br />(E-mail : juno@designmecha.co.kr)
+                                                <td colSpan="3" className="p-1 leading-tight text-[8px]">
+                                                    <div className="flex items-center h-full">
+                                                        TEL : 041-544-6220 / FAX : 041-544-6207<br />(E-mail : juno@designmecha.co.kr)
+                                                    </div>
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -299,14 +303,14 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                             <div className="w-[60px]"></div>
                         </div>
 
-                        {/* Footer Section */}
-                        <div className="mt-8 text-xs px-2">
-                            <h4 className="font-bold border-b-2 border-black w-24 mb-3 pb-1">견 적 기 준</h4>
-                            <div className="leading-relaxed border-2 border-black p-4 min-h-[140px] bg-gray-50/20">
+                        {/* Footer Section - Avoid overlapping bottom watermark */}
+                        <div className="mt-6 text-xs px-2 pb-12">
+                            <h4 className="font-bold border-b-2 border-black w-24 mb-2 pb-1">견 적 기 준</h4>
+                            <div className="leading-relaxed border-2 border-black p-4 min-h-[100px] bg-gray-50/20">
                                 <EditableText
                                     value={metadata.notes}
                                     onChange={(v) => handleMetaChange('notes', v)}
-                                    className="min-h-[120px] items-start whitespace-pre-wrap leading-6 text-[11px]"
+                                    className="min-h-[80px] items-start whitespace-pre-wrap leading-6 text-[11px]"
                                 />
                             </div>
                         </div>
