@@ -43,9 +43,11 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         title: "견 적 서",
         recipient: "",
         estimate_date: "",
-        total_amount_text: "",
-        notes: "1) 납기 : 발주 후 15일 이내",
-        // Adjusted initial widths to prevent overflow/truncation
+        company_reg_no: "312-81-38446",
+        company_name: "디자인메카",
+        company_ceo: "조인호",
+        company_address: "충남 아산시 음봉면 월암로 336-39\n(www.designmecha.co.kr)",
+        company_contact: "TEL : 041-544-6220 / FAX : 041-544-6207\n(E-mail : juno@designmecha.co.kr)",
         colWidths: [35, 200, 140, 45, 85, 95, 60],
         items: []
     });
@@ -91,6 +93,11 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             estimate_date: estimate.estimate_date || new Date().toISOString().split('T')[0].replace(/-/g, '. '),
             total_amount_text: numberToKorean(total),
             notes: estimate.note || "1) 납기 : 발주 후 15일 이내",
+            company_reg_no: company?.business_no || "312-81-38446",
+            company_name: company?.name || "디자인메카",
+            company_ceo: company?.ceo_name || "조인호",
+            company_address: (company?.address || "충남 아산시 음봉면 월암로 336-39") + (company?.website ? `\n(${company.website})` : "\n(www.designmecha.co.kr)"),
+            company_contact: `TEL : ${company?.phone || '041-544-6220'} / FAX : ${company?.fax || '041-544-6207'}\n(E-mail : ${company?.email || 'juno@designmecha.co.kr'})`,
             items: items
         }));
     };
@@ -240,31 +247,39 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                         <tbody>
                                             <tr className="border-b border-black h-8">
                                                 <td className="w-16 bg-gray-50 border-r border-black font-bold p-1 text-center">등록번호</td>
-                                                <td colSpan="3" className="p-1 font-bold text-center text-[11px]">312-81-38446</td>
+                                                <td colSpan="3" className="p-1 font-bold text-center text-[11px]">
+                                                    <EditableText value={metadata.company_reg_no} onChange={(v) => handleMetaChange('company_reg_no', v)} className="justify-center" />
+                                                </td>
                                             </tr>
                                             <tr className="border-b border-black h-8">
                                                 <td className="bg-gray-50 border-r border-black font-bold p-1 text-center">상 호</td>
-                                                <td className="border-r border-black p-1 text-center font-bold">디자인메카</td>
+                                                <td className="border-r border-black p-1 text-center font-bold">
+                                                    <EditableText value={metadata.company_name} onChange={(v) => handleMetaChange('company_name', v)} className="justify-center" />
+                                                </td>
                                                 <td className="w-12 bg-gray-50 border-r border-black font-bold p-1 text-center">대표</td>
                                                 <td className="p-1 text-center relative font-bold text-[11px]">
-                                                    조인호
+                                                    <EditableText value={metadata.company_ceo} onChange={(v) => handleMetaChange('company_ceo', v)} className="justify-center" />
                                                     {stampUrl && <StampOverlay url={stampUrl} className="w-12 h-12 -top-2 -left-2" />}
                                                 </td>
                                             </tr>
                                             <tr className="border-b border-black h-10">
                                                 <td className="bg-gray-50 border-r border-black font-bold p-1 text-center leading-tight">사업장<br />소재지</td>
                                                 <td colSpan="3" className="p-1 leading-tight text-[8px]">
-                                                    <div className="flex items-center h-full">
-                                                        충남 아산시 음봉면 월암로 336-39<br />(www.designmecha.co.kr)
-                                                    </div>
+                                                    <EditableText
+                                                        value={metadata.company_address}
+                                                        onChange={(v) => handleMetaChange('company_address', v)}
+                                                        className="items-start whitespace-pre-wrap leading-tight text-[8px]"
+                                                    />
                                                 </td>
                                             </tr>
-                                            <tr className="h-10">
+                                            <tr className="border-b border-black h-10">
                                                 <td className="bg-gray-50 border-r border-black font-bold p-1 text-center">연락처</td>
                                                 <td colSpan="3" className="p-1 leading-tight text-[8px]">
-                                                    <div className="flex items-center h-full">
-                                                        TEL : 041-544-6220 / FAX : 041-544-6207<br />(E-mail : juno@designmecha.co.kr)
-                                                    </div>
+                                                    <EditableText
+                                                        value={metadata.company_contact}
+                                                        onChange={(v) => handleMetaChange('company_contact', v)}
+                                                        className="items-start whitespace-pre-wrap leading-tight text-[8px]"
+                                                    />
                                                 </td>
                                             </tr>
                                         </tbody>
