@@ -113,17 +113,22 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         switch (block.type) {
             case 'boxedHeader':
                 return (
-                    <div className="flex justify-between items-start mb-8" key={block.id}>
-                        <div className="flex-1"></div>
-                        <div className="border-2 border-black px-12 py-2 text-2xl font-bold tracking-[0.5em] indent-[0.5em] mx-auto">
+                    <div className="flex justify-center p-4" key={block.id}>
+                        <div className="border-2 border-black px-12 py-2 text-2xl font-bold tracking-[0.5em] indent-[0.5em]">
                             {config.title || metadata.title}
                         </div>
-                        <div className="flex border border-black text-[10px] ml-auto">
+                    </div>
+                );
+            case 'approval':
+                const steps = config.steps || ["신청", "담당", "대표"];
+                return (
+                    <div className="p-2 flex justify-end" key={block.id}>
+                        <div className="flex border border-black text-[10px]">
                             <div className="w-8 border-r border-black bg-gray-50 flex flex-col items-center justify-center font-bold py-1">
-                                <div>신청</div><div>부서</div><div>결제</div>
+                                <div>결</div><div>제</div>
                             </div>
-                            {["신청", "담당", "대표"].map((step, i) => (
-                                <div key={i} className={`w-14 flex flex-col ${i !== 2 ? 'border-r border-black' : ''}`}>
+                            {steps.map((step, i) => (
+                                <div key={i} className={`w-14 flex flex-col ${i !== steps.length - 1 ? 'border-r border-black' : ''}`}>
                                     <div className="border-b border-black bg-gray-50 py-0.5 text-center font-bold h-5 flex items-center justify-center">{step}</div>
                                     <div className="h-10"></div>
                                 </div>
@@ -248,7 +253,18 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                 </div>
                 <div className="flex-1 overflow-auto bg-[#e5e7eb] p-8 flex justify-center">
                     <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
-                        {blocks.map(block => renderBlock(block))}
+                        <div className="flex flex-wrap content-start w-full">
+                            {blocks.map(block => {
+                                const widthMap = {
+                                    '100%': 'w-full', '75%': 'w-3/4', '66%': 'w-2/3', '50%': 'w-1/2', '33%': 'w-1/3', '25%': 'w-1/4'
+                                };
+                                return (
+                                    <div key={block.id} className={widthMap[block.width || '100%']}>
+                                        {renderBlock(block)}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>

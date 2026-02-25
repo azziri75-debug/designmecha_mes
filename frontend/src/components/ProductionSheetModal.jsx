@@ -327,7 +327,18 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, sheetType = 'PRODUCTION',
 
                 <div className="flex-1 overflow-auto bg-gray-950 p-8 flex justify-center">
                     <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
-                        {blocks.map(block => renderBlock(block))}
+                        <div className="flex flex-wrap content-start w-full">
+                            {blocks.map(block => {
+                                const widthMap = {
+                                    '100%': 'w-full', '75%': 'w-3/4', '66%': 'w-2/3', '50%': 'w-1/2', '33%': 'w-1/3', '25%': 'w-1/4'
+                                };
+                                return (
+                                    <div key={block.id} className={widthMap[block.width || '100%']}>
+                                        {renderBlock(block)}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -204,23 +204,21 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                     </div>
                 );
             case 'infoTable':
+                const rows = config.rows || [{ label1: "성명", value1: metadata.recipient, label2: "연락처", value2: "" }];
                 return (
-                    <div className="flex justify-between items-start mb-6 gap-4" key={block.id}>
-                        <div className="flex-1 space-y-2">
-                            <div className="flex items-end gap-2 text-lg border-b border-[#000] pb-1 mb-2">
-                                <input
-                                    value={metadata.recipient}
-                                    onChange={(e) => handleMetadataChange('recipient', e.target.value)}
-                                    className="font-bold flex-1 outline-none bg-transparent"
-                                />
-                                <span>귀하</span>
-                            </div>
-                            <div className="text-sm space-y-1">
-                                <p className="flex"><span className="w-16">참조:</span> <input value={metadata.reference} onChange={(e) => handleMetadataChange('reference', e.target.value)} className="flex-1 outline-none bg-transparent border-b border-dotted" /></p>
-                                <p className="flex"><span className="w-16">견적일:</span> <span>{estimate.estimate_date || today}</span></p>
-                                <p className="flex"><span className="w-16">견적번호:</span> <span>{estimate.id}</span></p>
-                            </div>
-                        </div>
+                    <div className="p-2" key={block.id}>
+                        <table className="w-full border-collapse border border-black text-xs">
+                            <tbody>
+                                {rows.map((row, idx) => (
+                                    <tr key={idx}>
+                                        <td className="border border-black bg-gray-50 p-2 font-bold w-24">{row.label1}</td>
+                                        <td className="border border-black p-2">{row.value1 || (idx === 0 ? metadata.recipient : '')}</td>
+                                        <td className="border border-black bg-gray-50 p-2 font-bold w-24">{row.label2}</td>
+                                        <td className="border border-black p-2">{row.value2}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 );
             case 'sumBox':
@@ -317,7 +315,23 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 </div>
                 <div className="flex-1 overflow-auto bg-gray-950 p-8 flex justify-center">
                     <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
-                        {blocks.map(block => renderBlock(block))}
+                        <div className="flex flex-wrap content-start w-full">
+                            {blocks.map(block => {
+                                const widthMap = {
+                                    '100%': 'w-full',
+                                    '75%': 'w-3/4',
+                                    '66%': 'w-2/3',
+                                    '50%': 'w-1/2',
+                                    '33%': 'w-1/3',
+                                    '25%': 'w-1/4'
+                                };
+                                return (
+                                    <div key={block.id} className={widthMap[block.width || '100%']}>
+                                        {renderBlock(block)}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
