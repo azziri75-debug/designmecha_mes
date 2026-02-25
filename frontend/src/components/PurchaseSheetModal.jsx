@@ -180,7 +180,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                             </div>
 
                             <div className="flex-1 flex justify-center px-4">
-                                <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold tracking-[0.5em] indent-[0.5em] max-w-[280px] w-full text-center leading-none">
+                                <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold tracking-[0.3em] indent-[0.3em] max-w-[400px] w-full text-center leading-none">
                                     <EditableText value={metadata.title} onChange={(v) => handleMetaChange('title', v)} isHeader className="justify-center" />
                                 </div>
                             </div>

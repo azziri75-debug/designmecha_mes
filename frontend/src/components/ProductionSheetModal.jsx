@@ -19,7 +19,6 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
         { key: 'detail', label: '작업내용', align: 'left' },
         { key: 'start_date', label: '시작일', align: 'center' },
         { key: 'end_date', label: '종료일', align: 'center' },
-        { key: 'status', label: '상태', align: 'center' },
         { key: 'note', label: '비고', align: 'left' },
     ];
 
@@ -31,7 +30,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
 
     // Fill empty rows
     while (tableData.length < 15) {
-        tableData.push({ idx: "", name: "", course_label: "", partner_worker: "", equipment: "", detail: "", start_date: "", end_date: "", status: "", note: "" });
+        tableData.push({ idx: "", name: "", course_label: "", partner_worker: "", equipment: "", detail: "", start_date: "", end_date: "", note: "" });
     }
 
     return (
@@ -88,8 +87,8 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     const [company, setCompany] = useState(null);
     const [saving, setSaving] = useState(false);
 
-    // Initial widths for the 10 columns
-    const [colWidths, setColWidths] = useState([30, 80, 40, 120, 80, 200, 70, 70, 50, 80]);
+    // Initial widths for the 9 columns
+    const [colWidths, setColWidths] = useState([30, 80, 40, 110, 80, 210, 70, 70, 80]);
 
     const [metadata, setMetadata] = useState({
         order_no: "",

@@ -208,30 +208,30 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
                     <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
 
-                        {/* Title Section - Shrink width for balance */}
+                        {/* Title Section - Ensure no cut-off */}
                         <div className="text-center mb-10 relative flex justify-center items-center h-20">
-                            <div className="text-4xl font-bold tracking-[2em] indent-[2em] border-b-4 border-black pb-2 max-w-[350px] w-full text-center leading-none">
+                            <div className="text-4xl font-bold tracking-[1em] indent-[1em] border-b-4 border-black pb-2 max-w-[500px] w-full text-center leading-none">
                                 <EditableText value={metadata.title} onChange={(v) => handleMetaChange('title', v)} isHeader className="justify-center" />
                             </div>
                         </div>
 
                         {/* Top Info Section */}
                         <div className="flex justify-between items-start mb-6 text-xs px-2">
-                            <div className="flex-1 space-y-6">
-                                <p className="text-[11px] font-bold border-b border-gray-100 inline-block min-w-[120px] pb-1">
+                            <div className="flex-1 space-y-8 pr-4">
+                                <p className="text-[12px] font-bold border-b border-gray-100 inline-block min-w-[140px] pb-1">
                                     Date : <EditableText value={metadata.estimate_date} onChange={(v) => handleMetaChange('estimate_date', v)} className="inline-block" />
                                 </p>
-                                <div className="space-y-1">
-                                    <div className="flex items-end gap-2 text-xl font-bold border-b-2 border-black pb-1 mb-2 max-w-[280px]">
+                                <div className="space-y-2">
+                                    <div className="flex items-end gap-2 text-2xl font-bold border-b-2 border-black pb-1 mb-2 max-w-[350px]">
                                         <EditableText value={metadata.recipient} onChange={(v) => handleMetaChange('recipient', v)} className="flex-1" />
-                                        <span className="text-sm pb-1 font-normal">귀하</span>
+                                        <span className="text-base pb-1 font-normal">귀하</span>
                                     </div>
-                                    <p className="text-[11px] italic text-gray-400">아래와 같이 견적해 드립니다.</p>
+                                    <p className="text-[12px] italic text-gray-500">아래와 같이 견적해 드립니다.</p>
                                 </div>
                             </div>
 
-                            {/* Company Info Box - Shrink for A4 fit */}
-                            <div className="w-[300px] border-2 border-black flex text-[9px] h-32 mr-2">
+                            {/* Company Info Box - Ensure fixed width and no collapse */}
+                            <div className="w-[320px] shrink-0 border-2 border-black flex text-[9px] h-36">
                                 <div className="w-8 border-r-2 border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
                                     <div>공</div><div>급</div><div>자</div>
                                 </div>

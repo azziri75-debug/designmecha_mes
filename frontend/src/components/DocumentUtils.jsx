@@ -117,9 +117,39 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, co
         if (!resizing.current) return;
         const { idx, startX, startWidth } = resizing.current;
         const diff = e.pageX - startX;
-        const newWidths = [...widths];
-        newWidths[idx] = Math.max(30, startWidth + diff);
-        setWidths(newWidths);
+
+        // "좌우폭은 늘어나지 않고 안에서만 조정가능하게"
+        // Adjust current column and the next one to maintain total width
+        if (idx < widths.length - 1) {
+            const nextIdx = idx + 1;
+            const startWidthNext = widths[nextIdx];
+
+            // Calculate new widths
+            const newW = Math.max(20, startWidth + diff);
+            const actualDiff = newW - startWidth;
+            const newWNext = Math.max(20, startWidthNext - actualDiff);
+
+            const finalWidths = [...widths];
+            finalWidths[idx] = startWidth + (startWidthNext - newWNext);
+            finalWidths[nextIdx] = newWNext;
+            setWidths(finalWidths);
+        } else {
+            // Last column: Just resize it but it might overflow? 
+            // Better to allow resize but the user wants "within bounds".
+            // If it's the last column, we could steal from the previous one.
+            const prevIdx = idx - 1;
+            if (prevIdx >= 0) {
+                const startWidthPrev = widths[prevIdx];
+                const newW = Math.max(20, startWidth + diff);
+                const actualDiff = newW - startWidth;
+                const newWPrev = Math.max(20, startWidthPrev - actualDiff);
+
+                const finalWidths = [...widths];
+                finalWidths[idx] = startWidth + (startWidthPrev - newWPrev);
+                finalWidths[prevIdx] = newWPrev;
+                setWidths(finalWidths);
+            }
+        }
     };
 
     const handleMouseUp = () => {
