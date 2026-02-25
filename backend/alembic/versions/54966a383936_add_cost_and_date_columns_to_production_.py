@@ -24,10 +24,16 @@ def upgrade() -> None:
     op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS start_date DATE')
     op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS end_date DATE')
     op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS cost FLOAT DEFAULT 0.0')
+    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS attachment_file JSON')
+    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS worker_id INTEGER')
+    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS equipment_id INTEGER')
 
 
 def downgrade() -> None:
     """Downgrade schema."""
+    op.drop_column('production_plan_items', 'equipment_id')
+    op.drop_column('production_plan_items', 'worker_id')
+    op.drop_column('production_plan_items', 'attachment_file')
     op.drop_column('production_plan_items', 'cost')
     op.drop_column('production_plan_items', 'end_date')
     op.drop_column('production_plan_items', 'start_date')
