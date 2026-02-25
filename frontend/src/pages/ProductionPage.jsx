@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon } from '@mui/icons-material';
-import { X, FileText } from 'lucide-react';
+import { X, FileText, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
 import ProductionPlanModal from '../components/ProductionPlanModal';
 import ProductionSheetModal from '../components/ProductionSheetModal';
@@ -18,6 +18,17 @@ const ProductionPage = () => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [selectedStockProduction, setSelectedStockProduction] = useState(null);
     const [selectedPlan, setSelectedPlan] = useState(null);
+    const [partners, setPartners] = useState([]);
+
+    // Filters
+    const [filterPartner, setFilterPartner] = useState('all');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [defects, setDefects] = useState([]);
+
+    // Defect Modal
+    const [defectModalOpen, setDefectModalOpen] = useState(false);
+    const [selectedDefects, setSelectedDefects] = useState([]);
 
     // Sheet Modal State
     const [sheetModalOpen, setSheetModalOpen] = useState(false);
@@ -60,11 +71,31 @@ const ProductionPage = () => {
         }
     };
 
+    const fetchDefects = async () => {
+        try {
+            const response = await api.get('/quality/defects/');
+            setDefects(response.data);
+        } catch (error) {
+            console.error("Failed to fetch defects", error);
+        }
+    };
+
+    const fetchPartners = async () => {
+        try {
+            const response = await api.get('/basics/partners/');
+            setPartners(response.data);
+        } catch (error) {
+            console.error("Failed to fetch partners", error);
+        }
+    };
+
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchOrders();
         fetchStockProductions();
         fetchPlans();
+        fetchPartners();
+        fetchDefects();
     }, []);
 
     const handleCreateClick = (order, stockProd = null) => {
@@ -201,7 +232,24 @@ const ProductionPage = () => {
 
     // Filter plans by status based on tab
     const inProgressPlans = plans.filter(p => p.status !== 'COMPLETED' && p.status !== 'CANCELED');
-    const completedPlans = plans.filter(p => p.status === 'COMPLETED');
+    const completedPlans = plans.filter(p => {
+        if (p.status !== 'COMPLETED') return false;
+
+        // Partner Filter
+        if (filterPartner !== 'all') {
+            if (filterPartner === 'internal') {
+                if (p.order_id) return false;
+            } else {
+                if (p.order?.partner_id !== parseInt(filterPartner)) return false;
+            }
+        }
+
+        // Date Filter (Plan Date)
+        if (startDate && p.plan_date < startDate) return false;
+        if (endDate && p.plan_date > endDate) return false;
+
+        return true;
+    });
 
     return (
         <Box sx={{ width: '100%' }}>
@@ -216,6 +264,53 @@ const ProductionPage = () => {
                     <Tab label="생산 완료" />
                 </Tabs>
 
+                {tabIndex === 2 && (
+                    <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, alignItems: 'center', bgcolor: '#fcfcfc' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" color="textSecondary">기간:</Typography>
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                            />
+                            <span>~</span>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                            />
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" color="textSecondary">거래처:</Typography>
+                            <select
+                                value={filterPartner}
+                                onChange={(e) => setFilterPartner(e.target.value)}
+                                style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '120px' }}
+                            >
+                                <option value="all">전체 거래처</option>
+                                <option value="internal">사내(재고)</option>
+                                {partners.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </Box>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            color="inherit"
+                            onClick={() => {
+                                setStartDate('');
+                                setEndDate('');
+                                setFilterPartner('all');
+                            }}
+                        >
+                            필터 초기화
+                        </Button>
+                    </Box>
+                )}
+
                 <Box sx={{ p: 3 }}>
                     {tabIndex === 0 && (
                         <UnplannedOrdersTable
@@ -229,6 +324,7 @@ const ProductionPage = () => {
                         <ProductionPlansTable
                             plans={inProgressPlans}
                             orders={orders}
+                            defects={defects}
                             onEdit={handleEditClick}
                             onDelete={handleDeletePlan}
                             onComplete={handleCompletePlan}
@@ -239,6 +335,10 @@ const ProductionPage = () => {
                                 setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
                                 setShowFileModal(true);
                             }}
+                            onShowDefects={(d) => {
+                                setSelectedDefects(d);
+                                setDefectModalOpen(true);
+                            }}
                             readonly={false}
                         />
                     )}
@@ -246,6 +346,7 @@ const ProductionPage = () => {
                         <ProductionPlansTable
                             plans={completedPlans}
                             orders={orders}
+                            defects={defects}
                             onEdit={handleEditClick}
                             onDelete={handleDeletePlan}
                             onPrint={handlePrintClick}
@@ -254,6 +355,10 @@ const ProductionPage = () => {
                                 setViewingFiles(files);
                                 setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
                                 setShowFileModal(true);
+                            }}
+                            onShowDefects={(d) => {
+                                setSelectedDefects(d);
+                                setDefectModalOpen(true);
                             }}
                         />
                     )}
@@ -282,7 +387,56 @@ const ProductionPage = () => {
                 files={viewingFiles}
                 title={viewingFileTitle}
             />
+
+            <DefectInfoModal
+                isOpen={defectModalOpen}
+                onClose={() => setDefectModalOpen(false)}
+                defects={selectedDefects}
+            />
         </Box>
+    );
+};
+
+const DefectInfoModal = ({ isOpen, onClose, defects }) => {
+    if (!defects || defects.length === 0) return null;
+    return (
+        <FileViewerModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="불량 발생 내역"
+            files={[]} // Not used but required by FileViewerModal structural similarity if I were to use it, but better use a simple Box/Paper
+        >
+            <Box sx={{ p: 2, minWidth: 400 }}>
+                <Typography variant="h6" color="error" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AlertCircle /> 불량 내역 ({defects.length}건)
+                </Typography>
+                <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                        <TableHead sx={{ bgcolor: '#fff5f5' }}>
+                            <TableRow>
+                                <TableCell>발생일</TableCell>
+                                <TableCell>사유</TableCell>
+                                <TableCell align="right">수량</TableCell>
+                                <TableCell>상태</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {defects.map(d => (
+                                <TableRow key={d.id}>
+                                    <TableCell>{new Date(d.defect_date).toLocaleDateString()}</TableCell>
+                                    <TableCell>{d.defect_reason}</TableCell>
+                                    <TableCell align="right">{d.quantity} EA</TableCell>
+                                    <TableCell><Chip label={d.status} size="small" color={d.status === 'RESOLVED' ? 'success' : 'error'} variant="outlined" /></TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button onClick={onClose} variant="outlined">닫기</Button>
+                </Box>
+            </Box>
+        </FileViewerModal>
     );
 };
 
@@ -454,7 +608,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, readonly }) => {
+const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, onShowDefects, readonly }) => {
     return (
         <TableContainer>
             <Table>
@@ -467,6 +621,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, on
                         <TableCell>납기일</TableCell>
                         <TableCell>금액</TableCell>
                         <TableCell>상태</TableCell>
+                        <TableCell>불량</TableCell>
                         <TableCell>공정 수</TableCell>
                         <TableCell>첨부파일</TableCell>
                         <TableCell>관리</TableCell>
@@ -474,18 +629,20 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, on
                 </TableHead>
                 <TableBody>
                     {plans.length === 0 ? (
-                        <TableRow><TableCell colSpan={10} align="center">데이터가 없습니다.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={11} align="center">데이터가 없습니다.</TableCell></TableRow>
                     ) : (
                         plans.map((plan) => (
                             <Row
                                 key={plan.id}
                                 plan={plan}
+                                defects={defects?.filter(d => d.plan_id === plan.id)}
                                 onEdit={onEdit}
                                 onDelete={onDelete}
                                 onComplete={onComplete}
                                 onPrint={onPrint}
                                 onDeleteAttachment={onDeleteAttachment}
                                 onOpenFiles={onOpenFiles}
+                                onShowDefects={onShowDefects}
                                 readonly={readonly}
                             />
                         ))
@@ -496,7 +653,7 @@ const ProductionPlansTable = ({ plans, onEdit, onDelete, onComplete, onPrint, on
     );
 };
 
-const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onOpenFiles, readonly }) => {
+const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles, onShowDefects, readonly }) => {
     const [open, setOpen] = useState(false);
     const order = plan.order; // Used order from plan (eager loaded)
 
@@ -540,6 +697,18 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onOpenFiles, readonl
                 <TableCell>{order?.delivery_date || '-'}</TableCell>
                 <TableCell>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
                 <TableCell><Chip label={plan.status} color={plan.status === 'COMPLETED' ? "success" : "primary"} variant="outlined" /></TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                    {defects && defects.length > 0 && (
+                        <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => onShowDefects(defects)}
+                            title="불량 내역 보기"
+                        >
+                            <AlertCircle className="w-5 h-5" />
+                        </IconButton>
+                    )}
+                </TableCell>
                 <TableCell>{plan.items?.length || 0}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     {(() => {
@@ -627,16 +796,31 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onOpenFiles, readonl
                                                 <TableCell width="10%">구분</TableCell>
                                                 <TableCell width="15%">외주/구매/작업자</TableCell>
                                                 <TableCell width="15%">배정 장비</TableCell>
-                                                <TableCell width="15%">작업내용</TableCell>
-                                                <TableCell width="10%">예상시간</TableCell>
+                                                <TableCell width="12%">작업내용</TableCell>
+                                                <TableCell width="8%">예상시간</TableCell>
                                                 <TableCell width="10%">상태</TableCell>
+                                                <TableCell width="10%">첨부파일</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
                                             {group.items.sort((a, b) => a.sequence - b.sequence).map((item) => (
                                                 <TableRow key={item.id}>
                                                     <TableCell>{item.sequence}</TableCell>
-                                                    <TableCell>{item.process_name}</TableCell>
+                                                    <TableCell sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        {item.process_name}
+                                                        {defects?.some(d => d.plan_item_id === item.id) && (
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onShowDefects(defects.filter(d => d.plan_item_id === item.id));
+                                                                }}
+                                                            >
+                                                                <AlertCircle className="w-4 h-4" />
+                                                            </IconButton>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell>
                                                         <Chip
                                                             label={typeMap[item.course_type] || item.course_type}
@@ -662,12 +846,72 @@ const Row = ({ plan, onEdit, onDelete, onComplete, onPrint, onOpenFiles, readonl
                                                     <TableCell>{item.note}</TableCell>
                                                     <TableCell>{item.estimated_time}</TableCell>
                                                     <TableCell>
-                                                        <Chip
-                                                            label={item.status}
-                                                            size="small"
-                                                            variant="outlined"
-                                                            color={item.status === 'COMPLETED' ? 'success' : 'default'}
-                                                        />
+                                                        <select
+                                                            value={item.status}
+                                                            onChange={async (e) => {
+                                                                try {
+                                                                    await api.patch(`/production/plan-items/${item.id}`, { status: e.target.value });
+                                                                    fetchPlans();
+                                                                } catch (err) {
+                                                                    alert("상태 변경 실패");
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                padding: '2px 4px',
+                                                                borderRadius: '4px',
+                                                                fontSize: '0.75rem',
+                                                                border: '1px solid ' + (item.status === 'COMPLETED' ? '#4caf50' : '#ccc'),
+                                                                backgroundColor: item.status === 'COMPLETED' ? '#e8f5e9' : 'white'
+                                                            }}
+                                                        >
+                                                            <option value="PLANNED">계획</option>
+                                                            <option value="IN_PROGRESS">진행중</option>
+                                                            <option value="COMPLETED">완료</option>
+                                                        </select>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                            {(() => {
+                                                                let files = [];
+                                                                try {
+                                                                    if (item.attachment_file) {
+                                                                        files = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
+                                                                    }
+                                                                } catch { files = [item.attachment_file]; }
+                                                                const fileList = Array.isArray(files) ? files : [files].filter(Boolean);
+
+                                                                return (
+                                                                    <>
+                                                                        {fileList.length > 0 && (
+                                                                            <IconButton size="small" color="primary" onClick={() => onOpenFiles(fileList, { order: { order_no: `${item.process_name} 첨부` } })}>
+                                                                                <FileText className="w-4 h-4" />
+                                                                            </IconButton>
+                                                                        )}
+                                                                        <input
+                                                                            type="file"
+                                                                            id={`file-item-${item.id}`}
+                                                                            style={{ display: 'none' }}
+                                                                            onChange={async (e) => {
+                                                                                const file = e.target.files[0];
+                                                                                if (!file) return;
+                                                                                const formData = new FormData();
+                                                                                formData.append('file', file);
+                                                                                try {
+                                                                                    const uploadRes = await api.post('/upload', formData);
+                                                                                    const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
+                                                                                    const updatedFiles = [...fileList, newFile];
+                                                                                    await api.patch(`/production/plan-items/${item.id}`, { attachment_file: updatedFiles });
+                                                                                    fetchPlans();
+                                                                                } catch (err) { alert("파일 업로드 실패"); }
+                                                                            }}
+                                                                        />
+                                                                        <IconButton size="small" onClick={() => document.getElementById(`file-item-${item.id}`).click()}>
+                                                                            <AddIcon sx={{ fontSize: 18 }} />
+                                                                        </IconButton>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </Box>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}

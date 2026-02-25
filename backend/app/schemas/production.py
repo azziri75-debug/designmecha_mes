@@ -32,6 +32,7 @@ class ProductionPlanItemBase(BaseModel):
     equipment_id: Optional[int] = None
     note: Optional[str] = None
     status: ProductionStatus = ProductionStatus.PLANNED
+    attachment_file: Optional[Union[List[Any], str]] = None
 
 class ProductionPlanItemCreate(ProductionPlanItemBase):
     pass
@@ -46,6 +47,7 @@ class ProductionPlanItemUpdate(BaseModel):
     equipment_id: Optional[int] = None
     note: Optional[str] = None
     status: Optional[ProductionStatus] = None
+    attachment_file: Optional[Union[List[Any], str]] = None
     quantity: Optional[int] = None
 
 # --- Plan Schemas (Base) ---

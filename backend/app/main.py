@@ -278,6 +278,8 @@ async def startup_event():
                 await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN equipment_id INTEGER REFERENCES equipments(id)"))
             if "worker_id" not in cols:
                 await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN worker_id INTEGER REFERENCES staff(id)"))
+            if "attachment_file" not in cols:
+                await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN attachment_file JSON"))
         else:
             await db.execute(text("ALTER TABLE production_plans ALTER COLUMN order_id DROP NOT NULL"))
             r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plans' AND column_name='stock_production_id'"))
@@ -289,6 +291,9 @@ async def startup_event():
             r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plan_items' AND column_name='worker_id'"))
             if not r.scalar():
                 await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN worker_id INTEGER REFERENCES staff(id)"))
+            r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plan_items' AND column_name='attachment_file'"))
+            if not r.scalar():
+                await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN attachment_file JSONB"))
 
         # 6. Initialize Default Form Templates
         DEFAULT_FORMS = [

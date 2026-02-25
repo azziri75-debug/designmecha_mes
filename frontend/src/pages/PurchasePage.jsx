@@ -8,6 +8,8 @@ import api from '../lib/api';
 import PurchaseOrderModal from '../components/PurchaseOrderModal';
 import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
+import OrderModal from '../components/OrderModal';
+import StockProductionModal from '../components/StockProductionModal';
 
 const PurchasePage = () => {
     const [tabValue, setTabValue] = useState(0);
@@ -29,6 +31,12 @@ const PurchasePage = () => {
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
     const [viewingFileTitle, setViewingFileTitle] = useState('');
+
+    // Source Information Modals
+    const [sourceOrderModalOpen, setSourceOrderModalOpen] = useState(false);
+    const [selectedSourceOrder, setSelectedSourceOrder] = useState(null);
+    const [sourceStockModalOpen, setSourceStockModalOpen] = useState(false);
+    const [selectedSourceStock, setSelectedSourceStock] = useState(null);
 
     useEffect(() => {
         if (tabValue === 0) {
@@ -131,6 +139,16 @@ const PurchasePage = () => {
         }
     };
 
+    const handleOpenSource = (item) => {
+        if (item.plan?.order) {
+            setSelectedSourceOrder(item.plan.order);
+            setSourceOrderModalOpen(true);
+        } else if (item.plan?.stock_production) {
+            setSelectedSourceStock(item.plan.stock_production);
+            setSourceStockModalOpen(true);
+        }
+    };
+
     return (
         <Box sx={{ width: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
@@ -190,10 +208,10 @@ const PurchasePage = () => {
                                                 <Checkbox checked={selectedPendingItems.includes(item.id)} />
                                             </TableCell>
                                             <TableCell>
-                                                <Box>
-                                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                <Box sx={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); handleOpenSource(item); }}>
+                                                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main', textDecoration: 'underline' }}>
                                                         {item.plan?.order ? (
-                                                            <Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }} />
+                                                            <Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem', color: 'primary.main' }} />
                                                         ) : item.plan?.stock_production ? (
                                                             <Chip label="재고" size="small" variant="outlined" color="success" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }} />
                                                         ) : null}
@@ -260,8 +278,21 @@ const PurchasePage = () => {
                                             >
                                                 <TableCell>{order.order_no}</TableCell>
                                                 <TableCell>
-                                                    <Box>
-                                                        <Typography variant="body2">{order.related_sales_order_info || '-'}</Typography>
+                                                    <Box onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        // Get first item's plan info for linking
+                                                        const firstItem = order.items?.[0]?.production_plan_item;
+                                                        if (firstItem) handleOpenSource({ plan: firstItem.plan });
+                                                    }} sx={{ cursor: 'pointer' }}>
+                                                        <Typography variant="body2" sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 'bold' }}>
+                                                            {order.related_sales_order_info?.includes('PO') || order.related_sales_order_info?.includes('OS') ? (
+                                                                // This shouldn't happen for sales order info, but if it's stock production:
+                                                                <span style={{ color: '#2e7d32' }}>[재고] </span>
+                                                            ) : order.related_sales_order_info ? (
+                                                                <span style={{ color: '#1976d2' }}>[수주] </span>
+                                                            ) : null}
+                                                            {order.related_sales_order_info || '-'}
+                                                        </Typography>
                                                         <Typography variant="caption" color="textSecondary">{order.related_customer_names || '-'}</Typography>
                                                     </Box>
                                                 </TableCell>
@@ -391,6 +422,20 @@ const PurchasePage = () => {
                 onClose={() => setShowFileModal(false)}
                 files={viewingFiles}
                 title={viewingFileTitle}
+            />
+
+            <OrderModal
+                isOpen={sourceOrderModalOpen}
+                onClose={() => setSourceOrderModalOpen(false)}
+                order={selectedSourceOrder}
+                readonly={true}
+            />
+
+            <StockProductionModal
+                isOpen={sourceStockModalOpen}
+                onClose={() => setSourceStockModalOpen(false)}
+                stockProduction={selectedSourceStock}
+                readonly={true}
             />
         </Box>
     );

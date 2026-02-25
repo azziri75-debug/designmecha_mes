@@ -263,6 +263,16 @@ async def update_purchase_order(
              if item_id not in incoming_ids:
                  await db.delete(item)
 
+    # --- Process Sync Logic ---
+    if db_order.status == PurchaseStatus.COMPLETED:
+        from app.models.production import ProductionPlanItem, ProductionStatus
+        for item in db_order.items:
+            if item.production_plan_item_id:
+                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+                if plan_item and plan_item.status != ProductionStatus.COMPLETED:
+                    plan_item.status = ProductionStatus.COMPLETED
+                    db.add(plan_item)
+
     await db.commit()
     await db.refresh(db_order)
     
@@ -438,6 +448,16 @@ async def update_outsourcing_order(
          for item_id, item in current_items.items():
              if item_id not in incoming_ids:
                  await db.delete(item)
+
+    # --- Process Sync Logic ---
+    if db_order.status == OutsourcingStatus.COMPLETED:
+        from app.models.production import ProductionPlanItem, ProductionStatus
+        for item in db_order.items:
+            if item.production_plan_item_id:
+                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+                if plan_item and plan_item.status != ProductionStatus.COMPLETED:
+                    plan_item.status = ProductionStatus.COMPLETED
+                    db.add(plan_item)
 
     await db.commit()
     await db.refresh(db_order)

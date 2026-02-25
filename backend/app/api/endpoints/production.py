@@ -138,6 +138,7 @@ async def create_production_plan(
                 equipment_id=item_in.equipment_id,
                 note=item_in.note,
                 status=item_in.status,
+                attachment_file=item_in.attachment_file,
                 quantity=item_in.quantity
             )
             db.add(plan_item)
@@ -170,6 +171,7 @@ async def create_production_plan(
                     partner_name=proc.partner_name,
                     work_center=proc.equipment_name,
                     estimated_time=proc.estimated_time,
+                    attachment_file=proc.attachment_file,
                     quantity=sp.quantity,
                     status=ProductionStatus.PLANNED
                 )
@@ -198,6 +200,7 @@ async def create_production_plan(
                         partner_name=proc.partner_name,
                         work_center=proc.equipment_name,
                         estimated_time=proc.estimated_time,
+                        attachment_file=proc.attachment_file,
                         quantity=item.quantity,
                         status=ProductionStatus.PLANNED
                     )
@@ -273,6 +276,7 @@ async def update_production_plan(
                 equipment_id=item_in.get("equipment_id"),
                 note=item_in.get("note"),
                 status=item_in.get("status", ProductionStatus.PLANNED),
+                attachment_file=item_in.get("attachment_file"),
                 quantity=item_in.get("quantity", 1)
             )
             plan.items.append(new_item)
@@ -535,6 +539,25 @@ async def export_production_plan_excel(
         .where(ProductionPlan.id == plan.id)
     )
     return result.scalar_one()
+
+async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
+    """
+    모든 공정이 완료되었는지 확인하고, 그렇다면 생산 계획을 완료 처리합니다.
+    """
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id)
+    )
+    plan = result.scalar_one_or_none()
+    if not plan or not plan.items:
+        return
+
+    all_completed = all(item.status == ProductionStatus.COMPLETED for item in plan.items)
+    if all_completed and plan.status != ProductionStatus.COMPLETED:
+        # update_production_plan_status의 로직을 수행하기 위해 해당 함수를 직접 호출하거나
+        # 로직을 여기에 복제/호출합니다. 여기서는 안전하게 상태만 변경하고 side effect를 위해
+        # 필요한 최소한의 처리를 수행하거나, 아예 PATCH 엔드포인트 로직을 재사용합니다.
+        await update_production_plan_status(plan_id, ProductionStatus.COMPLETED, db)
 
 @router.delete("/plans/{plan_id}", status_code=200)
 async def delete_production_plan(
@@ -841,5 +864,42 @@ async def update_production_plan_status(
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
         )
         .where(ProductionPlan.id == plan_id)
+    )
+    return result.scalar_one()
+
+@router.patch("/plan-items/{item_id}", response_model=schemas.ProductionPlanItem)
+async def update_production_plan_item(
+    item_id: int,
+    item_in: schemas.ProductionPlanItemUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Update a single production plan item (status, attachment, etc).
+    """
+    result = await db.execute(select(ProductionPlanItem).where(ProductionPlanItem.id == item_id))
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Plan Item not found")
+
+    update_data = item_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(item, field, value)
+
+    await db.commit()
+    await db.refresh(item)
+    
+    # --- Auto-Complete Check ---
+    if "status" in update_data and update_data["status"] == ProductionStatus.COMPLETED:
+        await check_and_complete_production_plan(db, item.plan_id)
+    
+    # Reload for full schema
+    result = await db.execute(
+        select(ProductionPlanItem)
+        .options(
+            selectinload(ProductionPlanItem.product),
+            selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+        )
+        .where(ProductionPlanItem.id == item_id)
     )
     return result.scalar_one()
