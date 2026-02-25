@@ -1,9 +1,10 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import delete
 from app.api import deps
 from app.models.sales import Estimate, EstimateItem, SalesOrder, SalesOrderItem, OrderStatus
 from app.schemas import sales as schemas
@@ -527,25 +528,51 @@ async def delete_order(
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    # Cascade delete Production Plans
-    # We need to import ProductionPlan model
-    from app.models.production import ProductionPlan
-    
-    plans_query = select(ProductionPlan).where(ProductionPlan.order_id == order_id)
+    # Cascade delete 연관 데이터 (의존 관계 역순 및 명시적 삭제)
+    # 1. 연관된 생산 계획 ID들 가져오기
+    plans_query = select(ProductionPlan.id).where(ProductionPlan.order_id == order_id)
     plans_result = await db.execute(plans_query)
-    plans = plans_result.scalars().all()
-    
-    for plan in plans:
-        # Check if plan can be deleted? (e.g. if IN_PROGRESS?)
-        # User requested: "Delete connected production plan". 
-        # Ideally we should prevent if work has started, but for now we follow instruction "Delete it".
-        await db.delete(plan)
-    
-    # SalesOrder Items are cascade-deleted by relationship presumably, 
-    # but let's delete manually to be sure if not configured.
-    for item in db_order.items:
-        await db.delete(item)
+    plan_ids = plans_result.scalars().all()
+
+    if plan_ids:
+        # 2. 연관된 생산 공정(Item) ID들 가져오기
+        items_query = select(ProductionPlanItem.id).where(ProductionPlanItem.plan_id.in_(plan_ids))
+        items_result = await db.execute(items_query)
+        item_ids = items_result.scalars().all()
+
+        if item_ids:
+            # 3. 작업 지시 및 검사 결과 삭제
+            wo_query = select(WorkOrder.id).where(WorkOrder.plan_item_id.in_(item_ids))
+            wo_result = await db.execute(wo_query)
+            wo_ids = wo_result.scalars().all()
+            
+            if wo_ids:
+                await db.execute(delete(InspectionResult).where(InspectionResult.work_order_id.in_(wo_ids)))
+                await db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
+
+            # 4. 발주 품목 삭제 (ProductionPlanItem 참조)
+            await db.execute(delete(PurchaseOrderItem).where(PurchaseOrderItem.production_plan_item_id.in_(item_ids)))
+            await db.execute(delete(OutsourcingOrderItem).where(OutsourcingOrderItem.production_plan_item_id.in_(item_ids)))
+
+            # 5. 불량 내역 삭제 (계획 아이템 기준)
+            await db.execute(delete(QualityDefect).where(QualityDefect.plan_item_id.in_(item_ids)))
+            
+            # 6. 생산 공정 아이템 삭제
+            await db.execute(delete(ProductionPlanItem).where(ProductionPlanItem.id.in_(item_ids)))
         
+        # 7. 불량 내역 삭제 (계획 기준 - 아이템이 없는 경우 대비)
+        await db.execute(delete(QualityDefect).where(QualityDefect.plan_id.in_(plan_ids)))
+
+        # 8. 생산 계획 삭제
+        await db.execute(delete(ProductionPlan).where(ProductionPlan.id.in_(plan_ids)))
+    
+    # 9. 불량 내역 삭제 (수주 기준 직접 링크된 것들)
+    await db.execute(delete(QualityDefect).where(QualityDefect.order_id == order_id))
+    
+    # 10. 수주 품목 삭제
+    await db.execute(delete(SalesOrderItem).where(SalesOrderItem.order_id == order_id))
+        
+    # 11. 수주 헤더 삭제
     await db.delete(db_order)
     await db.commit()
     return None
