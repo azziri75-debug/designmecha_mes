@@ -10,6 +10,26 @@
 :root {
   --gray-50: #f9fafb;
   --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
   --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --blue-50: #eff6ff;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
   --blue-900: #1e3a8a;
+  --slate-900: #0f172a;
+
+  /* Tailwind v4 exact variable names override */
+  --color-gray-50: #f9fafb !important;
+  --color-gray-100: #f3f4f6 !important;
+  --color-gray-200: #e5e7eb !important;
+  --color-gray-300: #d1d5db !important;
+  --color-gray-400: #9ca3af !important;
+  --color-gray-500: #6b7280 !important;
+  --color-blue-50: #eff6ff !important;
+  --color-blue-600: #2563eb !important;
+  --color-blue-700: #1d4ed8 !important;
+  --color-blue-900: #1e3a8a !important;
+  --color-slate-900: #0f172a !important;
 }

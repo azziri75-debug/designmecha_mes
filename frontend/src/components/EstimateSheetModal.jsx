@@ -213,7 +213,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] flex flex-col shadow-xl origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] flex flex-col shadow-none origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
 
                         {/* Title Section - Ensure no cut-off */}
                         <div className="text-center mb-10 relative flex justify-center items-center h-20">
@@ -234,7 +234,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                         <EditableText value={metadata.recipient} onChange={(v) => handleMetaChange('recipient', v)} className="flex-1" />
                                         <span className="text-base pb-1 font-normal">귀하</span>
                                     </div>
-                                    <p className="text-[12px] italic text-gray-500">아래와 같이 견적해 드립니다.</p>
+                                    <p className="italic" style={{ fontSize: '12px', color: '#6b7280' }}>아래와 같이 견적해 드립니다.</p>
                                 </div>
                             </div>
 
@@ -332,8 +332,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Bottom Decoration */}
-                        <div className="text-center opacity-40 mt-8 mb-2 shrink-0">
-                            <div className="text-[10px] font-bold text-gray-400 tracking-[2em] uppercase">
+                        <div className="text-center mt-8 mb-2 shrink-0" style={{ opacity: 0.4 }}>
+                            <div className="font-bold tracking-[2em] uppercase" style={{ fontSize: '10px', color: '#9ca3af' }}>
                                 디자인메카
                             </div>
                         </div>

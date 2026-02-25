@@ -171,7 +171,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl relative" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-none relative" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
 
                         {/* Header Box - Tighten width */}
                         <div className="flex justify-between items-center mb-8 h-16">
@@ -205,7 +205,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                                     <EditableText value={order.partner?.name || '공급처'} className="flex-1" />
                                     <span className="text-sm pb-1 font-normal">귀하</span>
                                 </div>
-                                <div className="space-y-1 text-[10px] text-gray-500">
+                                <div className="space-y-1" style={{ fontSize: '10px', color: '#6b7280' }}>
                                     <p>TEL : <span className="text-black">{order.partner?.phone || '-'}</span></p>
                                     <p>FAX : <span className="text-black">{order.partner?.fax || '-'}</span></p>
                                     <p className="pt-2">발주일 : <span className="text-black font-bold">{order.order_date || '-'}</span></p>
@@ -213,8 +213,8 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                             </div>
                             <div className="text-right w-[220px]">
                                 <h2 className="text-xl font-bold font-serif">{company?.name || '디자인메카'}</h2>
-                                <p className="text-[9px] text-gray-400 tracking-widest uppercase">Designmecha Enterprise</p>
-                                <div className="text-[9px] mt-4 space-y-0.5 text-gray-800">
+                                <p className="tracking-widest uppercase" style={{ fontSize: '9px', color: '#9ca3af' }}>Designmecha Enterprise</p>
+                                <div className="mt-4 space-y-0.5 text-gray-800" style={{ fontSize: '9px' }}>
                                     <p>{company?.address || '충남 아산시 음봉면 월암로 336-39'}</p>
                                     <p>T. {company?.phone || '041-544-6220'} / F. {company?.fax || '-'}</p>
                                 </div>

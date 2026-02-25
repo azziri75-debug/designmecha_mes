@@ -75,11 +75,14 @@ export const EditableText = ({
         <div
             onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
             className={cn(
-                "cursor-text hover:bg-gray-100/50 rounded px-1 transition-colors min-h-[1.5em] flex items-center overflow-hidden whitespace-nowrap",
-                !value && "text-gray-300 italic",
+                "cursor-text rounded px-1 transition-colors min-h-[1.5em] flex items-center overflow-hidden whitespace-nowrap",
                 className
             )}
-            style={autoFit ? { fontSize: fittedSize } : {}}
+            style={{
+                ...(autoFit ? { fontSize: fittedSize } : {}),
+                ...(isEditing ? {} : { cursor: 'pointer' }),
+                ...(!value ? { color: '#d1d5db', fontStyle: 'italic' } : {})
+            }}
         >
             {value || placeholder}
         </div>

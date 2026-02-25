@@ -141,12 +141,12 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                             {config.title || metadata.title}
                         </div>
                         <div className="flex border border-black text-[10px] ml-auto">
-                            <div className="w-8 border-r border-black bg-gray-50 flex flex-col items-center justify-center font-bold py-1">
+                            <div className="w-8 border-r border-black flex flex-col items-center justify-center font-bold py-1" style={{ backgroundColor: '#f9fafb' }}>
                                 <div>신청</div><div>부서</div><div>결제</div>
                             </div>
                             {["신청", "담당", "대표"].map((step, i) => (
                                 <div key={i} className={`w-14 flex flex-col ${i !== 2 ? 'border-r border-black' : ''}`}>
-                                    <div className="border-b border-black bg-gray-50 py-0.5 text-center font-bold h-5 flex items-center justify-center">{step}</div>
+                                    <div className="border-b border-black py-0.5 text-center font-bold h-5 flex items-center justify-center" style={{ backgroundColor: '#f9fafb' }}>{step}</div>
                                     <div className="h-10"></div>
                                 </div>
                             ))}
@@ -167,7 +167,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                         </div>
                         <div className="text-right">
                             <h2 className="text-xl font-bold">(주)디자인메카</h2>
-                            <p className="text-[10px] text-gray-600">DESIGNMECHA CO., LTD</p>
+                            <p style={{ fontSize: '10px', color: '#4b5563' }}>DESIGNMECHA CO., LTD</p>
                             <div className="text-[10px] mt-1">
                                 <p>주소 : {company?.address}</p>
                                 <p>TEL : {company?.phone}, FAX : {company?.fax}</p>
@@ -180,7 +180,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                     <div key={block.id}>
                         <table className="w-full border-collapse border border-black mb-1 text-xs">
                             <thead>
-                                <tr className="bg-gray-50 text-center uppercase tracking-tighter">
+                                <tr className="text-center uppercase tracking-tighter" style={{ backgroundColor: '#f9fafb' }}>
                                     <th className="border border-black py-1 w-10">순위<br />ORDER</th>
                                     <th className="border border-black py-1">품목<br />DESCRIPTION</th>
                                     <th className="border border-black py-1 w-24">규격<br />GAUGE</th>
@@ -213,7 +213,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                                 ))}
                             </tbody>
                             <tfoot>
-                                <tr className="bg-gray-50 font-bold">
+                                <tr className="font-bold" style={{ backgroundColor: '#f9fafb' }}>
                                     <td colSpan="3" className="border border-black py-1.5 text-center">합계 (VAT별도)</td>
                                     <td className="border border-black"></td>
                                     <td className="border border-black"></td>
@@ -233,7 +233,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                             </div>
                         </div>
                         <div className="flex border border-black">
-                            <div className="w-16 border-r border-black bg-gray-50 flex flex-col items-center justify-center font-bold">
+                            <div className="w-16 border-r border-black flex flex-col items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>
                                 <div>납품</div><div>조건</div>
                             </div>
                             <div className="flex-1 grid grid-cols-2 text-[10px]">
@@ -259,7 +259,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                                 </div>
                             </div>
                         </div>
-                        <div className="text-center mt-2 text-[8px] text-gray-500">(주)디자인메카</div>
+                        <div className="text-center mt-2" style={{ fontSize: '8px', color: '#6b7280' }}>(주)디자인메카</div>
                     </div>
                 );
             default: return null;
@@ -287,7 +287,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                     </div>
                 </div>
                 <div className="flex-1 overflow-auto bg-gray-950 p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-xl origin-top" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-none origin-top" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
                         {blocks.map(block => renderBlock(block))}
                     </div>
                 </div>

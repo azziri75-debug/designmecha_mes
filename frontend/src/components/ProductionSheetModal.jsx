@@ -34,7 +34,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
     }
 
     return (
-        <div ref={ref} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] flex flex-col shadow-xl origin-top relative mb-8 last:mb-0 overflow-hidden" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+        <div ref={ref} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] flex flex-col shadow-none origin-top relative mb-8 last:mb-0 overflow-hidden" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
             {/* Header Area */}
             <div className="text-center py-4 border-b-2 border-black mb-6">
                 <h1 className="text-4xl font-bold tracking-[1em] indent-[1em]">
