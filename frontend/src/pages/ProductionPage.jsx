@@ -740,12 +740,6 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                             <Typography
                                 variant="body2"
                                 color="primary"
-                                sx={{
-                                    cursor: 'pointer',
-                                    textDecoration: 'underline',
-                                    '&:hover': { color: '#1565c0' }
-                                }}
-                                onClick={(e) => { e.stopPropagation(); onShowOrder(order); }}
                             >
                                 {order.order_no}
                             </Typography>
@@ -756,12 +750,6 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                             <Typography
                                 variant="body2"
                                 color="secondary"
-                                sx={{
-                                    cursor: 'pointer',
-                                    textDecoration: 'underline',
-                                    '&:hover': { color: '#6a1b9a' }
-                                }}
-                                onClick={(e) => { e.stopPropagation(); onShowStock(sp); }}
                             >
                                 {sp.production_no || `Stock-${sp.id}`}
                             </Typography>

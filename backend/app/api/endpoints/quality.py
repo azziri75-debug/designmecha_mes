@@ -12,6 +12,7 @@ from app.models.quality import InspectionResult, Attachment, QualityDefect
 from app.models.sales import SalesOrder
 from app.models.production import ProductionPlan, ProductionPlanItem
 from app.models.product import Product, ProductProcess
+from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem
 from app.schemas.quality import (
     InspectionResultCreate, InspectionResultResponse, AttachmentResponse,
     QualityDefectCreate, QualityDefectResponse, QualityDefectUpdate

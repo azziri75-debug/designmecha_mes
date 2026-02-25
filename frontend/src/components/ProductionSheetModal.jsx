@@ -195,16 +195,37 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                     backgroundColor: '#ffffff',
                     allowTaint: true,
                     onclone: (clonedDoc) => {
-                        // Fix for html2canvas oklch crash
-                        const elements = clonedDoc.getElementsByTagName("*");
-                        for (let i = 0; i < elements.length; i++) {
-                            const el = elements[i];
-                            const style = window.getComputedStyle(el);
-                            // If elements have oklch in computed style, html2canvas might crash
-                            // We can't easily change computed style, but we can override with inline style
-                            if (style.color.includes('oklch')) el.style.color = '#000000';
-                            if (style.backgroundColor.includes('oklch')) el.style.backgroundColor = '#ffffff';
-                            if (style.borderColor.includes('oklch')) el.style.borderColor = '#000000';
+                        // More aggressive fix for html2canvas oklch crash in Tailwind v4
+                        const style = clonedDoc.createElement('style');
+                        style.innerHTML = `
+                            * {
+                                color-scheme: light !important;
+                            }
+                            /* Standard color overrides to avoid oklch */
+                            .bg-white { background-color: #ffffff !important; }
+                            .text-black { color: #000000 !important; }
+                            .border-black { border-color: #000000 !important; }
+                            .border-gray-200 { border-color: #e5e7eb !important; }
+                            .text-blue-700 { color: #1d4ed8 !important; }
+                            .bg-gray-100 { background-color: #f3f4f6 !important; }
+                            
+                            /* Force non-oklch values for common Tailwind variables if they are used */
+                            :root {
+                                --color-white: #ffffff !important;
+                                --color-black: #000000 !important;
+                                --color-gray-100: #f3f4f6 !important;
+                                --color-blue-700: #1d4ed8 !important;
+                            }
+                        `;
+                        clonedDoc.head.appendChild(style);
+
+                        // Also manually strip any remaining oklch from problematic elements if needed
+                        // (Optional but kept as fallback if CSS injection isn't enough for some browsers)
+                        const allElems = clonedDoc.getElementsByTagName("*");
+                        for (let i = 0; i < allElems.length; i++) {
+                            const node = allElems[i];
+                            if (node.style.color?.includes('oklch')) node.style.color = '#000000';
+                            if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
                         }
                     }
                 });
