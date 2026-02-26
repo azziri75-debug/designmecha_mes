@@ -3,6 +3,7 @@ import api from '../lib/api';
 import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save } from 'lucide-react';
 import { cn } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
+import ProcessGroupManager from '../components/ProcessGroupManager';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -674,73 +675,23 @@ const ProductsPage = () => {
             )}
 
             {activeTab === 'processes' && (
-                <Card>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-gray-400">
-                            <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
-                                <tr>
-                                    <th className="px-6 py-3">공정명</th>
-                                    <th className="px-6 py-3">공정 그룹</th>
-                                    <th className="px-6 py-3">구분</th>
-                                    <th className="px-6 py-3">설명</th>
-                                    <th className="px-6 py-3 text-right">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-700">
-                                {loading ? (
-                                    <tr><td colSpan="5" className="text-center py-8">Loading...</td></tr>
-                                ) : processes.length > 0 ? processes.map((process) => (
-                                    <tr key={process.id} className="hover:bg-gray-700/50 transition-colors">
-                                        <td className="px-6 py-4 text-white font-medium">{process.name}</td>
-                                        <td className="px-6 py-4 text-xs font-medium">
-                                            {(() => {
-                                                if (!process.group_id) return <span className="text-gray-600">-</span>;
-                                                const minor = groups.find(g => g.id === process.group_id);
-                                                const major = minor ? groups.find(g => g.id === minor.parent_id) : null;
-                                                if (major && minor) return <span className="text-emerald-300">{major.name} &gt; {minor.name}</span>;
-                                                if (minor) return <span className="text-emerald-300">{minor.name}</span>;
-                                                return <span className="text-gray-600">-</span>;
-                                            })()}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={cn(
-                                                "px-2 py-1 rounded text-xs font-medium",
-                                                process.course_type === 'INTERNAL' ? "bg-blue-900 text-blue-300" :
-                                                    process.course_type === 'OUTSOURCING' ? "bg-orange-900 text-orange-300" :
-                                                        "bg-purple-900 text-purple-300"
-                                            )}>
-                                                {COURSE_TYPES[process.course_type] || process.course_type || "내부"}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">{process.description || '-'}</td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                            <button
-                                                onClick={() => {
-                                                    setProcessFormData({
-                                                        ...process,
-                                                        major_group_id: getMajorGroupId(process.group_id)
-                                                    });
-                                                    setShowProcessModal(true);
-                                                }}
-                                                className="text-gray-400 hover:text-blue-400"
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteProcess(process.id)}
-                                                className="text-gray-400 hover:text-red-400"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr><td colSpan="5" className="text-center py-8">등록된 공정이 없습니다.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
+                <ProcessGroupManager
+                    groups={groups}
+                    fetchGroups={fetchGroups}
+                    processes={processes}
+                    onAddProcess={(initData) => {
+                        setProcessFormData(initData || {});
+                        setShowProcessModal(true);
+                    }}
+                    onEditProcess={(process) => {
+                        setProcessFormData({
+                            ...process,
+                            major_group_id: getMajorGroupId(process.group_id)
+                        });
+                        setShowProcessModal(true);
+                    }}
+                    onDeleteProcess={handleDeleteProcess}
+                />
             )}
 
             {/* Product Modal */}
