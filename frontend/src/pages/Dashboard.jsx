@@ -128,6 +128,11 @@ const Dashboard = () => {
     const [stockProductions, setStockProductions] = useState([]);
     const [defects, setDefects] = useState([]);
 
+    // Grouping States
+    const [groups, setGroups] = useState([]);
+    const [selectedMajorGroup, setSelectedMajorGroup] = useState("");
+    const [selectedMinorGroup, setSelectedMinorGroup] = useState("");
+
     useEffect(() => {
         const fetchAll = async () => {
             setLoading(true);
@@ -143,7 +148,8 @@ const Dashboard = () => {
                     api.get('/product/products'),
                     api.get('/basics/staff/'),
                     api.get('/inventory/productions'),
-                    api.get('/quality/defects/')
+                    api.get('/quality/defects/'),
+                    api.get('/products/groups/')
                 ]);
                 if (ordRes.status === 'fulfilled') setOrders(ordRes.value.data);
                 if (planRes.status === 'fulfilled') setPlans(planRes.value.data);
@@ -156,6 +162,7 @@ const Dashboard = () => {
                 if (staffRes.status === 'fulfilled') setStaff(staffRes.value.data);
                 if (spRes.status === 'fulfilled') setStockProductions(spRes.value.data);
                 if (defRes.status === 'fulfilled') setDefects(defRes.value.data);
+                if (groupRes && groupRes.status === 'fulfilled') setGroups(groupRes.value.data || []);
             } catch (e) { console.error(e); }
             setLoading(false);
         };
@@ -167,21 +174,46 @@ const Dashboard = () => {
         const now = new Date();
         const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
+        // Filter Logic based on selected groups
+        let filteredProducts = products;
+        if (selectedMinorGroup) {
+            filteredProducts = products.filter(p => String(p.group_id) === String(selectedMinorGroup));
+        } else if (selectedMajorGroup) {
+            const minorIds = groups.filter(g => String(g.parent_id) === String(selectedMajorGroup)).map(g => g.id);
+            filteredProducts = products.filter(p => minorIds.includes(p.group_id));
+        }
+        const filteredProductIds = new Set(filteredProducts.map(p => p.id));
+
+        const matchesGroup = (productId) => (!selectedMajorGroup && !selectedMinorGroup) || filteredProductIds.has(productId);
+
+        const fOrders = orders.filter(o => (!selectedMajorGroup && !selectedMinorGroup) || (o.items && o.items.some(i => matchesGroup(i.product_id))));
+        const fPlans = plans.filter(p => (!selectedMajorGroup && !selectedMinorGroup) || (p.plan_items && p.plan_items.some(i => matchesGroup(i.product_id))));
+        const fPurchaseOrders = purchaseOrders.filter(o => (!selectedMajorGroup && !selectedMinorGroup) || (o.items && o.items.some(i => matchesGroup(i.product_id))));
+        const fOutsourcingOrders = outsourcingOrders.filter(o => (!selectedMajorGroup && !selectedMinorGroup) || (o.items && o.items.some(i => matchesGroup(i.product_id))));
+        const fPendingPurchase = pendingPurchase.filter(i => matchesGroup(i.product_id));
+        const fPendingOutsourcing = pendingOutsourcing.filter(i => matchesGroup(i.product_id));
+        const fStockProductions = stockProductions.filter(sp => matchesGroup(sp.product_id));
+        const fDefects = defects.filter(d =>
+            (d.plan_item && matchesGroup(d.plan_item.product_id)) ||
+            (d.order && d.order.items && d.order.items.some(i => matchesGroup(i.product_id))) ||
+            (!d.plan_item && !d.order) // Keep unmatched safely or adjust
+        );
+
         // Orders
-        const monthOrders = orders.filter(o => o.order_date?.startsWith(thisMonth));
-        const totalRevenue = orders.reduce((s, o) => s + (o.total_amount || 0), 0);
+        const monthOrders = fOrders.filter(o => o.order_date?.startsWith(thisMonth));
+        const totalRevenue = fOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
         const monthRevenue = monthOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
-        const pendingOrders = orders.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED');
-        const deliveredOrders = orders.filter(o => o.status === 'DELIVERY_COMPLETED');
-        const prodCompOrders = orders.filter(o => o.status === 'PRODUCTION_COMPLETED');
+        const pendingOrders = fOrders.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED');
+        const deliveredOrders = fOrders.filter(o => o.status === 'DELIVERY_COMPLETED');
+        const prodCompOrders = fOrders.filter(o => o.status === 'PRODUCTION_COMPLETED');
 
         // Production
-        const activePlans = plans.filter(p => p.status === 'IN_PROGRESS' || p.status === 'PLANNED');
-        const completedPlans = plans.filter(p => p.status === 'COMPLETED');
+        const activePlans = fPlans.filter(p => p.status === 'IN_PROGRESS' || p.status === 'PLANNED');
+        const completedPlans = fPlans.filter(p => p.status === 'COMPLETED');
 
         // Order status distribution
         const orderStatusCounts = {};
-        orders.forEach(o => {
+        fOrders.forEach(o => {
             const label = STATUS_LABELS[o.status] || o.status;
             orderStatusCounts[label] = (orderStatusCounts[label] || 0) + 1;
         });
@@ -193,14 +225,14 @@ const Dashboard = () => {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             const label = `${d.getMonth() + 1}월`;
-            const rev = orders.filter(o => o.order_date?.startsWith(key)).reduce((s, o) => s + (o.total_amount || 0), 0);
-            const cnt = orders.filter(o => o.order_date?.startsWith(key)).length;
+            const rev = fOrders.filter(o => o.order_date?.startsWith(key)).reduce((s, o) => s + (o.total_amount || 0), 0);
+            const cnt = fOrders.filter(o => o.order_date?.startsWith(key)).length;
             monthlyRevenue.push({ name: label, 매출: rev, 건수: cnt });
         }
 
         // Production status
         const planStatusCounts = {};
-        plans.forEach(p => {
+        fPlans.forEach(p => {
             const label = STATUS_LABELS[p.status] || p.status;
             planStatusCounts[label] = (planStatusCounts[label] || 0) + 1;
         });
@@ -208,7 +240,7 @@ const Dashboard = () => {
 
         // Top customers
         const customerRevenue = {};
-        orders.forEach(o => {
+        fOrders.forEach(o => {
             const name = o.partner?.name || '알 수 없음';
             customerRevenue[name] = (customerRevenue[name] || 0) + (o.total_amount || 0);
         });
@@ -217,10 +249,10 @@ const Dashboard = () => {
             .map(([name, revenue]) => ({ name, revenue }));
 
         // Recent orders (latest 5)
-        const recentOrders = [...orders].sort((a, b) => (b.order_date || '').localeCompare(a.order_date || '')).slice(0, 6);
+        const recentOrders = [...fOrders].sort((a, b) => (b.order_date || '').localeCompare(a.order_date || '')).slice(0, 6);
 
         // Urgent items
-        const urgentDeliveries = orders.filter(o => {
+        const urgentDeliveries = fOrders.filter(o => {
             if (o.status === 'DELIVERY_COMPLETED' || o.status === 'CANCELED') return false;
             if (!o.delivery_date) return false;
             const diff = (new Date(o.delivery_date) - now) / (1000 * 60 * 60 * 24);
@@ -228,7 +260,7 @@ const Dashboard = () => {
         }).sort((a, b) => a.delivery_date.localeCompare(b.delivery_date)).slice(0, 5);
 
         return {
-            totalOrders: orders.length,
+            totalOrders: fOrders.length,
             monthOrders: monthOrders.length,
             totalRevenue, monthRevenue,
             pendingOrders: pendingOrders.length,
@@ -236,11 +268,11 @@ const Dashboard = () => {
             prodCompOrders: prodCompOrders.length,
             activePlans: activePlans.length,
             completedPlans: completedPlans.length,
-            totalPlans: plans.length,
-            pendingPurchaseCount: pendingPurchase.length,
-            pendingOutsourcingCount: pendingOutsourcing.length,
-            purchaseOrderCount: purchaseOrders.length,
-            outsourcingOrderCount: outsourcingOrders.length,
+            totalPlans: fPlans.length,
+            pendingPurchaseCount: fPendingPurchase.length,
+            pendingOutsourcingCount: fPendingOutsourcing.length,
+            purchaseOrderCount: fPurchaseOrders.length,
+            outsourcingOrderCount: fOutsourcingOrders.length,
             partnerCount: partners.length,
             productCount: products.length,
             staffCount: staff.filter(s => s.is_active).length,
@@ -251,19 +283,19 @@ const Dashboard = () => {
             recentOrders,
             urgentDeliveries,
             // Enhanced stats
-            activeStockProds: stockProductions.filter(sp => sp.status === 'IN_PROGRESS' || sp.status === 'PENDING').length,
-            unresolvedDefects: defects.filter(d => d.status !== 'RESOLVED').length,
+            activeStockProds: fStockProductions.filter(sp => sp.status === 'IN_PROGRESS' || sp.status === 'PENDING').length,
+            unresolvedDefects: fDefects.filter(d => d.status !== 'RESOLVED').length,
             defectStatusData: (() => {
                 const counts = {};
-                defects.forEach(d => {
+                fDefects.forEach(d => {
                     const label = STATUS_LABELS[d.status] || d.status;
                     counts[label] = (counts[label] || 0) + 1;
                 });
                 return Object.entries(counts).map(([name, value]) => ({ name, value }));
             })(),
-            recentDefects: [...defects].sort((a, b) => (b.defect_date || '').localeCompare(a.defect_date || '')).slice(0, 5)
+            recentDefects: [...fDefects].sort((a, b) => (b.defect_date || '').localeCompare(a.defect_date || '')).slice(0, 5)
         };
-    }, [orders, plans, purchaseOrders, outsourcingOrders, pendingPurchase, pendingOutsourcing, partners, products, staff, stockProductions, defects]);
+    }, [orders, plans, purchaseOrders, outsourcingOrders, pendingPurchase, pendingOutsourcing, partners, products, staff, stockProductions, defects, groups, selectedMajorGroup, selectedMinorGroup]);
 
     if (loading) {
         return (
@@ -284,7 +316,33 @@ const Dashboard = () => {
                     <h1 className="text-2xl font-extrabold text-white tracking-tight">대시보드</h1>
                     <p className="text-sm text-gray-500 mt-0.5">{todayStr()}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
+                    <select
+                        className="bg-gray-900 border border-gray-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500"
+                        value={selectedMajorGroup}
+                        onChange={(e) => {
+                            setSelectedMajorGroup(e.target.value);
+                            setSelectedMinorGroup("");
+                        }}
+                    >
+                        <option value="">전체 대그룹</option>
+                        {groups.filter(g => g.type === 'MAJOR').map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        className="bg-gray-900 border border-gray-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                        value={selectedMinorGroup}
+                        onChange={(e) => setSelectedMinorGroup(e.target.value)}
+                        disabled={!selectedMajorGroup}
+                    >
+                        <option value="">전체 소그룹</option>
+                        {groups.filter(g => g.parent_id === parseInt(selectedMajorGroup)).map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                    </select>
+
                     <button
                         onClick={() => window.location.reload()}
                         className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-lg border border-gray-700 transition-colors"

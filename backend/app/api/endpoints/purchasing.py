@@ -30,7 +30,6 @@ async def read_pending_purchase_items(
     from app.models.inventory import StockProduction
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
-        .outerjoin(PurchaseOrderItem, PurchaseOrderItem.production_plan_item_id == ProductionPlanItem.id)\
         .options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
@@ -43,7 +42,11 @@ async def read_pending_purchase_items(
             ProductionPlanItem.course_type.ilike('%PURCHASE%'),
             ProductionPlanItem.course_type.like('%구매%')
         ))\
-        .where(PurchaseOrderItem.id.is_(None))\
+        .where(
+            ~ProductionPlanItem.purchase_items.any(
+                PurchaseOrderItem.purchase_order.has(PurchaseOrder.status != PurchaseStatus.CANCELED)
+            )
+        )\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
         
     # Debug: Print Query
@@ -68,7 +71,6 @@ async def read_pending_outsourcing_items(
     from app.models.inventory import StockProduction
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
-        .outerjoin(OutsourcingOrderItem, OutsourcingOrderItem.production_plan_item_id == ProductionPlanItem.id)\
         .options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
@@ -81,7 +83,11 @@ async def read_pending_outsourcing_items(
             ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
             ProductionPlanItem.course_type.like('%외주%')
         ))\
-        .where(OutsourcingOrderItem.id.is_(None))\
+        .where(
+            ~ProductionPlanItem.outsourcing_items.any(
+                OutsourcingOrderItem.outsourcing_order.has(OutsourcingOrder.status != OutsourcingStatus.CANCELED)
+            )
+        )\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
         
     result = await db.execute(query)

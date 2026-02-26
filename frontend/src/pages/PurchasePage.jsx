@@ -138,8 +138,28 @@ const PurchasePage = () => {
     const handleCreateFromPending = () => {
         if (selectedPendingItems.length === 0) return;
 
-        // Filter pendingItems objects based on selected IDs
-        const itemsToOrder = pendingItems.filter(item => selectedPendingItems.includes(item.id));
+        let itemsToOrder = pendingItems.filter(item => selectedPendingItems.includes(item.id));
+
+        if (itemsToOrder.length === 1) {
+            const refItem = itemsToOrder[0];
+            const refOrderNo = refItem.plan?.order?.order_no || refItem.plan?.stock_production?.production_no;
+            const refPartner = refItem.partner_name;
+
+            if (refOrderNo && refPartner) {
+                const relatedItems = pendingItems.filter(item => {
+                    if (item.id === refItem.id) return false;
+                    const orderNo = item.plan?.order?.order_no || item.plan?.stock_production?.production_no;
+                    return orderNo === refOrderNo && item.partner_name === refPartner;
+                });
+
+                if (relatedItems.length > 0) {
+                    if (window.confirm(`동일한 수주/재고 번호(${refOrderNo}) 및 구매처(${refPartner})를 가진 미발주 품목이 ${relatedItems.length}건 더 있습니다.\n\n하나의 발주서로 묶어서 처리하시겠습니까?`)) {
+                        itemsToOrder = [...itemsToOrder, ...relatedItems];
+                        setSelectedPendingItems(itemsToOrder.map(i => i.id));
+                    }
+                }
+            }
+        }
 
         setSelectedOrder(null);
         setInitialModalItems(itemsToOrder);

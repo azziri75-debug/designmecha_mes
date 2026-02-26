@@ -33,7 +33,7 @@ class ProductionPlan(Base):
     # Relationships
     order = relationship("SalesOrder")
     stock_production = relationship("StockProduction")
-    items = relationship("ProductionPlanItem", back_populates="plan", cascade="all, delete-orphan", lazy="selectin")
+    items = relationship("ProductionPlanItem", back_populates="plan", cascade="all, delete-orphan", lazy="selectin", order_by="ProductionPlanItem.sequence")
 
 class ProductionPlanItem(Base):
     """

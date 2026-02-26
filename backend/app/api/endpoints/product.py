@@ -6,10 +6,67 @@ from sqlalchemy.orm import selectinload, joinedload
 from typing import List
 
 from app.api.deps import get_db
-from app.models.product import Product, Process, ProductProcess
-from app.schemas.product import ProductCreate, ProductResponse, ProcessCreate, ProcessResponse, ProductUpdate, ProcessUpdate
+from app.models.product import Product, Process, ProductProcess, ProductGroup
+from app.schemas.product import ProductCreate, ProductResponse, ProcessCreate, ProcessResponse, ProductUpdate, ProcessUpdate, ProductGroupCreate, ProductGroupResponse, ProductGroupUpdate
 
 router = APIRouter()
+
+# --- Product Group Endpoints ---
+@router.post("/groups/", response_model=ProductGroupResponse)
+async def create_group(
+    group: ProductGroupCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    new_group = ProductGroup(**group.model_dump())
+    db.add(new_group)
+    await db.commit()
+    await db.refresh(new_group)
+    return new_group
+
+@router.get("/groups/", response_model=List[ProductGroupResponse])
+async def read_groups(
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(ProductGroup))
+    groups = result.scalars().all()
+    return groups
+
+@router.put("/groups/{group_id}", response_model=ProductGroupResponse)
+async def update_group(
+    group_id: int,
+    group_update: ProductGroupUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(ProductGroup).where(ProductGroup.id == group_id))
+    group = result.scalar_one_or_none()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    for key, value in group_update.model_dump(exclude_unset=True).items():
+        setattr(group, key, value)
+    
+    await db.commit()
+    await db.refresh(group)
+    return group
+
+@router.delete("/groups/{group_id}")
+async def delete_group(
+    group_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(ProductGroup).where(ProductGroup.id == group_id))
+    group = result.scalar_one_or_none()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    try:
+        await db.delete(group)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete group. It might be in use.")
+    
+    return {"message": "Group deleted successfully"}
 
 # --- Process Endpoints ---
 @router.post("/processes/", response_model=ProcessResponse)

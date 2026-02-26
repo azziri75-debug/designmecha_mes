@@ -15,6 +15,7 @@ const ProductsPage = () => {
     const [products, setProducts] = useState([]);
     const [processes, setProcesses] = useState([]); // Master processes
     const [partners, setPartners] = useState([]);
+    const [groups, setGroups] = useState([]); // Product Groups
     const [loading, setLoading] = useState(true);
 
     // Product Modal State
@@ -44,8 +45,10 @@ const ProductsPage = () => {
         if (activeTab === 'products') {
             fetchProducts();
             fetchPartners();
+            fetchGroups();
         } else {
             fetchProcesses();
+            fetchGroups();
         }
     }, [activeTab, selectedPartnerId]);
 
@@ -69,6 +72,15 @@ const ProductsPage = () => {
             setPartners(res.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);
+        }
+    };
+
+    const fetchGroups = async () => {
+        try {
+            const res = await api.get('/products/groups/');
+            setGroups(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch product groups", error);
         }
     };
 
@@ -202,8 +214,17 @@ const ProductsPage = () => {
         }
     };
 
+    const getMajorGroupId = (minorGroupId) => {
+        if (!minorGroupId) return "";
+        const minor = groups.find(g => g.id === minorGroupId);
+        return minor ? minor.parent_id : "";
+    };
+
     const handleEditProduct = (product) => {
-        setProductFormData(product);
+        setProductFormData({
+            ...product,
+            major_group_id: getMajorGroupId(product.group_id)
+        });
         setShowProductModal(true);
     };
 
@@ -448,6 +469,7 @@ const ProductsPage = () => {
                             <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
                                     <th className="px-6 py-3">거래처</th>
+                                    <th className="px-6 py-3">제품 그룹</th>
                                     <th className="px-6 py-3">품명</th>
                                     <th className="px-6 py-3">규격</th>
                                     <th className="px-6 py-3">재질</th>
@@ -460,7 +482,7 @@ const ProductsPage = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-700">
                                 {loading ? (
-                                    <tr><td colSpan="8" className="text-center py-8">Loading...</td></tr>
+                                    <tr><td colSpan="9" className="text-center py-8">Loading...</td></tr>
                                 ) : products.length > 0 ? products.map((product) => (
                                     <React.Fragment key={product.id}>
                                         <tr
@@ -469,6 +491,16 @@ const ProductsPage = () => {
                                         >
                                             <td className="px-6 py-4">
                                                 {partners.find(p => p.id === product.partner_id)?.name || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-xs font-medium">
+                                                {(() => {
+                                                    if (!product.group_id) return <span className="text-gray-600">-</span>;
+                                                    const minor = groups.find(g => g.id === product.group_id);
+                                                    const major = minor ? groups.find(g => g.id === minor.parent_id) : null;
+                                                    if (major && minor) return <span className="text-blue-300">{major.name} &gt; {minor.name}</span>;
+                                                    if (minor) return <span className="text-blue-300">{minor.name}</span>;
+                                                    return <span className="text-gray-600">-</span>;
+                                                })()}
                                             </td>
                                             <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
@@ -532,7 +564,7 @@ const ProductsPage = () => {
                                         {/* Expanded Process Information */}
                                         {expandedProductId === product.id && (
                                             <tr className="bg-gray-800/50 animation-fade-in-down">
-                                                <td colSpan="8" className="p-4 pl-16">
+                                                <td colSpan="9" className="p-4 pl-16">
                                                     <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
                                                         <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
                                                             <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
@@ -633,7 +665,7 @@ const ProductsPage = () => {
                                         )}
                                     </React.Fragment>
                                 )) : (
-                                    <tr><td colSpan="8" className="text-center py-8">등록된 제품이 없습니다.</td></tr>
+                                    <tr><td colSpan="9" className="text-center py-8">등록된 제품이 없습니다.</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -648,6 +680,7 @@ const ProductsPage = () => {
                             <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
                                     <th className="px-6 py-3">공정명</th>
+                                    <th className="px-6 py-3">공정 그룹</th>
                                     <th className="px-6 py-3">구분</th>
                                     <th className="px-6 py-3">설명</th>
                                     <th className="px-6 py-3 text-right">관리</th>
@@ -655,10 +688,20 @@ const ProductsPage = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-700">
                                 {loading ? (
-                                    <tr><td colSpan="3" className="text-center py-8">Loading...</td></tr>
+                                    <tr><td colSpan="5" className="text-center py-8">Loading...</td></tr>
                                 ) : processes.length > 0 ? processes.map((process) => (
                                     <tr key={process.id} className="hover:bg-gray-700/50 transition-colors">
                                         <td className="px-6 py-4 text-white font-medium">{process.name}</td>
+                                        <td className="px-6 py-4 text-xs font-medium">
+                                            {(() => {
+                                                if (!process.group_id) return <span className="text-gray-600">-</span>;
+                                                const minor = groups.find(g => g.id === process.group_id);
+                                                const major = minor ? groups.find(g => g.id === minor.parent_id) : null;
+                                                if (major && minor) return <span className="text-emerald-300">{major.name} &gt; {minor.name}</span>;
+                                                if (minor) return <span className="text-emerald-300">{minor.name}</span>;
+                                                return <span className="text-gray-600">-</span>;
+                                            })()}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span className={cn(
                                                 "px-2 py-1 rounded text-xs font-medium",
@@ -673,7 +716,10 @@ const ProductsPage = () => {
                                         <td className="px-6 py-4 text-right flex justify-end gap-2">
                                             <button
                                                 onClick={() => {
-                                                    setProcessFormData(process);
+                                                    setProcessFormData({
+                                                        ...process,
+                                                        major_group_id: getMajorGroupId(process.group_id)
+                                                    });
                                                     setShowProcessModal(true);
                                                 }}
                                                 className="text-gray-400 hover:text-blue-400"
@@ -689,7 +735,7 @@ const ProductsPage = () => {
                                         </td>
                                     </tr>
                                 )) : (
-                                    <tr><td colSpan="3" className="text-center py-8">등록된 공정이 없습니다.</td></tr>
+                                    <tr><td colSpan="5" className="text-center py-8">등록된 공정이 없습니다.</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -726,6 +772,39 @@ const ProductsPage = () => {
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-300">대그룹 (Major)</label>
+                                    <select
+                                        name="major_group_id"
+                                        onChange={handleProductInputChange}
+                                        value={productFormData.major_group_id || ""}
+                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                    >
+                                        <option value="">대그룹 선택</option>
+                                        {groups.filter(g => g.type === 'MAJOR').map(g => (
+                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-300">소그룹 (Minor) <span className="text-red-500">*</span></label>
+                                    <select
+                                        name="group_id"
+                                        onChange={handleProductInputChange}
+                                        value={productFormData.group_id || ""}
+                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                        required
+                                        disabled={!productFormData.major_group_id}
+                                    >
+                                        <option value="">소그룹 선택</option>
+                                        {groups.filter(g => g.parent_id === parseInt(productFormData.major_group_id)).map(g => (
+                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
                             <div className="space-y-2">
@@ -842,6 +921,38 @@ const ProductsPage = () => {
                                     required
                                 />
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-300">대그룹 (Major)</label>
+                                    <select
+                                        name="major_group_id"
+                                        onChange={handleProcessInputChange}
+                                        value={processFormData.major_group_id || ""}
+                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                    >
+                                        <option value="">대그룹 선택</option>
+                                        {groups.filter(g => g.type === 'MAJOR').map(g => (
+                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-300">소그룹 (Minor) <span className="text-red-500">*</span></label>
+                                    <select
+                                        name="group_id"
+                                        onChange={handleProcessInputChange}
+                                        value={processFormData.group_id || ""}
+                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                        required
+                                        disabled={!processFormData.major_group_id}
+                                    >
+                                        <option value="">소그룹 선택</option>
+                                        {groups.filter(g => g.parent_id === parseInt(processFormData.major_group_id)).map(g => (
+                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-300">구분 <span className="text-red-500">*</span></label>
                                 <select
@@ -934,9 +1045,14 @@ const ProductsPage = () => {
                                                                     className="w-full bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
                                                                 >
                                                                     <option value="">(공정 선택)</option>
-                                                                    {processes.map(proc => (
-                                                                        <option key={proc.id} value={proc.id}>{proc.name}</option>
-                                                                    ))}
+                                                                    {(() => {
+                                                                        const availableProcesses = selectedProduct?.group_id
+                                                                            ? processes.filter(pr => pr.group_id === selectedProduct.group_id || !pr.group_id)
+                                                                            : processes;
+                                                                        return availableProcesses.map(proc => (
+                                                                            <option key={proc.id} value={proc.id}>{proc.name}</option>
+                                                                        ));
+                                                                    })()}
                                                                 </select>
                                                             </div>
                                                             {p.process_id && (

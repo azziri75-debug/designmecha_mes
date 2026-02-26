@@ -4,6 +4,7 @@ import { Plus, Search, Building2, User, MoreHorizontal, X, UserPlus, Phone, Mail
 import { cn, getImageUrl } from '../lib/utils';
 
 import FileViewerModal from '../components/FileViewerModal';
+import ProductGroupManager from '../components/ProductGroupManager';
 
 // Helper Components
 class ErrorBoundary extends React.Component {
@@ -388,6 +389,17 @@ const BasicsPageContent = () => {
                     >
                         장비 관리
                     </button>
+                    <button
+                        onClick={() => setActiveTab('product_groups')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                            activeTab === 'product_groups'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                        )}
+                    >
+                        제품 그룹 관리
+                    </button>
                 </div>
                 <button
                     type="button"
@@ -399,477 +411,481 @@ const BasicsPageContent = () => {
                 </button>
             </div>
 
-            <Card>
-                <div className="p-4 border-b border-gray-700 flex flex-col md:flex-row items-center gap-4 justify-between">
-                    <div className="relative flex-1 max-w-sm w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="검색..."
-                            className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    {activeTab === 'partners' && (
-                        <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 overflow-x-auto">
-                            {[
-                                { id: 'ALL', label: '전체' },
-                                { id: 'CUSTOMER', label: '고객사' },
-                                { id: 'SUPPLIER', label: '공급사' },
-                                { id: 'SUBCONTRACTOR', label: '외주처' }
-                            ].map(type => (
-                                <button
-                                    key={type.id}
-                                    onClick={() => setFilterType(type.id)}
-                                    className={cn(
-                                        "px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
-                                        filterType === type.id
-                                            ? 'bg-gray-700 text-white shadow-sm'
-                                            : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                                    )}
-                                >
-                                    {type.label}
-                                </button>
-                            ))}
+            {activeTab === 'product_groups' ? (
+                <ProductGroupManager />
+            ) : (
+                <Card>
+                    <div className="p-4 border-b border-gray-700 flex flex-col md:flex-row items-center gap-4 justify-between">
+                        <div className="relative flex-1 max-w-sm w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="검색..."
+                                className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
                         </div>
-                    )}
-                </div>
 
-                {activeTab === 'company' ? (
-                    <div className="p-8">
-                        <form onSubmit={async (e) => {
-                            e.preventDefault();
-                            try {
-                                await api.post('/basics/company', formData);
-                                alert("저장되었습니다.");
-                                fetchData();
-                            } catch (error) {
-                                console.error("Save failed", error);
-                                alert("저장 실패");
-                            }
-                        }} className="max-w-4xl mx-auto space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-6">
-                                    <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">기본 정보</h3>
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">회사명</label>
-                                            <input name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" required />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">대표자명</label>
-                                            <input name="owner_name" value={formData.owner_name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">사업자등록번호</label>
-                                            <input name="registration_number" value={formData.registration_number || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" maxLength="12" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">주소</label>
-                                            <input name="address" value={formData.address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-6">
-                                    <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">연락처 정보</h3>
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">전화번호</label>
-                                            <input name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">팩스</label>
-                                            <input name="fax" value={formData.fax || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">이메일</label>
-                                            <input name="email" type="email" value={formData.email || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
-                                        </div>
-                                    </div>
-                                </div>
+                        {activeTab === 'partners' && (
+                            <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 overflow-x-auto">
+                                {[
+                                    { id: 'ALL', label: '전체' },
+                                    { id: 'CUSTOMER', label: '고객사' },
+                                    { id: 'SUPPLIER', label: '공급사' },
+                                    { id: 'SUBCONTRACTOR', label: '외주처' }
+                                ].map(type => (
+                                    <button
+                                        key={type.id}
+                                        onClick={() => setFilterType(type.id)}
+                                        className={cn(
+                                            "px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
+                                            filterType === type.id
+                                                ? 'bg-gray-700 text-white shadow-sm'
+                                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                        )}
+                                    >
+                                        {type.label}
+                                    </button>
+                                ))}
                             </div>
-
-                            <div className="space-y-6">
-                                <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">이미지 (로고/직인)</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Logo Upload */}
-                                    <div className="space-y-4">
-                                        <label className="text-sm font-medium text-gray-400 block">회사 로고</label>
-                                        <div className="flex items-start gap-4">
-                                            {formData.logo_image && (
-                                                <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
-                                                    <img
-                                                        crossOrigin="anonymous"
-                                                        src={getImageUrl(typeof formData.logo_image === 'string' ? JSON.parse(formData.logo_image).url : formData.logo_image.url)}
-                                                        alt="Logo"
-                                                        className="max-w-full max-h-full object-contain"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setFormData(p => ({ ...p, logo_image: null }))}
-                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            )}
-                                            <div className="flex-1">
-                                                <div className="w-full bg-gray-900 border border-gray-700 border-dashed text-gray-400 text-sm rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-500 hover:bg-gray-800 transition-all relative">
-                                                    <Upload className="w-6 h-6 mb-1" />
-                                                    <span>로고 이미지 업로드</span>
-                                                    <span className="text-xs text-gray-500">권장: 투명 배경 PNG</span>
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                                        onChange={async (e) => {
-                                                            const file = e.target.files[0];
-                                                            if (file) {
-                                                                const data = await handleFileUpload(file);
-                                                                if (data) setFormData(p => ({ ...p, logo_image: data }));
-                                                            }
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Stamp Upload */}
-                                    <div className="space-y-4">
-                                        <label className="text-sm font-medium text-gray-400 block">회사 직인 (도장)</label>
-                                        <div className="flex items-start gap-4">
-                                            {formData.stamp_image && (
-                                                <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
-                                                    <img
-                                                        crossOrigin="anonymous"
-                                                        src={getImageUrl(typeof formData.stamp_image === 'string' ? JSON.parse(formData.stamp_image).url : formData.stamp_image.url)}
-                                                        alt="Stamp"
-                                                        className="max-w-full max-h-full object-contain"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setFormData(p => ({ ...p, stamp_image: null }))}
-                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            )}
-                                            <div className="flex-1">
-                                                <div className="w-full bg-gray-900 border border-gray-700 border-dashed text-gray-400 text-sm rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-500 hover:bg-gray-800 transition-all relative">
-                                                    <Upload className="w-6 h-6 mb-1" />
-                                                    <span>직인 이미지 업로드</span>
-                                                    <span className="text-xs text-gray-500">권장: 투명 배경 PNG, 정사각형</span>
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                                        onChange={async (e) => {
-                                                            const file = e.target.files[0];
-                                                            if (file) {
-                                                                const data = await handleFileUpload(file);
-                                                                if (data) setFormData(p => ({ ...p, stamp_image: data }));
-                                                            }
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end pt-4 border-t border-gray-700">
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
-                                >
-                                    <Smartphone className="w-4 h-4" /> {/* Just reuse icon or Save icon */}
-                                    <span>정보 저장</span>
-                                </button>
-                            </div>
-                        </form>
+                        )}
                     </div>
-                ) : (
 
-                    <div className="">
-                        <table className="w-full text-left text-sm text-gray-400 border-collapse table-fixed">
-                            <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
-                                <tr>
-                                    {activeTab === 'partners' ? (
-                                        <>
-                                            <th className="px-6 py-3 w-[20%]">거래처명</th>
-                                            <th className="px-6 py-3 w-[15%]">유형</th>
-                                            <th className="px-6 py-3 w-[15%]">대표자</th>
-                                            <th className="px-6 py-3 w-[15%]">전화번호</th>
-                                            <th className="px-6 py-3 w-[20%]">이메일</th>
-                                            <th className="px-6 py-3 text-center w-[80px]">첨부</th>
-                                        </>
+                    {activeTab === 'company' ? (
+                        <div className="p-8">
+                            <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                try {
+                                    await api.post('/basics/company', formData);
+                                    alert("저장되었습니다.");
+                                    fetchData();
+                                } catch (error) {
+                                    console.error("Save failed", error);
+                                    alert("저장 실패");
+                                }
+                            }} className="max-w-4xl mx-auto space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-6">
+                                        <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">기본 정보</h3>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">회사명</label>
+                                                <input name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">대표자명</label>
+                                                <input name="owner_name" value={formData.owner_name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">사업자등록번호</label>
+                                                <input name="registration_number" value={formData.registration_number || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" maxLength="12" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">주소</label>
+                                                <input name="address" value={formData.address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">연락처 정보</h3>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">전화번호</label>
+                                                <input name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">팩스</label>
+                                                <input name="fax" value={formData.fax || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">이메일</label>
+                                                <input name="email" type="email" value={formData.email || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">이미지 (로고/직인)</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* Logo Upload */}
+                                        <div className="space-y-4">
+                                            <label className="text-sm font-medium text-gray-400 block">회사 로고</label>
+                                            <div className="flex items-start gap-4">
+                                                {formData.logo_image && (
+                                                    <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
+                                                        <img
+                                                            crossOrigin="anonymous"
+                                                            src={getImageUrl(typeof formData.logo_image === 'string' ? JSON.parse(formData.logo_image).url : formData.logo_image.url)}
+                                                            alt="Logo"
+                                                            className="max-w-full max-h-full object-contain"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormData(p => ({ ...p, logo_image: null }))}
+                                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <div className="w-full bg-gray-900 border border-gray-700 border-dashed text-gray-400 text-sm rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-500 hover:bg-gray-800 transition-all relative">
+                                                        <Upload className="w-6 h-6 mb-1" />
+                                                        <span>로고 이미지 업로드</span>
+                                                        <span className="text-xs text-gray-500">권장: 투명 배경 PNG</span>
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (file) {
+                                                                    const data = await handleFileUpload(file);
+                                                                    if (data) setFormData(p => ({ ...p, logo_image: data }));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Stamp Upload */}
+                                        <div className="space-y-4">
+                                            <label className="text-sm font-medium text-gray-400 block">회사 직인 (도장)</label>
+                                            <div className="flex items-start gap-4">
+                                                {formData.stamp_image && (
+                                                    <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
+                                                        <img
+                                                            crossOrigin="anonymous"
+                                                            src={getImageUrl(typeof formData.stamp_image === 'string' ? JSON.parse(formData.stamp_image).url : formData.stamp_image.url)}
+                                                            alt="Stamp"
+                                                            className="max-w-full max-h-full object-contain"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormData(p => ({ ...p, stamp_image: null }))}
+                                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <div className="w-full bg-gray-900 border border-gray-700 border-dashed text-gray-400 text-sm rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-500 hover:bg-gray-800 transition-all relative">
+                                                        <Upload className="w-6 h-6 mb-1" />
+                                                        <span>직인 이미지 업로드</span>
+                                                        <span className="text-xs text-gray-500">권장: 투명 배경 PNG, 정사각형</span>
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (file) {
+                                                                    const data = await handleFileUpload(file);
+                                                                    if (data) setFormData(p => ({ ...p, stamp_image: data }));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end pt-4 border-t border-gray-700">
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
+                                    >
+                                        <Smartphone className="w-4 h-4" /> {/* Just reuse icon or Save icon */}
+                                        <span>정보 저장</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    ) : (
+
+                        <div className="">
+                            <table className="w-full text-left text-sm text-gray-400 border-collapse table-fixed">
+                                <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
+                                    <tr>
+                                        {activeTab === 'partners' ? (
+                                            <>
+                                                <th className="px-6 py-3 w-[20%]">거래처명</th>
+                                                <th className="px-6 py-3 w-[15%]">유형</th>
+                                                <th className="px-6 py-3 w-[15%]">대표자</th>
+                                                <th className="px-6 py-3 w-[15%]">전화번호</th>
+                                                <th className="px-6 py-3 w-[20%]">이메일</th>
+                                                <th className="px-6 py-3 text-center w-[80px]">첨부</th>
+                                            </>
+                                        ) : activeTab === 'staff' ? (
+                                            <>
+                                                <th className="px-6 py-3">이름</th>
+                                                <th className="px-6 py-3">구분</th>
+                                                <th className="px-6 py-3">부서/직책</th>
+                                                <th className="px-6 py-3">주업무</th>
+                                                <th className="px-6 py-3">전화번호</th>
+                                                <th className="px-6 py-3">상태</th>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <th className="px-6 py-3">장비명</th>
+                                                <th className="px-6 py-3">코드</th>
+                                                <th className="px-6 py-3">규격/사양</th>
+                                                <th className="px-6 py-3">상태</th>
+                                                <th className="px-6 py-3">구매일</th>
+                                                <th className="px-6 py-3">위치</th>
+                                            </>
+                                        )}
+                                        <th className="px-6 py-3 text-right">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-700">
+                                    {loading ? (
+                                        <tr><td colSpan="6" className="text-center py-8">Loading...</td></tr>
+                                    ) : activeTab === 'partners' ? (
+                                        filteredPartners.length > 0 ? filteredPartners.map((partner) => (
+                                            <React.Fragment key={partner.id}>
+                                                <tr
+                                                    className="hover:bg-gray-700/50 transition-colors cursor-pointer group"
+                                                    onClick={() => toggleExpand(partner.id)}
+                                                >
+                                                    <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                                                            <Building2 className="w-4 h-4 text-blue-400" />
+                                                        </div>
+                                                        <span>{partner.name}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex gap-1 flex-wrap">
+                                                            {Array.isArray(partner.partner_type) && partner.partner_type.map((type, i) => (
+                                                                <span key={i} className={cn(
+                                                                    "px-2 py-0.5 rounded text-[10px] font-medium border whitespace-nowrap",
+                                                                    type === 'CUSTOMER' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                                        type === 'SUPPLIER' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                                                            "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                                                                )}>
+                                                                    {getPartnerTypeLabel(type)}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">{partner.representative}</td>
+                                                    <td className="px-6 py-4">{partner.phone}</td>
+                                                    <td className="px-6 py-4">{partner.email}</td>
+                                                    <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                                        {(() => {
+                                                            let fileList = [];
+                                                            const rawFiles = partner.attachment_file;
+                                                            try {
+                                                                if (rawFiles) {
+                                                                    const parsed = typeof rawFiles === 'string' ? JSON.parse(rawFiles) : rawFiles;
+                                                                    fileList = Array.isArray(parsed) ? parsed : [parsed];
+                                                                }
+                                                            } catch {
+                                                                // Fallback: treat as single file string/object if parse fails
+                                                                fileList = rawFiles ? [rawFiles] : [];
+                                                            }
+
+                                                            if (fileList.length > 0) {
+                                                                return (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            console.log("Opening files:", fileList);
+                                                                            setViewingFiles(fileList);
+                                                                            setFileModalTitle(`${partner.name} 첨부파일`);
+                                                                            setShowFileModal(true);
+                                                                        }}
+                                                                        className="text-blue-400 hover:text-blue-300 transition-colors p-1"
+                                                                        title={`${fileList.length}개의 첨부파일`}
+                                                                    >
+                                                                        <FileText className="w-4 h-4" />
+                                                                    </button>
+                                                                );
+                                                            }
+                                                            return <span className="text-gray-600">-</span>;
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right flex justify-end gap-2 pl-10" onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            onClick={() => openEditPartnerModal(partner)}
+                                                            className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeletePartner(partner.id)}
+                                                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                        >
+                                                            <Trash className="w-4 h-4" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                {/* Expanded Contact Information */}
+                                                {expandedPartnerId === partner.id && (
+                                                    <tr className="bg-gray-800/50 animate-fade-in-down">
+                                                        <td colSpan="6" className="p-4 pl-16">
+                                                            <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                                                                <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
+                                                                    <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                                                                        <User className="w-4 h-4 text-gray-500" />
+                                                                        담당자 목록
+                                                                    </h4>
+                                                                    <button
+                                                                        onClick={() => openAddContactModal(partner)}
+                                                                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-500/10 transition-colors"
+                                                                    >
+                                                                        <UserPlus className="w-3 h-3" />
+                                                                        담당자 추가
+                                                                    </button>
+                                                                </div>
+                                                                {partner.contacts && partner.contacts.length > 0 ? (
+                                                                    <div className="overflow-x-auto">
+                                                                        <table className="w-full text-left text-sm text-gray-400">
+                                                                            <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                                <tr>
+                                                                                    <th className="px-4 py-2">이름</th>
+                                                                                    <th className="px-4 py-2">부서/직책</th>
+                                                                                    <th className="px-4 py-2">전화번호</th>
+                                                                                    <th className="px-4 py-2">휴대전화</th>
+                                                                                    <th className="px-4 py-2">이메일</th>
+                                                                                    <th className="px-4 py-2 text-right w-20">관리</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody className="divide-y divide-gray-700">
+                                                                                {partner.contacts.map((contact, idx) => (
+                                                                                    <tr key={idx} className="hover:bg-gray-800/50 transition-colors group/contact">
+                                                                                        <td className="px-4 py-2 text-white font-medium">{contact.name}</td>
+                                                                                        <td className="px-4 py-2">{contact.position}</td>
+                                                                                        <td className="px-4 py-2">{contact.phone}</td>
+                                                                                        <td className="px-4 py-2">{contact.mobile || '-'}</td>
+                                                                                        <td className="px-4 py-2">{contact.email}</td>
+                                                                                        <td className="px-4 py-2 text-right">
+                                                                                            <div className="flex justify-end gap-2 opacity-50 group-hover/contact:opacity-100 transition-opacity">
+                                                                                                <button onClick={() => openEditContactModal(partner, contact)} className="text-gray-400 hover:text-blue-400"><Pencil className="w-3 h-3" /></button>
+                                                                                                <button onClick={() => handleDeleteContact(contact.id)} className="text-gray-400 hover:text-red-400"><Trash className="w-3 h-3" /></button>
+                                                                                            </div>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="text-sm text-gray-500 py-2">등록된 담당자가 없습니다.</div>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        )) : (
+                                            <tr><td colSpan="6" className="text-center py-8">데이터가 없습니다.</td></tr>
+                                        )
                                     ) : activeTab === 'staff' ? (
-                                        <>
-                                            <th className="px-6 py-3">이름</th>
-                                            <th className="px-6 py-3">구분</th>
-                                            <th className="px-6 py-3">부서/직책</th>
-                                            <th className="px-6 py-3">주업무</th>
-                                            <th className="px-6 py-3">전화번호</th>
-                                            <th className="px-6 py-3">상태</th>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <th className="px-6 py-3">장비명</th>
-                                            <th className="px-6 py-3">코드</th>
-                                            <th className="px-6 py-3">규격/사양</th>
-                                            <th className="px-6 py-3">상태</th>
-                                            <th className="px-6 py-3">구매일</th>
-                                            <th className="px-6 py-3">위치</th>
-                                        </>
-                                    )}
-                                    <th className="px-6 py-3 text-right">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-700">
-                                {loading ? (
-                                    <tr><td colSpan="6" className="text-center py-8">Loading...</td></tr>
-                                ) : activeTab === 'partners' ? (
-                                    filteredPartners.length > 0 ? filteredPartners.map((partner) => (
-                                        <React.Fragment key={partner.id}>
-                                            <tr
-                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer group"
-                                                onClick={() => toggleExpand(partner.id)}
-                                            >
+                                        staff.length > 0 ? staff.map((member) => (
+                                            <tr key={member.id} className="hover:bg-gray-700/50 transition-colors">
                                                 <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                                                        <Building2 className="w-4 h-4 text-blue-400" />
+                                                        <User className="w-4 h-4 text-purple-400" />
                                                     </div>
-                                                    <span>{partner.name}</span>
+                                                    {member.name}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex gap-1 flex-wrap">
-                                                        {Array.isArray(partner.partner_type) && partner.partner_type.map((type, i) => (
-                                                            <span key={i} className={cn(
-                                                                "px-2 py-0.5 rounded text-[10px] font-medium border whitespace-nowrap",
-                                                                type === 'CUSTOMER' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                                                                    type === 'SUPPLIER' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                                                        "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                                                            )}>
-                                                                {getPartnerTypeLabel(type)}
-                                                            </span>
-                                                        ))}
-                                                    </div>
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded-full text-xs font-medium",
+                                                        member.user_type === 'ADMIN' ? "bg-purple-500/10 text-purple-400" : "bg-blue-500/10 text-blue-400"
+                                                    )}>
+                                                        {member.user_type === 'ADMIN' ? '관리자' : '사용자'}
+                                                    </span>
                                                 </td>
-                                                <td className="px-6 py-4">{partner.representative}</td>
-                                                <td className="px-6 py-4">{partner.phone}</td>
-                                                <td className="px-6 py-4">{partner.email}</td>
-                                                <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                                                    {(() => {
-                                                        let fileList = [];
-                                                        const rawFiles = partner.attachment_file;
-                                                        try {
-                                                            if (rawFiles) {
-                                                                const parsed = typeof rawFiles === 'string' ? JSON.parse(rawFiles) : rawFiles;
-                                                                fileList = Array.isArray(parsed) ? parsed : [parsed];
-                                                            }
-                                                        } catch {
-                                                            // Fallback: treat as single file string/object if parse fails
-                                                            fileList = rawFiles ? [rawFiles] : [];
-                                                        }
-
-                                                        if (fileList.length > 0) {
-                                                            return (
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        console.log("Opening files:", fileList);
-                                                                        setViewingFiles(fileList);
-                                                                        setFileModalTitle(`${partner.name} 첨부파일`);
-                                                                        setShowFileModal(true);
-                                                                    }}
-                                                                    className="text-blue-400 hover:text-blue-300 transition-colors p-1"
-                                                                    title={`${fileList.length}개의 첨부파일`}
-                                                                >
-                                                                    <FileText className="w-4 h-4" />
-                                                                </button>
-                                                            );
-                                                        }
-                                                        return <span className="text-gray-600">-</span>;
-                                                    })()}
+                                                <td className="px-6 py-4">{member.role}</td>
+                                                <td className="px-6 py-4">{member.main_duty || '-'}</td>
+                                                <td className="px-6 py-4">{member.phone}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded-full text-xs font-medium",
+                                                        member.is_active ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
+                                                    )}>
+                                                        {member.is_active ? '재직중' : '퇴사'}
+                                                    </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-right flex justify-end gap-2 pl-10" onClick={(e) => e.stopPropagation()}>
+                                                <td className="px-6 py-4 text-right flex justify-end gap-2">
                                                     <button
-                                                        onClick={() => openEditPartnerModal(partner)}
+                                                        onClick={() => openEditStaffModal(member)}
                                                         className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
                                                     >
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDeletePartner(partner.id)}
+                                                        onClick={() => handleDeleteStaff(member.id)}
                                                         className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                                                     >
                                                         <Trash className="w-4 h-4" />
                                                     </button>
                                                 </td>
                                             </tr>
-                                            {/* Expanded Contact Information */}
-                                            {expandedPartnerId === partner.id && (
-                                                <tr className="bg-gray-800/50 animate-fade-in-down">
-                                                    <td colSpan="6" className="p-4 pl-16">
-                                                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
-                                                            <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
-                                                                <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-                                                                    <User className="w-4 h-4 text-gray-500" />
-                                                                    담당자 목록
-                                                                </h4>
-                                                                <button
-                                                                    onClick={() => openAddContactModal(partner)}
-                                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-500/10 transition-colors"
-                                                                >
-                                                                    <UserPlus className="w-3 h-3" />
-                                                                    담당자 추가
-                                                                </button>
-                                                            </div>
-                                                            {partner.contacts && partner.contacts.length > 0 ? (
-                                                                <div className="overflow-x-auto">
-                                                                    <table className="w-full text-left text-sm text-gray-400">
-                                                                        <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
-                                                                            <tr>
-                                                                                <th className="px-4 py-2">이름</th>
-                                                                                <th className="px-4 py-2">부서/직책</th>
-                                                                                <th className="px-4 py-2">전화번호</th>
-                                                                                <th className="px-4 py-2">휴대전화</th>
-                                                                                <th className="px-4 py-2">이메일</th>
-                                                                                <th className="px-4 py-2 text-right w-20">관리</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody className="divide-y divide-gray-700">
-                                                                            {partner.contacts.map((contact, idx) => (
-                                                                                <tr key={idx} className="hover:bg-gray-800/50 transition-colors group/contact">
-                                                                                    <td className="px-4 py-2 text-white font-medium">{contact.name}</td>
-                                                                                    <td className="px-4 py-2">{contact.position}</td>
-                                                                                    <td className="px-4 py-2">{contact.phone}</td>
-                                                                                    <td className="px-4 py-2">{contact.mobile || '-'}</td>
-                                                                                    <td className="px-4 py-2">{contact.email}</td>
-                                                                                    <td className="px-4 py-2 text-right">
-                                                                                        <div className="flex justify-end gap-2 opacity-50 group-hover/contact:opacity-100 transition-opacity">
-                                                                                            <button onClick={() => openEditContactModal(partner, contact)} className="text-gray-400 hover:text-blue-400"><Pencil className="w-3 h-3" /></button>
-                                                                                            <button onClick={() => handleDeleteContact(contact.id)} className="text-gray-400 hover:text-red-400"><Trash className="w-3 h-3" /></button>
-                                                                                        </div>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            ))}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="text-sm text-gray-500 py-2">등록된 담당자가 없습니다.</div>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    )) : (
-                                        <tr><td colSpan="6" className="text-center py-8">데이터가 없습니다.</td></tr>
-                                    )
-                                ) : activeTab === 'staff' ? (
-                                    staff.length > 0 ? staff.map((member) => (
-                                        <tr key={member.id} className="hover:bg-gray-700/50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                                                    <User className="w-4 h-4 text-purple-400" />
-                                                </div>
-                                                {member.name}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={cn(
-                                                    "px-2 py-1 rounded-full text-xs font-medium",
-                                                    member.user_type === 'ADMIN' ? "bg-purple-500/10 text-purple-400" : "bg-blue-500/10 text-blue-400"
-                                                )}>
-                                                    {member.user_type === 'ADMIN' ? '관리자' : '사용자'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">{member.role}</td>
-                                            <td className="px-6 py-4">{member.main_duty || '-'}</td>
-                                            <td className="px-6 py-4">{member.phone}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={cn(
-                                                    "px-2 py-1 rounded-full text-xs font-medium",
-                                                    member.is_active ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
-                                                )}>
-                                                    {member.is_active ? '재직중' : '퇴사'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                                <button
-                                                    onClick={() => openEditStaffModal(member)}
-                                                    className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteStaff(member.id)}
-                                                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                                                >
-                                                    <Trash className="w-4 h-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr><td colSpan="6" className="text-center py-8">등록된 사원이 없습니다.</td></tr>
-                                    )
-                                ) : (
-                                    equipments.length > 0 ? equipments.map((eq) => (
-                                        <tr key={eq.id} className="hover:bg-gray-700/50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                                                    <Factory className="w-4 h-4 text-orange-400" />
-                                                </div>
-                                                {eq.name}
-                                            </td>
-                                            <td className="px-6 py-4 font-mono text-xs">{eq.code}</td>
-                                            <td className="px-6 py-4">{eq.spec || '-'}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={cn(
-                                                    "px-2 py-1 rounded-full text-xs font-medium",
-                                                    eq.status === 'RUNNING' ? "bg-green-500/10 text-green-400" :
-                                                        eq.status === 'IDLE' ? "bg-blue-500/10 text-blue-400" :
-                                                            "bg-red-500/10 text-red-400"
-                                                )}>
-                                                    {eq.status === 'RUNNING' ? '가동중' : eq.status === 'IDLE' ? '대기' : '정지/수리'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">{eq.purchase_date || '-'}</td>
-                                            <td className="px-6 py-4 text-xs">{eq.location || '-'}</td>
-                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                                <button
-                                                    onClick={() => openEditEquipmentModal(eq)}
-                                                    className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={async () => {
-                                                        if (window.confirm("삭제하시겠습니까?")) {
-                                                            await api.delete(`/basics/equipments/${eq.id}`);
-                                                            fetchData();
-                                                        }
-                                                    }}
-                                                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                                                >
-                                                    <Trash className="w-4 h-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr><td colSpan="7" className="text-center py-8">등록된 장비가 없습니다.</td></tr>
-                                    )
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </Card>
+                                        )) : (
+                                            <tr><td colSpan="6" className="text-center py-8">등록된 사원이 없습니다.</td></tr>
+                                        )
+                                    ) : (
+                                        equipments.length > 0 ? equipments.map((eq) => (
+                                            <tr key={eq.id} className="hover:bg-gray-700/50 transition-colors">
+                                                <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                                                        <Factory className="w-4 h-4 text-orange-400" />
+                                                    </div>
+                                                    {eq.name}
+                                                </td>
+                                                <td className="px-6 py-4 font-mono text-xs">{eq.code}</td>
+                                                <td className="px-6 py-4">{eq.spec || '-'}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded-full text-xs font-medium",
+                                                        eq.status === 'RUNNING' ? "bg-green-500/10 text-green-400" :
+                                                            eq.status === 'IDLE' ? "bg-blue-500/10 text-blue-400" :
+                                                                "bg-red-500/10 text-red-400"
+                                                    )}>
+                                                        {eq.status === 'RUNNING' ? '가동중' : eq.status === 'IDLE' ? '대기' : '정지/수리'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">{eq.purchase_date || '-'}</td>
+                                                <td className="px-6 py-4 text-xs">{eq.location || '-'}</td>
+                                                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => openEditEquipmentModal(eq)}
+                                                        className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (window.confirm("삭제하시겠습니까?")) {
+                                                                await api.delete(`/basics/equipments/${eq.id}`);
+                                                                fetchData();
+                                                            }
+                                                        }}
+                                                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                    >
+                                                        <Trash className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr><td colSpan="7" className="text-center py-8">등록된 장비가 없습니다.</td></tr>
+                                        )
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </Card>
+            )}
 
             {/* Modal Overlay */}
             {
@@ -1247,6 +1263,9 @@ const BasicsPageContent = () => {
                     </div>
                 )
             }
+            {/* End of content wrapping for product_groups */}
+            {activeTab !== 'product_groups' && null}
+
             {/* File Viewer Modal - Portaled to body */}
             <FileViewerModal
                 isOpen={showFileModal}

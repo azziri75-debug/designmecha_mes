@@ -1,8 +1,31 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
+# ProductGroup Schemas
+class ProductGroupBase(BaseModel):
+    name: str
+    type: str # 'MAJOR' or 'MINOR'
+    parent_id: Optional[int] = None
+    description: Optional[str] = None
+
+class ProductGroupCreate(ProductGroupBase):
+    pass
+
+class ProductGroupUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    parent_id: Optional[int] = None
+    description: Optional[str] = None
+
+class ProductGroupResponse(ProductGroupBase):
+    id: int
+    
+    class Config:
+        from_attributes = True
+
 # Process Schemas
 class ProcessBase(BaseModel):
+    group_id: Optional[int] = None
     name: str
     course_type: str = "INTERNAL" # INTERNAL, OUTSOURCING, PURCHASE
     description: Optional[str] = None
@@ -43,11 +66,11 @@ class ProductProcessResponse(ProductProcessBase):
 
 # Product Schemas
 class ProductBase(BaseModel):
+    group_id: Optional[int] = None
     partner_id: Optional[int] = None
     name: str
     specification: Optional[str] = None
     material: Optional[str] = None
-    unit: str = "EA"
     unit: str = "EA"
     drawing_file: Optional[str] = None
     note: Optional[str] = None
@@ -56,6 +79,7 @@ class ProductCreate(ProductBase):
     standard_processes: List[ProductProcessCreate] = []
 
 class ProductUpdate(BaseModel):
+    group_id: Optional[int] = None
     partner_id: Optional[int] = None
     name: Optional[str] = None
     specification: Optional[str] = None

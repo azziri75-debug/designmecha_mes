@@ -58,6 +58,7 @@ const FileViewerModal = ({ isOpen, onClose, files = [], title, onDeleteFile }) =
     const [previewContent, setPreviewContent] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [deletingIndex, setDeletingIndex] = useState(null);
 
     useEffect(() => {
         if (!isOpen) {
@@ -110,6 +111,18 @@ const FileViewerModal = ({ isOpen, onClose, files = [], title, onDeleteFile }) =
         setPreviewFile(null);
         setPreviewContent(null);
         setError(null);
+    };
+
+    const handleDeleteClick = async (index) => {
+        if (!onDeleteFile) return;
+        setDeletingIndex(index);
+        try {
+            await onDeleteFile(index);
+        } catch (e) {
+            console.error("Delete failed", e);
+        } finally {
+            setDeletingIndex(null);
+        }
     };
 
     // ── Preview renderer ──
@@ -231,11 +244,12 @@ const FileViewerModal = ({ isOpen, onClose, files = [], title, onDeleteFile }) =
                                 </div>
                                 {onDeleteFile && (
                                     <button
-                                        onClick={() => onDeleteFile(index)}
-                                        className="text-red-500 hover:text-red-400 bg-red-900/20 hover:bg-red-900/40 p-1.5 rounded-lg transition-colors shrink-0"
+                                        onClick={() => handleDeleteClick(index)}
+                                        disabled={deletingIndex === index}
+                                        className="text-red-500 hover:text-red-400 bg-red-900/20 hover:bg-red-900/40 p-1.5 rounded-lg transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                                         title="이 첨부파일 삭제"
                                     >
-                                        <X className="w-4 h-4" />
+                                        {deletingIndex === index ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                                     </button>
                                 )}
                             </div>
