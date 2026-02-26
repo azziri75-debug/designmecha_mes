@@ -608,10 +608,11 @@ async def export_production_plan_excel(
     result = await db.execute(
         select(ProductionPlan)
         .options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner), 
+            selectinload(ProductionPlan.items).options(
+                selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            ),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )
         .where(ProductionPlan.id == plan.id)
@@ -728,9 +729,12 @@ async def update_production_plan_status(
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).options(
+                selectinload(PurchaseOrderItem.purchase_order).selectinload(PurchaseOrder.items)
+            ),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).options(
+                selectinload(OutsourcingOrderItem.outsourcing_order).selectinload(OutsourcingOrder.items)
+            ),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
         )
         .where(ProductionPlan.id == plan_id)
@@ -996,8 +1000,10 @@ async def update_production_plan_item(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlanItem.plan).options(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
-                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+                selectinload(ProductionPlan.stock_production).options(
+                    selectinload(StockProduction.product),
+                    selectinload(StockProduction.partner)
+                )
             ),
             selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)

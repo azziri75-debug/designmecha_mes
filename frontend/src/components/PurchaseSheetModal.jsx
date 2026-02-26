@@ -130,30 +130,36 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
 
                     // Robust CSS Cleansing for all styles including CSS Variables
                     try {
+                        const styles = clonedDoc.getElementsByTagName('style');
+                        for (let s of styles) {
+                            if (s.innerHTML.includes('oklch')) {
+                                s.innerHTML = s.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
+                            }
+                        }
+
+                        const allElems = clonedDoc.getElementsByTagName("*");
+                        for (let i = 0; i < allElems.length; i++) {
+                            const node = allElems[i];
+                            if (node.style && node.style.cssText.includes('oklch')) {
+                                node.style.cssText = node.style.cssText.replace(/oklch\([^)]+\)/g, '#000000');
+                            }
+                        }
+
                         const styleSheets = clonedDoc.styleSheets;
                         for (let i = 0; i < styleSheets.length; i++) {
                             const sheet = styleSheets[i];
                             try {
                                 const rules = sheet.cssRules || sheet.rules;
-                                for (let j = 0; j < rules.length; j++) {
-                                    const rule = rules[j];
-                                    if (rule.style && rule.style.cssText.includes('oklch')) {
-                                        rule.style.cssText = rule.style.cssText.replace(/oklch\([^)]+\)/g, '#000000');
+                                if (rules) {
+                                    for (let j = 0; j < rules.length; j++) {
+                                        if (rules[j].style && rules[j].style.cssText.includes('oklch')) {
+                                            rules[j].style.cssText = rules[j].style.cssText.replace(/oklch\([^)]+\)/g, '#000000');
+                                        }
                                     }
                                 }
                             } catch (e) { /* ignore cross-origin */ }
                         }
                     } catch (e) { console.error("CSS Cleansing error:", e); }
-
-                    const allElems = clonedDoc.getElementsByTagName("*");
-                    for (let i = 0; i < allElems.length; i++) {
-                        const node = allElems[i];
-                        if (node.style) {
-                            if (node.style.color?.includes('oklch')) node.style.color = '#000000';
-                            if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
-                            if (node.style.borderColor?.includes('oklch')) node.style.borderColor = '#000000';
-                        }
-                    }
                 }
             });
 
