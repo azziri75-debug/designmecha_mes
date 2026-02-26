@@ -92,6 +92,7 @@ const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
                 plan_id: selectedPlan.id,
                 plan_item_id: selectedProcess.id,
                 ...formData,
+                attachment_file: formData.attachment_file.length > 0 ? JSON.stringify(formData.attachment_file) : null,
                 defect_date: new Date(formData.defect_date).toISOString()
             };
 

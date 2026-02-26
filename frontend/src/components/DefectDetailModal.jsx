@@ -67,6 +67,7 @@ const DefectDetailModal = ({ isOpen, onClose, defect, onSuccess }) => {
             const payload = {
                 ...formData,
                 status: statusToSave,
+                attachment_file: formData.attachment_file && formData.attachment_file.length > 0 ? JSON.stringify(formData.attachment_file) : null,
                 resolution_date: statusToSave === 'RESOLVED' ? new Date().toISOString() : null
             };
 
