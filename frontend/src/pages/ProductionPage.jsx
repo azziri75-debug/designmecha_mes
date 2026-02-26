@@ -838,11 +838,6 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>
                                     {totalCost.toLocaleString()} 원
                                 </Typography>
-                                {defectCost > 0 && (
-                                    <Typography variant="caption" sx={{ color: '#d32f2f', fontWeight: 'bold' }}>
-                                        - {defectCost.toLocaleString()} 원 (불량)
-                                    </Typography>
-                                )}
                             </Box>
                         );
                     })()}
@@ -923,9 +918,21 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                         <Typography variant="body2" color="textSecondary" display="inline" sx={{ mr: 2 }}>
                                             수량: {group.items.length > 0 ? group.items[0].quantity : 0} {group.product_unit}
                                         </Typography>
-                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#c62828', bgcolor: '#ffebee', px: 1, py: 0.5, borderRadius: 1, display: 'inline-block' }}>
+                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#c62828', bgcolor: '#ffebee', px: 1, py: 0.5, borderRadius: 1, display: 'inline-block', mr: 2 }}>
                                             총 공정 비용: {group.items.reduce((sum, item) => sum + (item.cost || 0), 0).toLocaleString()} 원
                                         </Typography>
+                                        {(() => {
+                                            const groupItemIds = group.items.map(i => i.id);
+                                            const groupDefectCost = defects?.filter(d => groupItemIds.includes(d.plan_item_id)).reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
+                                            if (groupDefectCost > 0) {
+                                                return (
+                                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#d32f2f', display: 'inline-block' }}>
+                                                        - {groupDefectCost.toLocaleString()} 원 (불량)
+                                                    </Typography>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                     </Box>
 
                                     <Table size="small" aria-label="process-list">
