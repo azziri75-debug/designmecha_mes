@@ -10,6 +10,9 @@ from app.models.sales import Estimate, EstimateItem, SalesOrder, SalesOrderItem,
 from app.schemas import sales as schemas
 from app.models.product import Product, ProductProcess
 from app.models.basics import Partner
+from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder
+from app.models.quality import InspectionResult, QualityDefect
+from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem
 import uuid
 from datetime import datetime, date
 import os
