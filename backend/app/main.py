@@ -314,6 +314,20 @@ async def startup_event():
                     "INSERT INTO form_templates (form_type, name, layout_data, is_active) VALUES (:ft, :nm, :ld, :ia)"
                 ), {"ft": f["form_type"], "nm": f["name"], "ld": json.dumps(layout), "ia": True})
                 print(f"Startup: Created default form template '{f['name']}'")
+        
+        # 7. Fix Process Unique Constraint (Remove global unique on name)
+        if not is_sqlite:
+            try:
+                await db.execute(text("ALTER TABLE processes DROP CONSTRAINT IF EXISTS processes_name_key"))
+                print("Startup: Dropped processes_name_key constraint (Postgres)")
+            except Exception as e:
+                print(f"Startup: Error dropping constraint (Postgres): {e}")
+        else:
+            try:
+                await db.execute(text("DROP INDEX IF EXISTS processes_name_key"))
+                print("Startup: Dropped processes_name_key index (SQLite)")
+            except Exception as e:
+                print(f"Startup: Error dropping index (SQLite): {e}")
 
         await db.commit()
 

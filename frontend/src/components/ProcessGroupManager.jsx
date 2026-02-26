@@ -140,7 +140,24 @@ const ProcessGroupManager = ({
             if (fetchProcesses) fetchProcesses();
         } catch (error) {
             console.error(error);
-            alert("복사 중 오류가 발생했습니다.");
+            alert("복사 중 오류가 발생했습니다. (중복된 이름 등)");
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        if (selectedProcesses.length === 0) return;
+        if (!window.confirm(`선택한 ${selectedProcesses.length}개의 공정을 삭제하시겠습니까?`)) return;
+
+        try {
+            for (const id of selectedProcesses) {
+                await api.delete(`/product/processes/${id}`);
+            }
+            alert("선택한 공정이 삭제되었습니다.");
+            setSelectedProcesses([]);
+            if (fetchProcesses) fetchProcesses();
+        } catch (error) {
+            console.error("Batch delete failed", error);
+            alert("일부 공정 삭제 중 오류가 발생했습니다.");
         }
     };
 
@@ -408,6 +425,13 @@ const ProcessGroupManager = ({
                             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/40 transition-colors"
                         >
                             복사하기
+                        </button>
+                        <div className="w-[1px] h-6 bg-gray-750 mx-1"></div>
+                        <button
+                            onClick={handleDeleteSelected}
+                            className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-red-900/40 transition-colors flex items-center gap-2"
+                        >
+                            <Trash className="w-4 h-4" /> 선택 삭제
                         </button>
                         <button
                             onClick={() => setSelectedProcesses([])}

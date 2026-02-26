@@ -40,7 +40,7 @@ class Process(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("product_groups.id"), nullable=True) # 대/소그룹
-    name = Column(String, unique=True, nullable=False) # 공정명
+    name = Column(String, index=True, nullable=False) # 공정명
     course_type = Column(String, default="INTERNAL") # 구분: INTERNAL(내부), OUTSOURCING(외주), PURCHASE(구매)
     description = Column(Text, nullable=True)
 
