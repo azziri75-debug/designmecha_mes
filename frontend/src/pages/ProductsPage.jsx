@@ -412,7 +412,7 @@ const ProductsPage = () => {
                     </div>
                 </div>
 
-                {activeTab === 'products' ? (
+                {activeTab === 'products' && (
                     <button
                         type="button"
                         onClick={() => {
@@ -423,18 +423,6 @@ const ProductsPage = () => {
                     >
                         <Plus className="w-4 h-4" />
                         <span>신규 제품 등록</span>
-                    </button>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setProcessFormData({});
-                            setShowProcessModal(true);
-                        }}
-                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-emerald-900/20"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span>신규 공정 등록</span>
                     </button>
                 )}
             </div>

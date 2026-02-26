@@ -75,7 +75,7 @@ class Equipment(Base):
     name = Column(String, nullable=False, index=True)
     code = Column(String, unique=True, index=True) # 장비 코드
     spec = Column(String, nullable=True) # 사양/모델명
-    process_id = Column(Integer, ForeignKey("processes.id"), nullable=True) # 주 공정
+    process_id = Column(Integer, ForeignKey("processes.id", ondelete="SET NULL"), nullable=True) # 주 공정
     
     status = Column(String, default="IDLE") # IDLE, RUNNING, DOWN, REPAIR
     purchase_date = Column(Date, nullable=True)
