@@ -55,7 +55,7 @@ class ProductProcess(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"))
-    process_id = Column(Integer, ForeignKey("processes.id"))
+    process_id = Column(Integer, ForeignKey("processes.id", ondelete="SET NULL"), nullable=True)
     sequence = Column(Integer, nullable=False)
     estimated_time = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)

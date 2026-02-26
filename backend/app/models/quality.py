@@ -9,7 +9,7 @@ class InspectionProcess(Base):
     __tablename__ = "inspection_processes"
     
     id = Column(Integer, primary_key=True, index=True)
-    process_id = Column(Integer, ForeignKey("processes.id"))
+    process_id = Column(Integer, ForeignKey("processes.id", ondelete="SET NULL"), nullable=True)
     check_item = Column(String, nullable=False) # 검사 항목 (치수, 경도 등)
     spec_min = Column(Float, nullable=True)
     spec_max = Column(Float, nullable=True)
