@@ -678,6 +678,7 @@ const ProductsPage = () => {
                 <ProcessGroupManager
                     groups={groups}
                     fetchGroups={fetchGroups}
+                    fetchProcesses={fetchProcesses}
                     processes={processes}
                     onAddProcess={(initData) => {
                         setProcessFormData(initData || {});

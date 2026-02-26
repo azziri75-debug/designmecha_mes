@@ -4,6 +4,8 @@ from sqlalchemy.sql import func
 from app.db.base import Base
 import enum
 
+from app.models.inventory import StockProduction
+
 class ProductionStatus(str, enum.Enum):
     PENDING = "PENDING"       # 대기
     PLANNED = "PLANNED"       # 계획 수립
@@ -32,7 +34,7 @@ class ProductionPlan(Base):
     
     # Relationships
     order = relationship("SalesOrder")
-    stock_production = relationship("StockProduction")
+    stock_production = relationship("StockProduction", backref="production_plans")
     items = relationship("ProductionPlanItem", back_populates="plan", cascade="all, delete-orphan", lazy="selectin", order_by="ProductionPlanItem.sequence")
 
 class ProductionPlanItem(Base):
