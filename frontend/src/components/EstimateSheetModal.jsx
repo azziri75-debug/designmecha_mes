@@ -86,6 +86,16 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
 
         const total = items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
 
+        let savedColWidths;
+        try {
+            if (estimate.sheet_metadata) {
+                const sm = typeof estimate.sheet_metadata === 'string' ? JSON.parse(estimate.sheet_metadata) : estimate.sheet_metadata;
+                if (sm.colWidths) savedColWidths = sm.colWidths;
+            }
+        } catch (e) { }
+
+        const defaultWidths = [35, 200, 140, 45, 85, 95, 60];
+
         setMetadata(prev => ({
             ...prev,
             title: "견 적 서",
@@ -98,6 +108,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             company_ceo: company?.ceo_name || "조인호",
             company_address: (company?.address || "충남 아산시 음봉면 월암로 336-39") + (company?.website ? `\n(${company.website})` : "\n(www.designmecha.co.kr)"),
             company_contact: `TEL : ${company?.phone || '041-544-6220'} / FAX : ${company?.fax || '041-544-6207'}\n(E-mail : ${company?.email || 'juno@designmecha.co.kr'})`,
+            colWidths: savedColWidths || defaultWidths,
             items: items
         }));
     };

@@ -145,7 +145,8 @@ async def create_production_plan(
                 note=item_in.note,
                 status=item_in.status,
                 attachment_file=item_in.attachment_file,
-                quantity=item_in.quantity
+                quantity=item_in.quantity,
+                cost=item_in.cost
             )
             db.add(plan_item)
     else:
@@ -355,7 +356,8 @@ async def update_production_plan(
                 note=item_in.get("note"),
                 status=item_in.get("status", ProductionStatus.PLANNED),
                 attachment_file=item_in.get("attachment_file"),
-                quantity=item_in.get("quantity", 1)
+                quantity=item_in.get("quantity", 1),
+                cost=item_in.get("cost", 0.0)
             )
             plan.items.append(new_item)
 

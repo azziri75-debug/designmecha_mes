@@ -101,7 +101,7 @@ export const StampOverlay = ({ url, className }) => {
     if (!url) return null;
     return (
         <div className={cn("absolute pointer-events-none opacity-80 mix-blend-multiply", className)}>
-            <img src={url} alt="Stamp" crossOrigin="anonymous" className="w-full h-full object-contain" />
+            <img src={url} alt="Stamp" className="w-full h-full object-contain" />
         </div>
     );
 };
@@ -112,60 +112,72 @@ export const StampOverlay = ({ url, className }) => {
 export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, colWidths: initialWidths, className }) => {
     const [widths, setWidths] = useState(initialWidths || columns.map(() => 120));
     const resizing = useRef(null);
+    const widthsRef = useRef(widths);
 
     useEffect(() => {
-        if (initialWidths) setWidths(initialWidths);
+        if (initialWidths) {
+            setWidths(initialWidths);
+            widthsRef.current = initialWidths;
+        }
     }, [initialWidths]);
 
     const startResizing = (idx, e) => {
         e.preventDefault();
-        resizing.current = { idx, startX: e.pageX, startWidth: widths[idx] };
+        const currentWidths = widthsRef.current;
+        resizing.current = {
+            idx,
+            startX: e.pageX,
+            startWidth: currentWidths[idx],
+            startWidths: [...currentWidths],
+            latestWidths: [...currentWidths]
+        };
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
     };
 
     const handleMouseMove = (e) => {
         if (!resizing.current) return;
-        const { idx, startX, startWidth } = resizing.current;
+        const { idx, startX, startWidth, startWidths } = resizing.current;
         const diff = e.pageX - startX;
 
         // "좌우폭은 늘어나지 않고 안에서만 조정가능하게"
-        // Adjust current column and the next one to maintain total width
-        if (idx < widths.length - 1) {
+        if (idx < startWidths.length - 1) {
             const nextIdx = idx + 1;
-            const startWidthNext = widths[nextIdx];
+            const startWidthNext = startWidths[nextIdx];
 
-            // Calculate new widths
             const newW = Math.max(20, startWidth + diff);
             const actualDiff = newW - startWidth;
             const newWNext = Math.max(20, startWidthNext - actualDiff);
 
-            const finalWidths = [...widths];
+            const finalWidths = [...startWidths];
             finalWidths[idx] = startWidth + (startWidthNext - newWNext);
             finalWidths[nextIdx] = newWNext;
+
+            resizing.current.latestWidths = finalWidths;
+            widthsRef.current = finalWidths;
             setWidths(finalWidths);
         } else {
-            // Last column: Just resize it but it might overflow? 
-            // Better to allow resize but the user wants "within bounds".
-            // If it's the last column, we could steal from the previous one.
             const prevIdx = idx - 1;
             if (prevIdx >= 0) {
-                const startWidthPrev = widths[prevIdx];
+                const startWidthPrev = startWidths[prevIdx];
                 const newW = Math.max(20, startWidth + diff);
                 const actualDiff = newW - startWidth;
                 const newWPrev = Math.max(20, startWidthPrev - actualDiff);
 
-                const finalWidths = [...widths];
+                const finalWidths = [...startWidths];
                 finalWidths[idx] = startWidth + (startWidthPrev - newWPrev);
                 finalWidths[prevIdx] = newWPrev;
+
+                resizing.current.latestWidths = finalWidths;
+                widthsRef.current = finalWidths;
                 setWidths(finalWidths);
             }
         }
     };
 
     const handleMouseUp = () => {
-        if (resizing.current && onUpdateWidths) {
-            onUpdateWidths(widths);
+        if (resizing.current && onUpdateWidths && resizing.current.latestWidths) {
+            onUpdateWidths(resizing.current.latestWidths);
         }
         resizing.current = null;
         document.removeEventListener('mousemove', handleMouseMove);

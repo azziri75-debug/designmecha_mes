@@ -54,12 +54,25 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
             items.push({ idx: "", name: "", spec: "", qty: "", price: "", total: "" });
         }
 
+        let savedColWidths;
+        try {
+            if (order.sheet_metadata) {
+                const sm = typeof order.sheet_metadata === 'string' ? JSON.parse(order.sheet_metadata) : order.sheet_metadata;
+                if (sm.colWidths) savedColWidths = sm.colWidths;
+            }
+        } catch (e) { }
+
+        const defaultWidths = activeTab === 'purchase_order'
+            ? [40, 200, 120, 60, 80, 100]
+            : [40, 200, 120, 60, 180];
+
         setMetadata(prev => ({
             ...prev,
             title: activeTab === 'purchase_order' ? "구 매 발 주 서" : "견 적 의 뢰 서",
             order_no: order.order_no || "",
             delivery_date: order.delivery_date || '',
             special_notes: order.note || "",
+            colWidths: savedColWidths || defaultWidths,
             items: items
         }));
     };
@@ -137,14 +150,16 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
 
     const totalAmount = metadata.items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
 
-    const columns = [
+    const baseColumns = [
         { key: 'idx', label: '순번', subLabel: 'Order', align: 'center' },
         { key: 'name', label: '품목', subLabel: 'Description', align: 'left' },
         { key: 'spec', label: '규격', subLabel: 'Gauge', align: 'center' },
-        { key: 'qty', label: '수량', subLabel: 'Qty', align: 'center' },
-        { key: 'price', label: '단가', subLabel: 'Unit Price', align: 'right' },
-        { key: 'total', label: '금액', subLabel: 'Total Amount', align: 'right' },
+        { key: 'qty', label: '수량', subLabel: 'Qty', align: 'center' }
     ];
+
+    const columns = activeTab === 'purchase_order'
+        ? [...baseColumns, { key: 'price', label: '단가', subLabel: 'Unit Price', align: 'right' }, { key: 'total', label: '금액', subLabel: 'Total Amount', align: 'right' }]
+        : [...baseColumns, { key: 'note', label: '비고', subLabel: 'Remarks', align: 'left' }];
 
     // Normalized Stamp URL Binding
     let stampUrl = null;
@@ -249,10 +264,18 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
 
                         {/* Summary Row */}
                         <div className="mx-2 flex border-2 border-black border-t-0 font-bold text-[10px] h-10 items-center" style={{ backgroundColor: '#f9fafb' }}>
-                            <div className="border-r border-black flex-1 text-center uppercase tracking-widest">합계 (VAT 별도)</div>
-                            <div className="w-[40px] border-r border-black text-center">{fmt(metadata.items.reduce((s, i) => s + (parseFloat(i.qty) || 0), 0))}</div>
-                            <div className="w-[80px] border-r border-black"></div>
-                            <div className="w-[100px] text-right px-2 text-xs">{fmt(totalAmount)} 원</div>
+                            <div className="border-r border-black flex-1 text-center uppercase tracking-widest text-[#555]">
+                                {activeTab === 'purchase_order' ? '합계 (VAT 별도)' : '수량 합계'}
+                            </div>
+                            <div className="w-[80px] border-r border-black text-center text-[11px] text-[#333]">
+                                {fmt(metadata.items.reduce((s, i) => s + (parseFloat(i.qty) || 0), 0))}
+                            </div>
+                            {activeTab === 'purchase_order' && (
+                                <>
+                                    <div className="w-[80px] border-r border-black"></div>
+                                    <div className="w-[100px] text-right px-2 text-xs text-[#000]">{fmt(totalAmount)} 원</div>
+                                </>
+                            )}
                         </div>
 
                         {/* Footer Notes */}

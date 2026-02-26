@@ -152,6 +152,20 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
 
         const groups = Array.from(groupedMap.values());
 
+        let savedColWidths;
+        try {
+            if (plan.sheet_metadata) {
+                const sm = typeof plan.sheet_metadata === 'string' ? JSON.parse(plan.sheet_metadata) : plan.sheet_metadata;
+                if (sm.colWidths) savedColWidths = sm.colWidths;
+            }
+        } catch (e) { }
+
+        if (savedColWidths) {
+            setColWidths(savedColWidths);
+        } else {
+            setColWidths([30, 80, 40, 110, 80, 150, 70, 70, 80]); // default
+        }
+
         setMetadata(prev => ({
             ...prev,
             order_no: plan.order?.order_no || plan.stock_production?.production_no || "PLAN-" + plan.id,
@@ -226,7 +240,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                 try { if (plan.attachment_file) currentAttachments = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file; } catch { currentAttachments = []; }
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
-                await api.put(`/production/plans/${plan.id}`, { attachment_file: newAttachments });
+                await api.put(`/production/plans/${plan.id}`, { attachment_file: newAttachments, sheet_metadata: { colWidths } });
                 alert("저장 및 첨부되었습니다.");
                 if (onSave) onSave();
                 onClose();

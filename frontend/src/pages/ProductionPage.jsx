@@ -408,6 +408,7 @@ const ProductionPage = () => {
                                 setSelectedDefects(d);
                                 setDefectModalOpen(true);
                             }}
+                            onRefresh={fetchPlans}
                         />
                     )}
                 </Box>
@@ -683,7 +684,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, onShowDefects, onShowOrder, onShowStock }) => {
+const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, onShowDefects, onShowOrder, onShowStock, onRefresh }) => {
     return (
         <TableContainer>
             <Table>
@@ -720,6 +721,7 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
                                 onShowDefects={onShowDefects}
                                 onShowOrder={onShowOrder}
                                 onShowStock={onShowStock}
+                                onRefresh={onRefresh}
                             />
                         ))
                     )}
@@ -729,7 +731,7 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
     );
 };
 
-const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles, onShowDefects, onShowOrder, onShowStock, readonly }) => {
+const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles, onShowDefects, onShowOrder, onShowStock, readonly, onRefresh }) => {
     const [open, setOpen] = useState(false);
     const order = plan.order;
     const sp = plan.stock_production;
@@ -968,7 +970,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                             onChange={async (e) => {
                                                                 try {
                                                                     await api.patch(`/production/plan-items/${item.id}`, { status: e.target.value });
-                                                                    fetchPlans();
+                                                                    if (onRefresh) onRefresh();
                                                                 } catch (err) {
                                                                     console.error("Status update error", err);
                                                                     // Only alert if it's truly an error (axios throws on non-2xx)
@@ -1068,7 +1070,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                                     const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
                                                                                     const updatedLocalFiles = [...localFiles, newFile]; // Only save locally added files
                                                                                     await api.patch(`/production/plan-items/${item.id}`, { attachment_file: updatedLocalFiles });
-                                                                                    fetchPlans();
+                                                                                    if (onRefresh) onRefresh();
                                                                                 } catch (err) {
                                                                                     console.error("Upload failed", err);
                                                                                     alert("파일 업로드 실패");
