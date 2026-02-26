@@ -111,7 +111,11 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                     transformOrigin: 'top left',
                     width: '210mm',
                 },
-                filter: (node) => true
+                filter: (node) => {
+                    if (node.style && node.style.color && node.style.color.includes('oklch')) node.style.color = '#000000';
+                    if (node.style && node.style.backgroundColor && node.style.backgroundColor.includes('oklch')) node.style.backgroundColor = '#ffffff';
+                    return true;
+                }
             });
 
             const pdf = new jsPDF('p', 'mm', 'a4');

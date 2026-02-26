@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { X, Save, Download, Edit2, FileSpreadsheet } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 import { getImageUrl } from '../lib/utils';
@@ -86,7 +86,11 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                     transformOrigin: 'top left',
                     width: '210mm',
                 },
-                filter: (node) => true
+                filter: (node) => {
+                    if (node.style && node.style.color && node.style.color.includes('oklch')) node.style.color = '#000000';
+                    if (node.style && node.style.backgroundColor && node.style.backgroundColor.includes('oklch')) node.style.backgroundColor = '#ffffff';
+                    return true;
+                }
             });
 
             const pdf = new jsPDF('p', 'mm', 'a4');

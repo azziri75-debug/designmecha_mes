@@ -213,7 +213,8 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                         width: '210mm',
                     },
                     filter: (node) => {
-                        // Optional filter logic
+                        if (node.style && node.style.color && node.style.color.includes('oklch')) node.style.color = '#000000';
+                        if (node.style && node.style.backgroundColor && node.style.backgroundColor.includes('oklch')) node.style.backgroundColor = '#ffffff';
                         return true;
                     }
                 });
