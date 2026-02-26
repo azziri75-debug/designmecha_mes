@@ -315,19 +315,59 @@ async def startup_event():
                 ), {"ft": f["form_type"], "nm": f["name"], "ld": json.dumps(layout), "ia": True})
                 print(f"Startup: Created default form template '{f['name']}'")
         
-        # 7. Fix Process Unique Constraint (Remove global unique on name)
+        # 8. Fix Process Deletion Constraints (Postgres/SQLite)
         if not is_sqlite:
+            # Update equipments
             try:
-                await db.execute(text("ALTER TABLE processes DROP CONSTRAINT IF EXISTS processes_name_key"))
-                print("Startup: Dropped processes_name_key constraint (Postgres)")
-            except Exception as e:
-                print(f"Startup: Error dropping constraint (Postgres): {e}")
+                find_con = text("""
+                    SELECT conname FROM pg_constraint 
+                    INNER JOIN pg_class ON connamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public') 
+                    AND pg_class.oid = conrelid 
+                    WHERE pg_class.relname = 'equipments' AND contype = 'f' 
+                    AND confrelid = (SELECT oid FROM pg_class WHERE relname = 'processes');
+                """)
+                res = await db.execute(find_con)
+                con_name = res.scalar()
+                if con_name:
+                    await db.execute(text(f"ALTER TABLE equipments DROP CONSTRAINT {con_name}"))
+                await db.execute(text("ALTER TABLE equipments ADD CONSTRAINT equipments_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
+            except Exception as e: print(f"Startup: Equipments FK update failed: {e}")
+
+            # Update product_processes
+            try:
+                find_con = text("""
+                    SELECT conname FROM pg_constraint 
+                    INNER JOIN pg_class ON connamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public') 
+                    AND pg_class.oid = conrelid 
+                    WHERE pg_class.relname = 'product_processes' AND contype = 'f' 
+                    AND confrelid = (SELECT oid FROM pg_class WHERE relname = 'processes');
+                """)
+                res = await db.execute(find_con)
+                con_name = res.scalar()
+                if con_name:
+                    await db.execute(text(f"ALTER TABLE product_processes DROP CONSTRAINT {con_name}"))
+                await db.execute(text("ALTER TABLE product_processes ALTER COLUMN process_id DROP NOT NULL"))
+                await db.execute(text("ALTER TABLE product_processes ADD CONSTRAINT product_processes_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
+            except Exception as e: print(f"Startup: ProductProcesses FK update failed: {e}")
+
+            # Update inspection_processes
+            try:
+                find_con = text("""
+                    SELECT conname FROM pg_constraint 
+                    INNER JOIN pg_class ON connamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public') 
+                    AND pg_class.oid = conrelid 
+                    WHERE pg_class.relname = 'inspection_processes' AND contype = 'f' 
+                    AND confrelid = (SELECT oid FROM pg_class WHERE relname = 'processes');
+                """)
+                res = await db.execute(find_con)
+                con_name = res.scalar()
+                if con_name:
+                    await db.execute(text(f"ALTER TABLE inspection_processes DROP CONSTRAINT {con_name}"))
+                await db.execute(text("ALTER TABLE inspection_processes ALTER COLUMN process_id DROP NOT NULL"))
+                await db.execute(text("ALTER TABLE inspection_processes ADD CONSTRAINT inspection_processes_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
+            except Exception as e: print(f"Startup: InspectionProcesses FK update failed: {e}")
         else:
-            try:
-                await db.execute(text("DROP INDEX IF EXISTS processes_name_key"))
-                print("Startup: Dropped processes_name_key index (SQLite)")
-            except Exception as e:
-                print(f"Startup: Error dropping index (SQLite): {e}")
+            await db.execute(text("PRAGMA foreign_keys = OFF"))
 
         await db.commit()
 
