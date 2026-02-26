@@ -149,7 +149,7 @@ const Dashboard = () => {
                     api.get('/basics/staff/'),
                     api.get('/inventory/productions'),
                     api.get('/quality/defects/'),
-                    api.get('/products/groups/')
+                    api.get('/product/groups/')
                 ]);
                 if (ordRes.status === 'fulfilled') setOrders(ordRes.value.data);
                 if (planRes.status === 'fulfilled') setPlans(planRes.value.data);

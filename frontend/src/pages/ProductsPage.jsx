@@ -77,7 +77,7 @@ const ProductsPage = () => {
 
     const fetchGroups = async () => {
         try {
-            const res = await api.get('/products/groups/');
+            const res = await api.get('/product/groups/');
             setGroups(res.data || []);
         } catch (error) {
             console.error("Failed to fetch product groups", error);

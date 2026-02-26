@@ -21,7 +21,7 @@ const ProductGroupManager = () => {
     const fetchGroups = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/products/groups/');
+            const res = await api.get('/product/groups/');
             setGroups(res.data || []);
         } catch (error) {
             console.error("Failed to load groups", error);
@@ -33,7 +33,7 @@ const ProductGroupManager = () => {
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
-            await api.post('/products/groups/', modalData);
+            await api.post('/product/groups/', modalData);
             setShowModal(false);
             setModalData({ name: "", type: "MAJOR", parent_id: null });
             fetchGroups();
@@ -47,7 +47,7 @@ const ProductGroupManager = () => {
         e.stopPropagation();
         if (!confirm("정말 이 그룹을 삭제하시겠습니까? 하위 요소나 포함된 항목이 있으면 문제가 생길 수 있습니다.")) return;
         try {
-            await api.delete(`/products/groups/${id}`);
+            await api.delete(`/product/groups/${id}`);
             fetchGroups();
         } catch (error) {
             console.error("Delete failed", error);
@@ -64,7 +64,7 @@ const ProductGroupManager = () => {
     const saveEditing = async (node, e) => {
         e.stopPropagation();
         try {
-            await api.put(`/products/groups/${node.id}`, { name: editName });
+            await api.put(`/product/groups/${node.id}`, { name: editName });
             setEditingNode(null);
             fetchGroups();
         } catch (error) {
