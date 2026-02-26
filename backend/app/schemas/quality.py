@@ -42,6 +42,7 @@ class QualityDefectBase(BaseModel):
     status: str = "OCCURRED"
     resolution_note: Optional[str] = None
     resolution_date: Optional[datetime] = None
+    attachment_file: Optional[str] = None
 
 class QualityDefectCreate(QualityDefectBase):
     defect_date: Optional[datetime] = None
@@ -53,6 +54,7 @@ class QualityDefectUpdate(BaseModel):
     status: Optional[str] = None
     resolution_note: Optional[str] = None
     resolution_date: Optional[datetime] = None
+    attachment_file: Optional[str] = None
 
 from app.schemas.sales import SalesOrderSimple
 from app.schemas.production import ProductionPlanSimple, ProductionPlanItem as ProductionPlanItemResponse

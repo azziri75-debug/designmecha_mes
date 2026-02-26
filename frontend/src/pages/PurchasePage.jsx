@@ -365,18 +365,53 @@ const PurchasePage = () => {
                                                         let files = [];
                                                         try { files = order.attachment_file ? (typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file) : []; } catch { files = []; }
                                                         if (!Array.isArray(files)) files = [];
-                                                        return files.length > 0 ? (
-                                                            <Tooltip title={`첨부파일 ${files.length}개`}>
-                                                                <IconButton size="small" onClick={() => {
-                                                                    setViewingFiles(files);
-                                                                    setViewingFileTitle(order.order_no);
-                                                                    setViewingTargetId(order.id);
-                                                                    setShowFileModal(true);
-                                                                }}>
-                                                                    <AttachIcon fontSize="small" color="action" />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        ) : null;
+                                                        return (
+                                                            <>
+                                                                {files.length > 0 && (
+                                                                    <Tooltip title={`첨부파일 ${files.length}개`}>
+                                                                        <IconButton size="small" onClick={() => {
+                                                                            setViewingFiles(files);
+                                                                            setViewingFileTitle(order.order_no);
+                                                                            setViewingTargetId(order.id);
+                                                                            setShowFileModal(true);
+                                                                        }}>
+                                                                            <AttachIcon fontSize="small" color="action" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                )}
+                                                                <input
+                                                                    type="file"
+                                                                    id={`po-file-${order.id}`}
+                                                                    style={{ display: 'none' }}
+                                                                    onChange={async (e) => {
+                                                                        const file = e.target.files[0];
+                                                                        if (!file) return;
+                                                                        const formData = new FormData();
+                                                                        formData.append('file', file);
+                                                                        try {
+                                                                            const uploadRes = await api.post('/upload', formData, {
+                                                                                headers: { 'Content-Type': 'multipart/form-data' }
+                                                                            });
+                                                                            const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
+                                                                            const updatedFiles = [...files, newFile];
+                                                                            await api.put(`/purchasing/purchase/orders/${order.id}`, { attachment_file: updatedFiles });
+                                                                            if (tabValue === 1) fetchOrders();
+                                                                            else fetchCompletedOrders();
+                                                                        } catch (err) {
+                                                                            console.error("Upload failed", err);
+                                                                            alert("파일 업로드 실패");
+                                                                        } finally {
+                                                                            e.target.value = null;
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <Tooltip title="첨부파일 추가">
+                                                                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); document.getElementById(`po-file-${order.id}`).click(); }}>
+                                                                        <AddIcon sx={{ fontSize: 18 }} />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                            </>
+                                                        );
                                                     })()}
                                                 </TableCell>
                                             </TableRow>

@@ -62,6 +62,7 @@ class QualityDefect(Base):
     defect_reason = Column(String, nullable=False) # 불량 내용/사유
     quantity = Column(Integer, default=0) # 불량 수량
     amount = Column(Float, default=0.0) # 불량 금액 (손실액)
+    attachment_file = Column(Text, nullable=True) # 첨부자료 (JSON array string 예상)
     
     status = Column(String, default=DefectStatus.OCCURRED) # OCCURRED, RESOLVED
     

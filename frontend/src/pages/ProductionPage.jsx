@@ -506,6 +506,7 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
                                 <TableCell>발생일</TableCell>
                                 <TableCell>사유</TableCell>
                                 <TableCell align="right">수량</TableCell>
+                                <TableCell align="right">손실 비용</TableCell>
                                 <TableCell>상태</TableCell>
                             </TableRow>
                         </TableHead>
@@ -515,6 +516,7 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
                                     <TableCell>{new Date(d.defect_date).toLocaleDateString()}</TableCell>
                                     <TableCell>{d.defect_reason}</TableCell>
                                     <TableCell align="right">{d.quantity} EA</TableCell>
+                                    <TableCell align="right" sx={{ color: '#d32f2f' }}>{d.amount.toLocaleString()} 원</TableCell>
                                     <TableCell><Chip label={d.status} size="small" color={d.status === 'RESOLVED' ? 'success' : 'error'} variant="outlined" /></TableCell>
                                 </TableRow>
                             ))}
@@ -828,7 +830,21 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                             // For now, let's use the field 'cost' if it exists.
                             return sum + (item.cost || 0);
                         }, 0) || 0;
-                        return <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>{totalCost.toLocaleString()} 원</Typography>;
+
+                        const defectCost = defects?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
+
+                        return (
+                            <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>
+                                    {totalCost.toLocaleString()} 원
+                                </Typography>
+                                {defectCost > 0 && (
+                                    <Typography variant="caption" sx={{ color: '#d32f2f', fontWeight: 'bold' }}>
+                                        - {defectCost.toLocaleString()} 원 (불량)
+                                    </Typography>
+                                )}
+                            </Box>
+                        );
                     })()}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>

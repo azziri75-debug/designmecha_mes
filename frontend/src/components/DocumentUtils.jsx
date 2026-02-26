@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { cn } from '../lib/utils';
+import { cn, getImageUrl } from '../lib/utils';
 
 /**
  * Auto-fit Text Logic
@@ -104,8 +104,9 @@ export const StampOverlay = ({ url, className }) => {
         if (!url) return;
         let isMounted = true;
         const fetchImage = async () => {
+            const resolvedUrl = getImageUrl(url);
             try {
-                const response = await fetch(url);
+                const response = await fetch(resolvedUrl);
                 if (!response.ok) throw new Error("Failed to fetch image");
                 const blob = await response.blob();
                 const reader = new FileReader();
@@ -114,8 +115,8 @@ export const StampOverlay = ({ url, className }) => {
                 };
                 reader.readAsDataURL(blob);
             } catch (error) {
-                console.error("Stamp fetch error:", error);
-                if (isMounted) setBase64(url); // Fallback to raw url
+                console.error("Stamp fetch error:", error, resolvedUrl);
+                if (isMounted) setBase64(resolvedUrl); // Fallback to raw url
             }
         };
         fetchImage();

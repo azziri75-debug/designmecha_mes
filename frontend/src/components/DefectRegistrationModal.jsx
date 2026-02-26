@@ -15,7 +15,8 @@ const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
         defect_reason: '',
         quantity: 0,
         amount: 0,
-        defect_date: new Date().toISOString().split('T')[0]
+        defect_date: new Date().toISOString().split('T')[0],
+        attachment_file: []
     });
 
     useEffect(() => {
@@ -28,7 +29,8 @@ const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
                 defect_reason: '',
                 quantity: 0,
                 amount: 0,
-                defect_date: new Date().toISOString().split('T')[0]
+                defect_date: new Date().toISOString().split('T')[0],
+                attachment_file: []
             });
         }
     }, [isOpen]);
@@ -50,6 +52,33 @@ const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
     const handlePlanSelect = (plan) => {
         setSelectedPlan(plan);
         setStep(2);
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+        try {
+            const uploadRes = await api.post('/upload', uploadData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
+            setFormData(prev => ({ ...prev, attachment_file: [...prev.attachment_file, newFile] }));
+        } catch (err) {
+            console.error("Upload failed", err);
+            alert("파일 업로드 실패");
+        } finally {
+            e.target.value = null;
+        }
+    };
+
+    const handleRemoveFile = (indexToRemove) => {
+        setFormData(prev => ({
+            ...prev,
+            attachment_file: prev.attachment_file.filter((_, idx) => idx !== indexToRemove)
+        }));
     };
 
     const handleSubmit = async () => {
@@ -213,6 +242,38 @@ const DefectRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
                                         className="w-full bg-gray-700 border-gray-600 rounded text-white p-2.5 h-24"
                                         placeholder="공정 중 발생한 불량 상세 내용을 입력하세요."
                                     />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-sm font-medium text-gray-400">6. 첨부 파일 (선택)</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => document.getElementById('defect-upload').click()}
+                                            className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded transition-colors"
+                                        >
+                                            + 파일 추가
+                                        </button>
+                                        <input
+                                            type="file"
+                                            id="defect-upload"
+                                            style={{ display: 'none' }}
+                                            onChange={handleFileUpload}
+                                        />
+                                    </div>
+                                    <div className="bg-gray-700 border border-gray-600 rounded p-2 min-h-[60px] flex flex-wrap gap-2">
+                                        {formData.attachment_file.length === 0 ? (
+                                            <span className="text-gray-500 text-sm w-full text-center py-2">첨부된 파일이 없습니다.</span>
+                                        ) : (
+                                            formData.attachment_file.map((file, idx) => (
+                                                <div key={idx} className="flex items-center gap-2 bg-gray-800 rounded px-2 py-1 text-sm border border-gray-600">
+                                                    <span className="text-gray-300 max-w-[200px] truncate" title={file.name}>{file.name}</span>
+                                                    <button onClick={() => handleRemoveFile(idx)} className="text-red-400 hover:text-red-300 ml-1">
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
