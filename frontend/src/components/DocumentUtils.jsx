@@ -44,11 +44,14 @@ export const EditableText = ({
     placeholder = "...",
     isHeader = false,
     autoFit = false,
-    maxWidth = 0
+    maxWidth = 0,
+    forceWrap = false
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [text, setText] = useState(value || "");
-    const fittedSize = useAutoFit(text, maxWidth > 0 ? maxWidth : 1000, isHeader ? 24 : 14);
+    const baseSize = isHeader ? 24 : 14;
+    // We intentionally disable useAutoFit's shrinking property to satisfy the new requirement: "크기는 조정하지 말고 줄을 바꾸고 줄높이를 조정하는 방식으로 변경"
+    const fittedSize = baseSize;
 
     useEffect(() => { setText(value || ""); }, [value]);
 
@@ -59,14 +62,18 @@ export const EditableText = ({
 
     if (isEditing) {
         return (
-            <input
+            <textarea
                 autoFocus
-                className={cn("bg-blue-50 border border-blue-300 outline-none px-1 rounded w-full h-full", className)}
+                className={cn("bg-blue-50 border border-blue-300 outline-none p-1 w-full min-h-[1.5em] resize-none overflow-hidden block", className)}
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                    setText(e.target.value);
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
+                }}
                 onBlur={handleBlur}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleBlur(); }}
-                style={autoFit ? { fontSize: fittedSize } : {}}
+                style={{ fontSize: fittedSize }}
+                rows={1}
             />
         );
     }
@@ -75,11 +82,12 @@ export const EditableText = ({
         <div
             onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
             className={cn(
-                "cursor-text rounded px-1 transition-colors min-h-[1.5em] flex items-center overflow-hidden whitespace-nowrap",
+                "cursor-text transition-colors min-h-[1.5em] flex items-center w-full",
+                autoFit ? "whitespace-pre-wrap break-all" : "whitespace-nowrap overflow-hidden",
                 className
             )}
             style={{
-                ...(autoFit ? { fontSize: fittedSize } : {}),
+                fontSize: fittedSize,
                 ...(isEditing ? {} : { cursor: 'pointer' }),
                 ...(!value ? { color: '#d1d5db', fontStyle: 'italic' } : {})
             }}
@@ -93,7 +101,7 @@ export const StampOverlay = ({ url, className }) => {
     if (!url) return null;
     return (
         <div className={cn("absolute pointer-events-none opacity-80 mix-blend-multiply", className)}>
-            <img src={url} alt="Stamp" className="w-full h-full object-contain" />
+            <img src={url} alt="Stamp" crossOrigin="anonymous" className="w-full h-full object-contain" />
         </div>
     );
 };
@@ -188,15 +196,15 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, co
             </thead>
             <tbody>
                 {data.map((row, rIdx) => (
-                    <tr key={rIdx} className="h-8 border-b border-gray-100 last:border-0 hover:bg-[#f9fafb]">
+                    <tr key={rIdx} className="min-h-[2rem] h-auto border-b border-gray-100 last:border-0 hover:bg-[#f9fafb]">
                         {columns.map((col, cIdx) => (
-                            <td key={cIdx} className="border-r border-black last:border-0 p-0 text-center">
+                            <td key={cIdx} className="border-r border-black last:border-0 p-0 text-center h-full">
                                 <EditableText
                                     value={row[col.key]}
                                     onChange={(v) => onUpdateData(rIdx, col.key, v)}
                                     autoFit
                                     maxWidth={widths[cIdx]}
-                                    className={cn("text-xs justify-center", col.align === 'left' && "justify-start px-2", col.align === 'right' && "justify-end px-2")}
+                                    className={cn("text-xs justify-center h-full", col.align === 'left' && "justify-start px-2", col.align === 'right' && "justify-end px-2")}
                                 />
                             </td>
                         ))}

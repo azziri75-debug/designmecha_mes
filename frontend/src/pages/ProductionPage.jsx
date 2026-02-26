@@ -992,27 +992,60 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                     <TableCell>
                                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                             {(() => {
-                                                                let fileList = [];
+                                                                // 1. Parse item's own locally attached files
+                                                                let localFiles = [];
                                                                 try {
                                                                     if (item.attachment_file) {
                                                                         const parsed = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
-                                                                        fileList = Array.isArray(parsed) ? parsed : [parsed];
+                                                                        localFiles = Array.isArray(parsed) ? parsed : [parsed];
                                                                     }
                                                                 } catch {
-                                                                    fileList = item.attachment_file ? [item.attachment_file] : [];
+                                                                    localFiles = item.attachment_file ? [{ name: 'file', url: item.attachment_file }] : [];
                                                                 }
-                                                                fileList = fileList.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== '')));
+                                                                localFiles = localFiles.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== ''))).map(f => typeof f === 'string' ? { name: f.split('/').pop(), url: f } : f);
+
+                                                                // 2. Parse external order's files (Read-only)
+                                                                let externalFiles = [];
+                                                                if (item.course_type === 'PURCHASE' && item.purchase_items?.length > 0 && item.purchase_items[0].purchase_order?.attachment_file) {
+                                                                    try {
+                                                                        let poFiles = item.purchase_items[0].purchase_order.attachment_file;
+                                                                        poFiles = typeof poFiles === 'string' ? JSON.parse(poFiles) : poFiles;
+                                                                        if (!Array.isArray(poFiles)) poFiles = [poFiles];
+                                                                        externalFiles = poFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split('/').pop() } : f), name: `[구매] ${(typeof f === 'string' ? f.split('/').pop() : f.name)}`, isExternal: true }));
+                                                                    } catch (e) { }
+                                                                } else if (item.course_type === 'OUTSOURCING' && item.outsourcing_items?.length > 0 && item.outsourcing_items[0].outsourcing_order?.attachment_file) {
+                                                                    try {
+                                                                        let outFiles = item.outsourcing_items[0].outsourcing_order.attachment_file;
+                                                                        outFiles = typeof outFiles === 'string' ? JSON.parse(outFiles) : outFiles;
+                                                                        if (!Array.isArray(outFiles)) outFiles = [outFiles];
+                                                                        externalFiles = outFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split('/').pop() } : f), name: `[외주] ${(typeof f === 'string' ? f.split('/').pop() : f.name)}`, isExternal: true }));
+                                                                    } catch (e) { }
+                                                                }
+
+                                                                const allFiles = [...externalFiles, ...localFiles];
 
                                                                 return (
                                                                     <>
-                                                                        {fileList.length > 0 && (
+                                                                        {allFiles.length > 0 && (
                                                                             <IconButton
                                                                                 size="small"
                                                                                 color="primary"
                                                                                 onClick={() => {
-                                                                                    setViewingFiles(fileList);
+                                                                                    setViewingFiles(allFiles);
                                                                                     setViewingFileTitle(`${item.process_name} 첨부 파일`);
-                                                                                    setOnDeleteFile(() => (idx) => handleDeleteItemAttachment(item, idx));
+                                                                                    // Disallow deletion of external files
+                                                                                    setOnDeleteFile(() => (idx) => {
+                                                                                        const targetFile = allFiles[idx];
+                                                                                        if (targetFile.isExternal) {
+                                                                                            alert("외부(발주/외주) 문서에 첨부된 파일은 해당 문서에서만 삭제 가능합니다.");
+                                                                                            return;
+                                                                                        }
+                                                                                        // Adjust index to target localFiles only by finding actual index in localFiles
+                                                                                        const targetIdxInLocal = localFiles.findIndex(f => f.url === targetFile.url && f.name === targetFile.name);
+                                                                                        if (targetIdxInLocal !== -1) {
+                                                                                            handleDeleteItemAttachment(item, targetIdxInLocal);
+                                                                                        }
+                                                                                    });
                                                                                     setShowFileModal(true);
                                                                                 }}
                                                                             >
@@ -1033,12 +1066,14 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                                         headers: { 'Content-Type': 'multipart/form-data' }
                                                                                     });
                                                                                     const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
-                                                                                    const updatedFiles = [...fileList, newFile];
-                                                                                    await api.patch(`/production/plan-items/${item.id}`, { attachment_file: updatedFiles });
+                                                                                    const updatedLocalFiles = [...localFiles, newFile]; // Only save locally added files
+                                                                                    await api.patch(`/production/plan-items/${item.id}`, { attachment_file: updatedLocalFiles });
                                                                                     fetchPlans();
                                                                                 } catch (err) {
                                                                                     console.error("Upload failed", err);
                                                                                     alert("파일 업로드 실패");
+                                                                                } finally {
+                                                                                    e.target.value = null;
                                                                                 }
                                                                             }}
                                                                         />

@@ -1001,7 +1001,9 @@ async def update_production_plan_item(
             selectinload(ProductionPlanItem.plan).options(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlan.stock_production).options(
-                    selectinload(StockProduction.product),
+                    selectinload(StockProduction.product).options(
+                        selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+                    ),
                     selectinload(StockProduction.partner)
                 )
             ),

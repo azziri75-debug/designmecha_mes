@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { X, Save, Download } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import React, { useRef, useState, useEffect } from 'react';
+import { jsPDF } from 'jspdf';
+import { toPng } from 'html-to-image';
+import { X, FileText, Printer, Save, Download } from 'lucide-react';
 import api from '../lib/api';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import { cn } from '../lib/utils';
@@ -188,105 +188,27 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                     return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
                 }));
 
-                const canvas = await html2canvas(page, {
-                    scale: 3,
-                    useCORS: true,
-                    logging: false,
+                // Using html-to-image instead of html2canvas
+                const dataUrl = await toPng(page, {
+                    cacheBust: true,
                     backgroundColor: '#ffffff',
-                    allowTaint: true,
-                    windowWidth: 794, // 210mm at 96dpi approx
-                    windowHeight: 1123, // 297mm at 96dpi approx
-                    onclone: (clonedDoc) => {
-                        const style = clonedDoc.createElement('style');
-                        style.innerHTML = `
-                            * {
-                                color-scheme: light !important;
-                                -webkit-print-color-adjust: exact !important;
-                                --oklch-none: 0 0 0;
-                            }
-                            body {
-                                width: 210mm !important;
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                overflow: hidden !important;
-                            }
-                            .bg-white { background-color: #ffffff !important; }
-                            .text-black { color: #000000 !important; }
-                            .border-black { border-color: #000000 !important; }
-                            .border-gray-200 { border-color: #e5e7eb !important; }
-                            .text-blue-700 { color: #1d4ed8 !important; }
-                            .bg-gray-100 { background-color: #f3f4f6 !important; }
-                            
-                            /* Force table width to fit */
-                            table {
-                                width: 100% !important;
-                                table-layout: fixed !important;
-                            }
-                            
-                            :root {
-                                --color-white: #ffffff !important;
-                                --color-black: #000000 !important;
-                            }
-                        `;
-                        clonedDoc.head.appendChild(style);
-
-                        // Robust CSS Cleansing for all styles including CSS Variables
-                        try {
-                            // 1. Clear oklch from all style tags directly
-                            const styles = clonedDoc.getElementsByTagName('style');
-                            for (let s of styles) {
-                                if (s.innerHTML.includes('oklch')) {
-                                    s.innerHTML = s.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
-                                }
-                            }
-
-                            // 2. Clear oklch from all elements inline styles
-                            const allElems = clonedDoc.getElementsByTagName("*");
-                            for (let i = 0; i < allElems.length; i++) {
-                                const node = allElems[i];
-                                if (node.style && node.style.cssText.includes('oklch')) {
-                                    node.style.cssText = node.style.cssText.replace(/oklch\([^)]+\)/g, '#000000');
-                                }
-                            }
-
-                            // 3. Optional: Check styleSheets for linked ones (if accessible)
-                            const styleSheets = clonedDoc.styleSheets;
-                            for (let i = 0; i < styleSheets.length; i++) {
-                                const sheet = styleSheets[i];
-                                try {
-                                    const rules = sheet.cssRules || sheet.rules;
-                                    if (rules) {
-                                        for (let j = 0; j < rules.length; j++) {
-                                            if (rules[j].style && rules[j].style.cssText.includes('oklch')) {
-                                                rules[j].style.cssText = rules[j].style.cssText.replace(/oklch\([^)]+\)/g, '#000000');
-                                            }
-                                        }
-                                    }
-                                } catch (e) { /* cross-domain */ }
-                            }
-                        } catch (e) { console.error("CSS Cleansing error:", e); }
-
-                        // Direct element style cleansing
-                        const allElems = clonedDoc.getElementsByTagName("*");
-                        for (let j = 0; j < allElems.length; j++) {
-                            const node = allElems[j];
-                            if (node.style) {
-                                if (node.style.color?.includes('oklch')) node.style.color = '#000000';
-                                if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
-                                if (node.style.borderColor?.includes('oklch')) node.style.borderColor = '#000000';
-
-                                // Explicitly check computed style for variables if needed, 
-                                // but rule-based cleansing is usually enough.
-                            }
-                        }
+                    pixelRatio: 3,
+                    style: {
+                        transform: 'scale(1)',
+                        transformOrigin: 'top left',
+                        width: '210mm',
+                    },
+                    filter: (node) => {
+                        // Optional filter logic
+                        return true;
                     }
                 });
 
-                const imgData = canvas.toDataURL('image/png');
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                const imgProps = pdf.getImageProperties(dataUrl);
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
                 if (i > 0) pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
             }
 
             const fileName = `production_sheet_${plan.id}_${Date.now()}.pdf`;
