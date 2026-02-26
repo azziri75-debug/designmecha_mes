@@ -98,10 +98,35 @@ export const EditableText = ({
 };
 
 export const StampOverlay = ({ url, className }) => {
-    if (!url) return null;
+    const [base64, setBase64] = useState(null);
+
+    useEffect(() => {
+        if (!url) return;
+        let isMounted = true;
+        const fetchImage = async () => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Failed to fetch image");
+                const blob = await response.blob();
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (isMounted) setBase64(reader.result);
+                };
+                reader.readAsDataURL(blob);
+            } catch (error) {
+                console.error("Stamp fetch error:", error);
+                if (isMounted) setBase64(url); // Fallback to raw url
+            }
+        };
+        fetchImage();
+        return () => { isMounted = false; };
+    }, [url]);
+
+    if (!base64) return null; // Wait for base64
+
     return (
         <div className={cn("absolute pointer-events-none opacity-80 mix-blend-multiply", className)}>
-            <img src={url} alt="Stamp" className="w-full h-full object-contain" />
+            <img src={base64} alt="Stamp" className="w-full h-full object-contain" />
         </div>
     );
 };

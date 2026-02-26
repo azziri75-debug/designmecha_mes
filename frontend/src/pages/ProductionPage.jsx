@@ -382,10 +382,17 @@ const ProductionPage = () => {
                                 setOnDeleteFile(() => (idx) => handleDeleteAttachment(plan, idx));
                                 setShowFileModal(true);
                             }}
+                            onOpenProcessFiles={(files, title, onDelete) => {
+                                setViewingFiles(files);
+                                setViewingFileTitle(title);
+                                setOnDeleteFile(() => onDelete);
+                                setShowFileModal(true);
+                            }}
                             onShowDefects={(d) => {
                                 setSelectedDefects(d);
                                 setDefectModalOpen(true);
                             }}
+                            onRefresh={fetchPlans}
                             readonly={false}
                         />
                     )}
@@ -402,6 +409,12 @@ const ProductionPage = () => {
                                 setViewingFiles(files);
                                 setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
                                 setOnDeleteFile(() => (idx) => handleDeleteAttachment(plan, idx));
+                                setShowFileModal(true);
+                            }}
+                            onOpenProcessFiles={(files, title, onDelete) => {
+                                setViewingFiles(files);
+                                setViewingFileTitle(title);
+                                setOnDeleteFile(() => onDelete);
                                 setShowFileModal(true);
                             }}
                             onShowDefects={(d) => {
@@ -684,7 +697,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, onShowDefects, onShowOrder, onShowStock, onRefresh }) => {
+const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, onRefresh }) => {
     return (
         <TableContainer>
             <Table>
@@ -718,6 +731,7 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
                                 onPrint={onPrint}
                                 onDeleteAttachment={onDeleteAttachment}
                                 onOpenFiles={onOpenFiles}
+                                onOpenProcessFiles={onOpenProcessFiles}
                                 onShowDefects={onShowDefects}
                                 onShowOrder={onShowOrder}
                                 onShowStock={onShowStock}
@@ -731,7 +745,7 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
     );
 };
 
-const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles, onShowDefects, onShowOrder, onShowStock, readonly, onRefresh }) => {
+const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, readonly, onRefresh }) => {
     const [open, setOpen] = useState(false);
     const order = plan.order;
     const sp = plan.stock_production;
@@ -1033,22 +1047,20 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                                 size="small"
                                                                                 color="primary"
                                                                                 onClick={() => {
-                                                                                    setViewingFiles(allFiles);
-                                                                                    setViewingFileTitle(`${item.process_name} 첨부 파일`);
-                                                                                    // Disallow deletion of external files
-                                                                                    setOnDeleteFile(() => (idx) => {
+                                                                                    const onDelete = (idx) => {
                                                                                         const targetFile = allFiles[idx];
                                                                                         if (targetFile.isExternal) {
                                                                                             alert("외부(발주/외주) 문서에 첨부된 파일은 해당 문서에서만 삭제 가능합니다.");
                                                                                             return;
                                                                                         }
-                                                                                        // Adjust index to target localFiles only by finding actual index in localFiles
                                                                                         const targetIdxInLocal = localFiles.findIndex(f => f.url === targetFile.url && f.name === targetFile.name);
                                                                                         if (targetIdxInLocal !== -1) {
                                                                                             handleDeleteItemAttachment(item, targetIdxInLocal);
                                                                                         }
-                                                                                    });
-                                                                                    setShowFileModal(true);
+                                                                                    };
+                                                                                    if (onOpenProcessFiles) {
+                                                                                        onOpenProcessFiles(allFiles, `${item.process_name} 첨부 파일`, onDelete);
+                                                                                    }
                                                                                 }}
                                                                             >
                                                                                 <FileText className="w-4 h-4" />
