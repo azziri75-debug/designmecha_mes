@@ -188,11 +188,18 @@ const ProductsPage = () => {
     const handleCreateProcess = async (e) => {
         e.preventDefault();
         try {
+            // Sanitize payload: convert empty strings to null for group fields
+            const payload = {
+                ...processFormData,
+                group_id: processFormData.group_id === "" ? null : (processFormData.group_id ? parseInt(processFormData.group_id) : null),
+                major_group_id: processFormData.major_group_id === "" ? null : (processFormData.major_group_id ? parseInt(processFormData.major_group_id) : null)
+            };
+
             if (processFormData.id) {
-                await api.put(`/product/processes/${processFormData.id}`, processFormData);
+                await api.put(`/product/processes/${processFormData.id}`, payload);
                 alert("수정되었습니다.");
             } else {
-                await api.post('/product/processes/', processFormData);
+                await api.post('/product/processes/', payload);
                 alert("등록되었습니다.");
             }
             setShowProcessModal(false);
@@ -880,10 +887,10 @@ const ProductsPage = () => {
                                     <label className="text-sm font-medium text-gray-300">소그룹 (Minor) <span className="text-red-500">*</span></label>
                                     <select
                                         name="group_id"
-                                        onChange={handleProcessInputChange}
                                         value={processFormData.group_id || ""}
+                                        onChange={handleProcessInputChange}
                                         className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                        required
+                                        required={!!processFormData.major_group_id}
                                         disabled={!processFormData.major_group_id}
                                     >
                                         <option value="">소그룹 선택</option>

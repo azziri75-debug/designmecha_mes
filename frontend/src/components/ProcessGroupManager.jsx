@@ -245,7 +245,7 @@ const ProcessGroupManager = ({
                     </h3>
                     <div className="flex gap-2">
                         <button
-                            onClick={() => onAddProcess({ group_id: "", major_group_id: "" })}
+                            onClick={() => onAddProcess({ group_id: null, major_group_id: null })}
                             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm transition-colors shadow-lg shadow-emerald-900/20"
                         >
                             <Plus className="w-4 h-4" />공통 공정 추가
