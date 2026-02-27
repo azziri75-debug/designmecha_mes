@@ -48,7 +48,9 @@ async def create_defect(
         selectinload(QualityDefect.plan_item).options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlanItem.equipment),
+            selectinload(ProductionPlanItem.worker)
         )
     ).where(QualityDefect.id == new_defect.id)
     result = await db.execute(query)
@@ -67,7 +69,9 @@ async def read_defects(
         selectinload(QualityDefect.plan_item).options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlanItem.equipment),
+            selectinload(ProductionPlanItem.worker)
         )
     )
     
@@ -116,7 +120,9 @@ async def update_defect(
         selectinload(QualityDefect.plan_item).options(
             selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlanItem.equipment),
+            selectinload(ProductionPlanItem.worker)
         )
     ).where(QualityDefect.id == defect_id)
     result = await db.execute(query)

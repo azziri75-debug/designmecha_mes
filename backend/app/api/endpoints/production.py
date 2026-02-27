@@ -85,9 +85,10 @@ async def create_production_plan(
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
                     selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
                     selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
                 )
                 .where(ProductionPlan.order_id == plan_in.order_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
                 .limit(1)
@@ -113,9 +114,10 @@ async def create_production_plan(
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
                     selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
                     selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
                 )
                 .where(ProductionPlan.stock_production_id == plan_in.stock_production_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
                 .limit(1)
