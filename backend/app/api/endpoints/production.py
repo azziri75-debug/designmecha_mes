@@ -1049,7 +1049,10 @@ async def read_work_logs(
             selectinload(WorkLog.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product),
+                selectinload(ProductionPlanItem.product).selectinload("standard_processes"),
+                selectinload(ProductionPlanItem.equipment),
+                selectinload(ProductionPlanItem.purchase_items),
+                selectinload(ProductionPlanItem.outsourcing_items),
                 selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
             )
@@ -1097,7 +1100,10 @@ async def create_work_log(
             selectinload(WorkLog.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product),
+                selectinload(ProductionPlanItem.product).selectinload("standard_processes"),
+                selectinload(ProductionPlanItem.equipment),
+                selectinload(ProductionPlanItem.purchase_items),
+                selectinload(ProductionPlanItem.outsourcing_items),
                 selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
             )
