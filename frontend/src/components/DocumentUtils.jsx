@@ -116,7 +116,8 @@ export const StampOverlay = ({ url, className }) => {
                 reader.readAsDataURL(blob);
             } catch (error) {
                 console.error("Stamp fetch error:", error, resolvedUrl);
-                if (isMounted) setBase64(resolvedUrl); // Fallback to raw url
+                // Fallback to a transparent 1x1 pixel instead of a broken URL to prevent html-to-image from failing/hanging
+                if (isMounted) setBase64("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
             }
         };
         fetchImage();
