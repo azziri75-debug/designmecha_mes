@@ -153,6 +153,7 @@ async def create_purchase_order(
             plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
             if plan_item:
                 # Do not set status here, wait for ORDERED or COMPLETED status sync
+                plan_item.cost = item.unit_price * item.quantity
                 db.add(plan_item)
 
     await db.commit()
@@ -266,6 +267,15 @@ async def update_purchase_order(
              if item_id not in incoming_ids:
                  await db.delete(item)
 
+         # Sync cost to Plan Items
+         from app.models.production import ProductionPlanItem
+         for item_in in order_in.items:
+             if item_in.production_plan_item_id:
+                 plan_item = await db.get(ProductionPlanItem, item_in.production_plan_item_id)
+                 if plan_item:
+                     plan_item.cost = item_in.unit_price * item_in.quantity
+                     db.add(plan_item)
+
     # --- Process Sync Logic ---
     if db_order.status == PurchaseStatus.ORDERED:
         from app.models.production import ProductionPlanItem, ProductionStatus
@@ -361,6 +371,7 @@ async def create_outsourcing_order(
             plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
             if plan_item:
                 # Do not set status here
+                plan_item.cost = item.unit_price * item.quantity
                 db.add(plan_item)
     
     await db.commit()
@@ -460,6 +471,15 @@ async def update_outsourcing_order(
          for item_id, item in current_items.items():
              if item_id not in incoming_ids:
                  await db.delete(item)
+
+         # Sync cost to Plan Items
+         from app.models.production import ProductionPlanItem
+         for item_in in order_in.items:
+             if item_in.production_plan_item_id:
+                 plan_item = await db.get(ProductionPlanItem, item_in.production_plan_item_id)
+                 if plan_item:
+                     plan_item.cost = item_in.unit_price * item_in.quantity
+                     db.add(plan_item)
 
     # --- Process Sync Logic ---
     if db_order.status == OutsourcingStatus.ORDERED:
