@@ -6,7 +6,7 @@ from enum import Enum
 from app.schemas.sales import SalesOrder, SalesOrderSimple
 from app.schemas.product import ProductResponse, ProductSimple
 from app.schemas.inventory import StockProductionResponse
-from app.schemas.basics import EquipmentResponse, StaffResponse
+from app.schemas.basics import EquipmentSimple, StaffSimple
 
 class ProductionStatus(str, Enum):
     PENDING = "PENDING"
@@ -80,8 +80,8 @@ class ProductionPlanItem(ProductionPlanItemBase):
     plan_id: int
     product: Optional[ProductResponse] = None
     plan: Optional[ProductionPlanSimple] = None
-    equipment: Optional[EquipmentResponse] = None
-    worker: Optional[StaffResponse] = None
+    equipment: Optional[EquipmentSimple] = None
+    worker: Optional[StaffSimple] = None
     
     purchase_items: List[PurchaseOrderItemSimple] = []
     outsourcing_items: List[OutsourcingOrderItemSimple] = []

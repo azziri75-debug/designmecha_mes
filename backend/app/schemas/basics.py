@@ -66,6 +66,10 @@ class StaffBase(BaseModel):
     user_type: Optional[str] = "USER"  # ADMIN or USER
     password: Optional[str] = None
     menu_permissions: Optional[List[str]] = []
+class StaffSimple(StaffBase):
+    id: int
+    class Config:
+        from_attributes = True
 
 class StaffCreate(StaffBase):
     pass
@@ -130,6 +134,11 @@ class EquipmentBase(BaseModel):
     purchase_date: Optional[date] = None
     location: Optional[str] = None
     is_active: bool = True
+
+class EquipmentSimple(EquipmentBase):
+    id: int
+    class Config:
+        from_attributes = True
 
 class EquipmentCreate(EquipmentBase):
     pass

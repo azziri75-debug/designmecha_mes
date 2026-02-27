@@ -75,7 +75,7 @@ async def create_production_plan(
         result = await db.execute(select(ProductionPlan).where(
             ProductionPlan.order_id == plan_in.order_id,
             cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
-        ))
+        ).limit(1))
         if result.scalar_one_or_none():
             # Return existing active plan instead of error (Idempotency)
             result = await db.execute(
@@ -90,8 +90,9 @@ async def create_production_plan(
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
                 )
                 .where(ProductionPlan.order_id == plan_in.order_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+                .limit(1)
             )
-            return result.scalar_one()
+            return result.scalar_one_or_none()
     elif plan_in.stock_production_id:
         result = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
         sp = result.scalar_one_or_none()
@@ -102,7 +103,7 @@ async def create_production_plan(
         result = await db.execute(select(ProductionPlan).where(
             ProductionPlan.stock_production_id == plan_in.stock_production_id,
             cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
-        ))
+        ).limit(1))
         if result.scalar_one_or_none():
             # Return existing active plan instead of error (Idempotency)
             result = await db.execute(
@@ -117,8 +118,9 @@ async def create_production_plan(
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
                 )
                 .where(ProductionPlan.stock_production_id == plan_in.stock_production_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+                .limit(1)
             )
-            return result.scalar_one()
+            return result.scalar_one_or_none()
     else:
         raise HTTPException(status_code=400, detail="Either order_id or stock_production_id is required")
 
