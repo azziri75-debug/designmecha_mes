@@ -109,7 +109,11 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             company_address: (company?.address || "충남 아산시 음봉면 월암로 336-39") + (company?.website ? `\n(${company.website})` : "\n(www.designmecha.co.kr)"),
             company_contact: `TEL : ${company?.phone || '041-544-6220'} / FAX : ${company?.fax || '041-544-6207'}\n(E-mail : ${company?.email || 'juno@designmecha.co.kr'})`,
             colWidths: savedColWidths || defaultWidths,
-            items: items
+            items: items.map(i => ({
+                ...i,
+                price: typeof i.price === 'number' ? i.price.toLocaleString() : i.price,
+                total: typeof i.total === 'number' ? i.total.toLocaleString() : i.total
+            }))
         }));
     };
 
@@ -119,10 +123,17 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         const newItems = [...metadata.items];
         newItems[rIdx][key] = val;
         if (key === 'qty' || key === 'price') {
-            const q = parseFloat(newItems[rIdx].qty) || 0;
-            const p = parseFloat(newItems[rIdx].price) || 0;
-            newItems[rIdx].total = q * p;
-            const newTotal = newItems.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+            const q = parseFloat(newItems[rIdx].qty?.toString().replace(/,/g, '')) || 0;
+            const p = parseFloat(newItems[rIdx].price?.toString().replace(/,/g, '')) || 0;
+            newItems[rIdx].total = (q * p).toLocaleString();
+
+            // Re-format price if it was changed
+            if (key === 'price') {
+                const numVal = parseFloat(val.toString().replace(/,/g, ''));
+                if (!isNaN(numVal)) newItems[rIdx].price = numVal.toLocaleString();
+            }
+
+            const newTotal = newItems.reduce((s, i) => s + (parseFloat(i.total?.toString().replace(/,/g, '')) || 0), 0);
             handleMetaChange('total_amount_text', numberToKorean(newTotal));
         }
         setMetadata(prev => ({ ...prev, items: newItems }));
@@ -268,8 +279,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 </div>
                             </div>
 
-                            {/* Company Info Box - Improved font sizes and dimensions */}
-                            <div className="w-[350px] shrink-0 border-2 border-black flex text-[10px] h-44 overflow-hidden">
+                            {/* Company Info Box - Refined font sizes and dimensions */}
+                            <div className="w-[350px] shrink-0 border-2 border-black flex text-[9px] h-44 overflow-hidden">
                                 <div className="w-8 border-r border-black flex flex-col items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>
                                     <div>공</div><div>급</div><div>자</div>
                                 </div>
@@ -294,22 +305,22 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                                 </td>
                                             </tr>
                                             <tr className="border-b border-black h-12">
-                                                <td className="border-r border-black font-bold p-1 text-center leading-tight" style={{ backgroundColor: '#f9fafb' }}>사업장<br />소재지</td>
-                                                <td colSpan="3" className="p-1 leading-tight text-[10px]">
+                                                <td className="border-r border-black font-bold p-1 text-center leading-tight text-[9px]" style={{ backgroundColor: '#f9fafb' }}>사업장<br />소재지</td>
+                                                <td colSpan="3" className="p-1 leading-tight text-[9px]">
                                                     <EditableText
                                                         value={metadata.company_address}
                                                         onChange={(v) => handleMetaChange('company_address', v)}
-                                                        className="items-start whitespace-pre-wrap leading-tight text-[10px]"
+                                                        className="items-start whitespace-pre-wrap leading-tight text-[9px]"
                                                     />
                                                 </td>
                                             </tr>
                                             <tr className="h-12">
-                                                <td className="border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>연락처</td>
-                                                <td colSpan="3" className="p-1 leading-tight text-[10px]">
+                                                <td className="border-r border-black font-bold p-1 text-center text-[9px]" style={{ backgroundColor: '#f9fafb' }}>연락처</td>
+                                                <td colSpan="3" className="p-1 leading-tight text-[9px]">
                                                     <EditableText
                                                         value={metadata.company_contact}
                                                         onChange={(v) => handleMetaChange('company_contact', v)}
-                                                        className="items-start whitespace-pre-wrap leading-tight text-[10px]"
+                                                        className="items-start whitespace-pre-wrap leading-tight text-[9px]"
                                                     />
                                                 </td>
                                             </tr>
@@ -342,10 +353,10 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                             />
                         </div>
 
-                        {/* Footer Summary */}
+                        {/* Footer Summary - Ensured one line for total */}
                         <div className="mx-2 flex border-2 border-black border-t-0 font-bold text-[10px] items-center h-10" style={{ backgroundColor: '#f9fafb' }}>
                             <div className="flex-1 px-4 uppercase">합 계 (Total Amount)</div>
-                            <div className="w-[100px] text-right px-4 text-sm font-mono tracking-tight">₩ {fmt(totalAmount)}</div>
+                            <div className="min-w-[150px] text-right px-4 text-sm font-mono tracking-tight whitespace-nowrap">₩ {fmt(totalAmount)}</div>
                             <div className="w-[60px]"></div>
                         </div>
 
