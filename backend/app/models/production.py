@@ -134,7 +134,7 @@ class WorkLogItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     work_log_id = Column(Integer, ForeignKey("work_logs.id", ondelete="CASCADE"), nullable=False)
-    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id"), nullable=False)
+    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id", ondelete="CASCADE"), nullable=False)
     worker_id = Column(Integer, ForeignKey("staff.id"), nullable=True) # 개별 작업자 실적
     
     start_time = Column(DateTime(timezone=True), nullable=True)

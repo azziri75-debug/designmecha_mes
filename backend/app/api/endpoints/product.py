@@ -113,7 +113,8 @@ async def create_product(
             partner_name=pp.partner_name,
             equipment_name=pp.equipment_name,
             attachment_file=pp.attachment_file,
-            course_type=pp.course_type
+            course_type=pp.course_type,
+            cost=pp.cost
         )
         db.add(new_pp)
 
@@ -188,7 +189,8 @@ async def update_product(
                 partner_name=pp.get('partner_name'),
                 equipment_name=pp.get('equipment_name'),
                 attachment_file=pp.get('attachment_file'),
-                course_type=pp.get('course_type')
+                course_type=pp.get('course_type'),
+                cost=pp.get('cost', 0.0)
             )
             db.add(new_pp)
             
