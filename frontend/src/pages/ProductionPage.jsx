@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon, Description as DescIcon } from '@mui/icons-material';
 import { X, FileText, AlertCircle } from 'lucide-react';
@@ -8,6 +8,64 @@ import ProductionSheetModal from '../components/ProductionSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
+
+// Resizable Table Cell Component
+const ResizableTableCell = ({ width, minWidth = 50, onResize, children, ...props }) => {
+    const [isResizing, setIsResizing] = useState(false);
+    const cellRef = React.useRef(null);
+
+    const handleMouseDown = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsResizing(true);
+
+        const startX = e.pageX;
+        const startWidth = cellRef.current.offsetWidth;
+
+        const handleMouseMove = (mouseMoveEvent) => {
+            const newWidth = Math.max(minWidth, startWidth + (mouseMoveEvent.pageX - startX));
+            if (onResize) onResize(newWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }, [minWidth, onResize]);
+
+    return (
+        <TableCell
+            ref={cellRef}
+            {...props}
+            style={{ ...props.style, width, position: 'relative' }}
+        >
+            {children}
+            <div
+                onMouseDown={handleMouseDown}
+                style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '5px',
+                    cursor: 'col-resize',
+                    backgroundColor: isResizing ? '#2196f3' : 'transparent',
+                    zIndex: 1,
+                }}
+                onMouseEnter={(e) => {
+                    if (!isResizing) e.target.style.backgroundColor = 'rgba(33, 150, 243, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                    if (!isResizing) e.target.style.backgroundColor = 'transparent';
+                }}
+            />
+        </TableCell>
+    );
+};
 
 const ProductionPage = () => {
     const [tabIndex, setTabIndex] = useState(0);
@@ -306,7 +364,7 @@ const ProductionPage = () => {
             <Paper sx={{ width: '100%', mb: 2 }}>
                 <Tabs value={tabIndex} onChange={handleTabChange} indicatorColor="primary" textColor="primary">
                     <Tab label="생산 대기 수주" />
-                    <Tab label="진행 중인 생산 계획" />
+                    <Tab label="생산현황" />
                     <Tab label="생산 완료" />
                 </Tabs>
 
@@ -749,6 +807,23 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
 
 const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, readonly, onRefresh }) => {
     const [open, setOpen] = useState(false);
+    const [colWidths, setColWidths] = useState({
+        seq: 50,
+        process: 150,
+        type: 80,
+        partner: 120,
+        equip: 120,
+        note: 150,
+        period: 150,
+        cost: 100,
+        status: 100,
+        attach: 60
+    });
+
+    const handleResize = (colKey) => (newWidth) => {
+        setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
+    };
+
     const order = plan.order;
     const sp = plan.stock_production;
 
@@ -935,19 +1010,19 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                         })()}
                                     </Box>
 
-                                    <Table size="small" aria-label="process-list">
+                                    <Table size="small" aria-label="process-list" sx={{ tableLayout: 'fixed' }}>
                                         <TableHead>
                                             <TableRow>
-                                                <TableCell width="5%">순번</TableCell>
-                                                <TableCell width="15%">공정명</TableCell>
-                                                <TableCell width="10%">구분</TableCell>
-                                                <TableCell width="15%">외주/구매/작업자</TableCell>
-                                                <TableCell width="10%">배정 장비</TableCell>
-                                                <TableCell width="12%">작업내용</TableCell>
-                                                <TableCell width="15%">작업기간</TableCell>
-                                                <TableCell width="10%">공정비용</TableCell>
-                                                <TableCell width="10%">상태</TableCell>
-                                                <TableCell width="5%">첨부</TableCell>
+                                                <ResizableTableCell width={colWidths.seq} onResize={handleResize('seq')}>순번</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.process} onResize={handleResize('process')}>공정명</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.type} onResize={handleResize('type')}>구분</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>외주/구매/작업자</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.equip} onResize={handleResize('equip')}>배정 장비</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.note} onResize={handleResize('note')}>작업내용</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.period} onResize={handleResize('period')}>작업기간</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.cost} onResize={handleResize('cost')}>공정비용</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.status} onResize={handleResize('status')}>상태</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.attach} onResize={handleResize('attach')}>첨부</ResizableTableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
