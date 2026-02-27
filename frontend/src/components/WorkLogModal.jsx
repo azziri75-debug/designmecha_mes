@@ -15,9 +15,10 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
     const [staffList, setStaffList] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // Plan Items selection state
+    // Plan/Item selection state
     const [planSelectorOpen, setPlanSelectorOpen] = useState(false);
-    const [availablePlanItems, setAvailablePlanItems] = useState([]);
+    const [availablePlans, setAvailablePlans] = useState([]);
+    const [selectedPlanForLog, setSelectedPlanForLog] = useState(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -42,25 +43,10 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
 
     const handleOpenPlanSelector = async () => {
         try {
-            // Fetch plans that are not completed (or all, then filter)
             const res = await api.get('/production/plans');
-            const plans = res.data;
-            let pItems = [];
-            plans.forEach(plan => {
-                if (plan.status !== 'CANCELED') {
-                    plan.items.forEach(pi => {
-                        if (pi.course_type === 'INTERNAL') {
-                            // Let's include plan context
-                            pItems.push({
-                                ...pi,
-                                plan: plan
-                            });
-                        }
-                    });
-                }
-            });
-            // Show only In Progress or Planned items
-            setAvailablePlanItems(pItems.filter(p => p.status === 'PLANNED' || p.status === 'IN_PROGRESS'));
+            const plans = res.data.filter(plan => plan.status !== 'CANCELED');
+            setAvailablePlans(plans);
+            setSelectedPlanForLog(null);
             setPlanSelectorOpen(true);
         } catch (error) {
             console.error("Failed to fetch plan items", error);
@@ -278,12 +264,23 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
 
             {/* Plan Item Selection Dialog */}
             <Dialog open={planSelectorOpen} onClose={() => setPlanSelectorOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle>생산 세부 공정 선택</DialogTitle>
+                <DialogTitle>
+                    {selectedPlanForLog ? "생산 세부 공정 선택" : "생산 계획 선택"}
+                    {selectedPlanForLog && (
+                        <Button size="small" sx={{ ml: 2 }} onClick={() => setSelectedPlanForLog(null)}>
+                            ← 뒤로 가기 (생산계획 다시 선택)
+                        </Button>
+                    )}
+                </DialogTitle>
                 <DialogContent dividers>
-                    <ListPlanItems
-                        items={availablePlanItems}
-                        onSelect={handleAddPlanItem}
-                    />
+                    {!selectedPlanForLog ? (
+                        <ListPlans plans={availablePlans} onSelectPlan={setSelectedPlanForLog} />
+                    ) : (
+                        <ListPlanItems
+                            plan={selectedPlanForLog}
+                            onSelect={handleAddPlanItem}
+                        />
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setPlanSelectorOpen(false)}>닫기</Button>
@@ -293,14 +290,74 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
     );
 };
 
-// Helper component for Plan Item selection list
-const ListPlanItems = ({ items, onSelect }) => {
+// Helper component for Plan selection list
+const ListPlans = ({ plans, onSelectPlan }) => {
     return (
         <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ maxHeight: 400 }}>
             <Table size="small" stickyHeader>
                 <TableHead>
                     <TableRow>
                         <TableCell>생산 번호</TableCell>
+                        <TableCell>계획 일자</TableCell>
+                        <TableCell>거래처/분류</TableCell>
+                        <TableCell>상태</TableCell>
+                        <TableCell>선택</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {plans.length === 0 ? (
+                        <TableRow><TableCell colSpan={5} align="center">진행 가능한 생산계획이 없습니다.</TableCell></TableRow>
+                    ) : plans.map(plan => {
+                        let orderNo = '-';
+                        let partner = '-';
+                        if (plan?.order?.order_no) {
+                            orderNo = `[수주] ${plan.order.order_no}`;
+                            partner = plan.order.partner?.name || '-';
+                        } else if (plan?.stock_production?.production_no) {
+                            orderNo = `[재고] ${plan.stock_production.production_no}`;
+                            partner = '사내 생산';
+                        }
+
+                        return (
+                            <TableRow key={plan.id} hover>
+                                <TableCell>{orderNo}</TableCell>
+                                <TableCell>{plan.plan_date}</TableCell>
+                                <TableCell>{partner}</TableCell>
+                                <TableCell>
+                                    <span style={{
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        fontSize: '0.75rem',
+                                        backgroundColor: plan.status === 'COMPLETED' ? '#e8f5e9' : '#e3f2fd',
+                                        color: plan.status === 'COMPLETED' ? '#2e7d32' : '#1565c0'
+                                    }}>
+                                        {plan.status}
+                                    </span>
+                                </TableCell>
+                                <TableCell>
+                                    <Button size="small" variant="contained" onClick={() => onSelectPlan(plan)}>조회</Button>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+};
+
+// Helper component for Plan Item selection list
+const ListPlanItems = ({ plan, onSelect }) => {
+    const items = plan.items.filter(pi =>
+        pi.course_type === 'INTERNAL' &&
+        (pi.status === 'PLANNED' || pi.status === 'IN_PROGRESS')
+    );
+
+    return (
+        <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ maxHeight: 400 }}>
+            <Table size="small" stickyHeader>
+                <TableHead>
+                    <TableRow>
                         <TableCell>품명 (단위)</TableCell>
                         <TableCell>순서</TableCell>
                         <TableCell>공정명</TableCell>
@@ -310,25 +367,16 @@ const ListPlanItems = ({ items, onSelect }) => {
                 </TableHead>
                 <TableBody>
                     {items.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} align="center">진행 가능한 사내 공정이 없습니다.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} align="center">진행 가능한 사내 세부 공정이 없습니다.</TableCell></TableRow>
                     ) : items.map(pi => {
-                        const plan = pi.plan;
-                        let orderNo = '-';
-                        if (plan?.order?.order_no) {
-                            orderNo = `[수주] ${plan.order.order_no}`;
-                        } else if (plan?.stock_production?.production_no) {
-                            orderNo = `[재고] ${plan.stock_production.production_no}`;
-                        }
-
                         return (
                             <TableRow key={pi.id} hover>
-                                <TableCell>{orderNo}</TableCell>
                                 <TableCell>{pi.product?.name || '-'} ({pi.product?.unit || 'EA'})</TableCell>
                                 <TableCell>{pi.sequence}</TableCell>
                                 <TableCell sx={{ fontWeight: 500 }}>{pi.process_name}</TableCell>
                                 <TableCell>{pi.quantity}</TableCell>
                                 <TableCell>
-                                    <Button size="small" variant="contained" onClick={() => onSelect(pi)}>선택</Button>
+                                    <Button size="small" variant="contained" onClick={() => onSelect({ ...pi, plan })}>선택</Button>
                                 </TableCell>
                             </TableRow>
                         );
