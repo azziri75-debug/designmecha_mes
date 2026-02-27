@@ -20,7 +20,9 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
     // States for Sub-modals
     const [showProductSelect, setShowProductSelect] = useState(false);
     const [showEstimateSelect, setShowEstimateSelect] = useState(false);
+    const [showOrderSelect, setShowOrderSelect] = useState(false);
     const [partnerEstimates, setPartnerEstimates] = useState([]);
+    const [partnerOrders, setPartnerOrders] = useState([]);
 
     useEffect(() => {
         if (isOpen) {
@@ -57,6 +59,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
             }
             setPartnerProducts([]);
             setPartnerEstimates([]);
+            setPartnerOrders([]);
         }
     }, [isOpen, orderToEdit]);
 
@@ -65,9 +68,11 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
         if (formData.partner_id) {
             fetchPartnerProducts(formData.partner_id);
             fetchPartnerEstimates(formData.partner_id);
+            fetchPartnerOrders(formData.partner_id);
         } else {
             setPartnerProducts([]);
             setPartnerEstimates([]);
+            setPartnerOrders([]);
         }
     }, [formData.partner_id]);
 
@@ -94,6 +99,21 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
             setPartnerEstimates(response.data);
         } catch (error) {
             console.error("Failed to fetch estimates", error);
+        }
+    };
+
+    const fetchPartnerOrders = async (partnerId) => {
+        try {
+            const response = await api.get('/sales/orders/', {
+                params: { partner_id: partnerId }
+            });
+            let orders = response.data;
+            if (orderToEdit) {
+                orders = orders.filter(o => o.id !== orderToEdit.id);
+            }
+            setPartnerOrders(orders);
+        } catch (error) {
+            console.error("Failed to fetch orders", error);
         }
     };
 
@@ -159,6 +179,26 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
             note: prev.note ? prev.note + '\n' + (estimate.note || '') : (estimate.note || '')
         }));
         setShowEstimateSelect(false);
+    };
+
+    // Handler for Order Select
+    const handleOrderSelect = (order) => {
+        const newItems = (order.items || []).map(item => ({
+            product_id: item.product_id,
+            product_name: item.product?.name || item.product_name || item.product_id, // Fallback
+            product_spec: item.product?.specification || item.product_spec || '',
+            unit: item.product?.unit || item.unit || 'EA',
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            note: item.note || ''
+        }));
+
+        setFormData(prev => ({
+            ...prev,
+            items: [...prev.items, ...newItems],
+            note: prev.note ? prev.note + '\n' + (order.note || '') : (order.note || '')
+        }));
+        setShowOrderSelect(false);
     };
 
     const updateItem = (index, field, value) => {
@@ -282,13 +322,22 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                             <div className="flex justify-between items-end mb-1">
                                 <label className="block text-sm font-medium text-gray-400">비고</label>
                                 {formData.partner_id && (
-                                    <button
-                                        onClick={() => setShowEstimateSelect(true)}
-                                        className="text-xs text-blue-400 hover:underline flex items-center gap-1"
-                                    >
-                                        <FileText className="w-3 h-3" />
-                                        견적 불러오기
-                                    </button>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => setShowOrderSelect(true)}
+                                            className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                                        >
+                                            <FileText className="w-3 h-3" />
+                                            수주 불러오기
+                                        </button>
+                                        <button
+                                            onClick={() => setShowEstimateSelect(true)}
+                                            className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                                        >
+                                            <FileText className="w-3 h-3" />
+                                            견적 불러오기
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                             <input
@@ -508,6 +557,43 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                             </div>
                                             <div className="text-sm text-gray-400">
                                                 품목 {est.items.length}건 | {est.note || '비고 없음'}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Order Selection Sub-Modal */}
+            {showOrderSelect && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60]">
+                    <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
+                        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-white">이전 수주내역 불러오기</h3>
+                            <button onClick={() => setShowOrderSelect(false)} className="text-gray-400 hover:text-white">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {partnerOrders.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">등록된 수주 이력이 없습니다.</div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-2">
+                                    {partnerOrders.map(ord => (
+                                        <button
+                                            key={ord.id}
+                                            onClick={() => handleOrderSelect(ord)}
+                                            className="flex flex-col gap-1 p-3 rounded bg-gray-700 hover:bg-gray-600 text-left transition-colors border-l-4 border-green-500"
+                                        >
+                                            <div className="flex justify-between w-full">
+                                                <span className="font-bold text-white">{ord.order_date} | {ord.order_no || '번호 없음'}</span>
+                                                <span className="text-blue-300 font-medium">{ord.total_amount?.toLocaleString()}원</span>
+                                            </div>
+                                            <div className="text-sm text-gray-400">
+                                                품목 {ord.items?.length || 0}건 | {ord.note || '비고 없음'}
                                             </div>
                                         </button>
                                     ))}

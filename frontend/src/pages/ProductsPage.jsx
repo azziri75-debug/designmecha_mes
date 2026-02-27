@@ -285,6 +285,7 @@ const ProductsPage = () => {
             partner_name: p.partner_name,
             equipment_name: p.equipment_name,
             attachment_file: p.attachment_file,
+            cost: p.cost || 0,
             _tempId: Math.random() // For key in list
         }));
         setRoutingProcesses(existing);
@@ -304,6 +305,7 @@ const ProductsPage = () => {
                 partner_name: "",
                 equipment_name: "",
                 attachment_file: "",
+                cost: 0,
                 _tempId: Math.random()
             }
         ]);
@@ -343,7 +345,8 @@ const ProductsPage = () => {
                     notes: p.notes,
                     partner_name: p.partner_name,
                     equipment_name: p.equipment_name,
-                    attachment_file: p.attachment_file
+                    attachment_file: p.attachment_file,
+                    cost: parseFloat(p.cost) || 0
                 }))
             };
 
@@ -586,6 +589,7 @@ const ProductsPage = () => {
                                                                             <th className="px-4 py-2">구분</th>
                                                                             <th className="px-4 py-2">업체/장비</th>
                                                                             <th className="px-4 py-2">예상시간</th>
+                                                                            <th className="px-4 py-2">공정단가</th>
                                                                             <th className="px-4 py-2">설명</th>
                                                                             <th className="px-4 py-2">첨부</th>
                                                                         </tr>
@@ -616,6 +620,9 @@ const ProductsPage = () => {
                                                                                 </td>
                                                                                 <td className="px-4 py-2">
                                                                                     <span className="text-emerald-400">{pp.estimated_time || 0}분</span>
+                                                                                </td>
+                                                                                <td className="px-4 py-2 text-orange-400">
+                                                                                    {pp.cost ? `₩${pp.cost.toLocaleString()}` : '-'}
                                                                                 </td>
                                                                                 <td className="px-4 py-2 text-xs">
                                                                                     {pp.notes || '-'}
@@ -1094,7 +1101,17 @@ const ProductsPage = () => {
                                                 </div>
 
                                                 <div className="grid grid-cols-12 gap-3 pl-11">
-                                                    <div className="col-span-6">
+                                                    <div className="col-span-3">
+                                                        <label className="text-xs text-gray-500 block mb-1">비용(공정단가)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={p.cost}
+                                                            onChange={(e) => updateRoutingProcess(index, 'cost', e.target.value)}
+                                                            className="w-full bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-4">
                                                         <label className="text-xs text-gray-500 block mb-1">비고/작업내용</label>
                                                         <input
                                                             type="text"
@@ -1104,7 +1121,7 @@ const ProductsPage = () => {
                                                             placeholder="작업 내용 메모..."
                                                         />
                                                     </div>
-                                                    <div className="col-span-6">
+                                                    <div className="col-span-5">
                                                         <label className="text-xs text-gray-500 block mb-1">첨부파일</label>
                                                         <div className="flex flex-col gap-2">
                                                             <div className="relative flex-1">

@@ -114,3 +114,46 @@ class ProductionPlan(ProductionPlanBase):
     items: List[ProductionPlanItem] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Work Log Schemas ---
+
+class WorkLogItemBase(BaseModel):
+    plan_item_id: int
+    worker_id: Optional[int] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    good_quantity: int = 0
+    bad_quantity: int = 0
+    note: Optional[str] = None
+
+class WorkLogItemCreate(WorkLogItemBase):
+    pass
+
+class WorkLogItem(WorkLogItemBase):
+    id: int
+    work_log_id: int
+    plan_item: Optional[ProductionPlanItem] = None
+    worker: Optional[StaffSimple] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class WorkLogBase(BaseModel):
+    work_date: date
+    worker_id: Optional[int] = None
+    note: Optional[str] = None
+
+class WorkLogCreate(WorkLogBase):
+    items: List[WorkLogItemCreate]
+
+class WorkLogUpdate(WorkLogBase):
+    items: Optional[List[WorkLogItemCreate]] = None
+
+class WorkLog(WorkLogBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    worker: Optional[StaffSimple] = None
+    items: List[WorkLogItem] = []
+
+    model_config = ConfigDict(from_attributes=True)

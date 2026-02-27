@@ -81,7 +81,15 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
 
     const updateItem = (rIdx, key, val) => {
         const newItems = [...metadata.items];
-        newItems[rIdx][key] = val;
+
+        // Remove commas if numeric fields
+        let cleanVal = val;
+        if (typeof val === 'string' && (key === 'qty' || key === 'price' || key === 'total')) {
+            cleanVal = val.replace(/,/g, '');
+        }
+
+        newItems[rIdx][key] = cleanVal;
+
         if (key === 'qty' || key === 'price') {
             const q = parseFloat(newItems[rIdx].qty) || 0;
             const p = parseFloat(newItems[rIdx].price) || 0;
@@ -90,7 +98,11 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         setMetadata(prev => ({ ...prev, items: newItems }));
     };
 
-    const fmt = (n) => typeof n === 'number' ? n.toLocaleString() : n;
+    const fmt = (n) => {
+        if (n === null || n === undefined || n === '') return '';
+        const parsed = parseFloat(n);
+        return isNaN(parsed) ? n : parsed.toLocaleString();
+    };
 
     const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
@@ -164,6 +176,13 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
     const columns = activeTab === 'purchase_order'
         ? [...baseColumns, { key: 'price', label: '단가', subLabel: 'Unit Price', align: 'right' }, { key: 'total', label: '금액', subLabel: 'Total Amount', align: 'right' }]
         : [...baseColumns, { key: 'note', label: '비고', subLabel: 'Remarks', align: 'left' }];
+
+    const formattedItems = metadata.items.map(item => ({
+        ...item,
+        qty: fmt(item.qty),
+        price: fmt(item.price),
+        total: fmt(item.total)
+    }));
 
     // Normalized Stamp URL Binding
     let stampUrl = null;
@@ -258,7 +277,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         <div className="px-2">
                             <ResizableTable
                                 columns={columns}
-                                data={metadata.items}
+                                data={formattedItems}
                                 colWidths={metadata.colWidths}
                                 onUpdateWidths={(w) => handleMetaChange('colWidths', w)}
                                 onUpdateData={updateItem}

@@ -116,3 +116,39 @@ class FormTemplate(Base):
     is_active = Column(Boolean, default=True)
     updated_at = Column(DateTime, onupdate=func.now())
 
+class MeasuringInstrument(Base):
+    """측정기 (계측기) Master Data"""
+    __tablename__ = "measuring_instruments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    code = Column(String, unique=True, index=True) # 측정기 식별 번호/코드
+    spec = Column(String, nullable=True) # 규격/사양
+    serial_number = Column(String, nullable=True) # 기기 일련번호
+    
+    calibration_cycle_months = Column(Integer, default=12) # 교정 주기(개월)
+    next_calibration_date = Column(Date, nullable=True) # 다음 교정 예정일
+    
+    is_active = Column(Boolean, default=True)
+
+    history = relationship("MeasurementHistory", back_populates="instrument", cascade="all, delete-orphan")
+
+class MeasurementHistory(Base):
+    """측정기 교정 및 수리 이력"""
+    __tablename__ = "measurement_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    instrument_id = Column(Integer, ForeignKey("measuring_instruments.id"), nullable=False)
+    
+    history_date = Column(Date, default=func.now())
+    history_type = Column(String, nullable=False) # CALIBRATION, REPAIR, ETC
+    
+    description = Column(Text, nullable=False) # 상세 내용
+    cost = Column(Float, default=0.0) # 비용
+    worker_name = Column(String, nullable=True) # 교정/수리 기관 또는 담당자
+    
+    attachment_file = Column(JSON, nullable=True) # 성적서 등 증빙 파일
+    
+    created_at = Column(DateTime, default=func.now())
+
+    instrument = relationship("MeasuringInstrument", back_populates="history")

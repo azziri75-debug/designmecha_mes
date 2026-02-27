@@ -61,7 +61,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                 estimated_time: proc.estimated_time || 0,
                                 start_date: null,
                                 end_date: null,
-                                cost: 0,
+                                cost: proc.cost || 0,
                                 quantity: sourceItem.quantity,
                                 note: ""
                             });
@@ -468,11 +468,10 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                         type="number"
                                                         value={item.cost || 0}
                                                         onChange={(e) => handleItemChange(item.originalIndex, 'cost', e.target.value)}
-                                                        disabled={item.course_type !== 'INTERNAL'}
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
-                                                        placeholder={item.course_type !== 'INTERNAL' ? '발주금액 자동연동' : '직접입력'}
+                                                        placeholder={'직접입력'}
                                                         helperText={item.course_type !== 'INTERNAL' && item.purchase_items?.length ? `발주: ${item.purchase_items.reduce((s, pi) => s + (pi.quantity * pi.unit_price), 0).toLocaleString()}원` : ''}
                                                     />
                                                 </TableCell>

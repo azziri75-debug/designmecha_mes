@@ -48,6 +48,7 @@ const Layout = () => {
         { icon: Package, label: '제품 및 공정 관리', to: '/products', menuKey: 'products' },
         { icon: DollarSign, label: '영업 관리 (견적/수주)', to: '/sales', menuKey: 'sales' },
         { icon: Factory, label: '생산 관리 (계획/지시)', to: '/production', menuKey: 'production' },
+        { icon: ClipboardCheck, label: '작업일지 관리', to: '/work-logs', menuKey: 'production' },
         { icon: ShoppingCart, label: '자재 구매 관리', to: '/purchase', menuKey: 'purchase' },
         { icon: Truck, label: '외주 발주 관리', to: '/outsourcing', menuKey: 'outsourcing' },
         { icon: ClipboardCheck, label: '품질 관리', to: '/quality', menuKey: 'quality' },

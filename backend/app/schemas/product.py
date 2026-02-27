@@ -52,6 +52,7 @@ class ProductProcessBase(BaseModel):
     equipment_name: Optional[str] = None
     attachment_file: Optional[str] = None
     course_type: Optional[str] = None
+    cost: Optional[float] = 0.0
 
 class ProductProcessCreate(ProductProcessBase):
     pass

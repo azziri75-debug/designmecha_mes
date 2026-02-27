@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api import deps
-from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
+from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus, WorkLog, WorkLogItem
 from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
 from app.models.product import Product, ProductProcess, Process
 from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, PurchaseStatus, OutsourcingStatus
@@ -224,7 +224,8 @@ async def create_production_plan(
                     estimated_time=proc.estimated_time,
                     attachment_file=final_attachment_json,
                     quantity=sp.quantity,
-                    status=ProductionStatus.PLANNED
+                    status=ProductionStatus.PLANNED,
+                    cost=getattr(proc, 'cost', 0) or 0
                 )
                 db.add(plan_item)
         else:
@@ -289,7 +290,8 @@ async def create_production_plan(
                         estimated_time=proc.estimated_time,
                         attachment_file=final_attachment_json,
                         quantity=item.quantity,
-                        status=ProductionStatus.PLANNED
+                        status=ProductionStatus.PLANNED,
+                        cost=getattr(proc, 'cost', 0) or 0
                     )
                     db.add(plan_item)
 
@@ -1029,3 +1031,150 @@ async def update_production_plan_item(
         .where(ProductionPlanItem.id == item_id)
     )
     return result.scalar_one()
+
+# --- Work Log Endpoints ---
+
+@router.get("/work-logs", response_model=List[schemas.WorkLog])
+async def read_work_logs(
+    skip: int = 0,
+    limit: int = 1000,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Retrieve work logs.
+    """
+    result = await db.execute(
+        select(WorkLog)
+        .options(
+            selectinload(WorkLog.worker),
+            selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
+            selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
+                selectinload(ProductionPlanItem.product),
+                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            )
+        )
+        .order_by(WorkLog.work_date.desc())
+        .offset(skip).limit(limit)
+    )
+    return result.scalars().all()
+
+@router.post("/work-logs", response_model=schemas.WorkLog)
+async def create_work_log(
+    log_in: schemas.WorkLogCreate,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Create a new work log.
+    """
+    log = WorkLog(
+        work_date=log_in.work_date,
+        worker_id=log_in.worker_id,
+        note=log_in.note
+    )
+    db.add(log)
+    await db.flush()
+
+    for item_in in log_in.items:
+        log_item = WorkLogItem(
+            work_log_id=log.id,
+            plan_item_id=item_in.plan_item_id,
+            worker_id=item_in.worker_id,
+            start_time=item_in.start_time,
+            end_time=item_in.end_time,
+            good_quantity=item_in.good_quantity,
+            bad_quantity=item_in.bad_quantity,
+            note=item_in.note
+        )
+        db.add(log_item)
+
+    await db.commit()
+    await db.refresh(log)
+
+    result = await db.execute(
+        select(WorkLog)
+        .options(
+            selectinload(WorkLog.worker),
+            selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
+            selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
+                selectinload(ProductionPlanItem.product),
+                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            )
+        )
+        .where(WorkLog.id == log.id)
+    )
+    return result.scalar_one()
+
+@router.put("/work-logs/{log_id}", response_model=schemas.WorkLog)
+async def update_work_log(
+    log_id: int,
+    log_in: schemas.WorkLogUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Update a work log.
+    """
+    result = await db.execute(
+        select(WorkLog).options(selectinload(WorkLog.items)).where(WorkLog.id == log_id)
+    )
+    log = result.scalar_one_or_none()
+    if not log:
+        raise HTTPException(status_code=404, detail="Work Log not found")
+
+    if log_in.work_date is not None:
+        log.work_date = log_in.work_date
+    if log_in.worker_id is not None:
+        log.worker_id = log_in.worker_id
+    if log_in.note is not None:
+        log.note = log_in.note
+
+    if log_in.items is not None:
+        log.items.clear()
+        
+        for item_in in log_in.items:
+            log_item = WorkLogItem(
+                work_log_id=log.id,
+                plan_item_id=item_in.plan_item_id,
+                worker_id=item_in.worker_id,
+                start_time=item_in.start_time,
+                end_time=item_in.end_time,
+                good_quantity=item_in.good_quantity,
+                bad_quantity=item_in.bad_quantity,
+                note=item_in.note
+            )
+            log.items.append(log_item)
+
+    await db.commit()
+
+    result = await db.execute(
+        select(WorkLog)
+        .options(
+            selectinload(WorkLog.worker),
+            selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
+            selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
+                selectinload(ProductionPlanItem.product),
+                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            )
+        )
+        .where(WorkLog.id == log.id)
+    )
+    return result.scalar_one()
+
+@router.delete("/work-logs/{log_id}")
+async def delete_work_log(
+    log_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Delete a work log.
+    """
+    result = await db.execute(select(WorkLog).where(WorkLog.id == log_id))
+    log = result.scalar_one_or_none()
+    if not log:
+        raise HTTPException(status_code=404, detail="Work Log not found")
+
+    await db.delete(log)
+    await db.commit()
+    return {"message": "Work Log deleted successfully"}

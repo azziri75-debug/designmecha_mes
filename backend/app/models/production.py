@@ -107,3 +107,44 @@ class WorkOrder(Base):
     plan_item = relationship("ProductionPlanItem", back_populates="work_orders")
     worker = relationship("Staff")
     inspection_result = relationship("InspectionResult", back_populates="work_order", uselist=False)
+
+class WorkLog(Base):
+    """
+    작업 일지 (Daily Work Log)
+    """
+    __tablename__ = "work_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    work_date = Column(Date, nullable=False)
+    worker_id = Column(Integer, ForeignKey("staff.id"), nullable=True) # 작성자 
+    note = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    worker = relationship("Staff", foreign_keys=[worker_id])
+    items = relationship("WorkLogItem", back_populates="work_log", cascade="all, delete-orphan", lazy="selectin")
+
+class WorkLogItem(Base):
+    """
+    작업 일지 상세 항목 (작업자별 개별 실적)
+    """
+    __tablename__ = "work_log_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    work_log_id = Column(Integer, ForeignKey("work_logs.id", ondelete="CASCADE"), nullable=False)
+    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id"), nullable=False)
+    worker_id = Column(Integer, ForeignKey("staff.id"), nullable=True) # 개별 작업자 실적
+    
+    start_time = Column(DateTime(timezone=True), nullable=True)
+    end_time = Column(DateTime(timezone=True), nullable=True)
+    
+    good_quantity = Column(Integer, default=0)
+    bad_quantity = Column(Integer, default=0)
+    note = Column(Text, nullable=True)
+
+    # Relationships
+    work_log = relationship("WorkLog", back_populates="items")
+    plan_item = relationship("ProductionPlanItem")
+    worker = relationship("Staff", foreign_keys=[worker_id])

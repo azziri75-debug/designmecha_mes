@@ -7,15 +7,18 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.api.deps import get_db
-from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate
+from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory
 from app.schemas.basics import (
     PartnerCreate, PartnerResponse, PartnerUpdate,
     StaffCreate, StaffResponse, StaffUpdate,
     ContactCreate, ContactResponse, ContactUpdate,
     CompanyCreate, CompanyResponse, CompanyUpdate,
     EquipmentCreate, EquipmentResponse, EquipmentUpdate, EquipmentHistoryCreate, EquipmentHistoryResponse,
-    FormTemplateCreate, FormTemplateResponse, FormTemplateUpdate
+    FormTemplateCreate, FormTemplateResponse, FormTemplateUpdate,
+    MeasuringInstrumentCreate, MeasuringInstrumentResponse, MeasuringInstrumentUpdate,
+    MeasurementHistoryCreate, MeasurementHistoryResponse
 )
+from dateutil.relativedelta import relativedelta
 
 router = APIRouter()
 
@@ -312,8 +315,6 @@ async def delete_equipment(eq_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "success"}
 
-# --- Equipment History Endpoints ---
-
 @router.post("/equipments/{eq_id}/history", response_model=EquipmentHistoryResponse)
 async def create_equipment_history(eq_id: int, h_in: EquipmentHistoryCreate, db: AsyncSession = Depends(get_db)):
     new_h = EquipmentHistory(**h_in.model_dump(), equipment_id=eq_id)
@@ -321,6 +322,31 @@ async def create_equipment_history(eq_id: int, h_in: EquipmentHistoryCreate, db:
     await db.commit()
     await db.refresh(new_h)
     return new_h
+
+@router.put("/equipments/{eq_id}/history/{h_id}", response_model=EquipmentHistoryResponse)
+async def update_equipment_history(eq_id: int, h_id: int, h_in: EquipmentHistoryCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(EquipmentHistory).where(EquipmentHistory.id == h_id, EquipmentHistory.equipment_id == eq_id))
+    h = result.scalar_one_or_none()
+    if not h: raise HTTPException(status_code=404, detail="History not found")
+    
+    for k, v in h_in.model_dump(exclude_unset=True).items():
+        setattr(h, k, v)
+        if k == "attachment_file":
+            flag_modified(h, k)
+            
+    await db.commit()
+    await db.refresh(h)
+    return h
+
+@router.delete("/equipments/{eq_id}/history/{h_id}")
+async def delete_equipment_history(eq_id: int, h_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(EquipmentHistory).where(EquipmentHistory.id == h_id, EquipmentHistory.equipment_id == eq_id))
+    h = result.scalar_one_or_none()
+    if not h: raise HTTPException(status_code=404, detail="History not found")
+    
+    await db.delete(h)
+    await db.commit()
+    return {"status": "success"}
 
 # --- Form Template Endpoints ---
 
@@ -352,3 +378,116 @@ async def create_or_update_form_template(tm_in: FormTemplateCreate, db: AsyncSes
         await db.commit()
         await db.refresh(new_tm)
         return new_tm
+
+# --- Measuring Instrument Endpoints ---
+
+async def update_next_calibration_date(instrument_id: int, db: AsyncSession):
+    # Find latest CALIBRATION history
+    result = await db.execute(
+        select(MeasurementHistory)
+        .where(MeasurementHistory.instrument_id == instrument_id, MeasurementHistory.history_type == 'CALIBRATION')
+        .order_by(MeasurementHistory.history_date.desc())
+        .limit(1)
+    )
+    latest_cal = result.scalar_one_or_none()
+    
+    inst_result = await db.execute(select(MeasuringInstrument).where(MeasuringInstrument.id == instrument_id))
+    inst = inst_result.scalar_one_or_none()
+    
+    if inst and latest_cal and inst.calibration_cycle_months:
+        inst.next_calibration_date = latest_cal.history_date + relativedelta(months=inst.calibration_cycle_months)
+        await db.commit()
+
+@router.get("/instruments/", response_model=List[MeasuringInstrumentResponse])
+async def read_instruments(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(MeasuringInstrument).options(selectinload(MeasuringInstrument.history)))
+    return result.scalars().all()
+
+@router.post("/instruments/", response_model=MeasuringInstrumentResponse)
+async def create_instrument(inst_in: MeasuringInstrumentCreate, db: AsyncSession = Depends(get_db)):
+    new_inst = MeasuringInstrument(**inst_in.model_dump())
+    db.add(new_inst)
+    await db.commit()
+    
+    result = await db.execute(
+        select(MeasuringInstrument)
+        .options(selectinload(MeasuringInstrument.history))
+        .where(MeasuringInstrument.id == new_inst.id)
+    )
+    return result.scalar_one()
+
+@router.put("/instruments/{inst_id}", response_model=MeasuringInstrumentResponse)
+async def update_instrument(inst_id: int, inst_in: MeasuringInstrumentUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(MeasuringInstrument).where(MeasuringInstrument.id == inst_id))
+    inst = result.scalar_one_or_none()
+    if not inst: raise HTTPException(status_code=404, detail="Instrument not found")
+    
+    for k, v in inst_in.model_dump(exclude_unset=True).items():
+        setattr(inst, k, v)
+    await db.commit()
+    await update_next_calibration_date(inst_id, db)
+    
+    result = await db.execute(
+        select(MeasuringInstrument)
+        .options(selectinload(MeasuringInstrument.history))
+        .where(MeasuringInstrument.id == inst_id)
+    )
+    return result.scalar_one()
+
+@router.delete("/instruments/{inst_id}")
+async def delete_instrument(inst_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(MeasuringInstrument).where(MeasuringInstrument.id == inst_id))
+    inst = result.scalar_one_or_none()
+    if not inst: raise HTTPException(status_code=404, detail="Instrument not found")
+    
+    await db.delete(inst)
+    await db.commit()
+    return {"status": "success"}
+
+# --- Measurement History Endpoints ---
+
+@router.post("/instruments/{inst_id}/history", response_model=MeasurementHistoryResponse)
+async def create_instrument_history(inst_id: int, h_in: MeasurementHistoryCreate, db: AsyncSession = Depends(get_db)):
+    new_h = MeasurementHistory(**h_in.model_dump(), instrument_id=inst_id)
+    db.add(new_h)
+    await db.commit()
+    await db.refresh(new_h)
+    
+    if new_h.history_type == 'CALIBRATION':
+        await update_next_calibration_date(inst_id, db)
+        
+    return new_h
+
+@router.put("/instruments/{inst_id}/history/{h_id}", response_model=MeasurementHistoryResponse)
+async def update_instrument_history(inst_id: int, h_id: int, h_in: MeasurementHistoryCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(MeasurementHistory).where(MeasurementHistory.id == h_id, MeasurementHistory.instrument_id == inst_id))
+    h = result.scalar_one_or_none()
+    if not h: raise HTTPException(status_code=404, detail="History not found")
+    
+    for k, v in h_in.model_dump(exclude_unset=True).items():
+        setattr(h, k, v)
+        if k == "attachment_file":
+            flag_modified(h, k)
+            
+    await db.commit()
+    await db.refresh(h)
+    
+    if h.history_type == 'CALIBRATION' or 'history_type' in h_in.model_dump(exclude_unset=True):
+        await update_next_calibration_date(inst_id, db)
+        
+    return h
+
+@router.delete("/instruments/{inst_id}/history/{h_id}")
+async def delete_instrument_history(inst_id: int, h_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(MeasurementHistory).where(MeasurementHistory.id == h_id, MeasurementHistory.instrument_id == inst_id))
+    h = result.scalar_one_or_none()
+    if not h: raise HTTPException(status_code=404, detail="History not found")
+    
+    was_calibration = h.history_type == 'CALIBRATION'
+    await db.delete(h)
+    await db.commit()
+    
+    if was_calibration:
+        await update_next_calibration_date(inst_id, db)
+        
+    return {"status": "success"}

@@ -65,6 +65,7 @@ class ProductProcess(Base):
     equipment_name = Column(String, nullable=True) # 장비명 (내부 시)
     attachment_file = Column(String, nullable=True) # 첨부파일 경로
     course_type = Column(String, nullable=True) # 구분 Override (NULL이면 Process 기본값 사용)
+    cost = Column(Float, nullable=True, default=0.0) # 공정 비용
 
     product = relationship("Product", back_populates="standard_processes")
     process = relationship("Process")

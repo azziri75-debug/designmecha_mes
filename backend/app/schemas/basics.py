@@ -172,3 +172,47 @@ class FormTemplateResponse(FormTemplateBase):
     updated_at: Optional[datetime] = None
     class Config:
         from_attributes = True
+
+# Measuring Instrument Schemas
+class MeasurementHistoryBase(BaseModel):
+    history_date: Optional[date] = None
+    history_type: str
+    description: str
+    cost: Optional[float] = 0.0
+    worker_name: Optional[str] = None
+    attachment_file: Optional[List[dict]] = None
+
+class MeasurementHistoryCreate(MeasurementHistoryBase):
+    pass
+
+class MeasurementHistoryResponse(MeasurementHistoryBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class MeasuringInstrumentBase(BaseModel):
+    name: str
+    code: Optional[str] = None
+    spec: Optional[str] = None
+    serial_number: Optional[str] = None
+    calibration_cycle_months: Optional[int] = 12
+    next_calibration_date: Optional[date] = None
+    is_active: bool = True
+
+class MeasuringInstrumentSimple(MeasuringInstrumentBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class MeasuringInstrumentCreate(MeasuringInstrumentBase):
+    pass
+
+class MeasuringInstrumentUpdate(MeasuringInstrumentBase):
+    pass
+
+class MeasuringInstrumentResponse(MeasuringInstrumentBase):
+    id: int
+    history: List[MeasurementHistoryResponse] = []
+    class Config:
+        from_attributes = True

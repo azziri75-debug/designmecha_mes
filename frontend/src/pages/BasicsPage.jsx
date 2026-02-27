@@ -75,6 +75,7 @@ const BasicsPageContent = () => {
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
     const [equipments, setEquipments] = useState([]);
+    const [instruments, setInstruments] = useState([]);
     const [company, setCompany] = useState(null); // eslint-disable-line no-unused-vars
     const [loading, setLoading] = useState(true);
 
@@ -85,14 +86,18 @@ const BasicsPageContent = () => {
     const [selectedContact, setSelectedContact] = useState(null);
     const [selectedStaff, setSelectedStaff] = useState(null); // For editing staff
     const [selectedEquipment, setSelectedEquipment] = useState(null);
+    const [selectedInstrument, setSelectedInstrument] = useState(null);
+    const [selectedHistory, setSelectedHistory] = useState(null);
 
     // File Viewer Modal State
     const [showFileModal, setShowFileModal] = useState(false);
     const [viewingFiles, setViewingFiles] = useState([]);
     const [fileModalTitle, setFileModalTitle] = useState('');
 
-    // Expanded state for contacts
+    // Expanded state
     const [expandedPartnerId, setExpandedPartnerId] = useState(null);
+    const [expandedEquipmentId, setExpandedEquipmentId] = useState(null);
+    const [expandedInstrumentId, setExpandedInstrumentId] = useState(null);
 
     // Form State
     const [formData, setFormData] = useState({});
@@ -125,6 +130,9 @@ const BasicsPageContent = () => {
             } else if (activeTab === 'equipments') {
                 const res = await api.get('/basics/equipments/');
                 setEquipments(res.data || []);
+            } else if (activeTab === 'instruments') {
+                const res = await api.get('/basics/instruments/');
+                setInstruments(res.data || []);
             } else if (activeTab === 'company') {
                 const res = await api.get('/basics/company');
                 if (res.data) {
@@ -193,6 +201,9 @@ const BasicsPageContent = () => {
         } else if (activeTab === 'equipments') {
             setModalType('create_equipment');
             setFormData({ is_active: true, status: 'IDLE' });
+        } else if (activeTab === 'instruments') {
+            setModalType('create_instrument');
+            setFormData({ is_active: true, calibration_cycle_months: 12 });
         }
         setShowModal(true);
     };
@@ -236,6 +247,43 @@ const BasicsPageContent = () => {
         setShowModal(true);
     };
 
+    const openAddEqHistoryModal = (eq) => {
+        setModalType('add_eq_history');
+        setSelectedEquipment(eq);
+        setFormData({ history_date: new Date().toISOString().split('T')[0], history_type: 'BREAKDOWN' });
+        setShowModal(true);
+    };
+
+    const openEditEqHistoryModal = (eq, history) => {
+        setModalType('edit_eq_history');
+        setSelectedEquipment(eq);
+        setSelectedHistory(history);
+        setFormData(history);
+        setShowModal(true);
+    };
+
+    const openEditInstrumentModal = (inst) => {
+        setModalType('edit_instrument');
+        setSelectedInstrument(inst);
+        setFormData(inst);
+        setShowModal(true);
+    };
+
+    const openAddInstHistoryModal = (inst) => {
+        setModalType('add_inst_history');
+        setSelectedInstrument(inst);
+        setFormData({ history_date: new Date().toISOString().split('T')[0], history_type: 'CALIBRATION' });
+        setShowModal(true);
+    };
+
+    const openEditInstHistoryModal = (inst, history) => {
+        setModalType('edit_inst_history');
+        setSelectedInstrument(inst);
+        setSelectedHistory(history);
+        setFormData(history);
+        setShowModal(true);
+    };
+
     const handleDeletePartner = async (id) => {
         if (window.confirm("정말 삭제하시겠습니까? 관련 데이터가 모두 삭제될 수 있습니다.")) {
             try {
@@ -266,6 +314,32 @@ const BasicsPageContent = () => {
         if (window.confirm("정말 삭제하시겠습니까?")) {
             try {
                 await api.delete(`/basics/staff/${id}`);
+                alert("삭제되었습니다.");
+                fetchData();
+            } catch (error) {
+                console.error("Delete failed", error);
+                alert("삭제 실패");
+            }
+        }
+    };
+
+    const handleDeleteEqHistory = async (eqId, hId) => {
+        if (window.confirm("내역을 삭제하시겠습니까?")) {
+            try {
+                await api.delete(`/basics/equipments/${eqId}/history/${hId}`);
+                alert("삭제되었습니다.");
+                fetchData();
+            } catch (error) {
+                console.error("Delete failed", error);
+                alert("삭제 실패");
+            }
+        }
+    };
+
+    const handleDeleteInstHistory = async (instId, hId) => {
+        if (window.confirm("내역을 삭제하시겠습니까?")) {
+            try {
+                await api.delete(`/basics/instruments/${instId}/history/${hId}`);
                 alert("삭제되었습니다.");
                 fetchData();
             } catch (error) {
@@ -307,6 +381,24 @@ const BasicsPageContent = () => {
                     await api.post('/basics/equipments/', finalData);
                 } else if (modalType === 'edit_equipment') {
                     await api.put(`/basics/equipments/${selectedEquipment.id}`, formData);
+                } else if (modalType === 'add_eq_history') {
+                    await api.post(`/basics/equipments/${selectedEquipment.id}/history`, formData);
+                } else if (modalType === 'edit_eq_history') {
+                    await api.put(`/basics/equipments/${selectedEquipment.id}/history/${selectedHistory.id}`, formData);
+                }
+            } else if (activeTab === 'instruments') {
+                if (modalType === 'create_instrument') {
+                    const finalData = { ...formData };
+                    if (!finalData.code) {
+                        finalData.code = `MI-${new Date().getTime().toString().slice(-6)}`;
+                    }
+                    await api.post('/basics/instruments/', finalData);
+                } else if (modalType === 'edit_instrument') {
+                    await api.put(`/basics/instruments/${selectedInstrument.id}`, formData);
+                } else if (modalType === 'add_inst_history') {
+                    await api.post(`/basics/instruments/${selectedInstrument.id}/history`, formData);
+                } else if (modalType === 'edit_inst_history') {
+                    await api.put(`/basics/instruments/${selectedInstrument.id}/history/${selectedHistory.id}`, formData);
                 }
             }
             alert("처리되었습니다.");
@@ -321,6 +413,14 @@ const BasicsPageContent = () => {
 
     const toggleExpand = (id) => {
         setExpandedPartnerId(expandedPartnerId === id ? null : id);
+    };
+
+    const toggleEquipmentExpand = (id) => {
+        setExpandedEquipmentId(expandedEquipmentId === id ? null : id);
+    };
+
+    const toggleInstrumentExpand = (id) => {
+        setExpandedInstrumentId(expandedInstrumentId === id ? null : id);
     };
 
     // Filter Logic
@@ -387,6 +487,17 @@ const BasicsPageContent = () => {
                         )}
                     >
                         장비 관리
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('instruments')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                            activeTab === 'instruments'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                        )}
+                    >
+                        측정기 관리
                     </button>
                 </div>
                 <button
@@ -616,7 +727,7 @@ const BasicsPageContent = () => {
                                             <th className="px-6 py-3">전화번호</th>
                                             <th className="px-6 py-3">상태</th>
                                         </>
-                                    ) : (
+                                    ) : activeTab === 'equipments' ? (
                                         <>
                                             <th className="px-6 py-3">장비명</th>
                                             <th className="px-6 py-3">코드</th>
@@ -624,6 +735,16 @@ const BasicsPageContent = () => {
                                             <th className="px-6 py-3">상태</th>
                                             <th className="px-6 py-3">구매일</th>
                                             <th className="px-6 py-3">위치</th>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <th className="px-6 py-3">측정기명</th>
+                                            <th className="px-6 py-3">코드</th>
+                                            <th className="px-6 py-3">규격/사양</th>
+                                            <th className="px-6 py-3">일련번호</th>
+                                            <th className="px-6 py-3 text-center">교정주기(개월)</th>
+                                            <th className="px-6 py-3">다음 교정일</th>
+                                            <th className="px-6 py-3">상태</th>
                                         </>
                                     )}
                                     <th className="px-6 py-3 text-right">관리</th>
@@ -816,53 +937,235 @@ const BasicsPageContent = () => {
                                             </td>
                                         </tr>
                                     )) : (
-                                        <tr><td colSpan="6" className="text-center py-8">등록된 사원이 없습니다.</td></tr>
+                                        <tr><td colSpan="7" className="text-center py-8">등록된 사원이 없습니다.</td></tr>
                                     )
-                                ) : (
+                                ) : activeTab === 'equipments' ? (
                                     equipments.length > 0 ? equipments.map((eq) => (
-                                        <tr key={eq.id} className="hover:bg-gray-700/50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                                                    <Factory className="w-4 h-4 text-orange-400" />
-                                                </div>
-                                                {eq.name}
-                                            </td>
-                                            <td className="px-6 py-4 font-mono text-xs">{eq.code}</td>
-                                            <td className="px-6 py-4">{eq.spec || '-'}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={cn(
-                                                    "px-2 py-1 rounded-full text-xs font-medium",
-                                                    eq.status === 'RUNNING' ? "bg-green-500/10 text-green-400" :
-                                                        eq.status === 'IDLE' ? "bg-blue-500/10 text-blue-400" :
-                                                            "bg-red-500/10 text-red-400"
-                                                )}>
-                                                    {eq.status === 'RUNNING' ? '가동중' : eq.status === 'IDLE' ? '대기' : '정지/수리'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">{eq.purchase_date || '-'}</td>
-                                            <td className="px-6 py-4 text-xs">{eq.location || '-'}</td>
-                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                                <button
-                                                    onClick={() => openEditEquipmentModal(eq)}
-                                                    className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={async () => {
-                                                        if (window.confirm("삭제하시겠습니까?")) {
-                                                            await api.delete(`/basics/equipments/${eq.id}`);
-                                                            fetchData();
-                                                        }
-                                                    }}
-                                                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                                                >
-                                                    <Trash className="w-4 h-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
+                                        <React.Fragment key={eq.id}>
+                                            <tr className="hover:bg-gray-700/50 transition-colors cursor-pointer group" onClick={() => toggleEquipmentExpand(eq.id)}>
+                                                <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                                                        <Factory className="w-4 h-4 text-orange-400" />
+                                                    </div>
+                                                    {eq.name}
+                                                </td>
+                                                <td className="px-6 py-4 font-mono text-xs">{eq.code}</td>
+                                                <td className="px-6 py-4">{eq.spec || '-'}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded-full text-xs font-medium",
+                                                        eq.status === 'RUNNING' ? "bg-green-500/10 text-green-400" :
+                                                            eq.status === 'DOWN' ? "bg-red-500/10 text-red-400" :
+                                                                eq.status === 'REPAIR' ? "bg-orange-500/10 text-orange-400" :
+                                                                    "bg-gray-500/10 text-gray-400"
+                                                    )}>
+                                                        {eq.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">{eq.purchase_date || '-'}</td>
+                                                <td className="px-6 py-4 text-xs">{eq.location || '-'}</td>
+                                                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); openEditEquipmentModal(eq); }}
+                                                        className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            if (window.confirm("삭제하시겠습니까?")) {
+                                                                await api.delete(`/basics/equipments/${eq.id}`);
+                                                                fetchData();
+                                                            }
+                                                        }}
+                                                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                    >
+                                                        <Trash className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {/* Expanded Equipment History */}
+                                            {expandedEquipmentId === eq.id && (
+                                                <tr className="bg-gray-800/50 animate-fade-in-down">
+                                                    <td colSpan="7" className="p-4 pl-16">
+                                                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                                                            <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
+                                                                <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                                                                    <FileText className="w-4 h-4 text-gray-500" />
+                                                                    고장/수리 이력
+                                                                </h4>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); openAddEqHistoryModal(eq); }}
+                                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-500/10 transition-colors"
+                                                                >
+                                                                    <Plus className="w-3 h-3" />
+                                                                    이력 추가
+                                                                </button>
+                                                            </div>
+                                                            {eq.history && eq.history.length > 0 ? (
+                                                                <div className="overflow-x-auto">
+                                                                    <table className="w-full text-left text-sm text-gray-400">
+                                                                        <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                            <tr>
+                                                                                <th className="px-4 py-2">일자</th>
+                                                                                <th className="px-4 py-2">구분</th>
+                                                                                <th className="px-4 py-2">내역</th>
+                                                                                <th className="px-4 py-2">비용/금액</th>
+                                                                                <th className="px-4 py-2">작업자</th>
+                                                                                <th className="px-4 py-2 text-right w-20">관리</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-gray-700">
+                                                                            {eq.history.map((h, idx) => (
+                                                                                <tr key={idx} className="hover:bg-gray-800/50 transition-colors group/history">
+                                                                                    <td className="px-4 py-2 text-white font-medium">{h.history_date || '-'}</td>
+                                                                                    <td className="px-4 py-2">
+                                                                                        {h.history_type === 'BREAKDOWN' ? '고장' :
+                                                                                            h.history_type === 'REPAIR' ? '수리' :
+                                                                                                h.history_type === 'MAINTENANCE' ? '정기점검' : h.history_type}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2">{h.description}</td>
+                                                                                    <td className="px-4 py-2">{h.cost ? h.cost.toLocaleString() : '-'}</td>
+                                                                                    <td className="px-4 py-2">{h.worker_name || '-'}</td>
+                                                                                    <td className="px-4 py-2 text-right">
+                                                                                        <div className="flex justify-end gap-2 opacity-50 group-hover/history:opacity-100 transition-opacity">
+                                                                                            <button onClick={(e) => { e.stopPropagation(); openEditEqHistoryModal(eq, h); }} className="text-gray-400 hover:text-blue-400"><Pencil className="w-3 h-3" /></button>
+                                                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteEqHistory(eq.id, h.id); }} className="text-gray-400 hover:text-red-400"><Trash className="w-3 h-3" /></button>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-sm text-gray-500 py-2">등록된 내역이 없습니다.</div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     )) : (
                                         <tr><td colSpan="7" className="text-center py-8">등록된 장비가 없습니다.</td></tr>
+                                    )
+                                ) : (
+                                    instruments.length > 0 ? instruments.map((inst) => (
+                                        <React.Fragment key={inst.id}>
+                                            <tr className="hover:bg-gray-700/50 transition-colors cursor-pointer group" onClick={() => toggleInstrumentExpand(inst.id)}>
+                                                <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                                                        <FileText className="w-4 h-4 text-emerald-400" />
+                                                    </div>
+                                                    {inst.name}
+                                                </td>
+                                                <td className="px-6 py-4 font-mono text-xs">{inst.code}</td>
+                                                <td className="px-6 py-4">{inst.spec || '-'}</td>
+                                                <td className="px-6 py-4">{inst.serial_number || '-'}</td>
+                                                <td className="px-6 py-4 text-center">{inst.calibration_cycle_months}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded text-xs font-medium",
+                                                        !inst.next_calibration_date ? "text-gray-500" :
+                                                            new Date(inst.next_calibration_date) < new Date() ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                                                                "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                                    )}>
+                                                        {inst.next_calibration_date || '미등록'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded-full text-xs font-medium",
+                                                        inst.is_active ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
+                                                    )}>
+                                                        {inst.is_active ? '사용중' : '폐기/미사용'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); openEditInstrumentModal(inst); }}
+                                                        className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            if (window.confirm("삭제하시겠습니까?")) {
+                                                                await api.delete(`/basics/instruments/${inst.id}`);
+                                                                fetchData();
+                                                            }
+                                                        }}
+                                                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                    >
+                                                        <Trash className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {/* Expanded Instrument History */}
+                                            {expandedInstrumentId === inst.id && (
+                                                <tr className="bg-gray-800/50 animate-fade-in-down">
+                                                    <td colSpan="8" className="p-4 pl-16">
+                                                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                                                            <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
+                                                                <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                                                                    <FileText className="w-4 h-4 text-gray-500" />
+                                                                    교정/수리 이력
+                                                                </h4>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); openAddInstHistoryModal(inst); }}
+                                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-500/10 transition-colors"
+                                                                >
+                                                                    <Plus className="w-3 h-3" />
+                                                                    이력 추가
+                                                                </button>
+                                                            </div>
+                                                            {inst.history && inst.history.length > 0 ? (
+                                                                <div className="overflow-x-auto">
+                                                                    <table className="w-full text-left text-sm text-gray-400">
+                                                                        <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                            <tr>
+                                                                                <th className="px-4 py-2">일자</th>
+                                                                                <th className="px-4 py-2">구분</th>
+                                                                                <th className="px-4 py-2">내역</th>
+                                                                                <th className="px-4 py-2">비용/금액</th>
+                                                                                <th className="px-4 py-2">기관/담당자</th>
+                                                                                <th className="px-4 py-2 text-right w-20">관리</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-gray-700">
+                                                                            {inst.history.map((h, idx) => (
+                                                                                <tr key={idx} className="hover:bg-gray-800/50 transition-colors group/history">
+                                                                                    <td className="px-4 py-2 text-white font-medium">{h.history_date || '-'}</td>
+                                                                                    <td className="px-4 py-2">
+                                                                                        {h.history_type === 'CALIBRATION' ? '교정' :
+                                                                                            h.history_type === 'REPAIR' ? '수리' : '기타'}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2">{h.description}</td>
+                                                                                    <td className="px-4 py-2">{h.cost ? h.cost.toLocaleString() : '-'}</td>
+                                                                                    <td className="px-4 py-2">{h.worker_name || '-'}</td>
+                                                                                    <td className="px-4 py-2 text-right">
+                                                                                        <div className="flex justify-end gap-2 opacity-50 group-hover/history:opacity-100 transition-opacity">
+                                                                                            <button onClick={(e) => { e.stopPropagation(); openEditInstHistoryModal(inst, h); }} className="text-gray-400 hover:text-blue-400"><Pencil className="w-3 h-3" /></button>
+                                                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteInstHistory(inst.id, h.id); }} className="text-gray-400 hover:text-red-400"><Trash className="w-3 h-3" /></button>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-sm text-gray-500 py-2">등록된 내역이 없습니다.</div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    )) : (
+                                        <tr><td colSpan="8" className="text-center py-8">등록된 측정기가 없습니다.</td></tr>
                                     )
                                 )}
                             </tbody>
@@ -885,7 +1188,13 @@ const BasicsPageContent = () => {
                                                 modalType === 'edit_contact' ? '담당자 수정' :
                                                     modalType === 'create_staff' ? '신규 사원 등록' :
                                                         modalType === 'create_equipment' ? '신규 생산 장비 등록' :
-                                                            modalType === 'edit_equipment' ? '장비 정보 수정' : '사원 정보 수정'}
+                                                            modalType === 'edit_equipment' ? '장비 정보 수정' :
+                                                                modalType === 'add_eq_history' ? '장비 이력 추가' :
+                                                                    modalType === 'edit_eq_history' ? '장비 이력 수정' :
+                                                                        modalType === 'create_instrument' ? '신규 측정기 등록' :
+                                                                            modalType === 'edit_instrument' ? '측정기 정보 수정' :
+                                                                                modalType === 'add_inst_history' ? '측정기 이력(교정/수리) 추가' :
+                                                                                    modalType === 'edit_inst_history' ? '측정기 이력(교정/수리) 수정' : '사원 정보 수정'}
                                 </h3>
                                 <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white transition-colors">
                                     <X className="w-5 h-5" />
@@ -1223,6 +1532,127 @@ const BasicsPageContent = () => {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-300">설치 위치</label>
                                             <input name="location" value={formData.location || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 1공장 2층" />
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Equipment History Forms */}
+                                {(modalType === 'add_eq_history' || modalType === 'edit_eq_history') && (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">발생 일자</label>
+                                                <input type="date" name="history_date" value={formData.history_date || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">구분 <span className="text-red-500">*</span></label>
+                                                <select
+                                                    name="history_type"
+                                                    value={formData.history_type || 'BREAKDOWN'}
+                                                    onChange={handleInputChange}
+                                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                >
+                                                    <option value="BREAKDOWN">고장 (BREAKDOWN)</option>
+                                                    <option value="REPAIR">수리 (REPAIR)</option>
+                                                    <option value="MAINTENANCE">정기점검 (MAINTENANCE)</option>
+                                                    <option value="OTHER">기타 (OTHER)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">상세 내역 <span className="text-red-500">*</span></label>
+                                            <textarea name="description" value={formData.description || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all min-h-[100px]" placeholder="상세한 고장/수리 상황을 입력하세요..." required />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">작업자/담당자</label>
+                                                <input name="worker_name" value={formData.worker_name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 홍길동, 또는 A/S 기사" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">비용/금액</label>
+                                                <input type="number" name="cost" value={formData.cost || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="0" />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Instrument Forms */}
+                                {(modalType === 'create_instrument' || modalType === 'edit_instrument') && (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">측정기명 <span className="text-red-500">*</span></label>
+                                                <input name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">관리코드</label>
+                                                <input name="code" value={formData.code || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="자동 생성 또는 직접 입력" />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">사양/스펙</label>
+                                                <input name="spec" value={formData.spec || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 0~150mm" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">일련번호</label>
+                                                <input name="serial_number" value={formData.serial_number || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="제조사 S/N" />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">교정 주기(개월)</label>
+                                                <input type="number" name="calibration_cycle_months" value={formData.calibration_cycle_months || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="12" />
+                                            </div>
+                                            <div className="flex items-center gap-2 pt-8">
+                                                <input
+                                                    type="checkbox"
+                                                    name="is_active"
+                                                    checked={formData.is_active !== false}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                                                    className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-800"
+                                                />
+                                                <label className="text-sm font-medium text-gray-300">사용 중 (Active)</label>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Instrument History Forms */}
+                                {(modalType === 'add_inst_history' || modalType === 'edit_inst_history') && (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">발생 일자</label>
+                                                <input type="date" name="history_date" value={formData.history_date || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">구분 <span className="text-red-500">*</span></label>
+                                                <select
+                                                    name="history_type"
+                                                    value={formData.history_type || 'CALIBRATION'}
+                                                    onChange={handleInputChange}
+                                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                >
+                                                    <option value="CALIBRATION">교정 (CALIBRATION)</option>
+                                                    <option value="REPAIR">수리 (REPAIR)</option>
+                                                    <option value="ETC">기타 (ETC)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">상세 내역 <span className="text-red-500">*</span></label>
+                                            <textarea name="description" value={formData.description || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all min-h-[100px]" placeholder="상세한 내역을 입력하세요..." required />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">기관/담당자</label>
+                                                <input name="worker_name" value={formData.worker_name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="한국표준과학연구원 등" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">비용/금액</label>
+                                                <input type="number" name="cost" value={formData.cost || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="0" />
+                                            </div>
                                         </div>
                                     </>
                                 )}
