@@ -245,9 +245,9 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
                     <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] flex flex-col shadow-none origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
 
-                        {/* Title Section - Ensure no cut-off */}
-                        <div className="text-center mb-10 relative flex justify-center items-center h-20">
-                            <div className="text-4xl font-bold tracking-[1em] indent-[1em] border-b-4 border-black pb-2 max-w-[500px] w-full text-center leading-none">
+                        {/* Title Section - Improved size and visibility */}
+                        <div className="text-center mb-10 relative flex justify-center items-center h-24">
+                            <div className="text-5xl font-extrabold tracking-[1em] indent-[1em] border-b-4 border-black pb-3 max-w-[600px] w-full text-center leading-none">
                                 <EditableText value={metadata.title} onChange={(v) => handleMetaChange('title', v)} isHeader className="justify-center" />
                             </div>
                         </div>
@@ -268,48 +268,48 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 </div>
                             </div>
 
-                            {/* Company Info Box - Ensure fixed width and no collapse */}
-                            <div className="w-[320px] shrink-0 border-2 border-black flex text-[9px] h-36 overflow-hidden">
+                            {/* Company Info Box - Improved font sizes and dimensions */}
+                            <div className="w-[350px] shrink-0 border-2 border-black flex text-[10px] h-44 overflow-hidden">
                                 <div className="w-8 border-r border-black flex flex-col items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>
                                     <div>공</div><div>급</div><div>자</div>
                                 </div>
                                 <div className="flex-1">
                                     <table className="w-full border-collapse h-full">
                                         <tbody>
-                                            <tr className="border-b border-black h-8">
+                                            <tr className="border-b border-black h-10">
                                                 <td className="w-16 border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>등록번호</td>
-                                                <td colSpan="3" className="p-1 font-bold text-center text-[11px]">
+                                                <td colSpan="3" className="p-1 font-bold text-center text-[12px]">
                                                     <EditableText value={metadata.company_reg_no} onChange={(v) => handleMetaChange('company_reg_no', v)} className="justify-center" />
                                                 </td>
                                             </tr>
-                                            <tr className="border-b border-black h-8">
-                                                <td className="border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>상 호</td>
+                                            <tr className="border-b border-black h-10">
+                                                <td className="border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}> 상 호</td>
                                                 <td className="border-r border-black p-1 text-center font-bold">
                                                     <EditableText value={metadata.company_name} onChange={(v) => handleMetaChange('company_name', v)} className="justify-center" />
                                                 </td>
                                                 <td className="w-12 border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>대표</td>
-                                                <td className="p-1 text-center relative font-bold text-[11px]">
+                                                <td className="p-1 text-center relative font-bold text-[12px]">
                                                     <EditableText value={metadata.company_ceo} onChange={(v) => handleMetaChange('company_ceo', v)} className="justify-center" />
                                                     {stampUrl && <StampOverlay url={stampUrl} className="w-12 h-12 -top-2 -left-2" />}
                                                 </td>
                                             </tr>
-                                            <tr className="border-b border-black h-10">
+                                            <tr className="border-b border-black h-12">
                                                 <td className="border-r border-black font-bold p-1 text-center leading-tight" style={{ backgroundColor: '#f9fafb' }}>사업장<br />소재지</td>
-                                                <td colSpan="3" className="p-1 leading-tight text-[8px]">
+                                                <td colSpan="3" className="p-1 leading-tight text-[10px]">
                                                     <EditableText
                                                         value={metadata.company_address}
                                                         onChange={(v) => handleMetaChange('company_address', v)}
-                                                        className="items-start whitespace-pre-wrap leading-tight text-[8px]"
+                                                        className="items-start whitespace-pre-wrap leading-tight text-[10px]"
                                                     />
                                                 </td>
                                             </tr>
-                                            <tr className="h-10">
+                                            <tr className="h-12">
                                                 <td className="border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>연락처</td>
-                                                <td colSpan="3" className="p-1 leading-tight text-[8px]">
+                                                <td colSpan="3" className="p-1 leading-tight text-[10px]">
                                                     <EditableText
                                                         value={metadata.company_contact}
                                                         onChange={(v) => handleMetaChange('company_contact', v)}
-                                                        className="items-start whitespace-pre-wrap leading-tight text-[8px]"
+                                                        className="items-start whitespace-pre-wrap leading-tight text-[10px]"
                                                     />
                                                 </td>
                                             </tr>
@@ -371,7 +371,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 
