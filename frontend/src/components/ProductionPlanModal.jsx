@@ -31,6 +31,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                 setItems(plan.items.map(item => ({
                     ...item,
                     cid: Math.random().toString(36).substr(2, 9),
+                    unit_cost: item.cost && item.quantity ? Math.round(item.cost / item.quantity) : 0,
                     product_spec: item.product?.specification || "", // Ensure spec is captured
                     product_unit: item.product?.unit || "EA"
                 })));
@@ -61,7 +62,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                 estimated_time: proc.estimated_time || 0,
                                 start_date: null,
                                 end_date: null,
-                                cost: proc.cost || 0,
+                                unit_cost: proc.cost || 0,
+                                cost: (proc.cost || 0) * sourceItem.quantity,
                                 quantity: sourceItem.quantity,
                                 note: ""
                             });
@@ -82,6 +84,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                             estimated_time: 0,
                             start_date: null,
                             end_date: null,
+                            unit_cost: 0,
                             cost: 0,
                             quantity: sourceItem.quantity,
                             note: ""
@@ -96,6 +99,18 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
     const handleItemChange = (index, field, value) => {
         const newItems = [...items];
         newItems[index][field] = value;
+
+        if (field === 'quantity') {
+            const qty = parseInt(value) || 0;
+            const unitCost = newItems[index].unit_cost || 0;
+            newItems[index].cost = unitCost * qty;
+        }
+
+        if (field === 'cost') {
+            const qty = parseInt(newItems[index].quantity) || 1;
+            newItems[index].unit_cost = parseFloat(value) / qty;
+        }
+
         setItems(newItems);
     };
 
@@ -124,6 +139,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
             estimated_time: 0,
             start_date: null,
             end_date: null,
+            unit_cost: 0,
             cost: 0,
             note: ""
         }]);
@@ -308,18 +324,18 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                 <Table size="small">
                                     <TableHead>
                                         <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                                            <TableCell width="5%" align="center"></TableCell> {/* Drag Handle Column */}
-                                            <TableCell width="5%">순서</TableCell>
+                                            <TableCell width="3%" align="center"></TableCell> {/* Drag Handle Column */}
+                                            <TableCell width="4%">순서</TableCell>
                                             <TableCell width="12%">공정명</TableCell>
-                                            <TableCell width="10%">구분</TableCell>
-                                            <TableCell width="12%">외주/구매/작업자</TableCell>
+                                            <TableCell width="8%">구분</TableCell>
+                                            <TableCell width="10%">외주/구매/작업자</TableCell>
                                             <TableCell width="10%">배정 장비</TableCell>
                                             <TableCell width="12%">작업내용</TableCell>
-                                            <TableCell width="10%">시작일</TableCell>
-                                            <TableCell width="10%">종료일</TableCell>
-                                            <TableCell width="10%">공정비용</TableCell>
-                                            <TableCell width="5%">수량</TableCell>
-                                            <TableCell width="5%">관리</TableCell>
+                                            <TableCell width="9%">시작일</TableCell>
+                                            <TableCell width="9%">종료일</TableCell>
+                                            <TableCell width="9%">공정비용</TableCell>
+                                            <TableCell width="8%">수량</TableCell>
+                                            <TableCell width="6%">관리</TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -472,7 +488,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                         fullWidth
                                                         variant="standard"
                                                         placeholder={'직접입력'}
-                                                        helperText={item.course_type !== 'INTERNAL' && item.purchase_items?.length ? `발주: ${item.purchase_items.reduce((s, pi) => s + (pi.quantity * pi.unit_price), 0).toLocaleString()}원` : ''}
+                                                        helperText={item.course_type !== 'INTERNAL' && item.purchase_items?.length ? `발주: ${item.purchase_items.reduce((s, pi) => s + (pi.quantity * pi.unit_price), 0).toLocaleString()}원` : `단가: ${(item.unit_cost || 0).toLocaleString()}`}
                                                     />
                                                 </TableCell>
                                                 <TableCell>

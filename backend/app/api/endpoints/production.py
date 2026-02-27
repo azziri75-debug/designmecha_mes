@@ -227,7 +227,7 @@ async def create_production_plan(
                     attachment_file=final_attachment_json,
                     quantity=sp.quantity,
                     status=ProductionStatus.PLANNED,
-                    cost=getattr(proc, 'cost', 0) or 0
+                    cost=(getattr(proc, 'cost', 0) or 0) * sp.quantity
                 )
                 db.add(plan_item)
         else:
@@ -293,7 +293,7 @@ async def create_production_plan(
                         attachment_file=final_attachment_json,
                         quantity=item.quantity,
                         status=ProductionStatus.PLANNED,
-                        cost=getattr(proc, 'cost', 0) or 0
+                        cost=(getattr(proc, 'cost', 0) or 0) * item.quantity
                     )
                     db.add(plan_item)
 
@@ -1051,7 +1051,7 @@ async def read_work_logs(
             selectinload(WorkLog.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product).selectinload("standard_processes"),
+                selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes),
                 selectinload(ProductionPlanItem.equipment),
                 selectinload(ProductionPlanItem.purchase_items),
                 selectinload(ProductionPlanItem.outsourcing_items),
@@ -1102,7 +1102,7 @@ async def create_work_log(
             selectinload(WorkLog.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product).selectinload("standard_processes"),
+                selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes),
                 selectinload(ProductionPlanItem.equipment),
                 selectinload(ProductionPlanItem.purchase_items),
                 selectinload(ProductionPlanItem.outsourcing_items),
