@@ -84,7 +84,10 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             items.push({ idx: "", name: "", spec: "", qty: "", price: "", total: "", note: "" });
         }
 
-        const total = items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+        const total = items.reduce((s, i) => {
+            const val = i.total?.toString().replace(/,/g, '');
+            return s + (parseFloat(val) || 0);
+        }, 0);
 
         let savedColWidths;
         try {
@@ -201,7 +204,10 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
 
     if (!isOpen || !estimate) return null;
 
-    const totalAmount = metadata.items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+    const totalAmount = metadata.items.reduce((s, i) => {
+        const val = i.total?.toString().replace(/,/g, '');
+        return s + (parseFloat(val) || 0);
+    }, 0);
 
     const columns = [
         { key: 'idx', label: '번호', align: 'center' },
