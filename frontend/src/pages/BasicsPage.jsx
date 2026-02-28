@@ -4,6 +4,7 @@ import { Plus, Search, Building2, User, MoreHorizontal, X, UserPlus, Phone, Mail
 import { cn, getImageUrl } from '../lib/utils';
 
 import FileViewerModal from '../components/FileViewerModal';
+import Card from '../components/Card';
 
 // Helper Components
 class ErrorBoundary extends React.Component {
@@ -35,12 +36,6 @@ class ErrorBoundary extends React.Component {
         return this.props.children;
     }
 }
-
-const Card = ({ children, className }) => (
-    <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
-        {children}
-    </div>
-);
 
 // Auto-hyphenation helper
 const autoHyphen = (value, type) => {
