@@ -72,6 +72,29 @@ const MobileWorkLogPage = () => {
     // Conflict Dialog
     const [conflictOpen, setConflictOpen] = useState(false);
 
+    // Swipe State
+    const [touchStart, setTouchStart] = useState(0);
+
+    const handleTouchStart = (e) => {
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchEnd = (e) => {
+        if (!touchStart) return;
+        const touchEnd = e.changedTouches[0].clientX;
+        const distance = touchStart - touchEnd;
+
+        // Disable swipe when in sub-pages (Plan/Item details) or when scrolling deep
+        if (selectedPlan || selectedItem) return;
+
+        if (distance > 70 && tab === 0) {
+            setTab(1);
+        } else if (distance < -70 && tab === 1) {
+            setTab(0);
+        }
+        setTouchStart(0);
+    };
+
     useEffect(() => {
         if (!user) return;
         if (tab === 0) fetchAllPlans();
@@ -254,9 +277,24 @@ const MobileWorkLogPage = () => {
                 </Typography>
             </Paper>
 
-            <Box sx={{ p: 2 }}>
-                {tab === 0 && (
-                    <Box>
+            <Box
+                sx={{
+                    flex: 1,
+                    overflow: 'hidden',
+                    position: 'relative'
+                }}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+            >
+                <Box sx={{
+                    display: 'flex',
+                    width: '200%',
+                    height: '100%',
+                    transform: `translateX(-${tab * 50}%)`,
+                    transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}>
+                    {/* Tab 1: Production Status */}
+                    <Box sx={{ width: '50%', p: 2 }}>
                         {!selectedPlan && !selectedItem ? (
                             /* Step 1: Browse Production Plans */
                             <Box>
@@ -418,10 +456,9 @@ const MobileWorkLogPage = () => {
                             </Box>
                         )}
                     </Box>
-                )}
 
-                {tab === 1 && (
-                    <Box>
+                    {/* Tab 2: Performance */}
+                    <Box sx={{ width: '50%', p: 2 }}>
                         {/* Filters & Summary */}
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 3, backgroundColor: '#1a237e', color: '#fff' }}>
                             <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
@@ -509,7 +546,7 @@ const MobileWorkLogPage = () => {
                             </Stack>
                         )}
                     </Box>
-                )}
+                </Box>
             </Box>
 
             {/* Bottom Nav */}
