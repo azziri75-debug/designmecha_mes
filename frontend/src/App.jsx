@@ -14,6 +14,7 @@ import DeliveryPage from './pages/DeliveryPage';
 import QualityPage from './pages/QualityPage';
 import InventoryPage from './pages/InventoryPage';
 import WorkLogPage from './pages/WorkLogPage';
+import MobileWorkLogPage from './pages/MobileWorkLogPage';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -27,6 +28,16 @@ const ProtectedRoute = ({ children, menuKey }) => {
     );
   }
   return children;
+};
+
+const RootRedirect = () => {
+  const { user } = useAuth();
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  if (isMobile && user?.user_type !== 'ADMIN') {
+    return <Navigate to="/mobile/work-logs" replace />;
+  }
+  return <Dashboard />;
 };
 
 const App = () => {
@@ -45,7 +56,7 @@ const App = () => {
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/" element={<Layout />}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<RootRedirect />} />
         <Route path="basics" element={<ProtectedRoute menuKey="basics"><BasicsPage /></ProtectedRoute>} />
         <Route path="products" element={<ProtectedRoute menuKey="products"><ProductsPage /></ProtectedRoute>} />
         <Route path="sales" element={<ProtectedRoute menuKey="sales"><SalesPage /></ProtectedRoute>} />
@@ -57,6 +68,7 @@ const App = () => {
         <Route path="delivery" element={<ProtectedRoute menuKey="sales"><DeliveryPage /></ProtectedRoute>} />
         <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
       </Route>
+      <Route path="/mobile/work-logs" element={<ProtectedRoute><MobileWorkLogPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

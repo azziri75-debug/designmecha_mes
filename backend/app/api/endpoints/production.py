@@ -82,13 +82,19 @@ async def sync_plan_item_cost(db: AsyncSession, plan_item: ProductionPlanItem):
 async def read_production_plans(
     skip: int = 0,
     limit: int = 1000,
+    worker_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
-    Retrieve production plans.
+    Retrieve production plans. Optional worker_id filter for mobile workers.
     """
+    stmt = select(ProductionPlan)
+    
+    if worker_id:
+        stmt = stmt.join(ProductionPlanItem).where(ProductionPlanItem.worker_id == worker_id).distinct()
+
     result = await db.execute(
-        select(ProductionPlan)
+        stmt
         .options(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
@@ -105,7 +111,8 @@ async def read_production_plans(
             ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
         )
-        .offset(skip).limit(limit)
+        .offset(skip)
+        .limit(limit)
     )
     plans = result.scalars().all()
     
