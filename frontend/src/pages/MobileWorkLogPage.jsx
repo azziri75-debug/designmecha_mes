@@ -95,13 +95,14 @@ const MobileWorkLogPage = () => {
         setLoading(true);
         try {
             const startDate = `${perfYear}-${String(perfMonth).padStart(2, '0')}-01`;
-            const endDate = new Date(perfYear, perfMonth, 0).toISOString().split('T')[0];
+            const lastDay = new Date(perfYear, perfMonth, 0).getDate();
+            const endDate = `${perfYear}-${String(perfMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
             console.log('Fetching performance for:', user.id, startDate, endDate);
             const res = await api.get(`/production/performance/workers/${user.id}/details`, {
                 params: { start_date: startDate, end_date: endDate }
             });
-            console.log('Performance data:', res.data);
+            console.log('Performance data count:', res.data.length);
             setMyPerformance(res.data);
         } catch (err) {
             console.error('Performance fetch error:', err);
@@ -193,9 +194,20 @@ const MobileWorkLogPage = () => {
             productName.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
-    // Performance Aggregation
+    // Performance Aggregation with fallback price
+    const calculateItemCost = (item) => {
+        let price = item.unit_price || 0;
+        if (price === 0 && item.plan_item) {
+            const planItem = item.plan_item;
+            if (planItem.quantity > 0) {
+                price = (planItem.cost || 0) / planItem.quantity;
+            }
+        }
+        return (item.good_quantity || 0) * price;
+    };
+
     const totalCost = useMemo(() => {
-        return myPerformance.reduce((sum, item) => sum + (item.good_quantity * (item.unit_price || 0)), 0);
+        return myPerformance.reduce((sum, item) => sum + calculateItemCost(item), 0);
     }, [myPerformance]);
 
     // Grouping performance by work_log_id for drill-down
@@ -211,7 +223,7 @@ const MobileWorkLogPage = () => {
                     items: []
                 };
             }
-            groups[logId].totalCost += (item.good_quantity * (item.unit_price || 0));
+            groups[logId].totalCost += calculateItemCost(item);
             groups[logId].items.push(item);
         });
         return Object.values(groups).sort((a, b) => {
@@ -479,7 +491,7 @@ const MobileWorkLogPage = () => {
                                                                     수량: {item.good_quantity} (불량: {item.bad_quantity})
                                                                 </Typography>
                                                                 <Typography variant="caption" fontWeight="bold">
-                                                                    {(item.good_quantity * (item.unit_price || 0)).toLocaleString()}원
+                                                                    {calculateItemCost(item).toLocaleString()}원
                                                                 </Typography>
                                                             </Stack>
                                                         </Box>
