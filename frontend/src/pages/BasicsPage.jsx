@@ -1397,7 +1397,21 @@ const BasicsPageContent = () => {
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-gray-300">직책</label>
-                                                <input name="role" value={formData.role || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 대리" />
+                                                <select
+                                                    name="role"
+                                                    value={formData.role || '사원'}
+                                                    onChange={handleInputChange}
+                                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                >
+                                                    <option value="연구원">연구원</option>
+                                                    <option value="사원">사원</option>
+                                                    <option value="대리">대리</option>
+                                                    <option value="과장">과장</option>
+                                                    <option value="차장">차장</option>
+                                                    <option value="부장">부장</option>
+                                                    <option value="이사">이사</option>
+                                                    <option value="대표이사">대표이사</option>
+                                                </select>
                                             </div>
                                         </div>
                                         <div className="space-y-2">

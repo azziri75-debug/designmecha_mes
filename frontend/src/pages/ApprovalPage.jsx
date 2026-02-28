@@ -13,7 +13,8 @@ import { format } from 'date-fns';
 const DOC_TYPES = {
     VACATION: { label: '휴가원', color: 'blue' },
     EARLY_LEAVE: { label: '조퇴/외출원', color: 'purple' },
-    SUPPLIES: { label: '소모품 신청서', color: 'emerald' }
+    SUPPLIES: { label: '소모품 신청서', color: 'emerald' },
+    OVERTIME: { label: '야근/특근신청서', color: 'orange' }
 };
 
 const STATUS_MAP = {
@@ -149,14 +150,21 @@ const ApprovalPage = () => {
     };
 
     const addApprover = (type) => {
-        const lines = [...(approvalLines[type] || [])];
-        const admins = staff.filter(s => s.user_type === 'ADMIN');
+        const admins = staff.filter(s => s.user_type === 'ADMIN' && ['부장', '이사', '대표이사'].includes(s.role));
         if (admins.length === 0) {
-            alert('설정된 관리자 계정이 없습니다.');
+            alert('결재권자로 지정 가능한 부장급 이상의 관리자가 없습니다.');
             return;
         }
-        lines.push({ doc_type: type, approver_id: admins[0].id, sequence: lines.length + 1 });
-        setApprovalLines(prev => ({ ...prev, [type]: lines }));
+        const currentRes = approvalLines[type] || [];
+        const nextSeq = currentRes.length + 1;
+
+        const newLine = {
+            doc_type: type,
+            approver_id: admins[0].id,
+            sequence: nextSeq,
+            approver: admins[0]
+        };
+        setApprovalLines({ ...approvalLines, [type]: [...currentRes, newLine] });
     };
 
     const removeApprover = (type, index) => {
@@ -332,11 +340,13 @@ const ApprovalPage = () => {
                                             <select
                                                 value={line.approver_id}
                                                 onChange={(e) => updateApprover(type, idx, e.target.value)}
-                                                className="flex-1 bg-transparent text-sm text-white border-none focus:ring-0"
+                                                className="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500"
                                             >
-                                                {staff.filter(s => s.user_type === 'ADMIN').map(s => (
-                                                    <option key={s.id} value={s.id}>{s.name} ({s.role || '관리자'})</option>
-                                                ))}
+                                                {staff
+                                                    .filter(s => s.user_type === 'ADMIN' && ['부장', '이사', '대표이사'].includes(s.role))
+                                                    .map(s => (
+                                                        <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
+                                                    ))}
                                             </select>
                                             <button
                                                 onClick={() => removeApprover(type, idx)}
@@ -463,6 +473,37 @@ const ApprovalPage = () => {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-400">용도/비고</label>
                                             <input value={formData.remarks || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" placeholder="사무용" onChange={(e) => setFormData({ ...formData, remarks: e.target.value })} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedDocType === 'OVERTIME' && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-400">근무 일자</label>
+                                            <input type="date" value={formData.date || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">시작 시간</label>
+                                                <input type="time" value={formData.start_time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">종료 시간</label>
+                                                <input type="time" value={formData.end_time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} required />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-400">근무 구분</label>
+                                            <select value={formData.work_type || '야근'} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, work_type: e.target.value })}>
+                                                <option value="야근">야근</option>
+                                                <option value="특근">특근</option>
+                                                <option value="휴일근무">휴일근무</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-400">근무 내용</label>
+                                            <textarea value={formData.reason || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="수행할 업무 내용을 상세히 입력해주세요." onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required />
                                         </div>
                                     </div>
                                 )}
@@ -625,7 +666,24 @@ const ApprovalPage = () => {
                                         </div>
                                         <div className="md:col-span-2 space-y-1">
                                             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">용도/비고</p>
-                                            <p className="text-white font-medium">{selectedDoc.content.remarks || '-'}</p>
+                                            <p className="text-white font-medium">{selectedDoc.content.remarks || '---'}</p>
+                                        </div>
+                                    </>
+                                )}
+
+                                {selectedDoc.doc_type === 'OVERTIME' && (
+                                    <>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">근무 일자</p>
+                                            <p className="text-white font-medium">{selectedDoc.content.date}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">근무 시간</p>
+                                            <p className="text-white font-medium">{selectedDoc.content.start_time} ~ {selectedDoc.content.end_time} ({selectedDoc.content.work_type})</p>
+                                        </div>
+                                        <div className="space-y-1 md:col-span-2">
+                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">근무 내용</p>
+                                            <p className="text-white font-medium whitespace-pre-wrap">{selectedDoc.content.reason}</p>
                                         </div>
                                     </>
                                 )}

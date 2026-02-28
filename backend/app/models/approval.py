@@ -7,6 +7,7 @@ class DocumentType(str, enum.Enum):
     VACATION = "VACATION"           # 휴가원
     EARLY_LEAVE = "EARLY_LEAVE"     # 조퇴.외출원
     SUPPLIES = "SUPPLIES"           # 소모품 신청서
+    OVERTIME = "OVERTIME"           # 야근/특근신청서
 
 class ApprovalStatus(str, enum.Enum):
     PENDING = "PENDING"
