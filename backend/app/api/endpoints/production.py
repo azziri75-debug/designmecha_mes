@@ -1158,6 +1158,12 @@ async def create_work_log(
     await db.flush()
 
     for item_in in log_in.items:
+        # Fetch plan item to get default price if needed
+        plan_item = await db.get(ProductionPlanItem, item_in.plan_item_id)
+        u_price = item_in.unit_price
+        if not u_price and plan_item:
+            u_price = (plan_item.cost or 0) / (plan_item.quantity or 1)
+
         log_item = WorkLogItem(
             work_log_id=log.id,
             plan_item_id=item_in.plan_item_id,
@@ -1166,6 +1172,7 @@ async def create_work_log(
             end_time=item_in.end_time,
             good_quantity=item_in.good_quantity,
             bad_quantity=item_in.bad_quantity,
+            unit_price=u_price,
             note=item_in.note
         )
         db.add(log_item)
@@ -1226,6 +1233,12 @@ async def update_work_log(
         log.items.clear()
         
         for item_in in log_in.items:
+            # Fetch plan item to get default price if needed
+            plan_item = await db.get(ProductionPlanItem, item_in.plan_item_id)
+            u_price = item_in.unit_price
+            if not u_price and plan_item:
+                u_price = (plan_item.cost or 0) / (plan_item.quantity or 1)
+
             log_item = WorkLogItem(
                 work_log_id=log.id,
                 plan_item_id=item_in.plan_item_id,
@@ -1234,6 +1247,7 @@ async def update_work_log(
                 end_time=item_in.end_time,
                 good_quantity=item_in.good_quantity,
                 bad_quantity=item_in.bad_quantity,
+                unit_price=u_price,
                 note=item_in.note
             )
             log.items.append(log_item)

@@ -411,7 +411,10 @@ const PerformanceRow = ({ row, onUpdate }) => {
 
 const PerformanceDetailRow = ({ item, onUpdate }) => {
     const [editQty, setEditQty] = useState(item.good_quantity);
-    const [editPrice, setEditPrice] = useState(item.unit_price);
+
+    // Fallback to plan_item cost if unit_price is 0
+    const defaultPrice = item.unit_price || (item.plan_item?.cost / (item.plan_item?.quantity || 1)) || 0;
+    const [editPrice, setEditPrice] = useState(defaultPrice);
     const [saving, setSaving] = useState(false);
 
     const plan = item.plan_item?.plan;
