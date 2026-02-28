@@ -34,7 +34,7 @@ const RootRedirect = () => {
   const { user } = useAuth();
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  if (isMobile && user?.user_type !== 'ADMIN') {
+  if (isMobile && user) {
     return <Navigate to="/mobile/work-logs" replace />;
   }
   return <Dashboard />;
