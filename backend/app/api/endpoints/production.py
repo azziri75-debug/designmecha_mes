@@ -1327,11 +1327,16 @@ async def get_worker_performance_details(
         select(WorkLogItem)
         .options(
             selectinload(WorkLogItem.work_log),
+            selectinload(WorkLogItem.worker),
             selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product),
+                selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(ProductionPlanItem.equipment),
+                selectinload(ProductionPlanItem.worker),
+                selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
                 selectinload(ProductionPlanItem.plan).options(
-                    selectinload(ProductionPlan.order),
-                    selectinload(ProductionPlan.stock_production)
+                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
                 )
             )
         )
