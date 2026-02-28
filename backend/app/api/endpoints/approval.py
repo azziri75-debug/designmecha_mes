@@ -76,14 +76,20 @@ async def set_approval_lines(
     # 기존 설정 삭제
     await db.execute(delete(ApprovalLine).where(ApprovalLine.doc_type == doc_type))
     
-    new_lines = []
     for line in lines:
         db_line = ApprovalLine(**line.model_dump())
         db.add(db_line)
-        new_lines.append(db_line)
     
     await db.commit()
-    return new_lines
+    
+    # 다시 조회 (관계형 객체 approver 로드 포함)
+    result = await db.execute(
+        select(ApprovalLine)
+        .options(selectinload(ApprovalLine.approver))
+        .where(ApprovalLine.doc_type == doc_type)
+        .order_by(ApprovalLine.sequence)
+    )
+    return result.scalars().all()
 
 @router.get("/documents", response_model=List[ApprovalDocumentResponse])
 async def list_documents(
