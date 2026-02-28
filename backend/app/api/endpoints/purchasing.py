@@ -313,12 +313,22 @@ async def delete_purchase_order(
     order_id: int,
     db: AsyncSession = Depends(deps.get_db),
 ):
-    query = select(PurchaseOrder).where(PurchaseOrder.id == order_id)
+    query = select(PurchaseOrder).options(selectinload(PurchaseOrder.items)).where(PurchaseOrder.id == order_id)
     result = await db.execute(query)
     db_order = result.scalar_one_or_none()
     
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
+        
+    # Revert ProductionPlanItem status if linked
+    if db_order.items:
+        from app.models.production import ProductionPlanItem, ProductionStatus
+        for item in db_order.items:
+            if item.production_plan_item_id:
+                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+                if plan_item:
+                    plan_item.status = ProductionStatus.PLANNED
+                    db.add(plan_item)
         
     await db.delete(db_order)
     await db.commit()
@@ -518,13 +528,23 @@ async def delete_outsourcing_order(
     order_id: int,
     db: AsyncSession = Depends(deps.get_db),
 ):
-    query = select(OutsourcingOrder).where(OutsourcingOrder.id == order_id)
+    query = select(OutsourcingOrder).options(selectinload(OutsourcingOrder.items)).where(OutsourcingOrder.id == order_id)
     result = await db.execute(query)
     db_order = result.scalar_one_or_none()
     
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
         
+    # Revert ProductionPlanItem status if linked
+    if db_order.items:
+        from app.models.production import ProductionPlanItem, ProductionStatus
+        for item in db_order.items:
+            if item.production_plan_item_id:
+                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+                if plan_item:
+                    plan_item.status = ProductionStatus.PLANNED
+                    db.add(plan_item)
+
     await db.delete(db_order)
     await db.commit()
     return None

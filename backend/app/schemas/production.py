@@ -85,6 +85,7 @@ class ProductionPlanItem(ProductionPlanItemBase):
     
     purchase_items: List[PurchaseOrderItemSimple] = []
     outsourcing_items: List[OutsourcingOrderItemSimple] = []
+    completed_quantity: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -815,6 +815,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
         equip: 120,
         note: 150,
         period: 150,
+        progress: 100,
         cost: 100,
         status: 100,
         attach: 60
@@ -1020,6 +1021,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                 <ResizableTableCell width={colWidths.equip} onResize={handleResize('equip')}>배정 장비</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.note} onResize={handleResize('note')}>작업내용</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.period} onResize={handleResize('period')}>작업기간</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.progress} onResize={handleResize('progress')}>진행상황</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.cost} onResize={handleResize('cost')}>공정비용</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.status} onResize={handleResize('status')}>상태</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.attach} onResize={handleResize('attach')}>첨부</ResizableTableCell>
@@ -1070,6 +1072,23 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                     <TableCell sx={{ fontSize: '0.75rem' }}>
                                                         {item.start_date || '-'} ~ {item.end_date || '-'}
                                                     </TableCell>
+                                                    <TableCell>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                                {item.completed_quantity || 0}
+                                                            </Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'textSecondary' }}>
+                                                                / {item.quantity}
+                                                            </Typography>
+                                                            <Box sx={{ ml: 1, flex: 1, height: 4, bgcolor: '#eee', borderRadius: 2, overflow: 'hidden' }}>
+                                                                <Box sx={{
+                                                                    width: `${Math.min(100, ((item.completed_quantity || 0) / item.quantity) * 100)}%`,
+                                                                    height: '100%',
+                                                                    bgcolor: item.status === 'COMPLETED' ? '#4caf50' : '#2196f3'
+                                                                }} />
+                                                            </Box>
+                                                        </Box>
+                                                    </TableCell>
                                                     <TableCell align="right">
                                                         <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
                                                             {(item.cost || 0).toLocaleString()}
@@ -1077,7 +1096,6 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                     </TableCell>
                                                     <TableCell>
                                                         <select
-                                                            disabled={item.course_type !== 'INTERNAL'}
                                                             value={item.status}
                                                             onChange={async (e) => {
                                                                 try {

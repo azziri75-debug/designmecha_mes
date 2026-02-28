@@ -80,6 +80,7 @@ class ProductionPlanItem(Base):
     # Links to Purchasing/Outsourcing
     purchase_items = relationship("app.models.purchasing.PurchaseOrderItem", back_populates="production_plan_item")
     outsourcing_items = relationship("app.models.purchasing.OutsourcingOrderItem", back_populates="production_plan_item")
+    work_log_items = relationship("WorkLogItem", back_populates="plan_item")
 
 class WorkOrder(Base):
     """
@@ -148,5 +149,5 @@ class WorkLogItem(Base):
 
     # Relationships
     work_log = relationship("WorkLog", back_populates="items")
-    plan_item = relationship("ProductionPlanItem")
+    plan_item = relationship("ProductionPlanItem", back_populates="work_log_items")
     worker = relationship("Staff", foreign_keys=[worker_id])

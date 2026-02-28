@@ -24,6 +24,36 @@ from openpyxl.utils import get_column_letter
 
 router = APIRouter()
 
+async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
+    """
+    Update ProductionPlanItem status based on WorkLogItem quantities.
+    """
+    result = await db.execute(
+        select(WorkLogItem)
+        .where(WorkLogItem.plan_item_id == plan_item_id)
+    )
+    items = result.scalars().all()
+    
+    total_good = sum(item.good_quantity for item in items)
+    
+    plan_item = await db.get(ProductionPlanItem, plan_item_id)
+    if not plan_item:
+        return
+
+    if total_good >= plan_item.quantity:
+        plan_item.status = ProductionStatus.COMPLETED
+    elif total_good > 0:
+        plan_item.status = ProductionStatus.IN_PROGRESS
+    # Do not revert to PLANNED here as it might be 'ORDERED' or manually set.
+    # But if the user wants it to be 'PLANNED' if 0, we can add that.
+    # The requirement says "if 0 then 대기(PLANNED) OR if there is quantity then 진행중(IN_PROGRESS)".
+    elif total_good == 0 and plan_item.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.COMPLETED]:
+         # Only revert if it was automatically moved to progress/completed
+         plan_item.status = ProductionStatus.PLANNED
+
+    db.add(plan_item)
+    await db.flush()
+
 @router.get("/plans", response_model=List[schemas.ProductionPlan])
 async def read_production_plans(
     skip: int = 0,
@@ -48,11 +78,21 @@ async def read_production_plans(
             selectinload(ProductionPlan.stock_production).options(
                 selectinload(StockProduction.product),
                 selectinload(StockProduction.partner)
-            )
+            ),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
         )
         .offset(skip).limit(limit)
     )
     plans = result.scalars().all()
+    
+    # Calculate completed_quantity for each item
+    for plan in plans:
+        for item in plan.items:
+            # We can use the relationship we just added
+            # But we need to make sure work_log_items are loaded.
+            # Let's add selectinload to the query above for better performance.
+            item.completed_quantity = sum(wl.good_quantity for wl in item.work_log_items)
+            
     return plans
 
 @router.post("/plans", response_model=schemas.ProductionPlan)
@@ -1098,6 +1138,8 @@ async def create_work_log(
             note=item_in.note
         )
         db.add(log_item)
+        await db.flush()
+        await sync_plan_item_status(db, item_in.plan_item_id)
 
     await db.commit()
     await db.refresh(log)
@@ -1164,6 +1206,8 @@ async def update_work_log(
                 note=item_in.note
             )
             log.items.append(log_item)
+            await db.flush()
+            await sync_plan_item_status(db, item_in.plan_item_id)
 
     await db.commit()
 
@@ -1198,6 +1242,15 @@ async def delete_work_log(
     if not log:
         raise HTTPException(status_code=404, detail="Work Log not found")
 
+    # Store item IDs to sync status after deletion
+    plan_item_ids = [item.plan_item_id for item in log.items if item.plan_item_id]
+
     await db.delete(log)
     await db.commit()
+    
+    # Sync status for all affected items
+    for pid in plan_item_ids:
+        await sync_plan_item_status(db, pid)
+    await db.commit()
+
     return {"message": "Work Log deleted successfully"}
