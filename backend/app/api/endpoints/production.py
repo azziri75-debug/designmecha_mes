@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, cast, String, text
@@ -13,7 +13,7 @@ from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, Purch
 from app.models.basics import Partner
 from app.models.inventory import StockProduction, StockProductionStatus, Stock
 from app.schemas import production as schemas
-from datetime import datetime
+from datetime import datetime, date
 import uuid
 import json
 import os
