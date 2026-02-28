@@ -220,3 +220,77 @@ async def process_approval(
             
     await db.commit()
     return {"message": "처리되었습니다.", "status": doc.status}
+
+@router.put("/documents/{doc_id}", response_model=ApprovalDocumentResponse)
+async def update_document(
+    doc_id: int,
+    doc_in: ApprovalDocumentCreate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
+):
+    """문서 수정 (작성자이며 대기/반려 상태일 때만 가능)"""
+    result = await db.execute(select(ApprovalDocument).where(ApprovalDocument.id == doc_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+    
+    if doc.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="수정 권한이 없습니다.")
+    
+    if doc.status not in [ApprovalStatus.PENDING, ApprovalStatus.REJECTED]:
+        raise HTTPException(status_code=400, detail="결재가 진행 중이거나 완료된 문서는 수정할 수 없습니다.")
+    
+    doc.title = doc_in.title
+    doc.content = doc_in.content
+    doc.attachment_file = doc_in.attachment_file
+    
+    # 수정 시 상태가 반려였다면 대기로 변경하고 결재 단계 초기화 가능
+    # 여기서는 상태만 대기로 변경하고 다시 처음부터 결재받도록 함
+    doc.status = ApprovalStatus.PENDING
+    doc.current_sequence = 1
+    doc.rejection_reason = None
+    
+    # 기존 단계들 삭제 후 다시 생성 (결재선 변경 대응)
+    await db.execute(delete(ApprovalStep).where(ApprovalStep.document_id == doc_id))
+    
+    lines_res = await db.execute(
+        select(ApprovalLine)
+        .where(ApprovalLine.doc_type == doc.doc_type)
+        .order_by(ApprovalLine.sequence)
+    )
+    lines = lines_res.scalars().all()
+    
+    for line in lines:
+        step = ApprovalStep(
+            document_id=doc.id,
+            approver_id=line.approver_id,
+            sequence=line.sequence,
+            status="PENDING"
+        )
+        db.add(step)
+    
+    await db.commit()
+    await db.refresh(doc)
+    return doc
+
+@router.delete("/documents/{doc_id}")
+async def delete_document(
+    doc_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
+):
+    """문서 삭제 (작성자이며 대기/반려 상태일 때만 가능)"""
+    result = await db.execute(select(ApprovalDocument).where(ApprovalDocument.id == doc_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+    
+    if doc.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="삭제 권한이 없습니다.")
+    
+    if doc.status not in [ApprovalStatus.PENDING, ApprovalStatus.REJECTED]:
+        raise HTTPException(status_code=400, detail="결재가 진행 중이거나 완료된 문서는 삭제할 수 없습니다.")
+    
+    await db.delete(doc) # Cascade delete will handle steps
+    await db.commit()
+    return {"message": "삭제되었습니다."}

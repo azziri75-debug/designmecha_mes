@@ -32,6 +32,8 @@ const ApprovalPage = () => {
 
     // Modal states
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false); // New: distinguish create vs edit
+    const [editDocId, setEditDocId] = useState(null); // New: track doc being edited
     const [selectedDocType, setSelectedDocType] = useState('VACATION');
     const [formData, setFormData] = useState({});
     const [showDocDetail, setShowDocDetail] = useState(false);
@@ -78,14 +80,44 @@ const ApprovalPage = () => {
                 content: formData,
                 attachment_file: formData.attachment_file || []
             };
-            await api.post('/approval/documents', payload);
-            alert('성공적으로 기안되었습니다.');
+
+            if (isEditing) {
+                await api.put(`/approval/documents/${editDocId}`, payload);
+                alert('기안 문서가 수정되었습니다.');
+            } else {
+                await api.post('/approval/documents', payload);
+                alert('성공적으로 기안되었습니다.');
+            }
+
             setShowCreateModal(false);
+            setIsEditing(false);
+            setEditDocId(null);
             setFormData({});
             fetchInitialData();
         } catch (error) {
-            alert('기안 실패: ' + (error.response?.data?.detail || error.message));
+            alert('요청 실패: ' + (error.response?.data?.detail || error.message));
         }
+    };
+
+    const handleDeleteDoc = async (docId) => {
+        if (!window.confirm('정말 삭제하시겠습니까? 관련 결재 데이터가 모두 삭제됩니다.')) return;
+        try {
+            await api.delete(`/approval/documents/${docId}`);
+            alert('삭제되었습니다.');
+            setShowDocDetail(false);
+            fetchInitialData();
+        } catch (error) {
+            alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const handleEditDoc = (doc) => {
+        setIsEditing(true);
+        setEditDocId(doc.id);
+        setSelectedDocType(doc.doc_type);
+        setFormData(doc.content);
+        setShowCreateModal(true);
+        setShowDocDetail(false);
     };
 
     const handleProcess = async (docId, status, comment) => {
@@ -238,9 +270,27 @@ const ApprovalPage = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <button className="text-gray-500 group-hover:text-white transition-colors">
-                                                    <ChevronRight className="w-5 h-5" />
-                                                </button>
+                                                <div className="flex justify-end gap-2 items-center">
+                                                    {(doc.status === 'PENDING' || doc.status === 'REJECTED') && (
+                                                        <>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleEditDoc(doc); }}
+                                                                className="p-1 hover:bg-gray-700 rounded text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                title="수정"
+                                                            >
+                                                                <Pencil className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc.id); }}
+                                                                className="p-1 hover:bg-gray-700 rounded text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                title="삭제"
+                                                            >
+                                                                <Trash className="w-4 h-4" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -323,28 +373,30 @@ const ApprovalPage = () => {
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2 uppercase tracking-tight">
                                 <Plus className="w-5 h-5 text-blue-500" />
-                                {DOC_TYPES[selectedDocType].label} 기안
+                                {DOC_TYPES[selectedDocType].label} {isEditing ? '수정' : '기안'}
                             </h3>
-                            <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-white transition-colors">
+                            <button onClick={() => { setShowCreateModal(false); setIsEditing(false); setEditDocId(null); setFormData({}); }} className="text-gray-400 hover:text-white transition-colors">
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
 
                         <div className="p-6">
-                            <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 mb-6">
-                                {Object.entries(DOC_TYPES).map(([type, info]) => (
-                                    <button
-                                        key={type}
-                                        onClick={() => setSelectedDocType(type)}
-                                        className={cn(
-                                            "flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all",
-                                            selectedDocType === type ? "bg-blue-600 text-white shadow" : "text-gray-400 hover:text-white"
-                                        )}
-                                    >
-                                        {info.label}
-                                    </button>
-                                ))}
-                            </div>
+                            {!isEditing && (
+                                <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 mb-6">
+                                    {Object.entries(DOC_TYPES).map(([type, info]) => (
+                                        <button
+                                            key={type}
+                                            onClick={() => setSelectedDocType(type)}
+                                            className={cn(
+                                                "flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                                selectedDocType === type ? "bg-blue-600 text-white shadow" : "text-gray-400 hover:text-white"
+                                            )}
+                                        >
+                                            {info.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
 
                             <form onSubmit={handleCreateDoc} className="space-y-6">
                                 {selectedDocType === 'VACATION' && (
@@ -352,16 +404,16 @@ const ApprovalPage = () => {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-gray-400">시작일</label>
-                                                <input type="date" className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} required />
+                                                <input type="date" value={formData.start_date || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} required />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-gray-400">종료일</label>
-                                                <input type="date" className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} required />
+                                                <input type="date" value={formData.end_date || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} required />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-400">휴가 종류</label>
-                                            <select className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, vacation_type: e.target.value })}>
+                                            <select value={formData.vacation_type || '연차'} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, vacation_type: e.target.value })}>
                                                 <option value="연차">연차</option>
                                                 <option value="반차">반차</option>
                                                 <option value="경조휴가">경조휴가</option>
@@ -371,7 +423,7 @@ const ApprovalPage = () => {
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-400">사유</label>
-                                            <textarea className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="구체적인 사유를 입력해주세요." onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required />
+                                            <textarea value={formData.reason || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="구체적인 사유를 입력해주세요." onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required />
                                         </div>
                                     </div>
                                 )}
@@ -380,16 +432,16 @@ const ApprovalPage = () => {
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-400">일자</label>
-                                            <input type="date" className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
+                                            <input type="date" value={formData.date || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-gray-400">시간</label>
-                                                <input type="time" className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, time: e.target.value })} required />
+                                                <input type="time" value={formData.time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, time: e.target.value })} required />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-gray-400">구분</label>
-                                                <select className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
+                                                <select value={formData.type || '조퇴'} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
                                                     <option value="조퇴">조퇴</option>
                                                     <option value="외출">외출</option>
                                                 </select>
@@ -397,7 +449,7 @@ const ApprovalPage = () => {
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-400">사유</label>
-                                            <textarea className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="사유를 입력해주세요." onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required />
+                                            <textarea value={formData.reason || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="사유를 입력해주세요." onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required />
                                         </div>
                                     </div>
                                 )}
@@ -406,11 +458,11 @@ const ApprovalPage = () => {
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-400">신청 품목 및 수량</label>
-                                            <textarea className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="예) A4 용지 2박스, 모나미 볼펜 10자루" onChange={(e) => setFormData({ ...formData, items: e.target.value })} required />
+                                            <textarea value={formData.items || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="예) A4 용지 2박스, 모나미 볼펜 10자루" onChange={(e) => setFormData({ ...formData, items: e.target.value })} required />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-400">용도/비고</label>
-                                            <input className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" placeholder="사무용" onChange={(e) => setFormData({ ...formData, remarks: e.target.value })} />
+                                            <input value={formData.remarks || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" placeholder="사무용" onChange={(e) => setFormData({ ...formData, remarks: e.target.value })} />
                                         </div>
                                     </div>
                                 )}
@@ -418,7 +470,7 @@ const ApprovalPage = () => {
                                 <div className="pt-6 border-t border-gray-700 flex gap-3">
                                     <button
                                         type="button"
-                                        onClick={() => setShowCreateModal(false)}
+                                        onClick={() => { setShowCreateModal(false); setIsEditing(false); setEditDocId(null); setFormData({}); }}
                                         className="flex-1 px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium"
                                     >
                                         취소
@@ -427,7 +479,7 @@ const ApprovalPage = () => {
                                         type="submit"
                                         className="flex-2 flex-[2] px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-bold flex items-center justify-center gap-2"
                                     >
-                                        기안하기
+                                        {isEditing ? '수정완료' : '기안하기'}
                                         <ArrowRight className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -449,9 +501,29 @@ const ApprovalPage = () => {
                                 </h3>
                                 <p className="text-xs text-gray-500 mt-1">ID: {selectedDoc.id} | 기안일: {format(new Date(selectedDoc.created_at), 'yyyy-MM-dd HH:mm')}</p>
                             </div>
-                            <button onClick={() => setShowDocDetail(false)} className="text-gray-400 hover:text-white transition-colors">
-                                <X className="w-6 h-6" />
-                            </button>
+                            <div className="flex items-center gap-3">
+                                {(selectedDoc.status === 'PENDING' || selectedDoc.status === 'REJECTED') && (
+                                    <>
+                                        <button
+                                            onClick={() => handleEditDoc(selectedDoc)}
+                                            className="p-2 hover:bg-gray-700 rounded-lg text-blue-400 transition-colors"
+                                            title="수정"
+                                        >
+                                            <Pencil className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteDoc(selectedDoc.id)}
+                                            className="p-2 hover:bg-gray-700 rounded-lg text-red-400 transition-colors"
+                                            title="삭제"
+                                        >
+                                            <Trash className="w-5 h-5" />
+                                        </button>
+                                    </>
+                                )}
+                                <button onClick={() => setShowDocDetail(false)} className="text-gray-400 hover:text-white transition-colors">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="p-6 md:p-8 space-y-8 overflow-y-auto max-h-[80vh]">
