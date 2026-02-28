@@ -295,6 +295,30 @@ async def startup_event():
             if not r.scalar():
                 await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN attachment_file JSONB"))
 
+        # 5b. Fix WorkLogItems and WorkLogs (Persistent Sync)
+        if is_sqlite:
+            r = await db.execute(text("PRAGMA table_info(work_log_items)"))
+            cols = [c[1] for c in r.fetchall()]
+            if "unit_price" not in cols:
+                await db.execute(text("ALTER TABLE work_log_items ADD COLUMN unit_price FLOAT DEFAULT 0.0"))
+            
+            r = await db.execute(text("PRAGMA table_info(work_logs)"))
+            cols = [c[1] for c in r.fetchall()]
+            if "attachment_file" not in cols:
+                await db.execute(text("ALTER TABLE work_logs ADD COLUMN attachment_file JSON"))
+        else:
+            # Postgres: work_log_items.unit_price
+            r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='work_log_items' AND column_name='unit_price'"))
+            if not r.scalar():
+                await db.execute(text("ALTER TABLE work_log_items ADD COLUMN unit_price DOUBLE PRECISION DEFAULT 0.0"))
+            
+            # Postgres: work_logs.attachment_file
+            r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='work_logs' AND column_name='attachment_file'"))
+            if not r.scalar():
+                await db.execute(text("ALTER TABLE work_logs ADD COLUMN attachment_file JSONB"))
+        
+        await db.commit()
+
         # 6. Initialize Default Form Templates
         DEFAULT_FORMS = [
             {"form_type": "ESTIMATE", "name": "견적서"},
