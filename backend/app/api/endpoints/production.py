@@ -1418,6 +1418,46 @@ async def get_worker_performance(
     result = await db.execute(stmt)
     return [dict(row._mapping) for row in result.all()]
 
+@router.get("/performance/details", response_model=List[schemas.WorkLogItem])
+async def get_performance_details(
+    worker_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Get detailed work log items with optional worker and date filtering.
+    """
+    stmt = (
+        select(WorkLogItem)
+        .join(WorkLog, WorkLogItem.work_log_id == WorkLog.id)
+        .options(
+            selectinload(WorkLogItem.work_log),
+            selectinload(WorkLogItem.worker),
+            selectinload(WorkLogItem.plan_item).options(
+                selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(ProductionPlanItem.equipment),
+                selectinload(ProductionPlanItem.worker),
+                selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+                selectinload(ProductionPlanItem.plan).options(
+                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                )
+            )
+        )
+    )
+    
+    if worker_id:
+        stmt = stmt.where(WorkLogItem.worker_id == worker_id)
+    if start_date:
+        stmt = stmt.where(WorkLog.work_date >= start_date)
+    if end_date:
+        stmt = stmt.where(WorkLog.work_date <= end_date)
+        
+    result = await db.execute(stmt.order_by(WorkLog.work_date.desc(), WorkLogItem.id.desc()))
+    return result.scalars().all()
+
 @router.get("/performance/workers/{worker_id}/details", response_model=List[schemas.WorkLogItem])
 async def get_worker_performance_details(
     worker_id: int,

@@ -51,12 +51,14 @@ const MobileWorkLogPage = () => {
     // Data lists
     const [allPlans, setAllPlans] = useState([]);
     const [myPerformance, setMyPerformance] = useState([]);
+    const [staffList, setStaffList] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
 
     // Performance Filters
     const now = new Date();
     const [perfYear, setPerfYear] = useState(now.getFullYear());
     const [perfMonth, setPerfMonth] = useState(now.getMonth() + 1);
+    const [selectedWorker, setSelectedWorker] = useState(user?.user_type === 'ADMIN' ? 'ALL' : (user?.id || ''));
 
     // Navigation/Selection State
     const [selectedPlan, setSelectedPlan] = useState(null);
@@ -98,8 +100,11 @@ const MobileWorkLogPage = () => {
     useEffect(() => {
         if (!user) return;
         if (tab === 0) fetchAllPlans();
-        if (tab === 1) fetchMyPerformance();
-    }, [tab, perfYear, perfMonth, user]);
+        if (tab === 1) {
+            fetchPerformance();
+            if (user.user_type === 'ADMIN') fetchStaffList();
+        }
+    }, [tab, perfYear, perfMonth, user, selectedWorker]);
 
     const fetchAllPlans = async () => {
         setLoading(true);
@@ -113,7 +118,16 @@ const MobileWorkLogPage = () => {
         }
     };
 
-    const fetchMyPerformance = async () => {
+    const fetchStaffList = async () => {
+        try {
+            const res = await api.get('/basics/staff/');
+            setStaffList(res.data);
+        } catch (err) {
+            console.error('Staff fetch error:', err);
+        }
+    };
+
+    const fetchPerformance = async () => {
         if (!user?.id) return;
         setLoading(true);
         try {
@@ -121,10 +135,16 @@ const MobileWorkLogPage = () => {
             const lastDay = new Date(perfYear, perfMonth, 0).getDate();
             const endDate = `${perfYear}-${String(perfMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-            console.log('Fetching performance for:', user.id, startDate, endDate);
-            const res = await api.get(`/production/performance/workers/${user.id}/details`, {
-                params: { start_date: startDate, end_date: endDate }
-            });
+            const params = { start_date: startDate, end_date: endDate };
+            // Admin can filter by worker, or see all if empty
+            if (user.user_type === 'ADMIN') {
+                if (selectedWorker !== 'ALL') params.worker_id = selectedWorker;
+            } else {
+                params.worker_id = user.id;
+            }
+
+            console.log('Fetching performance with params:', params);
+            const res = await api.get('/production/performance/details', { params });
             console.log('Performance data count:', res.data.length);
             setMyPerformance(res.data);
         } catch (err) {
@@ -242,6 +262,7 @@ const MobileWorkLogPage = () => {
                 groups[logId] = {
                     id: logId,
                     date: item.work_log?.work_date,
+                    workerName: item.worker?.name,
                     totalCost: 0,
                     items: []
                 };
@@ -461,7 +482,7 @@ const MobileWorkLogPage = () => {
                     <Box sx={{ width: '50%', p: 2 }}>
                         {/* Filters & Summary */}
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 3, backgroundColor: '#1a237e', color: '#fff' }}>
-                            <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                            <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
                                 <FormControl size="small" fullWidth sx={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 1 }}>
                                     <Select
                                         value={perfYear}
@@ -481,8 +502,25 @@ const MobileWorkLogPage = () => {
                                     </Select>
                                 </FormControl>
                             </Stack>
-                            <Box sx={{ textAlign: 'center', py: 1 }}>
-                                <Typography variant="caption" sx={{ opacity: 0.8 }}>선택 기간 총 실적 비용</Typography>
+
+                            {user.user_type === 'ADMIN' && (
+                                <FormControl size="small" fullWidth sx={{ mb: 2, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 1 }}>
+                                    <Select
+                                        value={selectedWorker}
+                                        onChange={e => setSelectedWorker(e.target.value)}
+                                        displayEmpty
+                                        sx={{ color: '#fff', '& .MuiSelect-icon': { color: '#fff' } }}
+                                    >
+                                        <MenuItem value="ALL">전체 작업자</MenuItem>
+                                        {staffList.map(s => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                            )}
+
+                            <Box sx={{ textAlign: 'center', py: 0.5 }}>
+                                <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                                    {selectedWorker === 'ALL' ? '전체' : '선택'} 작업자 실적 합계
+                                </Typography>
                                 <Typography variant="h4" fontWeight="bold">
                                     {totalCost.toLocaleString()}원
                                 </Typography>
@@ -502,7 +540,9 @@ const MobileWorkLogPage = () => {
                                         >
                                             <Stack direction="row" justifyContent="space-between" width="100%" alignItems="center">
                                                 <Box>
-                                                    <Typography variant="subtitle1" fontWeight="bold">{group.date}</Typography>
+                                                    <Typography variant="subtitle1" fontWeight="bold">
+                                                        {group.date} {user.user_type === 'ADMIN' && group.workerName && `(${group.workerName})`}
+                                                    </Typography>
                                                     <Typography variant="caption" color="textSecondary">
                                                         {group.items.length}건의 작업
                                                     </Typography>
