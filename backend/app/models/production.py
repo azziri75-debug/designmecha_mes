@@ -119,6 +119,8 @@ class WorkLog(Base):
     worker_id = Column(Integer, ForeignKey("staff.id"), nullable=True) # 작성자 
     note = Column(Text, nullable=True)
     
+    attachment_file = Column(JSON, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

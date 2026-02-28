@@ -142,12 +142,14 @@ class WorkLogBase(BaseModel):
     work_date: date
     worker_id: Optional[int] = None
     note: Optional[str] = None
+    attachment_file: Optional[Union[List[Any], str]] = None
 
 class WorkLogCreate(WorkLogBase):
     items: List[WorkLogItemCreate]
 
 class WorkLogUpdate(WorkLogBase):
     items: Optional[List[WorkLogItemCreate]] = None
+    work_date: Optional[date] = None
 
 class WorkLog(WorkLogBase):
     id: int

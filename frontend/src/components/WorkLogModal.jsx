@@ -3,14 +3,17 @@ import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
     TextField, Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, IconButton, Autocomplete
 } from '@mui/material';
-import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Add as AddIcon, Upload as UploadIcon, FilePresent as FileIcon } from '@mui/icons-material';
 import api from '../lib/api';
+import FileViewerModal from './FileViewerModal';
 
 const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
     const [workDate, setWorkDate] = useState(new Date().toISOString().split('T')[0]);
     const [workerId, setWorkerId] = useState('');
     const [note, setNote] = useState('');
     const [items, setItems] = useState([]);
+    const [attachmentFile, setAttachmentFile] = useState([]);
+    const [fileViewerOpen, setFileViewerOpen] = useState(false);
 
     const [staffList, setStaffList] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -32,11 +35,13 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                     ...i,
                     cid: Math.random().toString(36).substr(2, 9)
                 })));
+                setAttachmentFile(log.attachment_file ? (typeof log.attachment_file === 'string' ? JSON.parse(log.attachment_file) : log.attachment_file) : []);
             } else {
                 setWorkDate(new Date().toISOString().split('T')[0]);
                 setWorkerId('');
                 setNote('');
                 setItems([]);
+                setAttachmentFile([]);
             }
         }
     }, [isOpen, log]);
@@ -81,6 +86,30 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
         setItems(newItems);
     };
 
+    const handleFileUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        const uploadFormData = new FormData();
+        files.forEach(file => uploadFormData.append('files', file));
+
+        try {
+            const res = await api.post('/upload/', uploadFormData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            const newUploadedFiles = res.data.files;
+            setAttachmentFile(prev => [...prev, ...newUploadedFiles]);
+        } catch (error) {
+            console.error("Upload failed", error);
+            alert("파일 업로드 실패");
+        }
+    };
+
+    const removeAttachment = (index) => {
+        setAttachmentFile(prev => prev.filter((_, i) => i !== index));
+    };
+
     const handleSubmit = async () => {
         if (!workDate) {
             alert('작업일자를 입력해주세요.');
@@ -93,6 +122,7 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                 work_date: workDate,
                 worker_id: workerId || null,
                 note: note,
+                attachment_file: attachmentFile,
                 items: items.map(i => ({
                     plan_item_id: i.plan_item_id,
                     worker_id: i.worker_id || null,
@@ -154,6 +184,56 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                         size="small"
                         fullWidth
                     />
+                </Box>
+
+                <Box sx={{ mb: 3 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="subtitle2" color="textSecondary">첨부파일</Typography>
+                        <Button
+                            component="label"
+                            variant="outlined"
+                            size="small"
+                            startIcon={<UploadIcon />}
+                            sx={{ fontSize: '0.75rem' }}
+                        >
+                            파일 추가
+                            <input type="file" multiple hidden onChange={handleFileUpload} />
+                        </Button>
+                    </Box>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {attachmentFile.length > 0 ? (
+                            attachmentFile.map((file, idx) => (
+                                <Paper
+                                    key={idx}
+                                    variant="outlined"
+                                    sx={{
+                                        p: 0.5, px: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1,
+                                        backgroundColor: '#f8f9fa'
+                                    }}
+                                >
+                                    <FileIcon sx={{ fontSize: '1.2rem', color: 'primary.main' }} />
+                                    <Typography
+                                        variant="caption"
+                                        sx={{
+                                            cursor: 'pointer',
+                                            '&:hover': { textDecoration: 'underline', color: 'primary.main' }
+                                        }}
+                                        onClick={() => setFileViewerOpen(true)}
+                                    >
+                                        {file.name}
+                                    </Typography>
+                                    <IconButton size="small" onClick={() => removeAttachment(idx)}>
+                                        <X style={{ width: '14px', height: '14px' }} />
+                                    </IconButton>
+                                </Paper>
+                            ))
+                        ) : (
+                            <Typography variant="caption" color="textSecondary">등록된 첨부파일이 없습니다.</Typography>
+                        )}
+                    </Box>
                 </Box>
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -286,6 +366,14 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                     <Button onClick={() => setPlanSelectorOpen(false)}>닫기</Button>
                 </DialogActions>
             </Dialog>
+
+            <FileViewerModal
+                isOpen={fileViewerOpen}
+                onClose={() => setFileViewerOpen(false)}
+                files={attachmentFile}
+                title="작업일지 첨부파일"
+                onDeleteFile={removeAttachment}
+            />
         </Dialog>
     );
 };

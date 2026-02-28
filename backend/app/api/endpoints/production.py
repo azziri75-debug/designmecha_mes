@@ -1072,10 +1072,16 @@ async def create_work_log(
     """
     Create a new work log.
     """
+    import json
+    attachment_file = log_in.attachment_file
+    if attachment_file and isinstance(attachment_file, (list, dict)):
+        attachment_file = json.dumps(attachment_file, ensure_ascii=False)
+
     log = WorkLog(
         work_date=log_in.work_date,
         worker_id=log_in.worker_id,
-        note=log_in.note
+        note=log_in.note,
+        attachment_file=attachment_file
     )
     db.add(log)
     await db.flush()
@@ -1136,6 +1142,12 @@ async def update_work_log(
         log.worker_id = log_in.worker_id
     if log_in.note is not None:
         log.note = log_in.note
+    if log_in.attachment_file is not None:
+        import json
+        if isinstance(log_in.attachment_file, (list, dict)):
+            log.attachment_file = json.dumps(log_in.attachment_file, ensure_ascii=False)
+        else:
+            log.attachment_file = log_in.attachment_file
 
     if log_in.items is not None:
         log.items.clear()
@@ -1161,7 +1173,10 @@ async def update_work_log(
             selectinload(WorkLog.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product),
+                selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(ProductionPlanItem.equipment),
+                selectinload(ProductionPlanItem.purchase_items),
+                selectinload(ProductionPlanItem.outsourcing_items),
                 selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
             )
