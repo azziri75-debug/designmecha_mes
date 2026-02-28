@@ -38,7 +38,16 @@ import {
     ArrowBack as ArrowBackIcon,
     Search as SearchIcon,
     ExpandMore as ExpandMoreIcon,
-    ChevronRight as ChevronRightIcon
+    ChevronRight as ChevronRightIcon,
+    FileText as FileTextIcon,
+    Description as DescriptionIcon,
+    History as HistoryIcon,
+    Cancel as CancelIcon,
+    PendingActions as PendingActionsIcon,
+    Add as AddIcon,
+    Close as CloseIcon,
+    CheckCircle as CheckCircleIcon,
+    AssignmentInd as AssignmentIndIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
@@ -74,6 +83,30 @@ const MobileWorkLogPage = () => {
     // Conflict Dialog
     const [conflictOpen, setConflictOpen] = useState(false);
 
+    // Approval States
+    const [approvalDocs, setApprovalDocs] = useState([]);
+    const [viewMode, setViewMode] = useState('ALL'); // Filters: ALL, MY_DRAFTS, MY_APPROVALS
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [selectedDocType, setSelectedDocType] = useState('VACATION');
+    const [docFormData, setDocFormData] = useState({});
+    const [selectedDoc, setSelectedDoc] = useState(null);
+    const [comment, setComment] = useState('');
+
+    const DOC_TYPES = {
+        VACATION: { label: '휴가원', color: '#3b82f6' },
+        EARLY_LEAVE: { label: '조퇴/외출원', color: '#a855f7' },
+        SUPPLIES: { label: '소모품 신청서', color: '#10b981' },
+        OVERTIME: { label: '야근/특근신청서', color: '#f97316' }
+    };
+
+    const STATUS_MAP = {
+        PENDING: { label: '기안대기', color: '#6b7280' },
+        IN_PROGRESS: { label: '결재진행', color: '#3b82f6' },
+        COMPLETED: { label: '결재완료', color: '#10b981' },
+        REJECTED: { label: '반려', color: '#ef4444' }
+    };
+
     // Swipe State
     const [touchStart, setTouchStart] = useState(0);
 
@@ -104,7 +137,20 @@ const MobileWorkLogPage = () => {
             fetchPerformance();
             if (user.user_type === 'ADMIN') fetchStaffList();
         }
-    }, [tab, perfYear, perfMonth, user, selectedWorker]);
+        if (tab === 2) fetchApprovalDocs();
+    }, [tab, perfYear, perfMonth, user, selectedWorker, viewMode]);
+
+    const fetchApprovalDocs = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get(`/approval/documents?view_mode=${viewMode}`);
+            setApprovalDocs(res.data);
+        } catch (err) {
+            console.error('Approval fetch error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchAllPlans = async () => {
         setLoading(true);
@@ -296,7 +342,7 @@ const MobileWorkLogPage = () => {
                         </IconButton>
                     )}
                     <Typography variant="h6" fontWeight="bold">
-                        {tab === 0 ? (selectedItem ? "실적 등록" : selectedPlan ? "공정 선택" : "생산 현황") : "내 실적 확인"}
+                        {tab === 0 ? (selectedItem ? "실적 등록" : selectedPlan ? "공정 선택" : "생산 현황") : tab === 1 ? "내 실적 확인" : "전자결재"}
                     </Typography>
                 </Stack>
                 <Typography variant="caption" color="textSecondary">
@@ -316,13 +362,13 @@ const MobileWorkLogPage = () => {
             >
                 <Box sx={{
                     display: 'flex',
-                    width: '200%',
+                    width: '300%',
                     height: '100%',
-                    transform: `translateX(-${tab * 50}%)`,
+                    transform: `translateX(-${tab * (100 / 3)}%)`,
                     transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}>
                     {/* Tab 1: Production Status */}
-                    <Box sx={{ width: '50%', p: 2, overflowY: 'auto' }}>
+                    <Box sx={{ width: '33.33%', p: 2, overflowY: 'auto' }}>
                         {!selectedPlan && !selectedItem ? (
                             /* Step 1: Browse Production Plans */
                             <Box>
@@ -486,7 +532,7 @@ const MobileWorkLogPage = () => {
                     </Box>
 
                     {/* Tab 2: Performance */}
-                    <Box sx={{ width: '50%', p: 2, overflowY: 'auto' }}>
+                    <Box sx={{ width: '33.33%', p: 2, overflowY: 'auto' }}>
                         {/* Filters & Summary */}
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 3, backgroundColor: '#1a237e', color: '#fff' }}>
                             <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
@@ -593,6 +639,97 @@ const MobileWorkLogPage = () => {
                             </Stack>
                         )}
                     </Box>
+
+                    {/* Tab 3: Approval */}
+                    <Box sx={{ width: '33.33%', p: 2, overflowY: 'auto', bgcolor: '#f1f5f9' }}>
+                        <Stack direction="row" spacing={1} sx={{ mb: 2, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { display: 'none' } }}>
+                            {[
+                                { id: 'ALL', label: '전체' },
+                                { id: 'MY_WAITING', label: '기안대기' },
+                                { id: 'MY_COMPLETED', label: '결재완료' },
+                                { id: 'MY_REJECTED', label: '반려문서' },
+                                { id: 'MY_APPROVALS', label: '나의결재대기' }
+                            ].map(m => (
+                                <Chip
+                                    key={m.id}
+                                    label={m.label}
+                                    onClick={() => setViewMode(m.id)}
+                                    color={viewMode === m.id ? "primary" : "default"}
+                                    variant={viewMode === m.id ? "filled" : "outlined"}
+                                    size="small"
+                                    sx={{ flexShrink: 0 }}
+                                />
+                            ))}
+                        </Stack>
+
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => { setSelectedDocType('VACATION'); setDocFormData({}); setShowCreateModal(true); }}
+                            sx={{ mb: 2, borderRadius: 2, py: 1.5, fontWeight: 'bold' }}
+                        >
+                            신규 문서 기안
+                        </Button>
+
+                        {loading ? (
+                            <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress size={24} /></Box>
+                        ) : (
+                            <Stack spacing={1.5}>
+                                {approvalDocs.map(doc => (
+                                    <Card
+                                        key={doc.id}
+                                        sx={{
+                                            borderRadius: 2,
+                                            borderLeft: `4px solid ${STATUS_MAP[doc.status]?.color}`,
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                                        }}
+                                        onClick={() => { setSelectedDoc(doc); setShowDetailModal(true); }}
+                                    >
+                                        <CardContent sx={{ p: 2 }}>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                                                        <Typography variant="caption" sx={{ color: DOC_TYPES[doc.doc_type]?.color, fontWeight: 'bold' }}>
+                                                            {DOC_TYPES[doc.doc_type]?.label}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="textSecondary">•</Typography>
+                                                        <Typography variant="caption" color="textSecondary">
+                                                            {doc.created_at?.split('T')[0]}
+                                                        </Typography>
+                                                    </Stack>
+                                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.5 }}>
+                                                        {doc.title}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
+                                                        기안자: {doc.author?.name} ({doc.author?.role})
+                                                    </Typography>
+                                                </Box>
+                                                <Chip
+                                                    label={STATUS_MAP[doc.status]?.label}
+                                                    size="small"
+                                                    sx={{
+                                                        height: 22,
+                                                        fontSize: '10px',
+                                                        fontWeight: 'bold',
+                                                        backgroundColor: `${STATUS_MAP[doc.status]?.color}20`,
+                                                        color: STATUS_MAP[doc.status]?.color,
+                                                        border: `1px solid ${STATUS_MAP[doc.status]?.color}50`
+                                                    }}
+                                                />
+                                            </Stack>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                                {approvalDocs.length === 0 && (
+                                    <Box sx={{ mt: 8, textAlign: 'center', color: 'textSecondary' }}>
+                                        <DescriptionIcon sx={{ fontSize: 48, opacity: 0.2, mb: 1 }} />
+                                        <Typography variant="body2">해당하는 문서가 없습니다.</Typography>
+                                    </Box>
+                                )}
+                            </Stack>
+                        )}
+                    </Box>
                 </Box>
             </Box>
 
@@ -611,6 +748,7 @@ const MobileWorkLogPage = () => {
                 >
                     <BottomNavigationAction label="생산현황" icon={<AssignmentIcon />} />
                     <BottomNavigationAction label="내 실적" icon={<BarChartIcon />} />
+                    <BottomNavigationAction label="전자결재" icon={<DescriptionIcon />} />
                 </BottomNavigation>
             </Paper>
 
@@ -629,6 +767,145 @@ const MobileWorkLogPage = () => {
                     <Button variant="outlined" color="error" fullWidth onClick={() => handleSaveLog("REPLACE")}>기존 일지 삭제 후 새로 등록</Button>
                     <Button variant="text" fullWidth onClick={() => setConflictOpen(false)}>취소</Button>
                 </DialogActions>
+            </Dialog>
+
+            {/* Create Doc Modal (Mobile optimized) */}
+            <Dialog fullScreen open={showCreateModal} onClose={() => setShowCreateModal(false)}>
+                <AppBar sx={{ position: 'relative', bgcolor: '#fff', color: '#000' }}>
+                    <Toolbar size="small">
+                        <IconButton edge="start" color="inherit" onClick={() => setShowCreateModal(false)}>
+                            <CloseIcon />
+                        </IconButton>
+                        <Typography sx={{ ml: 2, flex: 1, fontWeight: 'bold' }}>문서 기안</Typography>
+                        <Button autoFocus color="primary" onClick={handleCreateApproval} fontWeight="bold">기안</Button>
+                    </Toolbar>
+                </AppBar>
+                <Box sx={{ p: 2, bgcolor: '#f8f9fa', minHeight: '100%' }}>
+                    <FormControl fullWidth size="small" sx={{ mb: 3 }}>
+                        <InputLabel>문서 종류</InputLabel>
+                        <Select
+                            value={selectedDocType}
+                            label="문서 종류"
+                            onChange={(e) => { setSelectedDocType(e.target.value); setDocFormData({}); }}
+                        >
+                            {Object.entries(DOC_TYPES).map(([k, v]) => (
+                                <MenuItem key={k} value={k}>{v.label}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    <Paper sx={{ p: 2, borderRadius: 2 }}>
+                        {selectedDocType === 'VACATION' && (
+                            <Stack spacing={2}>
+                                <TextField label="시작일" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, start_date: e.target.value })} />
+                                <TextField label="종료일" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_date: e.target.value })} />
+                                <TextField label="사유" multiline rows={4} fullWidth size="small" onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
+                            </Stack>
+                        )}
+                        {selectedDocType === 'EARLY_LEAVE' && (
+                            <Stack spacing={2}>
+                                <TextField label="일자" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, date: e.target.value })} />
+                                <TextField label="시간" type="time" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, time: e.target.value })} />
+                                <TextField label="사유" multiline rows={4} fullWidth size="small" onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
+                            </Stack>
+                        )}
+                        {selectedDocType === 'SUPPLIES' && (
+                            <Stack spacing={2}>
+                                <TextField label="품목 및 수량" multiline rows={4} fullWidth size="small" placeholder="A4용지 1박스 등" onChange={e => setDocFormData({ ...docFormData, items: e.target.value })} />
+                                <TextField label="비고" fullWidth size="small" onChange={e => setDocFormData({ ...docFormData, remarks: e.target.value })} />
+                            </Stack>
+                        )}
+                        {selectedDocType === 'OVERTIME' && (
+                            <Stack spacing={2}>
+                                <TextField label="근무일" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, date: e.target.value })} />
+                                <Stack direction="row" spacing={1}>
+                                    <TextField label="시작" type="time" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, start_time: e.target.value })} />
+                                    <TextField label="종료" type="time" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_time: e.target.value })} />
+                                </Stack>
+                                <TextField label="업무 내용" multiline rows={4} fullWidth size="small" onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
+                            </Stack>
+                        )}
+                    </Paper>
+                </Box>
+            </Dialog>
+
+            {/* Doc Detail Modal */}
+            <Dialog fullScreen open={showDetailModal} onClose={() => setShowDetailModal(false)}>
+                <AppBar sx={{ position: 'relative', bgcolor: '#fff', color: '#000' }}>
+                    <Toolbar size="small">
+                        <IconButton edge="start" color="inherit" onClick={() => setShowDetailModal(false)}>
+                            <CloseIcon />
+                        </IconButton>
+                        <Typography sx={{ ml: 2, flex: 1, fontWeight: 'bold' }}>문서 상세</Typography>
+                    </Toolbar>
+                </AppBar>
+                <Box sx={{ p: 2, bgcolor: '#f8f9fa', minHeight: '100%' }}>
+                    {selectedDoc && (
+                        <Stack spacing={2}>
+                            <Paper sx={{ p: 2, borderRadius: 2 }}>
+                                <Typography variant="caption" sx={{ color: DOC_TYPES[selectedDoc.doc_type]?.color, fontWeight: 'bold' }}>
+                                    {DOC_TYPES[selectedDoc.doc_type]?.label}
+                                </Typography>
+                                <Typography variant="h6" fontWeight="bold" gutterBottom>{selectedDoc.title}</Typography>
+                                <Divider sx={{ my: 1 }} />
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                    {JSON.stringify(selectedDoc.content, null, 2)}
+                                </Typography>
+                            </Paper>
+
+                            <Paper sx={{ p: 2, borderRadius: 2 }}>
+                                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>결재 진행 상태</Typography>
+                                <Stack spacing={1}>
+                                    {selectedDoc.steps?.map((step, idx) => (
+                                        <Stack key={idx} direction="row" justifyContent="space-between" alignItems="center">
+                                            <Typography variant="caption">
+                                                {step.sequence}. {step.approver?.name} ({step.approver?.role})
+                                            </Typography>
+                                            <Chip
+                                                label={step.status}
+                                                size="small"
+                                                color={step.status === 'APPROVED' ? 'success' : 'default'}
+                                                sx={{ height: 18, fontSize: '9px' }}
+                                            />
+                                        </Stack>
+                                    ))}
+                                </Stack>
+                            </Paper>
+
+                            {/* Processing for current approver */}
+                            {(selectedDoc.status === 'PENDING' || selectedDoc.status === 'IN_PROGRESS') && selectedDoc.steps?.some(s => s.approver_id === user.id && s.sequence === selectedDoc.current_sequence && s.status === 'PENDING') && (
+                                <Paper sx={{ p: 2, borderRadius: 2, border: '1px solid #3b82f6' }}>
+                                    <TextField
+                                        label="의견 (반려 시 필수)"
+                                        fullWidth
+                                        size="small"
+                                        value={comment}
+                                        onChange={e => setComment(e.target.value)}
+                                        sx={{ mb: 2 }}
+                                    />
+                                    <Stack direction="row" spacing={1}>
+                                        <Button
+                                            variant="outlined"
+                                            color="error"
+                                            fullWidth
+                                            onClick={() => handleProcessApproval('REJECTED')}
+                                        >
+                                            반려
+                                        </Button>
+                                        <Button
+                                            variant="contained"
+                                            color="success"
+                                            fullWidth
+                                            onClick={() => handleProcessApproval('APPROVED')}
+                                        >
+                                            승인
+                                        </Button>
+                                    </Stack>
+                                </Paper>
+                            )}
+                        </Stack>
+                    )}
+                </Box>
             </Dialog>
         </Box>
     );
