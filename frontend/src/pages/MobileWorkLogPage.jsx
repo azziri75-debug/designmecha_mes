@@ -93,6 +93,7 @@ const MobileWorkLogPage = () => {
     const [docFormData, setDocFormData] = useState({});
     const [selectedDoc, setSelectedDoc] = useState(null);
     const [comment, setComment] = useState('');
+    const [editingDocId, setEditingDocId] = useState(null);
 
     const DOC_TYPES = {
         VACATION: { label: '휴가원', color: '#3b82f6' },
@@ -290,13 +291,43 @@ const MobileWorkLogPage = () => {
                 doc_type: selectedDocType,
                 content: docFormData
             };
-            await api.post('/approval/documents', payload);
-            alert("기안이 완료되었습니다.");
+            if (editingDocId) {
+                await api.put(`/approval/documents/${editingDocId}`, payload);
+                alert("수정이 완료되었습니다.");
+            } else {
+                await api.post('/approval/documents', payload);
+                alert("기안이 완료되었습니다.");
+            }
             setShowCreateModal(false);
+            setEditingDocId(null);
             fetchApprovalDocs();
         } catch (err) {
             console.error('Approval creation error:', err);
-            alert("기안 실패: " + (err.response?.data?.detail || err.message));
+            alert("처리 실패: " + (err.response?.data?.detail || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEditApproval = (doc) => {
+        setSelectedDocType(doc.doc_type);
+        setDocFormData(doc.content);
+        setEditingDocId(doc.id);
+        setShowDetailModal(false);
+        setShowCreateModal(true);
+    };
+
+    const handleDeleteApproval = async (docId) => {
+        if (!window.confirm("정말 삭제하시겠습니까?")) return;
+        setLoading(true);
+        try {
+            await api.delete(`/approval/documents/${docId}`);
+            alert("삭제되었습니다.");
+            setShowDetailModal(false);
+            fetchApprovalDocs();
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert("삭제 실패: " + (err.response?.data?.detail || err.message));
         } finally {
             setLoading(false);
         }
@@ -347,6 +378,27 @@ const MobileWorkLogPage = () => {
 
     const totalCost = useMemo(() => {
         return myPerformance.reduce((sum, item) => sum + calculateItemCost(item), 0);
+    }, [myPerformance]);
+
+    // Grouping performance by worker for admin summary
+    const workerAggregates = useMemo(() => {
+        const groups = {};
+        myPerformance.forEach(item => {
+            const workerId = item.worker?.id;
+            if (!workerId) return;
+            if (!groups[workerId]) {
+                groups[workerId] = {
+                    id: workerId,
+                    name: item.worker?.name,
+                    role: item.worker?.role,
+                    totalCost: 0,
+                    count: 0
+                };
+            }
+            groups[workerId].totalCost += calculateItemCost(item);
+            groups[workerId].count += 1;
+        });
+        return Object.values(groups).sort((a, b) => b.totalCost - a.totalCost);
     }, [myPerformance]);
 
     // Grouping performance by work_log_id for drill-down
@@ -631,62 +683,104 @@ const MobileWorkLogPage = () => {
                         </Paper>
 
                         {/* Drill-down List */}
-                        {loading && groupedPerformance.length === 0 ? (
-                            <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress size={24} /></Box>
-                        ) : (
+                        {user.user_type === 'ADMIN' && selectedWorker === 'ALL' ? (
+                            /* Admin Summary View (Worker Aggregates) */
                             <Stack spacing={1.5}>
-                                {groupedPerformance.map(group => (
-                                    <Card key={group.id} sx={{ borderRadius: 2 }}>
-                                        <ListItemButton
-                                            onClick={() => setExpandedLogId(expandedLogId === group.id ? null : group.id)}
-                                            sx={{ p: 2, flexDirection: 'column', alignItems: 'flex-start' }}
-                                        >
-                                            <Stack direction="row" justifyContent="space-between" width="100%" alignItems="center">
+                                {workerAggregates.map(agg => (
+                                    <Card key={agg.id} sx={{ borderRadius: 2 }} onClick={() => setSelectedWorker(agg.id)}>
+                                        <CardContent sx={{ p: 2 }}>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                 <Box>
-                                                    <Typography variant="subtitle1" fontWeight="bold">
-                                                        {group.date} {user.user_type === 'ADMIN' && group.workerName && `(${group.workerName})`}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="textSecondary">
-                                                        {group.items.length}건의 작업
-                                                    </Typography>
+                                                    <Typography variant="subtitle1" fontWeight="bold">{agg.name}</Typography>
+                                                    <Typography variant="caption" color="textSecondary">{agg.role} • {agg.count}건</Typography>
                                                 </Box>
                                                 <Stack direction="row" alignItems="center" spacing={1}>
                                                     <Typography variant="subtitle1" fontWeight="bold" color="primary">
-                                                        {group.totalCost.toLocaleString()}원
+                                                        {agg.totalCost.toLocaleString()}원
                                                     </Typography>
-                                                    <ExpandMoreIcon sx={{ transform: expandedLogId === group.id ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
+                                                    <ChevronRightIcon color="action" />
                                                 </Stack>
                                             </Stack>
-
-                                            {expandedLogId === group.id && (
-                                                <Box sx={{ width: '100%', mt: 2, pt: 2, borderTop: '1px solid #eee' }}>
-                                                    {group.items.map(item => (
-                                                        <Box key={item.id} sx={{ mb: 2 }}>
-                                                            <Typography variant="body2" fontWeight="bold">{item.plan_item?.process_name}</Typography>
-                                                            <Typography variant="caption" display="block" color="textSecondary">
-                                                                {item.plan_item?.product?.name}
-                                                            </Typography>
-                                                            <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                                                                <Typography variant="caption">
-                                                                    수량: {item.good_quantity} (불량: {item.bad_quantity})
-                                                                </Typography>
-                                                                <Typography variant="caption" fontWeight="bold">
-                                                                    {calculateItemCost(item).toLocaleString()}원
-                                                                </Typography>
-                                                            </Stack>
-                                                        </Box>
-                                                    ))}
-                                                </Box>
-                                            )}
-                                        </ListItemButton>
+                                        </CardContent>
                                     </Card>
                                 ))}
-                                {groupedPerformance.length === 0 && (
+                                {workerAggregates.length === 0 && (
                                     <Typography sx={{ textAlign: 'center', mt: 4, color: 'textSecondary' }}>
-                                        해당 기간의 실적 데이터가 없습니다.
+                                        기록된 실적이 없습니다.
                                     </Typography>
                                 )}
                             </Stack>
+                        ) : (
+                            /* Detailed List View (Single Worker or Mine) */
+                            <Box>
+                                {user.user_type === 'ADMIN' && selectedWorker !== 'ALL' && (
+                                    <Button
+                                        size="small"
+                                        startIcon={<ArrowBackIcon />}
+                                        onClick={() => setSelectedWorker('ALL')}
+                                        sx={{ mb: 1 }}
+                                    >
+                                        전체 작업자 목록으로
+                                    </Button>
+                                )}
+                                {loading && groupedPerformance.length === 0 ? (
+                                    <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress size={24} /></Box>
+                                ) : (
+                                    <Stack spacing={1.5}>
+                                        {groupedPerformance.map(group => (
+                                            <Card key={group.id} sx={{ borderRadius: 2 }}>
+                                                <ListItemButton
+                                                    onClick={() => setExpandedLogId(expandedLogId === group.id ? null : group.id)}
+                                                    sx={{ p: 2, flexDirection: 'column', alignItems: 'flex-start' }}
+                                                >
+                                                    <Stack direction="row" justifyContent="space-between" width="100%" alignItems="center">
+                                                        <Box>
+                                                            <Typography variant="subtitle1" fontWeight="bold">
+                                                                {group.date}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="textSecondary">
+                                                                {group.items.length}건의 작업
+                                                            </Typography>
+                                                        </Box>
+                                                        <Stack direction="row" alignItems="center" spacing={1}>
+                                                            <Typography variant="subtitle1" fontWeight="bold" color="primary">
+                                                                {group.totalCost.toLocaleString()}원
+                                                            </Typography>
+                                                            <ExpandMoreIcon sx={{ transform: expandedLogId === group.id ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
+                                                        </Stack>
+                                                    </Stack>
+
+                                                    {expandedLogId === group.id && (
+                                                        <Box sx={{ width: '100%', mt: 2, pt: 2, borderTop: '1px solid #eee' }}>
+                                                            {group.items.map(item => (
+                                                                <Box key={item.id} sx={{ mb: 2 }}>
+                                                                    <Typography variant="body2" fontWeight="bold">{item.plan_item?.process_name}</Typography>
+                                                                    <Typography variant="caption" display="block" color="textSecondary">
+                                                                        {item.plan_item?.product?.name}
+                                                                    </Typography>
+                                                                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+                                                                        <Typography variant="caption">
+                                                                            수량: {item.good_quantity} (불량: {item.bad_quantity})
+                                                                        </Typography>
+                                                                        <Typography variant="caption" fontWeight="bold">
+                                                                            {calculateItemCost(item).toLocaleString()}원
+                                                                        </Typography>
+                                                                    </Stack>
+                                                                </Box>
+                                                            ))}
+                                                        </Box>
+                                                    )}
+                                                </ListItemButton>
+                                            </Card>
+                                        ))}
+                                        {groupedPerformance.length === 0 && (
+                                            <Typography sx={{ textAlign: 'center', mt: 4, color: 'textSecondary' }}>
+                                                해당 기간의 실적 데이터가 없습니다.
+                                            </Typography>
+                                        )}
+                                    </Stack>
+                                )}
+                            </Box>
                         )}
                     </Box>
 
@@ -716,7 +810,7 @@ const MobileWorkLogPage = () => {
                             fullWidth
                             variant="contained"
                             startIcon={<AddIcon />}
-                            onClick={() => { setSelectedDocType('VACATION'); setDocFormData({}); setShowCreateModal(true); }}
+                            onClick={() => { setSelectedDocType('VACATION'); setDocFormData({}); setEditingDocId(null); setShowCreateModal(true); }}
                             sx={{ mb: 2, borderRadius: 2, py: 1.5, fontWeight: 'bold' }}
                         >
                             신규 문서 기안
@@ -820,59 +914,69 @@ const MobileWorkLogPage = () => {
             </Dialog>
 
             {/* Create Doc Modal (Mobile optimized) */}
-            <Dialog fullScreen open={showCreateModal} onClose={() => setShowCreateModal(false)}>
+            <Dialog fullScreen open={showCreateModal} onClose={() => { setShowCreateModal(false); setEditingDocId(null); }}>
                 <AppBar sx={{ position: 'relative', bgcolor: '#fff', color: '#000' }}>
                     <Toolbar size="small">
-                        <IconButton edge="start" color="inherit" onClick={() => setShowCreateModal(false)}>
+                        <IconButton edge="start" color="inherit" onClick={() => { setShowCreateModal(false); setEditingDocId(null); }}>
                             <CloseIcon />
                         </IconButton>
-                        <Typography sx={{ ml: 2, flex: 1, fontWeight: 'bold' }}>문서 기안</Typography>
-                        <Button autoFocus color="primary" onClick={handleCreateApproval} fontWeight="bold">기안</Button>
+                        <Typography sx={{ ml: 2, flex: 1, fontWeight: 'bold' }}>
+                            {editingDocId ? "문서 수정" : "신규 문서 기안"}
+                        </Typography>
+                        <Button color="primary" onClick={handleCreateApproval} disabled={loading} sx={{ fontWeight: 'bold' }}>
+                            {editingDocId ? "수정" : "기안"}
+                        </Button>
                     </Toolbar>
                 </AppBar>
                 <Box sx={{ p: 2, bgcolor: '#f8f9fa', minHeight: '100%' }}>
-                    <FormControl fullWidth size="small" sx={{ mb: 3 }}>
-                        <InputLabel>문서 종류</InputLabel>
-                        <Select
-                            value={selectedDocType}
-                            label="문서 종류"
-                            onChange={(e) => { setSelectedDocType(e.target.value); setDocFormData({}); }}
-                        >
-                            {Object.entries(DOC_TYPES).map(([k, v]) => (
-                                <MenuItem key={k} value={k}>{v.label}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                    {!editingDocId && (
+                        <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom fontWeight="bold">문서 종류 선택</Typography>
+                            <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { display: 'none' } }}>
+                                {Object.entries(DOC_TYPES).map(([key, info]) => (
+                                    <Chip
+                                        key={key}
+                                        label={info.label}
+                                        onClick={() => setSelectedDocType(key)}
+                                        color={selectedDocType === key ? "primary" : "default"}
+                                        variant={selectedDocType === key ? "filled" : "outlined"}
+                                        size="small"
+                                        sx={{ flexShrink: 0 }}
+                                    />
+                                ))}
+                            </Stack>
+                        </Paper>
+                    )}
 
                     <Paper sx={{ p: 2, borderRadius: 2 }}>
                         {selectedDocType === 'VACATION' && (
                             <Stack spacing={2}>
-                                <TextField label="시작일" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, start_date: e.target.value })} />
-                                <TextField label="종료일" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_date: e.target.value })} />
-                                <TextField label="사유" multiline rows={4} fullWidth size="small" onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
+                                <TextField label="시작일" type="date" fullWidth size="small" value={docFormData.start_date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, start_date: e.target.value })} />
+                                <TextField label="종료일" type="date" fullWidth size="small" value={docFormData.end_date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_date: e.target.value })} />
+                                <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.reason || ''} onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
                             </Stack>
                         )}
                         {selectedDocType === 'EARLY_LEAVE' && (
                             <Stack spacing={2}>
-                                <TextField label="일자" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, date: e.target.value })} />
-                                <TextField label="시간" type="time" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, time: e.target.value })} />
-                                <TextField label="사유" multiline rows={4} fullWidth size="small" onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
+                                <TextField label="일자" type="date" fullWidth size="small" value={docFormData.date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, date: e.target.value })} />
+                                <TextField label="시간" type="time" fullWidth size="small" value={docFormData.time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, time: e.target.value })} />
+                                <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.reason || ''} onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
                             </Stack>
                         )}
                         {selectedDocType === 'SUPPLIES' && (
                             <Stack spacing={2}>
-                                <TextField label="품목 및 수량" multiline rows={4} fullWidth size="small" placeholder="A4용지 1박스 등" onChange={e => setDocFormData({ ...docFormData, items: e.target.value })} />
-                                <TextField label="비고" fullWidth size="small" onChange={e => setDocFormData({ ...docFormData, remarks: e.target.value })} />
+                                <TextField label="품목 및 수량" multiline rows={4} fullWidth size="small" placeholder="A4용지 1박스 등" value={docFormData.items || ''} onChange={e => setDocFormData({ ...docFormData, items: e.target.value })} />
+                                <TextField label="비고" fullWidth size="small" value={docFormData.remarks || ''} onChange={e => setDocFormData({ ...docFormData, remarks: e.target.value })} />
                             </Stack>
                         )}
                         {selectedDocType === 'OVERTIME' && (
                             <Stack spacing={2}>
-                                <TextField label="근무일" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, date: e.target.value })} />
+                                <TextField label="근무일" type="date" fullWidth size="small" value={docFormData.date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, date: e.target.value })} />
                                 <Stack direction="row" spacing={1}>
-                                    <TextField label="시작" type="time" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, start_time: e.target.value })} />
-                                    <TextField label="종료" type="time" fullWidth size="small" InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_time: e.target.value })} />
+                                    <TextField label="시작" type="time" fullWidth size="small" value={docFormData.start_time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, start_time: e.target.value })} />
+                                    <TextField label="종료" type="time" fullWidth size="small" value={docFormData.end_time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_time: e.target.value })} />
                                 </Stack>
-                                <TextField label="업무 내용" multiline rows={4} fullWidth size="small" onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
+                                <TextField label="업무 내용" multiline rows={4} fullWidth size="small" value={docFormData.reason || ''} onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
                             </Stack>
                         )}
                     </Paper>
@@ -898,26 +1002,57 @@ const MobileWorkLogPage = () => {
                                 </Typography>
                                 <Typography variant="h6" fontWeight="bold" gutterBottom>{selectedDoc.title}</Typography>
                                 <Divider sx={{ my: 1 }} />
-                                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                                    {JSON.stringify(selectedDoc.content, null, 2)}
-                                </Typography>
+                                <Box sx={{ mt: 1 }}>
+                                    {selectedDoc.doc_type === 'VACATION' && (
+                                        <Stack spacing={1}>
+                                            <Typography variant="body2"><b>기간:</b> {selectedDoc.content.start_date} ~ {selectedDoc.content.end_date}</Typography>
+                                            <Typography variant="body2"><b>사유:</b> {selectedDoc.content.reason}</Typography>
+                                        </Stack>
+                                    )}
+                                    {selectedDoc.doc_type === 'EARLY_LEAVE' && (
+                                        <Stack spacing={1}>
+                                            <Typography variant="body2"><b>일시:</b> {selectedDoc.content.date} {selectedDoc.content.time}</Typography>
+                                            <Typography variant="body2"><b>사유:</b> {selectedDoc.content.reason}</Typography>
+                                        </Stack>
+                                    )}
+                                    {selectedDoc.doc_type === 'SUPPLIES' && (
+                                        <Stack spacing={1}>
+                                            <Typography variant="body2"><b>품목:</b> {selectedDoc.content.items}</Typography>
+                                            {selectedDoc.content.remarks && <Typography variant="body2"><b>비고:</b> {selectedDoc.content.remarks}</Typography>}
+                                        </Stack>
+                                    )}
+                                    {selectedDoc.doc_type === 'OVERTIME' && (
+                                        <Stack spacing={1}>
+                                            <Typography variant="body2"><b>일자:</b> {selectedDoc.content.date}</Typography>
+                                            <Typography variant="body2"><b>시간:</b> {selectedDoc.content.start_time} ~ {selectedDoc.content.end_time}</Typography>
+                                            <Typography variant="body2"><b>내용:</b> {selectedDoc.content.reason}</Typography>
+                                        </Stack>
+                                    )}
+                                </Box>
                             </Paper>
 
                             <Paper sx={{ p: 2, borderRadius: 2 }}>
                                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>결재 진행 상태</Typography>
-                                <Stack spacing={1}>
+                                <Stack spacing={1.5}>
                                     {selectedDoc.steps?.map((step, idx) => (
-                                        <Stack key={idx} direction="row" justifyContent="space-between" alignItems="center">
-                                            <Typography variant="caption">
-                                                {step.sequence}. {step.approver?.name} ({step.approver?.role})
-                                            </Typography>
-                                            <Chip
-                                                label={step.status}
-                                                size="small"
-                                                color={step.status === 'APPROVED' ? 'success' : 'default'}
-                                                sx={{ height: 18, fontSize: '9px' }}
-                                            />
-                                        </Stack>
+                                        <Box key={idx}>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                                <Typography variant="body2">
+                                                    {step.sequence}. {step.approver?.name} ({step.approver?.role})
+                                                </Typography>
+                                                <Chip
+                                                    label={STATUS_MAP[step.status]?.label || step.status}
+                                                    size="small"
+                                                    color={step.status === 'APPROVED' ? 'success' : step.status === 'REJECTED' ? 'error' : 'default'}
+                                                    sx={{ height: 20, fontSize: '10px' }}
+                                                />
+                                            </Stack>
+                                            {step.comment && (
+                                                <Typography variant="caption" color="textSecondary" sx={{ ml: 2, display: 'block', mt: 0.5 }}>
+                                                    의견: {step.comment}
+                                                </Typography>
+                                            )}
+                                        </Box>
                                     ))}
                                 </Stack>
                             </Paper>
@@ -952,6 +1087,30 @@ const MobileWorkLogPage = () => {
                                         </Button>
                                     </Stack>
                                 </Paper>
+                            )}
+
+                            {/* Self Edit/Delete (Only PENDING and author) */}
+                            {selectedDoc.status === 'PENDING' && selectedDoc.author_id === user.id && (
+                                <Stack direction="row" spacing={1}>
+                                    <Button
+                                        variant="outlined"
+                                        color="primary"
+                                        fullWidth
+                                        startIcon={<SaveIcon />}
+                                        onClick={() => handleEditApproval(selectedDoc)}
+                                    >
+                                        수정
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        color="error"
+                                        fullWidth
+                                        startIcon={<DeleteIcon />}
+                                        onClick={() => handleDeleteApproval(selectedDoc.id)}
+                                    >
+                                        삭제
+                                    </Button>
+                                </Stack>
                             )}
                         </Stack>
                     )}
