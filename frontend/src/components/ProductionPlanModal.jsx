@@ -218,6 +218,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                 stock_production_id: stockProduction ? stockProduction.id : undefined,
                 plan_date: planDate,
                 items: items.map((item) => ({
+                    id: item.id,
                     product_id: item.product_id,
                     process_name: item.process_name,
                     sequence: item.sequence,
@@ -231,7 +232,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     cost: parseFloat(item.cost) || 0,
                     quantity: parseInt(item.quantity) || 0,
                     note: item.note,
-                    status: 'PLANNED'
+                    status: item.status || 'PLANNED'
                 }))
             };
 

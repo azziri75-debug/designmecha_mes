@@ -37,7 +37,7 @@ class ProductionPlanItemBase(BaseModel):
     attachment_file: Optional[Union[List[Any], str]] = None
 
 class ProductionPlanItemCreate(ProductionPlanItemBase):
-    pass
+    id: Optional[int] = None
 
 class ProductionPlanItemUpdate(BaseModel):
     partner_name: Optional[str] = None
@@ -98,6 +98,8 @@ class ProductionPlanCreate(BaseModel):
     items: Optional[List[ProductionPlanItemCreate]] = None
 
 class ProductionPlanUpdate(BaseModel):
+    order_id: Optional[int] = None
+    stock_production_id: Optional[int] = None
     plan_date: Optional[date] = None
     status: Optional[ProductionStatus] = None
     attachment_file: Optional[Union[List[Any], str]] = None

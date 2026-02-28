@@ -55,21 +55,6 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
     db.add(plan_item)
     await db.flush()
 
-def calculate_completed_quantity(item: ProductionPlanItem) -> int:
-    """
-    Calculate completed quantity based on course type and status.
-    For Purchase/Outsourcing, COMPLETED status means 100% progress.
-    Otherwise, sum from work logs.
-    """
-    if item.course_type in ["PURCHASE", "OUTSOURCING"] and item.status == ProductionStatus.COMPLETED:
-        return item.quantity
-    
-    # Ensure work_log_items is loaded or handle empty
-    try:
-        return sum(wl.good_quantity for wl in item.work_log_items)
-    except:
-        return 0
-
 @router.get("/plans", response_model=List[schemas.ProductionPlan])
 async def read_production_plans(
     skip: int = 0,
@@ -371,6 +356,26 @@ async def create_production_plan(
         item.completed_quantity = calculate_completed_quantity(item)
     return plan
 
+def calculate_completed_quantity(item: ProductionPlanItem) -> int:
+    """
+    Calculate completed quantity based on course type and status.
+    For Purchase/Outsourcing, COMPLETED status means 100% progress.
+    Otherwise, sum from work logs.
+    """
+    if item.course_type in ["PURCHASE", "OUTSOURCING"] and item.status == ProductionStatus.COMPLETED:
+        return item.quantity
+    
+    # Check if work_log_items is loaded to avoid MissingGreenlet in async
+    from sqlalchemy.orm import attributes
+    state = attributes.instance_state(item)
+    if "work_log_items" in state.unloaded:
+        return 0
+        
+    try:
+        return sum(wl.good_quantity for wl in item.work_log_items)
+    except:
+        return 0
+
 @router.put("/plans/{plan_id}", response_model=schemas.ProductionPlan)
 async def update_production_plan(
     plan_id: int,
@@ -378,10 +383,14 @@ async def update_production_plan(
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
-    Update a production plan.
+    Update a production plan. Preserves existing items to maintain links to orders.
     """
-    # 1. Fetch Plan
-    result = await db.execute(select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id))
+    # 1. Fetch Plan with items
+    result = await db.execute(
+        select(ProductionPlan)
+        .options(selectinload(ProductionPlan.items))
+        .where(ProductionPlan.id == plan_id)
+    )
     plan = result.scalar_one_or_none()
     
     if not plan:
@@ -394,47 +403,52 @@ async def update_production_plan(
     for field, value in update_data.items():
         setattr(plan, field, value)
         
-    # 3. Update Items (Replace Strategy)
+    # 3. Update Items (Preserve Strategy)
     if items_data is not None:
-        # Delete existing items
-        # SQLAlchemy cascade="all, delete-orphan" on relationship handles deletion from DB
-        # when we remove them from the list, IF configured. 
-        # But explicitly deleting is clearer for async session sometimes.
-        # Let's try clearing the list which should trigger delete-orphan.
-        plan.items.clear()
+        existing_items_map = {item.id: item for item in plan.items}
+        new_items = []
         
-        # Add new items
         for item_in in items_data:
-            # Schema was missing quantity. Added it now.
-            new_item = ProductionPlanItem(
-                plan_id=plan.id,
-                product_id=item_in.get("product_id") or item_in.get("product", {}).get("id"),
-                process_name=item_in.get("process_name"),
-                sequence=item_in.get("sequence"),
-                course_type=item_in.get("course_type", "INTERNAL"),
-                partner_name=item_in.get("partner_name"),
-                work_center=item_in.get("work_center"),
-                estimated_time=item_in.get("estimated_time"),
-                start_date=item_in.get("start_date"),
-                end_date=item_in.get("end_date"),
-                worker_id=item_in.get("worker_id"),
-                equipment_id=item_in.get("equipment_id"),
-                note=item_in.get("note"),
-                status=item_in.get("status", ProductionStatus.PLANNED),
-                attachment_file=item_in.get("attachment_file"),
-                quantity=item_in.get("quantity", 1),
-                cost=item_in.get("cost", 0.0)
-            )
-            plan.items.append(new_item)
+            item_id = item_in.get("id")
+            
+            # Map input to model data
+            item_data = {
+                "product_id": item_in.get("product_id") or item_in.get("product", {}).get("id"),
+                "process_name": item_in.get("process_name"),
+                "sequence": item_in.get("sequence"),
+                "course_type": item_in.get("course_type", "INTERNAL"),
+                "partner_name": item_in.get("partner_name"),
+                "work_center": item_in.get("work_center"),
+                "estimated_time": item_in.get("estimated_time"),
+                "start_date": item_in.get("start_date"),
+                "end_date": item_in.get("end_date"),
+                "worker_id": item_in.get("worker_id"),
+                "equipment_id": item_in.get("equipment_id"),
+                "note": item_in.get("note"),
+                "status": item_in.get("status", ProductionStatus.PLANNED),
+                "attachment_file": item_in.get("attachment_file"),
+                "quantity": item_in.get("quantity", 1),
+                "cost": item_in.get("cost", 0.0)
+            }
+
+            if item_id and item_id in existing_items_map:
+                # Update existing item
+                existing_item = existing_items_map[item_id]
+                for k, v in item_data.items():
+                    setattr(existing_item, k, v)
+                new_items.append(existing_item)
+                del existing_items_map[item_id]
+            else:
+                # Create new item
+                new_item = ProductionPlanItem(plan_id=plan.id, **item_data)
+                new_items.append(new_item)
+        
+        # Items remaining in existing_items_map are removed (delete-orphan)
+        plan.items = new_items
 
     await db.commit()
-    await db.refresh(plan)
     
-    await db.commit()
-    await db.refresh(plan)
-    
-    # Re-fetch for response
-    # Re-fetch with full options for response
+    # 4. Re-fetch with full options for response
     result = await db.execute(
         select(ProductionPlan)
         .options(
@@ -442,8 +456,8 @@ async def update_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner), # Deep Load
+            selectinload(ProductionPlan.items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
         )
