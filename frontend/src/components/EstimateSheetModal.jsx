@@ -260,7 +260,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] flex flex-col shadow-none origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
+                    <div ref={sheetRef} className="bg-white text-black w-[210mm] h-[297mm] p-[10mm] flex flex-col shadow-none origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
 
                         {/* Title Section - Improved size and visibility */}
                         <div className="text-center mb-10 relative flex justify-center items-center h-24">

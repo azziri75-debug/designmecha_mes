@@ -235,7 +235,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                 );
             case 'memo':
                 return (
-                    <div className="text-xs" key={block.id}>
+                    <div className="text-xs mt-auto" key={block.id}>
                         <div className="border border-black p-2 mb-1">
                             <p className="font-bold border-b border-black w-24 mb-1">특기 사항</p>
                             <div className="whitespace-pre-wrap leading-relaxed min-h-[60px]">
@@ -304,7 +304,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                     </div>
                 </div>
                 <div className="flex-1 overflow-auto bg-gray-950 p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-none origin-top" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
+                    <div ref={sheetRef} className="bg-white text-black w-[210mm] h-[297mm] p-[10mm] shadow-none origin-top flex flex-col" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
                         {blocks.map(block => renderBlock(block))}
                     </div>
                 </div>

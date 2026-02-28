@@ -223,7 +223,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] min-h-[297mm] p-[10mm] shadow-none relative" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
+                    <div ref={sheetRef} className="bg-white text-black w-[210mm] h-[297mm] p-[10mm] shadow-none relative flex flex-col" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
 
                         {/* Header Box - Tighten width */}
                         <div className="flex justify-between items-center mb-8 h-16">
@@ -302,7 +302,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         </div>
 
                         {/* Footer Notes */}
-                        <div className="mt-8 text-[10px] px-2">
+                        <div className="mt-auto text-[10px] px-2">
                             <div className="border border-black p-4 mb-4 min-h-[120px] bg-gray-50/10">
                                 <h4 className="font-bold border-b border-black w-20 mb-3 pb-1 italic">Note.</h4>
                                 <EditableText
