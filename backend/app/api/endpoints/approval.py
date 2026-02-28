@@ -304,7 +304,12 @@ async def update_document(
         raise HTTPException(status_code=403, detail="수정 권한이 없습니다.")
     
     # 관계형 데이터 로드 (is_editable에서 필요)
-    await db.refresh(doc, ["steps"])
+    result = await db.execute(
+        select(ApprovalDocument)
+        .options(selectinload(ApprovalDocument.steps))
+        .where(ApprovalDocument.id == doc_id)
+    )
+    doc = result.scalar_one()
     
     if not await is_editable(doc):
         raise HTTPException(status_code=400, detail="결재가 이미 진행되어 수정할 수 없습니다.")
@@ -390,8 +395,13 @@ async def delete_document(
     if doc.author_id != current_user.id:
         raise HTTPException(status_code=403, detail="삭제 권한이 없습니다.")
     
-    # 관계형 데이터 로드
-    await db.refresh(doc, ["steps"])
+    # 관계형 데이터 로드 (is_editable에서 필요)
+    result = await db.execute(
+        select(ApprovalDocument)
+        .options(selectinload(ApprovalDocument.steps))
+        .where(ApprovalDocument.id == doc_id)
+    )
+    doc = result.scalar_one()
     
     if not await is_editable(doc):
         raise HTTPException(status_code=400, detail="결재가 이미 진행되어 삭제할 수 없습니다.")

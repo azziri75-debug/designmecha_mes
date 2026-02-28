@@ -9,6 +9,7 @@ import api from '../lib/api';
 import { cn } from '../lib/utils';
 import Card from '../components/Card';
 import { format } from 'date-fns';
+import { useAuth } from '../contexts/AuthContext';
 
 const DOC_TYPES = {
     VACATION: { label: '휴가원', color: 'blue' },
@@ -30,6 +31,7 @@ const ApprovalPage = () => {
     const [documents, setDocuments] = useState([]);
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(false);
+    const { user: currentUser } = useAuth();
 
     // Modal states
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -130,6 +132,15 @@ const ApprovalPage = () => {
         } catch (error) {
             alert('처리 실패: ' + (error.response?.data?.detail || error.message));
         }
+    };
+
+    const isEditable = (doc) => {
+        if (!doc || doc.author_id !== currentUser?.id) return false;
+        if (doc.status === 'PENDING' || doc.status === 'REJECTED') return true;
+        if (doc.status === 'IN_PROGRESS') {
+            return (doc.steps || []).every(s => s.status !== 'APPROVED' || s.comment === '기안자 직급에 따른 자동 승인');
+        }
+        return false;
     };
 
     const handleSaveLines = async (type) => {
@@ -279,7 +290,7 @@ const ApprovalPage = () => {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-2 items-center">
-                                                    {(doc.status === 'PENDING' || doc.status === 'REJECTED') && (
+                                                    {isEditable(doc) && (
                                                         <>
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); handleEditDoc(doc); }}
@@ -543,7 +554,7 @@ const ApprovalPage = () => {
                                 <p className="text-xs text-gray-500 mt-1">ID: {selectedDoc.id} | 기안일: {format(new Date(selectedDoc.created_at), 'yyyy-MM-dd HH:mm')}</p>
                             </div>
                             <div className="flex items-center gap-3">
-                                {(selectedDoc.status === 'PENDING' || selectedDoc.status === 'REJECTED') && (
+                                {isEditable(selectedDoc) && (
                                     <>
                                         <button
                                             onClick={() => handleEditDoc(selectedDoc)}
