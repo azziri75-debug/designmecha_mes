@@ -27,7 +27,9 @@ import {
     DialogTitle,
     DialogContent,
     DialogContentText,
-    DialogActions
+    DialogActions,
+    AppBar,
+    Toolbar
 } from '@mui/material';
 import {
     Assignment as AssignmentIcon,
@@ -39,7 +41,6 @@ import {
     Search as SearchIcon,
     ExpandMore as ExpandMoreIcon,
     ChevronRight as ChevronRightIcon,
-    FileText as FileTextIcon,
     Description as DescriptionIcon,
     History as HistoryIcon,
     Cancel as CancelIcon,
@@ -271,6 +272,55 @@ const MobileWorkLogPage = () => {
                 console.error(err);
                 alert("저장 실패: " + (err.response?.data?.detail || err.message));
             }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreateApproval = async () => {
+        if (!docFormData.reason && !docFormData.items && selectedDocType !== 'SUPPLIES') {
+            alert("필수 항목을 입력해주세요.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const payload = {
+                title: `${user.name} - ${DOC_TYPES[selectedDocType].label}`,
+                doc_type: selectedDocType,
+                content: docFormData
+            };
+            await api.post('/approval/documents', payload);
+            alert("기안이 완료되었습니다.");
+            setShowCreateModal(false);
+            fetchApprovalDocs();
+        } catch (err) {
+            console.error('Approval creation error:', err);
+            alert("기안 실패: " + (err.response?.data?.detail || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleProcessApproval = async (status) => {
+        if (status === 'REJECTED' && !comment) {
+            alert("반려 사유를 입력해주세요.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await api.post(`/approval/documents/${selectedDoc.id}/process`, {
+                status,
+                comment
+            });
+            alert(status === 'APPROVED' ? "승인되었습니다." : "반려되었습니다.");
+            setShowDetailModal(false);
+            setComment('');
+            fetchApprovalDocs();
+        } catch (err) {
+            console.error('Approval process error:', err);
+            alert("처리 실패: " + (err.response?.data?.detail || err.message));
         } finally {
             setLoading(false);
         }
