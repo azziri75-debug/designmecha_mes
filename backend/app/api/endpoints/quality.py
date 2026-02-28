@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Union
 import shutil
 import os
 from datetime import datetime, date
@@ -59,8 +59,8 @@ async def create_defect(
 @router.get("/defects/", response_model=List[QualityDefectResponse])
 async def read_defects(
     status: Optional[str] = None,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: Union[date, None] = None,
+    end_date: Union[date, None] = None,
     db: AsyncSession = Depends(get_db)
 ):
     query = select(QualityDefect).options(

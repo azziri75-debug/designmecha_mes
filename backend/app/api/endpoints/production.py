@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, cast, String, text
@@ -1376,8 +1376,8 @@ async def delete_work_log(
 
 @router.get("/performance/workers")
 async def get_worker_performance(
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: Union[date, None] = None,
+    end_date: Union[date, None] = None,
     worker_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
@@ -1421,8 +1421,8 @@ async def get_worker_performance(
 @router.get("/performance/details", response_model=List[schemas.WorkLogItem])
 async def get_performance_details(
     worker_id: Optional[int] = None,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: Union[date, None] = None,
+    end_date: Union[date, None] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
@@ -1461,8 +1461,8 @@ async def get_performance_details(
 @router.get("/performance/workers/{worker_id}/details", response_model=List[schemas.WorkLogItem])
 async def get_worker_performance_details(
     worker_id: int,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: Union[date, None] = None,
+    end_date: Union[date, None] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """

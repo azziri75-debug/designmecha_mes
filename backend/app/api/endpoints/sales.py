@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc, or_
@@ -421,8 +421,8 @@ async def read_orders(
     limit: int = 100,
     partner_id: Optional[int] = None,
     status: Optional[str] = None,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: Union[date, None] = None,
+    end_date: Union[date, None] = None,
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(SalesOrder).options(
