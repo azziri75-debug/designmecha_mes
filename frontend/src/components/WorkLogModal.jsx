@@ -119,7 +119,7 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
         setAttachmentFile(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (mode = "CREATE") => {
         if (!workDate) {
             alert('작업일자를 입력해주세요.');
             return;
@@ -132,6 +132,7 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                 worker_id: workerId || null,
                 note: note,
                 attachment_file: attachmentFile,
+                mode: mode,
                 items: items.map(i => ({
                     plan_item_id: i.plan_item_id,
                     worker_id: i.worker_id || null,
@@ -147,7 +148,26 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
             if (log) {
                 await api.put(`/production/work-logs/${log.id}`, payload);
             } else {
-                await api.post('/production/work-logs', payload);
+                try {
+                    await api.post('/production/work-logs', payload);
+                } catch (error) {
+                    if (error.response?.status === 409) {
+                        const confirmMsg = "해당 날짜에 이미 등록된 작업일지가 있습니다.\n\n[확인]: 기존 일지에 현재 내역을 합칩니다.\n[취소]: 기존 일지를 삭제하고 현재 내역으로 새로 등록합니다.\n\n어떻게 하시겠습니까?";
+                        if (window.confirm(confirmMsg)) {
+                            await handleSubmit("MERGE");
+                            return;
+                        } else {
+                            if (window.confirm("기존 일지를 정말로 삭제하고 새로 등록하시겠습니까?")) {
+                                await handleSubmit("REPLACE");
+                                return;
+                            } else {
+                                setLoading(false);
+                                return;
+                            }
+                        }
+                    }
+                    throw error;
+                }
             }
             onSuccess();
             onClose();

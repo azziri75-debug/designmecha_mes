@@ -156,6 +156,7 @@ class WorkLogBase(BaseModel):
 
 class WorkLogCreate(WorkLogBase):
     items: List[WorkLogItemCreate]
+    mode: Optional[str] = "CREATE" # CREATE, MERGE, REPLACE
 
 class WorkLogUpdate(WorkLogBase):
     items: Optional[List[WorkLogItemCreate]] = None

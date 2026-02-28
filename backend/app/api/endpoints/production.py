@@ -1178,18 +1178,56 @@ async def create_work_log(
     Create a new work log.
     """
     import json
-    attachment_file = log_in.attachment_file
-    if attachment_file and isinstance(attachment_file, (list, dict)):
-        attachment_file = json.dumps(attachment_file, ensure_ascii=False)
-
-    log = WorkLog(
-        work_date=log_in.work_date,
-        worker_id=log_in.worker_id,
-        note=log_in.note,
-        attachment_file=attachment_file
+    from fastapi import HTTPException
+    
+    # Check for existing log on the same date for the same worker
+    stmt = select(WorkLog).where(
+        WorkLog.work_date == log_in.work_date,
+        WorkLog.worker_id == log_in.worker_id
     )
-    db.add(log)
-    await db.flush()
+    result = await db.execute(stmt)
+    existing_log = result.scalars().first()
+
+    if existing_log and log_in.mode == "CREATE":
+        raise HTTPException(status_code=409, detail="해당 날짜에 이미 등록된 작업일지가 있습니다.")
+
+    if existing_log and log_in.mode == "REPLACE":
+        await db.delete(existing_log)
+        await db.flush()
+        existing_log = None
+
+    if existing_log and log_in.mode == "MERGE":
+        log = existing_log
+        if log_in.note:
+            log.note = (log.note or "") + "\n" + log_in.note
+        # Handle attachments (merge lists)
+        if log_in.attachment_file:
+            current_files = []
+            if log.attachment_file:
+                if isinstance(log.attachment_file, str):
+                    current_files = json.loads(log.attachment_file)
+                else:
+                    current_files = log.attachment_file
+            
+            new_files = log_in.attachment_file
+            if isinstance(new_files, str):
+                new_files = json.loads(new_files)
+                
+            combined = current_files + new_files
+            log.attachment_file = json.dumps(combined, ensure_ascii=False)
+    else:
+        attachment_file = log_in.attachment_file
+        if attachment_file and isinstance(attachment_file, (list, dict)):
+            attachment_file = json.dumps(attachment_file, ensure_ascii=False)
+
+        log = WorkLog(
+            work_date=log_in.work_date,
+            worker_id=log_in.worker_id,
+            note=log_in.note,
+            attachment_file=attachment_file
+        )
+        db.add(log)
+        await db.flush()
 
     for item_in in log_in.items:
         # Fetch plan item to get default price if needed
