@@ -40,7 +40,7 @@ const LoginPage = () => {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-xl shadow-blue-500/20 mb-4">
                         <Factory className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-3xl font-extrabold text-white tracking-tight">MES ERP</h1>
+                    <h1 className="text-2xl font-extrabold text-white tracking-tight">DESIGNMECHA MES</h1>
                     <p className="text-sm text-gray-500 mt-1">생산관리 시스템</p>
                 </div>
 

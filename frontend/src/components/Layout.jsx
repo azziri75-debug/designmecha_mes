@@ -74,9 +74,9 @@ const Layout = () => {
             {/* Sidebar */}
             <aside className="w-64 flex-shrink-0 border-r border-gray-800 bg-gray-950 flex flex-col">
                 <div className="h-16 flex items-center px-6 border-b border-gray-800">
-                    <div className="font-bold text-xl tracking-tight text-blue-500 flex items-center gap-2">
-                        <Factory className="w-6 h-6" />
-                        <span>MES ERP</span>
+                    <div className="font-bold text-lg tracking-tight text-blue-500 flex items-center gap-2">
+                        <Factory className="w-5 h-5" />
+                        <span>DESIGNMECHA MES</span>
                     </div>
                 </div>
 
