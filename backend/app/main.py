@@ -244,6 +244,40 @@ async def startup_event():
                     is_active BOOLEAN DEFAULT TRUE,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 )
+            """),
+            ("approval_lines", """
+                CREATE TABLE approval_lines (
+                    id SERIAL PRIMARY KEY,
+                    doc_type VARCHAR NOT NULL,
+                    approver_id INTEGER NOT NULL REFERENCES staff(id),
+                    sequence INTEGER NOT NULL
+                )
+            """),
+            ("approval_documents", """
+                CREATE TABLE approval_documents (
+                    id SERIAL PRIMARY KEY,
+                    author_id INTEGER NOT NULL REFERENCES staff(id),
+                    doc_type VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    content JSONB NOT NULL,
+                    status VARCHAR DEFAULT 'PENDING',
+                    current_sequence INTEGER DEFAULT 1,
+                    rejection_reason TEXT,
+                    attachment_file JSONB,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            """),
+            ("approval_steps", """
+                CREATE TABLE approval_steps (
+                    id SERIAL PRIMARY KEY,
+                    document_id INTEGER NOT NULL REFERENCES approval_documents(id) ON DELETE CASCADE,
+                    approver_id INTEGER NOT NULL REFERENCES staff(id),
+                    sequence INTEGER NOT NULL,
+                    status VARCHAR DEFAULT 'PENDING',
+                    comment TEXT,
+                    processed_at TIMESTAMP WITH TIME ZONE
+                )
             """)
         ]
 
@@ -316,6 +350,17 @@ async def startup_event():
             r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='work_logs' AND column_name='attachment_file'"))
             if not r.scalar():
                 await db.execute(text("ALTER TABLE work_logs ADD COLUMN attachment_file JSONB"))
+        
+        # 5c. Staff: stamp_image
+        if is_sqlite:
+            r = await db.execute(text("PRAGMA table_info(staff)"))
+            cols = [c[1] for c in r.fetchall()]
+            if "stamp_image" not in cols:
+                await db.execute(text("ALTER TABLE staff ADD COLUMN stamp_image JSON"))
+        else:
+            r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
+            if not r.scalar():
+                await db.execute(text("ALTER TABLE staff ADD COLUMN stamp_image JSONB"))
         
         await db.commit()
 

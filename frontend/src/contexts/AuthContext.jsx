@@ -11,6 +11,7 @@ const MENUS = [
     { key: 'outsourcing', label: '외주 발주 관리' },
     { key: 'quality', label: '품질 관리' },
     { key: 'inventory', label: '납품 및 재고' },
+    { key: 'approval', label: '전자결재 및 문서 관리' },
 ];
 
 export const AuthProvider = ({ children }) => {

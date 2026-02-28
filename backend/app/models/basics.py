@@ -52,6 +52,7 @@ class Staff(Base):
     user_type = Column(String, default="USER") # ADMIN or USER
     password = Column(String, nullable=True) # Login password
     menu_permissions = Column(JSON, default=[]) # List of allowed menu keys
+    stamp_image = Column(JSON, nullable=True) # {name, url}
 
 class Company(Base):
     __tablename__ = "companies"

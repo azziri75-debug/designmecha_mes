@@ -127,6 +127,12 @@ const Dashboard = () => {
     const [staff, setStaff] = useState([]);
     const [stockProductions, setStockProductions] = useState([]);
     const [defects, setDefects] = useState([]);
+    const [approvalStats, setApprovalStats] = useState({
+        pending_count: 0,
+        completed_count: 0,
+        rejected_count: 0,
+        waiting_for_me_count: 0
+    });
 
     // Grouping States
     const [groups, setGroups] = useState([]);
@@ -137,7 +143,7 @@ const Dashboard = () => {
         const fetchAll = async () => {
             setLoading(true);
             try {
-                const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes] = await Promise.allSettled([
+                const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes, groupRes, appRes] = await Promise.allSettled([
                     api.get('/sales/orders/'),
                     api.get('/production/plans'),
                     api.get('/purchasing/purchase/orders'),
@@ -149,7 +155,8 @@ const Dashboard = () => {
                     api.get('/basics/staff/'),
                     api.get('/inventory/productions'),
                     api.get('/quality/defects/'),
-                    api.get('/product/groups/')
+                    api.get('/product/groups/'),
+                    api.get('/approval/stats')
                 ]);
                 if (ordRes.status === 'fulfilled') setOrders(ordRes.value.data);
                 if (planRes.status === 'fulfilled') setPlans(planRes.value.data);
@@ -163,6 +170,7 @@ const Dashboard = () => {
                 if (spRes.status === 'fulfilled') setStockProductions(spRes.value.data);
                 if (defRes.status === 'fulfilled') setDefects(defRes.value.data);
                 if (groupRes && groupRes.status === 'fulfilled') setGroups(groupRes.value.data || []);
+                if (appRes && appRes.status === 'fulfilled') setApprovalStats(appRes.value.data);
             } catch (e) { console.error(e); }
             setLoading(false);
         };
@@ -369,6 +377,42 @@ const Dashboard = () => {
                 <StatCard title="거래처" value={fmt(stats.partnerCount)} icon={Users} color="cyan" onClick={() => navigate('/basics')} />
                 <StatCard title="제품 / BOM" value={fmt(stats.productCount)} icon={Layers} color="purple" onClick={() => navigate('/products')} />
                 <StatCard title="재직 사원" value={fmt(stats.staffCount)} icon={ClipboardList} color="blue" onClick={() => navigate('/basics')} />
+            </div>
+
+            {/* ── KPI Cards Row 3: Electronic Approval ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatCard
+                    title="기안 대기"
+                    value={fmt(approvalStats.pending_count)}
+                    sub="결재 진행 중"
+                    icon={FileText}
+                    color="blue"
+                    onClick={() => navigate('/approval')}
+                />
+                <StatCard
+                    title="결재 완료"
+                    value={fmt(approvalStats.completed_count)}
+                    sub="최종 승인 완료"
+                    icon={CheckCircle2}
+                    color="green"
+                    onClick={() => navigate('/approval')}
+                />
+                <StatCard
+                    title="반려 문서"
+                    value={fmt(approvalStats.rejected_count)}
+                    sub="알림 확인 필요"
+                    icon={AlertTriangle}
+                    color={approvalStats.rejected_count > 0 ? "red" : "gray"}
+                    onClick={() => navigate('/approval')}
+                />
+                <StatCard
+                    title="나의 결재 대기"
+                    value={fmt(approvalStats.waiting_for_me_count)}
+                    sub="검토 및 승인 필요"
+                    icon={Clock}
+                    color={approvalStats.waiting_for_me_count > 0 ? "amber" : "blue"}
+                    onClick={() => navigate('/approval')}
+                />
             </div>
 
             {/* ── Charts Row ── */}

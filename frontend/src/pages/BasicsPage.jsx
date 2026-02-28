@@ -1464,6 +1464,7 @@ const BasicsPageContent = () => {
                                                     { key: 'outsourcing', label: '외주 발주' },
                                                     { key: 'quality', label: '품질 관리' },
                                                     { key: 'inventory', label: '납품/재고' },
+                                                    { key: 'approval', label: '전자결재' },
                                                 ].map(menu => {
                                                     const perms = formData.menu_permissions || [];
                                                     const isAdmin = formData.user_type === 'ADMIN';
@@ -1489,6 +1490,51 @@ const BasicsPageContent = () => {
                                             {formData.user_type === 'ADMIN' && (
                                                 <p className="text-xs text-purple-400">※ 관리자는 모든 메뉴에 접근할 수 있습니다.</p>
                                             )}
+                                        </div>
+
+                                        {/* 도장/서명 이미지 */}
+                                        <div className="space-y-2 pt-2 border-t border-gray-700">
+                                            <label className="text-sm font-medium text-gray-300">결재용 도장/서명 이미지</label>
+                                            <div className="flex items-center gap-4">
+                                                {formData.stamp_image ? (
+                                                    <div className="relative group">
+                                                        <img
+                                                            src={formData.stamp_image.url}
+                                                            alt="Stamp"
+                                                            className="w-20 h-20 object-contain bg-white rounded border border-gray-600"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormData(prev => ({ ...prev, stamp_image: null }))}
+                                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="relative w-20 h-20 bg-gray-900 border border-gray-700 border-dashed rounded flex items-center justify-center group hover:border-blue-500 transition-colors">
+                                                        <Upload className="w-5 h-5 text-gray-500 group-hover:text-blue-500" />
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    const fileData = await handleFileUpload(file);
+                                                                    if (fileData) {
+                                                                        setFormData(prev => ({ ...prev, stamp_image: fileData }));
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <p className="text-[11px] text-gray-500">배경이 투명한 PNG 이미지를 권장합니다. (최대 1MB)</p>
+                                                    <p className="text-[11px] text-gray-500">전자결재 시 해당 이미지가 문서에 서명으로 삽입됩니다.</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </>
                                 )}

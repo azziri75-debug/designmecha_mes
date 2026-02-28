@@ -66,6 +66,7 @@ class StaffBase(BaseModel):
     user_type: Optional[str] = "USER"  # ADMIN or USER
     password: Optional[str] = None
     menu_permissions: Optional[List[str]] = []
+    stamp_image: Optional[dict] = None # {name, url}
 class StaffSimple(StaffBase):
     id: int
     class Config:

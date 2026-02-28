@@ -11,6 +11,8 @@ api_router.include_router(quality.router, prefix="/quality", tags=["quality"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(purchasing.router, prefix="/purchasing", tags=["purchasing"])
 api_router.include_router(inventory.router, prefix="/inventory", tags=["inventory"])
+from app.api.endpoints import approval
+api_router.include_router(approval.router, prefix="/approval", tags=["approval"])
 
 from app.api.endpoints import upload, debug
 api_router.include_router(upload.router, tags=["upload"])
