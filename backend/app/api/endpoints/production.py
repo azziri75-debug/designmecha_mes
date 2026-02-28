@@ -54,6 +54,21 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
     db.add(plan_item)
     await db.flush()
 
+def calculate_completed_quantity(item: ProductionPlanItem) -> int:
+    """
+    Calculate completed quantity based on course type and status.
+    For Purchase/Outsourcing, COMPLETED status means 100% progress.
+    Otherwise, sum from work logs.
+    """
+    if item.course_type in ["PURCHASE", "OUTSOURCING"] and item.status == ProductionStatus.COMPLETED:
+        return item.quantity
+    
+    # Ensure work_log_items is loaded or handle empty
+    try:
+        return sum(wl.good_quantity for wl in item.work_log_items)
+    except:
+        return 0
+
 @router.get("/plans", response_model=List[schemas.ProductionPlan])
 async def read_production_plans(
     skip: int = 0,
@@ -88,10 +103,7 @@ async def read_production_plans(
     # Calculate completed_quantity for each item
     for plan in plans:
         for item in plan.items:
-            # We can use the relationship we just added
-            # But we need to make sure work_log_items are loaded.
-            # Let's add selectinload to the query above for better performance.
-            item.completed_quantity = sum(wl.good_quantity for wl in item.work_log_items)
+            item.completed_quantity = calculate_completed_quantity(item)
             
     return plans
 
@@ -347,16 +359,15 @@ async def create_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
         )
         .where(ProductionPlan.id == plan.id)
     )
     plan = result.scalar_one()
+    for item in plan.items:
+        item.completed_quantity = calculate_completed_quantity(item)
     return plan
 
 @router.put("/plans/{plan_id}", response_model=schemas.ProductionPlan)
@@ -432,11 +443,14 @@ async def update_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner), # Deep Load
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
         )
         .where(ProductionPlan.id == plan_id)
     )
     plan = result.scalar_one()
+    for item in plan.items:
+        item.completed_quantity = calculate_completed_quantity(item)
     return plan
 
 @router.post("/plans/{plan_id}/export_excel", response_model=schemas.ProductionPlan)
@@ -1067,12 +1081,14 @@ async def update_production_plan_item(
                     selectinload(StockProduction.partner)
                 )
             ),
-            selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlanItem.work_log_items)
         )
         .where(ProductionPlanItem.id == item_id)
     )
-    return result.scalar_one()
+    item = result.scalar_one()
+    item.completed_quantity = calculate_completed_quantity(item)
+    return item
 
 # --- Work Log Endpoints ---
 
