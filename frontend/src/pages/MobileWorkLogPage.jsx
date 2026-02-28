@@ -277,9 +277,15 @@ const MobileWorkLogPage = () => {
     }, [myPerformance]);
 
     return (
-        <Box sx={{ pb: 7, backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+        <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100vh',
+            backgroundColor: '#f8f9fa',
+            overflow: 'hidden'
+        }}>
             {/* Header */}
-            <Paper elevation={0} sx={{ p: 2, borderBottom: '1px solid #eee', position: 'sticky', top: 0, zIndex: 10, borderRadius: 0 }}>
+            <Paper elevation={0} sx={{ p: 2, borderBottom: '1px solid #eee', flexShrink: 0, borderRadius: 0 }}>
                 <Stack direction="row" alignItems="center" spacing={1}>
                     {(selectedPlan || selectedItem) && tab === 0 && (
                         <IconButton size="small" onClick={() => {
@@ -298,6 +304,7 @@ const MobileWorkLogPage = () => {
                 </Typography>
             </Paper>
 
+            {/* Swipe Area */}
             <Box
                 sx={{
                     flex: 1,
@@ -315,7 +322,7 @@ const MobileWorkLogPage = () => {
                     transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}>
                     {/* Tab 1: Production Status */}
-                    <Box sx={{ width: '50%', p: 2 }}>
+                    <Box sx={{ width: '50%', p: 2, overflowY: 'auto' }}>
                         {!selectedPlan && !selectedItem ? (
                             /* Step 1: Browse Production Plans */
                             <Box>
@@ -479,7 +486,7 @@ const MobileWorkLogPage = () => {
                     </Box>
 
                     {/* Tab 2: Performance */}
-                    <Box sx={{ width: '50%', p: 2 }}>
+                    <Box sx={{ width: '50%', p: 2, overflowY: 'auto' }}>
                         {/* Filters & Summary */}
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 3, backgroundColor: '#1a237e', color: '#fff' }}>
                             <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
@@ -590,7 +597,7 @@ const MobileWorkLogPage = () => {
             </Box>
 
             {/* Bottom Nav */}
-            <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }} elevation={10}>
+            <Paper sx={{ flexShrink: 0 }} elevation={10}>
                 <BottomNavigation
                     showLabels
                     value={tab}
