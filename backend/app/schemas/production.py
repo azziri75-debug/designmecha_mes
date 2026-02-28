@@ -134,9 +134,15 @@ class WorkLogItemBase(BaseModel):
 class WorkLogItemCreate(WorkLogItemBase):
     pass
 
+class WorkLogSimple(BaseModel):
+    id: int
+    work_date: date
+    model_config = ConfigDict(from_attributes=True)
+
 class WorkLogItem(WorkLogItemBase):
     id: int
     work_log_id: int
+    work_log: Optional[WorkLogSimple] = None
     plan_item: Optional[ProductionPlanItem] = None
     worker: Optional[StaffSimple] = None
 
