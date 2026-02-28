@@ -60,7 +60,11 @@ const Layout = () => {
     // Filter nav items based on user permissions
     const visibleNavItems = navItems.filter(item => {
         if (!item.menuKey) return true; // Dashboard always visible
-        return hasPermission(item.menuKey);
+        const permitted = hasPermission(item.menuKey);
+        if (item.menuKey === 'approval') {
+            console.log('Permission for approval:', permitted, 'User Role:', user?.user_type, 'User Perms:', user?.menu_permissions);
+        }
+        return permitted;
     });
 
     const handleLogout = () => {

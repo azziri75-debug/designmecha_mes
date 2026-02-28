@@ -143,7 +143,7 @@ const Dashboard = () => {
         const fetchAll = async () => {
             setLoading(true);
             try {
-                const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes, groupRes, appRes] = await Promise.allSettled([
+                const results = await Promise.allSettled([
                     api.get('/sales/orders/'),
                     api.get('/production/plans'),
                     api.get('/purchasing/purchase/orders'),
@@ -158,6 +158,9 @@ const Dashboard = () => {
                     api.get('/product/groups/'),
                     api.get('/approval/stats')
                 ]);
+
+                const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes, gRes, appRes] = results;
+
                 if (ordRes.status === 'fulfilled') setOrders(ordRes.value.data);
                 if (planRes.status === 'fulfilled') setPlans(planRes.value.data);
                 if (poRes.status === 'fulfilled') setPurchaseOrders(poRes.value.data);
@@ -169,7 +172,7 @@ const Dashboard = () => {
                 if (staffRes.status === 'fulfilled') setStaff(staffRes.value.data);
                 if (spRes.status === 'fulfilled') setStockProductions(spRes.value.data);
                 if (defRes.status === 'fulfilled') setDefects(defRes.value.data);
-                if (groupRes && groupRes.status === 'fulfilled') setGroups(groupRes.value.data || []);
+                if (gRes && gRes.status === 'fulfilled') setGroups(gRes.value.data || []);
                 if (appRes && appRes.status === 'fulfilled') setApprovalStats(appRes.value.data);
             } catch (e) { console.error(e); }
             setLoading(false);
