@@ -32,8 +32,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     ...item,
                     cid: Math.random().toString(36).substr(2, 9),
                     unit_cost: item.cost && item.quantity ? Math.round(item.cost / item.quantity) : 0,
-                    product_spec: item.product?.specification || "", // Ensure spec is captured
-                    product_unit: item.product?.unit || "EA"
+                    product_spec: item.product?.specification || "",
+                    product_unit: item.product?.unit || "EA",
+                    product: item.product // Ensure product object is here
                 })));
             } else if (order || stockProduction) {
                 // Create Mode
@@ -53,6 +54,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                 product_name: product?.name || "Unknown",
                                 product_spec: product?.specification || "",
                                 product_unit: product?.unit || "EA",
+                                product: product, // Store product for lookup
                                 process_name: proc.process?.name || "Unknown",
                                 sequence: proc.sequence,
                                 course_type: proc.process?.course_type || "INTERNAL",
@@ -75,6 +77,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                             product_name: product?.name || "Unknown",
                             product_spec: product?.specification || "",
                             product_unit: product?.unit || "EA",
+                            product: product, // Store product for lookup
                             process_name: "기본 공정",
                             sequence: 1,
                             course_type: "INTERNAL",
@@ -100,6 +103,21 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
         const newItems = [...items];
         newItems[index][field] = value;
 
+        // Auto-lookup cost for INTERNAL processes
+        if ((field === 'course_type' && value === 'INTERNAL') ||
+            (field === 'process_name' && newItems[index].course_type === 'INTERNAL')) {
+            const item = newItems[index];
+            const productName = item.process_name?.toLowerCase().trim();
+            const stdProcs = item.product?.standard_processes || [];
+            const match = stdProcs.find(p => p.process?.name?.toLowerCase().trim() === productName);
+
+            if (match) {
+                const qty = parseInt(item.quantity) || 1;
+                newItems[index].unit_cost = match.cost || 0;
+                newItems[index].cost = (match.cost || 0) * qty;
+            }
+        }
+
         if (field === 'quantity') {
             const qty = parseInt(value) || 0;
             const unitCost = newItems[index].unit_cost || 0;
@@ -123,6 +141,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
         const productItems = items.filter(i => i.product_id === productId);
         const maxSeq = productItems.reduce((max, item) => Math.max(max, parseInt(item.sequence) || 0), 0);
         const defaultQty = productItems.length > 0 ? productItems[0].quantity : 0;
+        const productObj = productItems.length > 0 ? productItems[0].product : null;
 
         setItems([...items, {
             cid: Math.random().toString(36).substr(2, 9),
@@ -130,6 +149,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
             product_name: productName,
             product_spec: productSpec,
             product_unit: productUnit,
+            product: productObj, // Include product for lookup
             process_name: "추가 공정",
             sequence: maxSeq + 1,
             course_type: "INTERNAL",

@@ -58,25 +58,25 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
 async def sync_plan_item_cost(db: AsyncSession, plan_item: ProductionPlanItem):
     """
     If INTERNAL, fetch standard cost from ProductProcess and sync plan_item.cost.
+    Uses case-insensitive and trimmed matching for process names for robustness.
     """
-    if plan_item.course_type == "INTERNAL":
+    if plan_item.course_type == "INTERNAL" and plan_item.product_id and plan_item.process_name:
+        from sqlalchemy import func
         # Find corresponding ProductProcess
-        # ProductProcess has product_id and process_id. 
-        # plan_item has process_name. We join with Process to match by name.
         stmt = (
             select(ProductProcess.cost)
             .join(Process, ProductProcess.process_id == Process.id)
             .where(
                 ProductProcess.product_id == plan_item.product_id,
-                Process.name == plan_item.process_name
+                func.lower(func.trim(Process.name)) == func.lower(func.trim(plan_item.process_name))
             )
         )
         result = await db.execute(stmt)
-        std_cost = result.scalar_one_or_none()
-        if std_cost is not None:
-            plan_item.cost = std_cost * (plan_item.quantity or 1)
-        db.add(plan_item)
-        await db.flush()
+        std_unit_cost = result.scalar_one_or_none()
+        if std_unit_cost is not None:
+            plan_item.cost = std_unit_cost * (plan_item.quantity or 1)
+            db.add(plan_item)
+            await db.flush()
 
 @router.get("/plans", response_model=List[schemas.ProductionPlan])
 async def read_production_plans(
@@ -483,7 +483,7 @@ async def update_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlan.items).selectinload(OutsourcingOrderItem.outsourcing_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
@@ -1373,14 +1373,6 @@ async def get_worker_performance(
     result = await db.execute(stmt)
     return [dict(row._mapping) for row in result.all()]
 
-@router.get("/performance/workers/{worker_id}/details", response_model=List[schemas.WorkLogItem])
-async def get_worker_performance_details(
-    worker_id: int,
-    db: AsyncSession = Depends(deps.get_db),
-) -> Any:
-    """
-    Get detailed work log items for a specific worker.
-    """
 @router.get("/performance/workers/{worker_id}/details", response_model=List[schemas.WorkLogItem])
 async def get_worker_performance_details(
     worker_id: int,
