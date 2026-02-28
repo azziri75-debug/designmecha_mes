@@ -367,7 +367,7 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
-                <Button onClick={handleSubmit} variant="contained" disabled={loading}>
+                <Button onClick={() => handleSubmit()} variant="contained" disabled={loading}>
                     {loading ? "저장 중..." : "확정"}
                 </Button>
             </DialogActions>

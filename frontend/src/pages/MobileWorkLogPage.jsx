@@ -73,9 +73,10 @@ const MobileWorkLogPage = () => {
     const [conflictOpen, setConflictOpen] = useState(false);
 
     useEffect(() => {
+        if (!user) return;
         if (tab === 0) fetchAllPlans();
         if (tab === 1) fetchMyPerformance();
-    }, [tab, perfYear, perfMonth]);
+    }, [tab, perfYear, perfMonth, user]);
 
     const fetchAllPlans = async () => {
         setLoading(true);
@@ -90,17 +91,20 @@ const MobileWorkLogPage = () => {
     };
 
     const fetchMyPerformance = async () => {
+        if (!user?.id) return;
         setLoading(true);
         try {
             const startDate = `${perfYear}-${String(perfMonth).padStart(2, '0')}-01`;
             const endDate = new Date(perfYear, perfMonth, 0).toISOString().split('T')[0];
 
+            console.log('Fetching performance for:', user.id, startDate, endDate);
             const res = await api.get(`/production/performance/workers/${user.id}/details`, {
                 params: { start_date: startDate, end_date: endDate }
             });
+            console.log('Performance data:', res.data);
             setMyPerformance(res.data);
         } catch (err) {
-            console.error(err);
+            console.error('Performance fetch error:', err);
         } finally {
             setLoading(false);
         }
@@ -127,18 +131,24 @@ const MobileWorkLogPage = () => {
             for (const file of photos) {
                 const formData = new FormData();
                 formData.append('file', file);
-                // OVERRIDE default headers for multipart
-                const uploadRes = await api.post('/upload', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+
+                // Remove explicit Content-Type to let browser handle boundary
+                const uploadRes = await api.post('/upload', formData);
                 uploadedPhotos.push({
                     name: uploadRes.data.filename,
                     url: uploadRes.data.url
                 });
             }
 
+            // Local Date handling
+            const localDate = new Date();
+            const year = localDate.getFullYear();
+            const month = String(localDate.getMonth() + 1).padStart(2, '0');
+            const day = String(localDate.getDate()).padStart(2, '0');
+            const workDate = `${year}-${month}-${day}`;
+
             const payload = {
-                work_date: new Date().toISOString().split('T')[0],
+                work_date: workDate,
                 worker_id: user.id,
                 note: note,
                 attachment_file: uploadedPhotos,
@@ -204,7 +214,10 @@ const MobileWorkLogPage = () => {
             groups[logId].totalCost += (item.good_quantity * (item.unit_price || 0));
             groups[logId].items.push(item);
         });
-        return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
+        return Object.values(groups).sort((a, b) => {
+            if (!a.date || !b.date) return 0;
+            return b.date.localeCompare(a.date);
+        });
     }, [myPerformance]);
 
     return (
