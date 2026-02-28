@@ -4,6 +4,7 @@ import {
     TextField, Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, IconButton, Autocomplete
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon, Upload as UploadIcon, FilePresent as FileIcon } from '@mui/icons-material';
+import { X } from 'lucide-react';
 import api from '../lib/api';
 import FileViewerModal from './FileViewerModal';
 
