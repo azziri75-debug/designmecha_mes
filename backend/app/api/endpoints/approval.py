@@ -273,6 +273,20 @@ async def process_approval(
     await db.commit()
     return {"message": "처리되었습니다.", "status": doc.status}
 
+async def is_editable(doc: ApprovalDocument) -> bool:
+    """문서가 수정/삭제 가능한 상태인지 확인 (PENDING, REJECTED 또는 자동 승인만 된 IN_PROGRESS)"""
+    if doc.status in [ApprovalStatus.PENDING, ApprovalStatus.REJECTED]:
+        return True
+    
+    if doc.status == ApprovalStatus.IN_PROGRESS:
+        # 진행 중인 경우, 지금까지 완료된 모든 단계가 '자동 승인'인지 확인
+        for step in doc.steps:
+            if step.status == "APPROVED" and step.comment != "기안자 직급에 따른 자동 승인":
+                return False
+        return True
+    
+    return False
+
 @router.put("/documents/{doc_id}", response_model=ApprovalDocumentResponse)
 async def update_document(
     doc_id: int,
@@ -289,8 +303,11 @@ async def update_document(
     if doc.author_id != current_user.id:
         raise HTTPException(status_code=403, detail="수정 권한이 없습니다.")
     
-    if doc.status not in [ApprovalStatus.PENDING, ApprovalStatus.REJECTED]:
-        raise HTTPException(status_code=400, detail="결재가 진행 중이거나 완료된 문서는 수정할 수 없습니다.")
+    # 관계형 데이터 로드 (is_editable에서 필요)
+    await db.refresh(doc, ["steps"])
+    
+    if not await is_editable(doc):
+        raise HTTPException(status_code=400, detail="결재가 이미 진행되어 수정할 수 없습니다.")
     
     doc.title = doc_in.title
     doc.content = doc_in.content
@@ -373,8 +390,11 @@ async def delete_document(
     if doc.author_id != current_user.id:
         raise HTTPException(status_code=403, detail="삭제 권한이 없습니다.")
     
-    if doc.status not in [ApprovalStatus.PENDING, ApprovalStatus.REJECTED]:
-        raise HTTPException(status_code=400, detail="결재가 진행 중이거나 완료된 문서는 삭제할 수 없습니다.")
+    # 관계형 데이터 로드
+    await db.refresh(doc, ["steps"])
+    
+    if not await is_editable(doc):
+        raise HTTPException(status_code=400, detail="결재가 이미 진행되어 삭제할 수 없습니다.")
     
     await db.delete(doc) # Cascade delete will handle steps
     await db.commit()

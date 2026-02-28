@@ -682,47 +682,93 @@ const MobileWorkLogPage = () => {
                             </Box>
                         </Paper>
 
-                        {/* Drill-down List */}
-                        {user.user_type === 'ADMIN' && selectedWorker === 'ALL' ? (
-                            /* Admin Summary View (Worker Aggregates) */
-                            <Stack spacing={1.5}>
+                        {/* Performance List */}
+                        {user.user_type === 'ADMIN' ? (
+                            <Stack spacing={2}>
                                 {workerAggregates.map(agg => (
-                                    <Card key={agg.id} sx={{ borderRadius: 2 }} onClick={() => setSelectedWorker(agg.id)}>
-                                        <CardContent sx={{ p: 2 }}>
-                                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                                <Box>
-                                                    <Typography variant="subtitle1" fontWeight="bold">{agg.name}</Typography>
-                                                    <Typography variant="caption" color="textSecondary">{agg.role} • {agg.count}건</Typography>
-                                                </Box>
-                                                <Stack direction="row" alignItems="center" spacing={1}>
-                                                    <Typography variant="subtitle1" fontWeight="bold" color="primary">
-                                                        {agg.totalCost.toLocaleString()}원
+                                    <Accordion
+                                        key={agg.id}
+                                        disableGutters
+                                        elevation={0}
+                                        sx={{
+                                            '&:before': { display: 'none' },
+                                            borderRadius: 2,
+                                            overflow: 'hidden',
+                                            border: '1px solid #e2e8f0',
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                        }}
+                                    >
+                                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: '#fff', minHeight: 64 }}>
+                                            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ width: '100%' }}>
+                                                <Avatar sx={{ bgcolor: '#3b82f6', width: 32, height: 32, fontSize: '0.8rem' }}>
+                                                    {agg.name?.charAt(0)}
+                                                </Avatar>
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Typography variant="subtitle2" fontWeight="bold">
+                                                        {agg.name} ({agg.role})
                                                     </Typography>
-                                                    <ChevronRightIcon color="action" />
-                                                </Stack>
+                                                    <Typography variant="caption" color="textSecondary">
+                                                        {agg.count}건
+                                                    </Typography>
+                                                </Box>
+                                                <Typography variant="subtitle2" fontWeight="bold" color="primary" sx={{ mr: 1 }}>
+                                                    {agg.totalCost.toLocaleString()}원
+                                                </Typography>
                                             </Stack>
-                                        </CardContent>
-                                    </Card>
+                                        </AccordionSummary>
+                                        <AccordionDetails sx={{ p: 0, bgcolor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                                            <Box sx={{ p: 1 }}>
+                                                {groupedPerformance
+                                                    .filter(group => group.items.some(item => item.worker_id === agg.id))
+                                                    .map(group => (
+                                                        <Box
+                                                            key={group.id}
+                                                            sx={{
+                                                                p: 1.5,
+                                                                mb: 1,
+                                                                bgcolor: '#fff',
+                                                                borderRadius: 1,
+                                                                border: '1px solid #f1f5f9'
+                                                            }}
+                                                        >
+                                                            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                                                                <Typography variant="caption" fontWeight="bold" sx={{ color: '#475569' }}>
+                                                                    {group.date}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="primary" fontWeight="bold">
+                                                                    {group.items.filter(i => i.worker_id === agg.id).reduce((sum, i) => sum + calculateItemCost(i), 0).toLocaleString()}원
+                                                                </Typography>
+                                                            </Stack>
+                                                            <Stack spacing={0.8}>
+                                                                {group.items
+                                                                    .filter(item => item.worker_id === agg.id)
+                                                                    .map((item, idx) => (
+                                                                        <Box key={idx} sx={{ pl: 1, borderLeft: '2px solid #cbd5e1' }}>
+                                                                            <Typography variant="caption" display="block" sx={{ fontSize: '0.75rem' }}>
+                                                                                {item.plan_item?.process_name}
+                                                                            </Typography>
+                                                                            <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
+                                                                                {item.plan_item?.product?.name} • {item.good_quantity}개
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    ))}
+                                                            </Stack>
+                                                        </Box>
+                                                    ))}
+                                            </Box>
+                                        </AccordionDetails>
+                                    </Accordion>
                                 ))}
                                 {workerAggregates.length === 0 && (
-                                    <Typography sx={{ textAlign: 'center', mt: 4, color: 'textSecondary' }}>
-                                        기록된 실적이 없습니다.
-                                    </Typography>
+                                    <Box sx={{ textAlign: 'center', mt: 4, color: 'textSecondary' }}>
+                                        <BarChartIcon sx={{ fontSize: 48, opacity: 0.2, mb: 1 }} />
+                                        <Typography variant="body2">기록된 실적이 없습니다.</Typography>
+                                    </Box>
                                 )}
                             </Stack>
                         ) : (
-                            /* Detailed List View (Single Worker or Mine) */
+                            /* Detailed List View (Mine) */
                             <Box>
-                                {user.user_type === 'ADMIN' && selectedWorker !== 'ALL' && (
-                                    <Button
-                                        size="small"
-                                        startIcon={<ArrowBackIcon />}
-                                        onClick={() => setSelectedWorker('ALL')}
-                                        sx={{ mb: 1 }}
-                                    >
-                                        전체 작업자 목록으로
-                                    </Button>
-                                )}
                                 {loading && groupedPerformance.length === 0 ? (
                                     <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress size={24} /></Box>
                                 ) : (
@@ -1089,8 +1135,8 @@ const MobileWorkLogPage = () => {
                                 </Paper>
                             )}
 
-                            {/* Self Edit/Delete (Only PENDING and author) */}
-                            {selectedDoc.status === 'PENDING' && selectedDoc.author_id === user.id && (
+                            {/* Self Edit/Delete (PENDING, REJECTED, or IN_PROGRESS with only auto-approvals) */}
+                            {selectedDoc.author_id === user.id && (selectedDoc.status === 'PENDING' || selectedDoc.status === 'REJECTED' || (selectedDoc.status === 'IN_PROGRESS' && selectedDoc.steps?.every(s => s.status !== 'APPROVED' || s.comment === "기안자 직급에 따른 자동 승인"))) && (
                                 <Stack direction="row" spacing={1}>
                                     <Button
                                         variant="outlined"
