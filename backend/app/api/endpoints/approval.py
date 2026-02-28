@@ -17,6 +17,20 @@ from app.schemas.approval import (
 
 router = APIRouter()
 
+ROLE_RANKING = {
+    "연구원": 1,
+    "사원": 1,
+    "대리": 2,
+    "과장": 3,
+    "차장": 4,
+    "부장": 5,
+    "이사": 6,
+    "대표이사": 7
+}
+
+def get_staff_rank(role: str) -> int:
+    return ROLE_RANKING.get(role, 0)
+
 @router.get("/stats", response_model=ApprovalStats)
 async def get_approval_stats(
     db: AsyncSession = Depends(deps.get_db),
@@ -129,11 +143,12 @@ async def create_document(
         current_sequence=1
     )
     db.add(db_doc)
-    await db.flush() # ID 생성을 위해 flush
+    await db.flush()
     
     # 2. 결재선 템플릿에서 결재 단계(Steps) 생성
     lines_res = await db.execute(
         select(ApprovalLine)
+        .options(selectinload(ApprovalLine.approver))
         .where(ApprovalLine.doc_type == doc_in.doc_type)
         .order_by(ApprovalLine.sequence)
     )
@@ -142,18 +157,49 @@ async def create_document(
     if not lines:
         raise HTTPException(status_code=400, detail="결재선이 설정되지 않은 문서 종류입니다.")
     
+    author_rank = get_staff_rank(current_user.role)
+    current_seq = 1
+    all_auto_approved = True
+    
     for line in lines:
+        approver_rank = get_staff_rank(line.approver.role)
+        # 기안자 직급이 결재자와 동등하거나 높으면 자동 승인
+        is_auto = author_rank >= approver_rank
+        
         step = ApprovalStep(
             document_id=db_doc.id,
             approver_id=line.approver_id,
             sequence=line.sequence,
-            status="PENDING"
+            status="APPROVED" if is_auto else "PENDING",
+            processed_at=datetime.now() if is_auto else None,
+            comment="기안자 직급에 따른 자동 승인" if is_auto else None
         )
         db.add(step)
-    
+        
+        if is_auto:
+            if current_seq == line.sequence:
+                current_seq += 1
+        else:
+            all_auto_approved = False
+
+    db_doc.current_sequence = current_seq
+    if all_auto_approved:
+        db_doc.status = ApprovalStatus.COMPLETED
+    elif current_seq > 1:
+        db_doc.status = ApprovalStatus.IN_PROGRESS
+
     await db.commit()
-    await db.refresh(db_doc)
-    return db_doc
+    
+    # 다시 조회 (500 오류 방지 - 관계형 객체 로드)
+    result = await db.execute(
+        select(ApprovalDocument)
+        .options(
+            selectinload(ApprovalDocument.author),
+            selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver)
+        )
+        .where(ApprovalDocument.id == db_doc.id)
+    )
+    return result.scalar_one()
 
 @router.get("/documents/{doc_id}", response_model=ApprovalDocumentResponse)
 async def get_document(
@@ -261,23 +307,56 @@ async def update_document(
     
     lines_res = await db.execute(
         select(ApprovalLine)
+        .options(selectinload(ApprovalLine.approver))
         .where(ApprovalLine.doc_type == doc.doc_type)
         .order_by(ApprovalLine.sequence)
     )
     lines = lines_res.scalars().all()
     
+    author_rank = get_staff_rank(current_user.role)
+    current_seq = 1
+    all_auto_approved = True
+    
     for line in lines:
+        approver_rank = get_staff_rank(line.approver.role)
+        is_auto = author_rank >= approver_rank
+        
         step = ApprovalStep(
             document_id=doc.id,
             approver_id=line.approver_id,
             sequence=line.sequence,
-            status="PENDING"
+            status="APPROVED" if is_auto else "PENDING",
+            processed_at=datetime.now() if is_auto else None,
+            comment="기안자 직급에 따른 자동 승인" if is_auto else None
         )
         db.add(step)
-    
+        
+        if is_auto:
+            if current_seq == line.sequence:
+                current_seq += 1
+        else:
+            all_auto_approved = False
+
+    doc.current_sequence = current_seq
+    if all_auto_approved:
+        doc.status = ApprovalStatus.COMPLETED
+    elif current_seq > 1:
+        doc.status = ApprovalStatus.IN_PROGRESS
+    else:
+        doc.status = ApprovalStatus.PENDING
+
     await db.commit()
-    await db.refresh(doc)
-    return doc
+    
+    # 다시 조회 (관계형 객체 로드)
+    result = await db.execute(
+        select(ApprovalDocument)
+        .options(
+            selectinload(ApprovalDocument.author),
+            selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver)
+        )
+        .where(ApprovalDocument.id == doc_id)
+    )
+    return result.scalar_one()
 
 @router.delete("/documents/{doc_id}")
 async def delete_document(
