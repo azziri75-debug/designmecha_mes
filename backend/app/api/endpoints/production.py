@@ -55,6 +55,29 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
     db.add(plan_item)
     await db.flush()
 
+async def sync_plan_item_cost(db: AsyncSession, plan_item: ProductionPlanItem):
+    """
+    If INTERNAL, fetch standard cost from ProductProcess and sync plan_item.cost.
+    """
+    if plan_item.course_type == "INTERNAL":
+        # Find corresponding ProductProcess
+        # ProductProcess has product_id and process_id. 
+        # plan_item has process_name. We join with Process to match by name.
+        stmt = (
+            select(ProductProcess.cost)
+            .join(Process, ProductProcess.process_id == Process.id)
+            .where(
+                ProductProcess.product_id == plan_item.product_id,
+                Process.name == plan_item.process_name
+            )
+        )
+        result = await db.execute(stmt)
+        std_cost = result.scalar_one_or_none()
+        if std_cost is not None:
+            plan_item.cost = std_cost * (plan_item.quantity or 1)
+        db.add(plan_item)
+        await db.flush()
+
 @router.get("/plans", response_model=List[schemas.ProductionPlan])
 async def read_production_plans(
     skip: int = 0,
@@ -197,6 +220,7 @@ async def create_production_plan(
                 cost=item_in.cost
             )
             db.add(plan_item)
+            await sync_plan_item_cost(db, plan_item)
     else:
         # Default logic for Sales Order (already exists) or Stock Production
         # If stock production, it's usually just one product.
@@ -436,11 +460,14 @@ async def update_production_plan(
                 existing_item = existing_items_map[item_id]
                 for k, v in item_data.items():
                     setattr(existing_item, k, v)
+                await sync_plan_item_cost(db, existing_item)
                 new_items.append(existing_item)
                 del existing_items_map[item_id]
             else:
                 # Create new item
                 new_item = ProductionPlanItem(plan_id=plan.id, **item_data)
+                db.add(new_item)
+                await sync_plan_item_cost(db, new_item)
                 new_items.append(new_item)
         
         # Items remaining in existing_items_map are removed (delete-orphan)

@@ -488,8 +488,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
+                                                        disabled={item.course_type === 'INTERNAL'}
                                                         placeholder={'직접입력'}
-                                                        helperText={item.course_type !== 'INTERNAL' && item.purchase_items?.length ? `발주: ${item.purchase_items.reduce((s, pi) => s + (pi.quantity * pi.unit_price), 0).toLocaleString()}원` : `단가: ${(item.unit_cost || 0).toLocaleString()}`}
+                                                        helperText={item.course_type === 'INTERNAL' ? `표준단가: ${(item.unit_cost || 0).toLocaleString()} (자동)` : (item.purchase_items?.length ? `발주: ${item.purchase_items.reduce((s, pi) => s + (pi.quantity * pi.unit_price), 0).toLocaleString()}원` : `단가: ${(item.unit_cost || 0).toLocaleString()}`)}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
