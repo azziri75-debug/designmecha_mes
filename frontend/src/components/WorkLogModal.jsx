@@ -90,16 +90,23 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
 
-        const uploadFormData = new FormData();
-        files.forEach(file => uploadFormData.append('files', file));
-
         try {
-            const res = await api.post('/upload/', uploadFormData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const uploadedFiles = [];
+            for (const file of files) {
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', file);
 
-            const newUploadedFiles = res.data.files;
-            setAttachmentFile(prev => [...prev, ...newUploadedFiles]);
+                const res = await api.post('/upload', uploadFormData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                uploadedFiles.push({
+                    name: res.data.filename,
+                    url: res.data.url
+                });
+            }
+
+            setAttachmentFile(prev => [...prev, ...uploadedFiles]);
         } catch (error) {
             console.error("Upload failed", error);
             alert("파일 업로드 실패");
