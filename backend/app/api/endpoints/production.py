@@ -1270,3 +1270,107 @@ async def delete_work_log(
     await db.commit()
 
     return {"message": "Work Log deleted successfully"}
+
+# --- Performance Management Endpoints ---
+
+@router.get("/performance/workers")
+async def get_worker_performance(
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Get aggregated performance by worker.
+    """
+    from sqlalchemy import func, distinct
+    from app.models.basics import Staff
+    
+    # Aggregate: worker_id, worker_name, total_cost, log_days
+    # log_days is the number of unique work_dates the worker has recorded logs for.
+    stmt = (
+        select(
+            Staff.id.label("worker_id"),
+            Staff.name.label("worker_name"),
+            func.sum(WorkLogItem.good_quantity * WorkLogItem.unit_price).label("total_cost"),
+            func.count(distinct(WorkLog.work_date)).label("log_days")
+        )
+        .join(WorkLogItem, Staff.id == WorkLogItem.worker_id)
+        .join(WorkLog, WorkLogItem.work_log_id == WorkLog.id)
+        .group_by(Staff.id, Staff.name)
+    )
+    
+    result = await db.execute(stmt)
+    return [dict(row._mapping) for row in result.all()]
+
+@router.get("/performance/workers/{worker_id}/details", response_model=List[schemas.WorkLogItem])
+async def get_worker_performance_details(
+    worker_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Get detailed work log items for a specific worker.
+    """
+    result = await db.execute(
+        select(WorkLogItem)
+        .options(
+            selectinload(WorkLogItem.work_log),
+            selectinload(WorkLogItem.plan_item).options(
+                selectinload(ProductionPlanItem.product),
+                selectinload(ProductionPlanItem.plan).options(
+                    selectinload(ProductionPlan.order),
+                    selectinload(ProductionPlan.stock_production)
+                )
+            )
+        )
+        .where(WorkLogItem.worker_id == worker_id)
+        .order_by(WorkLogItem.id.desc())
+    )
+    return result.scalars().all()
+
+@router.patch("/work-log-items/{item_id}", response_model=schemas.WorkLogItem)
+async def update_work_log_item(
+    item_id: int,
+    item_in: schemas.WorkLogItemBase, # Using Base as it contains all editable fields
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Update a single work log item (price, quantity, worker, etc).
+    """
+    result = await db.execute(
+        select(WorkLogItem)
+        .options(selectinload(WorkLogItem.work_log))
+        .where(WorkLogItem.id == item_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Work Log Item not found")
+
+    update_data = item_in.model_dump(exclude_unset=True)
+    
+    # Identify if quantity or price changed to sync plan item status/cost
+    qty_changed = "good_quantity" in update_data and update_data["good_quantity"] != item.good_quantity
+    
+    for field, value in update_data.items():
+        setattr(item, field, value)
+
+    await db.commit()
+    await db.refresh(item)
+    
+    if qty_changed:
+        await sync_plan_item_status(db, item.plan_item_id)
+        await db.commit()
+
+    # Re-fetch for full schema
+    result = await db.execute(
+        select(WorkLogItem)
+        .options(
+            selectinload(WorkLogItem.work_log),
+            selectinload(WorkLogItem.plan_item).options(
+                selectinload(ProductionPlanItem.product),
+                selectinload(ProductionPlanItem.plan).options(
+                    selectinload(ProductionPlan.order),
+                    selectinload(ProductionPlan.stock_production)
+                )
+            )
+        )
+        .where(WorkLogItem.id == item_id)
+    )
+    return result.scalar_one()

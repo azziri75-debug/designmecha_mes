@@ -145,6 +145,7 @@ class WorkLogItem(Base):
     
     good_quantity = Column(Integer, default=0)
     bad_quantity = Column(Integer, default=0)
+    unit_price = Column(Float, default=0.0)
     note = Column(Text, nullable=True)
 
     # Relationships

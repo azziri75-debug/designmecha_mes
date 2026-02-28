@@ -68,6 +68,7 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
             worker_id: workerId || '', // Default to main worker
             good_quantity: 0,
             bad_quantity: 0,
+            unit_price: planItem.cost / (planItem.quantity || 1), // Default price
             start_time: '',
             end_time: '',
             note: ''
@@ -138,6 +139,7 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                     end_time: i.end_time || null,
                     good_quantity: parseInt(i.good_quantity) || 0,
                     bad_quantity: parseInt(i.bad_quantity) || 0,
+                    unit_price: parseFloat(i.unit_price) || 0,
                     note: i.note
                 }))
             };

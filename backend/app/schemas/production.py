@@ -126,6 +126,7 @@ class WorkLogItemBase(BaseModel):
     end_time: Optional[datetime] = None
     good_quantity: int = 0
     bad_quantity: int = 0
+    unit_price: float = 0.0
     note: Optional[str] = None
 
 class WorkLogItemCreate(WorkLogItemBase):
