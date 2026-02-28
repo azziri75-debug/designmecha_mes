@@ -38,9 +38,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     product_id: item.product.id
                 }))
             });
-        } else if (isOpen && initialItems && initialItems.length > 0) {
+        } else if (isOpen && initialItems && initialItems.length > 0 && products.length > 0) {
             // Pre-fill from pending items
-            // Try to auto-detect partner from first item
             const firstPartnerName = initialItems[0].partner_name;
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
@@ -50,13 +49,27 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                 delivery_date: '',
                 note: '',
                 status: 'PENDING',
-                items: initialItems.map(item => ({
-                    product_id: item.product_id,
-                    quantity: item.quantity,
-                    unit_price: 0, // Could fetch last price if needed
-                    note: item.note,
-                    production_plan_item_id: item.id
-                }))
+                items: initialItems.map(item => {
+                    // Look up standard process cost for original process
+                    const product = products.find(p => p.id === item.product_id);
+                    let unitPrice = 0;
+                    if (product && product.standard_processes) {
+                        const standardProc = product.standard_processes.find(sp =>
+                            sp.process?.name === item.process_name ||
+                            sp.course_type?.includes('OUTSOURCING') ||
+                            sp.process?.course_type?.includes('OUTSOURCING')
+                        );
+                        if (standardProc) unitPrice = standardProc.cost || 0;
+                    }
+
+                    return {
+                        product_id: item.product_id,
+                        quantity: item.quantity,
+                        unit_price: unitPrice,
+                        note: item.note,
+                        production_plan_item_id: item.id
+                    };
+                })
             });
         } else if (isOpen) {
             setFormData({
@@ -68,7 +81,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                 items: []
             });
         }
-    }, [order, isOpen, initialItems, partners]);
+    }, [order, isOpen, initialItems, partners, products]);
 
     const fetchPartners = async () => {
         try {
@@ -106,6 +119,22 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     const handleItemChange = (index, field, value) => {
         const newItems = [...formData.items];
         newItems[index][field] = value;
+
+        // Auto-fill price if product selected
+        if (field === 'product_id') {
+            const product = products.find(p => p.id === value);
+            if (product && product.standard_processes) {
+                // Find OUTSOURCING process
+                const outsourcingProc = product.standard_processes.find(sp =>
+                    sp.course_type?.includes('OUTSOURCING') ||
+                    sp.process?.course_type?.includes('OUTSOURCING')
+                );
+                if (outsourcingProc) {
+                    newItems[index].unit_price = outsourcingProc.cost || 0;
+                }
+            }
+        }
+
         setFormData({ ...formData, items: newItems });
     };
 
