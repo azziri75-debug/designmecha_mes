@@ -83,49 +83,42 @@ async def root():
 
 @app.on_event("startup")
 async def startup_event():
-    """Ensure admin user exists on startup"""
+    """Database migrations and initialization tasks on startup"""
     from app.api.deps import AsyncSessionLocal
     from app.models.basics import Staff
     from sqlalchemy.future import select
+    from sqlalchemy import text
     import json
     
     async with AsyncSessionLocal() as db:
-        ALL_MENUS = ["basics", "products", "sales", "production", "purchase", "outsourcing", "quality", "inventory"]
-        result = await db.execute(select(Staff).where(Staff.name == "이준호"))
-        admin = result.scalar_one_or_none()
-        
-        if not admin:
-            admin = Staff(
-                name="이준호",
-                role="대표",
-                main_duty="총괄관리",
-                user_type="ADMIN",
-                password="6220",
-                menu_permissions=ALL_MENUS,
-                is_active=True
-            )
-            db.add(admin)
-            print("Startup: Created admin '이준호'")
-        else:
-            admin.password = "6220"
-            admin.user_type = "ADMIN"
-            admin.menu_permissions = ALL_MENUS
-            admin.is_active = True
-            db.add(admin)
-            print("Startup: Updated admin '이준호' password to 6220")
-            
-        # 2. Migration for sales_orders attachment_file
-        from sqlalchemy import text
-        # SQLite check
         db_url = str(db.get_bind().url)
-        if "sqlite" in db_url:
+        is_sqlite = "sqlite" in db_url
+        
+        # 1. Structural Migrations (Before any SQLAlchemy model queries)
+        
+        # Staff: stamp_image
+        if is_sqlite:
+            r = await db.execute(text("PRAGMA table_info(staff)"))
+            cols = [c[1] for c in r.fetchall()]
+            if "stamp_image" not in cols:
+                await db.execute(text("ALTER TABLE staff ADD COLUMN stamp_image JSON"))
+                print("Startup: Added stamp_image to staff (SQLite)")
+        else:
+            r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
+            if not r.scalar():
+                await db.execute(text("ALTER TABLE staff ADD COLUMN stamp_image JSONB"))
+                print("Startup: Added stamp_image to staff (Postgres)")
+        
+        await db.commit() # Commit migration before using model
+        
+        # 2. Migration for sales_orders attachment_file
+        if is_sqlite:
             table_info = await db.execute(text("PRAGMA table_info(sales_orders)"))
             columns = [row[1] for row in table_info.fetchall()]
             if "attachment_file" not in columns:
                 await db.execute(text("ALTER TABLE sales_orders ADD COLUMN attachment_file JSON"))
                 print("Startup: Added attachment_file to sales_orders (SQLite)")
         else:
-            # Postgres check
             check_sql = text("""
                 SELECT column_name 
                 FROM information_schema.columns 
@@ -135,57 +128,25 @@ async def startup_event():
             if not result.fetchone():
                 await db.execute(text("ALTER TABLE sales_orders ADD COLUMN attachment_file JSONB"))
                 print("Startup: Added attachment_file to sales_orders (Postgres)")
-            
-        # 3. Migration for quality_defects
-        # Check if table exists
-        if "sqlite" in db_url:
-            table_check = await db.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='quality_defects'"))
-            if not table_check.fetchone():
-                await db.execute(text("""
-                    CREATE TABLE quality_defects (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        order_id INTEGER NOT NULL,
-                        plan_id INTEGER NOT NULL,
-                        plan_item_id INTEGER NOT NULL,
-                        defect_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        defect_reason VARCHAR NOT NULL,
-                        quantity INTEGER DEFAULT 0,
-                        amount FLOAT DEFAULT 0.0,
-                        status VARCHAR DEFAULT 'OCCURRED',
-                        resolution_date TIMESTAMP,
-                        resolution_note TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY(order_id) REFERENCES sales_orders(id),
-                        FOREIGN KEY(plan_id) REFERENCES production_plans(id),
-                        FOREIGN KEY(plan_item_id) REFERENCES production_plan_items(id)
-                    )
-                """))
-                print("Startup: Created quality_defects table (SQLite)")
-        else:
-            # Postgres (Assuming table creation via DDL or similar check)
-            table_check = await db.execute(text("SELECT to_regclass('public.quality_defects')"))
-            if not table_check.scalar():
-                await db.execute(text("""
-                    CREATE TABLE quality_defects (
-                        id SERIAL PRIMARY KEY,
-                        order_id INTEGER NOT NULL REFERENCES sales_orders(id),
-                        plan_id INTEGER NOT NULL REFERENCES production_plans(id),
-                        plan_item_id INTEGER NOT NULL REFERENCES production_plan_items(id),
-                        defect_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                        defect_reason TEXT NOT NULL,
-                        quantity INTEGER DEFAULT 0,
-                        amount DOUBLE PRECISION DEFAULT 0.0,
-                        status VARCHAR DEFAULT 'OCCURRED',
-                        resolution_date TIMESTAMP WITH TIME ZONE,
-                        resolution_note TEXT,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    )
-                """))
-                print("Startup: Created quality_defects table (Postgres)")
 
-        # 4. New Tables Expansion
-        # Define table names to check
+        # 3. Tables Expansion
         new_tables = [
+            ("quality_defects", """
+                CREATE TABLE quality_defects (
+                    id SERIAL PRIMARY KEY,
+                    order_id INTEGER NOT NULL REFERENCES sales_orders(id),
+                    plan_id INTEGER NOT NULL REFERENCES production_plans(id),
+                    plan_item_id INTEGER NOT NULL REFERENCES production_plan_items(id),
+                    defect_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    defect_reason TEXT NOT NULL,
+                    quantity INTEGER DEFAULT 0,
+                    amount DOUBLE PRECISION DEFAULT 0.0,
+                    status VARCHAR DEFAULT 'OCCURRED',
+                    resolution_date TIMESTAMP WITH TIME ZONE,
+                    resolution_note TEXT,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            """),
             ("stocks", """
                 CREATE TABLE stocks (
                     id SERIAL PRIMARY KEY,
@@ -281,7 +242,6 @@ async def startup_event():
             """)
         ]
 
-        is_sqlite = "sqlite" in db_url
         for t_name, create_sql in new_tables:
             if is_sqlite:
                 check_sql = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{t_name}'"
@@ -289,7 +249,11 @@ async def startup_event():
                                 .replace("JSONB", "JSON")\
                                 .replace("CURRENT_DATE", "CURRENT_TIMESTAMP")\
                                 .replace("DOUBLE PRECISION", "FLOAT")\
-                                .replace("TIMESTAMP WITH TIME ZONE", "TIMESTAMP")
+                                .replace("TIMESTAMP WITH TIME ZONE", "TIMESTAMP")\
+                                .replace("REFERENCES sales_orders(id)", "REFERENCES sales_orders(id)")\
+                                .replace("REFERENCES production_plans(id)", "REFERENCES production_plans(id)")\
+                                .replace("REFERENCES production_plan_items(id)", "REFERENCES production_plan_items(id)")
+                # Minimal regex-like replacement for basic SQLite compatibility
             else:
                 check_sql = f"SELECT to_regclass('public.{t_name}')"
                 sql = create_sql
@@ -299,7 +263,7 @@ async def startup_event():
                 await db.execute(text(sql))
                 print(f"Startup: Created {t_name} table")
 
-        # 5. Alter existing tables for enhancements
+        # 4. Alter existing tables for enhancements
         if is_sqlite:
             r = await db.execute(text("PRAGMA table_info(production_plans)"))
             cols = [c[1] for c in r.fetchall()]
@@ -329,7 +293,7 @@ async def startup_event():
             if not r.scalar():
                 await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN attachment_file JSONB"))
 
-        # 5b. Fix WorkLogItems and WorkLogs (Persistent Sync)
+        # 5. Fix WorkLogItems and WorkLogs
         if is_sqlite:
             r = await db.execute(text("PRAGMA table_info(work_log_items)"))
             cols = [c[1] for c in r.fetchall()]
@@ -341,30 +305,41 @@ async def startup_event():
             if "attachment_file" not in cols:
                 await db.execute(text("ALTER TABLE work_logs ADD COLUMN attachment_file JSON"))
         else:
-            # Postgres: work_log_items.unit_price
             r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='work_log_items' AND column_name='unit_price'"))
             if not r.scalar():
                 await db.execute(text("ALTER TABLE work_log_items ADD COLUMN unit_price DOUBLE PRECISION DEFAULT 0.0"))
-            
-            # Postgres: work_logs.attachment_file
             r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='work_logs' AND column_name='attachment_file'"))
             if not r.scalar():
                 await db.execute(text("ALTER TABLE work_logs ADD COLUMN attachment_file JSONB"))
         
-        # 5c. Staff: stamp_image
-        if is_sqlite:
-            r = await db.execute(text("PRAGMA table_info(staff)"))
-            cols = [c[1] for c in r.fetchall()]
-            if "stamp_image" not in cols:
-                await db.execute(text("ALTER TABLE staff ADD COLUMN stamp_image JSON"))
-        else:
-            r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
-            if not r.scalar():
-                await db.execute(text("ALTER TABLE staff ADD COLUMN stamp_image JSONB"))
-        
         await db.commit()
 
-        # 6. Initialize Default Form Templates
+        # 6. Initialize Admin User (Using Staff Model)
+        ALL_MENUS = ["basics", "products", "sales", "production", "purchase", "outsourcing", "quality", "inventory", "approval"]
+        result = await db.execute(select(Staff).where(Staff.name == "이준호"))
+        admin = result.scalar_one_or_none()
+        
+        if not admin:
+            admin = Staff(
+                name="이준호",
+                role="대표",
+                main_duty="총괄관리",
+                user_type="ADMIN",
+                password="6220",
+                menu_permissions=ALL_MENUS,
+                is_active=True
+            )
+            db.add(admin)
+            print("Startup: Created admin '이준호'")
+        else:
+            admin.password = "6220"
+            admin.user_type = "ADMIN"
+            admin.menu_permissions = ALL_MENUS
+            admin.is_active = True
+            db.add(admin)
+            print("Startup: Updated admin '이준호' settings")
+            
+        # 7. Initialize Default Form Templates
         DEFAULT_FORMS = [
             {"form_type": "ESTIMATE", "name": "견적서"},
             {"form_type": "PRODUCTION_SHEET", "name": "생산관리시트"},
@@ -384,59 +359,28 @@ async def startup_event():
                 ), {"ft": f["form_type"], "nm": f["name"], "ld": json.dumps(layout), "ia": True})
                 print(f"Startup: Created default form template '{f['name']}'")
         
-        # 8. Fix Process Deletion Constraints (Postgres/SQLite)
+        # 8. Fix Process Deletion Constraints (Postgres Only)
         if not is_sqlite:
-            # Update equipments
-            try:
-                find_con = text("""
-                    SELECT conname FROM pg_constraint 
-                    INNER JOIN pg_class ON connamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public') 
-                    AND pg_class.oid = conrelid 
-                    WHERE pg_class.relname = 'equipments' AND contype = 'f' 
-                    AND confrelid = (SELECT oid FROM pg_class WHERE relname = 'processes');
-                """)
-                res = await db.execute(find_con)
-                con_name = res.scalar()
-                if con_name:
-                    await db.execute(text(f"ALTER TABLE equipments DROP CONSTRAINT {con_name}"))
-                await db.execute(text("ALTER TABLE equipments ADD CONSTRAINT equipments_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
-            except Exception as e: print(f"Startup: Equipments FK update failed: {e}")
-
-            # Update product_processes
-            try:
-                find_con = text("""
-                    SELECT conname FROM pg_constraint 
-                    INNER JOIN pg_class ON connamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public') 
-                    AND pg_class.oid = conrelid 
-                    WHERE pg_class.relname = 'product_processes' AND contype = 'f' 
-                    AND confrelid = (SELECT oid FROM pg_class WHERE relname = 'processes');
-                """)
-                res = await db.execute(find_con)
-                con_name = res.scalar()
-                if con_name:
-                    await db.execute(text(f"ALTER TABLE product_processes DROP CONSTRAINT {con_name}"))
-                await db.execute(text("ALTER TABLE product_processes ALTER COLUMN process_id DROP NOT NULL"))
-                await db.execute(text("ALTER TABLE product_processes ADD CONSTRAINT product_processes_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
-            except Exception as e: print(f"Startup: ProductProcesses FK update failed: {e}")
-
-            # Update inspection_processes
-            try:
-                find_con = text("""
-                    SELECT conname FROM pg_constraint 
-                    INNER JOIN pg_class ON connamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public') 
-                    AND pg_class.oid = conrelid 
-                    WHERE pg_class.relname = 'inspection_processes' AND contype = 'f' 
-                    AND confrelid = (SELECT oid FROM pg_class WHERE relname = 'processes');
-                """)
-                res = await db.execute(find_con)
-                con_name = res.scalar()
-                if con_name:
-                    await db.execute(text(f"ALTER TABLE inspection_processes DROP CONSTRAINT {con_name}"))
-                await db.execute(text("ALTER TABLE inspection_processes ALTER COLUMN process_id DROP NOT NULL"))
-                await db.execute(text("ALTER TABLE inspection_processes ADD CONSTRAINT inspection_processes_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
-            except Exception as e: print(f"Startup: InspectionProcesses FK update failed: {e}")
-        else:
-            await db.execute(text("PRAGMA foreign_keys = OFF"))
+            for table in ['equipments', 'product_processes', 'inspection_processes']:
+                try:
+                    find_con = text(f"""
+                        SELECT conname FROM pg_constraint 
+                        INNER JOIN pg_class ON connamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public') 
+                        AND pg_class.oid = conrelid 
+                        WHERE pg_class.relname = '{table}' AND contype = 'f' 
+                        AND confrelid = (SELECT oid FROM pg_class WHERE relname = 'processes');
+                    """)
+                    res = await db.execute(find_con)
+                    con_name = res.scalar()
+                    if con_name:
+                        await db.execute(text(f"ALTER TABLE {table} DROP CONSTRAINT {con_name}"))
+                    
+                    if table == 'equipments':
+                         await db.execute(text(f"ALTER TABLE {table} ADD CONSTRAINT {table}_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
+                    else:
+                         await db.execute(text(f"ALTER TABLE {table} ALTER COLUMN process_id DROP NOT NULL"))
+                         await db.execute(text(f"ALTER TABLE {table} ADD CONSTRAINT {table}_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
+                except Exception as e: print(f"Startup: {table} FK update failed: {e}")
 
         await db.commit()
 
