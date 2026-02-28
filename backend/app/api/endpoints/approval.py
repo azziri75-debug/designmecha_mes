@@ -78,7 +78,7 @@ async def set_approval_lines(
     
     new_lines = []
     for line in lines:
-        db_line = ApprovalLine(**line.dict())
+        db_line = ApprovalLine(**line.model_dump())
         db.add(db_line)
         new_lines.append(db_line)
     

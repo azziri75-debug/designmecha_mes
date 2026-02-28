@@ -101,16 +101,29 @@ const ApprovalPage = () => {
 
     const handleSaveLines = async (type) => {
         try {
-            await api.post(`/approval/lines?doc_type=${type}`, approvalLines[type]);
+            // Sanitize data: only send approver_id and sequence
+            const sanitizedLines = (approvalLines[type] || []).map(line => ({
+                doc_type: type,
+                approver_id: line.approver_id,
+                sequence: line.sequence
+            }));
+
+            await api.post(`/approval/lines?doc_type=${type}`, sanitizedLines);
             alert('결재선이 저장되었습니다.');
         } catch (error) {
-            alert('저장 실패');
+            console.error('Save failed:', error);
+            alert('저장 실패: ' + (error.response?.data?.detail || error.message));
         }
     };
 
     const addApprover = (type) => {
         const lines = [...(approvalLines[type] || [])];
-        lines.push({ doc_type: type, approver_id: staff[0]?.id, sequence: lines.length + 1 });
+        const admins = staff.filter(s => s.user_type === 'ADMIN');
+        if (admins.length === 0) {
+            alert('설정된 관리자 계정이 없습니다.');
+            return;
+        }
+        lines.push({ doc_type: type, approver_id: admins[0].id, sequence: lines.length + 1 });
         setApprovalLines(prev => ({ ...prev, [type]: lines }));
     };
 
@@ -271,8 +284,8 @@ const ApprovalPage = () => {
                                                 onChange={(e) => updateApprover(type, idx, e.target.value)}
                                                 className="flex-1 bg-transparent text-sm text-white border-none focus:ring-0"
                                             >
-                                                {staff.map(s => (
-                                                    <option key={s.id} value={s.id}>{s.name} ({s.role || '직원'})</option>
+                                                {staff.filter(s => s.user_type === 'ADMIN').map(s => (
+                                                    <option key={s.id} value={s.id}>{s.name} ({s.role || '관리자'})</option>
                                                 ))}
                                             </select>
                                             <button
