@@ -1,7 +1,7 @@
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select, cast, String
+from sqlalchemy import select, cast, String, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -23,6 +23,7 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 
 router = APIRouter()
+
 
 async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
     """
