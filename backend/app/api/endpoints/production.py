@@ -1304,28 +1304,45 @@ async def delete_work_log(
 
 @router.get("/performance/workers")
 async def get_worker_performance(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    worker_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
-    Get aggregated performance by worker.
+    Get aggregated performance by worker with optional date and worker filtering.
     """
-    from sqlalchemy import func, distinct
+    from sqlalchemy import func, distinct, case
     from app.models.basics import Staff
     
-    # Aggregate: worker_id, worker_name, total_cost, log_days
-    # log_days is the number of unique work_dates the worker has recorded logs for.
+    # Cost with fallback: if WorkLogItem.unit_price is 0 or null, try (PlanItem.cost / PlanItem.quantity)
+    # Using CASE to handle potential division by zero
+    calc_unit_price = case(
+        (WorkLogItem.unit_price > 0, WorkLogItem.unit_price),
+        (ProductionPlanItem.quantity > 0, ProductionPlanItem.cost / ProductionPlanItem.quantity),
+        else_=0
+    )
+    
     stmt = (
         select(
             Staff.id.label("worker_id"),
             Staff.name.label("worker_name"),
-            func.sum(WorkLogItem.good_quantity * WorkLogItem.unit_price).label("total_cost"),
+            func.sum(WorkLogItem.good_quantity * calc_unit_price).label("total_cost"),
             func.count(distinct(WorkLog.work_date)).label("log_days")
         )
         .join(WorkLogItem, Staff.id == WorkLogItem.worker_id)
         .join(WorkLog, WorkLogItem.work_log_id == WorkLog.id)
+        .join(ProductionPlanItem, WorkLogItem.plan_item_id == ProductionPlanItem.id)
         .group_by(Staff.id, Staff.name)
     )
     
+    if start_date:
+        stmt = stmt.where(WorkLog.work_date >= start_date)
+    if end_date:
+        stmt = stmt.where(WorkLog.work_date <= end_date)
+    if worker_id:
+        stmt = stmt.where(Staff.id == worker_id)
+        
     result = await db.execute(stmt)
     return [dict(row._mapping) for row in result.all()]
 
@@ -1337,8 +1354,19 @@ async def get_worker_performance_details(
     """
     Get detailed work log items for a specific worker.
     """
-    result = await db.execute(
+@router.get("/performance/workers/{worker_id}/details", response_model=List[schemas.WorkLogItem])
+async def get_worker_performance_details(
+    worker_id: int,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Get detailed work log items for a specific worker with optional date filtering.
+    """
+    stmt = (
         select(WorkLogItem)
+        .join(WorkLog, WorkLogItem.work_log_id == WorkLog.id)
         .options(
             selectinload(WorkLogItem.work_log),
             selectinload(WorkLogItem.worker),
@@ -1355,8 +1383,14 @@ async def get_worker_performance_details(
             )
         )
         .where(WorkLogItem.worker_id == worker_id)
-        .order_by(WorkLogItem.id.desc())
     )
+    
+    if start_date:
+        stmt = stmt.where(WorkLog.work_date >= start_date)
+    if end_date:
+        stmt = stmt.where(WorkLog.work_date <= end_date)
+        
+    result = await db.execute(stmt.order_by(WorkLog.work_date.desc(), WorkLogItem.id.desc()))
     return result.scalars().all()
 
 @router.patch("/work-log-items/{item_id}", response_model=schemas.WorkLogItem)

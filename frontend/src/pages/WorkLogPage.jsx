@@ -45,7 +45,12 @@ const WorkLogPage = () => {
 
     const fetchPerformanceData = async () => {
         try {
-            const response = await api.get('/production/performance/workers');
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            if (selectedWorker) params.append('worker_id', selectedWorker);
+
+            const response = await api.get(`/production/performance/workers?${params.toString()}`);
             setPerformanceData(response.data);
         } catch (error) {
             console.error("Failed to fetch performance data", error);
@@ -55,10 +60,13 @@ const WorkLogPage = () => {
     useEffect(() => {
         fetchWorkLogs();
         fetchStaffList();
-        fetchPerformanceData();
     }, []);
 
-    // Filter logic
+    useEffect(() => {
+        fetchPerformanceData();
+    }, [startDate, endDate, selectedWorker]);
+
+    // Filter logic for work logs (client-side for now as before)
     const filteredLogs = workLogs.filter(log => {
         let match = true;
         if (startDate && log.work_date < startDate) match = false;
@@ -99,6 +107,7 @@ const WorkLogPage = () => {
             await api.delete(`/production/work-logs/${id}`);
             alert('삭제되었습니다.');
             fetchWorkLogs();
+            fetchPerformanceData(); // Also refresh performance
         } catch (error) {
             console.error("Failed to delete work log", error);
             alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
@@ -107,6 +116,7 @@ const WorkLogPage = () => {
 
     const handleSuccess = () => {
         fetchWorkLogs();
+        fetchPerformanceData();
     };
 
     return (
@@ -131,81 +141,82 @@ const WorkLogPage = () => {
                 <Tab icon={<PerformanceIcon />} iconPosition="start" label="실적 관리 (작업자별)" />
             </Tabs>
 
-            {tabValue === 0 ? (
-                <>
-                    <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, alignItems: 'center', boxShadow: 2, borderRadius: 2 }}>
-                        <TextField
-                            label="시작일"
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                            size="small"
-                        />
-                        <Typography variant="body1">~</Typography>
-                        <TextField
-                            label="종료일"
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                            size="small"
-                        />
-                        <FormControl size="small" sx={{ minWidth: 150 }}>
-                            <InputLabel id="worker-filter-label">작업자</InputLabel>
-                            <Select
-                                labelId="worker-filter-label"
-                                value={selectedWorker}
-                                label="작업자"
-                                onChange={(e) => setSelectedWorker(e.target.value)}
-                            >
-                                <MenuItem value=""><em>전체</em></MenuItem>
-                                {staffList.filter(s => s.is_active).map(staff => (
-                                    <MenuItem key={staff.id} value={staff.id}>{staff.name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        <Button variant="outlined" color="secondary" onClick={() => { setStartDate(''); setEndDate(''); setSelectedWorker(''); }} size="small">
-                            초기화
-                        </Button>
-                    </Paper>
+            {/* Shared Filters */}
+            <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, alignItems: 'center', boxShadow: 2, borderRadius: 2 }}>
+                <TextField
+                    label="시작일"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                />
+                <Typography variant="body1">~</Typography>
+                <TextField
+                    label="종료일"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                />
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel id="worker-filter-label">작업자</InputLabel>
+                    <Select
+                        labelId="worker-filter-label"
+                        value={selectedWorker}
+                        label="작업자"
+                        onChange={(e) => setSelectedWorker(e.target.value)}
+                    >
+                        <MenuItem value=""><em>전체</em></MenuItem>
+                        {staffList.filter(s => s.is_active).map(staff => (
+                            <MenuItem key={staff.id} value={staff.id}>{staff.name}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                <Button variant="outlined" color="secondary" onClick={() => { setStartDate(''); setEndDate(''); setSelectedWorker(''); }} size="small">
+                    초기화
+                </Button>
+            </Paper>
 
-                    <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-                        <Table>
-                            <TableHead>
-                                <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                                    <TableCell width="50px" />
-                                    <TableCell>작업일자</TableCell>
-                                    <TableCell>작성자</TableCell>
-                                    <TableCell>세부 작업 수</TableCell>
-                                    <TableCell>비고</TableCell>
-                                    <TableCell align="center" width="120px">관리</TableCell>
+            {tabValue === 0 ? (
+                <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                                <TableCell width="50px" />
+                                <TableCell>작업일자</TableCell>
+                                <TableCell>작성자</TableCell>
+                                <TableCell>세부 작업 수</TableCell>
+                                <TableCell>비고</TableCell>
+                                <TableCell align="center" width="120px">관리</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {filteredLogs.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>등록된 (또는 검색된) 작업일지가 없습니다.</TableCell>
                                 </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {filteredLogs.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} align="center" sx={{ py: 3 }}>등록된 (또는 검색된) 작업일지가 없습니다.</TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredLogs.map(log => (
-                                        <WorkLogRow
-                                            key={log.id}
-                                            log={log}
-                                            onEdit={() => handleEditClick(log)}
-                                            onDelete={() => handleDeleteClick(log.id)}
-                                            onViewFiles={() => handleViewFiles(log.attachment_file)}
-                                        />
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </>
+                            ) : (
+                                filteredLogs.map(log => (
+                                    <WorkLogRow
+                                        key={log.id}
+                                        log={log}
+                                        onEdit={() => handleEditClick(log)}
+                                        onDelete={() => handleDeleteClick(log.id)}
+                                        onViewFiles={() => handleViewFiles(log.attachment_file)}
+                                    />
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             ) : (
                 <PerformanceManagementList
                     data={performanceData}
                     onUpdate={() => { fetchPerformanceData(); fetchWorkLogs(); }}
+                    startDate={startDate}
+                    endDate={endDate}
                 />
             )}
 
@@ -315,7 +326,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
     );
 };
 
-const PerformanceManagementList = ({ data, onUpdate }) => {
+const PerformanceManagementList = ({ data, onUpdate, startDate, endDate }) => {
     return (
         <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
             <Table>
@@ -335,7 +346,7 @@ const PerformanceManagementList = ({ data, onUpdate }) => {
                         </TableRow>
                     ) : (
                         data.map(row => (
-                            <PerformanceRow key={row.worker_id} row={row} onUpdate={onUpdate} />
+                            <PerformanceRow key={row.worker_id} row={row} onUpdate={onUpdate} startDate={startDate} endDate={endDate} />
                         ))
                     )}
                 </TableBody>
@@ -344,13 +355,17 @@ const PerformanceManagementList = ({ data, onUpdate }) => {
     );
 };
 
-const PerformanceRow = ({ row, onUpdate }) => {
+const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
     const [open, setOpen] = useState(false);
     const [details, setDetails] = useState([]);
 
     const fetchDetails = async () => {
         try {
-            const res = await api.get(`/production/performance/workers/${row.worker_id}/details`);
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+
+            const res = await api.get(`/production/performance/workers/${row.worker_id}/details?${params.toString()}`);
             setDetails(res.data);
         } catch (error) {
             console.error("Failed to fetch performance details", error);
@@ -359,7 +374,7 @@ const PerformanceRow = ({ row, onUpdate }) => {
 
     useEffect(() => {
         if (open) fetchDetails();
-    }, [open]);
+    }, [open, startDate, endDate]);
 
     return (
         <React.Fragment>
