@@ -1,13 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Collapse } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
+import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Collapse, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, KeyboardArrowDown, KeyboardArrowUp, AttachFile as AttachFileIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import WorkLogModal from '../components/WorkLogModal';
+import FileViewerModal from '../components/FileViewerModal';
 
 const WorkLogPage = () => {
     const [workLogs, setWorkLogs] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedLog, setSelectedLog] = useState(null);
+
+    const [staffList, setStaffList] = useState([]);
+
+    // Filters
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [selectedWorker, setSelectedWorker] = useState('');
+
+    // File Viewer
+    const [fileViewerOpen, setFileViewerOpen] = useState(false);
+    const [currentFilesToView, setCurrentFilesToView] = useState([]);
 
     const fetchWorkLogs = async () => {
         try {
@@ -18,9 +30,44 @@ const WorkLogPage = () => {
         }
     };
 
+    const fetchStaffList = async () => {
+        try {
+            const response = await api.get('/basics/staff/');
+            setStaffList(response.data);
+        } catch (error) {
+            console.error("Failed to fetch staff list", error);
+        }
+    };
+
     useEffect(() => {
         fetchWorkLogs();
+        fetchStaffList();
     }, []);
+
+    // Filter logic
+    const filteredLogs = workLogs.filter(log => {
+        let match = true;
+        if (startDate && log.work_date < startDate) match = false;
+        if (endDate && log.work_date > endDate) match = false;
+        if (selectedWorker && log.worker_id !== Number(selectedWorker)) match = false;
+        return match;
+    });
+
+    const handleViewFiles = (files) => {
+        let parsedFiles = files;
+        if (typeof files === 'string') {
+            try {
+                parsedFiles = JSON.parse(files);
+            } catch (e) {
+                console.error("Failed to parse attachment files", e);
+                parsedFiles = [];
+            }
+        }
+        if (parsedFiles && parsedFiles.length > 0) {
+            setCurrentFilesToView(parsedFiles);
+            setFileViewerOpen(true);
+        }
+    };
 
     const handleCreateClick = () => {
         setSelectedLog(null);
@@ -65,6 +112,43 @@ const WorkLogPage = () => {
                 </Button>
             </Box>
 
+            <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, alignItems: 'center', boxShadow: 2, borderRadius: 2 }}>
+                <TextField
+                    label="시작일"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                />
+                <Typography variant="body1">~</Typography>
+                <TextField
+                    label="종료일"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                />
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel id="worker-filter-label">작업자</InputLabel>
+                    <Select
+                        labelId="worker-filter-label"
+                        value={selectedWorker}
+                        label="작업자"
+                        onChange={(e) => setSelectedWorker(e.target.value)}
+                    >
+                        <MenuItem value=""><em>전체</em></MenuItem>
+                        {staffList.filter(s => s.is_active).map(staff => (
+                            <MenuItem key={staff.id} value={staff.id}>{staff.name}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                <Button variant="outlined" color="secondary" onClick={() => { setStartDate(''); setEndDate(''); setSelectedWorker(''); }} size="small">
+                    초기화
+                </Button>
+            </Paper>
+
             <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
                 <Table>
                     <TableHead>
@@ -78,17 +162,18 @@ const WorkLogPage = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {workLogs.length === 0 ? (
+                        {filteredLogs.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>등록된 작업일지가 없습니다.</TableCell>
+                                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>등록된 (또는 검색된) 작업일지가 없습니다.</TableCell>
                             </TableRow>
                         ) : (
-                            workLogs.map(log => (
+                            filteredLogs.map(log => (
                                 <WorkLogRow
                                     key={log.id}
                                     log={log}
                                     onEdit={() => handleEditClick(log)}
                                     onDelete={() => handleDeleteClick(log.id)}
+                                    onViewFiles={() => handleViewFiles(log.attachment_file)}
                                 />
                             ))
                         )}
@@ -104,11 +189,19 @@ const WorkLogPage = () => {
                     onSuccess={handleSuccess}
                 />
             )}
+
+            <FileViewerModal
+                isOpen={fileViewerOpen}
+                onClose={() => setFileViewerOpen(false)}
+                files={currentFilesToView}
+                title="작업일지 첨부파일"
+                readOnly={true}
+            />
         </Box>
     );
 };
 
-const WorkLogRow = ({ log, onEdit, onDelete }) => {
+const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
     const [open, setOpen] = useState(false);
 
     return (
@@ -122,7 +215,14 @@ const WorkLogRow = ({ log, onEdit, onDelete }) => {
                 <TableCell sx={{ fontWeight: 500 }}>{log.work_date}</TableCell>
                 <TableCell>{log.worker?.name || '<미지정>'}</TableCell>
                 <TableCell>{log.items?.length || 0}건</TableCell>
-                <TableCell>{log.note || '-'}</TableCell>
+                <TableCell>
+                    {log.note || '-'}
+                    {log.attachment_file && (typeof log.attachment_file === 'string' ? JSON.parse(log.attachment_file).length > 0 : log.attachment_file.length > 0) && (
+                        <IconButton size="small" color="info" onClick={(e) => { e.stopPropagation(); onViewFiles(); }} title="첨부파일 보기" sx={{ ml: 1 }}>
+                            <AttachFileIcon fontSize="small" />
+                        </IconButton>
+                    )}
+                </TableCell>
                 <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                     <IconButton size="small" color="primary" onClick={onEdit} title="수정">
                         <EditIcon fontSize="small" />
