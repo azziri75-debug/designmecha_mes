@@ -78,9 +78,11 @@ const SectionTitle = ({ icon: Icon, title, action }) => (
 );
 
 const ChartCard = ({ children, title, icon: Icon = Activity, className = '' }) => (
-    <div className={`bg-gray-800/70 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-5 shadow-lg ${className}`}>
+    <div className={`bg-gray-800/70 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-5 shadow-lg min-h-0 min-w-0 ${className}`}>
         <SectionTitle icon={Icon} title={title} />
-        {children}
+        <div className="flex-1 min-h-0">
+            {children}
+        </div>
     </div>
 );
 
@@ -387,26 +389,26 @@ const Dashboard = () => {
                 <StatCard
                     title="기안 대기"
                     value={fmt(approvalStats.pending_count)}
-                    sub="결재 진행 중"
+                    sub="결재 전체 진행 상황"
                     icon={FileText}
                     color="blue"
-                    onClick={() => navigate('/approval?mode=MY_WAITING')}
+                    onClick={() => navigate('/approval?mode=ALL_PENDING')}
                 />
                 <StatCard
                     title="결재 완료"
                     value={fmt(approvalStats.completed_count)}
-                    sub="최종 승인 완료"
+                    sub="최종 승인 완료 (전체)"
                     icon={CheckCircle2}
                     color="green"
-                    onClick={() => navigate('/approval?mode=MY_COMPLETED')}
+                    onClick={() => navigate('/approval?mode=ALL_COMPLETED')}
                 />
                 <StatCard
                     title="반려 문서"
                     value={fmt(approvalStats.rejected_count)}
-                    sub="알림 확인 필요"
+                    sub="전체 반려 내역"
                     icon={AlertTriangle}
                     color={approvalStats.rejected_count > 0 ? "red" : "gray"}
-                    onClick={() => navigate('/approval?mode=MY_REJECTED')}
+                    onClick={() => navigate('/approval?mode=ALL_REJECTED')}
                 />
                 <StatCard
                     title="나의 결재 대기"

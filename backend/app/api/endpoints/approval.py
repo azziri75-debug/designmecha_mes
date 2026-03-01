@@ -36,22 +36,24 @@ async def get_approval_stats(
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ):
-    """대시보드 통계 조회"""
-    # 내가 기안한 문서들
+    """대시보드 통계 조회 (관리용 전역 통계 + 나의 대기 건수)"""
+    # 1. 시스템 전체의 결제 진행 상황 (Dashboard는 관리용이므로 전역 수치 표시)
+    # 기안 대기 (작성 중 또는 결재 진행 중인 모든 문서)
     pending = await db.execute(select(func.count(ApprovalDocument.id)).where(
-        ApprovalDocument.author_id == current_user.id,
-        ApprovalDocument.status == ApprovalStatus.PENDING
+        ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS])
     ))
+    
+    # 결재 완료 (전체)
     completed = await db.execute(select(func.count(ApprovalDocument.id)).where(
-        ApprovalDocument.author_id == current_user.id,
         ApprovalDocument.status == ApprovalStatus.COMPLETED
     ))
+    
+    # 반려 문서 (전체)
     rejected = await db.execute(select(func.count(ApprovalDocument.id)).where(
-        ApprovalDocument.author_id == current_user.id,
         ApprovalDocument.status == ApprovalStatus.REJECTED
     ))
     
-    # 내가 결재해야 할 대기 건수
+    # 2. 내가 결재해야 할 대기 건수 (개인화된 수치)
     waiting = await db.execute(select(func.count(ApprovalDocument.id)).join(ApprovalStep).where(
         ApprovalStep.approver_id == current_user.id,
         ApprovalStep.status == "PENDING",
@@ -107,7 +109,7 @@ async def set_approval_lines(
 
 @router.get("/documents", response_model=List[ApprovalDocumentResponse])
 async def list_documents(
-    view_mode: str = "ALL", # ALL, MY_DRAFTS, MY_WAITING, MY_COMPLETED, MY_REJECTED, WAITING_FOR_ME
+    view_mode: str = "ALL", # ALL, MY_DRAFTS, MY_WAITING, MY_COMPLETED, MY_REJECTED, WAITING_FOR_ME, ALL_PENDING, ALL_COMPLETED, ALL_REJECTED
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ):
@@ -141,6 +143,12 @@ async def list_documents(
             ApprovalStep.sequence == ApprovalDocument.current_sequence,
             ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS])
         )
+    elif view_mode == "ALL_PENDING":
+        query = query.where(ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS]))
+    elif view_mode == "ALL_COMPLETED":
+        query = query.where(ApprovalDocument.status == ApprovalStatus.COMPLETED)
+    elif view_mode == "ALL_REJECTED":
+        query = query.where(ApprovalDocument.status == ApprovalStatus.REJECTED)
 
     result = await db.execute(query)
     return result.scalars().all()

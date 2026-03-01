@@ -242,10 +242,11 @@ const ApprovalPage = () => {
                     <div className="flex gap-1 bg-gray-900/50 p-1 rounded-xl border border-gray-700/50">
                         {[
                             { id: 'ALL', label: '전체' },
-                            { id: 'MY_WAITING', label: '기안대기' },
-                            { id: 'MY_COMPLETED', label: '결재완료' },
-                            { id: 'MY_REJECTED', label: '반려문서' },
-                            { id: 'WAITING_FOR_ME', label: '나의결재대기' }
+                            { id: 'ALL_PENDING', label: '전체 대기' },
+                            { id: 'ALL_COMPLETED', label: '전체 완료' },
+                            { id: 'ALL_REJECTED', label: '전체 반려' },
+                            { id: 'WAITING_FOR_ME', label: '나의결재대기' },
+                            { id: 'MY_WAITING', label: '나의 기안' }
                         ].map(m => (
                             <button
                                 key={m.id}
