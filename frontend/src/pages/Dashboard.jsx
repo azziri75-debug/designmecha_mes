@@ -390,7 +390,7 @@ const Dashboard = () => {
                     sub="결재 진행 중"
                     icon={FileText}
                     color="blue"
-                    onClick={() => navigate('/approval')}
+                    onClick={() => navigate('/approval?mode=MY_WAITING')}
                 />
                 <StatCard
                     title="결재 완료"
@@ -398,7 +398,7 @@ const Dashboard = () => {
                     sub="최종 승인 완료"
                     icon={CheckCircle2}
                     color="green"
-                    onClick={() => navigate('/approval')}
+                    onClick={() => navigate('/approval?mode=MY_COMPLETED')}
                 />
                 <StatCard
                     title="반려 문서"
@@ -406,7 +406,7 @@ const Dashboard = () => {
                     sub="알림 확인 필요"
                     icon={AlertTriangle}
                     color={approvalStats.rejected_count > 0 ? "red" : "gray"}
-                    onClick={() => navigate('/approval')}
+                    onClick={() => navigate('/approval?mode=MY_REJECTED')}
                 />
                 <StatCard
                     title="나의 결재 대기"
@@ -414,7 +414,7 @@ const Dashboard = () => {
                     sub="검토 및 승인 필요"
                     icon={Clock}
                     color={approvalStats.waiting_for_me_count > 0 ? "amber" : "blue"}
-                    onClick={() => navigate('/approval')}
+                    onClick={() => navigate('/approval?mode=WAITING_FOR_ME')}
                 />
             </div>
 

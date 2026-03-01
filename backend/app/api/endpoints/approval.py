@@ -107,7 +107,7 @@ async def set_approval_lines(
 
 @router.get("/documents", response_model=List[ApprovalDocumentResponse])
 async def list_documents(
-    view_mode: str = "ALL", # ALL, MY_DRAFTS, MY_APPROVALS
+    view_mode: str = "ALL", # ALL, MY_DRAFTS, MY_WAITING, MY_COMPLETED, MY_REJECTED, WAITING_FOR_ME
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ):
@@ -119,8 +119,28 @@ async def list_documents(
     
     if view_mode == "MY_DRAFTS":
         query = query.where(ApprovalDocument.author_id == current_user.id)
-    elif view_mode == "MY_APPROVALS":
-        query = query.join(ApprovalStep).where(ApprovalStep.approver_id == current_user.id)
+    elif view_mode == "MY_WAITING":
+        query = query.where(
+            ApprovalDocument.author_id == current_user.id,
+            ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS])
+        )
+    elif view_mode == "MY_COMPLETED":
+        query = query.where(
+            ApprovalDocument.author_id == current_user.id,
+            ApprovalDocument.status == ApprovalStatus.COMPLETED
+        )
+    elif view_mode == "MY_REJECTED":
+        query = query.where(
+            ApprovalDocument.author_id == current_user.id,
+            ApprovalDocument.status == ApprovalStatus.REJECTED
+        )
+    elif view_mode == "WAITING_FOR_ME" or view_mode == "MY_APPROVALS":
+        query = query.join(ApprovalStep).where(
+            ApprovalStep.approver_id == current_user.id,
+            ApprovalStep.status == "PENDING",
+            ApprovalStep.sequence == ApprovalDocument.current_sequence,
+            ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS])
+        )
 
     result = await db.execute(query)
     return result.scalars().all()

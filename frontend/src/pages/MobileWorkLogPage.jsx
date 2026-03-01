@@ -847,7 +847,7 @@ const MobileWorkLogPage = () => {
                                 { id: 'MY_WAITING', label: '기안대기' },
                                 { id: 'MY_COMPLETED', label: '결재완료' },
                                 { id: 'MY_REJECTED', label: '반려문서' },
-                                { id: 'MY_APPROVALS', label: '나의결재대기' }
+                                { id: 'WAITING_FOR_ME', label: '나의결재대기' }
                             ].map(m => (
                                 <Chip
                                     key={m.id}

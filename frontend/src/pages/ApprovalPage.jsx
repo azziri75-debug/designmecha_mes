@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     FileText, UserPlus, Clock, CheckCircle2, AlertCircle,
     Plus, Search, Filter, Pencil, Trash, X, Check,
@@ -27,11 +28,15 @@ const STATUS_MAP = {
 
 const ApprovalPage = () => {
     const [activeTab, setActiveTab] = useState('documents'); // documents, settings
-    const [viewMode, setViewMode] = useState('ALL'); // ALL, MY_DRAFTS, MY_APPROVALS
     const [documents, setDocuments] = useState([]);
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(false);
     const { user: currentUser } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Initialize viewMode from URL or default to ALL
+    const initialMode = searchParams.get('mode') || 'ALL';
+    const [viewMode, setViewMode] = useState(initialMode); // ALL, MY_WAITING, MY_COMPLETED, MY_REJECTED, WAITING_FOR_ME
 
     // Modal states
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -44,6 +49,13 @@ const ApprovalPage = () => {
 
     // Settings states
     const [approvalLines, setApprovalLines] = useState({}); // { [doc_type]: lines[] }
+
+    useEffect(() => {
+        const modeFromUrl = searchParams.get('mode') || 'ALL';
+        if (modeFromUrl !== viewMode) {
+            setViewMode(modeFromUrl);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         fetchInitialData();
@@ -227,17 +239,28 @@ const ApprovalPage = () => {
 
             {activeTab === 'documents' ? (
                 <div className="space-y-4">
-                    <div className="flex gap-2">
-                        {['ALL', 'MY_DRAFTS', 'MY_APPROVALS'].map(m => (
+                    <div className="flex gap-1 bg-gray-900/50 p-1 rounded-xl border border-gray-700/50">
+                        {[
+                            { id: 'ALL', label: '전체' },
+                            { id: 'MY_WAITING', label: '기안대기' },
+                            { id: 'MY_COMPLETED', label: '결재완료' },
+                            { id: 'MY_REJECTED', label: '반려문서' },
+                            { id: 'WAITING_FOR_ME', label: '나의결재대기' }
+                        ].map(m => (
                             <button
-                                key={m}
-                                onClick={() => setViewMode(m)}
+                                key={m.id}
+                                onClick={() => {
+                                    setViewMode(m.id);
+                                    setSearchParams({ mode: m.id });
+                                }}
                                 className={cn(
-                                    "px-4 py-2 rounded-full text-xs font-semibold border transition-all",
-                                    viewMode === m ? "bg-blue-600 border-blue-500 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"
+                                    "px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200",
+                                    viewMode === m.id
+                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                                        : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
                                 )}
                             >
-                                {m === 'ALL' ? '전체 문서' : m === 'MY_DRAFTS' ? '내가 기안한 문서' : '내가 결재할 문서'}
+                                {m.label}
                             </button>
                         ))}
                     </div>
