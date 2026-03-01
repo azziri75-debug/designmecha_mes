@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: mes-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mes_erp
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mes-backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/mes_erp
+    volumes:
+      - ./backend/uploads:/app/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mes-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend

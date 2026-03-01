@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
+        "http://192.168.0.23:3000",
         "https://designmecha-mes.vercel.app"
     ]
     
