@@ -61,9 +61,6 @@ const Layout = () => {
     const visibleNavItems = navItems.filter(item => {
         if (!item.menuKey) return true; // Dashboard always visible
         const permitted = hasPermission(item.menuKey);
-        if (item.menuKey === 'approval') {
-            console.log('Permission for approval:', permitted, 'User Role:', user?.user_type, 'User Perms:', user?.menu_permissions);
-        }
         return permitted;
     });
 

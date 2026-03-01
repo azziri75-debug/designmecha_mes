@@ -140,6 +140,11 @@ const Dashboard = () => {
     const [groups, setGroups] = useState([]);
     const [selectedMajorGroup, setSelectedMajorGroup] = useState("");
     const [selectedMinorGroup, setSelectedMinorGroup] = useState("");
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         const fetchAll = async () => {
@@ -425,29 +430,31 @@ const Dashboard = () => {
                 {/* Monthly Revenue */}
                 <ChartCard title="월별 매출 추이 (최근 6개월)" icon={TrendingUp} className="lg:col-span-2">
                     <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={stats.monthlyRevenue}>
-                                <defs>
-                                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
-                                <XAxis dataKey="name" stroke="#6B7280" tick={{ fontSize: 12 }} />
-                                <YAxis stroke="#6B7280" tick={{ fontSize: 11 }} tickFormatter={v => `₩${(v / 10000).toFixed(0)}만`} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Area type="monotone" dataKey="매출" stroke="#3B82F6" strokeWidth={2.5} fill="url(#colorRev)" name="매출" />
-                                <Bar dataKey="건수" fill="#6366F1" radius={[3, 3, 0, 0]} barSize={18} name="수주 건수" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {mounted && (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={stats.monthlyRevenue}>
+                                    <defs>
+                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+                                    <XAxis dataKey="name" stroke="#6B7280" tick={{ fontSize: 12 }} />
+                                    <YAxis stroke="#6B7280" tick={{ fontSize: 11 }} tickFormatter={v => `₩${(v / 10000).toFixed(0)}만`} />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Area type="monotone" dataKey="매출" stroke="#3B82F6" strokeWidth={2.5} fill="url(#colorRev)" name="매출" />
+                                    <Bar dataKey="건수" fill="#6366F1" radius={[3, 3, 0, 0]} barSize={18} name="수주 건수" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </ChartCard>
 
                 {/* Order Status Pie */}
                 <ChartCard title="수주 상태 현황" icon={ShoppingCart}>
                     <div className="h-72 flex items-center justify-center">
-                        {stats.orderStatusData.length > 0 ? (
+                        {mounted && stats.orderStatusData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
@@ -462,7 +469,7 @@ const Dashboard = () => {
                                     <Legend formatter={(v) => <span className="text-gray-400 text-xs">{v}</span>} />
                                 </PieChart>
                             </ResponsiveContainer>
-                        ) : (
+                        ) : !mounted ? null : (
                             <p className="text-gray-500 text-sm">데이터 없음</p>
                         )}
                     </div>

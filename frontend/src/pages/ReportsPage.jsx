@@ -5,6 +5,12 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 const ReportsPage = () => {
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
+
     // Mock Data for charts - in real app, fetch from /reports/stats
     const chartData = [
         { month: '1월', revenue: 1200, production: 1400 },
@@ -114,19 +120,21 @@ const ReportsPage = () => {
                     <button className="text-gray-400 hover:text-white"><RefreshCw className="w-4 h-4" /></button>
                 </div>
                 <div className="h-96 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="month" stroke="#9CA3AF" />
-                            <YAxis stroke="#9CA3AF" />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
-                                itemStyle={{ color: '#F3F4F6' }}
-                            />
-                            <Bar dataKey="revenue" name="매출액" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="production" name="생산량" fill="#10B981" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    {mounted && (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                <XAxis dataKey="month" stroke="#9CA3AF" />
+                                <YAxis stroke="#9CA3AF" />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
+                                    itemStyle={{ color: '#F3F4F6' }}
+                                />
+                                <Bar dataKey="revenue" name="매출액" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="production" name="생산량" fill="#10B981" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
             </div>
         </div>
