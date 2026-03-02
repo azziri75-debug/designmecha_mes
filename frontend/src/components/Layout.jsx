@@ -15,7 +15,8 @@ import {
     Shield,
     User,
     FileText,
-    Boxes
+    Boxes,
+    Database
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -55,6 +56,7 @@ const Layout = () => {
         { icon: Truck, label: '납품 관리', to: '/delivery', menuKey: 'sales' },
         { icon: Boxes, label: '재고 및 재고생산 관리', to: '/inventory', menuKey: 'inventory' },
         { icon: FileText, label: '전자결재 및 문서 관리', to: '/approval', menuKey: 'approval' },
+        { icon: Database, label: 'DB 관리 (데이터 센터)', to: '/db-management', menuKey: 'ADMIN' },
     ];
 
     // Filter nav items based on user permissions

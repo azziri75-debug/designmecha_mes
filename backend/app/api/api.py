@@ -14,6 +14,7 @@ api_router.include_router(inventory.router, prefix="/inventory", tags=["inventor
 from app.api.endpoints import approval
 api_router.include_router(approval.router, prefix="/approval", tags=["approval"])
 
-from app.api.endpoints import upload, debug
+from app.api.endpoints import upload, debug, db_manager
 api_router.include_router(upload.router, tags=["upload"])
 api_router.include_router(debug.router, prefix="/debug", tags=["debug"])
+api_router.include_router(db_manager.router, prefix="/db-manager", tags=["db-manager"])

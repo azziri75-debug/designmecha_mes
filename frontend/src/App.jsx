@@ -16,6 +16,7 @@ import InventoryPage from './pages/InventoryPage';
 import WorkLogPage from './pages/WorkLogPage';
 import MobileWorkLogPage from './pages/MobileWorkLogPage';
 import ApprovalPage from './pages/ApprovalPage';
+import DataManagementPage from './pages/DataManagementPage';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -69,6 +70,7 @@ const App = () => {
         <Route path="delivery" element={<ProtectedRoute menuKey="sales"><DeliveryPage /></ProtectedRoute>} />
         <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
         <Route path="approval" element={<ProtectedRoute menuKey="approval"><ApprovalPage /></ProtectedRoute>} />
+        <Route path="db-management" element={<ProtectedRoute menuKey="ADMIN"><DataManagementPage /></ProtectedRoute>} />
       </Route>
       <Route path="/mobile/work-logs" element={<ProtectedRoute><MobileWorkLogPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
