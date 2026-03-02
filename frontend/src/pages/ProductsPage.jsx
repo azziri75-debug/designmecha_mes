@@ -29,7 +29,6 @@ const ProductsPage = () => {
     const [processFormData, setProcessFormData] = useState({});
 
     // Routing Modal State (Product Specific)
-    const [showRoutingModal, setShowRoutingModal] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [routingProcesses, setRoutingProcesses] = useState([]); // Processes for the selected product
 
@@ -285,25 +284,6 @@ const ProductsPage = () => {
     };
 
     // --- Routing Handlers ---
-    const openRoutingModal = (product) => {
-        setSelectedProduct(product);
-        // Deep copy or map to editable format
-        const existing = product.standard_processes.map(p => ({
-            process_id: p.process_id,
-            sequence: p.sequence,
-            estimated_time: p.estimated_time,
-            notes: p.notes,
-            partner_name: p.partner_name,
-            equipment_name: p.equipment_name,
-            attachment_file: p.attachment_file,
-            cost: p.cost || 0,
-            _tempId: Math.random() // For key in list
-        }));
-        setRoutingProcesses(existing);
-        // Ensure master processes are loaded
-        fetchProcesses();
-        setShowRoutingModal(true);
-    };
 
     const addRoutingProcess = () => {
         setRoutingProcesses(prev => [
@@ -363,7 +343,7 @@ const ProductsPage = () => {
 
             await api.put(`/product/products/${selectedProduct.id}`, payload);
             alert("공정 설정이 저장되었습니다.");
-            setShowRoutingModal(false);
+            setShowProductModal(false);
             fetchProducts(); // Refresh list to update any view if needed
         } catch (error) {
             console.error("Failed to save routing", error);
@@ -546,6 +526,7 @@ const ProductsPage = () => {
                                         <tr
                                             className="hover:bg-gray-700/50 transition-colors cursor-pointer group"
                                             onClick={() => toggleExpand(product.id)}
+                                            onDoubleClick={() => handleEditProduct(product)}
                                         >
                                             <td className="px-6 py-4">
                                                 {partners.find(p => p.id === product.partner_id)?.name || '-'}
@@ -650,15 +631,6 @@ const ProductsPage = () => {
                                                                     견적/수주 이력
                                                                 </button>
                                                             </div>
-                                                            {detailSubTab === 'routing' && (
-                                                                <button
-                                                                    onClick={() => openRoutingModal(product)}
-                                                                    className="text-white bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors shadow-sm"
-                                                                >
-                                                                    <Settings className="w-3 h-3" />
-                                                                    공정 설정
-                                                                </button>
-                                                            )}
                                                         </div>
 
                                                         {detailSubTab === 'routing' ? (
@@ -742,7 +714,7 @@ const ProductsPage = () => {
                                                                 </div>
                                                             ) : (
                                                                 <div className="text-sm text-gray-500 py-4 text-center">
-                                                                    등록된 공정이 없습니다. '공정 설정'을 눌러 공정을 추가하세요.
+                                                                    등록된 공정이 없습니다. 제품을 더블 클릭하여 '상세 공정'을 설정하세요.
                                                                 </div>
                                                             )
                                                         ) : (
