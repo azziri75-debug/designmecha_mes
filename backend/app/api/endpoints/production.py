@@ -378,6 +378,8 @@ async def create_production_plan(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
         )
         .where(ProductionPlan.id == plan.id)
@@ -735,6 +737,7 @@ async def export_production_plan_excel(
                 selectinload(ProductionPlanItem.worker),
                 selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
                 selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+                selectinload(ProductionPlanItem.work_log_items)
             ),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )
