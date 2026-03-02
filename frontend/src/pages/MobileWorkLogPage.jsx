@@ -29,7 +29,11 @@ import {
     DialogContentText,
     DialogActions,
     AppBar,
-    Toolbar
+    Toolbar,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    Avatar
 } from '@mui/material';
 import {
     Assignment as AssignmentIcon,
@@ -124,10 +128,12 @@ const MobileWorkLogPage = () => {
         // Disable swipe when in sub-pages (Plan/Item details) or when scrolling deep
         if (selectedPlan || selectedItem) return;
 
-        if (distance > 70 && tab === 0) {
-            setTab(1);
-        } else if (distance < -70 && tab === 1) {
-            setTab(0);
+        if (distance > 70) {
+            // Swipe Left -> Move Next
+            if (tab < 2) setTab(tab + 1);
+        } else if (distance < -70) {
+            // Swipe Right -> Move Prev
+            if (tab > 0) setTab(tab - 1);
         }
         setTouchStart(0);
     };
@@ -507,13 +513,20 @@ const MobileWorkLogPage = () => {
                                             const productName = plan.items?.[0]?.product?.name || '-';
 
                                             return (
-                                                <Card key={plan.id} sx={{ borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} onClick={() => setSelectedPlan(plan)}>
+                                                <Card key={plan.id} sx={{ borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedPlan(plan)}>
                                                     <CardContent sx={{ p: '16px !important' }}>
                                                         <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                                            <Box>
-                                                                <Typography variant="caption" color="primary" fontWeight="bold">
-                                                                    {orderNo}
-                                                                </Typography>
+                                                            <Box sx={{ flex: 1 }}>
+                                                                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
+                                                                    {plan.order?.order_no ? (
+                                                                        <Chip label="수주" size="small" sx={{ height: 18, fontSize: '10px', bgcolor: '#3b82f6', color: '#fff', fontWeight: 'bold' }} />
+                                                                    ) : (
+                                                                        <Chip label="재고" size="small" sx={{ height: 18, fontSize: '10px', bgcolor: '#10b981', color: '#fff', fontWeight: 'bold' }} />
+                                                                    )}
+                                                                    <Typography variant="caption" color="primary" fontWeight="bold">
+                                                                        {orderNo}
+                                                                    </Typography>
+                                                                </Stack>
                                                                 <Typography variant="subtitle1" fontWeight="bold">
                                                                     {productName}
                                                                 </Typography>
