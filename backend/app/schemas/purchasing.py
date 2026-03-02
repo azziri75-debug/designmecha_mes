@@ -38,6 +38,7 @@ class PurchaseOrderItem(PurchaseOrderItemBase):
 # --- Purchase Orders ---
 class PurchaseOrderBase(BaseModel):
     partner_id: Optional[int] = None
+    order_id: Optional[int] = None
     order_date: date
     delivery_date: Optional[date] = None
     note: Optional[str] = None
@@ -64,6 +65,7 @@ class PurchaseOrder(PurchaseOrderBase):
     partner: Optional[Partner] = None
     items: List[PurchaseOrderItem] = []
     attachment_file: Optional[Any] = None
+    order: Optional[Any] = None
     related_sales_order_info: Optional[str] = None
     related_customer_names: Optional[str] = None
 
@@ -103,6 +105,7 @@ class OutsourcingOrderItem(OutsourcingOrderItemBase):
 # --- Outsourcing Orders ---
 class OutsourcingOrderBase(BaseModel):
     partner_id: Optional[int] = None
+    order_id: Optional[int] = None
     order_date: date
     delivery_date: Optional[date] = None
     note: Optional[str] = None
@@ -129,6 +132,7 @@ class OutsourcingOrder(OutsourcingOrderBase):
     partner: Optional[Partner] = None
     items: List[OutsourcingOrderItem] = []
     attachment_file: Optional[Any] = None
+    order: Optional[Any] = None # Include sales order details if needed
     related_sales_order_info: Optional[str] = None
     related_customer_names: Optional[str] = None
 

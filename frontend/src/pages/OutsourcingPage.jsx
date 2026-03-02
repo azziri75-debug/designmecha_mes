@@ -326,14 +326,22 @@ const OutsourcingPage = () => {
                                                 <TableCell>
                                                     <Box>
                                                         <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-                                                            {order.related_sales_order_info?.includes('PO') || order.related_sales_order_info?.includes('OS') ? (
-                                                                <span style={{ color: '#2e7d32' }}>[재고] </span>
+                                                            {order.order ? (
+                                                                <span style={{ color: '#1976d2' }}>[수주] {order.order.order_no}</span>
                                                             ) : order.related_sales_order_info ? (
-                                                                <span style={{ color: '#1976d2' }}>[수주] </span>
-                                                            ) : null}
-                                                            {order.related_sales_order_info || '-'}
+                                                                <>
+                                                                    {order.related_sales_order_info.includes('PO') || order.related_sales_order_info.includes('OS') ? (
+                                                                        <span style={{ color: '#2e7d32' }}>[재고] </span>
+                                                                    ) : (
+                                                                        <span style={{ color: '#1976d2' }}>[수주] </span>
+                                                                    )}
+                                                                    {order.related_sales_order_info}
+                                                                </>
+                                                            ) : (
+                                                                <span style={{ color: '#757575' }}>재고용</span>
+                                                            )}
                                                         </Typography>
-                                                        <Typography variant="caption" color="textSecondary">{order.related_customer_names || '-'}</Typography>
+                                                        <Typography variant="caption" color="textSecondary">{order.order?.partner?.name || order.related_customer_names || '-'}</Typography>
                                                     </Box>
                                                 </TableCell>
                                                 <TableCell>{order.order_date}</TableCell>

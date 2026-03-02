@@ -11,9 +11,11 @@ import api from '../lib/api';
 const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems }) => {
     const [partners, setPartners] = useState([]);
     const [products, setProducts] = useState([]);
+    const [salesOrders, setSalesOrders] = useState([]);
 
     const [formData, setFormData] = useState({
         partner_id: '',
+        order_id: '',
         order_date: new Date().toISOString().split('T')[0],
         delivery_date: '',
         note: '',
@@ -30,12 +32,14 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     useEffect(() => {
         fetchPartners();
         fetchProducts();
+        fetchSalesOrders();
     }, []);
 
     useEffect(() => {
         if (order) {
             setFormData({
                 partner_id: order.partner_id || '',
+                order_id: order.order_id || '',
                 order_date: order.order_date,
                 delivery_date: order.delivery_date || '',
                 note: order.note || '',
@@ -52,6 +56,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
             setFormData({
                 partner_id: foundPartner ? foundPartner.id : '',
+                order_id: initialItems[0]?.plan?.order_id || '',
                 order_date: new Date().toISOString().split('T')[0],
                 delivery_date: '',
                 note: '',
@@ -81,6 +86,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         } else if (isOpen) {
             setFormData({
                 partner_id: '',
+                order_id: '',
                 order_date: new Date().toISOString().split('T')[0],
                 delivery_date: '',
                 note: '',
@@ -108,6 +114,15 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
             setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
+        }
+    };
+
+    const fetchSalesOrders = async () => {
+        try {
+            const response = await api.get('/sales/orders');
+            setSalesOrders(response.data);
+        } catch (error) {
+            console.error("Failed to fetch sales orders", error);
         }
     };
 
@@ -186,6 +201,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
             const payload = {
                 ...formData,
                 partner_id: formData.partner_id || null,
+                order_id: formData.order_id || null,
                 items: formData.items.map(item => ({
                     product_id: item.product_id,
                     quantity: parseInt(item.quantity) || 0,
@@ -223,6 +239,20 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         {partners.map((partner) => (
                             <MenuItem key={partner.id} value={partner.id}>
                                 {partner.name}
+                            </MenuItem>
+                        ))}
+                    </TextField>
+                    <TextField
+                        select
+                        label="연결 수주번호"
+                        value={formData.order_id}
+                        onChange={(e) => setFormData({ ...formData, order_id: e.target.value })}
+                        fullWidth
+                    >
+                        <MenuItem value=""><em>없음 (재고용)</em></MenuItem>
+                        {salesOrders.map((so) => (
+                            <MenuItem key={so.id} value={so.id}>
+                                {so.order_no} ({so.partner?.name})
                             </MenuItem>
                         ))}
                     </TextField>

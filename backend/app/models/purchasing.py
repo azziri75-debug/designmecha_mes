@@ -29,11 +29,11 @@ class PurchaseOrder(Base):
     note = Column(String, nullable=True)
     attachment_file = Column(Text, nullable=True)  # JSON array of {name, url}
     status = Column(SqlEnum(PurchaseStatus), default=PurchaseStatus.PENDING)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
+    order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True)
+    
     # Relationships
     partner = relationship("Partner", back_populates="purchase_orders")
+    order = relationship("SalesOrder")
     items = relationship("PurchaseOrderItem", back_populates="purchase_order", cascade="all, delete-orphan")
 
     @property
@@ -82,11 +82,11 @@ class OutsourcingOrder(Base):
     note = Column(String, nullable=True)
     attachment_file = Column(Text, nullable=True)  # JSON array of {name, url}
     status = Column(SqlEnum(OutsourcingStatus), default=OutsourcingStatus.PENDING)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
+    order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True)
+    
     # Relationships
     partner = relationship("Partner", back_populates="outsourcing_orders")
+    order = relationship("SalesOrder")
     items = relationship("OutsourcingOrderItem", back_populates="outsourcing_order", cascade="all, delete-orphan")
 
     @property

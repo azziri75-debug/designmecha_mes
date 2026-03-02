@@ -184,6 +184,7 @@ async def create_purchase_order(
     db_order = PurchaseOrder(
         order_no=order_no,
         partner_id=order_in.partner_id,
+        order_id=order_in.order_id,
         order_date=order_in.order_date,
         delivery_date=order_in.delivery_date,
         note=order_in.note,
@@ -228,6 +229,7 @@ async def create_purchase_order(
     query = select(PurchaseOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(PurchaseOrder.partner),
+        selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
         # Load related SO info
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
     ).where(PurchaseOrder.id == db_order.id)
@@ -250,6 +252,7 @@ async def read_purchase_orders(
     query = select(PurchaseOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(PurchaseOrder.partner),
+        selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
         # Load related SO info
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
     )
@@ -368,6 +371,7 @@ async def update_purchase_order(
     query = select(PurchaseOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(PurchaseOrder.partner),
+        selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
     ).where(PurchaseOrder.id == order_id)
     result = await db.execute(query)
@@ -421,6 +425,7 @@ async def create_outsourcing_order(
     db_order = OutsourcingOrder(
         order_no=order_no,
         partner_id=order_in.partner_id,
+        order_id=order_in.order_id,
         order_date=order_in.order_date,
         delivery_date=order_in.delivery_date,
         note=order_in.note,
@@ -456,6 +461,7 @@ async def create_outsourcing_order(
     query = select(OutsourcingOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(OutsourcingOrder.partner),
+        selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
         # Load related SO info
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
     ).where(OutsourcingOrder.id == db_order.id)
@@ -478,6 +484,7 @@ async def read_outsourcing_orders(
     query = select(OutsourcingOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(OutsourcingOrder.partner),
+        selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
         # Load related SO info
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
     )
@@ -583,6 +590,7 @@ async def update_outsourcing_order(
     query = select(OutsourcingOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(OutsourcingOrder.partner),
+        selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
     ).where(OutsourcingOrder.id == order_id)
     result = await db.execute(query)
