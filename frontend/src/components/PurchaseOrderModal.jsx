@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    IconButton, MenuItem, Box, Typography
+    IconButton, MenuItem, Box, Typography, Tooltip
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
+import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
 import api from '../lib/api';
 
 const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems }) => {
@@ -19,6 +20,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
         status: 'PENDING',
         items: []
     });
+
+    // History Popover State
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [priceHistory, setPriceHistory] = useState([]);
+    const [activeItemIndex, setActiveItemIndex] = useState(null);
+    const [loadingHistory, setLoadingHistory] = useState(false);
 
     useEffect(() => {
         fetchPartners();
@@ -136,6 +143,30 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
         }
 
         setFormData({ ...formData, items: newItems });
+    };
+
+    const handleLookupHistory = async (event, index, productId) => {
+        if (!productId) return;
+        setAnchorEl(event.currentTarget);
+        setActiveItemIndex(index);
+        setLoadingHistory(true);
+        try {
+            const response = await api.get('/purchasing/price-history', {
+                params: { product_id: productId, partner_id: formData.partner_id || undefined }
+            });
+            setPriceHistory(response.data);
+        } catch (error) {
+            console.error("Failed to fetch price history", error);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
+    const handleSelectHistoryPrice = (price) => {
+        if (activeItemIndex !== null) {
+            handleItemChange(activeItemIndex, 'unit_price', price);
+        }
+        setAnchorEl(null);
     };
 
     const handleSubmit = async () => {
@@ -260,14 +291,25 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                                         />
                                     </TableCell>
                                     <TableCell>
-                                        <TextField
-                                            type="number"
-                                            value={item.unit_price}
-                                            onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
-                                            fullWidth
-                                            size="small"
-                                            variant="standard"
-                                        />
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            <TextField
+                                                type="number"
+                                                value={item.unit_price}
+                                                onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
+                                                fullWidth
+                                                size="small"
+                                                variant="standard"
+                                            />
+                                            <Tooltip title="과거 단가 이력 조회">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={(e) => handleLookupHistory(e, index, item.product_id)}
+                                                    disabled={!item.product_id}
+                                                >
+                                                    <HistoryIcon sx={{ fontSize: 18 }} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
                                     </TableCell>
                                     <TableCell>
                                         <TextField
@@ -296,6 +338,59 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                 <Button onClick={onClose}>취소</Button>
                 <Button onClick={handleSubmit} variant="contained">저장</Button>
             </DialogActions>
+
+            <Popover
+                open={Boolean(anchorEl)}
+                anchorEl={anchorEl}
+                onClose={() => setAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Box sx={{ p: 2, minWidth: 300, maxWidth: 450 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>과거 단가 이력 (최근 10건)</Typography>
+                    <Divider sx={{ mb: 1 }} />
+                    {loadingHistory ? (
+                        <Typography variant="body2" sx={{ p: 2, textAlign: 'center' }}>로딩 중...</Typography>
+                    ) : priceHistory.length === 0 ? (
+                        <Typography variant="body2" sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>이력이 없습니다.</Typography>
+                    ) : (
+                        <List size="small" disablePadding>
+                            {priceHistory.map((h, i) => (
+                                <ListItem
+                                    key={i}
+                                    button
+                                    onClick={() => handleSelectHistoryPrice(h.unit_price)}
+                                    sx={{
+                                        borderRadius: 1,
+                                        '&:hover': { bgcolor: 'action.hover' },
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'flex-start',
+                                        py: 1
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 0.5 }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                            {h.order_date}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                                            ₩{h.unit_price.toLocaleString()}
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {h.partner_name}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            수량: {h.quantity}
+                                        </Typography>
+                                    </Box>
+                                </ListItem>
+                            ))}
+                        </List>
+                    )}
+                </Box>
+            </Popover>
         </Dialog>
     );
 };
