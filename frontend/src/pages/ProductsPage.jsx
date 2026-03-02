@@ -42,6 +42,17 @@ const ProductsPage = () => {
     const [fileModalTitle, setFileModalTitle] = useState('');
     const [viewingTargetId, setViewingTargetId] = useState(null);
 
+    // Sub-tab in expanded product view
+    const [detailSubTab, setDetailSubTab] = useState('routing'); // 'routing' | 'priceHistory'
+    const [priceHistory, setPriceHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
+    // Cost History in Routing Modal
+    const [showCostHistoryModal, setShowCostHistoryModal] = useState(false);
+    const [costHistory, setCostHistory] = useState([]);
+    const [loadingCostHistory, setLoadingCostHistory] = useState(false);
+    const [historyTarget, setHistoryTarget] = useState({ productName: '', processName: '', productId: null, processId: null, index: null });
+
     useEffect(() => {
         if (activeTab === 'products') {
             fetchProducts();
@@ -392,7 +403,57 @@ const ProductsPage = () => {
 
 
     const toggleExpand = (id) => {
-        setExpandedProductId(expandedProductId === id ? null : id);
+        if (expandedProductId === id) {
+            setExpandedProductId(null);
+        } else {
+            setExpandedProductId(id);
+            setDetailSubTab('routing'); // Reset to default tab
+            fetchPriceHistory(id);
+        }
+    };
+
+    const fetchPriceHistory = async (productId) => {
+        setLoadingHistory(true);
+        try {
+            const res = await api.get(`/product/${productId}/price-history`);
+            setPriceHistory(res.data);
+        } catch (error) {
+            console.error("Failed to fetch price history", error);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
+    const updateToLatestPrice = async (index, productId, processId) => {
+        if (!productId || !processId) return;
+        try {
+            const res = await api.get(`/product/${productId}/latest-cost/${processId}`);
+            const latestCost = res.data.latest_cost;
+            if (latestCost > 0) {
+                updateRoutingProcess(index, 'cost', latestCost);
+                alert(`최신 단가 ₩${latestCost.toLocaleString()}로 업데이트되었습니다.`);
+            } else {
+                alert("과거 구매/외주 이력이 없습니다.");
+            }
+        } catch (error) {
+            console.error("Failed to fetch latest cost", error);
+            alert("단가 정보를 불러오는데 실패했습니다.");
+        }
+    };
+
+    const openCostHistory = async (index, productId, processId, procName) => {
+        if (!productId || !processId) return;
+        setHistoryTarget({ productName: selectedProduct.name, processName: procName, productId, processId, index });
+        setShowCostHistoryModal(true);
+        setLoadingCostHistory(true);
+        try {
+            const res = await api.get(`/product/${productId}/cost-history/${processId}`);
+            setCostHistory(res.data);
+        } catch (error) {
+            console.error("Failed to fetch cost history", error);
+        } finally {
+            setLoadingCostHistory(false);
+        }
     };
 
     return (
@@ -566,100 +627,165 @@ const ProductsPage = () => {
                                                 <td colSpan="9" className="p-4 pl-16">
                                                     <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
                                                         <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
-                                                            <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-                                                                <Settings className="w-4 h-4 text-gray-500" />
-                                                                공정 구성
-                                                            </h4>
-                                                            <button
-                                                                onClick={() => openRoutingModal(product)}
-                                                                className="text-white bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors shadow-sm"
-                                                            >
-                                                                <Settings className="w-3 h-3" />
-                                                                공정 설정
-                                                            </button>
+                                                            <div className="flex space-x-4">
+                                                                <button
+                                                                    onClick={() => setDetailSubTab('routing')}
+                                                                    className={cn(
+                                                                        "pb-2 text-xs font-semibold flex items-center gap-2 transition-colors",
+                                                                        detailSubTab === 'routing' ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-500 hover:text-gray-300"
+                                                                    )}
+                                                                >
+                                                                    <Settings className="w-3.5 h-3.5" />
+                                                                    공정 구성
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setDetailSubTab('priceHistory')}
+                                                                    className={cn(
+                                                                        "pb-2 text-xs font-semibold flex items-center gap-2 transition-colors",
+                                                                        detailSubTab === 'priceHistory' ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-500 hover:text-gray-300"
+                                                                    )}
+                                                                >
+                                                                    <History className="w-3.5 h-3.5" />
+                                                                    견적/수주 이력
+                                                                </button>
+                                                            </div>
+                                                            {detailSubTab === 'routing' && (
+                                                                <button
+                                                                    onClick={() => openRoutingModal(product)}
+                                                                    className="text-white bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors shadow-sm"
+                                                                >
+                                                                    <Settings className="w-3 h-3" />
+                                                                    공정 설정
+                                                                </button>
+                                                            )}
                                                         </div>
 
-                                                        {product.standard_processes && product.standard_processes.length > 0 ? (
+                                                        {detailSubTab === 'routing' ? (
+                                                            product.standard_processes && product.standard_processes.length > 0 ? (
+                                                                <div className="overflow-x-auto">
+                                                                    <table className="w-full text-left text-sm text-gray-400">
+                                                                        <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                            <tr>
+                                                                                <th className="px-4 py-2 w-16 text-center">순서</th>
+                                                                                <th className="px-4 py-2">공정명</th>
+                                                                                <th className="px-4 py-2">구분</th>
+                                                                                <th className="px-4 py-2">업체/장비</th>
+                                                                                <th className="px-4 py-2">예상시간</th>
+                                                                                <th className="px-4 py-2">공정단가</th>
+                                                                                <th className="px-4 py-2">설명</th>
+                                                                                <th className="px-4 py-2">첨부</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-gray-700">
+                                                                            {product.standard_processes.sort((a, b) => a.sequence - b.sequence).map((pp, idx) => (
+                                                                                <tr key={idx} className="hover:bg-gray-800/50 transition-colors">
+                                                                                    <td className="px-4 py-2 text-center text-white font-medium bg-gray-800/30">
+                                                                                        {pp.sequence}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2 text-white font-medium">
+                                                                                        {pp.process ? pp.process.name : 'Unknown'}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2">
+                                                                                        {pp.process && (
+                                                                                            <span className={cn(
+                                                                                                "text-[10px] px-1.5 py-0.5 rounded border",
+                                                                                                pp.process.course_type === 'INTERNAL' ? "bg-blue-900/30 border-blue-800 text-blue-300" :
+                                                                                                    pp.process.course_type === 'OUTSOURCING' ? "bg-orange-900/30 border-orange-800 text-orange-300" :
+                                                                                                        "bg-purple-900/30 border-purple-800 text-purple-300"
+                                                                                            )}>
+                                                                                                {COURSE_TYPES[pp.process.course_type] || pp.process.course_type}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2 text-gray-400">
+                                                                                        {pp.partner_name || pp.equipment_name || '-'}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2">
+                                                                                        <span className="text-emerald-400">{pp.estimated_time || 0}분</span>
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2 text-orange-400">
+                                                                                        {pp.cost ? `₩${pp.cost.toLocaleString()}` : '-'}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2 text-xs">
+                                                                                        {pp.notes || '-'}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2">
+                                                                                        {pp.attachment_file && (
+                                                                                            <button
+                                                                                                onClick={() => {
+                                                                                                    // Parse files logic
+                                                                                                    let fileList = [];
+                                                                                                    try {
+                                                                                                        fileList = pp.attachment_file ? JSON.parse(pp.attachment_file) : [];
+                                                                                                        if (!Array.isArray(fileList)) fileList = [pp.attachment_file];
+                                                                                                    } catch {
+                                                                                                        fileList = pp.attachment_file ? [pp.attachment_file] : [];
+                                                                                                    }
+
+                                                                                                    if (fileList.length > 0) {
+                                                                                                        setViewingFiles(fileList);
+                                                                                                        setFileModalTitle(`${pp.process ? pp.process.name : '공정'} 첨부파일`);
+                                                                                                        setShowFileModal(true);
+                                                                                                    }
+                                                                                                }}
+                                                                                                className="text-blue-400 hover:text-blue-300"
+                                                                                            >
+                                                                                                <FileText className="w-4 h-4" />
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-sm text-gray-500 py-4 text-center">
+                                                                    등록된 공정이 없습니다. '공정 설정'을 눌러 공정을 추가하세요.
+                                                                </div>
+                                                            )
+                                                        ) : (
+                                                            // priceHistory Tab
                                                             <div className="overflow-x-auto">
-                                                                <table className="w-full text-left text-sm text-gray-400">
-                                                                    <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
-                                                                        <tr>
-                                                                            <th className="px-4 py-2 w-16 text-center">순서</th>
-                                                                            <th className="px-4 py-2">공정명</th>
-                                                                            <th className="px-4 py-2">구분</th>
-                                                                            <th className="px-4 py-2">업체/장비</th>
-                                                                            <th className="px-4 py-2">예상시간</th>
-                                                                            <th className="px-4 py-2">공정단가</th>
-                                                                            <th className="px-4 py-2">설명</th>
-                                                                            <th className="px-4 py-2">첨부</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody className="divide-y divide-gray-700">
-                                                                        {product.standard_processes.sort((a, b) => a.sequence - b.sequence).map((pp, idx) => (
-                                                                            <tr key={idx} className="hover:bg-gray-800/50 transition-colors">
-                                                                                <td className="px-4 py-2 text-center text-white font-medium bg-gray-800/30">
-                                                                                    {pp.sequence}
-                                                                                </td>
-                                                                                <td className="px-4 py-2 text-white font-medium">
-                                                                                    {pp.process ? pp.process.name : 'Unknown'}
-                                                                                </td>
-                                                                                <td className="px-4 py-2">
-                                                                                    {pp.process && (
+                                                                {loadingHistory ? (
+                                                                    <div className="text-center py-8 text-gray-500">데이터 로딩 중...</div>
+                                                                ) : priceHistory.length > 0 ? (
+                                                                    <table className="w-full text-left text-sm text-gray-400">
+                                                                        <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                            <tr>
+                                                                                <th className="px-4 py-2">날짜</th>
+                                                                                <th className="px-4 py-2">구분</th>
+                                                                                <th className="px-4 py-2">거래처</th>
+                                                                                <th className="px-4 py-2">수량</th>
+                                                                                <th className="px-4 py-2">단가</th>
+                                                                                <th className="px-4 py-2">비고</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-gray-700">
+                                                                            {priceHistory.map((item, idx) => (
+                                                                                <tr key={idx} className="hover:bg-gray-800/50 transition-colors">
+                                                                                    <td className="px-4 py-2">{item.date}</td>
+                                                                                    <td className="px-4 py-2">
                                                                                         <span className={cn(
                                                                                             "text-[10px] px-1.5 py-0.5 rounded border",
-                                                                                            pp.process.course_type === 'INTERNAL' ? "bg-blue-900/30 border-blue-800 text-blue-300" :
-                                                                                                pp.process.course_type === 'OUTSOURCING' ? "bg-orange-900/30 border-orange-800 text-orange-300" :
-                                                                                                    "bg-purple-900/30 border-purple-800 text-purple-300"
+                                                                                            item.type === 'QUOTATION' ? "bg-amber-900/30 border-amber-800 text-amber-300" : "bg-emerald-900/30 border-emerald-800 text-emerald-300"
                                                                                         )}>
-                                                                                            {COURSE_TYPES[pp.process.course_type] || pp.process.course_type}
+                                                                                            {item.type === 'QUOTATION' ? '견적' : '수주'}
                                                                                         </span>
-                                                                                    )}
-                                                                                </td>
-                                                                                <td className="px-4 py-2 text-gray-400">
-                                                                                    {pp.partner_name || pp.equipment_name || '-'}
-                                                                                </td>
-                                                                                <td className="px-4 py-2">
-                                                                                    <span className="text-emerald-400">{pp.estimated_time || 0}분</span>
-                                                                                </td>
-                                                                                <td className="px-4 py-2 text-orange-400">
-                                                                                    {pp.cost ? `₩${pp.cost.toLocaleString()}` : '-'}
-                                                                                </td>
-                                                                                <td className="px-4 py-2 text-xs">
-                                                                                    {pp.notes || '-'}
-                                                                                </td>
-                                                                                <td className="px-4 py-2">
-                                                                                    {pp.attachment_file && (
-                                                                                        <button
-                                                                                            onClick={() => {
-                                                                                                // Parse files logic
-                                                                                                let fileList = [];
-                                                                                                try {
-                                                                                                    fileList = pp.attachment_file ? JSON.parse(pp.attachment_file) : [];
-                                                                                                    if (!Array.isArray(fileList)) fileList = [pp.attachment_file];
-                                                                                                } catch {
-                                                                                                    fileList = pp.attachment_file ? [pp.attachment_file] : [];
-                                                                                                }
-
-                                                                                                if (fileList.length > 0) {
-                                                                                                    setViewingFiles(fileList);
-                                                                                                    setFileModalTitle(`${pp.process ? pp.process.name : '공정'} 첨부파일`);
-                                                                                                    setShowFileModal(true);
-                                                                                                }
-                                                                                            }}
-                                                                                            className="text-blue-400 hover:text-blue-300"
-                                                                                        >
-                                                                                            <FileText className="w-4 h-4" />
-                                                                                        </button>
-                                                                                    )}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="text-sm text-gray-500 py-4 text-center">
-                                                                등록된 공정이 없습니다. '공정 설정'을 눌러 공정을 추가하세요.
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2 text-white">{item.partner_name}</td>
+                                                                                    <td className="px-4 py-2">{item.quantity}</td>
+                                                                                    <td className="px-4 py-2 text-blue-400 font-medium">{item.unit_price.toLocaleString()}</td>
+                                                                                    <td className="px-4 py-2 text-xs text-gray-500">{item.order_no || '-'}</td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                ) : (
+                                                                    <div className="text-sm text-gray-500 py-8 text-center">
+                                                                        과거 견적 또는 수주 이력이 없습니다.
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1102,7 +1228,30 @@ const ProductsPage = () => {
 
                                                 <div className="grid grid-cols-12 gap-3 pl-11">
                                                     <div className="col-span-3">
-                                                        <label className="text-xs text-gray-500 block mb-1">비용(공정단가)</label>
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <label className="text-xs text-gray-500 block">비용(공정단가)</label>
+                                                            <div className="flex gap-1">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => updateToLatestPrice(index, selectedProduct.id, p.process_id)}
+                                                                    className="text-gray-500 hover:text-emerald-400 p-0.5 rounded transition-colors"
+                                                                    title="최근 실거래가로 갱신"
+                                                                >
+                                                                    <Save className="w-3 h-3" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const proc = processes.find(pr => pr.id == p.process_id);
+                                                                        openCostHistory(index, selectedProduct.id, p.process_id, proc?.name || '공정');
+                                                                    }}
+                                                                    className="text-gray-500 hover:text-blue-400 p-0.5 rounded transition-colors"
+                                                                    title="원가 변동 이력"
+                                                                >
+                                                                    <History className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                         <input
                                                             type="number"
                                                             value={p.cost}
@@ -1239,6 +1388,71 @@ const ProductsPage = () => {
                 </div>
             )
             }
+
+            {/* Cost History Sub-Modal */}
+            {showCostHistoryModal && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-lg shadow-2xl flex flex-col max-h-[70vh]">
+                        <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900/40">
+                            <div>
+                                <h3 className="text-white font-bold flex items-center gap-2">
+                                    <History className="w-4 h-4 text-blue-400" />
+                                    단가 변동 이력
+                                </h3>
+                                <p className="text-[10px] text-gray-500 mt-0.5">{historyTarget.productName} &gt; {historyTarget.processName}</p>
+                            </div>
+                            <button onClick={() => setShowCostHistoryModal(false)} className="text-gray-500 hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-4 overflow-y-auto">
+                            {loadingCostHistory ? (
+                                <div className="text-center py-8 text-gray-500">로딩 중...</div>
+                            ) : costHistory.length > 0 ? (
+                                <table className="w-full text-xs text-left">
+                                    <thead className="text-gray-500 uppercase bg-gray-900/50">
+                                        <tr>
+                                            <th className="px-3 py-2">거래일자</th>
+                                            <th className="px-3 py-2">거래처</th>
+                                            <th className="px-3 py-2 text-right">단가</th>
+                                            <th className="px-3 py-2 text-center w-12">선택</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-700 text-gray-300">
+                                        {costHistory.map((h, i) => (
+                                            <tr key={i} className="hover:bg-gray-700/50">
+                                                <td className="px-3 py-2">{h.date}</td>
+                                                <td className="px-3 py-2">{h.partner_name || '-'}</td>
+                                                <td className="px-3 py-2 text-right text-blue-400 font-medium">₩{h.unit_price.toLocaleString()}</td>
+                                                <td className="px-3 py-2 text-center">
+                                                    <button
+                                                        onClick={() => {
+                                                            updateRoutingProcess(historyTarget.index, 'cost', h.unit_price);
+                                                            setShowCostHistoryModal(false);
+                                                        }}
+                                                        className="text-[10px] bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 px-1.5 py-0.5 rounded border border-blue-600/30"
+                                                    >
+                                                        적용
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-center py-10 text-gray-500">
+                                    비용 변동 이력이 없습니다.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-3 border-t border-gray-700 flex justify-end bg-gray-900/20">
+                            <button onClick={() => setShowCostHistoryModal(false)} className="px-4 py-1.5 bg-gray-700 text-white rounded text-sm hover:bg-gray-600 transition-colors">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <FileViewerModal
                 isOpen={showFileModal}

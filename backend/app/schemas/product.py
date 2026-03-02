@@ -103,3 +103,17 @@ class ProductResponse(ProductBase):
 
     class Config:
         from_attributes = True
+
+class ProductPriceHistory(BaseModel):
+    date: str
+    type: str # "QUOTATION" or "ORDER"
+    partner_name: str
+    quantity: int
+    unit_price: float
+    order_no: Optional[str] = None
+
+class ProcessCostHistory(BaseModel):
+    date: str
+    partner_name: Optional[str] = None
+    unit_price: float
+    source: str # "PURCHASE" or "OUTSOURCING"

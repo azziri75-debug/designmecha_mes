@@ -7,7 +7,14 @@ from typing import List
 
 from app.api.deps import get_db
 from app.models.product import Product, Process, ProductProcess, ProductGroup
-from app.schemas.product import ProductCreate, ProductResponse, ProcessCreate, ProcessResponse, ProductUpdate, ProcessUpdate, ProductGroupCreate, ProductGroupResponse, ProductGroupUpdate
+from app.models.sales import Estimate, EstimateItem, SalesOrder, SalesOrderItem
+from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, OutsourcingOrder, OutsourcingOrderItem
+from app.models.basics import Partner
+from app.schemas.product import (
+    ProductCreate, ProductResponse, ProcessCreate, ProcessResponse, 
+    ProductUpdate, ProcessUpdate, ProductGroupCreate, ProductGroupResponse, 
+    ProductGroupUpdate, ProductPriceHistory, ProcessCostHistory
+)
 
 router = APIRouter()
 
@@ -267,3 +274,108 @@ async def delete_process(
         raise HTTPException(status_code=400, detail=f"Cannot delete process. It might be in use. Error: {str(e)}")
         
     return {"message": "Process deleted successfully"}
+
+# --- History Endpoints ---
+
+@router.get("/{product_id}/price-history", response_model=List[ProductPriceHistory])
+async def get_product_price_history(
+    product_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    특정 제품의 과거 견적 및 수주 내역 통합 조회
+    """
+    history = []
+
+    # 1. Quotations
+    q_stmt = select(EstimateItem, Estimate, Partner).join(Estimate).join(Partner, Estimate.partner_id == Partner.id).where(EstimateItem.product_id == product_id)
+    q_result = await db.execute(q_stmt)
+    for row in q_result.all():
+        item, estimate, partner = row
+        history.append(ProductPriceHistory(
+            date=str(estimate.estimate_date),
+            type="QUOTATION",
+            partner_name=partner.name,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            order_no=None
+        ))
+
+    # 2. Sales Orders
+    s_stmt = select(SalesOrderItem, SalesOrder, Partner).join(SalesOrder).join(Partner, SalesOrder.partner_id == Partner.id).where(SalesOrderItem.product_id == product_id)
+    s_result = await db.execute(s_stmt)
+    for row in s_result.all():
+        item, order, partner = row
+        history.append(ProductPriceHistory(
+            date=str(order.order_date),
+            type="ORDER",
+            partner_name=partner.name,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            order_no=order.order_no
+        ))
+
+    # Sort by date DESC
+    history.sort(key=lambda x: x.date, reverse=True)
+    return history
+
+@router.get("/{product_id}/cost-history/{process_id}", response_model=List[ProcessCostHistory])
+async def get_process_cost_history(
+    product_id: int,
+    process_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    특정 제품-공정 조합의 원가 이력 (구매/외주) 조회
+    """
+    # Check process type
+    proc_stmt = select(Process).where(Process.id == process_id)
+    proc_res = await db.execute(proc_stmt)
+    process = proc_res.scalar_one_or_none()
+    if not process:
+        raise HTTPException(status_code=404, detail="Process not found")
+
+    history = []
+    
+    if process.course_type == "PURCHASE":
+        # 자재 구매 내역
+        stmt = select(PurchaseOrderItem, PurchaseOrder, Partner).join(PurchaseOrder).join(Partner, PurchaseOrder.partner_id == Partner.id).where(PurchaseOrderItem.product_id == product_id)
+        result = await db.execute(stmt)
+        for row in result.all():
+            item, order, partner = row
+            history.append(ProcessCostHistory(
+                date=str(order.order_date),
+                partner_name=partner.name,
+                unit_price=item.unit_price,
+                source="PURCHASE"
+            ))
+    elif process.course_type == "OUTSOURCING":
+        # 외주 발주 내역
+        stmt = select(OutsourcingOrderItem, OutsourcingOrder, Partner).join(OutsourcingOrder).join(Partner, OutsourcingOrder.partner_id == Partner.id).where(OutsourcingOrderItem.product_id == product_id)
+        result = await db.execute(stmt)
+        for row in result.all():
+            item, order, partner = row
+            history.append(ProcessCostHistory(
+                date=str(order.order_date),
+                partner_name=partner.name,
+                unit_price=item.unit_price,
+                source="OUTSOURCING"
+            ))
+
+    # Sort DESC
+    history.sort(key=lambda x: x.date, reverse=True)
+    return history
+
+@router.get("/{product_id}/latest-cost/{process_id}")
+async def get_latest_process_cost(
+    product_id: int,
+    process_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    가장 최근의 실거래가 조회
+    """
+    history = await get_process_cost_history(product_id, process_id, db)
+    if not history:
+        return {"latest_cost": 0}
+    return {"latest_cost": history[0].unit_price}

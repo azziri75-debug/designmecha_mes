@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Search, FileText, Download, Upload } from 'lucide-react';
+import { X, Plus, Trash2, Search, FileText, Download, Upload, History } from 'lucide-react';
 import api from '../lib/api';
+import { cn } from '../lib/utils';
 
 const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }) => {
     // Form State
@@ -23,6 +24,12 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
     const [showOrderSelect, setShowOrderSelect] = useState(false);
     const [partnerEstimates, setPartnerEstimates] = useState([]);
     const [partnerOrders, setPartnerOrders] = useState([]);
+
+    // Price History State
+    const [showPriceHistory, setShowPriceHistory] = useState(false);
+    const [priceHistory, setPriceHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [historyTargetIndex, setHistoryTargetIndex] = useState(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -205,6 +212,21 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
         const newItems = [...formData.items];
         newItems[index][field] = value;
         setFormData({ ...formData, items: newItems });
+    };
+
+    const openPriceHistory = async (index, productId) => {
+        if (!productId) return;
+        setHistoryTargetIndex(index);
+        setShowPriceHistory(true);
+        setLoadingHistory(true);
+        try {
+            const res = await api.get(`/product/${productId}/price-history`);
+            setPriceHistory(res.data);
+        } catch (error) {
+            console.error("Failed to fetch price history", error);
+        } finally {
+            setLoadingHistory(false);
+        }
     };
 
     const removeItem = (index) => {
@@ -453,12 +475,22 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                                     />
                                                 </td>
                                                 <td className="px-4 py-2">
-                                                    <input
-                                                        type="number"
-                                                        value={item.unit_price}
-                                                        onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                                                        className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white"
-                                                    />
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="number"
+                                                            value={item.unit_price}
+                                                            onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                                                            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openPriceHistory(index, item.product_id)}
+                                                            className="p-1 text-gray-400 hover:text-blue-400 transition-colors"
+                                                            title="과거 단가 이력"
+                                                        >
+                                                            <History className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-2 text-right font-medium text-blue-400">
                                                     {(item.quantity * item.unit_price).toLocaleString()}
@@ -606,6 +638,77 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Price History Sub-Modal */}
+            {showPriceHistory && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-lg shadow-2xl flex flex-col max-h-[70vh]">
+                        <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900/40">
+                            <h3 className="text-white font-bold flex items-center gap-2">
+                                <History className="w-4 h-4 text-blue-400" />
+                                과거 단가 이력 조회
+                            </h3>
+                            <button onClick={() => setShowPriceHistory(false)} className="text-gray-500 hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-4 overflow-y-auto">
+                            {loadingHistory ? (
+                                <div className="text-center py-8 text-gray-500">로딩 중...</div>
+                            ) : priceHistory.length > 0 ? (
+                                <table className="w-full text-xs text-left">
+                                    <thead className="text-gray-500 uppercase bg-gray-900/50">
+                                        <tr>
+                                            <th className="px-3 py-2">일자</th>
+                                            <th className="px-3 py-2">구분</th>
+                                            <th className="px-3 py-2">거래처</th>
+                                            <th className="px-3 py-2 text-right">단가</th>
+                                            <th className="px-3 py-2 text-center">선택</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-700 text-gray-300">
+                                        {priceHistory.map((h, i) => (
+                                            <tr key={i} className="hover:bg-gray-700/50">
+                                                <td className="px-3 py-2">{h.date}</td>
+                                                <td className="px-3 py-2 text-center">
+                                                    <span className={cn(
+                                                        "text-[9px] px-1 rounded border",
+                                                        h.type === 'QUOTATION' ? "bg-amber-900/30 border-amber-800 text-amber-300" : "bg-emerald-900/30 border-emerald-800 text-emerald-300"
+                                                    )}>
+                                                        {h.type === 'QUOTATION' ? '견적' : '수주'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2">{h.partner_name}</td>
+                                                <td className="px-3 py-2 text-right text-blue-400 font-medium">₩{h.unit_price.toLocaleString()}</td>
+                                                <td className="px-3 py-2 text-center">
+                                                    <button
+                                                        onClick={() => {
+                                                            updateItem(historyTargetIndex, 'unit_price', h.unit_price);
+                                                            setShowPriceHistory(false);
+                                                        }}
+                                                        className="text-[10px] bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 px-1.5 py-0.5 rounded border border-blue-600/30"
+                                                    >
+                                                        적용
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-center py-10 text-gray-500">
+                                    과거 거래 이력이 없습니다.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-3 border-t border-gray-700 flex justify-end bg-gray-900/20">
+                            <button onClick={() => setShowPriceHistory(false)} className="px-4 py-1.5 bg-gray-700 text-white rounded text-sm hover:bg-gray-600 transition-colors">닫기</button>
                         </div>
                     </div>
                 </div>
