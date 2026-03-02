@@ -1,6 +1,6 @@
 from typing import Any, List, Dict
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 import pandas as pd
@@ -69,21 +69,30 @@ async def get_template(table_name: str):
     if table_name not in TABLE_CONFIG:
         raise HTTPException(status_code=404, detail="지원하지 않는 테이블입니다.")
     
-    columns = TABLE_CONFIG[table_name]["columns"]
-    df = pd.DataFrame(columns=columns)
-    
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Template')
-    
-    output.seek(0)
-    
-    filename = f"template_{table_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"
-    return StreamingResponse(
-        output,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
-    )
+    try:
+        columns = TABLE_CONFIG[table_name]["columns"]
+        df = pd.DataFrame(columns=columns)
+        
+        output = io.BytesIO()
+        # Ensure openpyxl is explicitly used
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Template')
+        
+        data = output.getvalue()
+        
+        filename = f"template_{table_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        
+        return Response(
+            content=data,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+    except Exception as e:
+        print(f"[ERROR] Template generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"양식 생성 중 오류가 발생했습니다: {str(e)}")
 
 @router.post("/upload/{table_name}")
 async def upload_excel(
@@ -105,7 +114,6 @@ async def upload_excel(
         raise HTTPException(status_code=400, detail=f"엑셀 파일을 읽는 중 오류가 발생했습니다: {str(e)}")
 
     errors = []
-    success_count = 0
     
     # Start transaction
     try:
@@ -159,5 +167,3 @@ async def upload_excel(
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"서버 내부 오류: {str(e)}")
-
-from fastapi.responses import JSONResponse
