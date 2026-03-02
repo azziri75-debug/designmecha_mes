@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import delete
 from sqlalchemy.orm import selectinload, joinedload
-from typing import List
+from typing import List, Optional
 
 from app.api.deps import get_db
 from app.models.product import Product, Process, ProductProcess, ProductGroup
@@ -210,6 +210,7 @@ async def update_product(
     # Re-fetch with eager load
     result = await db.execute(
         select(Product)
+        .select_from(Product)
         .options(
             selectinload(Product.standard_processes).joinedload(ProductProcess.process)
         )
@@ -288,7 +289,11 @@ async def get_product_price_history(
     history = []
 
     # 1. Quotations
-    q_stmt = select(EstimateItem, Estimate, Partner).join(Estimate).join(Partner, Estimate.partner_id == Partner.id).where(EstimateItem.product_id == product_id)
+    q_stmt = select(EstimateItem, Estimate, Partner)\
+        .select_from(EstimateItem)\
+        .join(Estimate)\
+        .join(Partner, Estimate.partner_id == Partner.id)\
+        .where(EstimateItem.product_id == product_id)
     q_result = await db.execute(q_stmt)
     for row in q_result.all():
         item, estimate, partner = row
@@ -302,7 +307,11 @@ async def get_product_price_history(
         ))
 
     # 2. Sales Orders
-    s_stmt = select(SalesOrderItem, SalesOrder, Partner).join(SalesOrder).join(Partner, SalesOrder.partner_id == Partner.id).where(SalesOrderItem.product_id == product_id)
+    s_stmt = select(SalesOrderItem, SalesOrder, Partner)\
+        .select_from(SalesOrderItem)\
+        .join(SalesOrder)\
+        .join(Partner, SalesOrder.partner_id == Partner.id)\
+        .where(SalesOrderItem.product_id == product_id)
     s_result = await db.execute(s_stmt)
     for row in s_result.all():
         item, order, partner = row
@@ -339,7 +348,11 @@ async def get_process_cost_history(
     
     if process.course_type == "PURCHASE":
         # 자재 구매 내역
-        stmt = select(PurchaseOrderItem, PurchaseOrder, Partner).join(PurchaseOrder).join(Partner, PurchaseOrder.partner_id == Partner.id).where(PurchaseOrderItem.product_id == product_id)
+        stmt = select(PurchaseOrderItem, PurchaseOrder, Partner)\
+            .select_from(PurchaseOrderItem)\
+            .join(PurchaseOrder)\
+            .join(Partner, PurchaseOrder.partner_id == Partner.id)\
+            .where(PurchaseOrderItem.product_id == product_id)
         result = await db.execute(stmt)
         for row in result.all():
             item, order, partner = row
@@ -351,7 +364,11 @@ async def get_process_cost_history(
             ))
     elif process.course_type == "OUTSOURCING":
         # 외주 발주 내역
-        stmt = select(OutsourcingOrderItem, OutsourcingOrder, Partner).join(OutsourcingOrder).join(Partner, OutsourcingOrder.partner_id == Partner.id).where(OutsourcingOrderItem.product_id == product_id)
+        stmt = select(OutsourcingOrderItem, OutsourcingOrder, Partner)\
+            .select_from(OutsourcingOrderItem)\
+            .join(OutsourcingOrder)\
+            .join(Partner, OutsourcingOrder.partner_id == Partner.id)\
+            .where(OutsourcingOrderItem.product_id == product_id)
         result = await db.execute(stmt)
         for row in result.all():
             item, order, partner = row

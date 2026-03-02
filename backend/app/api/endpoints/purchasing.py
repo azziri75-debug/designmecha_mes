@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, desc, func, or_, cast, String
 from sqlalchemy.orm import selectinload, joinedload
@@ -22,7 +22,7 @@ async def get_price_history(
     product_id: int,
     partner_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db)
-) -> Any:
+) -> List[Any]:
     """
     Get past price history for a specific product.
     Includes both Material Purchase and Outsourcing history.
