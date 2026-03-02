@@ -55,8 +55,8 @@ class ProductionPlanItemUpdate(BaseModel):
 
 # --- Plan Schemas (Base) ---
 class ProductionPlanBase(BaseModel):
-    plan_date: date
-    status: ProductionStatus = ProductionStatus.PLANNED
+    plan_date: Optional[date] = None
+    status: Optional[ProductionStatus] = ProductionStatus.PLANNED
     attachment_file: Optional[Union[List[Any], str]] = None
     sheet_metadata: Optional[dict] = None
 
@@ -65,7 +65,7 @@ class ProductionPlanSimple(ProductionPlanBase):
     id: int
     order_id: Optional[int] = None
     stock_production_id: Optional[int] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
     stock_production: Optional[StockProductionResponse] = None

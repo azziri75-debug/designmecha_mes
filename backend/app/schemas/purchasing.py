@@ -28,7 +28,7 @@ class PurchaseOrderItemUpdate(BaseModel):
 class PurchaseOrderItem(PurchaseOrderItemBase):
     id: int
     purchase_order_id: int
-    received_quantity: int
+    received_quantity: Optional[int] = 0
     production_plan_item_id: Optional[int] = None
     product: Optional[Product] = None
 
@@ -39,10 +39,10 @@ class PurchaseOrderItem(PurchaseOrderItemBase):
 class PurchaseOrderBase(BaseModel):
     partner_id: Optional[int] = None
     order_id: Optional[int] = None
-    order_date: date
+    order_date: Optional[date] = None
     delivery_date: Optional[date] = None
     note: Optional[str] = None
-    status: PurchaseStatus = PurchaseStatus.PENDING
+    status: Optional[PurchaseStatus] = PurchaseStatus.PENDING
 
 class PurchaseOrderCreate(PurchaseOrderBase):
     items: List[PurchaseOrderItemCreate] = []
@@ -59,7 +59,7 @@ class PurchaseOrderUpdate(BaseModel):
 class PurchaseOrder(PurchaseOrderBase):
     id: int
     order_no: str
-    total_amount: float
+    total_amount: Optional[float] = 0.0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     partner: Optional[Partner] = None
@@ -95,7 +95,7 @@ class OutsourcingOrderItemUpdate(BaseModel):
 class OutsourcingOrderItem(OutsourcingOrderItemBase):
     id: int
     outsourcing_order_id: int
-    status: OutsourcingStatus
+    status: Optional[OutsourcingStatus] = None
     # We might want resolved product name etc.
     product: Optional[Product] = None
     
@@ -106,10 +106,10 @@ class OutsourcingOrderItem(OutsourcingOrderItemBase):
 class OutsourcingOrderBase(BaseModel):
     partner_id: Optional[int] = None
     order_id: Optional[int] = None
-    order_date: date
+    order_date: Optional[date] = None
     delivery_date: Optional[date] = None
     note: Optional[str] = None
-    status: OutsourcingStatus = OutsourcingStatus.PENDING
+    status: Optional[OutsourcingStatus] = OutsourcingStatus.PENDING
 
 class OutsourcingOrderCreate(OutsourcingOrderBase):
     items: List[OutsourcingOrderItemCreate] = []

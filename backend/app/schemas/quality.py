@@ -33,13 +33,13 @@ class AttachmentResponse(BaseModel):
 # --- Quality Defect ---
 
 class QualityDefectBase(BaseModel):
-    order_id: int
-    plan_id: int
-    plan_item_id: int
+    order_id: Optional[int] = None
+    plan_id: Optional[int] = None
+    plan_item_id: Optional[int] = None
     defect_reason: str
     quantity: int
-    amount: float = 0.0
-    status: str = "OCCURRED"
+    amount: Optional[float] = 0.0
+    status: Optional[str] = "OCCURRED"
     resolution_note: Optional[str] = None
     resolution_date: Optional[datetime] = None
     attachment_file: Optional[str] = None
@@ -61,8 +61,8 @@ from app.schemas.production import ProductionPlanSimple, ProductionPlanItem as P
 
 class QualityDefectResponse(QualityDefectBase):
     id: int
-    defect_date: datetime
-    created_at: datetime
+    defect_date: Optional[datetime] = None
+    created_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
     plan: Optional[ProductionPlanSimple] = None
     plan_item: Optional[ProductionPlanItemResponse] = None
