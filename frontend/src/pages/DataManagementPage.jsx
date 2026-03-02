@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     Download,
     Upload,
@@ -21,6 +21,7 @@ import { cn } from '../lib/utils';
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const DB_TABLES = [
+    { id: 'orders', name: '수주 정보 (Orders)', icon: Database, isInteractive: true },
     { id: 'products', name: '제품 정보 (Products)', icon: Database, isInteractive: true },
     { id: 'partners', name: '거래처 정보 (Clients)', icon: Database },
     { id: 'staff', name: '직원 정보 (Staff)', icon: Database },
@@ -28,21 +29,40 @@ const DB_TABLES = [
 ];
 
 // --- Mapping Modal Component ---
-const MappingModal = ({ isOpen, onClose, data, onConfirm }) => {
-    if (!isOpen) return null;
-
-    const [mappings, setMappings] = useState(
-        data.rows.map(row => {
-            const exactMatch = row.matches.find(m => m.match_type === 'EXACT');
-            return {
-                ...row,
-                mapping_type: exactMatch ? 'EXISTING' : (row.matches.length > 0 ? 'EXISTING' : 'NEW'),
-                partner_id: exactMatch ? exactMatch.id : (row.matches[0]?.id || null),
-                new_partner_name: row.data.partner_name || '신규 거래처'
-            };
-        })
-    );
+const MappingModal = ({ isOpen, onClose, verifyData, type, onConfirm }) => {
+    const [mappings, setMappings] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && verifyData) {
+            const initial = verifyData.rows.map(row => {
+                if (type === 'products') {
+                    const exactMatch = row.matches.find(m => m.match_type === 'EXACT');
+                    return {
+                        ...row,
+                        mapping_type: exactMatch ? 'EXISTING' : (row.matches.length > 0 ? 'EXISTING' : 'NEW'),
+                        partner_id: exactMatch ? exactMatch.id : (row.matches[0]?.id || null),
+                        new_partner_name: row.data.partner_name || ''
+                    };
+                } else {
+                    // orders
+                    const exactPartner = row.partner_matches.find(m => m.match_type === 'EXACT');
+                    const exactProduct = row.product_matches.find(m => m.match_type === 'EXACT');
+                    return {
+                        ...row,
+                        partner_mapping_type: exactPartner ? 'EXISTING' : (row.partner_matches.length > 0 ? 'EXISTING' : 'NEW'),
+                        partner_id: exactPartner ? exactPartner.id : (row.partner_matches[0]?.id || null),
+                        new_partner_name: row.data.partner_name || '',
+                        product_mapping_type: 'EXISTING',
+                        product_id: exactProduct ? exactProduct.id : (row.product_matches[0]?.id || null)
+                    };
+                }
+            });
+            setMappings(initial);
+        }
+    }, [isOpen, verifyData, type]);
+
+    if (!isOpen || mappings.length === 0) return null;
 
     const handleMappingChange = (index, updates) => {
         const newMappings = [...mappings];
@@ -53,14 +73,30 @@ const MappingModal = ({ isOpen, onClose, data, onConfirm }) => {
     const handleFinalSubmit = async () => {
         setIsSubmitting(true);
         try {
-            const formattedItems = mappings.map(m => ({
-                row_index: m.row_index,
-                data: m.data,
-                mapping_type: m.mapping_type,
-                partner_id: m.mapping_type === 'EXISTING' ? m.partner_id : null,
-                new_partner_name: m.mapping_type === 'NEW' ? m.new_partner_name : null
-            }));
-            const response = await axios.post(`${API_URL}/db-manager/confirm/products`, formattedItems);
+            let endpoint = `${API_URL}/db-manager/confirm/${type}`;
+            let payload;
+
+            if (type === 'products') {
+                payload = mappings.map(m => ({
+                    row_index: m.row_index,
+                    data: m.data,
+                    mapping_type: m.mapping_type,
+                    partner_id: m.mapping_type === 'EXISTING' ? m.partner_id : null,
+                    new_partner_name: m.mapping_type === 'NEW' ? m.new_partner_name : null
+                }));
+            } else {
+                payload = mappings.map(m => ({
+                    row_index: m.row_index,
+                    data: m.data,
+                    partner_mapping_type: m.partner_mapping_type,
+                    partner_id: m.partner_mapping_type === 'EXISTING' ? m.partner_id : null,
+                    new_partner_name: m.partner_mapping_type === 'NEW' ? m.new_partner_name : null,
+                    product_mapping_type: m.product_mapping_type,
+                    product_id: m.product_id
+                }));
+            }
+
+            const response = await axios.post(endpoint, payload);
             onConfirm(response.data.message);
             onClose();
         } catch (error) {
@@ -72,14 +108,14 @@ const MappingModal = ({ isOpen, onClose, data, onConfirm }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
                 <div className="p-6 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <CheckCircle2 className="w-5 h-5 text-blue-500" />
-                            데이터 검증 및 거래처 매핑
+                            데이터 검증 및 매핑 ({type === 'products' ? '제품' : '수주'})
                         </h2>
-                        <p className="text-sm text-gray-400 mt-1">업로드 전 거래처 정보를 확인하고 짝을 맞춰주세요.</p>
+                        <p className="text-sm text-gray-400 mt-1">업로드 전 DB 정보와 매핑하여 데이터 정합성을 확인하세요.</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
                         <X className="w-5 h-5 text-gray-500" />
@@ -87,73 +123,97 @@ const MappingModal = ({ isOpen, onClose, data, onConfirm }) => {
                 </div>
 
                 <div className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                    <table className="w-full text-sm text-left border-collapse">
+                    <table className="w-full text-xs text-left border-collapse">
                         <thead className="sticky top-0 bg-gray-900 z-10 text-gray-500 border-b border-gray-800">
                             <tr>
-                                <th className="pb-3 pr-4 font-medium">행</th>
-                                <th className="pb-3 pr-4 font-medium">제품명</th>
-                                <th className="pb-3 pr-4 font-medium">엑셀 거래처명</th>
-                                <th className="pb-3 pr-4 font-medium text-center">검증 결과</th>
-                                <th className="pb-3 font-medium">DB 매핑 선택</th>
+                                <th className="pb-3 pr-4 font-medium w-12">행</th>
+                                <th className="pb-3 pr-4 font-medium">{type === 'products' ? '제품명' : '제품/규격'}</th>
+                                <th className="pb-3 pr-4 font-medium">거래처 매핑</th>
+                                {type === 'orders' && <th className="pb-3 pr-4 font-medium">제품 매핑</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800/50">
                             {mappings.map((m, idx) => (
                                 <tr key={idx} className="group hover:bg-white/5 transition-colors">
                                     <td className="py-4 text-gray-500">{m.row_index}</td>
-                                    <td className="py-4 font-medium text-white">{m.data.name}</td>
-                                    <td className="py-4 text-gray-300">{m.data.partner_name || '-'}</td>
                                     <td className="py-4">
-                                        <div className="flex justify-center">
-                                            {m.status === 'EXACT' && (
-                                                <span className="px-2 py-1 bg-green-500/10 text-green-500 rounded text-xs font-bold border border-green-500/20">자동 매핑</span>
-                                            )}
-                                            {m.status === 'SIMILAR' && (
-                                                <span className="px-2 py-1 bg-yellow-500/10 text-yellow-500 rounded text-xs font-bold border border-yellow-500/20">유사 확인</span>
-                                            )}
-                                            {m.status === 'NONE' && (
-                                                <span className="px-2 py-1 bg-red-500/10 text-red-500 rounded text-xs font-bold border border-red-500/20">정보 없음</span>
-                                            )}
+                                        <div className="font-medium text-white">
+                                            {type === 'products' ? m.data.name : `${m.data.product_name} / ${m.data.specification || '-'}`}
+                                        </div>
+                                        <div className="text-[10px] text-gray-500 mt-0.5">
+                                            {type === 'orders' && `수량: ${m.data.quantity} / 단가: ${m.data.unit_price}`}
                                         </div>
                                     </td>
-                                    <td className="py-4">
-                                        <div className="flex items-center gap-2">
-                                            <select
-                                                className="bg-gray-800 border-gray-700 text-gray-200 text-xs rounded-md px-2 py-1 flex-1 focus:border-blue-500 outline-none"
-                                                value={m.mapping_type === 'NEW' ? 'NEW' : (m.partner_id || '')}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    if (val === 'NEW') {
-                                                        handleMappingChange(idx, { mapping_type: 'NEW', partner_id: null });
-                                                    } else {
-                                                        handleMappingChange(idx, { mapping_type: 'EXISTING', partner_id: parseInt(val) });
-                                                    }
-                                                }}
-                                            >
-                                                <optgroup label="매핑 옵션">
-                                                    <option value="NEW">✨ 신규 거래처로 등록</option>
-                                                </optgroup>
-                                                {m.matches.length > 0 && (
-                                                    <optgroup label="검색된 추천 거래처">
-                                                        {m.matches.map(opt => (
-                                                            <option key={opt.id} value={opt.id}>🔗 {opt.name}</option>
+
+                                    {/* Partner Mapping Column */}
+                                    <td className="py-4 pr-4">
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-gray-400 text-[10px] shrink-0 w-16">엑셀: {m.data.partner_name || '-'}</span>
+                                                {m.partner_status === 'EXACT' || m.status === 'EXACT' ? (
+                                                    <Check className="w-3 h-3 text-green-500" />
+                                                ) : (
+                                                    <AlertCircle className="w-3 h-3 text-yellow-500" />
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    className="bg-gray-800 border border-gray-700 text-gray-200 text-[11px] rounded px-2 py-1 flex-1 outline-none focus:border-blue-500"
+                                                    value={(type === 'products' ? m.mapping_type : m.partner_mapping_type) === 'NEW' ? 'NEW' : (m.partner_id || '')}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        const updates = type === 'products'
+                                                            ? { mapping_type: val === 'NEW' ? 'NEW' : 'EXISTING', partner_id: val === 'NEW' ? null : parseInt(val) }
+                                                            : { partner_mapping_type: val === 'NEW' ? 'NEW' : 'EXISTING', partner_id: val === 'NEW' ? null : parseInt(val) };
+                                                        handleMappingChange(idx, updates);
+                                                    }}
+                                                >
+                                                    <option value="NEW">✨ 신규 거래처 등록</option>
+                                                    <optgroup label="추천 검색 결과">
+                                                        {(m.partner_matches || m.matches || []).map(p => (
+                                                            <option key={p.id} value={p.id}>{p.name}</option>
                                                         ))}
                                                     </optgroup>
+                                                </select>
+                                                {(type === 'products' ? m.mapping_type : m.partner_mapping_type) === 'NEW' && (
+                                                    <input
+                                                        type="text"
+                                                        className="bg-gray-800 border border-gray-700 text-blue-400 text-[11px] rounded px-2 py-1 w-24 outline-none focus:border-blue-500"
+                                                        value={m.new_partner_name}
+                                                        onChange={(e) => handleMappingChange(idx, { new_partner_name: e.target.value })}
+                                                    />
                                                 )}
-                                                {m.mapping_type === 'EXISTING' && m.partner_id && !m.matches.some(opt => opt.id === m.partner_id) && (
-                                                    <option value={m.partner_id}>Selected ID: {m.partner_id}</option>
-                                                )}
-                                            </select>
-                                            {m.mapping_type === 'NEW' && (
-                                                <input
-                                                    type="text"
-                                                    className="bg-gray-800 border-gray-700 text-blue-400 text-xs rounded-md px-2 py-1 w-32 focus:border-blue-500 outline-none"
-                                                    value={m.new_partner_name}
-                                                    onChange={(e) => handleMappingChange(idx, { new_partner_name: e.target.value })}
-                                                />
-                                            )}
+                                            </div>
                                         </div>
                                     </td>
+
+                                    {/* Product Mapping Column (Orders Only) */}
+                                    {type === 'orders' && (
+                                        <td className="py-4">
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-gray-400 text-[10px] shrink-0 w-16">매칭 상태:</span>
+                                                    {m.product_status === 'EXACT' ? (
+                                                        <span className="text-green-500 font-bold">EXACT</span>
+                                                    ) : (
+                                                        <span className="text-red-400 font-bold">선택 필요</span>
+                                                    )}
+                                                </div>
+                                                <select
+                                                    className="bg-gray-800 border border-gray-700 text-gray-200 text-[11px] rounded px-2 py-1 w-full outline-none focus:border-blue-500"
+                                                    value={m.product_id || ''}
+                                                    onChange={(e) => handleMappingChange(idx, { product_id: parseInt(e.target.value) })}
+                                                >
+                                                    <option value="">-- 제품 선택 --</option>
+                                                    {m.product_matches.map(p => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.name} ({p.specification || '규격없음'}) {p.partner_id === m.partner_id ? '✅' : ''}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -223,7 +283,6 @@ const DataManagementPage = () => {
         const currentConfig = DB_TABLES.find(t => t.id === selectedTable);
 
         if (currentConfig.isInteractive) {
-            // 2-Step Interactive Flow for Products
             setLoading(true);
             setResult(null);
             const formData = new FormData();
@@ -238,7 +297,6 @@ const DataManagementPage = () => {
                 setLoading(false);
             }
         } else {
-            // Standard Flow for others
             setLoading(true);
             setResult(null);
             const formData = new FormData();
@@ -375,7 +433,8 @@ const DataManagementPage = () => {
             <MappingModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                data={verifyData}
+                verifyData={verifyData}
+                type={selectedTable}
                 onConfirm={(msg) => {
                     setResult({ success: true, message: msg });
                     setFile(null);

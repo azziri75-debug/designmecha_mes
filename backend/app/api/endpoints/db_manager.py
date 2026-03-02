@@ -13,6 +13,7 @@ from datetime import datetime
 from app.api import deps
 from app.models.basics import Partner, Staff, Equipment
 from app.models.product import Product
+from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
 
 router = APIRouter()
 
@@ -63,6 +64,19 @@ TABLE_CONFIG = {
             "사양": "spec",
             "설치위치": "location"
         }
+    },
+    "orders": {
+        "model": SalesOrder,
+        "columns": ["수주일자", "거래처명", "제품명", "규격", "수량", "단가", "진행상태 (진행중, 완료, 대기 등)"],
+        "mapping": {
+            "수주일자": "order_date",
+            "거래처명": "partner_name",
+            "제품명": "product_name",
+            "규격": "specification",
+            "수량": "quantity",
+            "단가": "unit_price",
+            "진행상태 (진행중, 완료, 대기 등)": "status_str"
+        }
     }
 }
 
@@ -97,6 +111,53 @@ async def get_partner_matches(db: AsyncSession, name: str):
             matches.append({"id": p.id, "name": p.name, "match_type": "SIMILAR"})
             
     return matches[:5] # Limit candidates
+
+async def get_product_matches(db: AsyncSession, name: str, spec: str, partner_id: Optional[int] = None):
+    if not name: return []
+    
+    from sqlalchemy import or_
+    
+    # 1. Exact Match (Name + Spec)
+    query = select(Product).where(Product.name == name)
+    if spec:
+        query = query.where(Product.specification == spec)
+    else:
+        query = query.where(or_(Product.specification == None, Product.specification == ""))
+        
+    result = await db.execute(query)
+    exact = result.scalars().all()
+    if exact:
+        return [{"id": p.id, "name": p.name, "specification": p.specification, "match_type": "EXACT", "partner_id": p.partner_id} for p in exact]
+    
+    # 2. Similar Match
+    query = select(Product).where(Product.name.ilike(f"%{name}%"))
+    result = await db.execute(query)
+    all_products = result.scalars().all()
+    
+    matches = []
+    for p in all_products:
+        matches.append({
+            "id": p.id, 
+            "name": p.name, 
+            "specification": p.specification, 
+            "match_type": "SIMILAR",
+            "partner_id": p.partner_id
+        })
+    
+    if partner_id:
+        matches.sort(key=lambda x: 0 if x["partner_id"] == partner_id else 1)
+        
+    return matches[:10]
+
+def map_order_status(status_str: str) -> OrderStatus:
+    if not status_str: return OrderStatus.PENDING
+    s = status_str.strip()
+    if "납품" in s or "배송" in s: return OrderStatus.DELIVERY_COMPLETED
+    if "생산완료" in s: return OrderStatus.PRODUCTION_COMPLETED
+    if "대기" in s: return OrderStatus.PENDING
+    if "확정" in s or "승인" in s: return OrderStatus.CONFIRMED
+    if "취소" in s: return OrderStatus.CANCELLED
+    return OrderStatus.PENDING
 
 # --- Endpoints ---
 
@@ -172,6 +233,136 @@ class ProductConfirmItem(BaseModel):
     mapping_type: str # "EXISTING", "NEW", "NONE"
     partner_id: Optional[int] = None
     new_partner_name: Optional[str] = None
+
+@router.post("/verify/orders")
+async def verify_orders(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(deps.get_db)
+):
+    try:
+        contents = await file.read()
+        df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"엑셀 파일을 읽는 중 오류가 발생했습니다: {str(e)}")
+
+    rows = []
+    config = TABLE_CONFIG["orders"]["mapping"]
+    
+    for index, row in df.iterrows():
+        row_data = {}
+        for excel_col, model_attr in config.items():
+            val = row.get(excel_col)
+            if model_attr == "order_date" and pd.notna(val):
+                if isinstance(val, datetime):
+                    row_data[model_attr] = val.strftime('%Y-%m-%d')
+                else:
+                    row_data[model_attr] = str(val).split(' ')[0]
+            else:
+                row_data[model_attr] = str(val).strip() if pd.notna(val) else None
+            
+        partner_name = row_data.get("partner_name")
+        product_name = row_data.get("product_name")
+        specification = row_data.get("specification")
+        status_str = row_data.get("status_str")
+        
+        partner_matches = await get_partner_matches(db, partner_name)
+        
+        # Check for best partner match to help products
+        best_partner_id = next((m["id"] for m in partner_matches if m["match_type"] == "EXACT"), None)
+        product_matches = await get_product_matches(db, product_name, specification, best_partner_id)
+        
+        # Row status
+        p_status = "EXACT" if any(m["match_type"] == "EXACT" for m in partner_matches) else ("SIMILAR" if partner_matches else "NONE")
+        pr_status = "EXACT" if any(m["match_type"] == "EXACT" for m in product_matches) else ("SIMILAR" if product_matches else "NONE")
+        
+        rows.append({
+            "row_index": index + 2,
+            "data": row_data,
+            "partner_status": p_status,
+            "partner_matches": partner_matches,
+            "product_status": pr_status,
+            "product_matches": product_matches,
+            "mapped_status": map_order_status(status_str).value
+        })
+        
+    return {"rows": rows}
+
+class OrderConfirmItem(BaseModel):
+    row_index: int
+    data: Dict[str, Any]
+    partner_mapping_type: str # "EXISTING", "NEW", "NONE"
+    partner_id: Optional[int] = None
+    new_partner_name: Optional[str] = None
+    product_mapping_type: str # "EXISTING", "NONE"
+    product_id: Optional[int] = None
+
+@router.post("/confirm/orders")
+async def confirm_orders(
+    items: List[OrderConfirmItem],
+    db: AsyncSession = Depends(deps.get_db)
+):
+    try:
+        from sqlalchemy import func
+        today = datetime.now().date()
+        date_str = today.strftime("%Y%m%d")
+        
+        # 1. Create New Partners
+        new_partner_map = {}
+        for item in items:
+            if item.partner_mapping_type == "NEW" and item.new_partner_name:
+                if item.new_partner_name not in new_partner_map:
+                    res = await db.execute(select(Partner).where(Partner.name == item.new_partner_name))
+                    existing = res.scalar_one_or_none()
+                    if existing:
+                        new_partner_map[item.new_partner_name] = existing.id
+                    else:
+                        new_p = Partner(name=item.new_partner_name, partner_type=["CUSTOMER"])
+                        db.add(new_p)
+                        await db.flush()
+                        new_partner_map[item.new_partner_name] = new_p.id
+
+        # 2. Get today's order count for numbering
+        query_count = select(func.count()).filter(SalesOrder.order_date == today)
+        result_count = await db.execute(query_count)
+        so_count = result_count.scalar() or 0
+        
+        # 3. Insert Orders (1 Order per row for Simplicity)
+        for idx, item in enumerate(items):
+            p_id = item.partner_id if item.partner_mapping_type == "EXISTING" else new_partner_map.get(item.new_partner_name)
+            prod_id = item.product_id
+            
+            if not p_id or not prod_id: continue
+                
+            order_no = f"SO-{date_str}-{so_count + idx + 1:03d}"
+            u_price = float(item.data.get("unit_price") or 0)
+            qty = int(item.data.get("quantity") or 0)
+            
+            db_order = SalesOrder(
+                order_no=order_no,
+                partner_id=p_id,
+                order_date=item.data.get("order_date") or today,
+                status=map_order_status(item.data.get("status_str") or "대기"),
+                total_amount=u_price * qty,
+                note="Excel Bulk Upload"
+            )
+            db.add(db_order)
+            await db.flush()
+            
+            db_item = SalesOrderItem(
+                order_id=db_order.id,
+                product_id=prod_id,
+                unit_price=u_price,
+                quantity=qty,
+                note=item.data.get("specification")
+            )
+            db.add(db_item)
+
+        await db.commit()
+        return {"message": f"총 {len(items)}건의 수주가 성공적으로 등록되었습니다."}
+    except Exception as e:
+        await db.rollback()
+        print(f"[ERROR] Order confirmation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"최종 저장 중 오류가 발생했습니다: {str(e)}")
 
 @router.post("/confirm/products")
 async def confirm_products(
