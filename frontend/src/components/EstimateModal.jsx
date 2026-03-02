@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Search, FileText, Upload, History } from 'lucide-react';
 import api from '../lib/api';
+import { cn } from '../lib/utils';
 
 const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = null }) => {
     // Form State

@@ -170,6 +170,18 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     };
 
     const handleSubmit = async () => {
+        // Validation
+        if (!formData.partner_id) return alert("외주처를 선택해 주세요.");
+        if (!formData.delivery_date) return alert("납기일자를 입력해 주세요.");
+        if (formData.items.length === 0) return alert("품목을 최소 1개 이상 추가해 주세요.");
+
+        for (let i = 0; i < formData.items.length; i++) {
+            const item = formData.items[i];
+            if (!item.product_id) return alert(`${i + 1}번째 품목의 제품을 선택해 주세요.`);
+            if (!item.quantity || item.quantity <= 0) return alert(`${i + 1}번째 품목의 수량을 입력해 주세요.`);
+            if (item.unit_price === undefined || item.unit_price === null || item.unit_price < 0) return alert(`${i + 1}번째 품목의 단가를 입력해 주세요.`);
+        }
+
         try {
             const payload = {
                 ...formData,
