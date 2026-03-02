@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:18-alpine
-    container_name: mes-db
+    container_name: mes_db
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -11,13 +11,13 @@ services:
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   web:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: mes-web
+    container_name: mes_backend
     restart: always
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/mes_erp
@@ -32,7 +32,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: mes-web-front
+    container_name: mes_frontend
     restart: always
     ports:
       - "3000:3000"
