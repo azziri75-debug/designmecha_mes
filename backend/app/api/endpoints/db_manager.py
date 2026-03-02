@@ -10,8 +10,7 @@ from datetime import datetime
 
 from app.api import deps
 from app.models.basics import Partner, Staff, Equipment
-from app.models.product import Product, ProductGroup
-from app.models.inventory import Inventory
+from app.models.product import Product
 
 router = APIRouter()
 
@@ -74,12 +73,10 @@ async def get_template(table_name: str):
         df = pd.DataFrame(columns=columns)
         
         output = io.BytesIO()
-        # Ensure openpyxl is explicitly used
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Template')
         
         data = output.getvalue()
-        
         filename = f"template_{table_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"
         
         return Response(
@@ -125,13 +122,11 @@ async def upload_excel(
                 for excel_col, model_attr in mapping.items():
                     val = row.get(excel_col)
                     
-                    # Basic cleaning
                     if pd.isna(val):
                         val = None
                     elif isinstance(val, str):
                         val = val.strip()
                     
-                    # Special validation/transformation
                     if table_name == "partners" and excel_col == "구분(CUSTOMER/SUPPLIER/BOTH)":
                         if val:
                             val = [v.strip().upper() for v in str(val).split(',')]
@@ -143,12 +138,6 @@ async def upload_excel(
                 # Create instance
                 obj = model(**data)
                 db.add(obj)
-                
-                # Check for inventory auto-creation if product
-                if table_name == "products":
-                    await db.flush() # Get ID
-                    inventory = Inventory(product_id=obj.id, quantity=0)
-                    db.add(inventory)
 
             except Exception as e:
                 errors.append(f"{row_num}행: 데이터 처리 중 오류 발생 ({str(e)})")
