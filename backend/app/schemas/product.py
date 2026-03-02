@@ -42,6 +42,12 @@ class ProcessResponse(ProcessBase):
     class Config:
         from_attributes = True
 
+class ProcessQuickCreate(BaseModel):
+    name: str
+    course_type: str
+    major_group_id: Optional[int] = None
+    group_id: Optional[int] = None
+
 # Product Process (Routing) Schemas
 class ProductProcessBase(BaseModel):
     process_id: int

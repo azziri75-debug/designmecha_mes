@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History } from 'lucide-react';
+import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt } from 'lucide-react';
+import CreatableSelect from 'react-select/creatable';
 import { cn } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import ProcessGroupManager from '../components/ProcessGroupManager';
@@ -52,11 +53,16 @@ const ProductsPage = () => {
     const [loadingCostHistory, setLoadingCostHistory] = useState(false);
     const [historyTarget, setHistoryTarget] = useState({ productName: '', processName: '', productId: null, processId: null, index: null });
 
+    // Quick Process Registration State
+    const [showQuickProcessModal, setShowQuickProcessModal] = useState(false);
+    const [quickProcessData, setQuickProcessData] = useState({ name: "", course_type: "INTERNAL", major_group_id: null, group_id: null, index: null });
+
     useEffect(() => {
         if (activeTab === 'products') {
             fetchProducts();
             fetchPartners();
             fetchGroups();
+            fetchProcesses(); // Needed for routing modal names
         } else {
             fetchProcesses();
             fetchGroups();
@@ -349,6 +355,64 @@ const ProductsPage = () => {
             console.error("Failed to save routing", error);
             alert("저장 실패: " + (error.response?.data?.detail || error.message));
         }
+    };
+
+    const handleQuickCreateProcess = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await api.post('/product/processes/quick', {
+                name: quickProcessData.name,
+                course_type: quickProcessData.course_type,
+                major_group_id: quickProcessData.major_group_id,
+                group_id: quickProcessData.group_id
+            });
+            const newProc = res.data;
+
+            // Add to master processes list
+            setProcesses(prev => [...prev, newProc]);
+
+            // Link to the routing line that triggered this
+            if (quickProcessData.index !== null) {
+                updateRoutingProcess(quickProcessData.index, 'process_id', newProc.id);
+            }
+
+            setShowQuickProcessModal(false);
+            alert("공정이 등록되었습니다.");
+        } catch (error) {
+            console.error("Quick process creation failed", error);
+            alert("공정 등록 실패");
+        }
+    };
+
+    // Custom styles for react-select
+    const selectStyles = {
+        control: (base) => ({
+            ...base,
+            backgroundColor: '#111827',
+            borderColor: '#4b5563',
+            color: 'white',
+            fontSize: '12px',
+            minHeight: '32px',
+            height: '32px',
+            borderRadius: '4px',
+            boxShadow: 'none',
+            '&:hover': {
+                borderColor: '#3b82f6'
+            }
+        }),
+        input: (base) => ({ ...base, color: 'white' }),
+        menu: (base) => ({ ...base, backgroundColor: '#111827', border: '1px solid #4b5563', zIndex: 9999 }),
+        option: (base, { isFocused, isSelected }) => ({
+            ...base,
+            backgroundColor: isSelected ? '#2563eb' : isFocused ? '#1f2937' : '#111827',
+            color: 'white',
+            fontSize: '12px',
+            cursor: 'pointer'
+        }),
+        singleValue: (base) => ({ ...base, color: 'white' }),
+        placeholder: (base) => ({ ...base, color: '#9ca3af' }),
+        noOptionsMessage: (base) => ({ ...base, color: '#9ca3af', fontSize: '11px' }),
+        loadingMessage: (base) => ({ ...base, color: '#9ca3af', fontSize: '11px' })
     };
 
 
@@ -1017,16 +1081,27 @@ const ProductsPage = () => {
                                                         </div>
                                                         <div className="flex-1 grid grid-cols-12 gap-3">
                                                             <div className="col-span-4">
-                                                                <select
-                                                                    value={p.process_id}
-                                                                    onChange={(e) => updateRoutingProcess(index, 'process_id', e.target.value)}
-                                                                    className="w-full bg-gray-900 border border-gray-600 text-white text-xs rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                                >
-                                                                    <option value="">(공정 선택)</option>
-                                                                    {processes.map(proc => (
-                                                                        <option key={proc.id} value={proc.id}>{proc.name}</option>
-                                                                    ))}
-                                                                </select>
+                                                                <CreatableSelect
+                                                                    isClearable
+                                                                    options={processes.map(proc => ({ value: proc.id, label: proc.name }))}
+                                                                    value={processes.find(pr => pr.id == p.process_id) ? { value: p.process_id, label: processes.find(pr => pr.id == p.process_id).name } : null}
+                                                                    onChange={(selected) => {
+                                                                        updateRoutingProcess(index, 'process_id', selected ? selected.value : "");
+                                                                    }}
+                                                                    onCreateOption={(inputValue) => {
+                                                                        setQuickProcessData({
+                                                                            name: inputValue,
+                                                                            course_type: "INTERNAL",
+                                                                            major_group_id: productFormData.major_group_id ? parseInt(productFormData.major_group_id) : null,
+                                                                            group_id: productFormData.group_id ? parseInt(productFormData.group_id) : null,
+                                                                            index: index
+                                                                        });
+                                                                        setShowQuickProcessModal(true);
+                                                                    }}
+                                                                    styles={selectStyles}
+                                                                    placeholder="(공격 선택 또는 입력)"
+                                                                    formatCreateLabel={(inputValue) => `"${inputValue}" 신규 등록`}
+                                                                />
                                                             </div>
                                                             <div className="col-span-4">
                                                                 <input
@@ -1323,6 +1398,66 @@ const ProductsPage = () => {
                         <div className="p-3 border-t border-gray-700 flex justify-end bg-gray-900/20">
                             <button onClick={() => setShowCostHistoryModal(false)} className="px-4 py-1.5 bg-gray-700 text-white rounded text-sm hover:bg-gray-600 transition-colors">닫기</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Quick Process Registration Modal */}
+            {showQuickProcessModal && (
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-md shadow-2xl overflow-hidden animation-fade-in">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gray-900/50">
+                            <h3 className="text-md font-bold text-white flex items-center gap-2">
+                                <Bolt className="w-4 h-4 text-blue-400" />
+                                빠른 공정 등록
+                            </h3>
+                            <button onClick={() => setShowQuickProcessModal(false)} className="text-gray-400 hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleQuickCreateProcess} className="p-5 space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-gray-400">공정명</label>
+                                <input
+                                    value={quickProcessData.name}
+                                    readOnly
+                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none text-sm"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-gray-400">대그룹 (상속)</label>
+                                    <div className="w-full bg-gray-800 border border-gray-700 text-gray-400 rounded-lg px-3 py-2 text-sm italic">
+                                        {groups.find(g => g.id === quickProcessData.major_group_id)?.name || "미지정"}
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-gray-400">소그룹 (상속)</label>
+                                    <div className="w-full bg-gray-800 border border-gray-700 text-gray-400 rounded-lg px-3 py-2 text-sm italic">
+                                        {groups.find(g => g.id === quickProcessData.group_id)?.name || "미지정"}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-gray-400">공정 구분</label>
+                                <select
+                                    value={quickProcessData.course_type}
+                                    onChange={(e) => setQuickProcessData(prev => ({ ...prev, course_type: e.target.value }))}
+                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                >
+                                    <option value="INTERNAL">내부</option>
+                                    <option value="OUTSOURCING">외주</option>
+                                    <option value="PURCHASE">구매</option>
+                                </select>
+                            </div>
+
+                            <div className="pt-4 flex justify-end gap-2 border-t border-gray-700 mt-4">
+                                <button type="button" onClick={() => setShowQuickProcessModal(false)} className="px-4 py-1.5 rounded text-xs font-medium text-gray-400 hover:text-white transition-colors">취소</button>
+                                <button type="submit" className="px-5 py-1.5 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all">등록 및 선택</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

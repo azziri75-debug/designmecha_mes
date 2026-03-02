@@ -13,7 +13,7 @@ from app.models.basics import Partner
 from app.schemas.product import (
     ProductCreate, ProductResponse, ProcessCreate, ProcessResponse, 
     ProductUpdate, ProcessUpdate, ProductGroupCreate, ProductGroupResponse, 
-    ProductGroupUpdate, ProductPriceHistory, ProcessCostHistory
+    ProductGroupUpdate, ProductPriceHistory, ProcessCostHistory, ProcessQuickCreate
 )
 
 router = APIRouter()
@@ -96,6 +96,26 @@ async def read_processes(
     result = await db.execute(select(Process).offset(skip).limit(limit))
     processes = result.scalars().all()
     return processes
+
+@router.post("/processes/quick", response_model=ProcessResponse)
+async def quick_create_process(
+    process_in: ProcessQuickCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    프론트엔드 제품 수정 화면에서 즉시 새 공정을 등록하기 위한 API
+    """
+    new_process = Process(
+        name=process_in.name,
+        course_type=process_in.course_type,
+        group_id=process_in.group_id,
+        # major_group_id는 ProductGroup 테이블에는 별도 필드가 있으나 Process 테이블에는 group_id(소그룹)만 연결되어 있어
+        # 필요시 Process 모델을 확인해야 하지만 현재 스키마상 group_id(minor)만 받음.
+    )
+    db.add(new_process)
+    await db.commit()
+    await db.refresh(new_process)
+    return new_process
 
 # --- Product Endpoints ---
 @router.post("/products/", response_model=ProductResponse)
