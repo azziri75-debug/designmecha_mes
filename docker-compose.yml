@@ -13,11 +13,11 @@ services:
     ports:
       - "5432:5432"
 
-  backend:
+  web:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: mes-backend
+    container_name: mes-web
     restart: always
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/mes_erp
@@ -28,13 +28,13 @@ services:
     depends_on:
       - db
 
-  frontend:
+  web_front:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: mes-frontend
+    container_name: mes-web-front
     restart: always
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      - web

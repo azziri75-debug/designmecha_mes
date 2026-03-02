@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     gcc \
     libpangocairo-1.0-0 \
-    libharfbuzz-0b \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
     libffi-dev \
