@@ -100,6 +100,7 @@ class ProductResponse(ProductBase):
     id: int
     standard_processes: List[ProductProcessResponse] = []
     current_inventory: int = 0 # Computed field
+    latest_price: float = 0.0 # Latest quotation/order price
 
     class Config:
         from_attributes = True
@@ -110,6 +111,7 @@ class ProductPriceHistory(BaseModel):
     partner_name: str
     quantity: int
     unit_price: float
+    total_amount: float
     order_no: Optional[str] = None
 
 class ProcessCostHistory(BaseModel):

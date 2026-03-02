@@ -156,7 +156,16 @@ async def read_products(
     
     result = await db.execute(query.offset(skip).limit(limit))
     products = result.scalars().all()
-    return products
+    
+    # Enrich with latest_price
+    enriched_products = []
+    for p in products:
+        p_history = await get_product_price_history(p.id, db)
+        latest_price = p_history[0].unit_price if p_history else 0.0
+        p.latest_price = latest_price
+        enriched_products.append(p)
+        
+    return enriched_products
 
 @router.put("/products/{product_id}", response_model=ProductResponse)
 async def update_product(
@@ -279,6 +288,7 @@ async def delete_process(
 # --- History Endpoints ---
 
 @router.get("/{product_id}/price-history", response_model=List[ProductPriceHistory])
+@router.get("/{product_id}/sales-history", response_model=List[ProductPriceHistory])
 async def get_product_price_history(
     product_id: int,
     db: AsyncSession = Depends(get_db)
@@ -303,6 +313,7 @@ async def get_product_price_history(
             partner_name=partner.name,
             quantity=item.quantity,
             unit_price=item.unit_price,
+            total_amount=item.quantity * item.unit_price,
             order_no=None
         ))
 
@@ -321,6 +332,7 @@ async def get_product_price_history(
             partner_name=partner.name,
             quantity=item.quantity,
             unit_price=item.unit_price,
+            total_amount=item.quantity * item.unit_price,
             order_no=order.order_no
         ))
 

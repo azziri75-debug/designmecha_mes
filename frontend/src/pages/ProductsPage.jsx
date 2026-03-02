@@ -403,12 +403,9 @@ const ProductsPage = () => {
 
 
     const toggleExpand = (id) => {
-        if (expandedProductId === id) {
-            setExpandedProductId(null);
-        } else {
-            setExpandedProductId(id);
-            setDetailSubTab('routing'); // Reset to default tab
-            fetchPriceHistory(id);
+        setExpandedProductId(expandedProductId === id ? null : id);
+        if (expandedProductId !== id) {
+            setDetailSubTab('routing');
         }
     };
 
@@ -535,6 +532,7 @@ const ProductsPage = () => {
                                     <th className="px-6 py-3">재질</th>
                                     <th className="px-6 py-3">단위</th>
                                     <th className="px-6 py-3">공정 수</th>
+                                    <th className="px-6 py-3">최근 단가</th>
                                     <th className="px-6 py-3">첨부파일</th>
                                     <th className="px-6 py-3">비고</th>
                                     <th className="px-6 py-3 text-right">관리</th>
@@ -575,6 +573,9 @@ const ProductsPage = () => {
                                                 <span className="bg-gray-700 text-white px-2 py-1 rounded text-xs">
                                                     {product.standard_processes ? product.standard_processes.length : 0} 공정
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-4 font-medium text-blue-400">
+                                                {product.latest_price ? `₩${product.latest_price.toLocaleString()}` : '-'}
                                             </td>
                                             <td className="px-6 py-4 text-gray-500 truncate max-w-xs" title={product.note}>{product.note || '-'}</td>
                                             <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
@@ -823,156 +824,381 @@ const ProductsPage = () => {
                 />
             )}
 
-            {/* Product Modal */}
+            {/* Unified Product Modal (Info + Routing + History) */}
             {showProductModal && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg shadow-2xl overflow-hidden animation-fade-in">
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-4xl shadow-2xl overflow-hidden animation-fade-in flex flex-col h-[85vh]">
+                        {/* Modal Header */}
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Package className="w-5 h-5 text-emerald-500" />
-                                {productFormData.id ? "제품 수정" : "신규 제품 등록"}
-                            </h3>
+                            <div>
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Package className="w-5 h-5 text-emerald-500" />
+                                    {productFormData.id ? `제품 정보: ${productFormData.name}` : "신규 제품 등록"}
+                                </h3>
+                                {productFormData.id && (
+                                    <div className="flex gap-4 mt-3">
+                                        {['info', 'routing', 'history'].map((tab) => (
+                                            <button
+                                                key={tab}
+                                                className={cn(
+                                                    "px-3 py-1.5 text-xs font-semibold rounded transition-all",
+                                                    (tab === 'info' && detailSubTab !== 'routing' && detailSubTab !== 'priceHistory') ||
+                                                        (tab === 'routing' && detailSubTab === 'routing') ||
+                                                        (tab === 'history' && detailSubTab === 'priceHistory')
+                                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40"
+                                                        : "text-gray-400 hover:text-white hover:bg-gray-700"
+                                                )}
+                                                type="button"
+                                                // Map visual tabs to internal state
+                                                onClick={() => {
+                                                    if (tab === 'info') setDetailSubTab('info');
+                                                    else if (tab === 'routing') {
+                                                        setDetailSubTab('routing');
+                                                        // Sync routingProcesses if editing
+                                                        if (productFormData.id && (!routingProcesses.length || (selectedProduct?.id !== productFormData.id))) {
+                                                            const p = productFormData;
+                                                            const existing = p.standard_processes.map(proc => ({
+                                                                process_id: proc.process_id,
+                                                                sequence: proc.sequence,
+                                                                estimated_time: proc.estimated_time,
+                                                                notes: proc.notes,
+                                                                partner_name: proc.partner_name,
+                                                                equipment_name: proc.equipment_name,
+                                                                attachment_file: proc.attachment_file,
+                                                                cost: proc.cost || 0,
+                                                                _tempId: Math.random()
+                                                            }));
+                                                            setRoutingProcesses(existing);
+                                                            setSelectedProduct(p);
+                                                        }
+                                                    }
+                                                    else if (tab === 'history') {
+                                                        setDetailSubTab('priceHistory');
+                                                        fetchPriceHistory(productFormData.id);
+                                                    }
+                                                }}
+                                            >
+                                                {tab === 'info' ? '기본 정보' : tab === 'routing' ? '상세 공정' : '견격 및 수주 이력'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <button onClick={() => setShowProductModal(false)} className="text-gray-400 hover:text-white transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateProduct} className="p-6 space-y-5">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">거래처 <span className="text-red-500">*</span></label>
-                                <select
-                                    name="partner_id"
-                                    onChange={handleProductInputChange}
-                                    value={productFormData.partner_id || ""}
-                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                    required
-                                >
-                                    <option value="">거래처 선택</option>
-                                    {partners.filter(p => Array.isArray(p.partner_type) && p.partner_type.includes('CUSTOMER')).map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-300">대그룹 (Major)</label>
-                                    <select
-                                        name="major_group_id"
-                                        onChange={handleProductInputChange}
-                                        value={productFormData.major_group_id || ""}
-                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                    >
-                                        <option value="">대그룹 선택</option>
-                                        {groups.filter(g => g.type === 'MAJOR').map(g => (
-                                            <option key={g.id} value={g.id}>{g.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-300">소그룹 (Minor) <span className="text-red-500">*</span></label>
-                                    <select
-                                        name="group_id"
-                                        onChange={handleProductInputChange}
-                                        value={productFormData.group_id || ""}
-                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                        required
-                                        disabled={!productFormData.major_group_id}
-                                    >
-                                        <option value="">소그룹 선택</option>
-                                        {groups.filter(g => g.parent_id === parseInt(productFormData.major_group_id)).map(g => (
-                                            <option key={g.id} value={g.id}>{g.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">품명 <span className="text-red-500">*</span></label>
-                                <input name="name" value={productFormData.name || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">규격</label>
-                                <input name="specification" value={productFormData.specification || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-300">재질</label>
-                                    <input name="material" value={productFormData.material || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-300">단위</label>
-                                    <input name="unit" value={productFormData.unit || "EA"} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="EA" />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">비고</label>
-                                <textarea name="note" value={productFormData.note || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all h-20 resize-none" placeholder="특이사항 입력" />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">첨부 파일</label>
-
-                                {/* File List */}
-                                {(() => {
-                                    let fileList = [];
-                                    try {
-                                        const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
-                                        fileList = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
-                                    } catch { fileList = []; }
-
-                                    if (fileList.length > 0) {
-                                        return (
-                                            <div className="space-y-2 mb-3">
-                                                {fileList.map((file, idx) => (
-                                                    <div key={idx} className="flex items-center justify-between bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 group">
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                                                            <span className="text-xs text-gray-300 truncate">{file.name}</span>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleRemoveFile(idx)}
-                                                            className="text-gray-500 hover:text-red-400 transition-colors"
-                                                        >
-                                                            <X className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
+                        {/* Modal Body */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {(detailSubTab === 'info' || !productFormData.id) && (
+                                <form id="productForm" onSubmit={handleCreateProduct} className="space-y-5 max-w-2xl mx-auto">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">거래처 <span className="text-red-500">*</span></label>
+                                            <select
+                                                name="partner_id"
+                                                onChange={handleProductInputChange}
+                                                value={productFormData.partner_id || ""}
+                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                required
+                                            >
+                                                <option value="">거래처 선택</option>
+                                                {partners.filter(p => Array.isArray(p.partner_type) && p.partner_type.includes('CUSTOMER')).map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
                                                 ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">대그룹 (Major)</label>
+                                                <select
+                                                    name="major_group_id"
+                                                    onChange={handleProductInputChange}
+                                                    value={productFormData.major_group_id || ""}
+                                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                >
+                                                    <option value="">대그룹 선택</option>
+                                                    {groups.filter(g => g.type === 'MAJOR').map(g => (
+                                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                                    ))}
+                                                </select>
                                             </div>
-                                        );
-                                    }
-                                    return null;
-                                })()}
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">소그룹 (Minor) <span className="text-red-500">*</span></label>
+                                                <select
+                                                    name="group_id"
+                                                    onChange={handleProductInputChange}
+                                                    value={productFormData.group_id || ""}
+                                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                    required
+                                                    disabled={!productFormData.major_group_id}
+                                                >
+                                                    <option value="">소그룹 선택</option>
+                                                    {groups.filter(g => g.parent_id === parseInt(productFormData.major_group_id)).map(g => (
+                                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
 
-                                <div className="border border-dashed border-gray-700 rounded-lg p-4 text-center hover:bg-gray-700/30 transition-colors relative">
-                                    <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} />
-                                    <div className="flex flex-col items-center gap-2 text-gray-500">
-                                        <Upload className="w-6 h-6" />
-                                        <span className="text-sm">클릭하여 파일 추가</span>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">품명 <span className="text-red-500">*</span></label>
+                                            <input name="name" value={productFormData.name || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">규격</label>
+                                            <input name="specification" value={productFormData.specification || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">재질</label>
+                                                <input name="material" value={productFormData.material || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">단위</label>
+                                                <input name="unit" value={productFormData.unit || "EA"} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="EA" />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">비고</label>
+                                            <textarea name="note" value={productFormData.note || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all h-20 resize-none" placeholder="특이사항 입력" />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">첨부 파일</label>
+                                            {/* File List Rendering Logic (reused) */}
+                                            {(() => {
+                                                let fileList = [];
+                                                try {
+                                                    const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
+                                                    fileList = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+                                                } catch { fileList = []; }
+
+                                                if (fileList.length > 0) {
+                                                    return (
+                                                        <div className="space-y-2 mb-3">
+                                                            {fileList.map((file, idx) => (
+                                                                <div key={idx} className="flex items-center justify-between bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 group">
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                                                                        <span className="text-xs text-gray-300 truncate">{file.name}</span>
+                                                                    </div>
+                                                                    <button type="button" onClick={() => handleRemoveFile(idx)} className="text-gray-500 hover:text-red-400 transition-colors">
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
+                                            <div className="border border-dashed border-gray-700 rounded-lg p-4 text-center hover:bg-gray-700/30 transition-colors relative">
+                                                <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} />
+                                                <div className="flex flex-col items-center gap-2 text-gray-500">
+                                                    <Upload className="w-6 h-6" />
+                                                    <span className="text-sm">클릭하여 파일 추가</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
+                                </form>
+                            )}
 
-                            <div className="pt-4 flex justify-end gap-3 border-t border-gray-700 mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowProductModal(false)}
-                                    className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-                                >
-                                    취소
-                                </button>
+                            {detailSubTab === 'routing' && productFormData.id && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h4 className="text-sm font-semibold text-gray-300">공정 순서 정의</h4>
+                                        <button
+                                            type="button"
+                                            onClick={addRoutingProcess}
+                                            className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded flex items-center gap-1 transition-colors"
+                                        >
+                                            <Plus className="w-3 h-3" /> 공정 추가
+                                        </button>
+                                    </div>
+
+                                    {routingProcesses.length === 0 ? (
+                                        <div className="text-center py-20 border border-dashed border-gray-700 rounded-lg text-gray-500">
+                                            작성된 공정이 없습니다. '공정 추가' 버튼을 눌러 구성하세요.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {routingProcesses.map((p, index) => (
+                                                <div
+                                                    key={p._tempId || index}
+                                                    className="flex flex-col gap-3 bg-gray-700/20 p-4 rounded-lg border border-gray-700 group relative"
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, index)}
+                                                    onDragEnter={(e) => handleDragEnter(e, index)}
+                                                    onDragEnd={handleDragEnd}
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-900 text-gray-500 text-[10px] font-bold shrink-0 border border-gray-700 cursor-move">
+                                                            {index + 1}
+                                                        </div>
+                                                        <div className="flex-1 grid grid-cols-12 gap-3">
+                                                            <div className="col-span-4">
+                                                                <select
+                                                                    value={p.process_id}
+                                                                    onChange={(e) => updateRoutingProcess(index, 'process_id', e.target.value)}
+                                                                    className="w-full bg-gray-900 border border-gray-600 text-white text-xs rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                                >
+                                                                    <option value="">(공정 선택)</option>
+                                                                    {processes.map(proc => (
+                                                                        <option key={proc.id} value={proc.id}>{proc.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                            <div className="col-span-4">
+                                                                <input
+                                                                    type="text"
+                                                                    value={p.partner_name || p.equipment_name || ""}
+                                                                    onChange={(e) => {
+                                                                        const proc = processes.find(pr => pr.id == p.process_id);
+                                                                        const type = p.course_type || (proc ? proc.course_type : 'INTERNAL');
+                                                                        updateRoutingProcess(index, (type === 'INTERNAL' ? 'equipment_name' : 'partner_name'), e.target.value);
+                                                                    }}
+                                                                    className="w-full bg-gray-900 border border-gray-600 text-white text-xs rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                                    placeholder="업체/장비명"
+                                                                />
+                                                            </div>
+                                                            <div className="col-span-2">
+                                                                <input
+                                                                    type="number"
+                                                                    value={p.estimated_time}
+                                                                    onChange={(e) => updateRoutingProcess(index, 'estimated_time', e.target.value)}
+                                                                    className="w-full bg-gray-900 border border-gray-600 text-white text-xs rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none text-right"
+                                                                    placeholder="시간(분)"
+                                                                />
+                                                            </div>
+                                                            <div className="col-span-2 flex justify-end">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeRoutingProcess(index)}
+                                                                    className="text-gray-500 hover:text-red-400"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-12 gap-3 pl-10">
+                                                        <div className="col-span-3">
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="number"
+                                                                    value={p.cost}
+                                                                    onChange={(e) => updateRoutingProcess(index, 'cost', e.target.value)}
+                                                                    className="w-full bg-gray-900 border border-gray-600 text-white text-xs rounded pl-2 pr-12 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none text-right"
+                                                                    placeholder="단가"
+                                                                />
+                                                                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
+                                                                    <button type="button" onClick={() => updateToLatestPrice(index, productFormData.id, p.process_id)} className="p-1 hover:text-emerald-400 text-gray-500 transition-colors" title="최근가"><Save className="w-3 h-3" /></button>
+                                                                    <button type="button" onClick={() => openCostHistory(index, productFormData.id, p.process_id, processes.find(pr => pr.id == p.process_id)?.name)} className="p-1 hover:text-blue-400 text-gray-500 transition-colors" title="이력"><History className="w-3 h-3" /></button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="col-span-9">
+                                                            <input
+                                                                type="text"
+                                                                value={p.notes || ""}
+                                                                onChange={(e) => updateRoutingProcess(index, 'notes', e.target.value)}
+                                                                className="w-full bg-gray-900 border border-gray-600 text-white text-xs rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                                placeholder="작업 내용 메모"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {detailSubTab === 'priceHistory' && productFormData.id && (
+                                <div className="space-y-4">
+                                    {loadingHistory ? (
+                                        <div className="text-center py-20 text-gray-500 text-sm">로딩 중...</div>
+                                    ) : priceHistory.length > 0 ? (
+                                        <div className="overflow-x-auto rounded-lg border border-gray-700">
+                                            <table className="w-full text-left text-xs">
+                                                <thead className="bg-gray-900/80 text-gray-400 uppercase font-medium">
+                                                    <tr>
+                                                        <th className="px-4 py-3">날짜</th>
+                                                        <th className="px-4 py-3">구분</th>
+                                                        <th className="px-4 py-3">거래처</th>
+                                                        <th className="px-4 py-3 text-right">수량</th>
+                                                        <th className="px-4 py-3 text-right">적용 단가</th>
+                                                        <th className="px-4 py-3 text-right">합계 금액</th>
+                                                        <th className="px-4 py-3">비고</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-700 text-gray-300">
+                                                    {priceHistory.map((item, idx) => (
+                                                        <tr key={idx} className="hover:bg-gray-700/30 transition-colors">
+                                                            <td className="px-4 py-3">{item.date}</td>
+                                                            <td className="px-4 py-3">
+                                                                <span className={cn(
+                                                                    "px-2 py-0.5 rounded text-[10px] font-bold border",
+                                                                    item.type === 'QUOTATION' ? "bg-amber-900/20 border-amber-800 text-amber-400" : "bg-emerald-900/20 border-emerald-800 text-emerald-400"
+                                                                )}>
+                                                                    {item.type === 'QUOTATION' ? '견적' : '수주'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3">{item.partner_name}</td>
+                                                            <td className="px-4 py-3 text-right">{item.quantity.toLocaleString()}</td>
+                                                            <td className="px-4 py-3 text-right text-blue-400 font-medium font-mono">₩{item.unit_price.toLocaleString()}</td>
+                                                            <td className="px-4 py-3 text-right text-emerald-400 font-bold font-mono">₩{item.total_amount?.toLocaleString()}</td>
+                                                            <td className="px-4 py-3 text-gray-500 font-mono">{item.order_no || '-'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-20 text-gray-500 text-sm border border-dashed border-gray-700 rounded-lg">
+                                            매출(견적/수주) 이력이 없습니다.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-6 border-t border-gray-700 bg-gray-900/50 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowProductModal(false)}
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                            >
+                                닫기
+                            </button>
+                            {(detailSubTab === 'info' || !productFormData.id) && (
                                 <button
                                     type="submit"
+                                    form="productForm"
                                     className="px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40"
                                 >
-                                    {productFormData.id ? "수정완료" : "등록완료"}
+                                    {productFormData.id ? "기본 정보 수정" : "제품 등록"}
                                 </button>
-                            </div>
-                        </form>
+                            )}
+                            {detailSubTab === 'routing' && productFormData.id && (
+                                <button
+                                    onClick={handleSaveRouting}
+                                    className="px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-lg shadow-emerald-900/40 flex items-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    공정 설정 저장
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -1063,331 +1289,6 @@ const ProductsPage = () => {
                     </div>
                 </div>
             )}
-
-            {/* Routing (Product Process) Modal */}
-            {showRoutingModal && selectedProduct && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-4xl shadow-2xl overflow-hidden animation-fade-in flex flex-col h-[80vh]">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
-                            <div>
-                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <Settings className="w-5 h-5 text-blue-500" />
-                                    공정 설정
-                                </h3>
-                                <p className="text-sm text-gray-400 mt-1">제품: <span className="text-white font-medium">{selectedProduct.name}</span></p>
-                            </div>
-                            <button onClick={() => setShowRoutingModal(false)} className="text-gray-400 hover:text-white transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h4 className="text-sm font-semibold text-gray-300">공정 순서 정의</h4>
-                                    <button
-                                        type="button"
-                                        onClick={addRoutingProcess}
-                                        className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded flex items-center gap-1 transition-colors"
-                                    >
-                                        <Plus className="w-3 h-3" /> 공정 추가
-                                    </button>
-                                </div>
-
-                                {routingProcesses.length === 0 ? (
-                                    <div className="text-center py-10 border border-dashed border-gray-700 rounded-lg text-gray-500">
-                                        설정된 공정이 없습니다. '공정 추가' 버튼을 눌러 공정을 등록하세요.
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {routingProcesses.map((p, index) => (
-                                            <div
-                                                key={p._tempId || index}
-                                                className="flex flex-col gap-3 bg-gray-700/30 p-4 rounded-lg border border-gray-700 group cursor-move hover:bg-gray-700/50 transition-colors"
-                                                draggable
-                                                onDragStart={(e) => handleDragStart(e, index)}
-                                                onDragEnter={(e) => handleDragEnter(e, index)}
-                                                onDragEnd={handleDragEnd}
-                                                onDragOver={(e) => e.preventDefault()}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 text-gray-400 text-xs font-bold shrink-0 border border-gray-700">
-                                                        {index + 1}
-                                                    </div>
-
-                                                    <div className="flex-1 grid grid-cols-12 gap-3">
-                                                        <div className="col-span-4">
-                                                            <label className="text-xs text-gray-500 block mb-1">공정 선택</label>
-                                                            <div className="flex gap-2">
-                                                                <select
-                                                                    value={p.process_id}
-                                                                    onChange={(e) => updateRoutingProcess(index, 'process_id', e.target.value)}
-                                                                    className="w-full bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                                >
-                                                                    <option value="">(공정 선택)</option>
-                                                                    {(() => {
-                                                                        const availableProcesses = selectedProduct?.group_id
-                                                                            ? processes.filter(pr => pr.group_id === selectedProduct.group_id || !pr.group_id)
-                                                                            : processes;
-                                                                        return availableProcesses.map(proc => (
-                                                                            <option key={proc.id} value={proc.id}>{proc.name}</option>
-                                                                        ));
-                                                                    })()}
-                                                                </select>
-                                                            </div>
-                                                            {p.process_id && (
-                                                                <div className="mt-1">
-                                                                    {(() => {
-                                                                        const proc = processes.find(pr => pr.id == p.process_id);
-                                                                        if (proc) {
-                                                                            // Initialize course_type if not set
-                                                                            const currentCourseType = p.course_type || proc.course_type;
-
-                                                                            return (
-                                                                                <select
-                                                                                    value={currentCourseType}
-                                                                                    onChange={(e) => updateRoutingProcess(index, 'course_type', e.target.value)}
-                                                                                    className={cn(
-                                                                                        "text-[10px] px-1 py-0.5 rounded border outline-none cursor-pointer",
-                                                                                        currentCourseType === 'INTERNAL' ? "bg-blue-900/30 border-blue-800 text-blue-300" :
-                                                                                            currentCourseType === 'OUTSOURCING' ? "bg-orange-900/30 border-orange-800 text-orange-300" :
-                                                                                                "bg-purple-900/30 border-purple-800 text-purple-300"
-                                                                                    )}
-                                                                                >
-                                                                                    {Object.entries(COURSE_TYPES).map(([key, label]) => (
-                                                                                        <option key={key} value={key} className="bg-gray-800 text-gray-200">
-                                                                                            {label}
-                                                                                        </option>
-                                                                                    ))}
-                                                                                </select>
-                                                                            );
-                                                                        }
-                                                                        return null;
-                                                                    })()}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="col-span-4">
-                                                            <label className="text-xs text-gray-500 block mb-1">업체/장비명</label>
-                                                            {(() => {
-                                                                const proc = processes.find(pr => pr.id == p.process_id);
-                                                                // Use p.course_type if set (override), otherwise Use process default
-                                                                const effectiveCourseType = p.course_type || (proc ? proc.course_type : 'INTERNAL');
-                                                                const isOutsourcing = (effectiveCourseType === 'OUTSOURCING' || effectiveCourseType === 'PURCHASE');
-
-                                                                // Filter partners for suggestion (Suppliers and Subcontractors)
-                                                                const relevantPartners = partners.filter(pt => {
-                                                                    const types = Array.isArray(pt.partner_type) ? pt.partner_type : (typeof pt.partner_type === 'string' ? JSON.parse(pt.partner_type) : []);
-                                                                    return types.includes('SUPPLIER') || types.includes('SUBCONTRACTOR');
-                                                                });
-
-                                                                return (
-                                                                    <>
-                                                                        <input
-                                                                            type="text"
-                                                                            list={`partner-list-${index}`}
-                                                                            value={isOutsourcing ? (p.partner_name || "") : (p.equipment_name || "")}
-                                                                            onChange={(e) => updateRoutingProcess(index, isOutsourcing ? 'partner_name' : 'equipment_name', e.target.value)}
-                                                                            className="w-full bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                                            placeholder={isOutsourcing ? "업체명 입력 또는 선택" : "장비/설비명 입력"}
-                                                                        />
-                                                                        {isOutsourcing && (
-                                                                            <datalist id={`partner-list-${index}`}>
-                                                                                {relevantPartners.map(pt => (
-                                                                                    <option key={pt.id} value={pt.name} />
-                                                                                ))}
-                                                                            </datalist>
-                                                                        )}
-                                                                    </>
-                                                                );
-                                                            })()}
-                                                        </div>
-
-                                                        <div className="col-span-2">
-                                                            <label className="text-xs text-gray-500 block mb-1">예상시간(분)</label>
-                                                            <input
-                                                                type="number"
-                                                                value={p.estimated_time}
-                                                                onChange={(e) => updateRoutingProcess(index, 'estimated_time', e.target.value)}
-                                                                className="w-full bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                                placeholder="0"
-                                                            />
-                                                        </div>
-
-                                                        <div className="col-span-2 flex justify-end">
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); removeRoutingProcess(index); }}
-                                                                className="text-gray-500 hover:text-red-400 p-1 rounded hover:bg-gray-700 transition-colors mt-6"
-                                                                title="삭제"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-12 gap-3 pl-11">
-                                                    <div className="col-span-3">
-                                                        <div className="flex justify-between items-center mb-1">
-                                                            <label className="text-xs text-gray-500 block">비용(공정단가)</label>
-                                                            <div className="flex gap-1">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => updateToLatestPrice(index, selectedProduct.id, p.process_id)}
-                                                                    className="text-gray-500 hover:text-emerald-400 p-0.5 rounded transition-colors"
-                                                                    title="최근 실거래가로 갱신"
-                                                                >
-                                                                    <Save className="w-3 h-3" />
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        const proc = processes.find(pr => pr.id == p.process_id);
-                                                                        openCostHistory(index, selectedProduct.id, p.process_id, proc?.name || '공정');
-                                                                    }}
-                                                                    className="text-gray-500 hover:text-blue-400 p-0.5 rounded transition-colors"
-                                                                    title="원가 변동 이력"
-                                                                >
-                                                                    <History className="w-3 h-3" />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <input
-                                                            type="number"
-                                                            value={p.cost}
-                                                            onChange={(e) => updateRoutingProcess(index, 'cost', e.target.value)}
-                                                            className="w-full bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                            placeholder="0"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-4">
-                                                        <label className="text-xs text-gray-500 block mb-1">비고/작업내용</label>
-                                                        <input
-                                                            type="text"
-                                                            value={p.notes || ""}
-                                                            onChange={(e) => updateRoutingProcess(index, 'notes', e.target.value)}
-                                                            className="w-full bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                            placeholder="작업 내용 메모..."
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-5">
-                                                        <label className="text-xs text-gray-500 block mb-1">첨부파일</label>
-                                                        <div className="flex flex-col gap-2">
-                                                            <div className="relative flex-1">
-                                                                <input
-                                                                    type="file"
-                                                                    multiple
-                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                                    onChange={async (e) => {
-                                                                        const files = Array.from(e.target.files);
-                                                                        if (files.length > 0) {
-                                                                            // Existing files
-                                                                            let existingFiles = [];
-                                                                            try {
-                                                                                existingFiles = p.attachment_file ? JSON.parse(p.attachment_file) : [];
-                                                                                if (!Array.isArray(existingFiles)) existingFiles = [p.attachment_file];
-                                                                            } catch {
-                                                                                existingFiles = p.attachment_file ? [p.attachment_file] : [];
-                                                                            }
-
-                                                                            const newFiles = [];
-                                                                            for (const file of files) {
-                                                                                const fileData = await handleFileUpload(file);
-                                                                                if (fileData) newFiles.push(fileData);
-                                                                            }
-
-                                                                            if (newFiles.length > 0) {
-                                                                                const updatedFiles = [...existingFiles, ...newFiles];
-                                                                                updateRoutingProcess(index, 'attachment_file', JSON.stringify(updatedFiles));
-                                                                            }
-                                                                        }
-                                                                    }}
-                                                                />
-                                                                <div className="w-full bg-gray-900 border border-gray-600 text-gray-400 text-xs rounded px-2 py-1.5 flex items-center justify-center gap-1 cursor-pointer hover:border-gray-500">
-                                                                    <Upload className="w-3 h-3" />
-                                                                    <span>파일 추가 업로드</span>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* File List */}
-                                                            {(() => {
-                                                                let fileList = [];
-                                                                try {
-                                                                    fileList = p.attachment_file ? JSON.parse(p.attachment_file) : [];
-                                                                    if (!Array.isArray(fileList)) fileList = [p.attachment_file];
-                                                                } catch {
-                                                                    fileList = p.attachment_file ? [p.attachment_file] : [];
-                                                                }
-
-                                                                if (fileList.length > 0) {
-                                                                    return (
-                                                                        <div className="space-y-1">
-                                                                            {fileList.map((fileItem, fIndex) => {
-                                                                                // Handle both old string URLs and new object format {name, url}
-                                                                                const isString = typeof fileItem === 'string';
-                                                                                const url = isString ? fileItem : fileItem.url;
-                                                                                const name = isString ? decodeURIComponent(url.split('/').pop()) : fileItem.name;
-
-                                                                                return (
-                                                                                    <div key={fIndex} className="flex items-center justify-between bg-gray-800 px-2 py-1 rounded border border-gray-700">
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => {
-                                                                                                setViewingFiles(fileList);
-                                                                                                setFileModalTitle('공정 첨부파일 미리보기');
-                                                                                                setShowFileModal(true);
-                                                                                            }}
-                                                                                            className="text-white text-xs hover:underline truncate max-w-[150px] text-left"
-                                                                                            title={`${name} - 클릭하여 미리보기`}
-                                                                                        >
-                                                                                            {name}
-                                                                                        </button>
-                                                                                        <button
-                                                                                            onClick={() => {
-                                                                                                const newFiles = fileList.filter((_, i) => i !== fIndex);
-                                                                                                updateRoutingProcess(index, 'attachment_file', JSON.stringify(newFiles));
-                                                                                            }}
-                                                                                            className="text-gray-500 hover:text-red-400 p-0.5"
-                                                                                        >
-                                                                                            <X className="w-3 h-3" />
-                                                                                        </button>
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    );
-                                                                }
-                                                                return null;
-                                                            })()}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="p-6 border-t border-gray-700 bg-gray-900/50 flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowRoutingModal(false)}
-                                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={handleSaveRouting}
-                                className="flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40"
-                            >
-                                <Save className="w-4 h-4" />
-                                설정 저장
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )
-            }
 
             {/* Cost History Sub-Modal */}
             {showCostHistoryModal && (
