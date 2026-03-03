@@ -28,14 +28,15 @@ import {
     Timer as TimerIcon,
     DirectionsRun as OutingIcon,
     WorkHistory as OvertimeIcon,
-    Info as InfoIcon
+    Info as InfoIcon,
+    LogOut as LogOutIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 
 const MobileAttendancePage = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [summary, setSummary] = useState(null);
@@ -105,6 +106,14 @@ const MobileAttendancePage = () => {
                     <Typography sx={{ ml: 2, flex: 1, fontWeight: 'bold' }}>
                         근태 및 휴가 현황
                     </Typography>
+                    <IconButton color="inherit" onClick={() => {
+                        if (window.confirm("로그아웃 하시겠습니까?")) {
+                            logout();
+                            navigate('/login');
+                        }
+                    }}>
+                        <LogOutIcon />
+                    </IconButton>
                 </Toolbar>
             </AppBar>
 

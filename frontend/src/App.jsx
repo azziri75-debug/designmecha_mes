@@ -18,6 +18,7 @@ import MobileWorkLogPage from './pages/MobileWorkLogPage';
 import ApprovalPage from './pages/ApprovalPage';
 import DataManagementPage from './pages/DataManagementPage';
 import MobileAttendancePage from './pages/MobileAttendancePage';
+import AttendancePage from './pages/AttendancePage';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -71,6 +72,7 @@ const App = () => {
         <Route path="delivery" element={<ProtectedRoute menuKey="sales"><DeliveryPage /></ProtectedRoute>} />
         <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
         <Route path="approval" element={<ProtectedRoute menuKey="approval"><ApprovalPage /></ProtectedRoute>} />
+        <Route path="attendance" element={<ProtectedRoute menuKey="basics"><AttendancePage /></ProtectedRoute>} />
         <Route path="db-management" element={<ProtectedRoute menuKey="ADMIN"><DataManagementPage /></ProtectedRoute>} />
       </Route>
       <Route path="/mobile/work-logs" element={<ProtectedRoute><MobileWorkLogPage /></ProtectedRoute>} />

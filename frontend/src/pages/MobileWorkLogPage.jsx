@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Box,
     Typography,
@@ -52,16 +53,27 @@ import {
     Add as AddIcon,
     Close as CloseIcon,
     CheckCircle as CheckCircleIcon,
-    AssignmentInd as AssignmentIndIcon
+    AssignmentInd as AssignmentIndIcon,
+    LogOut as LogOutIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 
 const MobileWorkLogPage = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [tab, setTab] = useState(0); // 0: Status, 1: Performance
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Tab and selection state driven by URL to support "Back" button
+    const tab = parseInt(searchParams.get('tab') || '0');
+    const selectedPlanId = searchParams.get('planId');
+    const selectedItemId = searchParams.get('itemId');
+
+    const setTab = (newTab) => {
+        setSearchParams({ tab: newTab });
+    };
+
     const [loading, setLoading] = useState(false);
 
     // Data lists
@@ -76,10 +88,8 @@ const MobileWorkLogPage = () => {
     const [perfMonth, setPerfMonth] = useState(now.getMonth() + 1);
     const [selectedWorker, setSelectedWorker] = useState(user?.user_type === 'ADMIN' ? 'ALL' : (user?.id || ''));
 
-    // Navigation/Selection State
-    const [selectedPlan, setSelectedPlan] = useState(null);
-    const [selectedItem, setSelectedItem] = useState(null);
-    const [expandedLogId, setExpandedLogId] = useState(null); // For performance drill-down
+    const [comment, setComment] = useState('');
+    const [editingDocId, setEditingDocId] = useState(null);
 
     // Registration Form
     const [goodQty, setGoodQty] = useState('');
@@ -98,8 +108,33 @@ const MobileWorkLogPage = () => {
     const [selectedDocType, setSelectedDocType] = useState('VACATION');
     const [docFormData, setDocFormData] = useState({});
     const [selectedDoc, setSelectedDoc] = useState(null);
-    const [comment, setComment] = useState('');
-    const [editingDocId, setEditingDocId] = useState(null);
+
+    // Derived selections
+    const selectedPlan = useMemo(() =>
+        selectedPlanId ? allPlans.find(p => String(p.id) === selectedPlanId) : null
+        , [selectedPlanId, allPlans]);
+
+    const selectedItem = useMemo(() => {
+        if (!selectedPlan || !selectedItemId) return null;
+        return selectedPlan.items.find(i => String(i.id) === selectedItemId);
+    }, [selectedPlan, selectedItemId]);
+
+    const setSelectedPlan = (plan) => {
+        if (plan) setSearchParams({ tab: 0, planId: plan.id });
+        else setSearchParams({ tab: 0 });
+    };
+
+    const setSelectedItem = (item) => {
+        if (item) setSearchParams({ tab: 0, planId: selectedPlanId, itemId: item.id });
+        else setSearchParams({ tab: 0, planId: selectedPlanId });
+    };
+
+    const handleLogout = () => {
+        if (window.confirm("로그아웃 하시겠습니까?")) {
+            logout();
+            navigate('/login');
+        }
+    };
 
     const DOC_TYPES = {
         VACATION: { label: '휴가원', color: '#3b82f6' },
@@ -465,9 +500,14 @@ const MobileWorkLogPage = () => {
                             {tab === 0 ? (selectedItem ? "실적 등록" : selectedPlan ? "공정 선택" : "생산 현황") : tab === 1 ? "내 실적 확인" : "전자결재"}
                         </Typography>
                     </Stack>
-                    <IconButton size="small" onClick={() => navigate('/mobile/attendance')}>
-                        <AssignmentIndIcon fontSize="small" color="primary" />
-                    </IconButton>
+                    <Stack direction="row" spacing={0.5}>
+                        <IconButton size="small" onClick={() => navigate('/mobile/attendance')}>
+                            <AssignmentIndIcon fontSize="small" color="primary" />
+                        </IconButton>
+                        <IconButton size="small" onClick={handleLogout}>
+                            <LogOutIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
                 </Stack>
                 <Typography variant="caption" color="textSecondary">
                     {user.name} ({user.role || '사용자'})
