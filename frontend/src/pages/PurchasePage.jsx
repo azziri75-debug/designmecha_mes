@@ -238,7 +238,8 @@ const PurchasePage = () => {
                                             onChange={handleSelectAllPending}
                                         />
                                     </TableCell>
-                                    <TableCell>수주번호</TableCell>
+                                    <TableCell>수주/재고번호</TableCell>
+                                    <TableCell>공정명</TableCell>
                                     <TableCell>품목명</TableCell>
                                     <TableCell>규격</TableCell>
                                     <TableCell>수량</TableCell>
@@ -272,6 +273,7 @@ const PurchasePage = () => {
                                                     </Typography>
                                                 </Box>
                                             </TableCell>
+                                            <TableCell>{item.process_name || '-'}</TableCell>
                                             <TableCell>{item.product?.name}</TableCell>
                                             <TableCell>{item.product?.specification}</TableCell>
                                             <TableCell>{item.quantity}</TableCell>
@@ -302,7 +304,7 @@ const PurchasePage = () => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell>발주번호</TableCell>
-                                    <TableCell>수주번호 (고객사)</TableCell>
+                                    <TableCell>연결 정보 (수주/재고)</TableCell>
                                     <TableCell>발주일자</TableCell>
                                     <TableCell>공급사</TableCell>
                                     <TableCell>품목 수</TableCell>
@@ -334,7 +336,7 @@ const PurchasePage = () => {
                                                                 <span style={{ color: '#1976d2' }}>[수주] {order.order.order_no}</span>
                                                             ) : order.related_sales_order_info ? (
                                                                 <>
-                                                                    {order.related_sales_order_info.includes('PO') || order.related_sales_order_info.includes('OS') ? (
+                                                                    {order.related_sales_order_info.includes('SP') ? (
                                                                         <span style={{ color: '#2e7d32' }}>[재고] </span>
                                                                     ) : (
                                                                         <span style={{ color: '#1976d2' }}>[수주] </span>
@@ -452,6 +454,7 @@ const PurchasePage = () => {
                                                             <Table size="small" aria-label="purchases">
                                                                 <TableHead>
                                                                     <TableRow>
+                                                                        <TableCell>공정명</TableCell>
                                                                         <TableCell>품목명</TableCell>
                                                                         <TableCell>규격</TableCell>
                                                                         <TableCell>수량</TableCell>
@@ -463,6 +466,7 @@ const PurchasePage = () => {
                                                                 <TableBody>
                                                                     {order.items.map((item) => (
                                                                         <TableRow key={item.id}>
+                                                                            <TableCell>{item.process_name || '-'}</TableCell>
                                                                             <TableCell>{item.product?.name}</TableCell>
                                                                             <TableCell>{item.product?.specification}</TableCell>
                                                                             <TableCell>{item.quantity} {item.product?.unit}</TableCell>

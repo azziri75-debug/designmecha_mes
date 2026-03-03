@@ -191,12 +191,15 @@ const InventoryPage = () => {
                                                 {stock.current_quantity.toLocaleString()}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <span className={cn(
+                                                <div className={cn(
                                                     "font-semibold",
-                                                    stock.in_production_quantity > 0 ? "text-yellow-500" : "text-gray-600"
+                                                    stock.producing_total > 0 ? "text-yellow-500" : "text-gray-600"
                                                 )}>
-                                                    {stock.in_production_quantity.toLocaleString()}
-                                                </span>
+                                                    {stock.producing_total.toLocaleString()}
+                                                </div>
+                                                <div className="text-[10px] text-gray-500">
+                                                    (수주: {stock.producing_so || 0}, 재고: {stock.producing_sp || 0})
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-gray-500 text-xs">
                                                 {new Date(stock.updated_at).toLocaleDateString()}

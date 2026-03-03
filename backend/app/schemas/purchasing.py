@@ -31,6 +31,7 @@ class PurchaseOrderItem(PurchaseOrderItemBase):
     received_quantity: Optional[int] = 0
     production_plan_item_id: Optional[int] = None
     product: Optional[Product] = None
+    process_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -98,6 +99,7 @@ class OutsourcingOrderItem(OutsourcingOrderItemBase):
     status: Optional[OutsourcingStatus] = None
     # We might want resolved product name etc.
     product: Optional[Product] = None
+    process_name: Optional[str] = None
     
     class Config:
         from_attributes = True

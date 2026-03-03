@@ -695,12 +695,21 @@ const MobileWorkLogPage = () => {
                             )}
 
                             <Box sx={{ textAlign: 'center', py: 0.5 }}>
-                                <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                                    {selectedWorker === 'ALL' ? '전체' : '선택'} 작업자 실적 합계
-                                </Typography>
-                                <Typography variant="h4" fontWeight="bold">
-                                    {totalCost.toLocaleString()}원
-                                </Typography>
+                                {user.user_type === 'ADMIN' && (
+                                    <>
+                                        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                                            {selectedWorker === 'ALL' ? '전체' : '선택'} 작업자 실적 합계
+                                        </Typography>
+                                        <Typography variant="h4" fontWeight="bold">
+                                            {totalCost.toLocaleString()}원
+                                        </Typography>
+                                    </>
+                                )}
+                                {user.user_type !== 'ADMIN' && (
+                                    <Typography variant="h6" fontWeight="bold" sx={{ py: 1 }}>
+                                        작업 실적 현황
+                                    </Typography>
+                                )}
                             </Box>
                         </Paper>
 
@@ -733,9 +742,11 @@ const MobileWorkLogPage = () => {
                                                         {agg.count}건
                                                     </Typography>
                                                 </Box>
-                                                <Typography variant="subtitle2" fontWeight="bold" color="primary" sx={{ mr: 1 }}>
-                                                    {agg.totalCost.toLocaleString()}원
-                                                </Typography>
+                                                {user.user_type === 'ADMIN' && (
+                                                    <Typography variant="subtitle2" fontWeight="bold" color="primary" sx={{ mr: 1 }}>
+                                                        {agg.totalCost.toLocaleString()}원
+                                                    </Typography>
+                                                )}
                                             </Stack>
                                         </AccordionSummary>
                                         <AccordionDetails sx={{ p: 0, bgcolor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
@@ -757,9 +768,11 @@ const MobileWorkLogPage = () => {
                                                                 <Typography variant="caption" fontWeight="bold" sx={{ color: '#475569' }}>
                                                                     {group.date}
                                                                 </Typography>
-                                                                <Typography variant="caption" color="primary" fontWeight="bold">
-                                                                    {group.items.filter(i => i.worker_id === agg.id).reduce((sum, i) => sum + calculateItemCost(i), 0).toLocaleString()}원
-                                                                </Typography>
+                                                                {user.user_type === 'ADMIN' && (
+                                                                    <Typography variant="caption" color="primary" fontWeight="bold">
+                                                                        {group.items.filter(i => i.worker_id === agg.id).reduce((sum, i) => sum + calculateItemCost(i), 0).toLocaleString()}원
+                                                                    </Typography>
+                                                                )}
                                                             </Stack>
                                                             <Stack spacing={0.8}>
                                                                 {group.items
@@ -811,9 +824,11 @@ const MobileWorkLogPage = () => {
                                                             </Typography>
                                                         </Box>
                                                         <Stack direction="row" alignItems="center" spacing={1}>
-                                                            <Typography variant="subtitle1" fontWeight="bold" color="primary">
-                                                                {group.totalCost.toLocaleString()}원
-                                                            </Typography>
+                                                            {user.user_type === 'ADMIN' && (
+                                                                <Typography variant="subtitle1" fontWeight="bold" color="primary">
+                                                                    {group.totalCost.toLocaleString()}원
+                                                                </Typography>
+                                                            )}
                                                             <ExpandMoreIcon sx={{ transform: expandedLogId === group.id ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
                                                         </Stack>
                                                     </Stack>
@@ -830,9 +845,11 @@ const MobileWorkLogPage = () => {
                                                                         <Typography variant="caption">
                                                                             수량: {item.good_quantity} (불량: {item.bad_quantity})
                                                                         </Typography>
-                                                                        <Typography variant="caption" fontWeight="bold">
-                                                                            {calculateItemCost(item).toLocaleString()}원
-                                                                        </Typography>
+                                                                        {user.user_type === 'ADMIN' && (
+                                                                            <Typography variant="caption" fontWeight="bold">
+                                                                                {calculateItemCost(item).toLocaleString()}원
+                                                                            </Typography>
+                                                                        )}
                                                                     </Stack>
                                                                 </Box>
                                                             ))}

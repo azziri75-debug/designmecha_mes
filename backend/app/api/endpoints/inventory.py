@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, insert, func, desc
+from sqlalchemy import select, update, insert, func, desc, or_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date
@@ -19,11 +19,38 @@ router = APIRouter()
 
 @router.get("/stocks", response_model=List[StockResponse])
 async def read_stocks(db: AsyncSession = Depends(get_db)):
+    from app.models.production import ProductionPlan, ProductionPlanItem
+    from app.models.inventory import StockProduction
+    
     query = select(Stock).options(
         selectinload(Stock.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
     )
     result = await db.execute(query)
-    return result.scalars().all()
+    stocks = result.scalars().all()
+    
+    # Calculate production breakdown for each stock
+    for stock in stocks:
+        # 1. Producing SO (Sales Order driven)
+        # Sum of quantity from ProductionPlanItems linked to an Order via ProductionPlan
+        so_query = select(func.sum(ProductionPlanItem.quantity)).join(ProductionPlan)\
+            .where(ProductionPlanItem.product_id == stock.product_id)\
+            .where(ProductionPlan.order_id.is_not(None))\
+            .where(ProductionPlanItem.status != 'COMPLETED')
+        
+        # 2. Producing SP (Stock Production driven)
+        # Sum of quantity from StockProductions
+        sp_query = select(func.sum(StockProduction.quantity))\
+            .where(StockProduction.product_id == stock.product_id)\
+            .where(StockProduction.status != 'COMPLETED')
+            
+        res_so = await db.execute(so_query)
+        res_sp = await db.execute(sp_query)
+        
+        stock.producing_so = res_so.scalar() or 0
+        stock.producing_sp = res_sp.scalar() or 0
+        stock.producing_total = stock.producing_so + stock.producing_sp
+        
+    return stocks
 
 @router.get("/stocks/{product_id}", response_model=StockResponse)
 async def read_stock_by_product(product_id: int, db: AsyncSession = Depends(get_db)):

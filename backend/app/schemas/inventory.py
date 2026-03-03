@@ -22,6 +22,9 @@ class StockResponse(StockBase):
     id: int
     updated_at: Optional[datetime] = None
     product: Optional[ProductResponse] = None
+    producing_total: Optional[int] = 0
+    producing_so: Optional[int] = 0
+    producing_sp: Optional[int] = 0
     model_config = ConfigDict(from_attributes=True)
 
 # --- Stock Production ---

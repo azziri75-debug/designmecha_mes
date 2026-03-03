@@ -3,8 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
-from typing import List, Optional
+from typing import List, Optional, Any
 from pydantic import BaseModel
+import difflib
+import openpyxl
+import io
+from fastapi import UploadFile, File
 
 from app.api.deps import get_db
 from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory
@@ -127,6 +131,150 @@ async def delete_partner(
     await db.delete(partner)
     await db.commit()
     return {"message": "Partner deleted successfully"}
+
+# --- Partner Excel Upload & Merge ---
+
+class PartnerUploadItem(BaseModel):
+    name: str
+    registration_number: Optional[str] = None
+    representative: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    description: Optional[str] = None
+    partner_type: List[str] = ["CUSTOMER"]
+
+class PartnerUploadValidationResponse(BaseModel):
+    excel_row: int
+    data: PartnerUploadItem
+    status: str  # NEW, MATCH, SIMILAR
+    matched_partner_id: Optional[int] = None
+    matched_partner_name: Optional[str] = None
+    similarity: float = 0.0
+
+@router.post("/partners/upload/validate", response_model=List[PartnerUploadValidationResponse])
+async def validate_partner_upload(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    content = await file.read()
+    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    ws = wb.active
+    
+    # Assume first row is header
+    # Header mapping: Name, BizNum, Owner, Address, Phone, Email, Type, Description
+    rows = []
+    for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if not row[0]: continue # Skip if name is empty
+        
+        item = PartnerUploadItem(
+            name=str(row[0]),
+            registration_number=str(row[1]) if row[1] else None,
+            representative=str(row[2]) if row[2] else None,
+            address=str(row[3]) if row[3] else None,
+            phone=str(row[4]) if row[4] else None,
+            email=str(row[5]) if row[5] else None,
+            partner_type=[t.strip() for t in str(row[6]).split(',')] if row[6] else ["CUSTOMER"],
+            description=str(row[7]) if len(row) > 7 and row[7] else None
+        )
+        rows.append((i, item))
+    
+    # Fetch all existing partners for matching
+    result = await db.execute(select(Partner))
+    existing_partners = result.scalars().all()
+    existing_names = [p.name for p in existing_partners]
+    
+    validation_results = []
+    for row_idx, item in rows:
+        status = "NEW"
+        matched_id = None
+        matched_name = None
+        similarity = 0.0
+        
+        # Exact match
+        exact_matches = [p for p in existing_partners if p.name == item.name]
+        if exact_matches:
+            status = "MATCH"
+            matched_id = exact_matches[0].id
+            matched_name = exact_matches[0].name
+            similarity = 1.0
+        else:
+            # Fuzzy match
+            close_matches = difflib.get_close_matches(item.name, existing_names, n=1, cutoff=0.6)
+            if close_matches:
+                status = "SIMILAR"
+                matched_name = close_matches[0]
+                matched_p = next(p for p in existing_partners if p.name == matched_name)
+                matched_id = matched_p.id
+                similarity = difflib.SequenceMatcher(None, item.name, matched_name).ratio()
+        
+        validation_results.append(PartnerUploadValidationResponse(
+            excel_row=row_idx,
+            data=item,
+            status=status,
+            matched_partner_id=matched_id,
+            matched_partner_name=matched_name,
+            similarity=similarity
+        ))
+        
+    return validation_results
+
+class PartnerUploadFinalizeRequest(BaseModel):
+    items: List[PartnerUploadValidationResponse]
+    # user_mapping: dict[int, Optional[int]] # row_idx -> existing_id or None for new
+
+@router.post("/partners/upload/finalize")
+async def finalize_partner_upload(
+    req: List[Any], # Using Any to avoid complex validation for now, or use specific schema
+    db: AsyncSession = Depends(get_db)
+):
+    # Expected: list of objects with { action: 'CREATE'|'MAP', data: PartnerUploadItem, partner_id?: int }
+    count_created = 0
+    count_mapped = 0
+    
+    for item in req:
+        if item['action'] == 'CREATE':
+            new_p = Partner(**item['data'])
+            db.add(new_p)
+            count_created += 1
+        elif item['action'] == 'MAP' and item.get('partner_id'):
+            # Update existing if needed? Or just skip. User usually wants to skip or merge.
+            # For now, just skip creation and count as mapped.
+            count_mapped += 1
+            
+    await db.commit()
+    return {"created": count_created, "mapped": count_mapped}
+
+@router.post("/partners/merge")
+async def merge_partners(
+    source_id: int,
+    target_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    if source_id == target_id:
+        raise HTTPException(status_code=400, detail="Source and target must be different")
+        
+    source = await db.get(Partner, source_id)
+    target = await db.get(Partner, target_id)
+    
+    if not source or not target:
+        raise HTTPException(status_code=404, detail="Partner not found")
+        
+    # Update all references
+    # Models that reference Partner: Product, PurchaseOrder, OutsourcingOrder
+    from app.models.product import Product
+    from app.models.purchasing import PurchaseOrder, OutsourcingOrder
+    
+    from sqlalchemy import update
+    await db.execute(update(Product).where(Product.partner_id == source_id).values(partner_id=target_id))
+    await db.execute(update(PurchaseOrder).where(PurchaseOrder.partner_id == source_id).values(partner_id=target_id))
+    await db.execute(update(OutsourcingOrder).where(OutsourcingOrder.partner_id == source_id).values(partner_id=target_id))
+    
+    # Delete source
+    await db.delete(source)
+    await db.commit()
+    
+    return {"message": "Merge successful"}
 
 # --- Staff Endpoints ---
 @router.post("/staff/", response_model=StaffResponse)
