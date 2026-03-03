@@ -20,7 +20,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         delivery_date: '',
         note: '',
         status: 'PENDING',
-        items: []
+        items: [],
+        display_order_no: '' // For UI display of linked SO/SP
     });
 
     // History Popover State
@@ -54,6 +55,10 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
             const firstPartnerName = initialItems[0].partner_name;
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
+            // Extract SO or SP code for display
+            const displayCode = initialItems[0]?.plan?.order?.order_no ||
+                initialItems[0]?.plan?.stock_production?.production_no || '';
+
             setFormData({
                 partner_id: foundPartner ? foundPartner.id : '',
                 order_id: initialItems[0]?.plan?.order_id || '',
@@ -61,6 +66,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                 delivery_date: '',
                 note: '',
                 status: 'PENDING',
+                display_order_no: displayCode,
                 items: initialItems.map(item => {
                     // Look up standard process cost for original process
                     const product = products.find(p => p.id === item.product_id);
@@ -242,21 +248,29 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                             </MenuItem>
                         ))}
                     </TextField>
-                    <TextField
-                        select
-                        label="연결 수주번호"
-                        value={formData.order_id}
-                        onChange={(e) => setFormData({ ...formData, order_id: e.target.value })}
-                        fullWidth
-                        disabled={initialItems && initialItems.length > 0}
-                    >
-                        <MenuItem value=""><em>없음 (재고용)</em></MenuItem>
-                        {salesOrders.map((so) => (
-                            <MenuItem key={so.id} value={so.id}>
-                                {so.order_no} ({so.partner?.name})
-                            </MenuItem>
-                        ))}
-                    </TextField>
+                    {(initialItems && initialItems.length > 0) ? (
+                        <TextField
+                            label="연결 수주/재고번호"
+                            value={formData.display_order_no || '재고용'}
+                            fullWidth
+                            disabled
+                        />
+                    ) : (
+                        <TextField
+                            select
+                            label="연결 수주번호"
+                            value={formData.order_id}
+                            onChange={(e) => setFormData({ ...formData, order_id: e.target.value })}
+                            fullWidth
+                        >
+                            <MenuItem value=""><em>없음 (재고용)</em></MenuItem>
+                            {salesOrders.map((so) => (
+                                <MenuItem key={so.id} value={so.id}>
+                                    {so.order_no} ({so.partner?.name})
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    )}
                     <TextField
                         label="발주일자"
                         type="date"

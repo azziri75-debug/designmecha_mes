@@ -7,7 +7,8 @@ from datetime import datetime
 
 from app.api import deps
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
-# from app.models.production import ProductionPlanItem, ProductionPlan, ProductionStatus
+from app.models.production import ProductionPlanItem, ProductionPlan, ProductionStatus
+from app.models.inventory import StockProduction
 from app.models.sales import SalesOrder, SalesOrderItem
 from app.models.product import Product, ProductProcess, Process
 from app.schemas import purchasing as schemas
