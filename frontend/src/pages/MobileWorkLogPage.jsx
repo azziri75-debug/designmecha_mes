@@ -56,9 +56,11 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
+import { useNavigate } from 'react-router-dom';
 
 const MobileWorkLogPage = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [tab, setTab] = useState(0); // 0: Status, 1: Performance
     const [loading, setLoading] = useState(false);
 
@@ -449,18 +451,23 @@ const MobileWorkLogPage = () => {
         }}>
             {/* Header */}
             <Paper elevation={0} sx={{ p: 2, borderBottom: '1px solid #eee', flexShrink: 0, borderRadius: 0 }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                    {(selectedPlan || selectedItem) && tab === 0 && (
-                        <IconButton size="small" onClick={() => {
-                            if (selectedItem) setSelectedItem(null);
-                            else setSelectedPlan(null);
-                        }}>
-                            <ArrowBackIcon fontSize="small" />
-                        </IconButton>
-                    )}
-                    <Typography variant="h6" fontWeight="bold">
-                        {tab === 0 ? (selectedItem ? "실적 등록" : selectedPlan ? "공정 선택" : "생산 현황") : tab === 1 ? "내 실적 확인" : "전자결재"}
-                    </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        {(selectedPlan || selectedItem) && tab === 0 && (
+                            <IconButton size="small" onClick={() => {
+                                if (selectedItem) setSelectedItem(null);
+                                else setSelectedPlan(null);
+                            }}>
+                                <ArrowBackIcon fontSize="small" />
+                            </IconButton>
+                        )}
+                        <Typography variant="h6" fontWeight="bold">
+                            {tab === 0 ? (selectedItem ? "실적 등록" : selectedPlan ? "공정 선택" : "생산 현황") : tab === 1 ? "내 실적 확인" : "전자결재"}
+                        </Typography>
+                    </Stack>
+                    <IconButton size="small" onClick={() => navigate('/mobile/attendance')}>
+                        <AssignmentIndIcon fontSize="small" color="primary" />
+                    </IconButton>
                 </Stack>
                 <Typography variant="caption" color="textSecondary">
                     {user.name} ({user.role || '사용자'})
@@ -1038,13 +1045,42 @@ const MobileWorkLogPage = () => {
                             <Stack spacing={2}>
                                 <TextField label="시작일" type="date" fullWidth size="small" value={docFormData.start_date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, start_date: e.target.value })} />
                                 <TextField label="종료일" type="date" fullWidth size="small" value={docFormData.end_date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_date: e.target.value })} />
+                                <FormControl size="small" fullWidth>
+                                    <InputLabel>휴가 종류</InputLabel>
+                                    <Select value={docFormData.vacation_type || '연차'} label="휴가 종류" onChange={e => setDocFormData({ ...docFormData, vacation_type: e.target.value })}>
+                                        <option value="연차">연차</option>
+                                        <option value="반차">반차</option>
+                                        <option value="경조휴가">경조휴가</option>
+                                        <option value="병가">병가</option>
+                                        <option value="기타">기타</option>
+                                    </Select>
+                                </FormControl>
+                                {docFormData.vacation_type === '반차' && (
+                                    <FormControl size="small" fullWidth>
+                                        <InputLabel>반차 구분</InputLabel>
+                                        <Select value={docFormData.half_day_type || '오전'} label="반차 구분" onChange={e => setDocFormData({ ...docFormData, half_day_type: e.target.value })}>
+                                            <option value="오전">오전</option>
+                                            <option value="오후">오후</option>
+                                        </Select>
+                                    </FormControl>
+                                )}
                                 <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.reason || ''} onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
                             </Stack>
                         )}
                         {selectedDocType === 'EARLY_LEAVE' && (
                             <Stack spacing={2}>
                                 <TextField label="일자" type="date" fullWidth size="small" value={docFormData.date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, date: e.target.value })} />
-                                <TextField label="시간" type="time" fullWidth size="small" value={docFormData.time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, time: e.target.value })} />
+                                <FormControl size="small" fullWidth>
+                                    <InputLabel>구분</InputLabel>
+                                    <Select value={docFormData.type || '조퇴'} label="구분" onChange={e => setDocFormData({ ...docFormData, type: e.target.value })}>
+                                        <option value="조퇴">조퇴</option>
+                                        <option value="외출">외출</option>
+                                    </Select>
+                                </FormControl>
+                                <TextField label={docFormData.type === '외출' ? '시작 시간' : '나가는 시간'} type="time" fullWidth size="small" value={docFormData.time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, time: e.target.value })} />
+                                {docFormData.type === '외출' && (
+                                    <TextField label="종료(복귀) 시간" type="time" fullWidth size="small" value={docFormData.end_time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_time: e.target.value })} />
+                                )}
                                 <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.reason || ''} onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
                             </Stack>
                         )}
@@ -1090,13 +1126,13 @@ const MobileWorkLogPage = () => {
                                 <Box sx={{ mt: 1 }}>
                                     {selectedDoc.doc_type === 'VACATION' && (
                                         <Stack spacing={1}>
-                                            <Typography variant="body2"><b>기간:</b> {selectedDoc.content.start_date} ~ {selectedDoc.content.end_date}</Typography>
+                                            <Typography variant="body2"><b>기간:</b> {selectedDoc.content.start_date} ~ {selectedDoc.content.end_date} ({selectedDoc.content.vacation_type}{selectedDoc.content.half_day_type ? ` - ${selectedDoc.content.half_day_type}` : ''})</Typography>
                                             <Typography variant="body2"><b>사유:</b> {selectedDoc.content.reason}</Typography>
                                         </Stack>
                                     )}
                                     {selectedDoc.doc_type === 'EARLY_LEAVE' && (
                                         <Stack spacing={1}>
-                                            <Typography variant="body2"><b>일시:</b> {selectedDoc.content.date} {selectedDoc.content.time}</Typography>
+                                            <Typography variant="body2"><b>일시:</b> {selectedDoc.content.date} {selectedDoc.content.time}{selectedDoc.content.end_time ? ` ~ ${selectedDoc.content.end_time}` : ''} ({selectedDoc.content.type})</Typography>
                                             <Typography variant="body2"><b>사유:</b> {selectedDoc.content.reason}</Typography>
                                         </Stack>
                                     )}

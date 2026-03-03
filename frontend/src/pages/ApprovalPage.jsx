@@ -466,6 +466,15 @@ const ApprovalPage = () => {
                                                 <option value="기타">기타</option>
                                             </select>
                                         </div>
+                                        {formData.vacation_type === '반차' && (
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">반차 구분</label>
+                                                <select value={formData.half_day_type || '오전'} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, half_day_type: e.target.value })}>
+                                                    <option value="오전">오전</option>
+                                                    <option value="오후">오후</option>
+                                                </select>
+                                            </div>
+                                        )}
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-400">사유</label>
                                             <textarea value={formData.reason || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="구체적인 사유를 입력해주세요." onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required />
@@ -481,16 +490,22 @@ const ApprovalPage = () => {
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-400">시간</label>
-                                                <input type="time" value={formData.time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, time: e.target.value })} required />
-                                            </div>
-                                            <div className="space-y-2">
                                                 <label className="text-sm font-medium text-gray-400">구분</label>
                                                 <select value={formData.type || '조퇴'} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
                                                     <option value="조퇴">조퇴</option>
                                                     <option value="외출">외출</option>
                                                 </select>
                                             </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-400">{formData.type === '외출' ? '시작 시간' : '퇴근(나가는) 시간'}</label>
+                                                <input type="time" value={formData.time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, time: e.target.value })} required />
+                                            </div>
+                                            {formData.type === '외출' && (
+                                                <div className="space-y-2 col-span-2">
+                                                    <label className="text-sm font-medium text-gray-400">종료(복귀) 시간</label>
+                                                    <input type="time" value={formData.end_time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} required />
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-400">사유</label>

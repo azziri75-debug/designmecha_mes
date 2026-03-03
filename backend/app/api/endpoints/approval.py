@@ -8,7 +8,7 @@ from datetime import datetime
 
 from app.api import deps
 from app.models.approval import ApprovalDocument, ApprovalLine, ApprovalStep, ApprovalStatus
-from app.models.basics import Staff
+from app.models.basics import Staff, EmployeeTimeRecord
 from app.schemas.approval import (
     ApprovalDocumentCreate, ApprovalDocumentResponse,
     ApprovalLineCreate, ApprovalLineResponse,
@@ -119,6 +119,11 @@ async def list_documents(
         selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver)
     ).order_by(ApprovalDocument.created_at.desc())
     
+    # 일반 사용자의 경우 본인이 작성자이거나 결재자인 문서만 조회 가능하도록 가시성 제한
+    if current_user.user_type != "ADMIN":
+        if view_mode in ["ALL", "ALL_PENDING", "ALL_COMPLETED", "ALL_REJECTED"]:
+            query = query.where(ApprovalDocument.author_id == current_user.id)
+    
     if view_mode == "MY_DRAFTS":
         query = query.where(ApprovalDocument.author_id == current_user.id)
     elif view_mode == "MY_WAITING":
@@ -213,6 +218,8 @@ async def create_document(
     db_doc.current_sequence = current_seq
     if all_auto_approved:
         db_doc.status = ApprovalStatus.COMPLETED
+        # 자동 승인 시 근태 기록 생성
+        await create_attendance_record(db, db_doc)
     elif current_seq > 1:
         db_doc.status = ApprovalStatus.IN_PROGRESS
 
@@ -297,9 +304,71 @@ async def process_approval(
             doc.status = ApprovalStatus.IN_PROGRESS
         else:
             doc.status = ApprovalStatus.COMPLETED
+            # 최종 승인 시 근태 기록 생성
+            await create_attendance_record(db, doc)
             
     await db.commit()
     return {"message": "처리되었습니다.", "status": doc.status}
+
+async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
+    """결재 완료된 문서 기반 근태 기록 자동 생성"""
+    if doc.doc_type not in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+        return
+
+    content = doc.content or {}
+    category = "SPECIAL"
+    record_date = datetime.now().date()
+    content_str = ""
+
+    if doc.doc_type == "VACATION":
+        v_type = content.get("vacation_type", "연차")
+        category = "HALF_DAY" if v_type == "반차" else "ANNUAL"
+        if v_type == "병가": category = "SICK"
+        
+        # 시작일 기준 기록 (기간인 경우 처리에 대한 고민 필요하나 일단 시작일 우선)
+        start_date_str = content.get("start_date")
+        if start_date_str:
+            record_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        
+        content_str = f"[{v_type}] {content.get('reason', '')}"
+        if v_type == "반차":
+            content_str = f"[{v_type}-{content.get('half_day_type', '오전')}] {content.get('reason', '')}"
+
+    elif doc.doc_type == "EARLY_LEAVE":
+        e_type = content.get("type", "조퇴")
+        category = "EARLY_LEAVE" if e_type == "조퇴" else "OUTING"
+        date_str = content.get("date")
+        if date_str:
+            record_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        
+        time_str = content.get("time", "")
+        end_time_str = content.get("end_time", "")
+        content_str = f"[{e_type}] {time_str}"
+        if end_time_str:
+            content_str += f" ~ {end_time_str}"
+        content_str += f" | 사유: {content.get('reason', '')}"
+
+    elif doc.doc_type == "OVERTIME":
+        category = "OVERTIME"
+        date_str = content.get("date")
+        if date_str:
+            record_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        
+        s_time = content.get("start_time", "")
+        e_time = content.get("end_time", "")
+        w_type = content.get("work_type", "야근")
+        content_str = f"[{w_type}] {s_time} ~ {e_time} | 내용: {content.get('reason', '')}"
+
+    new_record = EmployeeTimeRecord(
+        staff_id=doc.author_id,
+        record_date=record_date,
+        category=category,
+        content=content_str,
+        status="APPROVED",
+        author_id=doc.author_id
+    )
+    db.add(new_record)
+    # commit은 호출 측에서 수행됨
 
 async def is_editable(doc: ApprovalDocument) -> bool:
     """문서가 수정/삭제 가능한 상태인지 확인 (PENDING, REJECTED 또는 자동 승인만 된 IN_PROGRESS)"""

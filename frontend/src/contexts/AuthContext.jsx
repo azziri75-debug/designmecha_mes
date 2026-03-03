@@ -30,10 +30,26 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('mes_user');
     };
 
-    const hasPermission = (menuKey) => {
+    const hasPermission = (menuKey, action = 'view') => {
         if (!user) return false;
         if (user.user_type === 'ADMIN') return true;
-        return (user.menu_permissions || []).includes(menuKey);
+
+        const perms = user.menu_permissions || [];
+
+        // Backward compatibility for array-based permissions (assumes view/edit access)
+        if (Array.isArray(perms)) {
+            return perms.includes(menuKey);
+        }
+
+        // Granular permissions object: { menuKey: { view: true, edit: false, showPrice: true } }
+        if (perms && typeof perms === 'object') {
+            const menuPerm = perms[menuKey];
+            if (!menuPerm) return false;
+            // 'view' is default check. If checking for 'view', it must be explicitly true.
+            return !!menuPerm[action];
+        }
+
+        return false;
     };
 
     return (

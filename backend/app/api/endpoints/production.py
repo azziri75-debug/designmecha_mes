@@ -1167,12 +1167,19 @@ async def read_work_logs(
     skip: int = 0,
     limit: int = 1000,
     db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
     """
     Retrieve work logs.
     """
+    stmt = select(WorkLog)
+    
+    # 일반 사용자의 경우 본인이 작성자(worker_id)인 일지만 조회 가능
+    if current_user.user_type != "ADMIN":
+        stmt = stmt.where(WorkLog.worker_id == current_user.id)
+
     result = await db.execute(
-        select(WorkLog)
+        stmt
         .options(
             selectinload(WorkLog.worker),
             selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
@@ -1404,6 +1411,7 @@ async def get_worker_performance(
     end_date: Union[date, None] = None,
     worker_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
     """
     Get aggregated performance by worker with optional date and worker filtering.
@@ -1439,6 +1447,10 @@ async def get_worker_performance(
     if worker_id:
         stmt = stmt.where(Staff.id == worker_id)
         
+    # 일반 사용자의 경우 본인 데이터만 조회
+    if current_user.user_type != "ADMIN":
+        stmt = stmt.where(Staff.id == current_user.id)
+        
     result = await db.execute(stmt)
     return [dict(row._mapping) for row in result.all()]
 
@@ -1448,6 +1460,7 @@ async def get_performance_details(
     start_date: Union[date, None] = None,
     end_date: Union[date, None] = None,
     db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
     """
     Get detailed work log items with optional worker and date filtering.
@@ -1478,6 +1491,10 @@ async def get_performance_details(
         stmt = stmt.where(WorkLog.work_date >= start_date)
     if end_date:
         stmt = stmt.where(WorkLog.work_date <= end_date)
+        
+    # 일반 사용자의 경우 본인 데이터만 조회
+    if current_user.user_type != "ADMIN":
+        stmt = stmt.where(WorkLogItem.worker_id == current_user.id)
         
     result = await db.execute(stmt.order_by(WorkLog.work_date.desc(), WorkLogItem.id.desc()))
     return result.scalars().all()

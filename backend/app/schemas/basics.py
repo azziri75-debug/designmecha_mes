@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List, Union, Any
 from datetime import date, datetime
 from app.models.basics import PartnerType
 
@@ -66,7 +66,7 @@ class StaffBase(BaseModel):
     is_active: bool = True
     user_type: Optional[str] = "USER"  # ADMIN or USER
     password: Optional[str] = None
-    menu_permissions: Optional[List[str]] = []
+    menu_permissions: Optional[Union[List[str], dict]] = [] # List or dict for granular perms
     stamp_image: Optional[dict] = None # {name, url}
 class StaffSimple(StaffBase):
     id: int
@@ -96,6 +96,8 @@ class CompanyBase(BaseModel):
     registration_number: Optional[str] = None
     logo_image: Optional[dict] = None
     stamp_image: Optional[dict] = None
+    work_start_time: Optional[str] = "08:30"
+    work_end_time: Optional[str] = "17:30"
 
 class CompanyCreate(CompanyBase):
     pass
@@ -216,5 +218,25 @@ class MeasuringInstrumentUpdate(MeasuringInstrumentBase):
 class MeasuringInstrumentResponse(MeasuringInstrumentBase):
     id: int
     history: List[MeasurementHistoryResponse] = []
+    class Config:
+        from_attributes = True
+
+# EmployeeTimeRecord Schemas
+class EmployeeTimeRecordBase(BaseModel):
+    staff_id: int
+    record_date: date
+    category: str # ANNUAL, HALF_DAY, SICK, EARLY_LEAVE, OUTING, OVERTIME, SPECIAL
+    content: Optional[str] = None
+    status: Optional[str] = "APPROVED"
+    author_id: Optional[int] = None
+
+class EmployeeTimeRecordCreate(EmployeeTimeRecordBase):
+    pass
+
+class EmployeeTimeRecordResponse(EmployeeTimeRecordBase):
+    id: int
+    created_at: datetime
+    staff_name: Optional[str] = None # For display
+
     class Config:
         from_attributes = True

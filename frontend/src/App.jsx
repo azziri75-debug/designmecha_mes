@@ -17,6 +17,7 @@ import WorkLogPage from './pages/WorkLogPage';
 import MobileWorkLogPage from './pages/MobileWorkLogPage';
 import ApprovalPage from './pages/ApprovalPage';
 import DataManagementPage from './pages/DataManagementPage';
+import MobileAttendancePage from './pages/MobileAttendancePage';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -73,6 +74,7 @@ const App = () => {
         <Route path="db-management" element={<ProtectedRoute menuKey="ADMIN"><DataManagementPage /></ProtectedRoute>} />
       </Route>
       <Route path="/mobile/work-logs" element={<ProtectedRoute><MobileWorkLogPage /></ProtectedRoute>} />
+      <Route path="/mobile/attendance" element={<ProtectedRoute><MobileAttendancePage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

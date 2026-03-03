@@ -1,0 +1,234 @@
+import React, { useState, useEffect } from 'react';
+import {
+    Box,
+    Typography,
+    Paper,
+    List,
+    ListItem,
+    ListItemText,
+    Divider,
+    Stack,
+    CircularProgress,
+    Card,
+    CardContent,
+    IconButton,
+    AppBar,
+    Toolbar,
+    Avatar,
+    Chip,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+} from '@mui/material';
+import {
+    ArrowBack as ArrowBackIcon,
+    EventNote as EventNoteIcon,
+    BeachAccess as VacationIcon,
+    Timer as TimerIcon,
+    DirectionsRun as OutingIcon,
+    WorkHistory as OvertimeIcon,
+    Info as InfoIcon
+} from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import api from '../lib/api';
+import { useNavigate } from 'react-router-dom';
+
+const MobileAttendancePage = () => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
+    const [summary, setSummary] = useState(null);
+    const [staffList, setStaffList] = useState([]);
+    const [selectedWorkerId, setSelectedWorkerId] = useState(user?.id);
+
+    useEffect(() => {
+        if (!user) return;
+        fetchAttendanceSummary();
+        if (user.user_type === 'ADMIN') {
+            fetchStaffList();
+        }
+    }, [selectedWorkerId]);
+
+    const fetchAttendanceSummary = async () => {
+        setLoading(true);
+        try {
+            // For admin, we can pass worker_id to get someone else's summary
+            // but the endpoint needs to support it. I'll update it later if needed.
+            // For now, let's assume it's personal.
+            const url = user.user_type === 'ADMIN' && selectedWorkerId !== user.id
+                ? `/basics/staff/me/attendance-summary?worker_id=${selectedWorkerId}` // need to ensure backend handles this
+                : `/basics/staff/me/attendance-summary`;
+
+            const res = await api.get(url);
+            setSummary(res.data);
+        } catch (err) {
+            console.error('Attendance fetch error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchStaffList = async () => {
+        try {
+            const res = await api.get('/basics/staff/');
+            setStaffList(res.data);
+        } catch (err) {
+            console.error('Staff fetch error:', err);
+        }
+    };
+
+    const CATEGORY_MAP = {
+        ANNUAL: { label: '연차', color: '#3b82f6', icon: <VacationIcon /> },
+        HALF_DAY: { label: '반차', color: '#60a5fa', icon: <VacationIcon /> },
+        SICK: { label: '병가', color: '#f87171', icon: <InfoIcon /> },
+        EARLY_LEAVE: { label: '조퇴', color: '#a855f7', icon: <TimerIcon /> },
+        OUTING: { label: '외출', color: '#10b981', icon: <OutingIcon /> },
+        OVERTIME: { label: '연장/특근', color: '#f59e0b', icon: <OvertimeIcon /> },
+        SPECIAL: { label: '특별휴가', color: '#ec4899', icon: <VacationIcon /> }
+    };
+
+    return (
+        <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100vh',
+            backgroundColor: '#f8f9fa',
+            overflow: 'hidden'
+        }}>
+            {/* Header */}
+            <AppBar position="static" sx={{ bgcolor: '#fff', color: '#000', elevation: 0, borderBottom: '1px solid #eee' }}>
+                <Toolbar size="small">
+                    <IconButton edge="start" color="inherit" onClick={() => navigate(-1)}>
+                        <ArrowBackIcon />
+                    </IconButton>
+                    <Typography sx={{ ml: 2, flex: 1, fontWeight: 'bold' }}>
+                        근태 및 휴가 현황
+                    </Typography>
+                </Toolbar>
+            </AppBar>
+
+            <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+                {user.user_type === 'ADMIN' && (
+                    <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
+                        <FormControl size="small" fullWidth>
+                            <InputLabel>대상 사원 선택</InputLabel>
+                            <Select
+                                value={selectedWorkerId}
+                                label="대상 사원 선택"
+                                onChange={e => setSelectedWorkerId(e.target.value)}
+                            >
+                                {staffList.map(s => (
+                                    <MenuItem key={s.id} value={s.id}>{s.name} ({s.role})</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Paper>
+                )}
+
+                {loading && !summary ? (
+                    <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress size={24} /></Box>
+                ) : summary ? (
+                    <Stack spacing={2}>
+                        {/* Summary Cards Grid */}
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
+                            <Card sx={{ borderRadius: 3, bgcolor: '#eff6ff', border: '1px solid #dbeafe', boxShadow: 'none' }}>
+                                <CardContent sx={{ p: 2, textAlign: 'center' }}>
+                                    <Typography variant="caption" color="primary" fontWeight="bold">연차 사용</Typography>
+                                    <Typography variant="h5" fontWeight="bold" color="#1e40af">{summary.annual_used + (summary.half_day_used * 0.5)}일</Typography>
+                                </CardContent>
+                            </Card>
+                            <Card sx={{ borderRadius: 3, bgcolor: '#f5f3ff', border: '1px solid #ede9fe', boxShadow: 'none' }}>
+                                <CardContent sx={{ p: 2, textAlign: 'center' }}>
+                                    <Typography variant="caption" color="secondary" fontWeight="bold">조퇴/외출</Typography>
+                                    <Typography variant="h5" fontWeight="bold" color="#5b21b6">{summary.early_leave_count + summary.outing_count}건</Typography>
+                                </CardContent>
+                            </Card>
+                            <Card sx={{ borderRadius: 3, bgcolor: '#fef3c7', border: '1px solid #fde68a', boxShadow: 'none' }}>
+                                <CardContent sx={{ p: 2, textAlign: 'center' }}>
+                                    <Typography variant="caption" sx={{ color: '#92400e' }} fontWeight="bold">연장/특근</Typography>
+                                    <Typography variant="h5" fontWeight="bold" sx={{ color: '#92400e' }}>{summary.overtime_count}건</Typography>
+                                </CardContent>
+                            </Card>
+                            <Card sx={{ borderRadius: 3, bgcolor: '#fef2f2', border: '1px solid #fee2e2', boxShadow: 'none' }}>
+                                <CardContent sx={{ p: 2, textAlign: 'center' }}>
+                                    <Typography variant="caption" sx={{ color: '#b91c1c' }} fontWeight="bold">병가/기타</Typography>
+                                    <Typography variant="h5" fontWeight="bold" sx={{ color: '#b91c1c' }}>{summary.sick_used}건</Typography>
+                                </CardContent>
+                            </Card>
+                        </Box>
+
+                        {/* Detail List */}
+                        <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5, px: 1, color: '#4b5563' }}>
+                                {summary.year}년 근태 상세 기록
+                            </Typography>
+                            <Paper sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
+                                <List disablePadding>
+                                    {summary.records.length > 0 ? (
+                                        summary.records.map((r, idx) => {
+                                            const cat = CATEGORY_MAP[r.category] || { label: r.category, color: '#6b7280', icon: <EventNoteIcon /> };
+                                            return (
+                                                <React.Fragment key={r.id}>
+                                                    <ListItem sx={{ py: 1.5 }}>
+                                                        <Box sx={{
+                                                            mr: 2,
+                                                            p: 1,
+                                                            borderRadius: 1.5,
+                                                            bgcolor: `${cat.color}15`,
+                                                            color: cat.color,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}>
+                                                            {React.cloneElement(cat.icon, { fontSize: 'small' })}
+                                                        </Box>
+                                                        <ListItemText
+                                                            primary={
+                                                                <Stack direction="row" alignItems="center" spacing={1}>
+                                                                    <Typography variant="body2" fontWeight="bold">{r.date}</Typography>
+                                                                    <Chip label={cat.label} size="small" sx={{ height: 18, fontSize: '10px', bgcolor: cat.color, color: '#fff', fontWeight: 'bold' }} />
+                                                                </Stack>
+                                                            }
+                                                            secondary={
+                                                                <Typography variant="caption" color="textSecondary" sx={{
+                                                                    display: '-webkit-box',
+                                                                    WebkitLineClamp: 1,
+                                                                    WebkitBoxOrient: 'vertical',
+                                                                    overflow: 'hidden'
+                                                                }}>
+                                                                    {r.content || '기록 없음'}
+                                                                </Typography>
+                                                            }
+                                                        />
+                                                        <Chip
+                                                            label={r.status === 'COMPLETED' ? '완료' : '진행중'}
+                                                            size="small"
+                                                            variant="outlined"
+                                                            sx={{ fontSize: '10px' }}
+                                                        />
+                                                    </ListItem>
+                                                    {idx < summary.records.length - 1 && <Divider sx={{ mx: 2 }} />}
+                                                </React.Fragment>
+                                            );
+                                        })
+                                    ) : (
+                                        <Box sx={{ p: 4, textAlign: 'center', color: 'textSecondary' }}>
+                                            <Typography variant="body2">기록된 근태 내역이 없습니다.</Typography>
+                                        </Box>
+                                    )}
+                                </List>
+                            </Paper>
+                        </Box>
+                    </Stack>
+                ) : (
+                    <Box sx={{ p: 4, textAlign: 'center', color: 'textSecondary' }}>
+                        <Typography variant="body2">데이터를 불러오지 못했습니다.</Typography>
+                    </Box>
+                )}
+            </Box>
+        </Box>
+    );
+};
+
+export default MobileAttendancePage;

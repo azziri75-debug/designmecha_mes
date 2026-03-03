@@ -728,3 +728,68 @@ async def delete_instrument_history(inst_id: int, h_id: int, db: AsyncSession = 
         await update_next_calibration_date(inst_id, db)
         
     return {"status": "success"}
+
+# --- HR / Attendance Summary Endpoints ---
+
+@router.get("/staff/me/attendance-summary")
+async def get_my_attendance_summary(
+    worker_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: Staff = Depends(deps.get_current_user)
+):
+    """
+    Get personal attendance and leave summary for the current year.
+    Used for the mobile dashboard.
+    Admins can view other workers' summary by providing worker_id.
+    """
+    # Authorization check for worker_id
+    target_worker_id = current_user.id
+    if worker_id and worker_id != current_user.id:
+        if current_user.user_type != "ADMIN":
+            raise HTTPException(status_code=403, detail="Permission denied to view other workers' attendance.")
+        target_worker_id = worker_id
+
+    from datetime import date
+    current_year = date.today().year
+    start_date = date(current_year, 1, 1)
+    end_date = date(current_year, 12, 31)
+    
+    # Fetch all records for the target user in the current year
+    stmt = select(EmployeeTimeRecord).where(
+        EmployeeTimeRecord.staff_id == target_worker_id,
+        EmployeeTimeRecord.record_date >= start_date,
+        EmployeeTimeRecord.record_date <= end_date
+    ).order_by(EmployeeTimeRecord.record_date.desc())
+    
+    result = await db.execute(stmt)
+    records = result.scalars().all()
+    
+    # Basic aggregation
+    summary = {
+        "year": current_year,
+        "annual_used": 0,
+        "half_day_used": 0,
+        "sick_used": 0,
+        "early_leave_count": 0,
+        "outing_count": 0,
+        "overtime_count": 0,
+        "records": []
+    }
+    
+    for r in records:
+        if r.category == "ANNUAL": summary["annual_used"] += 1
+        elif r.category == "HALF_DAY": summary["half_day_used"] += 1
+        elif r.category == "SICK": summary["sick_used"] += 1
+        elif r.category == "EARLY_LEAVE": summary["early_leave_count"] += 1
+        elif r.category == "OUTING": summary["outing_count"] += 1
+        elif r.category == "OVERTIME": summary["overtime_count"] += 1
+        
+        summary["records"].append({
+            "id": r.id,
+            "date": r.record_date.isoformat(),
+            "category": r.category,
+            "content": r.content,
+            "status": r.status
+        })
+        
+    return summary
