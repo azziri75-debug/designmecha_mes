@@ -29,7 +29,7 @@ import {
     DirectionsRun as OutingIcon,
     WorkHistory as OvertimeIcon,
     Info as InfoIcon,
-    LogOut as LogOutIcon
+    Logout as LogoutIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
@@ -112,7 +112,7 @@ const MobileAttendancePage = () => {
                             navigate('/login');
                         }
                     }}>
-                        <LogOutIcon />
+                        <LogoutIcon />
                     </IconButton>
                 </Toolbar>
             </AppBar>

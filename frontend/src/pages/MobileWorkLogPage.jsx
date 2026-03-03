@@ -54,7 +54,7 @@ import {
     Close as CloseIcon,
     CheckCircle as CheckCircleIcon,
     AssignmentInd as AssignmentIndIcon,
-    LogOut as LogOutIcon
+    Logout as LogoutIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
@@ -504,7 +504,7 @@ const MobileWorkLogPage = () => {
                             <AssignmentIndIcon fontSize="small" color="primary" />
                         </IconButton>
                         <IconButton size="small" onClick={handleLogout}>
-                            <LogOutIcon fontSize="small" />
+                            <LogoutIcon fontSize="small" />
                         </IconButton>
                     </Stack>
                 </Stack>
