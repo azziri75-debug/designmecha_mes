@@ -242,8 +242,11 @@ async def create_purchase_order(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(PurchaseOrder.partner),
         selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
-        # Load related SO info
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        # Load related SO/SP info
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+        )
     ).where(PurchaseOrder.id == db_order.id)
     result = await db.execute(query)
     return result.scalar_one()
@@ -265,8 +268,11 @@ async def read_purchase_orders(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(PurchaseOrder.partner),
         selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
-        # Load related SO info
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        # Load related SO/SP info
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+        )
     )
     if status:
         query = query.where(PurchaseOrder.status == status)
@@ -393,7 +399,10 @@ async def update_purchase_order(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(PurchaseOrder.partner),
         selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+        )
     ).where(PurchaseOrder.id == order_id)
     result = await db.execute(query)
     return result.scalar_one()
@@ -495,8 +504,11 @@ async def create_outsourcing_order(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(OutsourcingOrder.partner),
         selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
-        # Load related SO info
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        # Load related SO/SP info
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+        )
     ).where(OutsourcingOrder.id == db_order.id)
     result = await db.execute(query)
     return result.scalar_one()
@@ -518,8 +530,11 @@ async def read_outsourcing_orders(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(OutsourcingOrder.partner),
         selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
-        # Load related SO info
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        # Load related SO/SP info
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+        )
     )
     if status:
         query = query.where(OutsourcingOrder.status == status)
@@ -632,7 +647,10 @@ async def update_outsourcing_order(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
         selectinload(OutsourcingOrder.partner),
         selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+        )
     ).where(OutsourcingOrder.id == order_id)
     result = await db.execute(query)
     return result.scalar_one()

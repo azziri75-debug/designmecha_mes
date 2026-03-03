@@ -458,6 +458,29 @@ async def upload_excel(
                     
                     data[model_attr] = val
                 
+                # Special logic for equipments: auto-code and type casting
+                if table_name == "equipments":
+                    # Cast spec/location to string safely
+                    for field in ["spec", "location"]:
+                        if data.get(field) is not None:
+                            data[field] = str(data[field])
+                        else:
+                            data[field] = ""
+                            
+                    # Auto-generate code if missing
+                    if not data.get("code"):
+                        from datetime import date
+                        today = date.today().strftime("%Y%m%d")
+                        # We use a simple counter for this batch. For a more robust solution, 
+                        # we'd check the DB, but since we are in a loop, let's keep it simple or fetch max.
+                        # Actually, let's just use a timestamp + random or a counter passed from outside.
+                        # For now, let's query the DB for the count of today's EQ codes to avoid collisions.
+                        from sqlalchemy import func
+                        eq_query = select(func.count(Equipment.id)).where(Equipment.code.like(f"EQ-{today}-%"))
+                        eq_res = await db.execute(eq_query)
+                        eq_count = eq_res.scalar() or 0
+                        data["code"] = f"EQ-{today}-{eq_count + index + 1:03d}"
+
                 db.add(model(**data))
             except Exception as e:
                 errors.append(f"{row_num}행: {str(e)}")

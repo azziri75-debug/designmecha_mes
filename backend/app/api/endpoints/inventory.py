@@ -33,7 +33,6 @@ async def read_stocks(db: AsyncSession = Depends(get_db)):
         # 1. Producing SO (Sales Order driven)
         # We need to sum the quantity per UNIQUE ProductionPlanItem group (plan_id)
         # to avoid double-counting multiple processes for the same production.
-        from sqlalchemy import select, func
         
         subq = select(
             ProductionPlanItem.plan_id,
