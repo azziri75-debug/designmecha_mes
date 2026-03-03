@@ -168,37 +168,45 @@ const MobileAttendancePage = () => {
                 ) : summary ? (
                     <Stack spacing={2}>
                         {/* Summary Cards Grid */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
                             <Card sx={{ borderRadius: 3, bgcolor: '#eff6ff', border: '1px solid #dbeafe', boxShadow: 'none' }}>
-                                <CardContent sx={{ p: 1.5, textAlign: 'center' }}>
-                                    <Typography variant="caption" color="primary" fontWeight="bold">연차 사용</Typography>
-                                    <Typography variant="h6" fontWeight="bold" color="#1e40af">{summary.annual_used + (summary.half_day_used * 0.5)}일</Typography>
+                                <CardContent sx={{ p: 2, textAlign: 'center' }}>
+                                    <Typography variant="caption" color="primary" fontWeight="bold">연차/병가</Typography>
+                                    <Typography variant="h5" fontWeight="bold" color="#1e40af">
+                                        {(summary.annual_used || 0) + ((summary.half_day_used || 0) * 0.5) + (summary.sick_used || 0)}일
+                                    </Typography>
                                 </CardContent>
                             </Card>
                             <Card sx={{ borderRadius: 3, bgcolor: '#f5f3ff', border: '1px solid #ede9fe', boxShadow: 'none' }}>
-                                <CardContent sx={{ p: 1.5, textAlign: 'center' }}>
+                                <CardContent sx={{ p: 2, textAlign: 'center' }}>
                                     <Typography variant="caption" color="secondary" fontWeight="bold">조퇴/외출</Typography>
-                                    <Typography variant="h6" fontWeight="bold" color="#5b21b6">{summary.early_leave_hours + summary.outing_hours}h</Typography>
-                                </CardContent>
-                            </Card>
-                            <Card sx={{ borderRadius: 3, bgcolor: '#fdf2f8', border: '1px solid #fce7f3', boxShadow: 'none', gridColumn: 'span 2' }}>
-                                <CardContent sx={{ p: 1.5 }}>
-                                    <Typography variant="caption" color="#be185d" fontWeight="bold" align="center" display="block">총 인정 근로 시간 (기준: {summary.standard_hours}h)</Typography>
-                                    <Typography variant="h5" fontWeight="bold" color="#9d174d" align="center">{summary.recognized_hours}h</Typography>
+                                    <Typography variant="h5" fontWeight="bold" color="#5b21b6">{(summary.early_leave_hours || 0) + (summary.outing_hours || 0)}h</Typography>
                                 </CardContent>
                             </Card>
                             <Card sx={{ borderRadius: 3, bgcolor: '#fffbeb', border: '1px solid #fef3c7', boxShadow: 'none', gridColumn: 'span 2' }}>
-                                <CardContent sx={{ p: 1.5 }}>
-                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                        <Typography variant="caption" sx={{ color: '#92400e' }} fontWeight="bold">연장/특근 합계</Typography>
-                                        <Typography variant="h6" fontWeight="bold" sx={{ color: '#92400e' }}>{summary.overtime_hours}h</Typography>
+                                <CardContent sx={{ p: 2 }}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                                        <Typography variant="subtitle2" sx={{ color: '#92400e' }} fontWeight="bold">연장/특근 합계</Typography>
+                                        <Typography variant="h5" fontWeight="bold" sx={{ color: '#92400e' }}>{(summary.overtime_hours || 0).toFixed(1)}h</Typography>
                                     </Stack>
-                                    <Divider sx={{ my: 1 }} />
-                                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                                        <Typography variant="caption" color="textSecondary">연장: {summary.extension_hours}h</Typography>
-                                        <Typography variant="caption" color="textSecondary">야간: {summary.night_hours}h</Typography>
-                                        <Typography variant="caption" color="textSecondary">휴일: {summary.holiday_hours}h</Typography>
-                                        <Typography variant="caption" color="textSecondary">휴야: {summary.holiday_night_hours}h</Typography>
+                                    <Divider sx={{ my: 1.5, borderColor: '#fef3c7' }} />
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+                                        <Box>
+                                            <Typography variant="caption" color="textSecondary" display="block">연장</Typography>
+                                            <Typography variant="body2" fontWeight="bold">{(summary.extension_hours || 0).toFixed(1)}h</Typography>
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="caption" color="textSecondary" display="block">야간</Typography>
+                                            <Typography variant="body2" fontWeight="bold">{(summary.night_hours || 0).toFixed(1)}h</Typography>
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="caption" color="textSecondary" display="block">휴일</Typography>
+                                            <Typography variant="body2" fontWeight="bold">{(summary.holiday_hours || 0).toFixed(1)}h</Typography>
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="caption" color="textSecondary" display="block">휴일야간</Typography>
+                                            <Typography variant="body2" fontWeight="bold">{(summary.holiday_night_hours || 0).toFixed(1)}h</Typography>
+                                        </Box>
                                     </Box>
                                 </CardContent>
                             </Card>

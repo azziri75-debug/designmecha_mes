@@ -481,6 +481,22 @@ async def read_company(
 ):
     result = await db.execute(select(Company).limit(1))
     company = result.scalar_one_or_none()
+    if company:
+        # Manually convert time objects to strings as requested
+        return {
+            "id": company.id,
+            "name": company.name,
+            "owner_name": company.owner_name,
+            "address": company.address,
+            "phone": company.phone,
+            "fax": company.fax,
+            "email": company.email,
+            "registration_number": company.registration_number,
+            "logo_image": company.logo_image,
+            "stamp_image": company.stamp_image,
+            "work_start_time": company.work_start_time.strftime("%H:%M") if company.work_start_time else "08:30",
+            "work_end_time": company.work_end_time.strftime("%H:%M") if company.work_end_time else "17:30"
+        }
     return company
 
 @router.post("/company", response_model=CompanyResponse)
@@ -771,7 +787,8 @@ async def get_my_attendance_summary(
     stmt = select(EmployeeTimeRecord).where(
         EmployeeTimeRecord.staff_id == target_worker_id,
         EmployeeTimeRecord.record_date >= start_date,
-        EmployeeTimeRecord.record_date <= end_date
+        EmployeeTimeRecord.record_date <= end_date,
+        EmployeeTimeRecord.status.in_(['APPROVED', 'COMPLETED'])
     ).order_by(EmployeeTimeRecord.record_date.desc())
     
     result = await db.execute(stmt)
