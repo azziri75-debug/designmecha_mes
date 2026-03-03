@@ -148,38 +148,53 @@ const AttendancePage = () => {
                 <Stack spacing={4}>
                     {/* Summary Cards */}
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3 }}>
-                        <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                            <CardContent>
-                                <Typography variant="caption" color="textSecondary" fontWeight="bold">연차 사용</Typography>
-                                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1e40af', mt: 1 }}>
-                                    {summary.annual_used + (summary.half_day_used * 0.5)}일
-                                </Typography>
-                            </CardContent>
-                        </Card>
-                        <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                            <CardContent>
-                                <Typography variant="caption" color="textSecondary" fontWeight="bold">조퇴/외출</Typography>
-                                <Typography variant="h4" fontWeight="bold" sx={{ color: '#5b21b6', mt: 1 }}>
-                                    {summary.early_leave_count + summary.outing_count}건
-                                </Typography>
-                            </CardContent>
-                        </Card>
-                        <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                            <CardContent>
-                                <Typography variant="caption" color="textSecondary" fontWeight="bold">연장/특근 시간</Typography>
-                                <Typography variant="h4" fontWeight="bold" sx={{ color: '#92400e', mt: 1 }}>
-                                    {summary.overtime_count}건
-                                </Typography>
-                            </CardContent>
-                        </Card>
-                        <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                            <CardContent>
-                                <Typography variant="caption" color="textSecondary" fontWeight="bold">병가/기타</Typography>
-                                <Typography variant="h4" fontWeight="bold" sx={{ color: '#b91c1c', mt: 1 }}>
-                                    {summary.sick_used}건
-                                </Typography>
-                            </CardContent>
-                        </Card>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3 }}>
+                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #1e40af' }}>
+                                <CardContent>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">연차 사용</Typography>
+                                    <Typography variant="h4" fontWeight="bold" sx={{ color: '#1e40af', mt: 1 }}>
+                                        {summary.annual_used + (summary.half_day_used * 0.5)}일
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #5b21b6' }}>
+                                <CardContent>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">조퇴/외출 시간</Typography>
+                                    <Typography variant="h4" fontWeight="bold" sx={{ color: '#5b21b6', mt: 1 }}>
+                                        {summary.early_leave_hours + summary.outing_hours}h
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #f59e0b' }}>
+                                <CardContent>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">연장/특근 합계</Typography>
+                                    <Typography variant="h4" fontWeight="bold" sx={{ color: '#92400e', mt: 1 }}>
+                                        {summary.overtime_hours}h
+                                    </Typography>
+                                    <Box sx={{ mt: 1 }}>
+                                        <Typography variant="caption" display="block" color="textSecondary">연장: {summary.extension_hours}h / 야간: {summary.night_hours}h</Typography>
+                                        <Typography variant="caption" display="block" color="textSecondary">휴일: {summary.holiday_hours}h / 휴야: {summary.holiday_night_hours}h</Typography>
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #10b981' }}>
+                                <CardContent>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">총 인정 근로 시간</Typography>
+                                    <Typography variant="h4" fontWeight="bold" sx={{ color: '#065f46', mt: 1 }}>
+                                        {summary.recognized_hours}h
+                                    </Typography>
+                                    <Typography variant="caption" color="textSecondary">기준: {summary.standard_hours}h</Typography>
+                                </CardContent>
+                            </Card>
+                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #b91c1c' }}>
+                                <CardContent>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">병가/기타</Typography>
+                                    <Typography variant="h4" fontWeight="bold" sx={{ color: '#b91c1c', mt: 1 }}>
+                                        {summary.sick_used || 0}건
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Box>
                     </Box>
 
                     {/* Detailed Records Table */}
@@ -192,10 +207,11 @@ const AttendancePage = () => {
                                 <TableHead sx={{ bgcolor: '#f8fafc' }}>
                                     <TableRow>
                                         <TableCell align="center" width={80}>No.</TableCell>
-                                        <TableCell align="center" width={150}>날짜</TableCell>
+                                        <TableCell align="center" width={130}>날짜</TableCell>
                                         <TableCell align="center" width={120}>분류</TableCell>
+                                        <TableCell align="center" width={100}>시간(h)</TableCell>
                                         <TableCell>상세 내용</TableCell>
-                                        <TableCell align="center" width={120}>상태</TableCell>
+                                        <TableCell align="center" width={100}>상태</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -219,12 +235,20 @@ const AttendancePage = () => {
                                                             }}
                                                         />
                                                     </TableCell>
-                                                    <TableCell>{r.content || '기록 없음'}</TableCell>
+                                                    <TableCell align="center">{r.hours ? r.hours.toFixed(1) : '-'}</TableCell>
+                                                    <TableCell>
+                                                        <Typography variant="body2">{r.content || '기록 없음'}</Typography>
+                                                        {r.category === 'OVERTIME' && (r.extension_hours > 0 || r.night_hours > 0 || r.holiday_hours > 0 || r.holiday_night_hours > 0) && (
+                                                            <Typography variant="caption" color="primary" sx={{ display: 'block' }}>
+                                                                [세부: 연장 {r.extension_hours}h, 야간 {r.night_hours}h, 휴일 {r.holiday_hours}h, 휴야 {r.holiday_night_hours}h]
+                                                            </Typography>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell align="center">
                                                         <Chip
-                                                            label={r.status === 'COMPLETED' ? '완료' : '진행중'}
+                                                            label={r.status === 'APPROVED' || r.status === 'COMPLETED' ? '완료' : '진행중'}
                                                             size="small"
-                                                            color={r.status === 'COMPLETED' ? 'success' : 'default'}
+                                                            color={r.status === 'APPROVED' || r.status === 'COMPLETED' ? 'success' : 'default'}
                                                             variant="outlined"
                                                         />
                                                     </TableCell>

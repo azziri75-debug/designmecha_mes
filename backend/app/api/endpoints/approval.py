@@ -348,6 +348,72 @@ async def process_approval(
     await db.commit()
     return {"message": "처리되었습니다.", "status": doc.status}
 
+def calculate_ot_details(record_date, start_time_str, end_time_str):
+    """
+    Calculate hours breakdown for Extension, Night, Holiday, Holiday-Night.
+    Night window: 22:00 ~ 06:00
+    """
+    from datetime import datetime, time, timedelta
+    
+    def parse_time_flexible(t_str):
+        if not t_str: return None
+        for fmt in ("%H:%M", "%H:%M:%S", "%H:%M:%S.%f"):
+            try:
+                return datetime.strptime(t_str, fmt).time()
+            except ValueError:
+                continue
+        return None
+
+    try:
+        # Standardizing times
+        start_t = parse_time_flexible(start_time_str)
+        end_t = parse_time_flexible(end_time_str)
+        
+        if not start_t or not end_t: return None
+        
+        start_dt = datetime.combine(record_date, start_t)
+        end_dt = datetime.combine(record_date, end_t)
+        if end_dt <= start_dt:
+            end_dt += timedelta(days=1)
+            
+        is_holiday = record_date.weekday() >= 5 # Simplified: Sat=5, Sun=6
+        
+        total_hours = (end_dt - start_dt).total_seconds() / 3600.0
+        details = {
+            "hours": total_hours,
+            "extension_hours": 0.0,
+            "night_hours": 0.0,
+            "holiday_hours": 0.0,
+            "holiday_night_hours": 0.0
+        }
+        
+        # Iterate in 15-min intervals for simplicity and accuracy
+        curr = start_dt
+        step = timedelta(minutes=15)
+        while curr < end_dt:
+            # Check if current time is holiday or not
+            # If it crossed midnight, the 'holiday' status might change
+            step_is_holiday = curr.date().weekday() >= 5
+            
+            # Check if night (22:00 - 06:00)
+            h = curr.hour
+            is_night = (h >= 22 or h < 6)
+            
+            val = 0.25 # 15 mins
+            if step_is_holiday:
+                if is_night: details["holiday_night_hours"] += val
+                else: details["holiday_hours"] += val
+            else:
+                if is_night: details["night_hours"] += val
+                else: details["extension_hours"] += val
+            
+            curr += step
+            
+        return details
+    except Exception as e:
+        print(f"OT Calculation Error: {e}")
+        return None
+
 async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
     """결재 완료된 문서 기반 근태 기록 자동 생성"""
     try:
@@ -387,13 +453,39 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             if not date_str: return
             record_date = date.fromisoformat(date_str)
             e_type = content.get("type", "조퇴")
+            
+            # Calculate duration if possible
+            hours = 0.0
+            from datetime import datetime
+            try:
+                t1 = content.get("time") # Leaving time
+                t2 = content.get("end_time") # Return time (for Outing)
+                if t1 and t2:
+                    d1 = datetime.strptime(t1, "%H:%M")
+                    d2 = datetime.strptime(t2, "%H:%M")
+                    hours = (d2 - d1).total_seconds() / 3600.0
+                elif t1:
+                    # If only leaving time, assume until work end (default 17:30)
+                    from sqlalchemy import select
+                    from app.models.basics import Company
+                    comp_res = await db.execute(select(Company))
+                    comp = comp_res.scalars().first()
+                    end_time_str = comp.work_end_time.strftime("%H:%M") if comp else "17:30"
+                    
+                    d1 = datetime.strptime(t1, "%H:%M")
+                    d_end = datetime.strptime(end_time_str, "%H:%M")
+                    if d_end > d1:
+                        hours = (d_end - d1).total_seconds() / 3600.0
+            except: pass
+
             record = EmployeeTimeRecord(
                 staff_id=doc.author_id,
                 record_date=record_date,
                 category="EARLY_LEAVE" if e_type == "조퇴" else "OUTING",
                 content=f"{e_type}: {content.get('time', '')} ~ {content.get('end_time', '')} - {content.get('reason', '')}",
                 author_id=doc.author_id,
-                status="APPROVED"
+                status="APPROVED",
+                hours=hours
             )
             db.add(record)
             
@@ -401,14 +493,27 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             date_str = content.get("date")
             if not date_str: return
             record_date = date.fromisoformat(date_str)
+            
+            start_t = content.get("start_time")
+            end_t = content.get("end_time")
+            ot_details = calculate_ot_details(record_date, start_t, end_t) if start_t and end_t else None
+            
             record = EmployeeTimeRecord(
                 staff_id=doc.author_id,
                 record_date=record_date,
                 category="OVERTIME",
-                content=f"연장근무: {content.get('start_time', '')} ~ {content.get('end_time', '')} - {content.get('reason', '')}",
+                content=f"특근: {start_t} ~ {end_t} - {content.get('reason', '')}",
                 author_id=doc.author_id,
                 status="APPROVED"
             )
+            
+            if ot_details:
+                record.hours = ot_details["hours"]
+                record.extension_hours = ot_details["extension_hours"]
+                record.night_hours = ot_details["night_hours"]
+                record.holiday_hours = ot_details["holiday_hours"]
+                record.holiday_night_hours = ot_details["holiday_night_hours"]
+                
             db.add(record)
             
         await db.flush()

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Union, Any
-from datetime import date, datetime
+from datetime import date, datetime, time
 from app.models.basics import PartnerType
 
 # Contact Schemas
@@ -96,8 +96,8 @@ class CompanyBase(BaseModel):
     registration_number: Optional[str] = None
     logo_image: Optional[dict] = None
     stamp_image: Optional[dict] = None
-    work_start_time: Optional[str] = "08:30"
-    work_end_time: Optional[str] = "17:30"
+    work_start_time: Optional[time] = time(8, 30)
+    work_end_time: Optional[time] = time(17, 30)
 
 class CompanyCreate(CompanyBase):
     pass
@@ -237,6 +237,12 @@ class EmployeeTimeRecordResponse(EmployeeTimeRecordBase):
     id: int
     created_at: datetime
     staff_name: Optional[str] = None # For display
+    
+    hours: Optional[float] = 0.0
+    extension_hours: Optional[float] = 0.0
+    night_hours: Optional[float] = 0.0
+    holiday_hours: Optional[float] = 0.0
+    holiday_night_hours: Optional[float] = 0.0
 
     class Config:
         from_attributes = True

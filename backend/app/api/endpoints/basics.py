@@ -784,9 +784,13 @@ async def get_my_attendance_summary(
         "annual_used": 0,
         "half_day_used": 0,
         "sick_used": 0,
-        "early_leave_count": 0,
-        "outing_count": 0,
-        "overtime_count": 0,
+        "early_leave_hours": 0.0,
+        "outing_hours": 0.0,
+        "overtime_hours": 0.0,
+        "extension_hours": 0.0,
+        "night_hours": 0.0,
+        "holiday_hours": 0.0,
+        "holiday_night_hours": 0.0,
         "records": []
     }
     
@@ -794,16 +798,37 @@ async def get_my_attendance_summary(
         if r.category == "ANNUAL": summary["annual_used"] += 1
         elif r.category == "HALF_DAY": summary["half_day_used"] += 1
         elif r.category == "SICK": summary["sick_used"] += 1
-        elif r.category == "EARLY_LEAVE": summary["early_leave_count"] += 1
-        elif r.category == "OUTING": summary["outing_count"] += 1
-        elif r.category == "OVERTIME": summary["overtime_count"] += 1
+        elif r.category == "EARLY_LEAVE": summary["early_leave_hours"] += (r.hours or 0)
+        elif r.category == "OUTING": summary["outing_hours"] += (r.hours or 0)
+        elif r.category == "OVERTIME":
+            summary["overtime_hours"] += (r.hours or 0)
+            summary["extension_hours"] += (r.extension_hours or 0)
+            summary["night_hours"] += (r.night_hours or 0)
+            summary["holiday_hours"] += (r.holiday_hours or 0)
+            summary["holiday_night_hours"] += (r.holiday_night_hours or 0)
         
         summary["records"].append({
             "id": r.id,
             "date": r.record_date.isoformat(),
             "category": r.category,
             "content": r.content,
-            "status": r.status
+            "status": r.status,
+            "hours": r.hours,
+            "extension_hours": r.extension_hours,
+            "night_hours": r.night_hours,
+            "holiday_hours": r.holiday_hours,
+            "holiday_night_hours": r.holiday_night_hours
         })
-        
+
+    # Calculate Total Recognized Time
+    total_standard_hours = 0.0
+    curr = start_date
+    while curr <= end_date:
+        if curr.weekday() < 5:
+            total_standard_hours += 8.0
+        curr += timedelta(days=1)
+    
+    summary["recognized_hours"] = total_standard_hours - summary["early_leave_hours"] - summary["outing_hours"] + summary["overtime_hours"]
+    summary["standard_hours"] = total_standard_hours
+
     return summary

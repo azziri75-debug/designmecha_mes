@@ -170,6 +170,13 @@ class EmployeeTimeRecord(Base):
     content = Column(Text, nullable=True) # 상세 내용 (반차-오전/오후, 조퇴 시간 등)
     status = Column(String, default="APPROVED") # APPROVED, PENDING, REJECTED
     
+    # 세분화된 시간 기록 (Labor Standards Act)
+    hours = Column(Float, default=0.0)
+    extension_hours = Column(Float, default=0.0)
+    night_hours = Column(Float, default=0.0)
+    holiday_hours = Column(Float, default=0.0)
+    holiday_night_hours = Column(Float, default=0.0)
+    
     # 가시성을 위한 작성자 연계 (전자결재 연동 시 결재 상신자)
     author_id = Column(Integer, ForeignKey("staff.id", ondelete="SET NULL"), nullable=True)
     

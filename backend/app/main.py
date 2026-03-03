@@ -450,6 +450,27 @@ async def startup_event():
                 print(f"Startup: Companies auto-patch failed: {e}")
                 await db.rollback()
 
+            # 11. Fix EmployeeTimeRecord Missing Columns (Hours Breakdown)
+            try:
+                new_cols = ["hours", "extension_hours", "night_hours", "holiday_hours", "holiday_night_hours"]
+                if is_sqlite:
+                    r = await db.execute(text("PRAGMA table_info(employee_time_records)"))
+                    existing = [c[1] for c in r.fetchall()]
+                    for col in new_cols:
+                        if col not in existing:
+                            await db.execute(text(f"ALTER TABLE employee_time_records ADD COLUMN {col} FLOAT DEFAULT 0.0"))
+                            print(f"Startup: Added {col} to employee_time_records (SQLite)")
+                else:
+                    for col in new_cols:
+                        result = await db.execute(text(f"SELECT column_name FROM information_schema.columns WHERE table_name='employee_time_records' AND column_name='{col}'"))
+                        if not result.scalar():
+                            await db.execute(text(f"ALTER TABLE employee_time_records ADD COLUMN {col} FLOAT DEFAULT 0.0"))
+                            print(f"Startup: Added {col} to employee_time_records (Postgres)")
+                await db.commit()
+            except Exception as e:
+                print(f"Startup: EmployeeTimeRecord auto-patch failed: {e}")
+                await db.rollback()
+
     except Exception as e:
         print(f"Startup: DB initialization crashed: {e}")
 
