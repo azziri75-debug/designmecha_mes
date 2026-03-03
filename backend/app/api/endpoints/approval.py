@@ -454,29 +454,47 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             record_date = date.fromisoformat(date_str)
             e_type = content.get("type", "조퇴")
             
-            # Calculate duration if possible
+            # Calculate duration using robust minute-based arithmetic
             hours = 0.0
-            from datetime import datetime
             try:
-                t1 = content.get("time") # Leaving time
-                t2 = content.get("end_time") # Return time (for Outing)
-                if t1 and t2:
-                    d1 = datetime.strptime(t1, "%H:%M")
-                    d2 = datetime.strptime(t2, "%H:%M")
-                    hours = (d2 - d1).total_seconds() / 3600.0
-                elif t1:
-                    # If only leaving time, assume until work end (default 17:30)
-                    from sqlalchemy import select
-                    from app.models.basics import Company
-                    comp_res = await db.execute(select(Company))
-                    comp = comp_res.scalars().first()
-                    end_time_str = comp.work_end_time.strftime("%H:%M") if comp else "17:30"
+                t1_str = content.get("time") # Leaving time
+                t2_str = content.get("end_time") # Return time (for Outing)
+                
+                if t1_str:
+                    def to_minutes(t_s):
+                        parts = t_s.split(':')
+                        return int(parts[0]) * 60 + int(parts[1])
                     
-                    d1 = datetime.strptime(t1, "%H:%M")
-                    d_end = datetime.strptime(end_time_str, "%H:%M")
-                    if d_end > d1:
-                        hours = (d_end - d1).total_seconds() / 3600.0
-            except: pass
+                    m1 = to_minutes(t1_str)
+                    
+                    if t2_str:
+                        # Case: Outing (has return time)
+                        m2 = to_minutes(t2_str)
+                        delta = m2 - m1
+                        if delta < 0: delta += 1440 # Day cross
+                        hours = round(delta / 60.0, 2)
+                    else:
+                        # Case: Early Leave (until end of work)
+                        from sqlalchemy import select
+                        from app.models.basics import Company
+                        comp_res = await db.execute(select(Company))
+                        comp = comp_res.scalars().first()
+                        
+                        # Use company end time or default 17:30
+                        work_end_str = "17:30"
+                        if comp:
+                            if isinstance(comp.work_end_time, str):
+                                work_end_str = comp.work_end_time
+                            else:
+                                work_end_str = comp.work_end_time.strftime("%H:%M")
+                        
+                        m_end = to_minutes(work_end_str)
+                        delta = m_end - m1
+                        if delta > 0:
+                            hours = round(delta / 60.0, 2)
+            except Exception as e:
+                print(f"Error calculating duration: {e}")
+                pass
 
             record = EmployeeTimeRecord(
                 staff_id=doc.author_id,
