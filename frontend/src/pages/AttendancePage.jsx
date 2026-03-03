@@ -17,7 +17,6 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    MenuItem,
     Chip,
     Avatar,
     Divider
