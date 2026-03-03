@@ -423,6 +423,33 @@ async def startup_event():
                              await db.execute(text(f"ALTER TABLE {table} ADD CONSTRAINT {table}_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
                         await db.commit()
                     except Exception as e: print(f"Startup: {table} FK update failed: {e}")
+            # 10. Fix Companies Table Missing Columns (Auto-Patch)
+            try:
+                if is_sqlite:
+                    r = await db.execute(text("PRAGMA table_info(companies)"))
+                    cols = [c[1] for c in r.fetchall()]
+                    if "work_start_time" not in cols:
+                        await db.execute(text("ALTER TABLE companies ADD COLUMN work_start_time TIME"))
+                        print("Startup: Added work_start_time to companies (SQLite)")
+                    if "work_end_time" not in cols:
+                        await db.execute(text("ALTER TABLE companies ADD COLUMN work_end_time TIME"))
+                        print("Startup: Added work_end_time to companies (SQLite)")
+                else:
+                    # Postgres column check
+                    for col_name in ["work_start_time", "work_end_time"]:
+                        result = await db.execute(text(f"SELECT column_name FROM information_schema.columns WHERE table_name='companies' AND column_name='{col_name}'"))
+                        if not result.scalar():
+                            await db.execute(text(f"ALTER TABLE companies ADD COLUMN {col_name} TIME"))
+                            print(f"Startup: Added {col_name} to companies (Postgres)")
+                
+                # Ensure defaults are set if they just got created or are null
+                await db.execute(text("UPDATE companies SET work_start_time = '08:30:00' WHERE work_start_time IS NULL"))
+                await db.execute(text("UPDATE companies SET work_end_time = '17:30:00' WHERE work_end_time IS NULL"))
+                await db.commit()
+            except Exception as e:
+                print(f"Startup: Companies auto-patch failed: {e}")
+                await db.rollback()
+
     except Exception as e:
         print(f"Startup: DB initialization crashed: {e}")
 

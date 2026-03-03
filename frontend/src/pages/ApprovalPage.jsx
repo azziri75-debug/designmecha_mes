@@ -147,7 +147,9 @@ const ApprovalPage = () => {
     };
 
     const isEditable = (doc) => {
-        if (!doc || doc.author_id !== currentUser?.id) return false;
+        if (!doc) return false;
+        if (currentUser?.user_type === 'ADMIN') return true;
+        if (doc.author_id !== currentUser?.id) return false;
         if (doc.status === 'PENDING' || doc.status === 'REJECTED') return true;
         if (doc.status === 'IN_PROGRESS') {
             return (doc.steps || []).every(s => s.status !== 'APPROVED' || s.comment === '기안자 직급에 따른 자동 승인');
