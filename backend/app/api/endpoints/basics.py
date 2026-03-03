@@ -10,7 +10,8 @@ import openpyxl
 import io
 from fastapi import UploadFile, File
 
-from app.api.deps import get_db
+from app.api import deps
+get_db = deps.get_db
 from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory
 from app.schemas.basics import (
     PartnerCreate, PartnerResponse, PartnerUpdate,
