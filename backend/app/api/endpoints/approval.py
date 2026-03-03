@@ -312,63 +312,70 @@ async def process_approval(
 
 async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
     """결재 완료된 문서 기반 근태 기록 자동 생성"""
-    if doc.doc_type not in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
-        return
+    try:
+        if doc.doc_type not in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+            return
 
-    content = doc.content or {}
-    category = "SPECIAL"
-    record_date = datetime.now().date()
-    content_str = ""
-
-    if doc.doc_type == "VACATION":
-        v_type = content.get("vacation_type", "연차")
-        category = "HALF_DAY" if v_type == "반차" else "ANNUAL"
-        if v_type == "병가": category = "SICK"
+        from datetime import date
+        content = doc.content or {}
         
-        # 시작일 기준 기록 (기간인 경우 처리에 대한 고민 필요하나 일단 시작일 우선)
-        start_date_str = content.get("start_date")
-        if start_date_str:
-            record_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-        
-        content_str = f"[{v_type}] {content.get('reason', '')}"
-        if v_type == "반차":
-            content_str = f"[{v_type}-{content.get('half_day_type', '오전')}] {content.get('reason', '')}"
-
-    elif doc.doc_type == "EARLY_LEAVE":
-        e_type = content.get("type", "조퇴")
-        category = "EARLY_LEAVE" if e_type == "조퇴" else "OUTING"
-        date_str = content.get("date")
-        if date_str:
-            record_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        
-        time_str = content.get("time", "")
-        end_time_str = content.get("end_time", "")
-        content_str = f"[{e_type}] {time_str}"
-        if end_time_str:
-            content_str += f" ~ {end_time_str}"
-        content_str += f" | 사유: {content.get('reason', '')}"
-
-    elif doc.doc_type == "OVERTIME":
-        category = "OVERTIME"
-        date_str = content.get("date")
-        if date_str:
-            record_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        
-        s_time = content.get("start_time", "")
-        e_time = content.get("end_time", "")
-        w_type = content.get("work_type", "야근")
-        content_str = f"[{w_type}] {s_time} ~ {e_time} | 내용: {content.get('reason', '')}"
-
-    new_record = EmployeeTimeRecord(
-        staff_id=doc.author_id,
-        record_date=record_date,
-        category=category,
-        content=content_str,
-        status="APPROVED",
-        author_id=doc.author_id
-    )
-    db.add(new_record)
-    # commit은 호출 측에서 수행됨
+        if doc.doc_type == "VACATION":
+            start_date_str = content.get("start_date")
+            end_date_str = content.get("end_date")
+            if not start_date_str: return
+            start_date = date.fromisoformat(start_date_str)
+            end_date = date.fromisoformat(end_date_str) if end_date_str else start_date
+            v_type = content.get("vacation_type", "연차")
+            
+            # Simple loop for multi-day (using pandas for business day logic if available, or simple loop)
+            from datetime import timedelta
+            curr = start_date
+            while curr <= end_date:
+                # SKIP weekends (Saturday=5, Sunday=6)
+                if curr.weekday() < 5:
+                    record = EmployeeTimeRecord(
+                        staff_id=doc.author_id,
+                        record_date=curr,
+                        category="HALF_DAY" if v_type == "반차" else ("SICK" if v_type == "병가" else "ANNUAL"),
+                        content=f"{v_type} ({content.get('half_day_type', '')}) - {content.get('reason', '')}",
+                        author_id=doc.author_id,
+                        status="APPROVED"
+                    )
+                    db.add(record)
+                curr += timedelta(days=1)
+                
+        elif doc.doc_type == "EARLY_LEAVE":
+            date_str = content.get("date")
+            if not date_str: return
+            record_date = date.fromisoformat(date_str)
+            e_type = content.get("type", "조퇴")
+            record = EmployeeTimeRecord(
+                staff_id=doc.author_id,
+                record_date=record_date,
+                category="EARLY_LEAVE" if e_type == "조퇴" else "OUTING",
+                content=f"{e_type}: {content.get('time', '')} ~ {content.get('end_time', '')} - {content.get('reason', '')}",
+                author_id=doc.author_id,
+                status="APPROVED"
+            )
+            db.add(record)
+            
+        elif doc.doc_type == "OVERTIME":
+            date_str = content.get("date")
+            if not date_str: return
+            record_date = date.fromisoformat(date_str)
+            record = EmployeeTimeRecord(
+                staff_id=doc.author_id,
+                record_date=record_date,
+                category="OVERTIME",
+                content=f"연장근무: {content.get('start_time', '')} ~ {content.get('end_time', '')} - {content.get('reason', '')}",
+                author_id=doc.author_id,
+                status="APPROVED"
+            )
+            db.add(record)
+            
+        await db.flush()
+    except Exception as e:
+        print(f"Error creating attendance record: {e}")
 
 async def is_editable(doc: ApprovalDocument) -> bool:
     """문서가 수정/삭제 가능한 상태인지 확인 (PENDING, REJECTED 또는 자동 승인만 된 IN_PROGRESS)"""
@@ -505,4 +512,5 @@ async def delete_document(
     
     await db.delete(doc) # Cascade delete will handle steps
     await db.commit()
+    return {"message": "삭제되었습니다."}
     return {"message": "삭제되었습니다."}
