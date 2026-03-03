@@ -20,6 +20,7 @@ class Partner(Base):
     address = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
+    description = Column(String, nullable=True) # 비고
     attachment_file = Column(JSON, nullable=True) # List of {name, url} objects
     
     contacts = relationship("Contact", back_populates="partner", lazy="selectin", cascade="all, delete-orphan")

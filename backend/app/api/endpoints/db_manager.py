@@ -8,6 +8,7 @@ import pandas as pd
 import io
 import json
 import re
+import numpy as np
 from datetime import datetime
 
 from app.api import deps
@@ -33,7 +34,7 @@ TABLE_CONFIG = {
     },
     "partners": {
         "model": Partner,
-        "columns": ["업체명", "구분 (매출처/매입처/외주처)", "사업자번호", "대표자", "주소", "전화번호", "이메일"],
+        "columns": ["업체명", "구분 (매출처/매입처/외주처)", "사업자번호", "대표자", "주소", "전화번호", "이메일", "비고"],
         "mapping": {
             "업체명": "name",
             "구분 (매출처/매입처/외주처)": "partner_type",
@@ -41,7 +42,8 @@ TABLE_CONFIG = {
             "대표자": "representative",
             "주소": "address",
             "전화번호": "phone",
-            "이메일": "email"
+            "이메일": "email",
+            "비고": "description"
         }
     },
     "staff": {
@@ -438,8 +440,13 @@ async def upload_excel(
             try:
                 for excel_col, model_attr in mapping.items():
                     val = row.get(excel_col)
-                    if pd.isna(val): val = None
-                    elif isinstance(val, str): val = val.strip()
+                    
+                    # Robust NaN handling
+                    if pd.isna(val) or (isinstance(val, float) and np.isnan(val)):
+                        val = None
+                    elif isinstance(val, str):
+                        val = val.strip()
+                        if val == "" or val.lower() == "nan": val = None
                     
                     # Special parsing for Partners 구분
                     if table_name == "partners" and "구분" in excel_col:

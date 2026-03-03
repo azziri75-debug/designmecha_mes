@@ -9,7 +9,7 @@ class ContactBase(BaseModel):
     position: Optional[str] = None
     phone: Optional[str] = None
     mobile: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
 
 class ContactCreate(ContactBase):
     pass
@@ -27,13 +27,14 @@ class ContactResponse(ContactBase):
 # Partner Schemas
 class PartnerBase(BaseModel):
     name: str
-    partner_type: List[str] = ["CUSTOMER"]
+    partner_type: Optional[List[str]] = ["CUSTOMER"]
     registration_number: Optional[str] = None
     representative: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     attachment_file: Optional[List[dict]] = None # List of {name, url}
+    description: Optional[str] = None # 비고
 
 class PartnerCreate(PartnerBase):
     contacts: List[ContactCreate] = []
