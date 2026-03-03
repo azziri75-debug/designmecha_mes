@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, JSON, Date, DateTime, Text, Float, func
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, JSON, Date, DateTime, Text, Float, Time, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import enum
@@ -68,8 +68,8 @@ class Company(Base):
     registration_number = Column(String, nullable=True) # 사업자번호
     logo_image = Column(JSON, nullable=True) # {name, url}
     stamp_image = Column(JSON, nullable=True) # {name, url}
-    work_start_time = Column(String, default="08:30")
-    work_end_time = Column(String, default="17:30")
+    work_start_time = Column(Time, default="08:30")
+    work_end_time = Column(Time, default="17:30")
 
 class Equipment(Base):
     """공정 장비 (Master Data)"""

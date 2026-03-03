@@ -8,6 +8,7 @@ from pydantic import BaseModel
 import difflib
 import openpyxl
 import io
+from datetime import date, timedelta
 from fastapi import UploadFile, File
 
 from app.api import deps
@@ -752,7 +753,6 @@ async def get_my_attendance_summary(
             raise HTTPException(status_code=403, detail="Permission denied to view other workers' attendance.")
         target_worker_id = worker_id
 
-    from datetime import date
     now = date.today()
     target_year = year or now.year
     
@@ -766,7 +766,6 @@ async def get_my_attendance_summary(
         start_date = date(target_year, 1, 1)
         end_date = date(target_year, 12, 31)
     
-    from datetime import timedelta # Ensure timedelta is available
     
     # Fetch all records for the target user in the current year
     stmt = select(EmployeeTimeRecord).where(
