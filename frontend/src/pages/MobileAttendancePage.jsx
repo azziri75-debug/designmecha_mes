@@ -20,8 +20,8 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    Grid,
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import {
     ArrowBack as ArrowBackIcon,
     EventNote as EventNoteIcon,

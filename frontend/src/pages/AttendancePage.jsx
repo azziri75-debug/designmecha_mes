@@ -17,11 +17,12 @@ import {
     InputLabel,
     Select,
     MenuItem,
+    MenuItem,
     Chip,
-    Grid,
     Avatar,
     Divider
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import {
     EventNote as EventNoteIcon,
     BeachAccess as VacationIcon,
@@ -165,7 +166,7 @@ const AttendancePage = () => {
                                 <CardContent sx={{ p: 2 }}>
                                     <Typography variant="caption" color="textSecondary" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>조퇴/외출 시간</Typography>
                                     <Typography variant="h4" fontWeight="bold" sx={{ color: '#5b21b6', mt: 1 }}>
-                                        {summary.early_leave_hours + summary.outing_hours}h
+                                        {Number(summary.early_leave_hours || 0) + Number(summary.outing_hours || 0)}h
                                     </Typography>
                                 </CardContent>
                             </Card>

@@ -811,31 +811,49 @@ async def get_my_attendance_summary(
         "records": []
     }
     
+    # Aggregation in minutes for precision
+    early_leave_mins = 0
+    outing_mins = 0
+    overtime_mins = 0
+    extension_mins = 0
+    night_mins = 0
+    holiday_mins = 0
+    holiday_night_mins = 0
+    
     for r in records:
         if r.category == "ANNUAL": summary["annual_used"] += 1
         elif r.category == "HALF_DAY": summary["half_day_used"] += 1
         elif r.category == "SICK": summary["sick_used"] += 1
-        elif r.category == "EARLY_LEAVE": summary["early_leave_hours"] += (r.hours or 0)
-        elif r.category == "OUTING": summary["outing_hours"] += (r.hours or 0)
+        elif r.category == "EARLY_LEAVE": early_leave_mins += int((r.hours or 0) * 60)
+        elif r.category == "OUTING": outing_mins += int((r.hours or 0) * 60)
         elif r.category == "OVERTIME":
-            summary["overtime_hours"] += (r.hours or 0)
-            summary["extension_hours"] += (r.extension_hours or 0)
-            summary["night_hours"] += (r.night_hours or 0)
-            summary["holiday_hours"] += (r.holiday_hours or 0)
-            summary["holiday_night_hours"] += (r.holiday_night_hours or 0)
-        
+            overtime_mins += int((r.hours or 0) * 60)
+            extension_mins += int((r.extension_hours or 0) * 60)
+            night_mins += int((r.night_hours or 0) * 60)
+            holiday_mins += int((r.holiday_hours or 0) * 60)
+            holiday_night_mins += int((r.holiday_night_hours or 0) * 60)
+            
         summary["records"].append({
             "id": r.id,
             "date": r.record_date.isoformat(),
             "category": r.category,
             "content": r.content,
             "status": r.status,
-            "hours": r.hours,
-            "extension_hours": r.extension_hours,
-            "night_hours": r.night_hours,
-            "holiday_hours": r.holiday_hours,
-            "holiday_night_hours": r.holiday_night_hours
+            "hours": float(r.hours or 0),
+            "extension_hours": float(r.extension_hours or 0),
+            "night_hours": float(r.night_hours or 0),
+            "holiday_hours": float(r.holiday_hours or 0),
+            "holiday_night_hours": float(r.holiday_night_hours or 0)
         })
+
+    # Convert minutes back to hours (float) for the summary
+    summary["early_leave_hours"] = round(early_leave_mins / 60.0, 2)
+    summary["outing_hours"] = round(outing_mins / 60.0, 2)
+    summary["overtime_hours"] = round(overtime_mins / 60.0, 2)
+    summary["extension_hours"] = round(extension_mins / 60.0, 2)
+    summary["night_hours"] = round(night_mins / 60.0, 2)
+    summary["holiday_hours"] = round(holiday_mins / 60.0, 2)
+    summary["holiday_night_hours"] = round(holiday_night_mins / 60.0, 2)
 
     # Calculate Total Recognized Time
     total_standard_hours = 0.0

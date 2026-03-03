@@ -462,8 +462,12 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
                 
                 if t1_str:
                     def to_minutes(t_s):
+                        if not t_s: return 0
+                        # Handle HH:MM or HH:MM:SS
                         parts = t_s.split(':')
-                        return int(parts[0]) * 60 + int(parts[1])
+                        h = int(parts[0])
+                        m = int(parts[1]) if len(parts) > 1 else 0
+                        return h * 60 + m
                     
                     m1 = to_minutes(t1_str)
                     
@@ -485,7 +489,7 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
                         if comp:
                             if isinstance(comp.work_end_time, str):
                                 work_end_str = comp.work_end_time
-                            else:
+                            elif comp.work_end_time: # time object
                                 work_end_str = comp.work_end_time.strftime("%H:%M")
                         
                         m_end = to_minutes(work_end_str)
