@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -734,7 +734,9 @@ async def delete_instrument_history(inst_id: int, h_id: int, db: AsyncSession = 
 
 @router.get("/staff/me/attendance-summary")
 async def get_my_attendance_summary(
-    worker_id: Optional[int] = None,
+    worker_id: Optional[int] = Query(None),
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ):
@@ -751,9 +753,20 @@ async def get_my_attendance_summary(
         target_worker_id = worker_id
 
     from datetime import date
-    current_year = date.today().year
-    start_date = date(current_year, 1, 1)
-    end_date = date(current_year, 12, 31)
+    now = date.today()
+    target_year = year or now.year
+    
+    if month:
+        start_date = date(target_year, month, 1)
+        if month == 12:
+            end_date = date(target_year + 1, 1, 1) - timedelta(days=1)
+        else:
+            end_date = date(target_year, month + 1, 1) - timedelta(days=1)
+    else:
+        start_date = date(target_year, 1, 1)
+        end_date = date(target_year, 12, 31)
+    
+    from datetime import timedelta # Ensure timedelta is available
     
     # Fetch all records for the target user in the current year
     stmt = select(EmployeeTimeRecord).where(
@@ -767,7 +780,8 @@ async def get_my_attendance_summary(
     
     # Basic aggregation
     summary = {
-        "year": current_year,
+        "year": target_year,
+        "month": month,
         "annual_used": 0,
         "half_day_used": 0,
         "sick_used": 0,

@@ -37,6 +37,10 @@ const AttendancePage = () => {
     const [loading, setLoading] = useState(false);
     const [summary, setSummary] = useState(null);
     const [staffList, setStaffList] = useState([]);
+
+    const now = new Date();
+    const [year, setYear] = useState(now.getFullYear());
+    const [month, setMonth] = useState(now.getMonth() + 1);
     const [selectedWorkerId, setSelectedWorkerId] = useState(user?.id);
 
     useEffect(() => {
@@ -45,16 +49,19 @@ const AttendancePage = () => {
         if (user.user_type === 'ADMIN') {
             fetchStaffList();
         }
-    }, [selectedWorkerId]);
+    }, [selectedWorkerId, year, month]);
 
     const fetchAttendanceSummary = async () => {
         setLoading(true);
         try {
-            const url = user.user_type === 'ADMIN' && selectedWorkerId !== user.id
-                ? `/basics/staff/me/attendance-summary?worker_id=${selectedWorkerId}`
-                : `/basics/staff/me/attendance-summary`;
+            const queryParams = new URLSearchParams();
+            if (year) queryParams.append('year', year);
+            if (month) queryParams.append('month', month);
+            if (user.user_type === 'ADMIN' && selectedWorkerId !== user.id) {
+                queryParams.append('worker_id', selectedWorkerId);
+            }
 
-            const res = await api.get(url);
+            const res = await api.get(`/basics/staff/me/attendance-summary?${queryParams.toString()}`);
             setSummary(res.data);
         } catch (err) {
             console.error('Attendance fetch error:', err);
@@ -84,16 +91,46 @@ const AttendancePage = () => {
 
     return (
         <Box sx={{ p: 4, maxWidth: 1200, mx: 'auto' }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
-                <Typography variant="h5" fontWeight="bold">근태 및 휴가 관리</Typography>
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 4 }}>
+                <Typography variant="h5" fontWeight="bold" sx={{ mr: 'auto' }}>근태 및 휴가 관리</Typography>
+
+                <Stack direction="row" spacing={1}>
+                    <FormControl size="small" sx={{ minWidth: 100 }}>
+                        <Select
+                            value={year}
+                            onChange={e => setYear(e.target.value)}
+                            sx={{ bgcolor: '#fff' }}
+                        >
+                            {[2024, 2025, 2026].map(y => <MenuItem key={y} value={y}>{y}년</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 80 }}>
+                        <Select
+                            value={month}
+                            onChange={e => setMonth(e.target.value)}
+                            displayEmpty
+                            sx={{ bgcolor: '#fff' }}
+                        >
+                            <MenuItem value="">전체 월</MenuItem>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                <MenuItem key={m} value={m}>{m}월</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Stack>
 
                 {user?.user_type === 'ADMIN' && (
                     <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel>대상 사원 선택</InputLabel>
+                        <InputLabel id="worker-select-label">대상 사원 선택</InputLabel>
                         <Select
+                            labelId="worker-select-label"
                             value={selectedWorkerId}
                             label="대상 사원 선택"
                             onChange={e => setSelectedWorkerId(e.target.value)}
+                            sx={{
+                                bgcolor: '#fff',
+                                '& .MuiSelect-select': { color: '#000' }
+                            }}
                         >
                             {staffList.map(s => (
                                 <MenuItem key={s.id} value={s.id}>{s.name} ({s.role})</MenuItem>

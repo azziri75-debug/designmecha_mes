@@ -38,9 +38,11 @@ import { useNavigate } from 'react-router-dom';
 const MobileAttendancePage = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [summary, setSummary] = useState(null);
     const [staffList, setStaffList] = useState([]);
+
+    const now = new Date();
+    const [year, setYear] = useState(now.getFullYear());
+    const [month, setMonth] = useState(now.getMonth() + 1);
     const [selectedWorkerId, setSelectedWorkerId] = useState(user?.id);
 
     useEffect(() => {
@@ -49,19 +51,19 @@ const MobileAttendancePage = () => {
         if (user.user_type === 'ADMIN') {
             fetchStaffList();
         }
-    }, [selectedWorkerId]);
+    }, [selectedWorkerId, year, month]);
 
     const fetchAttendanceSummary = async () => {
         setLoading(true);
         try {
-            // For admin, we can pass worker_id to get someone else's summary
-            // but the endpoint needs to support it. I'll update it later if needed.
-            // For now, let's assume it's personal.
-            const url = user.user_type === 'ADMIN' && selectedWorkerId !== user.id
-                ? `/basics/staff/me/attendance-summary?worker_id=${selectedWorkerId}` // need to ensure backend handles this
-                : `/basics/staff/me/attendance-summary`;
+            const queryParams = new URLSearchParams();
+            if (year) queryParams.append('year', year);
+            if (month) queryParams.append('month', month);
+            if (user.user_type === 'ADMIN' && selectedWorkerId !== user.id) {
+                queryParams.append('worker_id', selectedWorkerId);
+            }
 
-            const res = await api.get(url);
+            const res = await api.get(`/basics/staff/me/attendance-summary?${queryParams.toString()}`);
             setSummary(res.data);
         } catch (err) {
             console.error('Attendance fetch error:', err);
@@ -118,11 +120,35 @@ const MobileAttendancePage = () => {
             </AppBar>
 
             <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
-                {user.user_type === 'ADMIN' && (
-                    <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
+                <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
+                    <Stack direction="row" spacing={1} sx={{ mb: user.user_type === 'ADMIN' ? 1.5 : 0 }}>
                         <FormControl size="small" fullWidth>
-                            <InputLabel>대상 사원 선택</InputLabel>
                             <Select
+                                value={year}
+                                onChange={e => setYear(e.target.value)}
+                            >
+                                {[2024, 2025, 2026].map(y => <MenuItem key={y} value={y}>{y}년</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                        <FormControl size="small" fullWidth>
+                            <Select
+                                value={month}
+                                onChange={e => setMonth(e.target.value)}
+                                displayEmpty
+                            >
+                                <MenuItem value="">전체 월</MenuItem>
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                    <MenuItem key={m} value={m}>{m}월</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Stack>
+
+                    {user.user_type === 'ADMIN' && (
+                        <FormControl size="small" fullWidth>
+                            <InputLabel id="worker-select-label">대상 사원 선택</InputLabel>
+                            <Select
+                                labelId="worker-select-label"
                                 value={selectedWorkerId}
                                 label="대상 사원 선택"
                                 onChange={e => setSelectedWorkerId(e.target.value)}
@@ -132,8 +158,8 @@ const MobileAttendancePage = () => {
                                 ))}
                             </Select>
                         </FormControl>
-                    </Paper>
-                )}
+                    )}
+                </Paper>
 
                 {loading && !summary ? (
                     <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress size={24} /></Box>
