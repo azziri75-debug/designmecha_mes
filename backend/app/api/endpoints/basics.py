@@ -276,6 +276,95 @@ async def merge_partners(
     
     return {"message": "Merge successful"}
 
+# --- Partner Deduplication & Smart Merge ---
+
+@router.get("/partners/duplicates")
+async def get_partner_duplicates(
+    db: AsyncSession = Depends(get_db)
+):
+    # Fetch all partners
+    result = await db.execute(select(Partner))
+    partners = result.scalars().all()
+    
+    # Simple deduplication: group by name (fuzzy)
+    groups = []
+    processed_ids = set()
+    
+    # Pre-calculate names for difflib
+    id_to_partner = {p.id: p for p in partners}
+    
+    for p in partners:
+        if p.id in processed_ids:
+            continue
+            
+        group = [p]
+        processed_ids.add(p.id)
+        
+        # Look for similar names among UNPROCESSED partners
+        others = [op for op in partners if op.id not in processed_ids]
+        if not others:
+            continue
+            
+        other_names = [op.name for op in others]
+        
+        # cutoff=0.85 for strong similarity (e.g. "A사" and "A사(주)")
+        matches = difflib.get_close_matches(p.name, other_names, n=10, cutoff=0.8)
+        
+        for m in matches:
+            matched_p = next((op for op in others if op.name == m), None)
+            if matched_p and matched_p.id not in processed_ids:
+                group.append(matched_p)
+                processed_ids.add(matched_p.id)
+        
+        if len(group) > 1:
+            groups.append([
+                {"id": gp.id, "name": gp.name, "registration_number": gp.registration_number, "representative": gp.representative} 
+                for gp in group
+            ])
+            
+    return groups
+
+class SmartMergeRequest(BaseModel):
+    master_id: int
+    source_ids: List[int]
+
+@router.post("/partners/merge-smart")
+async def merge_partners_smart(
+    req: SmartMergeRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    master = await db.get(Partner, req.master_id)
+    if not master:
+        raise HTTPException(status_code=404, detail="Master partner not found")
+        
+    from app.models.product import Product
+    from app.models.purchasing import PurchaseOrder, OutsourcingOrder
+    from app.models.inventory import StockProduction
+    from app.models.sales import Estimate, SalesOrder
+    from sqlalchemy import update
+    
+    for source_id in req.source_ids:
+        if source_id == req.master_id:
+            continue
+            
+        source = await db.get(Partner, source_id)
+        if not source:
+            continue
+            
+        # Update references in ALL related models
+        await db.execute(update(Product).where(Product.partner_id == source_id).values(partner_id=req.master_id))
+        await db.execute(update(PurchaseOrder).where(PurchaseOrder.partner_id == source_id).values(partner_id=req.master_id))
+        await db.execute(update(OutsourcingOrder).where(OutsourcingOrder.partner_id == source_id).values(partner_id=req.master_id))
+        await db.execute(update(StockProduction).where(StockProduction.partner_id == source_id).values(partner_id=req.master_id))
+        await db.execute(update(Estimate).where(Estimate.partner_id == source_id).values(partner_id=req.master_id))
+        await db.execute(update(SalesOrder).where(SalesOrder.partner_id == source_id).values(partner_id=req.master_id))
+        
+        # Delete source
+        await db.delete(source)
+        
+    await db.commit()
+    return {"message": f"Successfully merged items into {master.name}"}
+
 # --- Staff Endpoints ---
 @router.post("/staff/", response_model=StaffResponse)
 async def create_staff(

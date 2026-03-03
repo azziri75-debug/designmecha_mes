@@ -38,18 +38,26 @@ class PurchaseOrder(Base):
 
     @property
     def related_sales_order_info(self):
-        so_numbers = set()
+        codes = set()
         for item in self.items:
-            if item.production_plan_item and item.production_plan_item.plan and item.production_plan_item.plan.order:
-                so_numbers.add(item.production_plan_item.plan.order.order_no)
-        return ", ".join(sorted(so_numbers)) if so_numbers else None
+            if item.production_plan_item and item.production_plan_item.plan:
+                plan = item.production_plan_item.plan
+                if plan.order:
+                    codes.add(plan.order.order_no)
+                elif plan.stock_production:
+                    codes.add(plan.stock_production.production_no)
+        return ", ".join(sorted(codes)) if codes else None
 
     @property
     def related_customer_names(self):
         names = set()
         for item in self.items:
-            if item.production_plan_item and item.production_plan_item.plan and item.production_plan_item.plan.order and item.production_plan_item.plan.order.partner:
-                names.add(item.production_plan_item.plan.order.partner.name)
+            if item.production_plan_item and item.production_plan_item.plan:
+                plan = item.production_plan_item.plan
+                if plan.order and plan.order.partner:
+                    names.add(plan.order.partner.name)
+                elif plan.stock_production:
+                    names.add("사내 재고용")
         return ", ".join(sorted(names)) if names else None
 
 class PurchaseOrderItem(Base):
@@ -91,18 +99,26 @@ class OutsourcingOrder(Base):
 
     @property
     def related_sales_order_info(self):
-        so_numbers = set()
+        codes = set()
         for item in self.items:
-            if item.production_plan_item and item.production_plan_item.plan and item.production_plan_item.plan.order:
-                so_numbers.add(item.production_plan_item.plan.order.order_no)
-        return ", ".join(sorted(so_numbers)) if so_numbers else None
+            if item.production_plan_item and item.production_plan_item.plan:
+                plan = item.production_plan_item.plan
+                if plan.order:
+                    codes.add(plan.order.order_no)
+                elif plan.stock_production:
+                    codes.add(plan.stock_production.production_no)
+        return ", ".join(sorted(codes)) if codes else None
 
     @property
     def related_customer_names(self):
         names = set()
         for item in self.items:
-            if item.production_plan_item and item.production_plan_item.plan and item.production_plan_item.plan.order and item.production_plan_item.plan.order.partner:
-                names.add(item.production_plan_item.plan.order.partner.name)
+            if item.production_plan_item and item.production_plan_item.plan:
+                plan = item.production_plan_item.plan
+                if plan.order and plan.order.partner:
+                    names.add(plan.order.partner.name)
+                elif plan.stock_production:
+                    names.add("사내 재고용")
         return ", ".join(sorted(names)) if names else None
 
 class OutsourcingOrderItem(Base):

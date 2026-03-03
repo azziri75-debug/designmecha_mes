@@ -31,14 +31,22 @@ async def read_stocks(db: AsyncSession = Depends(get_db)):
     # Calculate production breakdown for each stock
     for stock in stocks:
         # 1. Producing SO (Sales Order driven)
-        # Sum of quantity from ProductionPlanItems linked to an Order via ProductionPlan
-        so_query = select(func.sum(ProductionPlanItem.quantity)).join(ProductionPlan)\
-            .where(ProductionPlanItem.product_id == stock.product_id)\
-            .where(ProductionPlan.order_id.is_not(None))\
-            .where(ProductionPlanItem.status != 'COMPLETED')
+        # We need to sum the quantity per UNIQUE ProductionPlanItem group (plan_id)
+        # to avoid double-counting multiple processes for the same production.
+        from sqlalchemy import select, func
+        
+        subq = select(
+            ProductionPlanItem.plan_id,
+            func.max(ProductionPlanItem.quantity).label("qty")
+        ).join(ProductionPlan)\
+         .where(ProductionPlanItem.product_id == stock.product_id)\
+         .where(ProductionPlan.order_id.is_not(None))\
+         .where(ProductionPlanItem.status != 'COMPLETED')\
+         .group_by(ProductionPlanItem.plan_id).subquery()
+        
+        so_query = select(func.sum(subq.c.qty))
         
         # 2. Producing SP (Stock Production driven)
-        # Sum of quantity from StockProductions
         sp_query = select(func.sum(StockProduction.quantity))\
             .where(StockProduction.product_id == stock.product_id)\
             .where(StockProduction.status != 'COMPLETED')

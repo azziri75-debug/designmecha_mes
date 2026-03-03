@@ -94,10 +94,10 @@ const BasicsPageContent = () => {
     const [expandedPartnerId, setExpandedPartnerId] = useState(null);
     const [expandedEquipmentId, setExpandedEquipmentId] = useState(null);
     const [expandedInstrumentId, setExpandedInstrumentId] = useState(null);
-    const [showUploadModal, setShowUploadModal] = useState(false);
-    const [showMergeModal, setShowMergeModal] = useState(false);
-    const [uploadItems, setUploadItems] = useState([]);
-    const [uploadLoading, setUploadLoading] = useState(false);
+    const [duplicateGroups, setDuplicateGroups] = useState([]);
+    const [showSmartMergeModal, setShowSmartMergeModal] = useState(false);
+    const [selectedMasterId, setSelectedMasterId] = useState(null);
+    const [mergeLoading, setMergeLoading] = useState(false);
     const [mergeSource, setMergeSource] = useState(null);
     const [mergeTarget, setMergeTarget] = useState(null);
 
@@ -107,8 +107,20 @@ const BasicsPageContent = () => {
     // Filter State
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'CUSTOMER', 'SUPPLIER', 'SUBCONTRACTOR'
 
+    const checkDuplicates = async () => {
+        try {
+            const res = await api.get('/basics/partners/duplicates');
+            setDuplicateGroups(res.data || []);
+        } catch (error) {
+            console.error("Failed to check duplicates", error);
+        }
+    };
+
     useEffect(() => {
         fetchData();
+        if (activeTab === 'partners') {
+            checkDuplicates();
+        }
     }, [activeTab]);
 
     const fetchData = async () => {
@@ -502,27 +514,40 @@ const BasicsPageContent = () => {
                         측정기 관리
                     </button>
                 </div>
-                <div className="flex items-center gap-2">
-                    {activeTab === 'partners' && (
-                        <button
-                            type="button"
-                            onClick={() => setShowUploadModal(true)}
-                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-emerald-900/20"
-                        >
-                            <Upload className="w-4 h-4" />
-                            <span>Excel 업로드</span>
-                        </button>
-                    )}
+                <button
+                    type="button"
+                    onClick={openCreateModal}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20"
+                >
+                    <Plus className="w-4 h-4" />
+                    <span>신규 등록</span>
+                </button>
+            </div>
+            {activeTab === 'partners' && duplicateGroups.length > 0 && (
+                <div className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border border-yellow-500/30 rounded-xl p-5 flex items-center justify-between shadow-xl shadow-yellow-900/20 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-yellow-500/20 p-3 rounded-full border border-yellow-500/40">
+                            <MoreHorizontal className="w-6 h-6 text-yellow-500" />
+                        </div>
+                        <div>
+                            <h4 className="text-base font-bold text-yellow-500 flex items-center gap-2">
+                                <span>⚠️ 중복 의심 거래처가 발견되었습니다</span>
+                            </h4>
+                            <p className="text-sm text-yellow-500/80 mt-0.5">DB에 {duplicateGroups.length}그룹의 유사한 거래처가 감지되었습니다. 데이터를 통합하시겠습니까?</p>
+                        </div>
+                    </div>
                     <button
-                        type="button"
-                        onClick={openCreateModal}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20"
+                        onClick={() => {
+                            setSelectedMasterId(null);
+                            setShowSmartMergeModal(true);
+                        }}
+                        className="bg-yellow-600 hover:bg-yellow-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg shadow-yellow-900/40 hover:scale-105 active:scale-95"
                     >
-                        <Plus className="w-4 h-4" />
-                        <span>신규 등록</span>
+                        스마트 병합 도구 열기
                     </button>
                 </div>
-            </div>
+            )
+            }
 
             <Card>
                 <div className="p-4 border-b border-gray-700 flex flex-col md:flex-row items-center gap-4 justify-between">
@@ -558,13 +583,6 @@ const BasicsPageContent = () => {
                                     </button>
                                 ))}
                             </div>
-                            <button
-                                onClick={() => setShowMergeModal(true)}
-                                className="px-3 py-2 text-xs font-medium text-yellow-500 hover:bg-yellow-500/10 rounded-lg transition-colors flex items-center gap-2 border border-yellow-500/20"
-                            >
-                                <MoreHorizontal className="w-3 h-3" />
-                                <span>데이터 병합</span>
-                            </button>
                         </div>
                     )}
                 </div>
@@ -1761,226 +1779,118 @@ const BasicsPageContent = () => {
                 )
             }
 
-            {/* Partner Upload Modal */}
-            {showUploadModal && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-                        <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/50">
-                            <div>
-                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                    <Upload className="w-5 h-5 text-emerald-400" />
-                                    거래처 Excel 업로드
-                                </h2>
-                                <p className="text-xs text-gray-400">Excel 파일을 업로드하고 기존 데이터와 매핑하세요.</p>
+            {/* Smart Merge Modal (N:1) */}
+            {
+                showSmartMergeModal && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
+                        <div className="bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 w-full max-w-4xl flex flex-col my-8">
+                            <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-800/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-yellow-400/10 rounded-xl border border-yellow-400/20">
+                                        <MoreHorizontal className="w-6 h-6 text-yellow-400" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-white">스마트 데이터 병합</h2>
+                                        <p className="text-xs text-gray-400 mt-0.5">이름이 유사한 거래처들을 하나의 마스터 데이터로 통합합니다.</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowSmartMergeModal(false)} className="p-2 hover:bg-gray-700 rounded-full transition-colors text-gray-400">
+                                    <X className="w-6 h-6" />
+                                </button>
                             </div>
-                            <button onClick={() => { setShowUploadModal(false); setUploadItems([]); }} className="p-2 hover:bg-gray-700 rounded-full transition-colors text-gray-400">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
 
-                        <div className="flex-1 overflow-y-auto p-6">
-                            {uploadItems.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-gray-700 rounded-xl bg-gray-900/50">
-                                    <Upload className="w-12 h-12 text-gray-600 mb-4" />
-                                    <p className="text-gray-400 mb-4 text-center">
-                                        Partner Excel 파일을 선택하세요.<br />
-                                        <span className="text-xs text-gray-500">(상호, 사업자번호, 대표자, 주소, 전화, 이메일, 유형, 비고 순서)</span>
-                                    </p>
-                                    <label className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg cursor-pointer transition-colors shadow-lg shadow-blue-900/40">
-                                        파일 선택
-                                        <input
-                                            type="file"
-                                            className="hidden"
-                                            accept=".xlsx, .xls"
-                                            onChange={async (e) => {
-                                                const file = e.target.files[0];
-                                                if (file) {
-                                                    setUploadLoading(true);
-                                                    const formData = new FormData();
-                                                    formData.append('file', file);
-                                                    try {
-                                                        const res = await api.post('/basics/partners/upload/validate', formData);
-                                                        setUploadItems(res.data.map(item => ({
-                                                            ...item,
-                                                            action: item.status === 'MATCH' ? 'MAP' : 'CREATE'
-                                                        })));
-                                                    } catch (err) {
-                                                        alert("파일 분석 실패: " + err.message);
-                                                    } finally {
-                                                        setUploadLoading(false);
+                            <div className="p-6 overflow-y-auto max-h-[60vh] space-y-8">
+                                {duplicateGroups.map((group, groupIdx) => (
+                                    <div key={groupIdx} className="bg-gray-900/50 border border-gray-700 rounded-2xl overflow-hidden shadow-inner">
+                                        <div className="bg-gray-800/80 px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">중복 그룹 #{groupIdx + 1}</span>
+                                            <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded-full border border-yellow-500/20 font-bold">감지됨</span>
+                                        </div>
+                                        <div className="divide-y divide-gray-800">
+                                            {group.map((p) => {
+                                                const isMaster = selectedMasterId === p.id;
+                                                return (
+                                                    <div
+                                                        key={p.id}
+                                                        className={cn(
+                                                            "p-4 flex items-center justify-between transition-all cursor-pointer group",
+                                                            isMaster ? "bg-blue-600/10" : "hover:bg-gray-800/50"
+                                                        )}
+                                                        onClick={() => setSelectedMasterId(p.id)}
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={cn(
+                                                                "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                                                                isMaster ? "border-blue-500 bg-blue-500" : "border-gray-600 group-hover:border-gray-500"
+                                                            )}>
+                                                                {isMaster && <div className="w-2 h-2 bg-white rounded-full" />}
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-bold text-white flex items-center gap-2">
+                                                                    {p.name}
+                                                                    {isMaster && <span className="text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded">MASTER</span>}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500 flex items-center gap-3 mt-1">
+                                                                    <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {p.registration_number || '번호 없음'}</span>
+                                                                    <span className="flex items-center gap-1"><User className="w-3 h-3" /> {p.representative || '대표 없음'}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        {!isMaster && (
+                                                            <span className="text-xs text-red-400/50 group-hover:text-red-400 transition-colors">병합 후 삭제됨</span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="p-4 bg-gray-800/30 flex justify-end">
+                                            <button
+                                                disabled={mergeLoading || !selectedMasterId || !group.some(p => p.id === selectedMasterId)}
+                                                onClick={async () => {
+                                                    const master = group.find(p => p.id === selectedMasterId);
+                                                    const sources = group.filter(p => p.id !== selectedMasterId);
+                                                    if (window.confirm(`${sources.length}개의 거래처를 ${master.name}으로 통합하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
+                                                        setMergeLoading(true);
+                                                        try {
+                                                            await api.post('/basics/partners/merge-smart', {
+                                                                master_id: master.id,
+                                                                source_ids: sources.map(s => s.id)
+                                                            });
+                                                            alert("성공적으로 병합되었습니다.");
+                                                            checkDuplicates();
+                                                            fetchData();
+                                                            setSelectedMasterId(null);
+                                                        } catch (err) {
+                                                            alert("병합 실패: " + err.message);
+                                                        } finally {
+                                                            setMergeLoading(false);
+                                                        }
                                                     }
-                                                }
-                                            }}
-                                        />
-                                    </label>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg mb-4">
-                                        <p className="text-sm text-blue-400">
-                                            총 {uploadItems.length}개의 데이터가 감지되었습니다. <br />
-                                            동일하거나 비슷한 상호는 '매핑'으로 자동 설정되었습니다.
-                                        </p>
+                                                }}
+                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
+                                            >
+                                                {mergeLoading ? "처리 중..." : "이 그룹 병합하기"}
+                                            </button>
+                                        </div>
                                     </div>
-
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-gray-900 text-gray-400 sticky top-0">
-                                                <tr>
-                                                    <th className="px-4 py-2 w-[50px]">행</th>
-                                                    <th className="px-4 py-2">Excel 상호</th>
-                                                    <th className="px-4 py-2">상태</th>
-                                                    <th className="px-4 py-2">처리 방식</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-700">
-                                                {uploadItems.map((item, idx) => (
-                                                    <tr key={idx} className="hover:bg-gray-700/30">
-                                                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">{item.excel_row}</td>
-                                                        <td className="px-4 py-3 text-white font-medium">{item.data.name}</td>
-                                                        <td className="px-4 py-3">
-                                                            {item.status === 'MATCH' && <span className="text-blue-400 font-medium">일치 데이터 존재</span>}
-                                                            {item.status === 'SIMILAR' && <span className="text-yellow-400 font-medium">유사 데이터 ({item.matched_partner_name})</span>}
-                                                            {item.status === 'NEW' && <span className="text-emerald-400 font-medium">신규</span>}
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <select
-                                                                className="bg-gray-900 border border-gray-600 text-white text-xs rounded px-2 py-1 outline-none"
-                                                                value={item.action}
-                                                                onChange={(e) => {
-                                                                    const newItems = [...uploadItems];
-                                                                    newItems[idx].action = e.target.value;
-                                                                    setUploadItems(newItems);
-                                                                }}
-                                                            >
-                                                                <option value="CREATE">신규 등록</option>
-                                                                <option value="MAP" disabled={!item.matched_partner_id}>
-                                                                    {item.matched_partner_name ? `${item.matched_partner_name}로 매핑` : '매핑할 데이터 없음'}
-                                                                </option>
-                                                                <option value="SKIP">건너뛰기</option>
-                                                            </select>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="p-4 border-t border-gray-700 flex justify-end gap-3 bg-gray-800/50">
-                            <button
-                                onClick={() => { setShowUploadModal(false); setUploadItems([]); }}
-                                className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-                            >
-                                취소
-                            </button>
-                            <button
-                                disabled={uploadItems.length === 0 || uploadLoading}
-                                onClick={async () => {
-                                    setUploadLoading(true);
-                                    try {
-                                        const res = await api.post('/basics/partners/upload/finalize', uploadItems.filter(i => i.action !== 'SKIP').map(i => ({
-                                            action: i.action,
-                                            data: i.data,
-                                            partner_id: i.matched_partner_id
-                                        })));
-                                        alert(`${res.data.created}건 생성, ${res.data.mapped}건 매핑 완료.`);
-                                        setShowUploadModal(false);
-                                        setUploadItems([]);
-                                        fetchData();
-                                    } catch (err) {
-                                        alert("업로드 실패: " + err.message);
-                                    } finally {
-                                        setUploadLoading(false);
-                                    }
-                                }}
-                                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all shadow-lg shadow-blue-900/40 disabled:opacity-50"
-                            >
-                                {uploadLoading ? "처리 중..." : "업로드 완료"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Partner Merge Modal */}
-            {showMergeModal && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-                    <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 w-full max-w-lg p-6">
-                        <div className="flex items-center gap-3 mb-6 text-yellow-400">
-                            <div className="p-2 bg-yellow-400/10 rounded-full">
-                                <MoreHorizontal className="w-6 h-6" />
+                                ))}
                             </div>
-                            <h2 className="text-xl font-bold">거래처 데이터 병합</h2>
-                        </div>
 
-                        <div className="space-y-6">
-                            <p className="text-sm text-gray-400 leading-relaxed">
-                                두 거래처의 데이터를 하나로 합칩니다. <br />
-                                <span className="text-white font-bold">원본 거래처</span>의 모든 이력(수주, 발주, 제품)이 <span className="text-blue-400 font-bold">대상 거래처</span>로 옮겨지고, 원본은 삭제됩니다.
-                            </p>
-
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-                                    <label className="text-[10px] uppercase font-bold text-red-400 block mb-1">삭제될 거래처 (원본)</label>
-                                    <select
-                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
-                                        value={mergeSource?.id || ''}
-                                        onChange={(e) => setMergeSource(partners.find(p => p.id === parseInt(e.target.value)))}
-                                    >
-                                        <option value="">거래처 선택...</option>
-                                        {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                    </select>
-                                </div>
-
-                                <div className="flex justify-center text-gray-600">
-                                    <X className="w-5 h-5 rotate-45" />
-                                </div>
-
-                                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-                                    <label className="text-[10px] uppercase font-bold text-blue-400 block mb-1">유지될 거래처 (대상)</label>
-                                    <select
-                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={mergeTarget?.id || ''}
-                                        onChange={(e) => setMergeTarget(partners.find(p => p.id === parseInt(e.target.value)))}
-                                    >
-                                        <option value="">거래처 선택...</option>
-                                        {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                    </select>
-                                </div>
+                            <div className="p-6 border-t border-gray-700 bg-gray-800/50 flex justify-between items-center">
+                                <p className="text-xs text-gray-500">
+                                    💡 마스터로 지정된 거래처가 유지되며, 나머지 거래처의 이력은 마스터로 이관됩니다.
+                                </p>
+                                <button
+                                    onClick={() => setShowSmartMergeModal(false)}
+                                    className="px-6 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 transition-all border border-transparent hover:border-gray-600"
+                                >
+                                    닫기
+                                </button>
                             </div>
                         </div>
-
-                        <div className="mt-8 flex gap-3">
-                            <button onClick={() => setShowMergeModal(false)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
-                                취소
-                            </button>
-                            <button
-                                disabled={!mergeSource || !mergeTarget || mergeSource.id === mergeTarget.id}
-                                onClick={async () => {
-                                    if (window.confirm(`${mergeSource.name}의 모든 데이터를 ${mergeTarget.name}으로 통합하고 ${mergeSource.name}을 삭제하시겠습니까?`)) {
-                                        try {
-                                            await api.post('/basics/partners/merge', null, {
-                                                params: { source_id: mergeSource.id, target_id: mergeTarget.id }
-                                            });
-                                            alert("병합 완료되었습니다.");
-                                            setShowMergeModal(false);
-                                            fetchData();
-                                        } catch (err) {
-                                            alert("병합 실패: " + err.message);
-                                        }
-                                    }
-                                }}
-                                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold transition-all shadow-lg shadow-blue-900/40 disabled:opacity-50"
-                            >
-                                병합 실행
-                            </button>
-                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* File Viewer Modal - Portaled to body */}
             <FileViewerModal

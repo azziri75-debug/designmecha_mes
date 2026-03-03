@@ -277,23 +277,10 @@ async def read_purchase_orders(
     
     # Calculate related info and process names
     for po in pos:
-        sales_order_nos = set()
-        customer_names = set()
         for item in po.items:
             if item.production_plan_item:
                 plan_item = item.production_plan_item
                 item.process_name = plan_item.process_name
-                if plan_item.plan:
-                    if plan_item.plan.order:
-                        sales_order_nos.add(plan_item.plan.order.order_no)
-                        if plan_item.plan.order.partner:
-                            customer_names.add(plan_item.plan.order.partner.name)
-                    elif plan_item.plan.stock_production:
-                        sales_order_nos.add(plan_item.plan.stock_production.production_no)
-                        customer_names.add("사내 재고용")
-        
-        po.related_sales_order_info = ", ".join(list(sales_order_nos))
-        po.related_customer_names = ", ".join(list(customer_names))
     
     return pos
 
@@ -541,25 +528,11 @@ async def read_outsourcing_orders(
     result = await db.execute(query)
     oos = result.scalars().all()
     
-    # Calculate related info and process names
     for oo in oos:
-        sales_order_nos = set()
-        customer_names = set()
         for item in oo.items:
             if item.production_plan_item:
                 plan_item = item.production_plan_item
                 item.process_name = plan_item.process_name
-                if plan_item.plan:
-                    if plan_item.plan.order:
-                        sales_order_nos.add(plan_item.plan.order.order_no)
-                        if plan_item.plan.order.partner:
-                            customer_names.add(plan_item.plan.order.partner.name)
-                    elif plan_item.plan.stock_production:
-                        sales_order_nos.add(plan_item.plan.stock_production.production_no)
-                        customer_names.add("사내 재고용")
-        
-        oo.related_sales_order_info = ", ".join(list(sales_order_nos))
-        oo.related_customer_names = ", ".join(list(customer_names))
     
     return oos
 
