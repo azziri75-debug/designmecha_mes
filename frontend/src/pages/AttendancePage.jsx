@@ -147,55 +147,64 @@ const AttendancePage = () => {
             ) : summary ? (
                 <Stack spacing={4}>
                     {/* Summary Cards */}
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3 }}>
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3 }}>
-                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #1e40af' }}>
-                                <CardContent>
-                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">연차 사용</Typography>
+                    {/* Attendance summary cards */}
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6} md={2.4}>
+                            <Card sx={{ height: '100%', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #1e40af', minWidth: 160 }}>
+                                <CardContent sx={{ p: 2 }}>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>연차 사용</Typography>
                                     <Typography variant="h4" fontWeight="bold" sx={{ color: '#1e40af', mt: 1 }}>
                                         {summary.annual_used + (summary.half_day_used * 0.5)}일
                                     </Typography>
                                 </CardContent>
                             </Card>
-                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #5b21b6' }}>
-                                <CardContent>
-                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">조퇴/외출 시간</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={2.4}>
+                            <Card sx={{ height: '100%', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #5b21b6', minWidth: 160 }}>
+                                <CardContent sx={{ p: 2 }}>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>조퇴/외출 시간</Typography>
                                     <Typography variant="h4" fontWeight="bold" sx={{ color: '#5b21b6', mt: 1 }}>
                                         {summary.early_leave_hours + summary.outing_hours}h
                                     </Typography>
                                 </CardContent>
                             </Card>
-                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #f59e0b' }}>
-                                <CardContent>
-                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">연장/특근 합계</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={2.4}>
+                            <Card sx={{ height: '100%', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #f59e0b', minWidth: 160 }}>
+                                <CardContent sx={{ p: 2 }}>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>연장/특근 합계</Typography>
                                     <Typography variant="h4" fontWeight="bold" sx={{ color: '#92400e', mt: 1 }}>
                                         {summary.overtime_hours}h
                                     </Typography>
                                     <Box sx={{ mt: 1 }}>
-                                        <Typography variant="caption" display="block" color="textSecondary">연장: {summary.extension_hours}h / 야간: {summary.night_hours}h</Typography>
-                                        <Typography variant="caption" display="block" color="textSecondary">휴일: {summary.holiday_hours}h / 휴야: {summary.holiday_night_hours}h</Typography>
+                                        <Typography variant="caption" display="block" color="textSecondary" sx={{ fontSize: '0.65rem' }}>연장: {summary.extension_hours}h / 야간: {summary.night_hours}h</Typography>
+                                        <Typography variant="caption" display="block" color="textSecondary" sx={{ fontSize: '0.65rem' }}>휴일: {summary.holiday_hours}h / 휴야: {summary.holiday_night_hours}h</Typography>
                                     </Box>
                                 </CardContent>
                             </Card>
-                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #10b981' }}>
-                                <CardContent>
-                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">총 인정 근로 시간</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={2.4}>
+                            <Card sx={{ height: '100%', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #10b981', minWidth: 160 }}>
+                                <CardContent sx={{ p: 2 }}>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>총 인정 근로 시간</Typography>
                                     <Typography variant="h4" fontWeight="bold" sx={{ color: '#065f46', mt: 1 }}>
                                         {summary.recognized_hours}h
                                     </Typography>
                                     <Typography variant="caption" color="textSecondary">기준: {summary.standard_hours}h</Typography>
                                 </CardContent>
                             </Card>
-                            <Card sx={{ borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #b91c1c' }}>
-                                <CardContent>
-                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">병가/기타</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={2.4}>
+                            <Card sx={{ height: '100%', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderTop: '4px solid #b91c1c', minWidth: 160 }}>
+                                <CardContent sx={{ p: 2 }}>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>병가/기타</Typography>
                                     <Typography variant="h4" fontWeight="bold" sx={{ color: '#b91c1c', mt: 1 }}>
                                         {summary.sick_used || 0}건
                                     </Typography>
                                 </CardContent>
                             </Card>
-                        </Box>
-                    </Box>
+                        </Grid>
+                    </Grid>
 
                     {/* Detailed Records Table */}
                     <Box>

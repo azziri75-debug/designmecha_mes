@@ -640,6 +640,33 @@ const BasicsPageContent = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                <div className="space-y-6">
+                                    <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">근무 시간 설정</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-400">근무 시작 시간</label>
+                                            <input
+                                                type="time"
+                                                name="work_start_time"
+                                                value={formData.work_start_time || '08:30'}
+                                                onChange={handleInputChange}
+                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-400">근무 종료 시간</label>
+                                            <input
+                                                type="time"
+                                                name="work_end_time"
+                                                value={formData.work_end_time || '17:30'}
+                                                onChange={handleInputChange}
+                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-500 italic">* 설정된 근무 시간은 조퇴 및 외출 시간 계산의 기준이 됩니다.</p>
+                                </div>
                             </div>
 
                             <div className="space-y-6">
