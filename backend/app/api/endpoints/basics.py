@@ -12,7 +12,7 @@ from fastapi import UploadFile, File
 
 from app.api import deps
 get_db = deps.get_db
-from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory
+from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory, EmployeeTimeRecord
 from app.schemas.basics import (
     PartnerCreate, PartnerResponse, PartnerUpdate,
     StaffCreate, StaffResponse, StaffUpdate,
