@@ -58,7 +58,6 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
-import { useNavigate } from 'react-router-dom';
 
 const MobileWorkLogPage = () => {
     const { user, logout } = useAuth();
