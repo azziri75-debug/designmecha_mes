@@ -248,6 +248,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         value={formData.order_id}
                         onChange={(e) => setFormData({ ...formData, order_id: e.target.value })}
                         fullWidth
+                        disabled={initialItems && initialItems.length > 0}
                     >
                         <MenuItem value=""><em>없음 (재고용)</em></MenuItem>
                         {salesOrders.map((so) => (

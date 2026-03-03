@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, insert, func
+from sqlalchemy import select, update, insert, func, desc
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date
@@ -85,11 +85,21 @@ async def create_stock_production(
     # Generate production number if not provided
     if not prod_in.production_no:
         today = date.today().strftime("%Y%m%d")
-        # Count today's productions for serial
-        count_query = select(func.count(StockProduction.id)).where(StockProduction.production_no.like(f"SP-{today}-%"))
-        res = await db.execute(count_query)
-        cnt = res.scalar() or 0
-        prod_in.production_no = f"SP-{today}-{cnt+1:03d}"
+        # Robust numbering: get the max production_no for today and increment its sequence
+        query = select(StockProduction.production_no).filter(StockProduction.production_no.like(f"SP-{today}-%")).order_by(desc(StockProduction.production_no)).limit(1)
+        result = await db.execute(query)
+        last_prod_no = result.scalar()
+        
+        if last_prod_no:
+            try:
+                last_seq = int(last_prod_no.split("-")[-1])
+                new_seq = last_seq + 1
+            except (ValueError, IndexError):
+                new_seq = 1
+        else:
+            new_seq = 1
+            
+        prod_in.production_no = f"SP-{today}-{new_seq:03d}"
         
     new_prod = StockProduction(**prod_in.model_dump())
     db.add(new_prod)

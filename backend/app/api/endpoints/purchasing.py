@@ -176,10 +176,22 @@ async def create_purchase_order(
     date_str = datetime.now().strftime("%Y%m%d")
     from sqlalchemy import func
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem # Import here to avoid circular dependency
-    query = select(func.count()).filter(PurchaseOrder.order_date == datetime.now().date())
+    
+    # Robust numbering: get the max order_no for today and increment its sequence
+    query = select(PurchaseOrder.order_no).filter(PurchaseOrder.order_no.like(f"PO-{date_str}-%")).order_by(desc(PurchaseOrder.order_no)).limit(1)
     result = await db.execute(query)
-    count = result.scalar() or 0
-    order_no = f"PO-{date_str}-{count+1:03d}"
+    last_order_no = result.scalar()
+    
+    if last_order_no:
+        try:
+            last_seq = int(last_order_no.split("-")[-1])
+            new_seq = last_seq + 1
+        except (ValueError, IndexError):
+            new_seq = 1
+    else:
+        new_seq = 1
+        
+    order_no = f"PO-{date_str}-{new_seq:03d}"
 
     db_order = PurchaseOrder(
         order_no=order_no,
@@ -417,10 +429,22 @@ async def create_outsourcing_order(
     date_str = datetime.now().strftime("%Y%m%d")
     from sqlalchemy import func
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem # Import here
-    query = select(func.count()).filter(OutsourcingOrder.order_date == datetime.now().date())
+    
+    # Robust numbering: get the max order_no for today and increment its sequence
+    query = select(OutsourcingOrder.order_no).filter(OutsourcingOrder.order_no.like(f"OS-{date_str}-%")).order_by(desc(OutsourcingOrder.order_no)).limit(1)
     result = await db.execute(query)
-    count = result.scalar() or 0
-    order_no = f"OS-{date_str}-{count+1:03d}"
+    last_order_no = result.scalar()
+    
+    if last_order_no:
+        try:
+            last_seq = int(last_order_no.split("-")[-1])
+            new_seq = last_seq + 1
+        except (ValueError, IndexError):
+            new_seq = 1
+    else:
+        new_seq = 1
+        
+    order_no = f"OS-{date_str}-{new_seq:03d}"
 
     db_order = OutsourcingOrder(
         order_no=order_no,

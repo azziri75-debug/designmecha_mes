@@ -366,15 +366,21 @@ async def create_order(
     # Generate Order No
     date_str = datetime.now().strftime("%Y%m%d")
     
-    # Async count
-    # count = db.query(SalesOrder)...count() -> Not available
-    # Use select(func.count())...
-    from sqlalchemy import func
-    query = select(func.count()).filter(SalesOrder.order_date == datetime.now().date())
+    # Robust numbering: get the max order_no for today and increment its sequence
+    query = select(SalesOrder.order_no).filter(SalesOrder.order_no.like(f"SO-{date_str}-%")).order_by(desc(SalesOrder.order_no)).limit(1)
     result = await db.execute(query)
-    count = result.scalar() or 0
+    last_order_no = result.scalar()
     
-    order_no = f"SO-{date_str}-{count+1:03d}"
+    if last_order_no:
+        try:
+            last_seq = int(last_order_no.split("-")[-1])
+            new_seq = last_seq + 1
+        except (ValueError, IndexError):
+            new_seq = 1
+    else:
+        new_seq = 1
+        
+    order_no = f"SO-{date_str}-{new_seq:03d}"
 
     db_order = SalesOrder(
         order_no=order_no,
