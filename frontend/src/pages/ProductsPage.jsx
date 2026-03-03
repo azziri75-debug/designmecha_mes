@@ -69,6 +69,45 @@ const ProductsPage = () => {
         }
     }, [activeTab, selectedPartnerId]);
 
+    // [Fix] Sync price history for expanded row
+    useEffect(() => {
+        if (expandedProductId && detailSubTab === 'priceHistory') {
+            fetchPriceHistory(expandedProductId);
+        }
+    }, [expandedProductId, detailSubTab]);
+
+    // [Fix] Sync state and cleanup for Product Modal
+    useEffect(() => {
+        if (showProductModal && productFormData.id) {
+            // When modal opens or tab changes, ensure data is synced
+            if (detailSubTab === 'priceHistory') {
+                fetchPriceHistory(productFormData.id);
+            } else if (detailSubTab === 'routing') {
+                const p = productFormData;
+                const existing = (p.standard_processes || []).map(proc => ({
+                    process_id: proc.process_id,
+                    sequence: proc.sequence,
+                    estimated_time: proc.estimated_time,
+                    notes: proc.notes,
+                    partner_name: proc.partner_name,
+                    equipment_name: proc.equipment_name,
+                    attachment_file: proc.attachment_file,
+                    cost: proc.cost || 0,
+                    _tempId: Math.random()
+                }));
+                setRoutingProcesses(existing);
+                setSelectedProduct(p);
+            }
+        }
+
+        // Cleanup on modal close
+        if (!showProductModal) {
+            setRoutingProcesses([]);
+            setPriceHistory([]);
+            // Don't reset detailSubTab here if it's being used by expanded row
+        }
+    }, [showProductModal, productFormData.id, detailSubTab]);
+
     const fetchProducts = async () => {
         setLoading(true);
         try {
@@ -249,6 +288,7 @@ const ProductsPage = () => {
             ...product,
             major_group_id: getMajorGroupId(product.group_id)
         });
+        setDetailSubTab('info');
         setShowProductModal(true);
     };
 
@@ -484,9 +524,10 @@ const ProductsPage = () => {
 
     const openCostHistory = async (index, productId, processId, procName) => {
         if (!productId || !processId) return;
-        setHistoryTarget({ productName: selectedProduct.name, processName: procName, productId, processId, index });
+        setHistoryTarget({ productName: (selectedProduct?.name || ''), processName: procName, productId, processId, index });
         setShowCostHistoryModal(true);
         setLoadingCostHistory(true);
+        setCostHistory([]); // [Fix] Clear previous history to avoid ghosting
         try {
             const res = await api.get(`/product/${productId}/cost-history/${processId}`);
             setCostHistory(res.data);
@@ -529,6 +570,7 @@ const ProductsPage = () => {
                         type="button"
                         onClick={() => {
                             setProductFormData({});
+                            setDetailSubTab('info');
                             setShowProductModal(true);
                         }}
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20"
@@ -888,30 +930,8 @@ const ProductsPage = () => {
                                                 // Map visual tabs to internal state
                                                 onClick={() => {
                                                     if (tab === 'info') setDetailSubTab('info');
-                                                    else if (tab === 'routing') {
-                                                        setDetailSubTab('routing');
-                                                        // Sync routingProcesses if editing
-                                                        if (productFormData.id && (!routingProcesses.length || (selectedProduct?.id !== productFormData.id))) {
-                                                            const p = productFormData;
-                                                            const existing = p.standard_processes.map(proc => ({
-                                                                process_id: proc.process_id,
-                                                                sequence: proc.sequence,
-                                                                estimated_time: proc.estimated_time,
-                                                                notes: proc.notes,
-                                                                partner_name: proc.partner_name,
-                                                                equipment_name: proc.equipment_name,
-                                                                attachment_file: proc.attachment_file,
-                                                                cost: proc.cost || 0,
-                                                                _tempId: Math.random()
-                                                            }));
-                                                            setRoutingProcesses(existing);
-                                                            setSelectedProduct(p);
-                                                        }
-                                                    }
-                                                    else if (tab === 'history') {
-                                                        setDetailSubTab('priceHistory');
-                                                        fetchPriceHistory(productFormData.id);
-                                                    }
+                                                    else if (tab === 'routing') setDetailSubTab('routing');
+                                                    else if (tab === 'history') setDetailSubTab('priceHistory');
                                                 }}
                                             >
                                                 {tab === 'info' ? '기본 정보' : tab === 'routing' ? '상세 공정' : '견격 및 수주 이력'}
