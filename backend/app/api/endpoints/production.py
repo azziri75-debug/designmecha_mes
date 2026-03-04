@@ -11,7 +11,8 @@ from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
 from app.models.product import Product, ProductProcess, Process
 from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, PurchaseStatus, OutsourcingStatus
 from app.models.basics import Partner
-from app.models.inventory import StockProduction, StockProductionStatus, Stock
+from app.models.inventory import StockProduction, Stock, StockProductionStatus, TransactionType
+from app.api.utils.inventory import handle_stock_movement, handle_backflush
 from app.schemas import production as schemas
 from datetime import datetime, date
 import uuid
@@ -943,68 +944,61 @@ async def update_production_plan_status(
                     db.add(oo)
 
     # Sync with Sales Order or Stock Production
-    if status == ProductionStatus.COMPLETED:
-        # 1. Update Stocks
-        
+    if status == ProductionStatus.COMPLETED and old_status != ProductionStatus.COMPLETED:
+        # --- Stock Movement & Backflush Hook ---
         if plan.stock_production:
-            # For Stock Production: Update exact product and quantity from the request
             sp = plan.stock_production
+            # 1. 완제품 입고 처리
+            await handle_stock_movement(
+                db=db,
+                product_id=sp.product_id,
+                quantity=sp.quantity,
+                transaction_type=TransactionType.IN,
+                reference=sp.production_no
+            )
+            # 2. 하위 부품 Backflush (출고) 처리
+            await handle_backflush(
+                db=db,
+                parent_product_id=sp.product_id,
+                produced_quantity=sp.quantity,
+                reference=sp.production_no
+            )
+
+            # 3. 생산 중 수량 차감
             stock_query = select(Stock).where(Stock.product_id == sp.product_id)
             s_res = await db.execute(stock_query)
             stock = s_res.scalar_one_or_none()
-            
-            if not stock:
-                stock = Stock(product_id=sp.product_id, current_quantity=sp.quantity)
-                db.add(stock)
-            else:
-                stock.current_quantity += sp.quantity
-                if stock.in_production_quantity >= sp.quantity:
-                    stock.in_production_quantity -= sp.quantity
+            if stock and stock.in_production_quantity >= sp.quantity:
+                stock.in_production_quantity -= sp.quantity
             
             # Sync StockProduction status
             sp.status = StockProductionStatus.COMPLETED
             db.add(sp)
             
-            # --- Sync Outsourcing Orders ---
-            # If this production has linked outsourcing items, update them and their orders
-            for item in plan.items:
-                for oo_item in item.outsourcing_items:
-                    oo_item.status = OutsourcingStatus.COMPLETED
-                    db.add(oo_item)
-                    
-                    oo = oo_item.outsourcing_order
-                    if oo:
-                        # Check if ALL items in this OutsourcingOrder are COMPLETED
-                        all_completed = True
-                        for other_item in oo.items:
-                            # Use current in-memory status if available, else DB status
-                            current_item_status = other_item.status
-                            if other_item.id == oo_item.id:
-                                current_item_status = OutsourcingStatus.COMPLETED
-                                
-                            if current_item_status != OutsourcingStatus.COMPLETED:
-                                all_completed = False
-                                break
-                        
-                        if all_completed:
-                            oo.status = OutsourcingStatus.COMPLETED
-                            db.add(oo)
-            
         elif plan.order:
-            # For Sales Order: Update stocks for all items in the order
-            # (Assuming the plan covers the entire order, or at least we treat its completion as the order items being ready)
             for item in plan.order.items:
+                # 1. 완제품 입고 처리
+                await handle_stock_movement(
+                    db=db,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    transaction_type=TransactionType.IN,
+                    reference=plan.order.order_no
+                )
+                # 2. 하위 부품 Backflush (출고) 처리
+                await handle_backflush(
+                    db=db,
+                    parent_product_id=item.product_id,
+                    produced_quantity=item.quantity,
+                    reference=plan.order.order_no
+                )
+
+                # 3. 생산 중 수량 차감
                 stock_query = select(Stock).where(Stock.product_id == item.product_id)
                 s_res = await db.execute(stock_query)
                 stock = s_res.scalar_one_or_none()
-                
-                if not stock:
-                    stock = Stock(product_id=item.product_id, current_quantity=item.quantity)
-                    db.add(stock)
-                else:
-                    stock.current_quantity += item.quantity
-                    if stock.in_production_quantity >= item.quantity:
-                        stock.in_production_quantity -= item.quantity
+                if stock and stock.in_production_quantity >= item.quantity:
+                    stock.in_production_quantity -= item.quantity
             
             # Sync Sales Order status
             plan.order.status = OrderStatus.PRODUCTION_COMPLETED
@@ -1279,6 +1273,24 @@ async def create_work_log(
         db.add(log_item)
         await db.flush()
         await sync_plan_item_status(db, item_in.plan_item_id)
+        
+        # --- Stock Movement & Backflush Hook ---
+        if item_in.good_quantity > 0 and plan_item:
+            # 1. 완제품/공정품 입고 처리
+            await handle_stock_movement(
+                db=db,
+                product_id=plan_item.product_id,
+                quantity=item_in.good_quantity,
+                transaction_type=TransactionType.IN,
+                reference=f"WorkLog (Item {log_item.id})"
+            )
+            # 2. 하위 부품 Backflush 처리
+            await handle_backflush(
+                db=db,
+                parent_product_id=plan_item.product_id,
+                produced_quantity=item_in.good_quantity,
+                reference=f"WorkLog (Item {log_item.id})"
+            )
 
     await db.commit()
     await db.refresh(log)
@@ -1332,6 +1344,28 @@ async def update_work_log(
             log.attachment_file = log_in.attachment_file
 
     if log_in.items is not None:
+        # --- Stock Reversal Hook ---
+        for old_item in log.items:
+            if old_item.good_quantity > 0:
+                # Load plan item to get product_id
+                plan_item = await db.get(ProductionPlanItem, old_item.plan_item_id)
+                if plan_item:
+                    # 완제품 입고 취소 (출고 처리)
+                    await handle_stock_movement(
+                        db=db,
+                        product_id=plan_item.product_id,
+                        quantity=-old_item.good_quantity,
+                        transaction_type=TransactionType.ADJUSTMENT,
+                        reference=f"WorkLog Update (Reverse Item {old_item.id})"
+                    )
+                    # 하위 부품 Backflush 취소 (입고 처리)
+                    await handle_backflush(
+                        db=db,
+                        parent_product_id=plan_item.product_id,
+                        produced_quantity=-old_item.good_quantity,
+                        reference=f"WorkLog Update (Reverse Item {old_item.id})"
+                    )
+
         log.items.clear()
         
         for item_in in log_in.items:
@@ -1355,6 +1389,22 @@ async def update_work_log(
             log.items.append(log_item)
             await db.flush()
             await sync_plan_item_status(db, item_in.plan_item_id)
+
+            # --- Stock Movement & Backflush Hook for NEW items ---
+            if item_in.good_quantity > 0 and plan_item:
+                await handle_stock_movement(
+                    db=db,
+                    product_id=plan_item.product_id,
+                    quantity=item_in.good_quantity,
+                    transaction_type=TransactionType.IN,
+                    reference=f"WorkLog Update (New Item {log_item.id})"
+                )
+                await handle_backflush(
+                    db=db,
+                    parent_product_id=plan_item.product_id,
+                    produced_quantity=item_in.good_quantity,
+                    reference=f"WorkLog Update (New Item {log_item.id})"
+                )
 
     await db.commit()
 
@@ -1392,6 +1442,25 @@ async def delete_work_log(
 
     # Store item IDs to sync status after deletion
     plan_item_ids = [item.plan_item_id for item in log.items if item.plan_item_id]
+
+    # --- Stock Reversal Hook ---
+    for item in log.items:
+        if item.good_quantity > 0:
+            plan_item = await db.get(ProductionPlanItem, item.plan_item_id)
+            if plan_item:
+                await handle_stock_movement(
+                    db=db,
+                    product_id=plan_item.product_id,
+                    quantity=-item.good_quantity,
+                    transaction_type=TransactionType.ADJUSTMENT,
+                    reference=f"WorkLog Delete (Reverse Item {item.id})"
+                )
+                await handle_backflush(
+                    db=db,
+                    parent_product_id=plan_item.product_id,
+                    produced_quantity=-item.good_quantity,
+                    reference=f"WorkLog Delete (Reverse Item {item.id})"
+                )
 
     await db.delete(log)
     await db.commit()
@@ -1561,6 +1630,8 @@ async def update_work_log_item(
     # Identify if quantity or price changed to sync plan item status/cost
     qty_changed = "good_quantity" in update_data and update_data["good_quantity"] != item.good_quantity
     
+    old_good_qty = item.good_quantity
+    
     for field, value in update_data.items():
         setattr(item, field, value)
 
@@ -1569,6 +1640,25 @@ async def update_work_log_item(
     
     if qty_changed:
         await sync_plan_item_status(db, item.plan_item_id)
+        
+        # --- Stock Adjustment Hook for DIFF ---
+        diff_qty = item.good_quantity - old_good_qty
+        if diff_qty != 0:
+            plan_item = await db.get(ProductionPlanItem, item.plan_item_id)
+            if plan_item:
+                await handle_stock_movement(
+                    db=db,
+                    product_id=plan_item.product_id,
+                    quantity=diff_qty,
+                    transaction_type=TransactionType.ADJUSTMENT,
+                    reference=f"WorkLogItem Update (Item {item.id})"
+                )
+                await handle_backflush(
+                    db=db,
+                    parent_product_id=plan_item.product_id,
+                    produced_quantity=diff_qty,
+                    reference=f"WorkLogItem Update (Item {item.id})"
+                )
         await db.commit()
 
     # Re-fetch for full schema

@@ -526,6 +526,42 @@ async def startup_event():
                 print(f"Startup: BOM table creation failed: {e}")
                 await db.rollback()
 
+            # 13. StockTransaction Table Creation
+            try:
+                if is_sqlite:
+                    r = await db.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='stock_transactions'"))
+                    if not r.scalar():
+                        await db.execute(text("""
+                            CREATE TABLE stock_transactions (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                stock_id INTEGER NOT NULL REFERENCES stocks(id) ON DELETE CASCADE,
+                                quantity INTEGER NOT NULL,
+                                transaction_type VARCHAR NOT NULL,
+                                reference VARCHAR,
+                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                            )
+                        """))
+                        await db.commit()
+                        print("Startup: Created stock_transactions table (SQLite)")
+                else:
+                    r = await db.execute(text("SELECT to_regclass('public.stock_transactions')"))
+                    if not r.scalar():
+                        await db.execute(text("""
+                            CREATE TABLE stock_transactions (
+                                id SERIAL PRIMARY KEY,
+                                stock_id INTEGER NOT NULL REFERENCES stocks(id) ON DELETE CASCADE,
+                                quantity INTEGER NOT NULL,
+                                transaction_type VARCHAR NOT NULL,
+                                reference VARCHAR,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            )
+                        """))
+                        await db.commit()
+                        print("Startup: Created stock_transactions table (Postgres)")
+            except Exception as e:
+                print(f"Startup: StockTransaction table creation failed: {e}")
+                await db.rollback()
+
     except Exception as e:
         print(f"Startup: DB initialization crashed: {e}")
 

@@ -47,3 +47,23 @@ class StockProduction(Base):
     product = relationship("Product")
     partner = relationship("app.models.basics.Partner") # Use string reference to avoid circularities
     # ProductionPlan과의 역참조는 production.py에서 정의됨 (backref 또는 relationship)
+
+class TransactionType(str, enum.Enum):
+    IN = "IN"                 # 입고
+    OUT = "OUT"               # 출고
+    ADJUSTMENT = "ADJUSTMENT" # 재정의/조정
+
+class StockTransaction(Base):
+    """재고 입출고 이력 (수불부)"""
+    __tablename__ = "stock_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    stock_id = Column(Integer, ForeignKey("stocks.id"), nullable=False)
+    
+    quantity = Column(Integer, nullable=False) # 증감 수량 (양수/음수)
+    transaction_type = Column(SqEnum(TransactionType, native_enum=False), nullable=False)
+    
+    reference = Column(String, nullable=True) # 구매번호, 수주번호, 작업지시번호 등
+    created_at = Column(DateTime, default=func.now())
+
+    stock = relationship("Stock", backref="transactions")

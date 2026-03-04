@@ -13,6 +13,8 @@ from app.models.sales import SalesOrder, SalesOrderItem
 from app.models.product import Product, ProductProcess, Process
 from app.schemas import purchasing as schemas
 from app.schemas import production as prod_schemas
+from app.api.utils.inventory import handle_stock_movement
+from app.models.inventory import TransactionType
 
 router = APIRouter()
 
@@ -390,6 +392,16 @@ async def update_purchase_order(
                 if plan_item and plan_item.status != ProductionStatus.COMPLETED:
                     plan_item.status = ProductionStatus.COMPLETED
                     db.add(plan_item)
+        
+        # --- Stock Movement Hook ---
+        for item in db_order.items:
+            await handle_stock_movement(
+                db=db,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                transaction_type=TransactionType.IN,
+                reference=db_order.order_no
+            )
 
     await db.commit()
     await db.refresh(db_order)
@@ -630,14 +642,19 @@ async def update_outsourcing_order(
                     plan_item.status = ProductionStatus.IN_PROGRESS
                     db.add(plan_item)
 
-    if db_order.status == OutsourcingStatus.COMPLETED:
-        from app.models.production import ProductionPlanItem, ProductionStatus
-        for item in db_order.items:
-            if item.production_plan_item_id:
-                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
                 if plan_item and plan_item.status != ProductionStatus.COMPLETED:
                     plan_item.status = ProductionStatus.COMPLETED
                     db.add(plan_item)
+        
+        # --- Stock Movement Hook ---
+        for item in db_order.items:
+            await handle_stock_movement(
+                db=db,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                transaction_type=TransactionType.IN,
+                reference=db_order.order_no
+            )
 
     await db.commit()
     await db.refresh(db_order)
