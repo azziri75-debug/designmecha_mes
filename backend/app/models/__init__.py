@@ -1,5 +1,5 @@
 from .basics import Partner, Contact, Staff, Company
-from .product import Product, Process, ProductProcess, Inventory
+from .product import Product, Process, ProductProcess, Inventory, BOM
 from .sales import Estimate, EstimateItem, SalesOrder, SalesOrderItem
 from .production import ProductionPlan, ProductionPlanItem
 from .quality import InspectionResult, Attachment, QualityDefect

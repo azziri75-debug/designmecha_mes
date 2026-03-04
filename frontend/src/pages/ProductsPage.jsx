@@ -57,6 +57,19 @@ const ProductsPage = () => {
     const [showQuickProcessModal, setShowQuickProcessModal] = useState(false);
     const [quickProcessData, setQuickProcessData] = useState({ name: "", course_type: "INTERNAL", major_group_id: null, group_id: null, index: null });
 
+    // BOM State
+    const [bomItems, setBomItems] = useState([]); // 현재 BOM 목록 (편집 중)
+    const [bomNewRow, setBomNewRow] = useState({ child_product_id: '', required_quantity: 1 }); // 새 BOM 항목 입력용
+    const [loadingBom, setLoadingBom] = useState(false);
+
+    const ITEM_TYPES = {
+        RAW_MATERIAL: '\uc6d0\uc790\uc7ac',
+        PART: '\ubd80\ud488',
+        SEMI_FINISHED: '\ubc18\uc81c\ud488',
+        FINISHED: '\uc644\uc81c\ud488'
+    };
+    const BOM_ITEM_TYPES = ['FINISHED', 'SEMI_FINISHED']; // BOM 탭 표\uc2dc \uc870\uac74
+
     useEffect(() => {
         if (activeTab === 'products') {
             fetchProducts();
@@ -97,6 +110,8 @@ const ProductsPage = () => {
                 }));
                 setRoutingProcesses(existing);
                 setSelectedProduct(p);
+            } else if (detailSubTab === 'bom') {
+                fetchBomItems(productFormData.id);
             }
         }
 
@@ -104,6 +119,8 @@ const ProductsPage = () => {
         if (!showProductModal) {
             setRoutingProcesses([]);
             setPriceHistory([]);
+            setBomItems([]);
+            setBomNewRow({ child_product_id: '', required_quantity: 1 });
             // Don't reset detailSubTab here if it's being used by expanded row
         }
     }, [showProductModal, productFormData.id, detailSubTab]);
@@ -538,6 +555,58 @@ const ProductsPage = () => {
         }
     };
 
+    const fetchBomItems = async (productId) => {
+        setLoadingBom(true);
+        try {
+            const res = await api.get(`/product/products/${productId}/bom`);
+            setBomItems(res.data);
+        } catch (error) {
+            console.error('Failed to fetch BOM', error);
+        } finally {
+            setLoadingBom(false);
+        }
+    };
+
+    const handleSaveBom = async () => {
+        if (!productFormData.id) return;
+        try {
+            const payload = bomItems.map(item => ({
+                child_product_id: item.child_product_id,
+                required_quantity: item.required_quantity
+            }));
+            const res = await api.put(`/product/products/${productFormData.id}/bom`, payload);
+            setBomItems(res.data);
+            alert('BOM이 저장되었습니다.');
+        } catch (error) {
+            console.error('Failed to save BOM', error);
+            alert('저장 실패: ' + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const addBomRow = () => {
+        if (!bomNewRow.child_product_id) {
+            alert('하위 품목을 선택하세요.');
+            return;
+        }
+        if (parseInt(bomNewRow.child_product_id) === productFormData.id) {
+            alert('자기 자신을 BOM 하위 품목으로 설정할 수 없습니다.');
+            return;
+        }
+        const childProduct = products.find(p => p.id === parseInt(bomNewRow.child_product_id));
+        setBomItems(prev => [...prev, {
+            id: null, // 저장 전이라 id 없음
+            parent_product_id: productFormData.id,
+            child_product_id: parseInt(bomNewRow.child_product_id),
+            required_quantity: parseFloat(bomNewRow.required_quantity) || 1,
+            child_product: childProduct || { id: parseInt(bomNewRow.child_product_id), name: '(\uc54c 수 \uc5c6\uc74c)' }
+        }]);
+        setBomNewRow({ child_product_id: '', required_quantity: 1 });
+    };
+
+    const removeBomRow = (index) => {
+        setBomItems(prev => prev.filter((_, i) => i !== index));
+    };
+
     return (
         <div className="space-y-6 relative">
             <div className="flex items-center justify-between">
@@ -915,26 +984,27 @@ const ProductsPage = () => {
                                 </h3>
                                 {productFormData.id && (
                                     <div className="flex gap-4 mt-3">
-                                        {['info', 'routing', 'history'].map((tab) => (
+                                        {['info', 'routing', 'history', ...(BOM_ITEM_TYPES.includes(productFormData.item_type) ? ['bom'] : [])].map((tab) => (
                                             <button
                                                 key={tab}
                                                 className={cn(
                                                     "px-3 py-1.5 text-xs font-semibold rounded transition-all",
-                                                    (tab === 'info' && detailSubTab !== 'routing' && detailSubTab !== 'priceHistory') ||
+                                                    (tab === 'info' && detailSubTab !== 'routing' && detailSubTab !== 'priceHistory' && detailSubTab !== 'bom') ||
                                                         (tab === 'routing' && detailSubTab === 'routing') ||
-                                                        (tab === 'history' && detailSubTab === 'priceHistory')
+                                                        (tab === 'history' && detailSubTab === 'priceHistory') ||
+                                                        (tab === 'bom' && detailSubTab === 'bom')
                                                         ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40"
                                                         : "text-gray-400 hover:text-white hover:bg-gray-700"
                                                 )}
                                                 type="button"
-                                                // Map visual tabs to internal state
                                                 onClick={() => {
                                                     if (tab === 'info') setDetailSubTab('info');
                                                     else if (tab === 'routing') setDetailSubTab('routing');
                                                     else if (tab === 'history') setDetailSubTab('priceHistory');
+                                                    else if (tab === 'bom') setDetailSubTab('bom');
                                                 }}
                                             >
-                                                {tab === 'info' ? '기본 정보' : tab === 'routing' ? '상세 공정' : '견격 및 수주 이력'}
+                                                {tab === 'info' ? '기본 정보' : tab === 'routing' ? '상세 공정' : tab === 'bom' ? '🧩 BOM (하위 부품)' : '견적 및 수주 이력'}
                                             </button>
                                         ))}
                                     </div>
@@ -1018,6 +1088,20 @@ const ProductsPage = () => {
                                                 <label className="text-sm font-medium text-gray-300">단위</label>
                                                 <input name="unit" value={productFormData.unit || "EA"} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="EA" />
                                             </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">품목 유형 <span className="text-blue-400 text-xs">(완\uc81c\ud488\uacfc \ubc18\uc810\ud488\uc740 BOM 탭 \ud65c\uc131\ud654)</span></label>
+                                            <select
+                                                name="item_type"
+                                                value={productFormData.item_type || 'FINISHED'}
+                                                onChange={handleProductInputChange}
+                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                            >
+                                                {Object.entries(ITEM_TYPES).map(([val, label]) => (
+                                                    <option key={val} value={val}>{label}</option>
+                                                ))}
+                                            </select>
                                         </div>
 
                                         <div className="space-y-2">
@@ -1236,6 +1320,103 @@ const ProductsPage = () => {
                                     )}
                                 </div>
                             )}
+
+                            {/* BOM Tab */}
+                            {detailSubTab === 'bom' && productFormData.id && (
+                                <div className="space-y-4">
+                                    <div className="text-xs text-gray-500 bg-blue-900/10 border border-blue-800/30 rounded-lg px-4 py-2">
+                                        💡 <strong>하\uc704 \ubd80\ud488 \ubaa9\ub85d</strong>\uc744 \uc124\uc815\ud558\uc138\uc694. \uc800\uc7a5 \ubc84\ud2bc\uc744 \ub20c\ub7ec\uc57c \ubc18\uc601\ub429\ub2c8\ub2e4.
+                                    </div>
+
+                                    {/* BOM \ud56d\ubaa9 \uc785\ub825 */}
+                                    <div className="flex items-center gap-2 bg-gray-900/50 border border-gray-700 rounded-lg p-3">
+                                        <select
+                                            value={bomNewRow.child_product_id}
+                                            onChange={(e) => setBomNewRow(prev => ({ ...prev, child_product_id: e.target.value }))}
+                                            className="flex-1 bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                                        >
+                                            <option value="">하\uc704 \ud488\ubaa9 \uc120\ud0dd...</option>
+                                            {products.filter(p => p.id !== productFormData.id).map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    [{ITEM_TYPES[p.item_type] || p.item_type || '-'}] {p.name} {p.specification ? `(${p.specification})` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="flex items-center gap-1">
+                                            <input
+                                                type="number"
+                                                min="0.001"
+                                                step="0.001"
+                                                value={bomNewRow.required_quantity}
+                                                onChange={(e) => setBomNewRow(prev => ({ ...prev, required_quantity: e.target.value }))}
+                                                className="w-24 bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500 text-right"
+                                                placeholder="\uc218\ub7c9"
+                                            />
+                                            <span className="text-xs text-gray-500">{products.find(p => p.id === parseInt(bomNewRow.child_product_id))?.unit || 'EA'}</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={addBomRow}
+                                            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" /> \ucd94\uac00
+                                        </button>
+                                    </div>
+
+                                    {/* BOM \ubaa9\ub85d */}
+                                    {loadingBom ? (
+                                        <div className="text-center py-8 text-gray-500 text-sm">\ub85c\ub529 \uc911...</div>
+                                    ) : bomItems.length > 0 ? (
+                                        <div className="rounded-lg border border-gray-700 overflow-hidden">
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-gray-900/80 text-xs text-gray-400 uppercase font-medium">
+                                                    <tr>
+                                                        <th className="px-4 py-3">\ud488\ubaa9 \uc720\ud615</th>
+                                                        <th className="px-4 py-3">\ud488\uba85</th>
+                                                        <th className="px-4 py-3">\uaddc\uaca9</th>
+                                                        <th className="px-4 py-3 text-right">\uc18c\uc694\ub7c9</th>
+                                                        <th className="px-4 py-3">\ub2e8\uc704</th>
+                                                        <th className="px-4 py-3 text-center">\uc0ad\uc81c</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-700 text-gray-300">
+                                                    {bomItems.map((item, idx) => (
+                                                        <tr key={idx} className="hover:bg-gray-700/30 transition-colors">
+                                                            <td className="px-4 py-3">
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded border bg-gray-700/50 border-gray-600 text-gray-300">
+                                                                    {ITEM_TYPES[item.child_product?.item_type] || '-'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-white font-medium">{item.child_product?.name || '(\uc54c \uc218 \uc5c6\uc74c)'}</td>
+                                                            <td className="px-4 py-3 text-gray-400 text-xs">{item.child_product?.specification || '-'}</td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <input
+                                                                    type="number"
+                                                                    min="0.001"
+                                                                    step="0.001"
+                                                                    value={item.required_quantity}
+                                                                    onChange={(e) => setBomItems(prev => prev.map((b, i) => i === idx ? { ...b, required_quantity: parseFloat(e.target.value) || 1 } : b))}
+                                                                    className="w-20 bg-gray-900 border border-gray-600 text-white text-xs rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500 text-right"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3 text-xs text-gray-400">{item.child_product?.unit || 'EA'}</td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <button type="button" onClick={() => removeBomRow(idx)} className="text-gray-500 hover:text-red-400 transition-colors">
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-16 border border-dashed border-gray-700 rounded-lg text-gray-500 text-sm">
+                                            \ub4f1\ub85d\ub41c \ud558\uc704 \ubd80\ud488\uc774 \uc5c6\uc2b5\ub2c8\ub2e4. \uc704\uc5d0\uc11c \ud488\ubaa9\uc744 \ucd94\uac00\ud558\uc138\uc694.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Modal Footer */}
@@ -1245,7 +1426,7 @@ const ProductsPage = () => {
                                 onClick={() => setShowProductModal(false)}
                                 className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                             >
-                                닫기
+                                \ub2eb\uae30
                             </button>
                             {(detailSubTab === 'info' || !productFormData.id) && (
                                 <button
@@ -1253,7 +1434,7 @@ const ProductsPage = () => {
                                     form="productForm"
                                     className="px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40"
                                 >
-                                    {productFormData.id ? "기본 정보 수정" : "제품 등록"}
+                                    {productFormData.id ? "\uae30\ubcf8 \uc815\ubcf4 \uc218\uc815" : "\uc81c\ud488 \ub4f1\ub85d"}
                                 </button>
                             )}
                             {detailSubTab === 'routing' && productFormData.id && (
@@ -1262,7 +1443,17 @@ const ProductsPage = () => {
                                     className="px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-lg shadow-emerald-900/40 flex items-center gap-2"
                                 >
                                     <Save className="w-4 h-4" />
-                                    공정 설정 저장
+                                    \uacf5\uc815 \uc124\uc815 \uc800\uc7a5
+                                </button>
+                            )}
+                            {detailSubTab === 'bom' && productFormData.id && (
+                                <button
+                                    type="button"
+                                    onClick={handleSaveBom}
+                                    className="px-6 py-2 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-lg shadow-purple-900/40 flex items-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    BOM \uc800\uc7a5
                                 </button>
                             )}
                         </div>

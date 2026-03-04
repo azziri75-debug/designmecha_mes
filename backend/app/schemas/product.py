@@ -71,6 +71,31 @@ class ProductProcessResponse(ProductProcessBase):
     class Config:
         from_attributes = True
 
+# BOM Schemas
+class ProductSimpleForBOM(BaseModel):
+    id: int
+    name: str
+    specification: Optional[str] = None
+    unit: Optional[str] = "EA"
+    item_type: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class BOMItemCreate(BaseModel):
+    child_product_id: int
+    required_quantity: float = 1.0
+
+class BOMItemResponse(BaseModel):
+    id: int
+    parent_product_id: int
+    child_product_id: int
+    required_quantity: float
+    child_product: Optional[ProductSimpleForBOM] = None
+
+    class Config:
+        from_attributes = True
+
 # Product Schemas
 class ProductBase(BaseModel):
     group_id: Optional[int] = None
@@ -81,6 +106,7 @@ class ProductBase(BaseModel):
     unit: str = "EA"
     drawing_file: Optional[str] = None
     note: Optional[str] = None
+    item_type: Optional[str] = "FINISHED"  # RAW_MATERIAL, PART, SEMI_FINISHED, FINISHED
 
 class ProductCreate(ProductBase):
     standard_processes: List[ProductProcessCreate] = []
@@ -94,6 +120,7 @@ class ProductUpdate(BaseModel):
     unit: Optional[str] = None
     drawing_file: Optional[str] = None
     note: Optional[str] = None
+    item_type: Optional[str] = None
     standard_processes: Optional[List[ProductProcessCreate]] = None
 
 class ProductSimple(ProductBase):
@@ -105,6 +132,7 @@ class ProductSimple(ProductBase):
 class ProductResponse(ProductBase):
     id: int
     standard_processes: List[ProductProcessResponse] = []
+    bom_items: List[BOMItemResponse] = []
     current_inventory: int = 0 # Computed field
     latest_price: float = 0.0 # Latest quotation/order price
 

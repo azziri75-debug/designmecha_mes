@@ -471,8 +471,64 @@ async def startup_event():
                 print(f"Startup: EmployeeTimeRecord auto-patch failed: {e}")
                 await db.rollback()
 
+            # 12. BOM Feature Migration
+            try:
+                # 12-1. products 테이블에 item_type 컬럼 추가
+                if is_sqlite:
+                    r = await db.execute(text("PRAGMA table_info(products)"))
+                    cols = [c[1] for c in r.fetchall()]
+                    if "item_type" not in cols:
+                        await db.execute(text("ALTER TABLE products ADD COLUMN item_type VARCHAR DEFAULT 'FINISHED'"))
+                        print("Startup: Added item_type to products (SQLite)")
+                else:
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='products' AND column_name='item_type'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE products ADD COLUMN item_type VARCHAR DEFAULT 'FINISHED'"))
+                        print("Startup: Added item_type to products (Postgres)")
+
+                # 12-2. 기존 데이터 item_type 기본값 일괄 업데이트 (NULL인 경우만)
+                await db.execute(text("UPDATE products SET item_type = 'FINISHED' WHERE item_type IS NULL"))
+                await db.commit()
+                print("Startup: BOM item_type migration done")
+            except Exception as e:
+                print(f"Startup: BOM item_type migration failed: {e}")
+                await db.rollback()
+
+            try:
+                # 12-3. bom 테이블 생성 (없을 경우)
+                if is_sqlite:
+                    r = await db.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='bom'"))
+                    if not r.scalar():
+                        await db.execute(text("""
+                            CREATE TABLE bom (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                parent_product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+                                child_product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+                                required_quantity FLOAT NOT NULL DEFAULT 1.0
+                            )
+                        """))
+                        await db.commit()
+                        print("Startup: Created bom table (SQLite)")
+                else:
+                    r = await db.execute(text("SELECT to_regclass('public.bom')"))
+                    if not r.scalar():
+                        await db.execute(text("""
+                            CREATE TABLE bom (
+                                id SERIAL PRIMARY KEY,
+                                parent_product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+                                child_product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+                                required_quantity DOUBLE PRECISION NOT NULL DEFAULT 1.0
+                            )
+                        """))
+                        await db.commit()
+                        print("Startup: Created bom table (Postgres)")
+            except Exception as e:
+                print(f"Startup: BOM table creation failed: {e}")
+                await db.rollback()
+
     except Exception as e:
         print(f"Startup: DB initialization crashed: {e}")
+
 
 
 

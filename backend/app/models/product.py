@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -28,12 +28,14 @@ class Product(Base):
     unit = Column(String, default="EA") # 단위
     drawing_file = Column(String, nullable=True) # 도면 파일 경로
     note = Column(Text, nullable=True) # 비고
+    item_type = Column(String, default="FINISHED", nullable=True) # RAW_MATERIAL, PART, SEMI_FINISHED, FINISHED
     
     # Relationships
     group = relationship("ProductGroup", back_populates="products")
     partner = relationship("Partner", back_populates="products")
     inventory = relationship("Inventory", back_populates="product", uselist=False)
     standard_processes = relationship("ProductProcess", back_populates="product", order_by="ProductProcess.sequence")
+    bom_items = relationship("BOM", foreign_keys="BOM.parent_product_id", back_populates="parent_product", cascade="all, delete-orphan")
 
 class Process(Base):
     __tablename__ = "processes"
@@ -79,3 +81,20 @@ class Inventory(Base):
     location = Column(String, nullable=True) # 보관 위치
     
     product = relationship("Product", back_populates="inventory")
+
+class BOM(Base):
+    """
+    자재명세서 (Bill of Materials)
+    parent_product: 완제품 또는 반제품
+    child_product: 구성 하위 품목 (원자재, 부품, 반제품 등)
+    """
+    __tablename__ = "bom"
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    child_product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    required_quantity = Column(Float, nullable=False, default=1.0)
+
+    # Relationships
+    parent_product = relationship("Product", foreign_keys=[parent_product_id], back_populates="bom_items")
+    child_product = relationship("Product", foreign_keys=[child_product_id])

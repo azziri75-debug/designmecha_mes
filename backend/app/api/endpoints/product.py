@@ -6,14 +6,15 @@ from sqlalchemy.orm import selectinload, joinedload
 from typing import List, Optional
 
 from app.api.deps import get_db
-from app.models.product import Product, Process, ProductProcess, ProductGroup
+from app.models.product import Product, Process, ProductProcess, ProductGroup, BOM
 from app.models.sales import Estimate, EstimateItem, SalesOrder, SalesOrderItem
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, OutsourcingOrder, OutsourcingOrderItem
 from app.models.basics import Partner
 from app.schemas.product import (
     ProductCreate, ProductResponse, ProcessCreate, ProcessResponse, 
     ProductUpdate, ProcessUpdate, ProductGroupCreate, ProductGroupResponse, 
-    ProductGroupUpdate, ProductPriceHistory, ProcessCostHistory, ProcessQuickCreate
+    ProductGroupUpdate, ProductPriceHistory, ProcessCostHistory, ProcessQuickCreate,
+    BOMItemCreate, BOMItemResponse
 )
 
 router = APIRouter()
@@ -146,12 +147,12 @@ async def create_product(
         db.add(new_pp)
 
     await db.commit()
-    await db.commit()
     # Re-fetch the product with eager loading to avoid MissingGreenlet error on response serialization
     result = await db.execute(
         select(Product)
         .options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process)
+            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.bom_items).joinedload(BOM.child_product)
         )
         .where(Product.id == new_product.id)
     )
@@ -167,7 +168,8 @@ async def read_products(
 ):
     # Eager loading needed for standard_processes AND its nested process relationship
     query = select(Product).options(
-        selectinload(Product.standard_processes).joinedload(ProductProcess.process)
+        selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+        selectinload(Product.bom_items).joinedload(BOM.child_product)
     )
     
     if partner_id:
@@ -241,7 +243,8 @@ async def update_product(
         select(Product)
         .select_from(Product)
         .options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process)
+            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.bom_items).joinedload(BOM.child_product)
         )
         .where(Product.id == product_id)
     )
@@ -428,3 +431,91 @@ async def get_latest_process_cost(
     if not history:
         return {"latest_cost": 0}
     return {"latest_cost": history[0].unit_price}
+
+
+# --- BOM (Bill of Materials) Endpoints ---
+
+@router.get("/products/{product_id}/bom", response_model=List[BOMItemResponse])
+async def get_bom(
+    product_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    특정 제품의 BOM(하위 부품 목록) 조회
+    """
+    result = await db.execute(
+        select(BOM)
+        .options(joinedload(BOM.child_product))
+        .where(BOM.parent_product_id == product_id)
+    )
+    bom_items = result.scalars().all()
+    return bom_items
+
+
+@router.put("/products/{product_id}/bom", response_model=List[BOMItemResponse])
+async def update_bom(
+    product_id: int,
+    items: List[BOMItemCreate],
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    특정 제품의 BOM 전체 교체 (저장 버튼)
+    """
+    try:
+        # 기존 BOM 전체 삭제
+        await db.execute(delete(BOM).where(BOM.parent_product_id == product_id))
+
+        # 새 BOM 항목 일괄 입력
+        new_items = []
+        for item in items:
+            if item.child_product_id == product_id:
+                raise HTTPException(status_code=400, detail="자기 자신을 BOM 하위 품목으로 설정할 수 없습니다.")
+            bom_row = BOM(
+                parent_product_id=product_id,
+                child_product_id=item.child_product_id,
+                required_quantity=item.required_quantity
+            )
+            db.add(bom_row)
+            new_items.append(bom_row)
+
+        await db.commit()
+
+        # Re-fetch with eager load
+        result = await db.execute(
+            select(BOM)
+            .options(joinedload(BOM.child_product))
+            .where(BOM.parent_product_id == product_id)
+        )
+        return result.scalars().all()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"BOM 저장 실패: {str(e)}")
+
+
+@router.delete("/products/{product_id}/bom/{bom_id}")
+async def delete_bom_item(
+    product_id: int,
+    bom_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    BOM 단일 항목 삭제
+    """
+    result = await db.execute(
+        select(BOM).where(BOM.id == bom_id, BOM.parent_product_id == product_id)
+    )
+    bom_item = result.scalar_one_or_none()
+    if not bom_item:
+        raise HTTPException(status_code=404, detail="BOM 항목을 찾을 수 없습니다.")
+
+    try:
+        await db.delete(bom_item)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"BOM 삭제 실패: {str(e)}")
+
+    return {"message": "BOM item deleted successfully"}
