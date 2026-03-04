@@ -15,7 +15,9 @@ const PurchasePage = () => {
     const [tabValue, setTabValue] = useState(0);
     const [orders, setOrders] = useState([]);
     const [pendingItems, setPendingItems] = useState([]);
+    const [mrpItems, setMrpItems] = useState([]); // MRP Unordered Requirements
     const [selectedPendingItems, setSelectedPendingItems] = useState([]);
+    const [selectedMrpItems, setSelectedMrpItems] = useState([]);
     const [expandedOrderId, setExpandedOrderId] = useState(null);
 
     const [modalOpen, setModalOpen] = useState(false);
@@ -43,11 +45,23 @@ const PurchasePage = () => {
         if (tabValue === 0) {
             fetchPendingItems();
         } else if (tabValue === 1) {
+            fetchMrpItems();
+        } else if (tabValue === 2) {
             fetchOrders(); // Fetch active orders
         } else {
             fetchCompletedOrders(); // Fetch completed orders
         }
     }, [tabValue]);
+
+    const fetchMrpItems = async () => {
+        try {
+            const response = await api.get('/purchasing/mrp/unordered-requirements');
+            setMrpItems(response.data);
+            setSelectedMrpItems([]);
+        } catch (error) {
+            console.error("Failed to fetch MRP items", error);
+        }
+    };
 
     const fetchOrders = async () => {
         try {
@@ -162,13 +176,23 @@ const PurchasePage = () => {
         }
 
         setSelectedOrder(null);
-        setInitialModalItems(itemsToOrder);
+        setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'PENDING' }))); // Mark as pending item
+        setModalOpen(true);
+    };
+
+    const handleCreateFromMRP = () => {
+        if (selectedMrpItems.length === 0) return;
+        const itemsToOrder = mrpItems.filter(item => selectedMrpItems.includes(item.product_id));
+
+        setSelectedOrder(null);
+        setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'MRP' }))); // Mark as MRP item
         setModalOpen(true);
     };
 
     const handleSuccess = () => {
         if (tabValue === 0) fetchPendingItems();
-        else if (tabValue === 1) fetchOrders();
+        else if (tabValue === 1) fetchMrpItems();
+        else if (tabValue === 2) fetchOrders();
         else fetchCompletedOrders();
         setModalOpen(false);
     };
@@ -181,11 +205,19 @@ const PurchasePage = () => {
         }
     };
 
-    const handleSelectAllPending = (event) => {
-        if (event.target.checked) {
-            setSelectedPendingItems(pendingItems.map(item => item.id));
+    const handleSelectMrpItem = (productId) => {
+        if (selectedMrpItems.includes(productId)) {
+            setSelectedMrpItems(selectedMrpItems.filter(id => id !== productId));
         } else {
-            setSelectedPendingItems([]);
+            setSelectedMrpItems([...selectedMrpItems, productId]);
+        }
+    };
+
+    const handleSelectAllMrp = (event) => {
+        if (event.target.checked) {
+            setSelectedMrpItems(mrpItems.map(item => item.product_id));
+        } else {
+            setSelectedMrpItems([]);
         }
     };
 
@@ -209,7 +241,8 @@ const PurchasePage = () => {
 
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
                 <Tabs value={tabValue} onChange={handleTabChange}>
-                    <Tab label="미발주 현황 (Pending)" />
+                    <Tab label="발주 대기 (Pending)" />
+                    <Tab label="미발주 소요량 (MRP)" />
                     <Tab label="발주 현황 (Ordered)" />
                     <Tab label="입고 완료 (Completed)" />
                 </Tabs>
@@ -251,7 +284,7 @@ const PurchasePage = () => {
                             </TableHead>
                             <TableBody>
                                 {pendingItems.length === 0 ? (
-                                    <TableRow><TableCell colSpan={9} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={10} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
                                 ) : (
                                     pendingItems.map((item) => (
                                         <TableRow key={item.id} hover onClick={() => handleSelectPendingItem(item.id)} sx={{ cursor: 'pointer' }}>
@@ -290,10 +323,69 @@ const PurchasePage = () => {
                 </>
             )}
 
-            {(tabValue === 1 || tabValue === 2) && (
+            {tabValue === 1 && (
                 <>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                        {tabValue === 1 && (
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={handleCreateFromMRP}
+                            disabled={selectedMrpItems.length === 0}
+                        >
+                            선택 품목 발주 등록
+                        </Button>
+                    </Box>
+                    <TableContainer component={Paper}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell padding="checkbox">
+                                        <Checkbox
+                                            indeterminate={selectedMrpItems.length > 0 && selectedMrpItems.length < mrpItems.length}
+                                            checked={mrpItems.length > 0 && selectedMrpItems.length === mrpItems.length}
+                                            onChange={handleSelectAllMrp}
+                                        />
+                                    </TableCell>
+                                    <TableCell>품목코드</TableCell>
+                                    <TableCell>품목명</TableCell>
+                                    <TableCell>구분</TableCell>
+                                    <TableCell align="right">총 소요량</TableCell>
+                                    <TableCell align="right">현재고</TableCell>
+                                    <TableCell align="right">발주잔량</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>최종 발주필요</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {mrpItems.length === 0 ? (
+                                    <TableRow><TableCell colSpan={8} align="center">수주 기반으로 계산된 추가 발주 필요 품목이 없습니다.</TableCell></TableRow>
+                                ) : (
+                                    mrpItems.map((item) => (
+                                        <TableRow key={item.product_id} hover onClick={() => handleSelectMrpItem(item.product_id)} sx={{ cursor: 'pointer' }}>
+                                            <TableCell padding="checkbox">
+                                                <Checkbox checked={selectedMrpItems.includes(item.product_id)} />
+                                            </TableCell>
+                                            <TableCell>{item.product_code}</TableCell>
+                                            <TableCell>{item.product_name}</TableCell>
+                                            <TableCell>
+                                                <Chip label={item.item_type} size="small" variant="outlined" />
+                                            </TableCell>
+                                            <TableCell align="right">{item.total_demand.toLocaleString()}</TableCell>
+                                            <TableCell align="right">{item.current_stock.toLocaleString()}</TableCell>
+                                            <TableCell align="right">{item.open_purchase_qty.toLocaleString()}</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: 'error.main' }}>{item.required_purchase_qty.toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </>
+            )}
+
+            {(tabValue === 2 || tabValue === 3) && (
+                <>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                        {tabValue === 2 && (
                             <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
                                 신규 발주 직접 등록
                             </Button>

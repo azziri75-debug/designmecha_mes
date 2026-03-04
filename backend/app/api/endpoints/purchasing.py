@@ -9,16 +9,103 @@ from app.api import deps
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
 from app.models.production import ProductionPlanItem, ProductionPlan, ProductionStatus
 from app.models.inventory import StockProduction
-from app.models.sales import SalesOrder, SalesOrderItem
-from app.models.product import Product, ProductProcess, Process
+from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
+from app.models.product import Product, ProductProcess, Process, BOM
+from app.models.inventory import Stock, TransactionType
 from app.schemas import purchasing as schemas
 from app.schemas import production as prod_schemas
 from app.api.utils.inventory import handle_stock_movement
-from app.models.inventory import TransactionType
 
-router = APIRouter()
+# --- MRP (Material Requirements Planning) ---
 
-# --- Price History Lookup ---
+@router.get("/mrp/unordered-requirements", response_model=List[schemas.MRPRequirement])
+async def get_unordered_requirements(db: AsyncSession = Depends(deps.get_db)):
+    """
+    수주 기반 미발주 소요량 산출 API
+    """
+    # 1. 대상 수주 조회 (PENDING, CONFIRMED)
+    sales_orders_query = select(SalesOrder).where(
+        SalesOrder.status.in_([OrderStatus.PENDING, OrderStatus.CONFIRMED])
+    ).options(selectinload(SalesOrder.items).selectinload(SalesOrderItem.product))
+    
+    result = await db.execute(sales_orders_query)
+    sales_orders = result.scalars().all()
+
+    # 2. 총 소요량(Demand) 계산 (부품별 합계)
+    total_demand = {} # product_id -> quantity
+    product_map = {} # product_id -> Product object (for metadata)
+
+    for so in sales_orders:
+        for item in so.items:
+            product = item.product
+            if not product:
+                continue
+                
+            # BOM 전개
+            bom_query = select(BOM).where(BOM.parent_product_id == product.id).options(selectinload(BOM.child_product))
+            bom_result = await db.execute(bom_query)
+            bom_items = bom_result.scalars().all()
+
+            if not bom_items:
+                # BOM이 없으면 완제품 자체가 원자재/부품인 경우이거나, 신제품이라 누락된 경우
+                # 요구사항에 따라 BOM이 없으면 하위 소요량 0 처리 (단, 완제품 자체가 PART인 경우도 있을 수 있음)
+                # 여기서는 완제품 자체는 소요량에 넣지 않고, 오직 '부품/원자재' 레벨의 소요량만 산출함
+                # 만약 완제품이 RAW_MATERIAL이나 PART라면 요구사항에 포함될 수 있음
+                if product.item_type in ["RAW_MATERIAL", "PART"]:
+                    pid = product.id
+                    total_demand[pid] = total_demand.get(pid, 0) + item.quantity
+                    product_map[pid] = product
+                continue
+
+            for bi in bom_items:
+                child = bi.child_product
+                if not child:
+                    continue
+                
+                # 하위 부품의 총 소요량 누적
+                demand_qty = int(item.quantity * bi.required_quantity)
+                pid = child.id
+                total_demand[pid] = total_demand.get(pid, 0) + demand_qty
+                product_map[pid] = child
+
+    # 3. 각 부품별 현재고 및 미입고 발주 잔량 산출하여 최종 필요 수량 도출
+    mrp_results = []
+    
+    for pid, demand in total_demand.items():
+        product = product_map[pid]
+        
+        # 3-1. 현재고 조회
+        stock_query = select(Stock).where(Stock.product_id == pid)
+        s_res = await db.execute(stock_query)
+        stock = s_res.scalar_one_or_none()
+        current_stock = stock.current_quantity if stock else 0
+        
+        # 3-2. 미입고 발주 잔량(Open Purchase Qty) 조회
+        # PENDING, ORDERED, PARTIAL 상태의 PO 아이템들 중 (수량 - 입고수량) 합계
+        po_query = select(func.sum(PurchaseOrderItem.quantity - PurchaseOrderItem.received_quantity))\
+            .join(PurchaseOrder)\
+            .where(PurchaseOrderItem.product_id == pid)\
+            .where(PurchaseOrder.status.in_([PurchaseStatus.PENDING, PurchaseStatus.ORDERED, PurchaseStatus.PARTIAL]))
+        
+        po_res = await db.execute(po_query)
+        open_purchase_qty = po_res.scalar() or 0
+        
+        # 3-3. 최종 필요 수량 계산 공식: (총 소요량) - (현재고) - (발주 잔량)
+        required_qty = demand - current_stock - open_purchase_qty
+        
+        if required_qty > 0:
+            mrp_results.append(schemas.MRPRequirement(
+                product_id=pid,
+                product_name=product.name,
+                product_code=product.product_code,
+                item_type=product.item_type,
+                total_demand=demand,
+                current_stock=current_stock,
+                open_purchase_qty=open_purchase_qty,
+                required_purchase_qty=required_qty
+            ))
+
+    return mrp_results
 
 @router.get("/price-history")
 async def get_price_history(

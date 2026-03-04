@@ -164,6 +164,7 @@ async def read_products(
     skip: int = 0,
     limit: int = 100,
     partner_id: int = None,
+    item_type: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
     # Eager loading needed for standard_processes AND its nested process relationship
@@ -174,6 +175,14 @@ async def read_products(
     
     if partner_id:
         query = query.where(Product.partner_id == partner_id)
+    
+    if item_type:
+        # 지원하는 경우 콤마로 구분된 여러 타입을 받을 수 있도록 처리
+        if "," in item_type:
+            types = [t.strip() for t in item_type.split(",")]
+            query = query.where(Product.item_type.in_(types))
+        else:
+            query = query.where(Product.item_type == item_type)
         
     
     result = await db.execute(query.offset(skip).limit(limit))

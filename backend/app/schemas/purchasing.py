@@ -175,3 +175,17 @@ class OutsourcingOrderItemSimple(BaseModel):
 
     class Config:
         from_attributes = True
+
+# --- MRP Schemas ---
+class MRPRequirement(BaseModel):
+    product_id: int
+    product_name: str
+    product_code: str
+    item_type: str
+    total_demand: int
+    current_stock: int
+    open_purchase_qty: int
+    required_purchase_qty: int
+
+    class Config:
+        from_attributes = True

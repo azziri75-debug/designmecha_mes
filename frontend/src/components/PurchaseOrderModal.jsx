@@ -68,25 +68,46 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                 status: 'PENDING',
                 display_order_no: displayCode,
                 items: initialItems.map(item => {
-                    // Look up standard process cost for original process
-                    const product = products.find(p => p.id === item.product_id);
-                    let unitPrice = 0;
-                    if (product && product.standard_processes) {
-                        const standardProc = product.standard_processes.find(sp =>
-                            sp.process?.name === item.process_name ||
-                            sp.course_type?.includes('PURCHASE') ||
-                            sp.process?.course_type?.includes('PURCHASE')
-                        );
-                        if (standardProc) unitPrice = standardProc.cost || 0;
-                    }
+                    if (item.type === 'PENDING') {
+                        // Original Pending Item (ProductionPlanItem)
+                        const product = products.find(p => p.id === item.product_id);
+                        let unitPrice = 0;
+                        if (product && product.standard_processes) {
+                            const standardProc = product.standard_processes.find(sp =>
+                                sp.process?.name === item.process_name ||
+                                sp.course_type?.includes('PURCHASE') ||
+                                sp.process?.course_type?.includes('PURCHASE')
+                            );
+                            if (standardProc) unitPrice = standardProc.cost || 0;
+                        }
 
-                    return {
-                        product_id: item.product_id,
-                        quantity: item.quantity,
-                        unit_price: unitPrice,
-                        note: item.note,
-                        production_plan_item_id: item.id
-                    };
+                        return {
+                            product_id: item.product_id,
+                            quantity: item.quantity,
+                            unit_price: unitPrice,
+                            note: item.note,
+                            production_plan_item_id: item.id
+                        };
+                    } else {
+                        // MRP Item
+                        const product = products.find(p => p.id === item.product_id);
+                        let unitPrice = 0;
+                        if (product && product.standard_processes) {
+                            const standardProc = product.standard_processes.find(sp =>
+                                sp.course_type?.includes('PURCHASE') ||
+                                sp.process?.course_type?.includes('PURCHASE')
+                            );
+                            if (standardProc) unitPrice = standardProc.cost || 0;
+                        }
+
+                        return {
+                            product_id: item.product_id,
+                            quantity: item.required_purchase_qty,
+                            unit_price: unitPrice,
+                            note: 'MRP 소요량 기반 발주',
+                            production_plan_item_id: null
+                        };
+                    }
                 })
             });
         } else if (isOpen) {
@@ -116,7 +137,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
 
     const fetchProducts = async () => {
         try {
-            const response = await api.get('/product/products');
+            // 발주 시에는 원자재(RAW_MATERIAL)와 부품(PART)만 조회
+            const response = await api.get('/product/products', { params: { item_type: 'RAW_MATERIAL,PART' } });
             setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
