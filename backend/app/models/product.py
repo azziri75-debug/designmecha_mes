@@ -34,8 +34,8 @@ class Product(Base):
     group = relationship("ProductGroup", back_populates="products")
     partner = relationship("Partner", back_populates="products")
     inventory = relationship("Inventory", back_populates="product", uselist=False)
-    standard_processes = relationship("ProductProcess", back_populates="product", order_by="ProductProcess.sequence")
-    bom_items = relationship("BOM", foreign_keys="BOM.parent_product_id", back_populates="parent_product", cascade="all, delete-orphan")
+    standard_processes = relationship("ProductProcess", back_populates="product", order_by="ProductProcess.sequence", lazy="selectin")
+    bom_items = relationship("BOM", foreign_keys="BOM.parent_product_id", back_populates="parent_product", cascade="all, delete-orphan", lazy="selectin")
 
 class Process(Base):
     __tablename__ = "processes"
@@ -97,4 +97,4 @@ class BOM(Base):
 
     # Relationships
     parent_product = relationship("Product", foreign_keys=[parent_product_id], back_populates="bom_items")
-    child_product = relationship("Product", foreign_keys=[child_product_id])
+    child_product = relationship("Product", foreign_keys=[child_product_id], lazy="selectin")

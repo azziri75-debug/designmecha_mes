@@ -58,7 +58,10 @@ async def create_estimate(
     
     # Eager load for response
     query = select(Estimate).options(
-        selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(Estimate.items).selectinload(EstimateItem.product).options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(Estimate.partner)
     ).where(Estimate.id == db_estimate.id)
     result = await db.execute(query)
@@ -72,7 +75,10 @@ async def read_estimates(
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(Estimate).options(
-        selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(Estimate.items).selectinload(EstimateItem.product).options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(Estimate.partner)
     )
     if partner_id:
@@ -88,7 +94,10 @@ async def read_estimate(
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(Estimate).options(
-        selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(Estimate.items).selectinload(EstimateItem.product).options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
     result = await db.execute(query)
@@ -104,7 +113,10 @@ async def export_estimate_excel(
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(Estimate).options(
-        selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(Estimate.items).selectinload(EstimateItem.product).options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
     result = await db.execute(query)
@@ -269,7 +281,10 @@ async def export_estimate_excel(
         await db.refresh(estimate)
         
         query = select(Estimate).options(
-            selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Estimate.items).selectinload(EstimateItem.product).options(
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(Product.bom_items)
+            ),
             selectinload(Estimate.partner)
         ).where(Estimate.id == estimate_id)
         result = await db.execute(query)
@@ -327,7 +342,10 @@ async def update_estimate(
     
     # Re-fetch with all eager loads for response
     query = select(Estimate).options(
-        selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(Estimate.items).selectinload(EstimateItem.product).options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
     result = await db.execute(query)
@@ -414,7 +432,10 @@ async def create_order(
     
     # Eager load for response
     query = select(SalesOrder).options(
-        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(SalesOrder.partner)
     ).where(SalesOrder.id == db_order.id)
     result = await db.execute(query)
@@ -432,7 +453,10 @@ async def read_orders(
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(SalesOrder).options(
-        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(SalesOrder.partner)
     )
     if partner_id:
@@ -519,7 +543,10 @@ async def update_order(
     
     # Re-fetch
     query = select(SalesOrder).options(
-        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(SalesOrder.partner)
     ).where(SalesOrder.id == order_id)
     result = await db.execute(query)

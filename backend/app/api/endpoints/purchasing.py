@@ -28,7 +28,9 @@ async def get_unordered_requirements(db: AsyncSession = Depends(deps.get_db)):
     # 1. 대상 수주 조회 (PENDING, CONFIRMED)
     sales_orders_query = select(SalesOrder).where(
         SalesOrder.status.in_([OrderStatus.PENDING, OrderStatus.CONFIRMED])
-    ).options(selectinload(SalesOrder.items).selectinload(SalesOrderItem.product))
+    ).options(
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.bom_items)
+    )
     
     result = await db.execute(sales_orders_query)
     sales_orders = result.scalars().all()
@@ -186,7 +188,10 @@ async def read_pending_purchase_items(
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .options(
-            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(ProductionPlanItem.product).options(
+                selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+                selectinload(Product.bom_items)
+            ),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
@@ -228,7 +233,10 @@ async def read_pending_outsourcing_items(
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .options(
-            selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(ProductionPlanItem.product).options(
+                selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+                selectinload(Product.bom_items)
+            ),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
@@ -331,7 +339,10 @@ async def create_purchase_order(
 
     # Re-fetch with eager load
     query = select(PurchaseOrder).options(
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
+            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(PurchaseOrder.partner),
         selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
         # Load related SO/SP info
@@ -357,7 +368,10 @@ async def read_purchase_orders(
     from app.models.production import ProductionPlanItem, ProductionPlan
 
     query = select(PurchaseOrder).options(
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
+            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(PurchaseOrder.partner),
         selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
         # Load related SO/SP info
@@ -498,7 +512,10 @@ async def update_purchase_order(
     # Re-fetch with full eager loading for related_sales_order_info/related_customer_names
     from app.models.production import ProductionPlanItem, ProductionPlan
     query = select(PurchaseOrder).options(
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
+            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(PurchaseOrder.partner),
         selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
@@ -603,7 +620,10 @@ async def create_outsourcing_order(
 
     # Re-fetch
     query = select(OutsourcingOrder).options(
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).options(
+            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(OutsourcingOrder.partner),
         selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
         # Load related SO/SP info
@@ -629,7 +649,10 @@ async def read_outsourcing_orders(
     from app.models.production import ProductionPlanItem, ProductionPlan
 
     query = select(OutsourcingOrder).options(
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).options(
+            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(OutsourcingOrder.partner),
         selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
         # Load related SO/SP info
@@ -751,7 +774,10 @@ async def update_outsourcing_order(
     # Re-fetch with full eager loading
     from app.models.production import ProductionPlanItem, ProductionPlan
     query = select(OutsourcingOrder).options(
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).options(
+            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
         selectinload(OutsourcingOrder.partner),
         selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(

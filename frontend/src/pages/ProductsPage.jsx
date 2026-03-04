@@ -988,13 +988,13 @@ const ProductsPage = () => {
                                             <button
                                                 key={tab}
                                                 className={cn(
-                                                    "px-3 py-1.5 text-xs font-semibold rounded transition-all",
-                                                    (tab === 'info' && detailSubTab !== 'routing' && detailSubTab !== 'priceHistory' && detailSubTab !== 'bom') ||
+                                                    "px-3 py-1.5 text-xs font-semibold rounded-md transition-all border",
+                                                    (tab === 'info' && detailSubTab === 'info') ||
                                                         (tab === 'routing' && detailSubTab === 'routing') ||
                                                         (tab === 'history' && detailSubTab === 'priceHistory') ||
                                                         (tab === 'bom' && detailSubTab === 'bom')
-                                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40"
-                                                        : "text-gray-400 hover:text-white hover:bg-gray-700"
+                                                        ? "bg-blue-600/20 border-blue-500 text-blue-400 shadow-sm"
+                                                        : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-700/50"
                                                 )}
                                                 type="button"
                                                 onClick={() => {
@@ -1004,7 +1004,7 @@ const ProductsPage = () => {
                                                     else if (tab === 'bom') setDetailSubTab('bom');
                                                 }}
                                             >
-                                                {tab === 'info' ? '기본 정보' : tab === 'routing' ? '상세 공정' : tab === 'bom' ? '🧩 BOM (하위 부품)' : '견적 및 수주 이력'}
+                                                {tab === 'info' ? '기본 정보' : tab === 'routing' ? '상세 공정' : tab === 'bom' ? '🧩 BOM' : '이력'}
                                             </button>
                                         ))}
                                     </div>
@@ -1016,134 +1016,147 @@ const ProductsPage = () => {
                         </div>
 
                         {/* Modal Body */}
-                        <div className="flex-1 overflow-y-auto p-6">
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
                             {(detailSubTab === 'info' || !productFormData.id) && (
-                                <form id="productForm" onSubmit={handleCreateProduct} className="space-y-5 max-w-2xl mx-auto">
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">거래처 <span className="text-red-500">*</span></label>
-                                            <select
-                                                name="partner_id"
-                                                onChange={handleProductInputChange}
-                                                value={productFormData.partner_id || ""}
-                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                required
-                                            >
-                                                <option value="">거래처 선택</option>
-                                                {partners.filter(p => Array.isArray(p.partner_type) && p.partner_type.includes('CUSTOMER')).map(p => (
-                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
+                                <form id="productForm" onSubmit={handleCreateProduct} className="space-y-6 max-w-3xl mx-auto py-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+                                        <div className="space-y-4">
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300">대그룹 (Major)</label>
+                                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">거래처 <span className="text-red-500">*</span></label>
                                                 <select
-                                                    name="major_group_id"
+                                                    name="partner_id"
                                                     onChange={handleProductInputChange}
-                                                    value={productFormData.major_group_id || ""}
-                                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                >
-                                                    <option value="">대그룹 선택</option>
-                                                    {groups.filter(g => g.type === 'MAJOR').map(g => (
-                                                        <option key={g.id} value={g.id}>{g.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300">소그룹 (Minor) <span className="text-red-500">*</span></label>
-                                                <select
-                                                    name="group_id"
-                                                    onChange={handleProductInputChange}
-                                                    value={productFormData.group_id || ""}
-                                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                    value={productFormData.partner_id || ""}
+                                                    className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                                                     required
-                                                    disabled={!productFormData.major_group_id}
                                                 >
-                                                    <option value="">소그룹 선택</option>
-                                                    {groups.filter(g => g.parent_id === parseInt(productFormData.major_group_id)).map(g => (
-                                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                                    <option value="">거래처 선택</option>
+                                                    {partners.filter(p => Array.isArray(p.partner_type) && p.partner_type.includes('CUSTOMER')).map(p => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
                                                     ))}
                                                 </select>
                                             </div>
-                                        </div>
 
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">품명 <span className="text-red-500">*</span></label>
-                                            <input name="name" value={productFormData.name || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">규격</label>
-                                            <input name="specification" value={productFormData.specification || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300">재질</label>
-                                                <input name="material" value={productFormData.material || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">대그룹</label>
+                                                    <select
+                                                        name="major_group_id"
+                                                        onChange={handleProductInputChange}
+                                                        value={productFormData.major_group_id || ""}
+                                                        className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                                    >
+                                                        <option value="">선택</option>
+                                                        {groups.filter(g => g.type === 'MAJOR').map(g => (
+                                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">소그룹 <span className="text-red-500">*</span></label>
+                                                    <select
+                                                        name="group_id"
+                                                        onChange={handleProductInputChange}
+                                                        value={productFormData.group_id || ""}
+                                                        className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                                        required
+                                                        disabled={!productFormData.major_group_id}
+                                                    >
+                                                        <option value="">선택</option>
+                                                        {groups.filter(g => g.parent_id === parseInt(productFormData.major_group_id)).map(g => (
+                                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                             </div>
+
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300">단위</label>
-                                                <input name="unit" value={productFormData.unit || "EA"} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="EA" />
+                                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">품명 <span className="text-red-500">*</span></label>
+                                                <input name="name" value={productFormData.name || ""} onChange={handleProductInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" required placeholder="제품명을 입력하세요" />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">규격</label>
+                                                <input name="specification" value={productFormData.specification || ""} onChange={handleProductInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="규격/사양" />
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">품목 유형 <span className="text-blue-400 text-xs">(완\uc81c\ud488\uacfc \ubc18\uc810\ud488\uc740 BOM 탭 \ud65c\uc131\ud654)</span></label>
-                                            <select
-                                                name="item_type"
-                                                value={productFormData.item_type || 'FINISHED'}
-                                                onChange={handleProductInputChange}
-                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                            >
-                                                {Object.entries(ITEM_TYPES).map(([val, label]) => (
-                                                    <option key={val} value={val}>{label}</option>
-                                                ))}
-                                            </select>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">재질</label>
+                                                    <input name="material" value={productFormData.material || ""} onChange={handleProductInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="재질" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">단위</label>
+                                                    <input name="unit" value={productFormData.unit || "EA"} onChange={handleProductInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="EA" />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">품목 유형</label>
+                                                <select
+                                                    name="item_type"
+                                                    value={productFormData.item_type || 'FINISHED'}
+                                                    onChange={handleProductInputChange}
+                                                    className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                                >
+                                                    {Object.entries(ITEM_TYPES).map(([val, label]) => (
+                                                        <option key={val} value={val}>{label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">비고</label>
+                                                <textarea name="note" value={productFormData.note || ""} onChange={handleProductInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all h-[106px] resize-none text-sm" placeholder="특이사항 입력" />
+                                            </div>
                                         </div>
+                                    </div>
 
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">비고</label>
-                                            <textarea name="note" value={productFormData.note || ""} onChange={handleProductInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all h-20 resize-none" placeholder="특이사항 입력" />
-                                        </div>
+                                    <div className="space-y-3 pt-2">
+                                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">도면 및 첨부 파일</label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="border-2 border-dashed border-gray-700 rounded-xl p-6 text-center hover:bg-gray-700/20 hover:border-gray-600 transition-all relative group h-full flex flex-col items-center justify-center min-h-[120px]">
+                                                <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} />
+                                                <div className="flex flex-col items-center gap-2 text-gray-500 group-hover:text-gray-400">
+                                                    <Upload className="w-8 h-8" />
+                                                    <div className="text-xs">
+                                                        <p className="font-medium">클릭하여 파일 업로드</p>
+                                                        <p className="mt-1 text-[10px] opacity-70">PDF, 이미지, CAD 파일 등</p>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">첨부 파일</label>
-                                            {/* File List Rendering Logic (reused) */}
-                                            {(() => {
-                                                let fileList = [];
-                                                try {
-                                                    const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
-                                                    fileList = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
-                                                } catch { fileList = []; }
+                                            <div className="space-y-2">
+                                                {(() => {
+                                                    let fileList = [];
+                                                    try {
+                                                        const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
+                                                        fileList = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+                                                    } catch { fileList = []; }
 
-                                                if (fileList.length > 0) {
-                                                    return (
-                                                        <div className="space-y-2 mb-3">
-                                                            {fileList.map((file, idx) => (
-                                                                <div key={idx} className="flex items-center justify-between bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 group">
-                                                                    <div className="flex items-center gap-2 min-w-0">
-                                                                        <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                                                                        <span className="text-xs text-gray-300 truncate">{file.name}</span>
+                                                    if (fileList.length > 0) {
+                                                        return fileList.map((file, idx) => (
+                                                            <div key={idx} className="flex items-center justify-between bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2.5 group">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <div className="p-1.5 bg-blue-500/10 rounded">
+                                                                        <FileText className="w-3.5 h-3.5 text-blue-400" />
                                                                     </div>
-                                                                    <button type="button" onClick={() => handleRemoveFile(idx)} className="text-gray-500 hover:text-red-400 transition-colors">
-                                                                        <X className="w-4 h-4" />
-                                                                    </button>
+                                                                    <span className="text-xs text-gray-300 truncate">{file.name}</span>
                                                                 </div>
-                                                            ))}
+                                                                <button type="button" onClick={() => handleRemoveFile(idx)} className="text-gray-500 hover:text-red-400 p-1 transition-colors">
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        ));
+                                                    }
+                                                    return (
+                                                        <div className="h-full flex items-center justify-center border border-gray-700/50 rounded-xl bg-gray-900/20 py-8 px-4">
+                                                            <p className="text-[11px] text-gray-600 italic">첨부된 도면이 없습니다</p>
                                                         </div>
                                                     );
-                                                }
-                                                return null;
-                                            })()}
-                                            <div className="border border-dashed border-gray-700 rounded-lg p-4 text-center hover:bg-gray-700/30 transition-colors relative">
-                                                <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} />
-                                                <div className="flex flex-col items-center gap-2 text-gray-500">
-                                                    <Upload className="w-6 h-6" />
-                                                    <span className="text-sm">클릭하여 파일 추가</span>
-                                                </div>
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
