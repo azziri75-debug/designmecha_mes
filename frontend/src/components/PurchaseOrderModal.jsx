@@ -8,7 +8,7 @@ import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@m
 import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
 import api from '../lib/api';
 
-const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems }) => {
+const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, purchaseType }) => {
     const [partners, setPartners] = useState([]);
     const [products, setProducts] = useState([]);
     const [salesOrders, setSalesOrders] = useState([]);
@@ -20,6 +20,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
         delivery_date: '',
         note: '',
         status: 'PENDING',
+        purchase_type: purchaseType || 'PART',
         items: [],
         display_order_no: '' // For UI display of linked SO/SP
     });
@@ -31,10 +32,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
     const [loadingHistory, setLoadingHistory] = useState(false);
 
     useEffect(() => {
-        fetchPartners();
-        fetchProducts();
-        fetchSalesOrders();
-    }, []);
+        if (isOpen) {
+            fetchPartners();
+            fetchProducts();
+            fetchSalesOrders();
+        }
+    }, [isOpen, purchaseType]);
 
     useEffect(() => {
         if (order) {
@@ -45,6 +48,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                 delivery_date: order.delivery_date || '',
                 note: order.note || '',
                 status: order.status || 'PENDING',
+                purchase_type: order.purchase_type || purchaseType || 'PART',
                 items: order.items.map(item => ({
                     ...item,
                     product_id: item.product.id
@@ -66,6 +70,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
                 delivery_date: '',
                 note: '',
                 status: 'PENDING',
+                purchase_type: purchaseType || 'PART',
                 display_order_no: displayCode,
                 items: initialItems.map(item => {
                     if (item.type === 'PENDING') {
@@ -137,8 +142,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
 
     const fetchProducts = async () => {
         try {
-            // 발주 시에는 원자재(RAW_MATERIAL)와 부품(PART)만 조회
-            const response = await api.get('/product/products', { params: { item_type: 'RAW_MATERIAL,PART' } });
+            // Filter by purchaseType
+            let typeParam = 'PART,RAW_MATERIAL';
+            if (purchaseType === 'CONSUMABLE') {
+                typeParam = 'CONSUMABLE';
+            }
+            const response = await api.get('/product/products', { params: { item_type: typeParam } });
             setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
@@ -195,7 +204,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems })
         setLoadingHistory(true);
         try {
             const response = await api.get('/purchasing/price-history', {
-                params: { product_id: productId, partner_id: formData.partner_id || undefined }
+                params: {
+                    product_id: productId,
+                    partner_id: formData.partner_id || undefined,
+                    purchase_type: formData.purchase_type // For more specific history if needed
+                }
             });
             setPriceHistory(response.data);
         } catch (error) {

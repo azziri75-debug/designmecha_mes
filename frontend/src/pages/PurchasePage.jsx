@@ -11,7 +11,7 @@ import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 
-const PurchasePage = () => {
+const PurchasePage = ({ type }) => {
     const [tabValue, setTabValue] = useState(0);
     const [orders, setOrders] = useState([]);
     const [pendingItems, setPendingItems] = useState([]);
@@ -56,7 +56,11 @@ const PurchasePage = () => {
     const fetchMrpItems = async () => {
         try {
             const response = await api.get('/purchasing/mrp/unordered-requirements');
-            setMrpItems(response.data);
+            // Filter by type: MRP returns item_type as "PART" or "CONSUMABLE" or others
+            const filteredData = response.data.filter(item =>
+                type === 'CONSUMABLE' ? item.item_type === 'CONSUMABLE' : item.item_type === 'PART'
+            );
+            setMrpItems(filteredData);
             setSelectedMrpItems([]);
         } catch (error) {
             console.error("Failed to fetch MRP items", error);
@@ -65,7 +69,7 @@ const PurchasePage = () => {
 
     const fetchOrders = async () => {
         try {
-            const response = await api.get('/purchasing/purchase/orders');
+            const response = await api.get('/purchasing/purchase/orders', { params: { purchase_type: type } });
             // Client-side filter for now as backend filter is exact match
             setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
         } catch (error) {
@@ -75,7 +79,7 @@ const PurchasePage = () => {
 
     const fetchCompletedOrders = async () => {
         try {
-            const response = await api.get('/purchasing/purchase/orders', { params: { status: 'COMPLETED' } });
+            const response = await api.get('/purchasing/purchase/orders', { params: { status: 'COMPLETED', purchase_type: type } });
             setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch completed orders", error);
@@ -243,7 +247,7 @@ const PurchasePage = () => {
         <Box sx={{ width: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color: '#1a237e' }}>
-                    구매 자재 발주 관리
+                    {type === 'CONSUMABLE' ? '소모품 발주 관리' : '구매 자재 발주 관리'}
                 </Typography>
             </Box>
 
@@ -596,6 +600,7 @@ const PurchasePage = () => {
                 onSuccess={handleSuccess}
                 order={selectedOrder}
                 initialItems={initialModalItems}
+                purchaseType={type}
             />
 
             <PurchaseSheetModal

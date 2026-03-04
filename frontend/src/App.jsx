@@ -68,9 +68,11 @@ const App = () => {
         <Route path="products/processes" element={<ProtectedRoute menuKey="products"><ProductsPage type="PROCESSES" /></ProtectedRoute>} />
         <Route path="products" element={<Navigate to="/products/produced" replace />} />
         <Route path="sales" element={<ProtectedRoute menuKey="sales"><SalesPage /></ProtectedRoute>} />
+        <Route path="purchasing/materials" element={<ProtectedRoute menuKey="purchasing"><PurchasePage type="PART" /></ProtectedRoute>} />
+        <Route path="purchasing/consumables" element={<ProtectedRoute menuKey="purchasing"><PurchasePage type="CONSUMABLE" /></ProtectedRoute>} />
+        <Route path="purchasing" element={<Navigate to="/purchasing/materials" replace />} />
         <Route path="production" element={<ProtectedRoute menuKey="production"><ProductionPage /></ProtectedRoute>} />
         <Route path="work-logs" element={<ProtectedRoute menuKey="production"><WorkLogPage /></ProtectedRoute>} />
-        <Route path="purchase" element={<ProtectedRoute menuKey="purchase"><PurchasePage /></ProtectedRoute>} />
         <Route path="outsourcing" element={<ProtectedRoute menuKey="outsourcing"><OutsourcingPage /></ProtectedRoute>} />
         <Route path="quality" element={<ProtectedRoute menuKey="quality"><QualityPage /></ProtectedRoute>} />
         <Route path="delivery" element={<ProtectedRoute menuKey="sales"><DeliveryPage /></ProtectedRoute>} />
