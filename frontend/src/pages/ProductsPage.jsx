@@ -12,8 +12,8 @@ const Card = ({ children, className }) => (
     </div>
 );
 
-const ProductsPage = () => {
-    const [activeTab, setActiveTab] = useState('products'); // 'products' | 'processes'
+const ProductsPage = ({ type }) => {
+    const [activeTab, setActiveTab] = useState(type === 'PROCESSES' ? 'processes' : 'products'); // 'products' | 'processes'
     const [products, setProducts] = useState([]);
     const [processes, setProcesses] = useState([]); // Master processes
     const [partners, setPartners] = useState([]);
@@ -43,7 +43,7 @@ const ProductsPage = () => {
     const [viewingTargetId, setViewingTargetId] = useState(null);
 
     // Sub-tab in expanded product view
-    const [detailSubTab, setDetailSubTab] = useState('routing'); // 'routing' | 'priceHistory'
+    const [detailSubTab, setDetailSubTab] = useState('routing'); // 'routing' | 'priceHistory' | 'bom'
     const [priceHistory, setPriceHistory] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -63,12 +63,13 @@ const ProductsPage = () => {
     const [loadingBom, setLoadingBom] = useState(false);
 
     const ITEM_TYPES = {
-        RAW_MATERIAL: '원자재',
+        PRODUCED: '생산제품',
         PART: '부품',
-        SEMI_FINISHED: '반제품',
-        FINISHED: '완제품'
+        CONSUMABLE: '소모품'
     };
-    const BOM_ITEM_TYPES = ['FINISHED', 'SEMI_FINISHED']; // BOM 탭 표시 조건
+    const BOM_ITEM_TYPES = ['PRODUCED']; // BOM 탭 표시 조건
+
+    // Removed useEffect for activeTab based on type, now set directly in useState
 
     useEffect(() => {
         if (activeTab === 'products') {
@@ -80,7 +81,7 @@ const ProductsPage = () => {
             fetchProcesses();
             fetchGroups();
         }
-    }, [activeTab, selectedPartnerId]);
+    }, [activeTab, selectedPartnerId, type]);
 
     // [Fix] Sync price history for expanded row
     useEffect(() => {
@@ -128,9 +129,11 @@ const ProductsPage = () => {
     const fetchProducts = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/product/products/', {
-                params: { partner_id: selectedPartnerId || undefined }
-            });
+            const params = { partner_id: selectedPartnerId || undefined };
+            if (type && type !== 'PROCESSES') {
+                params.item_type = type;
+            }
+            const res = await api.get('/product/products/', { params });
             setProducts(res.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
@@ -233,6 +236,13 @@ const ProductsPage = () => {
                 ...productFormData,
                 unit: productFormData.unit || 'EA'
             };
+
+            // Auto-assign item_type based on the 'type' prop if not 'PROCESSES'
+            if (type && type !== 'PROCESSES') {
+                payload.item_type = type;
+            } else if (!payload.item_type) { // Default if type is not provided or is PROCESSES
+                payload.item_type = 'PRODUCED'; // Or a suitable default
+            }
 
             if (productFormData.id) {
                 await api.put(`/product/products/${productFormData.id}`, payload);
@@ -593,12 +603,17 @@ const ProductsPage = () => {
             return;
         }
         const childProduct = products.find(p => p.id === parseInt(bomNewRow.child_product_id));
+        if (!childProduct || childProduct.item_type !== 'PART') {
+            alert('BOM 하위 품목은 "부품" 유형만 선택할 수 있습니다.');
+            return;
+        }
+
         setBomItems(prev => [...prev, {
             id: null, // 저장 전이라 id 없음
             parent_product_id: productFormData.id,
             child_product_id: parseInt(bomNewRow.child_product_id),
             required_quantity: parseFloat(bomNewRow.required_quantity) || 1,
-            child_product: childProduct || { id: parseInt(bomNewRow.child_product_id), name: '(\uc54c 수 \uc5c6\uc74c)' }
+            child_product: childProduct || { id: parseInt(bomNewRow.child_product_id), name: '(알 수 없음)' }
         }]);
         setBomNewRow({ child_product_id: '', required_quantity: 1 });
     };
@@ -607,11 +622,32 @@ const ProductsPage = () => {
         setBomItems(prev => prev.filter((_, i) => i !== index));
     };
 
+    const getPageTitle = () => {
+        switch (type) {
+            case 'PRODUCED': return '생산제품 관리';
+            case 'PART': return '부품 관리';
+            case 'CONSUMABLE': return '소모품 관리';
+            case 'PROCESSES': return '공정 관리';
+            default: return '제품 및 공정 관리';
+        }
+    };
+
+    const getNewProductButtonText = () => {
+        switch (type) {
+            case 'PRODUCED': return '신규 생산제품 등록';
+            case 'PART': return '신규 부품 등록';
+            case 'CONSUMABLE': return '신규 소모품 등록';
+            default: return '신규 제품 등록';
+        }
+    };
+
     return (
         <div className="space-y-6 relative">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight">제품 및 공정 관리</h2>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">
+                        {getPageTitle()}
+                    </h2>
                     <div className="flex space-x-4 mt-4 border-b border-gray-700">
                         <button
                             onClick={() => setActiveTab('products')}
@@ -645,7 +681,7 @@ const ProductsPage = () => {
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20"
                     >
                         <Plus className="w-4 h-4" />
-                        <span>신규 제품 등록</span>
+                        <span>{getNewProductButtonText()}</span>
                     </button>
                 )}
             </div>
@@ -1093,19 +1129,7 @@ const ProductsPage = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">품목 유형</label>
-                                                <select
-                                                    name="item_type"
-                                                    value={productFormData.item_type || 'FINISHED'}
-                                                    onChange={handleProductInputChange}
-                                                    className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                                                >
-                                                    {Object.entries(ITEM_TYPES).map(([val, label]) => (
-                                                        <option key={val} value={val}>{label}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
+                                            {/* Item Type selection removed as requested - auto-assigned from background */}
 
                                             <div className="space-y-2">
                                                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">비고</label>
@@ -1349,7 +1373,7 @@ const ProductsPage = () => {
                                             className="flex-1 bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
                                         >
                                             <option value="">하위 품목 선택...</option>
-                                            {products.filter(p => p.id !== productFormData.id).map(p => (
+                                            {products.filter(p => p.id !== productFormData.id && p.item_type === 'PART').map(p => (
                                                 <option key={p.id} value={p.id}>
                                                     [{ITEM_TYPES[p.item_type] || p.item_type || '-'}] {p.name} {p.specification ? `(${p.specification})` : ''}
                                                 </option>

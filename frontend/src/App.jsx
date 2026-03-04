@@ -62,7 +62,11 @@ const App = () => {
       <Route path="/" element={<Layout />}>
         <Route index element={<RootRedirect />} />
         <Route path="basics" element={<ProtectedRoute menuKey="basics"><BasicsPage /></ProtectedRoute>} />
-        <Route path="products" element={<ProtectedRoute menuKey="products"><ProductsPage /></ProtectedRoute>} />
+        <Route path="products/produced" element={<ProtectedRoute menuKey="products"><ProductsPage type="PRODUCED" /></ProtectedRoute>} />
+        <Route path="products/parts" element={<ProtectedRoute menuKey="products"><ProductsPage type="PART" /></ProtectedRoute>} />
+        <Route path="products/consumables" element={<ProtectedRoute menuKey="products"><ProductsPage type="CONSUMABLE" /></ProtectedRoute>} />
+        <Route path="products/processes" element={<ProtectedRoute menuKey="products"><ProductsPage type="PROCESSES" /></ProtectedRoute>} />
+        <Route path="products" element={<Navigate to="/products/produced" replace />} />
         <Route path="sales" element={<ProtectedRoute menuKey="sales"><SalesPage /></ProtectedRoute>} />
         <Route path="production" element={<ProtectedRoute menuKey="production"><ProductionPage /></ProtectedRoute>} />
         <Route path="work-logs" element={<ProtectedRoute menuKey="production"><WorkLogPage /></ProtectedRoute>} />

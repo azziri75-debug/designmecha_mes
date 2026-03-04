@@ -17,7 +17,10 @@ import {
     FileText,
     Boxes,
     Database,
-    Clock
+    Clock,
+    Wrench,
+    Blocks,
+    Cpu
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -47,7 +50,10 @@ const Layout = () => {
     const navItems = [
         { icon: LayoutDashboard, label: '대시보드', to: '/', menuKey: null },
         { icon: Users, label: '기초 정보 (거래처/사원)', to: '/basics', menuKey: 'basics' },
-        { icon: Package, label: '제품 및 공정 관리', to: '/products', menuKey: 'products' },
+        { icon: Blocks, label: '생산제품 관리', to: '/products/produced', menuKey: 'products' },
+        { icon: Cpu, label: '부품 관리', to: '/products/parts', menuKey: 'products' },
+        { icon: Wrench, label: '소모품 관리', to: '/products/consumables', menuKey: 'products' },
+        { icon: Factory, label: '공정 관리 (마스터)', to: '/products/processes', menuKey: 'products' },
         { icon: DollarSign, label: '영업 관리 (견적/수주)', to: '/sales', menuKey: 'sales' },
         { icon: Factory, label: '생산 관리 (계획/지시)', to: '/production', menuKey: 'production' },
         { icon: ClipboardCheck, label: '작업일지 관리', to: '/work-logs', menuKey: 'production' },
