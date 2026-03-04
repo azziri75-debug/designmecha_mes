@@ -65,7 +65,6 @@ const App = () => {
         <Route path="products/produced" element={<ProtectedRoute menuKey="products"><ProductsPage type="PRODUCED" /></ProtectedRoute>} />
         <Route path="products/parts" element={<ProtectedRoute menuKey="products"><ProductsPage type="PART" /></ProtectedRoute>} />
         <Route path="products/consumables" element={<ProtectedRoute menuKey="products"><ProductsPage type="CONSUMABLE" /></ProtectedRoute>} />
-        <Route path="products/processes" element={<ProtectedRoute menuKey="products"><ProductsPage type="PROCESSES" /></ProtectedRoute>} />
         <Route path="products" element={<Navigate to="/products/produced" replace />} />
         <Route path="sales" element={<ProtectedRoute menuKey="sales"><SalesPage /></ProtectedRoute>} />
         <Route path="purchasing/materials" element={<ProtectedRoute menuKey="purchasing"><PurchasePage type="PART" /></ProtectedRoute>} />

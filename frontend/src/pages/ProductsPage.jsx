@@ -658,15 +658,17 @@ const ProductsPage = ({ type }) => {
                         >
                             제품 목록
                         </button>
-                        <button
-                            onClick={() => setActiveTab('processes')}
-                            className={cn(
-                                "pb-2 text-sm font-medium transition-colors",
-                                activeTab === 'processes' ? "text-blue-500 border-b-2 border-blue-500" : "text-gray-400 hover:text-white"
-                            )}
-                        >
-                            공정 관리 (마스터)
-                        </button>
+                        {type === 'PRODUCED' && (
+                            <button
+                                onClick={() => setActiveTab('processes')}
+                                className={cn(
+                                    "pb-2 text-sm font-medium transition-colors",
+                                    activeTab === 'processes' ? "text-blue-500 border-b-2 border-blue-500" : "text-gray-400 hover:text-white"
+                                )}
+                            >
+                                공정 관리 (마스터)
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -1020,7 +1022,7 @@ const ProductsPage = ({ type }) => {
                                 </h3>
                                 {productFormData.id && (
                                     <div className="flex gap-4 mt-3">
-                                        {['info', 'routing', 'history', ...(BOM_ITEM_TYPES.includes(productFormData.item_type) ? ['bom'] : [])].map((tab) => (
+                                        {['info', ...(productFormData.item_type === 'PRODUCED' ? ['routing'] : []), 'history', ...(BOM_ITEM_TYPES.includes(productFormData.item_type) ? ['bom'] : [])].map((tab) => (
                                             <button
                                                 key={tab}
                                                 className={cn(
