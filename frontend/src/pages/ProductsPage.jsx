@@ -63,12 +63,12 @@ const ProductsPage = () => {
     const [loadingBom, setLoadingBom] = useState(false);
 
     const ITEM_TYPES = {
-        RAW_MATERIAL: '\uc6d0\uc790\uc7ac',
-        PART: '\ubd80\ud488',
-        SEMI_FINISHED: '\ubc18\uc81c\ud488',
-        FINISHED: '\uc644\uc81c\ud488'
+        RAW_MATERIAL: '원자재',
+        PART: '부품',
+        SEMI_FINISHED: '반제품',
+        FINISHED: '완제품'
     };
-    const BOM_ITEM_TYPES = ['FINISHED', 'SEMI_FINISHED']; // BOM 탭 표\uc2dc \uc870\uac74
+    const BOM_ITEM_TYPES = ['FINISHED', 'SEMI_FINISHED']; // BOM 탭 표시 조건
 
     useEffect(() => {
         if (activeTab === 'products') {

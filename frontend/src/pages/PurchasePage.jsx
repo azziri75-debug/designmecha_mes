@@ -221,6 +221,14 @@ const PurchasePage = () => {
         }
     };
 
+    const handleSelectAllPending = (event) => {
+        if (event.target.checked) {
+            setSelectedPendingItems(pendingItems.map(item => item.id));
+        } else {
+            setSelectedPendingItems([]);
+        }
+    };
+
     const handleOpenSource = (item) => {
         if (item.plan?.order) {
             setSelectedSourceOrder(item.plan.order);
