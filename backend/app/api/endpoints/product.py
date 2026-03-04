@@ -319,7 +319,37 @@ async def delete_process(
 
 # --- History Endpoints ---
 
+@router.get("/{product_id}/purchase-history", response_model=List[ProductPriceHistory])
 @router.get("/{product_id}/price-history", response_model=List[ProductPriceHistory])
+async def get_product_purchase_history(
+    product_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    특정 제품의 과거 구매(발주) 내역 조회
+    """
+    stmt = select(PurchaseOrderItem, PurchaseOrder, Partner)\
+        .select_from(PurchaseOrderItem)\
+        .join(PurchaseOrder)\
+        .join(Partner, PurchaseOrder.partner_id == Partner.id)\
+        .where(PurchaseOrderItem.product_id == product_id)\
+        .order_by(PurchaseOrder.order_date.desc())
+    
+    result = await db.execute(stmt)
+    history = []
+    for row in result.all():
+        item, order, partner = row
+        history.append(ProductPriceHistory(
+            date=str(order.order_date),
+            type="PURCHASE",
+            partner_name=partner.name,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            total_amount=item.quantity * item.unit_price,
+            order_no=order.order_no
+        ))
+    return history
+
 @router.get("/{product_id}/sales-history", response_model=List[ProductPriceHistory])
 async def get_product_price_history(
     product_id: int,

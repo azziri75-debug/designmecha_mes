@@ -44,6 +44,7 @@ class PurchaseOrderBase(BaseModel):
     delivery_date: Optional[date] = None
     note: Optional[str] = None
     status: Optional[PurchaseStatus] = PurchaseStatus.PENDING
+    purchase_type: Optional[str] = "PART" # PART, CONSUMABLE
 
 class PurchaseOrderCreate(PurchaseOrderBase):
     items: List[PurchaseOrderItemCreate] = []
@@ -54,12 +55,14 @@ class PurchaseOrderUpdate(BaseModel):
     delivery_date: Optional[date] = None
     note: Optional[str] = None
     status: Optional[PurchaseStatus] = None
+    purchase_type: Optional[str] = None
     attachment_file: Optional[Any] = None
     items: Optional[List[PurchaseOrderItemUpdate]] = None
 
 class PurchaseOrder(PurchaseOrderBase):
     id: int
     order_no: str
+    purchase_type: Optional[str] = "PART"
     total_amount: Optional[float] = 0.0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

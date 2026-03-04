@@ -28,7 +28,7 @@ class Product(Base):
     unit = Column(String, default="EA") # 단위
     drawing_file = Column(String, nullable=True) # 도면 파일 경로
     note = Column(Text, nullable=True) # 비고
-    item_type = Column(String, default="FINISHED", nullable=True) # RAW_MATERIAL, PART, SEMI_FINISHED, FINISHED
+    item_type = Column(String, default="PRODUCED", nullable=True) # PRODUCED(생산제품), PART(부품), CONSUMABLE(소모품)
     
     # Relationships
     group = relationship("ProductGroup", back_populates="products")

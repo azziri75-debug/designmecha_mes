@@ -20,13 +20,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Add columns to production_plan_items idempotently using raw SQL for Postgres
-    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS start_date DATE')
-    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS end_date DATE')
-    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS cost FLOAT DEFAULT 0.0')
-    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS attachment_file JSON')
-    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS worker_id INTEGER')
-    op.execute('ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS equipment_id INTEGER')
+    # SQLite does not support ADD COLUMN IF NOT EXISTS. 
+    # Use batch_alter_table for SQLite compatibility.
+    with op.batch_alter_table('production_plan_items', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('start_date', sa.Date(), nullable=True))
+        batch_op.add_column(sa.Column('end_date', sa.Date(), nullable=True))
+        batch_op.add_column(sa.Column('cost', sa.Float(), server_default='0.0', nullable=True))
+        batch_op.add_column(sa.Column('attachment_file', sa.JSON(), nullable=True))
+        batch_op.add_column(sa.Column('worker_id', sa.Integer(), nullable=True))
+        batch_op.add_column(sa.Column('equipment_id', sa.Integer(), nullable=True))
 
 
 def downgrade() -> None:

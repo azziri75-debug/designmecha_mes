@@ -115,6 +115,7 @@ async def get_unordered_requirements(db: AsyncSession = Depends(deps.get_db)):
 async def get_price_history(
     product_id: int,
     partner_id: Optional[int] = None,
+    purchase_type: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db)
 ) -> List[Any]:
     """
@@ -131,6 +132,8 @@ async def get_price_history(
     
     if partner_id:
         purchase_query = purchase_query.where(PurchaseOrder.partner_id == partner_id)
+    if purchase_type:
+        purchase_query = purchase_query.where(PurchaseOrder.purchase_type == purchase_type)
         
     purchase_query = purchase_query.order_by(desc(PurchaseOrder.order_date)).limit(10)
     
@@ -300,7 +303,8 @@ async def create_purchase_order(
         order_date=order_in.order_date,
         delivery_date=order_in.delivery_date,
         note=order_in.note,
-        status=PurchaseStatus.PENDING
+        status=PurchaseStatus.PENDING,
+        purchase_type=order_in.purchase_type or "PART"
     )
     db.add(db_order)
     await db.flush()
@@ -358,7 +362,8 @@ async def create_purchase_order(
 async def read_purchase_orders(
     skip: int = 0,
     limit: int = 100,
-    status: str = None, # Added status filter for 'Completed' tab logic if needed
+    status: str = None, 
+    purchase_type: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
@@ -382,6 +387,8 @@ async def read_purchase_orders(
     )
     if status:
         query = query.where(PurchaseOrder.status == status)
+    if purchase_type:
+        query = query.where(PurchaseOrder.purchase_type == purchase_type)
 
     query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit)
     result = await db.execute(query)
