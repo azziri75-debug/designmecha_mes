@@ -13,8 +13,6 @@ import {
     CircularProgress,
     Card,
     CardContent,
-    FormControl,
-    InputLabel,
     Select,
     MenuItem,
     Chip,
@@ -128,29 +126,33 @@ const AttendancePage = () => {
                 </Typography>
 
                 {/* 연도 선택 */}
-                <FormControl size="small" sx={{ minWidth: 110 }}>
-                    <InputLabel>연도</InputLabel>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)', fontWeight: 600, fontSize: '0.7rem', letterSpacing: 0.5 }}>
+                        연도
+                    </Typography>
                     <Select
+                        size="small"
                         value={year}
-                        label="연도"
                         onChange={e => setYear(e.target.value)}
-                        sx={{ bgcolor: '#fff' }}
+                        sx={{ bgcolor: '#fff', minWidth: 110, borderRadius: 1 }}
                     >
                         {yearOptions.map(y => (
                             <MenuItem key={y} value={y}>{y}년</MenuItem>
                         ))}
                     </Select>
-                </FormControl>
+                </Box>
 
                 {/* 사원 선택 (ADMIN 전용) */}
                 {user?.user_type === 'ADMIN' && (
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel>대상 사원</InputLabel>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)', fontWeight: 600, fontSize: '0.7rem', letterSpacing: 0.5 }}>
+                            대상 사원
+                        </Typography>
                         <Select
+                            size="small"
                             value={selectedUserId ?? user.id}
-                            label="대상 사원"
                             onChange={e => setSelectedUserId(e.target.value)}
-                            sx={{ bgcolor: '#fff' }}
+                            sx={{ bgcolor: '#fff', minWidth: 200, borderRadius: 1 }}
                         >
                             {staffList.map(s => (
                                 <MenuItem key={s.id} value={s.id}>
@@ -158,7 +160,7 @@ const AttendancePage = () => {
                                 </MenuItem>
                             ))}
                         </Select>
-                    </FormControl>
+                    </Box>
                 )}
             </Stack>
 
