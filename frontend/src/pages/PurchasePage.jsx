@@ -42,16 +42,16 @@ const PurchasePage = ({ type }) => {
     const [selectedSourceStock, setSelectedSourceStock] = useState(null);
 
     useEffect(() => {
-        if (tabValue === 0) {
-            fetchPendingItems();
-        } else if (tabValue === 1) {
-            fetchMrpItems();
-        } else if (tabValue === 2) {
-            fetchOrders(); // Fetch active orders
+        if (type === 'CONSUMABLE') {
+            if (tabValue === 0) fetchOrders();
+            else fetchCompletedOrders();
         } else {
-            fetchCompletedOrders(); // Fetch completed orders
+            if (tabValue === 0) fetchPendingItems();
+            else if (tabValue === 1) fetchMrpItems();
+            else if (tabValue === 2) fetchOrders();
+            else fetchCompletedOrders();
         }
-    }, [tabValue]);
+    }, [tabValue, type]);
 
     const fetchMrpItems = async () => {
         try {
@@ -194,10 +194,15 @@ const PurchasePage = ({ type }) => {
     };
 
     const handleSuccess = () => {
-        if (tabValue === 0) fetchPendingItems();
-        else if (tabValue === 1) fetchMrpItems();
-        else if (tabValue === 2) fetchOrders();
-        else fetchCompletedOrders();
+        if (type === 'CONSUMABLE') {
+            if (tabValue === 0) fetchOrders();
+            else fetchCompletedOrders();
+        } else {
+            if (tabValue === 0) fetchPendingItems();
+            else if (tabValue === 1) fetchMrpItems();
+            else if (tabValue === 2) fetchOrders();
+            else fetchCompletedOrders();
+        }
         setModalOpen(false);
     };
 
@@ -253,10 +258,19 @@ const PurchasePage = ({ type }) => {
 
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
                 <Tabs value={tabValue} onChange={handleTabChange}>
-                    <Tab label="발주 대기 (Pending)" />
-                    <Tab label="미발주 소요량 (MRP)" />
-                    <Tab label="발주 현황 (Ordered)" />
-                    <Tab label="입고 완료 (Completed)" />
+                    {type === 'CONSUMABLE' ? (
+                        [
+                            <Tab key="current" label="발주 현황" />,
+                            <Tab key="history" label="발주 이력" />
+                        ]
+                    ) : (
+                        [
+                            <Tab key="pending" label="발주 대기 (Pending)" />,
+                            <Tab key="mrp" label="미발주 소요량 (MRP)" />,
+                            <Tab key="ordered" label="발주 현황 (Ordered)" />,
+                            <Tab key="completed" label="입고 완료 (Completed)" />
+                        ]
+                    )}
                 </Tabs>
             </Box>
 
@@ -394,10 +408,10 @@ const PurchasePage = ({ type }) => {
                 </>
             )}
 
-            {(tabValue === 2 || tabValue === 3) && (
+            {((type === 'CONSUMABLE' && (tabValue === 0 || tabValue === 1)) || (type !== 'CONSUMABLE' && (tabValue === 2 || tabValue === 3))) && (
                 <>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                        {tabValue === 2 && (
+                        {((type === 'CONSUMABLE' && tabValue === 0) || (type !== 'CONSUMABLE' && tabValue === 2)) && (
                             <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
                                 신규 발주 직접 등록
                             </Button>
@@ -419,7 +433,7 @@ const PurchasePage = ({ type }) => {
                             </TableHead>
                             <TableBody>
                                 {orders.length === 0 ? (
-                                    <TableRow><TableCell colSpan={7} align="center">{tabValue === 1 ? "진행 중인 발주 내역이 없습니다." : "완료된 발주 내역이 없습니다."}</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={8} align="center">{(type === 'CONSUMABLE' ? tabValue === 0 : tabValue === 2) ? "진행 중인 발주 내역이 없습니다." : "완료된 발주 내역이 없습니다."}</TableCell></TableRow>
                                 ) : (
                                     orders.map((order) => (
                                         <React.Fragment key={order.id}>
@@ -528,8 +542,13 @@ const PurchasePage = ({ type }) => {
                                                                             const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
                                                                             const updatedFiles = [...files, newFile];
                                                                             await api.put(`/purchasing/purchase/orders/${order.id}`, { attachment_file: updatedFiles });
-                                                                            if (tabValue === 1) fetchOrders();
-                                                                            else fetchCompletedOrders();
+                                                                            if (type === 'CONSUMABLE') {
+                                                                                if (tabValue === 0) fetchOrders();
+                                                                                else fetchCompletedOrders();
+                                                                            } else {
+                                                                                if (tabValue === 2) fetchOrders();
+                                                                                else fetchCompletedOrders();
+                                                                            }
                                                                         } catch (err) {
                                                                             console.error("Upload failed", err);
                                                                             alert("파일 업로드 실패");

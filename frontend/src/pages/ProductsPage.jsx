@@ -1069,7 +1069,16 @@ const ProductsPage = ({ type }) => {
                                                     required
                                                 >
                                                     <option value="">거래처 선택</option>
-                                                    {partners.filter(p => Array.isArray(p.partner_type) && p.partner_type.includes('CUSTOMER')).map(p => (
+                                                    {partners.filter(p => {
+                                                        const types = Array.isArray(p.partner_type) ? p.partner_type :
+                                                            (typeof p.partner_type === 'string' ? JSON.parse(p.partner_type) : []);
+                                                        if (productFormData.item_type === 'PRODUCED') {
+                                                            return types.includes('CUSTOMER');
+                                                        } else {
+                                                            // 부품, 소모품은 구입처(SUPPLIER)만 표시
+                                                            return types.includes('SUPPLIER');
+                                                        }
+                                                    }).map(p => (
                                                         <option key={p.id} value={p.id}>{p.name}</option>
                                                     ))}
                                                 </select>
