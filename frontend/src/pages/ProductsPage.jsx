@@ -1338,7 +1338,7 @@ const ProductsPage = () => {
                             {detailSubTab === 'bom' && productFormData.id && (
                                 <div className="space-y-4">
                                     <div className="text-xs text-gray-500 bg-blue-900/10 border border-blue-800/30 rounded-lg px-4 py-2">
-                                        💡 <strong>하\uc704 \ubd80\ud488 \ubaa9\ub85d</strong>\uc744 \uc124\uc815\ud558\uc138\uc694. \uc800\uc7a5 \ubc84\ud2bc\uc744 \ub20c\ub7ec\uc57c \ubc18\uc601\ub429\ub2c8\ub2e4.
+                                        💡 <strong>하위 부품 목록</strong>을 설정하세요. 저장 버튼을 눌러야 반영됩니다.
                                     </div>
 
                                     {/* BOM \ud56d\ubaa9 \uc785\ub825 */}
@@ -1348,7 +1348,7 @@ const ProductsPage = () => {
                                             onChange={(e) => setBomNewRow(prev => ({ ...prev, child_product_id: e.target.value }))}
                                             className="flex-1 bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
                                         >
-                                            <option value="">하\uc704 \ud488\ubaa9 \uc120\ud0dd...</option>
+                                            <option value="">하위 품목 선택...</option>
                                             {products.filter(p => p.id !== productFormData.id).map(p => (
                                                 <option key={p.id} value={p.id}>
                                                     [{ITEM_TYPES[p.item_type] || p.item_type || '-'}] {p.name} {p.specification ? `(${p.specification})` : ''}
@@ -1363,7 +1363,7 @@ const ProductsPage = () => {
                                                 value={bomNewRow.required_quantity}
                                                 onChange={(e) => setBomNewRow(prev => ({ ...prev, required_quantity: e.target.value }))}
                                                 className="w-24 bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500 text-right"
-                                                placeholder="\uc218\ub7c9"
+                                                placeholder="수량"
                                             />
                                             <span className="text-xs text-gray-500">{products.find(p => p.id === parseInt(bomNewRow.child_product_id))?.unit || 'EA'}</span>
                                         </div>
@@ -1372,24 +1372,24 @@ const ProductsPage = () => {
                                             onClick={addBomRow}
                                             className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors"
                                         >
-                                            <Plus className="w-3.5 h-3.5" /> \ucd94\uac00
+                                            <Plus className="w-3.5 h-3.5" /> 추가
                                         </button>
                                     </div>
 
                                     {/* BOM \ubaa9\ub85d */}
                                     {loadingBom ? (
-                                        <div className="text-center py-8 text-gray-500 text-sm">\ub85c\ub529 \uc911...</div>
+                                        <div className="text-center py-8 text-gray-500 text-sm">로딩 중...</div>
                                     ) : bomItems.length > 0 ? (
                                         <div className="rounded-lg border border-gray-700 overflow-hidden">
                                             <table className="w-full text-left text-sm">
                                                 <thead className="bg-gray-900/80 text-xs text-gray-400 uppercase font-medium">
                                                     <tr>
-                                                        <th className="px-4 py-3">\ud488\ubaa9 \uc720\ud615</th>
-                                                        <th className="px-4 py-3">\ud488\uba85</th>
-                                                        <th className="px-4 py-3">\uaddc\uaca9</th>
-                                                        <th className="px-4 py-3 text-right">\uc18c\uc694\ub7c9</th>
-                                                        <th className="px-4 py-3">\ub2e8\uc704</th>
-                                                        <th className="px-4 py-3 text-center">\uc0ad\uc81c</th>
+                                                        <th className="px-4 py-3">품목 유형</th>
+                                                        <th className="px-4 py-3">품명</th>
+                                                        <th className="px-4 py-3">규격</th>
+                                                        <th className="px-4 py-3 text-right">소요량</th>
+                                                        <th className="px-4 py-3">단위</th>
+                                                        <th className="px-4 py-3 text-center">삭제</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-700 text-gray-300">
@@ -1400,7 +1400,7 @@ const ProductsPage = () => {
                                                                     {ITEM_TYPES[item.child_product?.item_type] || '-'}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-4 py-3 text-white font-medium">{item.child_product?.name || '(\uc54c \uc218 \uc5c6\uc74c)'}</td>
+                                                            <td className="px-4 py-3 text-white font-medium">{item.child_product?.name || '(알 수 없음)'}</td>
                                                             <td className="px-4 py-3 text-gray-400 text-xs">{item.child_product?.specification || '-'}</td>
                                                             <td className="px-4 py-3 text-right">
                                                                 <input
@@ -1425,7 +1425,7 @@ const ProductsPage = () => {
                                         </div>
                                     ) : (
                                         <div className="text-center py-16 border border-dashed border-gray-700 rounded-lg text-gray-500 text-sm">
-                                            \ub4f1\ub85d\ub41c \ud558\uc704 \ubd80\ud488\uc774 \uc5c6\uc2b5\ub2c8\ub2e4. \uc704\uc5d0\uc11c \ud488\ubaa9\uc744 \ucd94\uac00\ud558\uc138\uc694.
+                                            등록된 하위 부품이 없습니다. 위에서 품목을 추가하세요.
                                         </div>
                                     )}
                                 </div>
@@ -1439,7 +1439,7 @@ const ProductsPage = () => {
                                 onClick={() => setShowProductModal(false)}
                                 className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                             >
-                                \ub2eb\uae30
+                                닫기
                             </button>
                             {(detailSubTab === 'info' || !productFormData.id) && (
                                 <button
@@ -1447,7 +1447,7 @@ const ProductsPage = () => {
                                     form="productForm"
                                     className="px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40"
                                 >
-                                    {productFormData.id ? "\uae30\ubcf8 \uc815\ubcf4 \uc218\uc815" : "\uc81c\ud488 \ub4f1\ub85d"}
+                                    {productFormData.id ? "기본 정보 수정" : "제품 등록"}
                                 </button>
                             )}
                             {detailSubTab === 'routing' && productFormData.id && (
@@ -1456,7 +1456,7 @@ const ProductsPage = () => {
                                     className="px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-lg shadow-emerald-900/40 flex items-center gap-2"
                                 >
                                     <Save className="w-4 h-4" />
-                                    \uacf5\uc815 \uc124\uc815 \uc800\uc7a5
+                                    공정 설정 저장
                                 </button>
                             )}
                             {detailSubTab === 'bom' && productFormData.id && (
@@ -1466,7 +1466,7 @@ const ProductsPage = () => {
                                     className="px-6 py-2 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-lg shadow-purple-900/40 flex items-center gap-2"
                                 >
                                     <Save className="w-4 h-4" />
-                                    BOM \uc800\uc7a5
+                                    BOM 저장
                                 </button>
                             )}
                         </div>
