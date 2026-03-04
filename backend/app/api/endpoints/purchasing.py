@@ -16,6 +16,8 @@ from app.schemas import purchasing as schemas
 from app.schemas import production as prod_schemas
 from app.api.utils.inventory import handle_stock_movement
 
+router = APIRouter()
+
 # --- MRP (Material Requirements Planning) ---
 
 @router.get("/mrp/unordered-requirements", response_model=List[schemas.MRPRequirement])
