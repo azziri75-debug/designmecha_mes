@@ -226,9 +226,9 @@ const AttendancePage = () => {
                                 <TableHead sx={{ bgcolor: '#f8fafc' }}>
                                     <TableRow>
                                         <TableCell align="center" width={60}>No.</TableCell>
-                                        <TableCell align="center" width={150}>날짜</TableCell>
+                                        <TableCell align="center" width={160}>신청 적용일</TableCell>
                                         <TableCell align="center" width={150}>기안 종류</TableCell>
-                                        <TableCell width={300}>문서 제목</TableCell>
+                                        <TableCell>문서 제목</TableCell>
                                         <TableCell align="center" width={130}>적용 값</TableCell>
                                         <TableCell align="center" width={110}>상태</TableCell>
                                     </TableRow>
@@ -260,7 +260,7 @@ const AttendancePage = () => {
                                                         />
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Typography variant="body2">{doc.title}</Typography>
+                                                        <Typography variant="body2" fontWeight="bold" color="#1a1a2e">{doc.title}</Typography>
                                                     </TableCell>
                                                     <TableCell align="center">
                                                         <Typography

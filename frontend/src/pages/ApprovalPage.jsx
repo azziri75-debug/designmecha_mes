@@ -86,12 +86,20 @@ const ApprovalPage = () => {
         setLoading(false);
     };
 
+    // 문서 종류별로 사용자가 입력한 신청 날짜를 제목에 사용
+    const getTitleDate = (docType, data) => {
+        if (docType === 'VACATION') return data.start_date || format(new Date(), 'yyyy-MM-dd');
+        if (docType === 'EARLY_LEAVE' || docType === 'OVERTIME') return data.date || format(new Date(), 'yyyy-MM-dd');
+        return format(new Date(), 'yyyy-MM-dd');
+    };
+
     const handleCreateDoc = async (e) => {
         e.preventDefault();
         try {
+            const titleDate = getTitleDate(selectedDocType, formData);
             const payload = {
                 doc_type: selectedDocType,
-                title: `${DOC_TYPES[selectedDocType].label} - ${format(new Date(), 'yyyy-MM-dd')}`,
+                title: `${DOC_TYPES[selectedDocType].label} - ${titleDate}`,
                 content: formData,
                 attachment_file: formData.attachment_file || []
             };
@@ -274,6 +282,7 @@ const ApprovalPage = () => {
                                 <thead className="bg-gray-900/50 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                     <tr>
                                         <th className="px-6 py-4">기안일</th>
+                                        <th className="px-6 py-4">신청 적용일</th>
                                         <th className="px-6 py-4">기안자</th>
                                         <th className="px-6 py-4">종류</th>
                                         <th className="px-6 py-4">제목</th>
@@ -282,66 +291,75 @@ const ApprovalPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-700">
-                                    {documents.map((doc) => (
-                                        <tr
-                                            key={doc.id}
-                                            className="hover:bg-gray-800/50 transition-colors group cursor-pointer"
-                                            onClick={() => { setSelectedDoc(doc); setShowDocDetail(true); }}
-                                        >
-                                            <td className="px-6 py-4 text-sm text-gray-300">
-                                                {format(new Date(doc.created_at), 'yyyy-MM-dd HH:mm')}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm font-medium text-white">
-                                                {doc.author?.name} ({doc.author?.role})
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={cn(
-                                                    "px-2 py-1 rounded text-[10px] font-bold uppercase",
-                                                    `bg-${DOC_TYPES[doc.doc_type]?.color}-900/40 text-${DOC_TYPES[doc.doc_type]?.color}-400`
-                                                )}>
-                                                    {DOC_TYPES[doc.doc_type]?.label}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-300 font-medium">
-                                                {doc.title}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm">
-                                                <span className={cn(
-                                                    "px-2 py-1 rounded-full text-[10px] font-bold",
-                                                    STATUS_MAP[doc.status]?.bg,
-                                                    STATUS_MAP[doc.status]?.text
-                                                )}>
-                                                    {STATUS_MAP[doc.status]?.label}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2 items-center">
-                                                    {isEditable(doc) && (
-                                                        <>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); handleEditDoc(doc); }}
-                                                                className="p-1 hover:bg-gray-700 rounded text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                title="수정"
-                                                            >
-                                                                <Pencil className="w-4 h-4" />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc.id); }}
-                                                                className="p-1 hover:bg-gray-700 rounded text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                title="삭제"
-                                                            >
-                                                                <Trash className="w-4 h-4" />
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                    <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {documents.map((doc) => {
+                                        const c = doc.content || {};
+                                        const applyDate = c.start_date || c.date || '-';
+                                        const applyEnd = c.end_date && c.end_date !== c.start_date ? ` ~ ${c.end_date}` : '';
+                                        return (
+                                            <tr
+                                                key={doc.id}
+                                                className="hover:bg-gray-800/50 transition-colors group cursor-pointer"
+                                                onClick={() => { setSelectedDoc(doc); setShowDocDetail(true); }}
+                                            >
+                                                <td className="px-6 py-4 text-sm text-gray-400">
+                                                    {format(new Date(doc.created_at), 'yyyy-MM-dd')}
+                                                    <span className="block text-[10px] text-gray-600">{format(new Date(doc.created_at), 'HH:mm')}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-white font-medium">
+                                                    {applyDate}{applyEnd}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm font-medium text-white">
+                                                    {doc.author?.name} ({doc.author?.role})
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded text-[10px] font-bold uppercase",
+                                                        `bg-${DOC_TYPES[doc.doc_type]?.color}-900/40 text-${DOC_TYPES[doc.doc_type]?.color}-400`
+                                                    )}>
+                                                        {DOC_TYPES[doc.doc_type]?.label}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-100 font-semibold">
+                                                    {doc.title}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded-full text-[10px] font-bold",
+                                                        STATUS_MAP[doc.status]?.bg,
+                                                        STATUS_MAP[doc.status]?.text
+                                                    )}>
+                                                        {STATUS_MAP[doc.status]?.label}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex justify-end gap-2 items-center">
+                                                        {isEditable(doc) && (
+                                                            <>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleEditDoc(doc); }}
+                                                                    className="p-1 hover:bg-gray-700 rounded text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    title="수정"
+                                                                >
+                                                                    <Pencil className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc.id); }}
+                                                                    className="p-1 hover:bg-gray-700 rounded text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    title="삭제"
+                                                                >
+                                                                    <Trash className="w-4 h-4" />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                     {documents.length === 0 && (
                                         <tr>
-                                            <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                                                 문서가 없습니다.
                                             </td>
                                         </tr>
