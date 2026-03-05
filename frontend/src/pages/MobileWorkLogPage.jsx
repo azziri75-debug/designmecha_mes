@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Box,
@@ -34,7 +34,8 @@ import {
     Accordion,
     AccordionSummary,
     AccordionDetails,
-    Avatar
+    Avatar,
+    Alert
 } from '@mui/material';
 import {
     Assignment as AssignmentIcon,
@@ -54,10 +55,20 @@ import {
     Close as CloseIcon,
     CheckCircle as CheckCircleIcon,
     AssignmentInd as AssignmentIndIcon,
-    Logout as LogoutIcon
+    Logout as LogoutIcon,
+    EventNote as EventNoteIcon,
+    BeachAccess as VacationIcon,
+    Timer as TimerIcon,
+    WorkHistory as OvertimeIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
+
+const ATTENDANCE_DOC_META = {
+    VACATION: { label: '휴가원', color: '#3b82f6', Icon: VacationIcon },
+    EARLY_LEAVE: { label: '조퇴/외출원', color: '#a855f7', Icon: TimerIcon },
+    OVERTIME: { label: '특근/야근', color: '#f59e0b', Icon: OvertimeIcon },
+};
 
 const MobileWorkLogPage = () => {
     const { user, logout } = useAuth();
@@ -107,6 +118,13 @@ const MobileWorkLogPage = () => {
     const [selectedDocType, setSelectedDocType] = useState('VACATION');
     const [docFormData, setDocFormData] = useState({});
     const [selectedDoc, setSelectedDoc] = useState(null);
+
+    // Attendance Tab State
+    const [attendYear, setAttendYear] = useState(now.getFullYear());
+    const [attendUserId, setAttendUserId] = useState(null);
+    const [attendanceSummary, setAttendanceSummary] = useState(null);
+    const [attendanceLoading, setAttendanceLoading] = useState(false);
+    const [attendanceError, setAttendanceError] = useState(null);
 
     // Derived selections
     const selectedPlan = useMemo(() =>
@@ -161,18 +179,36 @@ const MobileWorkLogPage = () => {
         const touchEnd = e.changedTouches[0].clientX;
         const distance = touchStart - touchEnd;
 
-        // Disable swipe when in sub-pages (Plan/Item details) or when scrolling deep
+        // Disable swipe when in sub-pages (Plan/Item details)
         if (selectedPlan || selectedItem) return;
 
         if (distance > 70) {
             // Swipe Left -> Move Next
-            if (tab < 2) setTab(tab + 1);
+            if (tab < 3) setTab(tab + 1);
         } else if (distance < -70) {
             // Swipe Right -> Move Prev
             if (tab > 0) setTab(tab - 1);
         }
         setTouchStart(0);
     };
+
+    // Attendance fetch
+    const fetchAttendanceSummary = useCallback(async () => {
+        if (!user || tab !== 3) return;
+        setAttendanceSummary(null);
+        setAttendanceError(null);
+        setAttendanceLoading(true);
+        try {
+            const targetId = attendUserId || user.id;
+            const params = new URLSearchParams({ year: attendYear, user_id: targetId });
+            const res = await api.get(`/hr/attendance/summary?${params.toString()}`);
+            setAttendanceSummary(res.data);
+        } catch (err) {
+            setAttendanceError(err?.response?.data?.detail || '데이터 로드 실패');
+        } finally {
+            setAttendanceLoading(false);
+        }
+    }, [user, tab, attendYear, attendUserId]);
 
     useEffect(() => {
         if (!user) return;
@@ -182,7 +218,15 @@ const MobileWorkLogPage = () => {
             if (user.user_type === 'ADMIN') fetchStaffList();
         }
         if (tab === 2) fetchApprovalDocs();
+        if (tab === 3) {
+            if (user.user_type === 'ADMIN') fetchStaffList();
+            fetchAttendanceSummary();
+        }
     }, [tab, perfYear, perfMonth, user, selectedWorker, viewMode]);
+
+    useEffect(() => {
+        fetchAttendanceSummary();
+    }, [fetchAttendanceSummary]);
 
     const fetchApprovalDocs = async () => {
         setLoading(true);
@@ -500,13 +544,10 @@ const MobileWorkLogPage = () => {
                             </IconButton>
                         )}
                         <Typography variant="h6" fontWeight="bold">
-                            {tab === 0 ? (selectedItem ? "실적 등록" : selectedPlan ? "공정 선택" : "생산 현황") : tab === 1 ? "내 실적 확인" : "전자결재"}
+                            {tab === 0 ? (selectedItem ? "실적 등록" : selectedPlan ? "공정 선택" : "생산 현황") : tab === 1 ? "내 실적 확인" : tab === 2 ? "전자결재" : "근태 현황"}
                         </Typography>
                     </Stack>
                     <Stack direction="row" spacing={0.5}>
-                        <IconButton size="small" onClick={() => navigate('/mobile/attendance')}>
-                            <AssignmentIndIcon fontSize="small" color="primary" />
-                        </IconButton>
                         <IconButton size="small" onClick={handleLogout}>
                             <LogoutIcon fontSize="small" />
                         </IconButton>
@@ -526,16 +567,17 @@ const MobileWorkLogPage = () => {
                 }}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
+                onTouchMove={(e) => { /* allow scroll within tab */ }}
             >
                 <Box sx={{
                     display: 'flex',
-                    width: '300%',
+                    width: '400%',
                     height: '100%',
-                    transform: `translateX(-${tab * (100 / 3)}%)`,
+                    transform: `translateX(-${tab * 25}%)`,
                     transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}>
                     {/* Tab 1: Production Status */}
-                    <Box sx={{ width: '33.33%', p: 2, overflowY: 'auto' }}>
+                    <Box sx={{ width: '25%', p: 2, overflowY: 'auto' }}>
                         {!selectedPlan && !selectedItem ? (
                             /* Step 1: Browse Production Plans */
                             <Box>
@@ -706,7 +748,7 @@ const MobileWorkLogPage = () => {
                     </Box>
 
                     {/* Tab 2: Performance */}
-                    <Box sx={{ width: '33.33%', p: 2, overflowY: 'auto' }}>
+                    <Box sx={{ width: '25%', p: 2, overflowY: 'auto' }}>
                         {/* Filters & Summary */}
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 3, backgroundColor: '#1a237e', color: '#fff' }}>
                             <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
@@ -920,7 +962,7 @@ const MobileWorkLogPage = () => {
                     </Box>
 
                     {/* Tab 3: Approval */}
-                    <Box sx={{ width: '33.33%', p: 2, overflowY: 'auto', bgcolor: '#f1f5f9' }}>
+                    <Box sx={{ width: '25%', p: 2, overflowY: 'auto', bgcolor: '#f1f5f9' }}>
                         <Stack direction="row" spacing={1} sx={{ mb: 2, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { display: 'none' } }}>
                             {[
                                 { id: 'ALL', label: '전체' },
@@ -1009,6 +1051,104 @@ const MobileWorkLogPage = () => {
                             </Stack>
                         )}
                     </Box>
+
+                    {/* Tab 4: Attendance */}
+                    <Box sx={{ width: '25%', p: 2, overflowY: 'auto' }}>
+                        <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
+                            <Stack direction="row" spacing={1} sx={{ mb: user?.user_type === 'ADMIN' ? 1.5 : 0 }}>
+                                <FormControl size="small" fullWidth>
+                                    <InputLabel>연도</InputLabel>
+                                    <Select value={attendYear} label="연도" onChange={e => setAttendYear(e.target.value)}>
+                                        {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map(y => <MenuItem key={y} value={y}>{y}년</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                            </Stack>
+                            {user?.user_type === 'ADMIN' && (
+                                <FormControl size="small" fullWidth sx={{ mt: 1.5 }}>
+                                    <InputLabel>대상 사원</InputLabel>
+                                    <Select value={attendUserId ?? user.id} label="대상 사원" onChange={e => setAttendUserId(e.target.value)}>
+                                        {staffList.map(s => <MenuItem key={s.id} value={s.id}>{s.name} ({s.role})</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                            )}
+                        </Paper>
+                        {attendanceError && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{attendanceError}</Alert>}
+                        {attendanceLoading && <Box sx={{ textAlign: 'center', mt: 6 }}><CircularProgress size={28} /></Box>}
+                        {!attendanceLoading && attendanceSummary && (
+                            <Stack spacing={2}>
+                                <Typography variant="caption" color="textSecondary" sx={{ px: 0.5 }}>
+                                    {attendanceSummary.year}년 · <strong>{attendanceSummary.user_name}</strong> 근태 현황
+                                </Typography>
+                                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
+                                    <Card sx={{ borderRadius: 3, bgcolor: '#eff6ff', border: '1px solid #dbeafe', boxShadow: 'none' }}>
+                                        <CardContent sx={{ p: 2, textAlign: 'center', '&:last-child': { pb: 2 } }}>
+                                            <VacationIcon sx={{ color: '#3b82f6', fontSize: 20, mb: 0.5 }} />
+                                            <Typography variant="caption" color="#3b82f6" fontWeight="bold" display="block">휴가 사용</Typography>
+                                            <Typography variant="h5" fontWeight="bold" color="#1e40af">{attendanceSummary.total_vacation_days}일</Typography>
+                                        </CardContent>
+                                    </Card>
+                                    <Card sx={{ borderRadius: 3, bgcolor: '#f5f3ff', border: '1px solid #ede9fe', boxShadow: 'none' }}>
+                                        <CardContent sx={{ p: 2, textAlign: 'center', '&:last-child': { pb: 2 } }}>
+                                            <TimerIcon sx={{ color: '#a855f7', fontSize: 20, mb: 0.5 }} />
+                                            <Typography variant="caption" color="#a855f7" fontWeight="bold" display="block">조퇴 / 외출</Typography>
+                                            <Typography variant="h5" fontWeight="bold" color="#5b21b6">{attendanceSummary.total_leave_outing_hours}h</Typography>
+                                        </CardContent>
+                                    </Card>
+                                    <Card sx={{ borderRadius: 3, bgcolor: '#fffbeb', border: '1px solid #fef3c7', boxShadow: 'none', gridColumn: 'span 2' }}>
+                                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                                <Stack direction="row" spacing={0.8} alignItems="center">
+                                                    <OvertimeIcon sx={{ color: '#f59e0b', fontSize: 20 }} />
+                                                    <Typography variant="subtitle2" color="#92400e" fontWeight="bold">야근 / 특근</Typography>
+                                                </Stack>
+                                                <Typography variant="h5" fontWeight="bold" color="#92400e">{attendanceSummary.total_overtime_hours}h</Typography>
+                                            </Stack>
+                                        </CardContent>
+                                    </Card>
+                                </Box>
+                                <Box sx={{ mt: 1 }}>
+                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, px: 0.5, color: '#374151' }}>
+                                        결재 완료 내역 ({attendanceSummary.documents.length}건)
+                                    </Typography>
+                                    <Paper sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
+                                        <List disablePadding>
+                                            {attendanceSummary.documents.length > 0 ? attendanceSummary.documents.map((doc, idx) => {
+                                                const meta = ATTENDANCE_DOC_META[doc.doc_type] || { label: doc.doc_type, color: '#6b7280', Icon: EventNoteIcon };
+                                                const { Icon } = meta;
+                                                return (
+                                                    <React.Fragment key={doc.id}>
+                                                        <ListItem sx={{ py: 1.5 }}>
+                                                            <Box sx={{ mr: 1.5, p: 1, borderRadius: 2, bgcolor: `${meta.color}18`, color: meta.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                <Icon fontSize="small" />
+                                                            </Box>
+                                                            <ListItemText
+                                                                primary={
+                                                                    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                                                                        <Typography variant="body2" fontWeight="bold" color="#111">{doc.date || '-'}</Typography>
+                                                                        <Stack direction="row" spacing={0.5} alignItems="center">
+                                                                            <Chip label={meta.label} size="small" sx={{ height: 18, fontSize: '10px', bgcolor: meta.color, color: '#fff', fontWeight: 'bold' }} />
+                                                                            <Chip label={`${doc.applied_value}${doc.applied_unit}`} size="small" variant="outlined" sx={{ height: 18, fontSize: '10px', borderColor: meta.color, color: meta.color }} />
+                                                                        </Stack>
+                                                                    </Stack>
+                                                                }
+                                                                secondary={<Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.3 }}>{doc.title}</Typography>}
+                                                            />
+                                                            <Chip label="완료" size="small" color="success" variant="outlined" sx={{ fontSize: '10px', flexShrink: 0, ml: 0.5 }} />
+                                                        </ListItem>
+                                                        {idx < attendanceSummary.documents.length - 1 && <Divider sx={{ mx: 2 }} />}
+                                                    </React.Fragment>
+                                                );
+                                            }) : (
+                                                <Box sx={{ p: 4, textAlign: 'center' }}>
+                                                    <Typography variant="body2" color="textSecondary">{attendanceSummary.year}년 결재 완료된 근태 내역이 없습니다.</Typography>
+                                                </Box>
+                                            )}
+                                        </List>
+                                    </Paper>
+                                </Box>
+                            </Stack>
+                        )}
+                    </Box>
                 </Box>
             </Box>
 
@@ -1018,16 +1158,16 @@ const MobileWorkLogPage = () => {
                     showLabels
                     value={tab}
                     onChange={(event, newValue) => {
-                        setTab(newValue);
+                        setSearchParams({ tab: newValue });
                         if (newValue !== 0) {
-                            setSelectedItem(null);
-                            setSelectedPlan(null);
+                            setSearchParams({ tab: newValue });
                         }
                     }}
                 >
                     <BottomNavigationAction label="생산현황" icon={<AssignmentIcon />} />
                     <BottomNavigationAction label="내 실적" icon={<BarChartIcon />} />
                     <BottomNavigationAction label="전자결재" icon={<DescriptionIcon />} />
+                    <BottomNavigationAction label="근태현황" icon={<AssignmentIndIcon />} />
                 </BottomNavigation>
             </Paper>
 

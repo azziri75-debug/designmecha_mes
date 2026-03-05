@@ -106,6 +106,22 @@ const BasicsPageContent = () => {
 
     // Filter State
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'CUSTOMER', 'SUPPLIER', 'SUBCONTRACTOR'
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Position rank for sorting staff (higher rank = lower index number)
+    const POSITION_RANK = {
+        '대표이사': 1, '사장': 2, '부사장': 3, '전무': 4, '상무': 5, '이사': 6,
+        '실장': 7, '부장': 8, '차장': 9, '과장': 10, '팀장': 11, '계장': 12,
+        '주임': 13, '선임': 14, '중임': 15, '쳐임': 16, '사원': 17
+    };
+
+    const getPositionRank = (role) => {
+        if (!role) return 99;
+        for (const [key, rank] of Object.entries(POSITION_RANK)) {
+            if (role.includes(key)) return rank;
+        }
+        return 50;
+    };
 
     const checkDuplicates = async () => {
         try {
@@ -438,12 +454,43 @@ const BasicsPageContent = () => {
     };
 
     // Filter Logic
-    const filteredPartners = partners.filter(partner => {
-        if (filterType === 'ALL') return true;
-        // Check if partner_type array includes the filter type
-        const types = Array.isArray(partner.partner_type) ? partner.partner_type : [];
-        return types.includes(filterType);
-    });
+    const q = searchQuery.toLowerCase();
+    const filteredPartners = partners
+        .filter(partner => {
+            if (filterType !== 'ALL') {
+                const types = Array.isArray(partner.partner_type) ? partner.partner_type : [];
+                if (!types.includes(filterType)) return false;
+            }
+            if (!q) return true;
+            return (partner.name || '').toLowerCase().includes(q) ||
+                (partner.representative || '').toLowerCase().includes(q) ||
+                (partner.phone || '').toLowerCase().includes(q);
+        })
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    const filteredStaff = staff
+        .filter(m => !q ||
+            (m.name || '').toLowerCase().includes(q) ||
+            (m.role || '').toLowerCase().includes(q) ||
+            (m.main_duty || '').toLowerCase().includes(q)
+        )
+        .sort((a, b) => getPositionRank(a.role) - getPositionRank(b.role));
+
+    const filteredEquipments = equipments
+        .filter(eq => !q ||
+            (eq.name || '').toLowerCase().includes(q) ||
+            (eq.code || '').toLowerCase().includes(q) ||
+            (eq.specification || '').toLowerCase().includes(q)
+        )
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    const filteredInstruments = instruments
+        .filter(inst => !q ||
+            (inst.name || '').toLowerCase().includes(q) ||
+            (inst.code || '').toLowerCase().includes(q) ||
+            (inst.specification || '').toLowerCase().includes(q)
+        )
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const getPartnerTypeLabel = (type) => {
         switch (type) {
@@ -556,6 +603,8 @@ const BasicsPageContent = () => {
                         <input
                             type="text"
                             placeholder="검색..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
                             className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
@@ -962,7 +1011,7 @@ const BasicsPageContent = () => {
                                         <tr><td colSpan="6" className="text-center py-8">데이터가 없습니다.</td></tr>
                                     )
                                 ) : activeTab === 'staff' ? (
-                                    staff.length > 0 ? staff.map((member) => (
+                                    filteredStaff.length > 0 ? filteredStaff.map((member) => (
                                         <tr key={member.id} className="hover:bg-gray-700/50 transition-colors">
                                             <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
@@ -1008,7 +1057,7 @@ const BasicsPageContent = () => {
                                         <tr><td colSpan="7" className="text-center py-8">등록된 사원이 없습니다.</td></tr>
                                     )
                                 ) : activeTab === 'equipments' ? (
-                                    equipments.length > 0 ? equipments.map((eq) => (
+                                    filteredEquipments.length > 0 ? filteredEquipments.map((eq) => (
                                         <React.Fragment key={eq.id}>
                                             <tr className="hover:bg-gray-700/50 transition-colors cursor-pointer group" onClick={() => toggleEquipmentExpand(eq.id)}>
                                                 <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
@@ -1119,7 +1168,7 @@ const BasicsPageContent = () => {
                                         <tr><td colSpan="7" className="text-center py-8">등록된 장비가 없습니다.</td></tr>
                                     )
                                 ) : (
-                                    instruments.length > 0 ? instruments.map((inst) => (
+                                    filteredInstruments.length > 0 ? filteredInstruments.map((inst) => (
                                         <React.Fragment key={inst.id}>
                                             <tr className="hover:bg-gray-700/50 transition-colors cursor-pointer group" onClick={() => toggleInstrumentExpand(inst.id)}>
                                                 <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
