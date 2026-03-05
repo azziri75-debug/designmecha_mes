@@ -5,6 +5,7 @@ import CreatableSelect from 'react-select/creatable';
 import { cn } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import ProcessGroupManager from '../components/ProcessGroupManager';
+import ResizableTh from '../components/ResizableTh';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -738,17 +739,17 @@ const ProductsPage = ({ type }) => {
                         <table className="w-full text-left text-sm text-gray-400">
                             <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
-                                    <th className="px-6 py-3">{type === 'PART' ? '구입처' : '거래처'}</th>
-                                    <th className="px-6 py-3">{type === 'PART' ? '부품 그룹' : '제품 그룹'}</th>
-                                    <th className="px-6 py-3">{type === 'PART' ? '부품명' : '품명'}</th>
-                                    <th className="px-6 py-3">규격</th>
-                                    <th className="px-6 py-3">재질</th>
-                                    <th className="px-6 py-3">단위</th>
-                                    <th className="px-6 py-3">공정 수</th>
-                                    <th className="px-6 py-3">최근 단가</th>
-                                    <th className="px-6 py-3">첨부파일</th>
-                                    <th className="px-6 py-3">비고</th>
-                                    <th className="px-6 py-3 text-right">관리</th>
+                                    <ResizableTh className="px-6 py-3">{type === 'PART' ? '구입처' : '거래처'}</ResizableTh>
+                                    <ResizableTh className="px-6 py-3">{type === 'PART' ? '부품 그룹' : '제품 그룹'}</ResizableTh>
+                                    <ResizableTh className="px-6 py-3">{type === 'PART' ? '부품명' : '품명'}</ResizableTh>
+                                    <ResizableTh className="px-6 py-3">규격</ResizableTh>
+                                    <ResizableTh className="px-6 py-3">재질</ResizableTh>
+                                    <ResizableTh className="px-6 py-3">단위</ResizableTh>
+                                    <ResizableTh className="px-6 py-3">공정 수</ResizableTh>
+                                    <ResizableTh className="px-6 py-3">최근 단가</ResizableTh>
+                                    <ResizableTh className="px-6 py-3">첨부파일</ResizableTh>
+                                    <ResizableTh className="px-6 py-3">비고</ResizableTh>
+                                    <ResizableTh className="px-6 py-3 text-right">관리</ResizableTh>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">
@@ -911,14 +912,14 @@ const ProductsPage = ({ type }) => {
                                                                         <table className="w-full text-left text-sm text-gray-400">
                                                                             <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
                                                                                 <tr>
-                                                                                    <th className="px-4 py-2 w-16 text-center">순서</th>
-                                                                                    <th className="px-4 py-2">공정명</th>
-                                                                                    <th className="px-4 py-2">구분</th>
-                                                                                    <th className="px-4 py-2">업체/장비</th>
-                                                                                    <th className="px-4 py-2">예상시간</th>
-                                                                                    <th className="px-4 py-2">공정단가</th>
-                                                                                    <th className="px-4 py-2">설명</th>
-                                                                                    <th className="px-4 py-2">첨부</th>
+                                                                                    <ResizableTh className="px-4 py-2 w-16 text-center">순서</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">공정명</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">구분</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">업체/장비</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">예상시간</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">공정단가</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">설명</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">첨부</ResizableTh>
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody className="divide-y divide-gray-700">
@@ -998,11 +999,11 @@ const ProductsPage = ({ type }) => {
                                                                         <table className="w-full text-left text-sm text-gray-400">
                                                                             <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
                                                                                 <tr>
-                                                                                    <th className="px-4 py-2">품목 유형</th>
-                                                                                    <th className="px-4 py-2">품명</th>
-                                                                                    <th className="px-4 py-2">규격</th>
-                                                                                    <th className="px-4 py-2 text-right">소요량</th>
-                                                                                    <th className="px-4 py-2">단위</th>
+                                                                                    <ResizableTh className="px-4 py-2">품목 유형</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">품명</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">규격</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2 text-right">소요량</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">단위</ResizableTh>
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody className="divide-y divide-gray-700">
@@ -1034,12 +1035,12 @@ const ProductsPage = ({ type }) => {
                                                                         <table className="w-full text-left text-sm text-gray-400">
                                                                             <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
                                                                                 <tr>
-                                                                                    <th className="px-4 py-2">날짜</th>
-                                                                                    <th className="px-4 py-2">구분</th>
-                                                                                    <th className="px-4 py-2">거래처</th>
-                                                                                    <th className="px-4 py-2">수량</th>
-                                                                                    <th className="px-4 py-2">단가</th>
-                                                                                    <th className="px-4 py-2">비고</th>
+                                                                                    <ResizableTh className="px-4 py-2">날짜</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">구분</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">거래처</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">수량</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">단가</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2">비고</ResizableTh>
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody className="divide-y divide-gray-700">

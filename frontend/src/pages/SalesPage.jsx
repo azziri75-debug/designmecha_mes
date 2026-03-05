@@ -6,6 +6,7 @@ import FileViewerModal from '../components/FileViewerModal';
 import EstimateModal from '../components/EstimateModal';
 import OrderModal from '../components/OrderModal';
 import EstimateSheetModal from '../components/EstimateSheetModal';
+import ResizableTh from '../components/ResizableTh';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -272,26 +273,26 @@ const SalesPage = () => {
                                     <th className="px-6 py-3 w-4"></th> {/* Helper for expansion */}
                                     {activeTab === 'estimates' ? (
                                         <>
-                                            <th className="px-6 py-3">견적일자</th>
-                                            <th className="px-6 py-3">거래처</th>
-                                            <th className="px-6 py-3">총 금액</th>
-                                            <th className="px-6 py-3">품목 수</th>
-                                            <th className="px-6 py-3">첨부파일</th>
-                                            <th className="px-6 py-3">비고</th>
-                                            <th className="px-6 py-3">관리</th>
+                                            <ResizableTh className="px-6 py-3">견적일자</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">거래처</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">총 금액</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">품목 수</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">첨부파일</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">비고</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">관리</ResizableTh>
                                         </>
                                     ) : (
                                         <>
-                                            <th className="px-6 py-3">수주번호</th>
-                                            <th className="px-6 py-3">수주일자</th>
-                                            <th className="px-6 py-3">납기일자</th>
-                                            <th className="px-6 py-3">거래처</th>
-                                            <th className="px-6 py-3">상태</th>
-                                            <th className="px-6 py-3">총 금액</th>
-                                            <th className="px-6 py-3">품목 수</th>
-                                            <th className="px-6 py-3">첨부파일</th>
-                                            <th className="px-6 py-3">비고</th>
-                                            <th className="px-6 py-3">관리</th>
+                                            <ResizableTh className="px-6 py-3">수주번호</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">수주일자</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">납기일자</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">거래처</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">상태</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">총 금액</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">품목 수</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">첨부파일</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">비고</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">관리</ResizableTh>
                                         </>
                                     )}
                                 </tr>

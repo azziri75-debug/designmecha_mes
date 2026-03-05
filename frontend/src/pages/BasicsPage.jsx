@@ -5,6 +5,7 @@ import { cn, getImageUrl } from '../lib/utils';
 
 import FileViewerModal from '../components/FileViewerModal';
 import Card from '../components/Card';
+import ResizableTh from '../components/ResizableTh';
 
 // Helper Components
 class ErrorBoundary extends React.Component {
@@ -828,43 +829,43 @@ const BasicsPageContent = () => {
                                 <tr>
                                     {activeTab === 'partners' ? (
                                         <>
-                                            <th className="px-6 py-3 w-[20%]">거래처명</th>
-                                            <th className="px-6 py-3 w-[15%]">유형</th>
-                                            <th className="px-6 py-3 w-[15%]">대표자</th>
-                                            <th className="px-6 py-3 w-[15%]">전화번호</th>
-                                            <th className="px-6 py-3 w-[20%]">이메일</th>
-                                            <th className="px-6 py-3 text-center w-[80px]">첨부</th>
+                                            <ResizableTh className="px-6 py-3 w-[20%]">거래처명</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[15%]">유형</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[15%]">대표자</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[15%]">전화번호</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[20%]">이메일</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 text-center w-[80px]">첨부</ResizableTh>
                                         </>
                                     ) : activeTab === 'staff' ? (
                                         <>
-                                            <th className="px-6 py-3">이름</th>
-                                            <th className="px-6 py-3">구분</th>
-                                            <th className="px-6 py-3">부서/직책</th>
-                                            <th className="px-6 py-3">주업무</th>
-                                            <th className="px-6 py-3">전화번호</th>
-                                            <th className="px-6 py-3">상태</th>
+                                            <ResizableTh className="px-6 py-3">이름</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">구분</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">부서/직책</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">주업무</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">전화번호</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">상태</ResizableTh>
                                         </>
                                     ) : activeTab === 'equipments' ? (
                                         <>
-                                            <th className="px-6 py-3">장비명</th>
-                                            <th className="px-6 py-3">코드</th>
-                                            <th className="px-6 py-3">규격/사양</th>
-                                            <th className="px-6 py-3">상태</th>
-                                            <th className="px-6 py-3">구매일</th>
-                                            <th className="px-6 py-3">위치</th>
+                                            <ResizableTh className="px-6 py-3">장비명</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">코드</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">규격/사양</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">상태</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">구매일</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">위치</ResizableTh>
                                         </>
                                     ) : (
                                         <>
-                                            <th className="px-6 py-3">측정기명</th>
-                                            <th className="px-6 py-3">코드</th>
-                                            <th className="px-6 py-3">규격/사양</th>
-                                            <th className="px-6 py-3">일련번호</th>
-                                            <th className="px-6 py-3 text-center">교정주기(개월)</th>
-                                            <th className="px-6 py-3">다음 교정일</th>
-                                            <th className="px-6 py-3">상태</th>
+                                            <ResizableTh className="px-6 py-3">측정기명</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">코드</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">규격/사양</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">일련번호</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 text-center">교정주기(개월)</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">다음 교정일</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">상태</ResizableTh>
                                         </>
                                     )}
-                                    <th className="px-6 py-3 text-right">관리</th>
+                                    <ResizableTh className="px-6 py-3 text-right">관리</ResizableTh>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">
