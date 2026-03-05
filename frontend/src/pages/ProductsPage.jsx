@@ -1469,8 +1469,8 @@ const ProductsPage = ({ type }) => {
                             {/* BOM Tab */}
                             {detailSubTab === 'bom' && productFormData.id && (
                                 <div className="space-y-4">
-                                    <div className="text-xs text-gray-500 bg-blue-900/10 border border-blue-800/30 rounded-lg px-4 py-2">
-                                        💡 <strong>하위 부품 목록</strong>을 설정하세요. 저장 버튼을 눌러야 반영됩니다.
+                                    <div className="text-xs text-gray-300 bg-blue-900/40 border border-blue-800/50 rounded-lg px-4 py-2">
+                                        💡 <strong className="text-white">하위 부품 목록</strong>을 설정하세요. 저장 버튼을 눌러야 반영됩니다.
                                     </div>
 
                                     {/* BOM \ud56d\ubaa9 \uc785\ub825 */}
