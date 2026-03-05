@@ -110,7 +110,7 @@ class ProductionPlan(ProductionPlanBase):
     id: int
     order_id: Optional[int] = None
     stock_production_id: Optional[int] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
     stock_production: Optional[StockProductionResponse] = None
@@ -164,7 +164,7 @@ class WorkLogUpdate(WorkLogBase):
 
 class WorkLog(WorkLogBase):
     id: int
-    created_at: datetime
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     worker: Optional[StaffSimple] = None
     items: List[WorkLogItem] = []
