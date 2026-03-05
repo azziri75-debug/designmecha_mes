@@ -1,5 +1,5 @@
 import asyncio
-from app.db.session import engine
+from app.api.deps import engine, AsyncSessionLocal as async_session
 from sqlalchemy import text
 
 async def main():

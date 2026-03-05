@@ -1,6 +1,6 @@
 
 import asyncio
-from app.db.session import SessionLocal
+from app.api.deps import AsyncSessionLocal as SessionLocal
 from app.api.endpoints import production
 from app.schemas import production as schemas
 from datetime import date

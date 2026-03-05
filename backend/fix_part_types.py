@@ -1,6 +1,6 @@
 import asyncio
 from sqlalchemy import text
-from app.db.session import async_session
+from app.api.deps import AsyncSessionLocal as async_session
 
 async def update_item_types():
     print("Starting database item_type update...")

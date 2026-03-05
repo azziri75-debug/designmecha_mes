@@ -1,5 +1,5 @@
 import asyncio
-from app.db.session import async_session_maker
+from app.api.deps import AsyncSessionLocal as async_session_maker
 from sqlalchemy.future import select
 from app.models.sales import Estimate
 from app.models.production import ProductionPlan
