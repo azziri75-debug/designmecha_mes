@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.core.config import settings
-from app.models.hr import Staff, AttendanceLog, AttendanceLogType
+from app.models import Staff, AttendanceLog, AttendanceLogType
 
 # Database Engine 설정
 engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI)

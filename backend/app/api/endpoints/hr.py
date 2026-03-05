@@ -6,8 +6,7 @@ from datetime import date, datetime, timedelta, time as time_type
 
 from app.api import deps
 from app.models.approval import ApprovalDocument, ApprovalStatus
-from app.models import Staff, Company, EmployeeTimeRecord, AttendanceLog
-from app.models.hr import AttendanceLogType, AttendanceStatus
+from app.models import Staff, Company, EmployeeTimeRecord, AttendanceLog, AttendanceLogType, AttendanceStatus
 from app.schemas.hr import (
     AttendanceSummaryResponse, 
     AttendanceDocItem, 

@@ -225,28 +225,3 @@ class MeasuringInstrumentResponse(MeasuringInstrumentBase):
     class Config:
         from_attributes = True
 
-# EmployeeTimeRecord Schemas
-class EmployeeTimeRecordBase(BaseModel):
-    staff_id: int
-    record_date: date
-    category: str # ANNUAL, HALF_DAY, SICK, EARLY_LEAVE, OUTING, OVERTIME, SPECIAL
-    content: Optional[str] = None
-    status: Optional[str] = "APPROVED"
-    author_id: Optional[int] = None
-
-class EmployeeTimeRecordCreate(EmployeeTimeRecordBase):
-    pass
-
-class EmployeeTimeRecordResponse(EmployeeTimeRecordBase):
-    id: int
-    created_at: datetime
-    staff_name: Optional[str] = None # For display
-    
-    hours: Optional[float] = 0.0
-    extension_hours: Optional[float] = 0.0
-    night_hours: Optional[float] = 0.0
-    holiday_hours: Optional[float] = 0.0
-    holiday_night_hours: Optional[float] = 0.0
-
-    class Config:
-        from_attributes = True
