@@ -109,6 +109,7 @@ const MobileWorkLogPage = () => {
 
     // Conflict Dialog
     const [conflictOpen, setConflictOpen] = useState(false);
+    const [expandedLogId, setExpandedLogId] = useState(null);
 
     // Approval States
     const [approvalDocs, setApprovalDocs] = useState([]);
