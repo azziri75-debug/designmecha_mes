@@ -621,7 +621,7 @@ const ProductsPage = ({ type }) => {
             alert('자기 자신을 BOM 하위 품목으로 설정할 수 없습니다.');
             return;
         }
-        const childProduct = products.find(p => p.id === parseInt(bomNewRow.child_product_id));
+        const childProduct = allParts.find(p => p.id === parseInt(bomNewRow.child_product_id));
         if (!childProduct || childProduct.item_type !== 'PART') {
             alert('BOM 하위 품목은 "부품" 유형만 선택할 수 있습니다.');
             return;

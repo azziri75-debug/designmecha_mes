@@ -106,7 +106,7 @@ class ProductBase(BaseModel):
     unit: str = "EA"
     drawing_file: Optional[str] = None
     note: Optional[str] = None
-    item_type: Optional[str] = "PRODUCED"  # PRODUCED, PART, CONSUMABLE
+    item_type: Optional[str] = None  # PRODUCED, PART, CONSUMABLE
 
 class ProductCreate(ProductBase):
     standard_processes: List[ProductProcessCreate] = []
