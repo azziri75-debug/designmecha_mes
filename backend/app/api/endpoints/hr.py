@@ -6,8 +6,15 @@ from datetime import date, datetime, timedelta, time as time_type
 
 from app.api import deps
 from app.models.approval import ApprovalDocument, ApprovalStatus
-from app.models.basics import Staff, Company
-from app.schemas.hr import AttendanceSummaryResponse, AttendanceDocItem
+from app.models import Staff, Company, EmployeeTimeRecord, AttendanceLog
+from app.models.hr import AttendanceLogType, AttendanceStatus
+from app.schemas.hr import (
+    AttendanceSummaryResponse, 
+    AttendanceDocItem, 
+    AttendanceClockInUpdate, 
+    AttendanceClockOutUpdate, 
+    AttendanceMonthlyResponse
+)
 
 router = APIRouter()
 
@@ -196,12 +203,188 @@ async def get_attendance_summary(
                 status=doc.status,
             ))
 
-    return AttendanceSummaryResponse(
-        year=year,
-        user_id=target_id,
-        user_name=target_staff.name,
-        total_vacation_days=round(total_vacation_days, 2),
-        total_leave_outing_hours=round(total_leave_outing_hours, 2),
-        total_overtime_hours=round(total_overtime_hours, 2),
-        documents=document_items,
+
+@router.post("/attendance/clock-in")
+async def clock_in(
+    data: AttendanceClockInUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """수동 출근 기록"""
+    now = datetime.now()
+    today = now.date()
+
+    # 1. 원시 로그 기록
+    new_log = AttendanceLog(
+        staff_id=data.staff_id,
+        log_time=now,
+        log_type=AttendanceLogType.MANUAL_IN
     )
+    db.add(new_log)
+
+    # 2. 회사 설정 조회 (출근 시간 및 유예 시간)
+    comp_res = await db.execute(select(Company))
+    company = comp_res.scalars().first()
+    
+    grace_start = 0
+    work_start_time = time_type(8, 30)
+    if company:
+        grace_start = company.grace_period_start_mins or 0
+        if company.work_start_time:
+            work_start_time = company.work_start_time
+
+    # 3. 출근 상태 판별
+    # 지각 기준: 출근시간 + 유예시간
+    work_start_dt = datetime.combine(today, work_start_time)
+    late_threshold = work_start_dt + timedelta(minutes=grace_start)
+    
+    status = AttendanceStatus.NORMAL
+    if now > late_threshold:
+        status = AttendanceStatus.LATE
+
+    # 4. 근태 기록 업데이트 또는 생성
+    record_res = await db.execute(
+        select(EmployeeTimeRecord).where(
+            EmployeeTimeRecord.staff_id == data.staff_id,
+            EmployeeTimeRecord.record_date == today
+        )
+    )
+    record = record_res.scalar_one_or_none()
+
+    if not record:
+        record = EmployeeTimeRecord(
+            staff_id=data.staff_id,
+            record_date=today,
+            category="NORMAL", # 기본값
+            clock_in_time=now,
+            attendance_status=status,
+            record_source="MANUAL"
+        )
+        db.add(record)
+    else:
+        # 이미 기록이 있는 경우 (예: 연차 등), 출근 시간과 상태만 업데이트할지 정책 필요
+        # 여기서는 중복 출근 시 최초 시간 유지 또는 업데이트 등 선택. 요청대로 업데이트.
+        if not record.clock_in_time:
+            record.clock_in_time = now
+            record.attendance_status = status
+            record.record_source = "MANUAL"
+
+    await db.commit()
+    return {"message": "Clock-in recorded", "status": status, "time": now}
+
+
+@router.post("/attendance/clock-out")
+async def clock_out(
+    data: AttendanceClockOutUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """수동 퇴근 기록"""
+    now = datetime.now()
+    today = now.date()
+
+    # 1. 원시 로그 기록
+    new_log = AttendanceLog(
+        staff_id=data.staff_id,
+        log_time=now,
+        log_type=AttendanceLogType.MANUAL_OUT
+    )
+    db.add(new_log)
+
+    # 2. 회사 설정 조회 (퇴근 시간 및 유예 시간)
+    comp_res = await db.execute(select(Company))
+    company = comp_res.scalars().first()
+    
+    grace_end = 0
+    work_end_time = time_type(17, 30)
+    if company:
+        grace_end = company.grace_period_end_mins or 0
+        if company.work_end_time:
+            work_end_time = company.work_end_time
+
+    # 3. 조퇴 상태 판별
+    # 조퇴 기준: 퇴근시간 - 유예시간 보다 일찍 나가는 경우
+    work_end_dt = datetime.combine(today, work_end_time)
+    early_leave_threshold = work_end_dt - timedelta(minutes=grace_end)
+    
+    is_early = now < early_leave_threshold
+
+    # 4. 근태 기록 업데이트
+    record_res = await db.execute(
+        select(EmployeeTimeRecord).where(
+            EmployeeTimeRecord.staff_id == data.staff_id,
+            EmployeeTimeRecord.record_date == today
+        )
+    )
+    record = record_res.scalar_one_or_none()
+
+    status_updated = False
+    if record:
+        record.clock_out_time = now
+        # 이미 지각인 경우 조퇴로 덮어쓰지 않거나, 복합 상태 고민 필요. 
+        # 여기서는 요청에 따라 조퇴 판별.
+        if is_early:
+            record.attendance_status = AttendanceStatus.EARLY_LEAVE
+            status_updated = True
+        record.record_source = "MANUAL"
+    else:
+        # 출근 기록 없이 퇴근만 하는 경우
+        record = EmployeeTimeRecord(
+            staff_id=data.staff_id,
+            record_date=today,
+            category="NORMAL",
+            clock_out_time=now,
+            attendance_status=AttendanceStatus.EARLY_LEAVE if is_early else AttendanceStatus.NORMAL,
+            record_source="MANUAL"
+        )
+        db.add(record)
+        status_updated = True
+
+    await db.commit()
+    return {"message": "Clock-out recorded", "is_early_leave": is_early, "time": now}
+
+
+@router.get("/attendance/{staff_id}/monthly", response_model=AttendanceMonthlyResponse)
+async def get_monthly_attendance(
+    staff_id: int,
+    year: int = Query(..., description="조회 연도"),
+    month: int = Query(..., description="조회 월"),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """관리자용 월별 근태 조회"""
+    if current_user.user_type != "ADMIN" and current_user.id != staff_id:
+        raise HTTPException(status_code=403, detail="조회 권한이 없습니다.")
+
+    # 대상 사원 정보 조회
+    staff_res = await db.execute(select(Staff).where(Staff.id == staff_id))
+    target_staff = staff_res.scalar_one_or_none()
+    if not target_staff:
+        raise HTTPException(status_code=404, detail="사원을 찾을 수 없습니다.")
+
+    # 해당 월의 시작일과 종료일 계산
+    import calendar
+    _, last_day = calendar.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, last_day)
+
+    # 근태 기록 조회
+    records_res = await db.execute(
+        select(EmployeeTimeRecord)
+        .where(
+            EmployeeTimeRecord.staff_id == staff_id,
+            EmployeeTimeRecord.record_date >= start_date,
+            EmployeeTimeRecord.record_date <= end_date
+        )
+        .order_by(EmployeeTimeRecord.record_date.asc())
+    )
+    records = records_res.scalars().all()
+
+    return AttendanceMonthlyResponse(
+        staff_id=staff_id,
+        staff_name=target_staff.name,
+        year=year,
+        month=month,
+        records=records
+    )
+

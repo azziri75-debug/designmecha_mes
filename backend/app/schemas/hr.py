@@ -66,3 +66,26 @@ class EmployeeTimeRecordResponse(EmployeeTimeRecordBase):
     class Config:
         from_attributes = True
 
+
+class AttendanceClockInUpdate(BaseModel):
+    staff_id: int
+    # log_time is current server time in API
+
+class AttendanceClockOutUpdate(BaseModel):
+    staff_id: int
+
+class MonthlyAttendanceRecord(BaseModel):
+    date: date
+    clock_in: Optional[datetime] = None
+    clock_out: Optional[datetime] = None
+    status: str
+    record_source: Optional[str] = None
+
+class AttendanceMonthlyResponse(BaseModel):
+    staff_id: int
+    staff_name: str
+    year: int
+    month: int
+    records: List[EmployeeTimeRecordResponse]
+
+
