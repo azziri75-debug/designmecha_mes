@@ -1545,6 +1545,16 @@ const BasicsPageContent = () => {
                                             <label className="text-sm font-medium text-gray-300">연락처</label>
                                             <input name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="010-0000-0000" maxLength="13" />
                                         </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">MAC 주소</label>
+                                                <input name="mac_address" value={formData.mac_address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" placeholder="00:00:00:00:00:00" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">IP 주소</label>
+                                                <input name="ip_address" value={formData.ip_address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" placeholder="192.168.0.XX" />
+                                            </div>
+                                        </div>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="checkbox"

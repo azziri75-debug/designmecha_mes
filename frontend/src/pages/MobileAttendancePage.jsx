@@ -7,7 +7,9 @@ import {
     ArrowRightOnRectangleIcon,
     ClockIcon,
     CheckCircleIcon,
-    ExclamationCircleIcon
+    ExclamationCircleIcon,
+    ListBulletIcon,
+    ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
 const MobileAttendancePage = () => {
@@ -17,6 +19,8 @@ const MobileAttendancePage = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
     const [status, setStatus] = useState(null); // 'success' or 'error'
+    const [activeTab, setActiveTab] = useState('action'); // action, history
+    const [attendanceRecords, setAttendanceRecords] = useState([]);
 
     // Real-time clock
     useEffect(() => {
@@ -47,6 +51,29 @@ const MobileAttendancePage = () => {
         }
     };
 
+    const fetchMonthlyRecords = async () => {
+        if (!user) return;
+        setLoading(true);
+        try {
+            const now = new Date();
+            const res = await api.get(`/hr/attendance/${user.id}/monthly`, {
+                params: { year: now.getFullYear(), month: now.getMonth() + 1 }
+            });
+            // Reverse to show latest first
+            setAttendanceRecords([...res.data.records].reverse());
+        } catch (err) {
+            console.error('Attendance Fetch Error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchMonthlyRecords();
+        }
+    }, [activeTab, user]);
+
     return (
         <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
             {/* Header */}
@@ -68,71 +95,130 @@ const MobileAttendancePage = () => {
                 </button>
             </header>
 
-            <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 space-y-8">
-                {/* User Info & Clock */}
-                <div className="text-center space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <p className="text-slate-500 text-sm font-medium">반갑습니다, <span className="text-slate-900 font-bold">{user?.name}님</span></p>
-                    <div className="text-5xl font-black tracking-tighter text-slate-900 tabular-nums">
-                        {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {activeTab === 'action' ? (
+                <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 space-y-8 overflow-y-auto">
+                    {/* User Info & Clock */}
+                    <div className="text-center space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <p className="text-slate-500 text-sm font-medium">반갑습니다, <span className="text-slate-900 font-bold">{user?.name}님</span></p>
+                        <div className="text-5xl font-black tracking-tighter text-slate-900 tabular-nums">
+                            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </div>
+                        <p className="text-slate-400 text-sm">
+                            {currentTime.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
+                        </p>
                     </div>
-                    <p className="text-slate-400 text-sm">
-                        {currentTime.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
-                    </p>
-                </div>
 
-                {/* Status Message Display */}
-                <div className={`h-20 flex items-center justify-center w-full transition-all duration-300 ${message ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-                    {message && (
-                        <div className={`flex items-center space-x-2 px-6 py-3 rounded-2xl border ${status === 'success'
+                    {/* Status Message Display */}
+                    <div className={`h-20 flex items-center justify-center w-full transition-all duration-300 ${message ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+                        {message && (
+                            <div className={`flex items-center space-x-2 px-6 py-3 rounded-2xl border ${status === 'success'
                                 ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
                                 : 'bg-red-50 border-red-100 text-red-700'
-                            } shadow-sm active:scale-95 transition-transform`}>
-                            {status === 'success' ? (
-                                <CheckCircleIcon className="w-6 h-6 animate-bounce" />
-                            ) : (
-                                <ExclamationCircleIcon className="w-6 h-6 animate-pulse" />
-                            )}
-                            <span className="text-lg font-bold">{message}</span>
-                        </div>
-                    )}
-                </div>
+                                } shadow-sm active:scale-95 transition-transform`}>
+                                {status === 'success' ? (
+                                    <CheckCircleIcon className="w-6 h-6 animate-bounce" />
+                                ) : (
+                                    <ExclamationCircleIcon className="w-6 h-6 animate-pulse" />
+                                )}
+                                <span className="text-lg font-bold">{message}</span>
+                            </div>
+                        )}
+                    </div>
 
-                {/* Action Buttons */}
-                <div className="grid grid-cols-1 gap-6 w-full max-w-sm">
-                    {/* Clock In Button */}
-                    <button
-                        disabled={loading}
-                        onClick={() => handleClockAction('IN')}
-                        className={`group relative overflow-hidden h-40 rounded-3xl transition-all duration-300 transform active:scale-95 flex flex-col items-center justify-center space-y-2 shadow-xl ${loading ? 'bg-slate-200 cursor-not-allowed' : 'bg-gradient-to-br from-blue-500 to-indigo-600 hover:shadow-blue-200 active:shadow-inner'
-                            }`}
-                    >
-                        <div className="absolute inset-0 bg-white/20 opacity-0 group-active:opacity-100 transition-opacity" />
-                        <ClockIcon className={`w-12 h-12 text-white ${loading ? 'animate-spin' : ''}`} />
-                        <span className="text-2xl font-black text-white tracking-widest">출근하기</span>
-                        <div className="absolute bottom-4 text-white/60 text-xs font-medium">WORK START</div>
-                    </button>
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-1 gap-6 w-full max-w-sm">
+                        <button
+                            disabled={loading}
+                            onClick={() => handleClockAction('IN')}
+                            className={`group relative overflow-hidden h-40 rounded-3xl transition-all duration-300 transform active:scale-95 flex flex-col items-center justify-center space-y-2 shadow-xl ${loading ? 'bg-slate-200 cursor-not-allowed' : 'bg-gradient-to-br from-blue-500 to-indigo-600 hover:shadow-blue-200 active:shadow-inner'
+                                }`}
+                        >
+                            <div className="absolute inset-0 bg-white/20 opacity-0 group-active:opacity-100 transition-opacity" />
+                            <ClockIcon className={`w-12 h-12 text-white ${loading ? 'animate-spin' : ''}`} />
+                            <span className="text-2xl font-black text-white tracking-widest">출근하기</span>
+                            <div className="absolute bottom-4 text-white/60 text-xs font-medium">WORK START</div>
+                        </button>
 
-                    {/* Clock Out Button */}
-                    <button
-                        disabled={loading}
-                        onClick={() => handleClockAction('OUT')}
-                        className={`group relative overflow-hidden h-40 rounded-3xl transition-all duration-300 transform active:scale-95 flex flex-col items-center justify-center space-y-2 shadow-xl ${loading ? 'bg-slate-200 cursor-not-allowed' : 'bg-gradient-to-br from-orange-500 to-red-600 hover:shadow-orange-200 active:shadow-inner'
-                            }`}
-                    >
-                        <div className="absolute inset-0 bg-white/20 opacity-0 group-active:opacity-100 transition-opacity" />
-                        <ArrowRightOnRectangleIcon className={`w-12 h-12 text-white ${loading ? 'animate-spin' : ''}`} />
-                        <span className="text-2xl font-black text-white tracking-widest">퇴근하기</span>
-                        <div className="absolute bottom-4 text-white/60 text-xs font-medium">WORK FINISH</div>
-                    </button>
-                </div>
-            </main>
+                        <button
+                            disabled={loading}
+                            onClick={() => handleClockAction('OUT')}
+                            className={`group relative overflow-hidden h-40 rounded-3xl transition-all duration-300 transform active:scale-95 flex flex-col items-center justify-center space-y-2 shadow-xl ${loading ? 'bg-slate-200 cursor-not-allowed' : 'bg-gradient-to-br from-orange-500 to-red-600 hover:shadow-orange-200 active:shadow-inner'
+                                }`}
+                        >
+                            <div className="absolute inset-0 bg-white/20 opacity-0 group-active:opacity-100 transition-opacity" />
+                            <ArrowRightOnRectangleIcon className={`w-12 h-12 text-white ${loading ? 'animate-spin' : ''}`} />
+                            <span className="text-2xl font-black text-white tracking-widest">퇴근하기</span>
+                            <div className="absolute bottom-4 text-white/60 text-xs font-medium">WORK FINISH</div>
+                        </button>
+                    </div>
+                </main>
+            ) : (
+                <main className="flex-1 flex flex-col px-6 py-6 space-y-6 overflow-y-auto">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-2xl font-black text-slate-800">최근 근태 기록</h2>
+                        <button onClick={fetchMonthlyRecords} className="p-2 bg-slate-100 rounded-full text-slate-500 active:rotate-180 transition-transform duration-500">
+                            <ArrowPathIcon className="w-5 h-5" />
+                        </button>
+                    </div>
 
-            {/* Sub-footer or decorative element */}
-            <footer className="py-6 text-center">
-                <p className="text-slate-300 text-[10px] uppercase tracking-[0.2em] font-bold">
-                    Smart MES Attendance System
-                </p>
-            </footer>
+                    <div className="space-y-4">
+                        {attendanceRecords.map((record, i) => (
+                            <div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm font-black text-slate-400 tabular-nums">
+                                        {new Date(record.record_date).toLocaleDateString([], { month: '2-digit', day: '2-digit', weekday: 'short' })}
+                                    </div>
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${record.attendance_status === 'NORMAL' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                        {record.attendance_status}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-slate-50 p-3 rounded-2xl">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Clock In</p>
+                                        <p className="text-lg font-black text-slate-800">
+                                            {record.clock_in_time ? new Date(record.clock_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-slate-50 p-3 rounded-2xl">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Clock Out</p>
+                                        <p className="text-lg font-black text-slate-800">
+                                            {record.clock_out_time ? new Date(record.clock_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {attendanceRecords.length === 0 && (
+                            <div className="py-20 text-center space-y-2">
+                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <ListBulletIcon className="w-8 h-8 text-slate-300" />
+                                </div>
+                                <p className="text-slate-400 font-bold">이번 달 기록이 없습니다.</p>
+                            </div>
+                        )}
+                    </div>
+                </main>
+            )}
+
+            {/* Bottom Navigation */}
+            <nav className="bg-white/80 backdrop-blur-md border-t border-slate-100 flex justify-around py-4 pb-10 shadow-lg">
+                <button
+                    onClick={() => setActiveTab('action')}
+                    className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'action' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
+                >
+                    <ClockIcon className="w-7 h-7" />
+                    <span className="text-[10px] font-black uppercase tracking-tighter">출퇴근 체크</span>
+                    {activeTab === 'action' && <div className="w-1 h-1 bg-blue-600 rounded-full mt-0.5" />}
+                </button>
+                <button
+                    onClick={() => setActiveTab('history')}
+                    className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'history' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
+                >
+                    <ListBulletIcon className="w-7 h-7" />
+                    <span className="text-[10px] font-black uppercase tracking-tighter">나의 기록</span>
+                    {activeTab === 'history' && <div className="w-1 h-1 bg-blue-600 rounded-full mt-0.5" />}
+                </button>
+            </nav>
 
             {/* Loading Overlay (Optional, but good for UX) */}
             {loading && (

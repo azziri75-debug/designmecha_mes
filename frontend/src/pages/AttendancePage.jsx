@@ -16,6 +16,8 @@ const AttendancePage = () => {
     const [selectedStaff, setSelectedStaff] = useState(null);
     const [attendanceData, setAttendanceData] = useState({});
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [activeTab, setActiveTab] = useState('calendar'); // calendar, history
+    const [summaryData, setSummaryData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -66,6 +68,25 @@ const AttendancePage = () => {
     useEffect(() => {
         fetchAttendance();
     }, [fetchAttendance]);
+
+    const fetchSummary = useCallback(async () => {
+        if (!selectedStaff) return;
+        try {
+            const year = currentMonth.getFullYear();
+            const res = await api.get('/hr/attendance/summary', {
+                params: { year, user_id: selectedStaff.id }
+            });
+            setSummaryData(res.data);
+        } catch (err) {
+            console.error('Failed to fetch summary:', err);
+        }
+    }, [selectedStaff, currentMonth]);
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchSummary();
+        }
+    }, [activeTab, fetchSummary]);
 
     const changeMonth = (offset) => {
         const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1);
@@ -149,8 +170,8 @@ const AttendancePage = () => {
                             key={staff.id}
                             onClick={() => setSelectedStaff(staff)}
                             className={`w-full flex items-center p-3 rounded-2xl transition-all duration-200 text-left ${selectedStaff?.id === staff.id
-                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md scale-105'
-                                    : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-transparent hover:border-slate-100'
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md scale-105'
+                                : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-transparent hover:border-slate-100'
                                 }`}
                         >
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black mr-3 ${selectedStaff?.id === staff.id ? 'bg-white/20' : 'bg-slate-200 text-slate-500'}`}>
@@ -173,16 +194,26 @@ const AttendancePage = () => {
                 <header className="px-8 py-6 bg-white border-b border-slate-200 flex items-center justify-between">
                     <div className="flex items-center space-x-6">
                         <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
-                            <CalendarDaysIcon className="w-8 h-8 text-blue-600" />
+                            {activeTab === 'calendar' ? <CalendarDaysIcon className="w-8 h-8 text-blue-600" /> : <ClockIcon className="w-8 h-8 text-blue-600" />}
                         </div>
                         <div>
                             <h1 className="text-2xl font-black text-slate-900">
                                 {selectedStaff ? `${selectedStaff.name} 님의 근태` : '사원을 선택해 주세요'}
                             </h1>
-                            <p className="text-sm font-bold text-slate-400 flex items-center">
-                                <span className="text-blue-500 mr-1.5">●</span>
-                                ATTENDANCE CALENDAR SYSTEM v2.0
-                            </p>
+                            <div className="flex items-center mt-1 space-x-1">
+                                <button
+                                    onClick={() => setActiveTab('calendar')}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-black tracking-tighter transition-all ${activeTab === 'calendar' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                                >
+                                    CALENDAR VIEW
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('history')}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-black tracking-tighter transition-all ${activeTab === 'history' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                                >
+                                    HISTORY LIST
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -212,7 +243,7 @@ const AttendancePage = () => {
                             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                             <p className="font-black text-slate-400 animate-pulse">데이터 로딩 중...</p>
                         </div>
-                    ) : (
+                    ) : activeTab === 'calendar' ? (
                         <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-w-6xl mx-auto">
                             {/* Days Header */}
                             <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80">
@@ -226,6 +257,73 @@ const AttendancePage = () => {
                             {/* Days Grid */}
                             <div className="grid grid-cols-7 flex-1 min-h-0 bg-white">
                                 {renderCalendar()}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="max-w-6xl mx-auto space-y-6">
+                            {/* Summary Stats */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 rounded-[2rem] text-white shadow-xl shadow-indigo-200">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Total Vacation Used</p>
+                                    <p className="text-3xl font-black">{summaryData?.total_vacation_days || 0} <span className="text-sm">Days</span></p>
+                                </div>
+                                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-[2rem] text-white shadow-xl shadow-blue-200">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Time Off / Outing</p>
+                                    <p className="text-3xl font-black">{summaryData?.total_leave_outing_hours || 0} <span className="text-sm">Hours</span></p>
+                                </div>
+                                <div className="bg-gradient-to-br from-slate-700 to-slate-800 p-6 rounded-[2rem] text-white shadow-xl shadow-slate-300">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Overtime Total</p>
+                                    <p className="text-3xl font-black">{summaryData?.total_overtime_hours || 0} <span className="text-sm">Hours</span></p>
+                                </div>
+                            </div>
+
+                            {/* Records Table */}
+                            <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden">
+                                <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                    <h3 className="font-black text-slate-800 flex items-center">
+                                        <ClockIcon className="w-5 h-5 mr-2 text-blue-600" />
+                                        전자결재 근태 내역
+                                    </h3>
+                                    <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase">
+                                        {currentMonth.getFullYear()} Annual Records
+                                    </span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="bg-slate-50/80 border-b border-slate-100">
+                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Title</th>
+                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {summaryData?.documents?.map((doc) => (
+                                                <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                                                    <td className="px-8 py-4">
+                                                        <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${doc.doc_type === 'VACATION' ? 'bg-indigo-100 text-indigo-600' : doc.doc_type === 'EARLY_LEAVE' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'
+                                                            }`}>
+                                                            {doc.doc_type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-8 py-4 text-sm font-bold text-slate-700">{doc.title}</td>
+                                                    <td className="px-8 py-4 text-xs font-bold text-slate-400 tabular-nums">{doc.date}</td>
+                                                    <td className="px-8 py-4 text-sm font-black text-slate-900 text-right">
+                                                        {doc.applied_value} <span className="text-[10px] text-slate-400 ml-0.5">{doc.applied_unit}</span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {(!summaryData?.documents || summaryData.documents.length === 0) && (
+                                                <tr>
+                                                    <td colSpan="4" className="px-8 py-12 text-center text-slate-400 font-bold italic">
+                                                        기록이 없습니다.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}

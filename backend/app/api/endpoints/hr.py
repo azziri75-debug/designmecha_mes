@@ -201,6 +201,16 @@ async def get_attendance_summary(
                 applied_unit="시간",
                 status=doc.status,
             ))
+    
+    return AttendanceSummaryResponse(
+        year=year,
+        user_id=target_id,
+        user_name=target_staff.name,
+        total_vacation_days=total_vacation_days,
+        total_leave_outing_hours=total_leave_outing_hours,
+        total_overtime_hours=total_overtime_hours,
+        documents=document_items
+    )
 
 
 @router.post("/attendance/clock-in")
