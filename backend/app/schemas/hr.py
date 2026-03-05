@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import date, datetime
 
 
 class AttendanceDocItem(BaseModel):
@@ -24,3 +25,44 @@ class AttendanceSummaryResponse(BaseModel):
     total_overtime_hours: float      # 누적 야근/특근 시간
 
     documents: List[AttendanceDocItem]  # 집계 근거 문서 리스트
+
+
+class AttendanceLogBase(BaseModel):
+    staff_id: int
+    log_time: datetime
+    log_type: str
+
+class AttendanceLogResponse(AttendanceLogBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+
+class EmployeeTimeRecordBase(BaseModel):
+    staff_id: int
+    record_date: date
+    category: str
+    content: Optional[str] = None
+    status: Optional[str] = "APPROVED"
+    author_id: Optional[int] = None
+
+class EmployeeTimeRecordResponse(EmployeeTimeRecordBase):
+    id: int
+    created_at: datetime
+    staff_name: Optional[str] = None
+    
+    hours: Optional[float] = 0.0
+    extension_hours: Optional[float] = 0.0
+    night_hours: Optional[float] = 0.0
+    holiday_hours: Optional[float] = 0.0
+    holiday_night_hours: Optional[float] = 0.0
+
+    # New fields
+    clock_in_time: Optional[datetime] = None
+    clock_out_time: Optional[datetime] = None
+    record_source: Optional[str] = None
+    attendance_status: Optional[str] = "NORMAL"
+
+    class Config:
+        from_attributes = True
+

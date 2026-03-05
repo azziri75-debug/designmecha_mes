@@ -41,19 +41,7 @@ class Contact(Base):
     
     partner = relationship("Partner", back_populates="contacts", lazy="selectin")
 
-class Staff(Base):
-    __tablename__ = "staff"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    role = Column(String, nullable=True) # 직책
-    main_duty = Column(String, nullable=True) # 주업무 (생산, 관리 등)
-    phone = Column(String, nullable=True)
-    is_active = Column(Boolean, default=True)
-    user_type = Column(String, default="USER") # ADMIN or USER
-    password = Column(String, nullable=True) # Login password
-    menu_permissions = Column(JSON, default=[]) # List of allowed menu keys
-    stamp_image = Column(JSON, nullable=True) # {name, url}
 
 class Company(Base):
     __tablename__ = "companies"
@@ -69,7 +57,10 @@ class Company(Base):
     logo_image = Column(JSON, nullable=True) # {name, url}
     stamp_image = Column(JSON, nullable=True) # {name, url}
     work_start_time = Column(Time, default="08:30")
+    work_start_time = Column(Time, default="08:30")
     work_end_time = Column(Time, default="17:30")
+    grace_period_start_mins = Column(Integer, default=0)
+    grace_period_end_mins = Column(Integer, default=0)
 
 class Equipment(Base):
     """공정 장비 (Master Data)"""
@@ -157,30 +148,4 @@ class MeasurementHistory(Base):
 
     instrument = relationship("MeasuringInstrument", back_populates="history")
 
-class EmployeeTimeRecord(Base):
-    """사원 근태/HR 기록 (전자결재 승인 시 자동 생성 및 수동 관리)"""
-    __tablename__ = "employee_time_records"
 
-    id = Column(Integer, primary_key=True, index=True)
-    staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False)
-    
-    record_date = Column(Date, nullable=False, index=True)
-    category = Column(String, nullable=False, index=True) # ANNUAL, HALF_DAY, SICK, EARLY_LEAVE, OUTING, OVERTIME, SPECIAL
-    
-    content = Column(Text, nullable=True) # 상세 내용 (반차-오전/오후, 조퇴 시간 등)
-    status = Column(String, default="APPROVED") # APPROVED, PENDING, REJECTED
-    
-    # 세분화된 시간 기록 (Labor Standards Act)
-    hours = Column(Float, default=0.0)
-    extension_hours = Column(Float, default=0.0)
-    night_hours = Column(Float, default=0.0)
-    holiday_hours = Column(Float, default=0.0)
-    holiday_night_hours = Column(Float, default=0.0)
-    
-    # 가시성을 위한 작성자 연계 (전자결재 연동 시 결재 상신자)
-    author_id = Column(Integer, ForeignKey("staff.id", ondelete="SET NULL"), nullable=True)
-    
-    created_at = Column(DateTime, default=func.now())
-
-    staff = relationship("Staff", foreign_keys=[staff_id])
-    author = relationship("Staff", foreign_keys=[author_id])

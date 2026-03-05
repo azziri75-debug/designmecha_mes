@@ -68,6 +68,8 @@ class StaffBase(BaseModel):
     password: Optional[str] = None
     menu_permissions: Optional[Union[List[str], dict]] = [] # List or dict for granular perms
     stamp_image: Optional[dict] = None # {name, url}
+    mac_address: Optional[str] = None
+    ip_address: Optional[str] = None
 class StaffSimple(StaffBase):
     id: int
     class Config:
@@ -98,6 +100,8 @@ class CompanyBase(BaseModel):
     stamp_image: Optional[dict] = None
     work_start_time: Optional[str] = "08:30"
     work_end_time: Optional[str] = "17:30"
+    grace_period_start_mins: Optional[int] = 0
+    grace_period_end_mins: Optional[int] = 0
 
 class CompanyCreate(CompanyBase):
     pass
