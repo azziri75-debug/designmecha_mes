@@ -153,7 +153,7 @@ const ProductsPage = ({ type }) => {
 
     const fetchAllParts = async () => {
         try {
-            const res = await api.get('/product/products/', { params: { item_type: 'PART' } });
+            const res = await api.get('/product/products/', { params: { item_type: 'PART,CONSUMABLE' } });
             setAllParts(res.data || []);
         } catch (error) {
             console.error('Failed to fetch all parts', error);
@@ -875,7 +875,10 @@ const ProductsPage = ({ type }) => {
                                                                         공정 구성
                                                                     </button>
                                                                     <button
-                                                                        onClick={() => setDetailSubTab('priceHistory')}
+                                                                        onClick={() => {
+                                                                            setDetailSubTab('priceHistory');
+                                                                            fetchPriceHistory(product.id);
+                                                                        }}
                                                                         className={cn(
                                                                             "pb-2 text-xs font-semibold flex items-center gap-2 transition-colors",
                                                                             detailSubTab === 'priceHistory' ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-500 hover:text-gray-300"
@@ -884,6 +887,21 @@ const ProductsPage = ({ type }) => {
                                                                         <History className="w-3.5 h-3.5" />
                                                                         견적/수주 이력
                                                                     </button>
+                                                                    {product.item_type === 'PRODUCED' && (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setDetailSubTab('bom');
+                                                                                fetchBomItems(product.id);
+                                                                            }}
+                                                                            className={cn(
+                                                                                "pb-2 text-xs font-semibold flex items-center gap-2 transition-colors",
+                                                                                detailSubTab === 'bom' ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-500 hover:text-gray-300"
+                                                                            )}
+                                                                        >
+                                                                            <Package className="w-3.5 h-3.5" />
+                                                                            BOM 부품목록
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             </div>
 
@@ -971,6 +989,42 @@ const ProductsPage = ({ type }) => {
                                                                         등록된 공정이 없습니다. 제품을 더블 클릭하여 '상세 공정'을 설정하세요.
                                                                     </div>
                                                                 )
+                                                            ) : detailSubTab === 'bom' ? (
+                                                                // BOM Tab (inline)
+                                                                <div>
+                                                                    {loadingBom ? (
+                                                                        <div className="text-center py-8 text-gray-500">로딩 중...</div>
+                                                                    ) : bomItems.length > 0 ? (
+                                                                        <table className="w-full text-left text-sm text-gray-400">
+                                                                            <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                                <tr>
+                                                                                    <th className="px-4 py-2">품목 유형</th>
+                                                                                    <th className="px-4 py-2">품명</th>
+                                                                                    <th className="px-4 py-2">규격</th>
+                                                                                    <th className="px-4 py-2 text-right">소요량</th>
+                                                                                    <th className="px-4 py-2">단위</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody className="divide-y divide-gray-700">
+                                                                                {bomItems.map((item, idx) => (
+                                                                                    <tr key={idx} className="hover:bg-gray-800/50 transition-colors">
+                                                                                        <td className="px-4 py-2">
+                                                                                            <span className="text-[10px] px-1.5 py-0.5 rounded border bg-gray-700/50 border-gray-600 text-gray-300">
+                                                                                                {ITEM_TYPES[item.child_product?.item_type] || '-'}
+                                                                                            </span>
+                                                                                        </td>
+                                                                                        <td className="px-4 py-2 text-white font-medium">{item.child_product?.name || '(알 수 없음)'}</td>
+                                                                                        <td className="px-4 py-2 text-xs text-gray-400">{item.child_product?.specification || '-'}</td>
+                                                                                        <td className="px-4 py-2 text-right text-emerald-400 font-medium">{item.required_quantity}</td>
+                                                                                        <td className="px-4 py-2 text-xs">{item.child_product?.unit || 'EA'}</td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    ) : (
+                                                                        <div className="text-sm text-gray-500 py-4 text-center">등록된 BOM 항목이 없습니다.</div>
+                                                                    )}
+                                                                </div>
                                                             ) : (
                                                                 // priceHistory Tab
                                                                 <div className="overflow-x-auto">
