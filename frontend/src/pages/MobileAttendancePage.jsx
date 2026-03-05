@@ -9,7 +9,8 @@ import {
     CheckCircleIcon,
     ExclamationCircleIcon,
     ListBulletIcon,
-    ArrowPathIcon
+    ArrowPathIcon,
+    HomeIcon
 } from '@heroicons/react/24/outline';
 
 const MobileAttendancePage = () => {
@@ -72,6 +73,7 @@ const MobileAttendancePage = () => {
         if (activeTab === 'history') {
             fetchMonthlyRecords();
         }
+        window.scrollTo(0, 0);
     }, [activeTab, user]);
 
     return (
@@ -201,21 +203,28 @@ const MobileAttendancePage = () => {
             )}
 
             {/* Bottom Navigation */}
-            <nav className="bg-white/80 backdrop-blur-md border-t border-slate-100 flex justify-around py-4 pb-10 shadow-lg">
+            <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-200 flex justify-around py-2 pb-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <button
+                    onClick={() => navigate('/mobile/work-logs')}
+                    className="flex flex-col items-center space-y-1 text-slate-400 active:scale-95 transition-all py-1 px-4"
+                >
+                    <HomeIcon className="w-6 h-6" />
+                    <span className="text-[10px] font-bold uppercase tracking-tighter">홈</span>
+                </button>
                 <button
                     onClick={() => setActiveTab('action')}
-                    className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'action' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
+                    className={`flex flex-col items-center space-y-1 transition-all py-1 px-4 ${activeTab === 'action' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
                 >
-                    <ClockIcon className="w-7 h-7" />
-                    <span className="text-[10px] font-black uppercase tracking-tighter">출퇴근 체크</span>
+                    <ClockIcon className="w-6 h-6" />
+                    <span className="text-[10px] font-bold uppercase tracking-tighter">출퇴근</span>
                     {activeTab === 'action' && <div className="w-1 h-1 bg-blue-600 rounded-full mt-0.5" />}
                 </button>
                 <button
                     onClick={() => setActiveTab('history')}
-                    className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'history' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
+                    className={`flex flex-col items-center space-y-1 transition-all py-1 px-4 ${activeTab === 'history' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
                 >
-                    <ListBulletIcon className="w-7 h-7" />
-                    <span className="text-[10px] font-black uppercase tracking-tighter">나의 기록</span>
+                    <ListBulletIcon className="w-6 h-6" />
+                    <span className="text-[10px] font-bold uppercase tracking-tighter">기록</span>
                     {activeTab === 'history' && <div className="w-1 h-1 bg-blue-600 rounded-full mt-0.5" />}
                 </button>
             </nav>

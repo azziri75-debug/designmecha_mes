@@ -60,6 +60,7 @@ import {
     BeachAccess as VacationIcon,
     Timer as TimerIcon,
     WorkHistory as OvertimeIcon,
+    AccessTime as ClockIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
@@ -549,6 +550,9 @@ const MobileWorkLogPage = () => {
                         </Typography>
                     </Stack>
                     <Stack direction="row" spacing={0.5}>
+                        <IconButton size="small" onClick={() => navigate('/mobile/attendance')}>
+                            <ClockIcon fontSize="small" />
+                        </IconButton>
                         <IconButton size="small" onClick={handleLogout}>
                             <LogoutIcon fontSize="small" />
                         </IconButton>
