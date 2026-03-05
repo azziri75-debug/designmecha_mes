@@ -151,8 +151,8 @@ async def create_product(
     result = await db.execute(
         select(Product)
         .options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
-            selectinload(Product.bom_items).joinedload(BOM.child_product)
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         )
         .where(Product.id == new_product.id)
     )
@@ -169,8 +169,8 @@ async def read_products(
 ):
     # Eager loading needed for standard_processes AND its nested process relationship
     query = select(Product).options(
-        selectinload(Product.standard_processes).joinedload(ProductProcess.process),
-        selectinload(Product.bom_items).joinedload(BOM.child_product)
+        selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(Product.bom_items).selectinload(BOM.child_product)
     )
     
     if partner_id:
@@ -252,8 +252,8 @@ async def update_product(
         select(Product)
         .select_from(Product)
         .options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
-            selectinload(Product.bom_items).joinedload(BOM.child_product)
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         )
         .where(Product.id == product_id)
     )
@@ -484,7 +484,7 @@ async def get_bom(
     """
     result = await db.execute(
         select(BOM)
-        .options(joinedload(BOM.child_product))
+        .options(selectinload(BOM.child_product))
         .where(BOM.parent_product_id == product_id)
     )
     bom_items = result.scalars().all()
@@ -522,7 +522,7 @@ async def update_bom(
         # Re-fetch with eager load
         result = await db.execute(
             select(BOM)
-            .options(joinedload(BOM.child_product))
+            .options(selectinload(BOM.child_product))
             .where(BOM.parent_product_id == product_id)
         )
         return result.scalars().all()

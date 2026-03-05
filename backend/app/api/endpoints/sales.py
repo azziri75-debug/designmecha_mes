@@ -3,12 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc, or_
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import delete
 from app.api import deps
 from app.models.sales import Estimate, EstimateItem, SalesOrder, SalesOrderItem, OrderStatus
 from app.schemas import sales as schemas
-from app.models.product import Product, ProductProcess
+from app.models.product import Product, ProductProcess, BOM
 from app.models.basics import Partner
 from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder
 from app.models.quality import InspectionResult, QualityDefect
@@ -60,7 +60,7 @@ async def create_estimate(
     query = select(Estimate).options(
         selectinload(Estimate.items).selectinload(EstimateItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
         selectinload(Estimate.partner)
     ).where(Estimate.id == db_estimate.id)
@@ -77,7 +77,7 @@ async def read_estimates(
     query = select(Estimate).options(
         selectinload(Estimate.items).selectinload(EstimateItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
         selectinload(Estimate.partner)
     )
@@ -96,7 +96,7 @@ async def read_estimate(
     query = select(Estimate).options(
         selectinload(Estimate.items).selectinload(EstimateItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
@@ -115,7 +115,7 @@ async def export_estimate_excel(
     query = select(Estimate).options(
         selectinload(Estimate.items).selectinload(EstimateItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
@@ -283,7 +283,7 @@ async def export_estimate_excel(
         query = select(Estimate).options(
             selectinload(Estimate.items).selectinload(EstimateItem.product).options(
                 selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-                selectinload(Product.bom_items)
+                selectinload(Product.bom_items).selectinload(BOM.child_product)
             ),
             selectinload(Estimate.partner)
         ).where(Estimate.id == estimate_id)
@@ -344,7 +344,7 @@ async def update_estimate(
     query = select(Estimate).options(
         selectinload(Estimate.items).selectinload(EstimateItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
@@ -434,7 +434,7 @@ async def create_order(
     query = select(SalesOrder).options(
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
         selectinload(SalesOrder.partner)
     ).where(SalesOrder.id == db_order.id)
@@ -455,7 +455,7 @@ async def read_orders(
     query = select(SalesOrder).options(
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
         selectinload(SalesOrder.partner)
     )
@@ -545,7 +545,7 @@ async def update_order(
     query = select(SalesOrder).options(
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
+            selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
         selectinload(SalesOrder.partner)
     ).where(SalesOrder.id == order_id)

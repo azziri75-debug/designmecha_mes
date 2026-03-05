@@ -56,6 +56,12 @@ const ProductsPage = ({ type }) => {
     const [loadingCostHistory, setLoadingCostHistory] = useState(false);
     const [historyTarget, setHistoryTarget] = useState({ productName: '', processName: '', productId: null, processId: null, index: null });
 
+    // Part History Modal for BOM components
+    const [showPartHistoryModal, setShowPartHistoryModal] = useState(false);
+    const [partHistoryData, setPartHistoryData] = useState([]);
+    const [loadingPartHistory, setLoadingPartHistory] = useState(false);
+    const [partHistoryTitle, setPartHistoryTitle] = useState("");
+
     // Quick Process Registration State
     const [showQuickProcessModal, setShowQuickProcessModal] = useState(false);
     const [quickProcessData, setQuickProcessData] = useState({ name: "", course_type: "INTERNAL", major_group_id: null, group_id: null, index: null });
@@ -596,6 +602,22 @@ const ProductsPage = ({ type }) => {
         }
     };
 
+    const openPartHistory = async (childProductId, childProductName) => {
+        setPartHistoryTitle(childProductName);
+        setShowPartHistoryModal(true);
+        setLoadingPartHistory(true);
+        try {
+            const res = await api.get(`/sales/history/product/${childProductId}`);
+            setPartHistoryData(res.data);
+        } catch (error) {
+            console.error(error);
+            alert("이력을 불러오는데 실패했습니다.");
+            setShowPartHistoryModal(false);
+        } finally {
+            setLoadingPartHistory(false);
+        }
+    };
+
     const handleSaveBom = async () => {
         if (!productFormData.id) return;
         try {
@@ -1004,6 +1026,8 @@ const ProductsPage = ({ type }) => {
                                                                                     <ResizableTh className="px-4 py-2">규격</ResizableTh>
                                                                                     <ResizableTh className="px-4 py-2 text-right">소요량</ResizableTh>
                                                                                     <ResizableTh className="px-4 py-2">단위</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2 text-right">최근 단가</ResizableTh>
+                                                                                    <ResizableTh className="px-4 py-2 text-center">이력</ResizableTh>
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody className="divide-y divide-gray-700">
@@ -1018,6 +1042,19 @@ const ProductsPage = ({ type }) => {
                                                                                         <td className="px-4 py-2 text-xs text-gray-400">{item.child_product?.specification || '-'}</td>
                                                                                         <td className="px-4 py-2 text-right text-emerald-400 font-medium">{item.required_quantity}</td>
                                                                                         <td className="px-4 py-2 text-xs">{item.child_product?.unit || 'EA'}</td>
+                                                                                        <td className="px-4 py-2 text-right font-medium text-blue-400">
+                                                                                            {allParts.find(p => p.id === item.child_product_id)?.latest_price ?
+                                                                                                `₩${allParts.find(p => p.id === item.child_product_id).latest_price.toLocaleString()}` : '-'}
+                                                                                        </td>
+                                                                                        <td className="px-4 py-2 text-center">
+                                                                                            <button
+                                                                                                onClick={() => openPartHistory(item.child_product_id, item.child_product?.name)}
+                                                                                                className="p-1 hover:text-blue-400 text-gray-500 transition-colors"
+                                                                                                title="단가 이력"
+                                                                                            >
+                                                                                                <History className="w-3.5 h-3.5" />
+                                                                                            </button>
+                                                                                        </td>
                                                                                     </tr>
                                                                                 ))}
                                                                             </tbody>
@@ -1522,7 +1559,8 @@ const ProductsPage = ({ type }) => {
                                                         <th className="px-4 py-3">규격</th>
                                                         <th className="px-4 py-3 text-right">소요량</th>
                                                         <th className="px-4 py-3">단위</th>
-                                                        <th className="px-4 py-3 text-center">삭제</th>
+                                                        <th className="px-4 py-3 text-right">최근 단가</th>
+                                                        <th className="px-4 py-3 text-center">동작</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-700 text-gray-300">
@@ -1546,10 +1584,19 @@ const ProductsPage = ({ type }) => {
                                                                 />
                                                             </td>
                                                             <td className="px-4 py-3 text-xs text-gray-400">{item.child_product?.unit || 'EA'}</td>
+                                                            <td className="px-4 py-3 text-right font-medium text-blue-400">
+                                                                {allParts.find(p => p.id === item.child_product_id)?.latest_price ?
+                                                                    `₩${allParts.find(p => p.id === item.child_product_id).latest_price.toLocaleString()}` : '-'}
+                                                            </td>
                                                             <td className="px-4 py-3 text-center">
-                                                                <button type="button" onClick={() => removeBomRow(idx)} className="text-gray-500 hover:text-red-400 transition-colors">
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </button>
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button type="button" onClick={() => openPartHistory(item.child_product_id, item.child_product?.name)} className="text-gray-500 hover:text-blue-400 transition-colors" title="이력">
+                                                                        <History className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button type="button" onClick={() => removeBomRow(idx)} className="text-gray-500 hover:text-red-400 transition-colors" title="삭제">
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -1826,7 +1873,67 @@ const ProductsPage = ({ type }) => {
                 title={fileModalTitle}
                 onDeleteFile={(index) => handleDeleteAttachment(viewingTargetId, index)}
             />
-        </div >
+
+            {/* Part History Modal */}
+            {showPartHistoryModal && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-2xl shadow-2xl overflow-hidden animation-fade-in">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <History className="w-5 h-5 text-blue-400" />
+                                [{partHistoryTitle}] 단가 이력
+                            </h3>
+                            <button onClick={() => setShowPartHistoryModal(false)} className="text-gray-400 hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            {loadingPartHistory ? (
+                                <div className="text-center py-12 text-gray-500">이력을 불러오는 중...</div>
+                            ) : partHistoryData.length > 0 ? (
+                                <div className="overflow-hidden rounded-lg border border-gray-700">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-900/80 text-gray-400 uppercase font-medium">
+                                            <tr>
+                                                <th className="px-4 py-3">일자</th>
+                                                <th className="px-4 py-3">구분</th>
+                                                <th className="px-4 py-3">공급처/거래처</th>
+                                                <th className="px-4 py-3 text-right">수량</th>
+                                                <th className="px-4 py-3 text-right">단가</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-700 text-gray-300">
+                                            {partHistoryData.map((h, i) => (
+                                                <tr key={i} className="hover:bg-gray-700/30 transition-colors">
+                                                    <td className="px-4 py-3 whitespace-nowrap">{h.date}</td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <span className={cn(
+                                                            "px-2 py-0.5 rounded text-[10px] font-bold border",
+                                                            h.type === 'QUOTATION' ? "bg-amber-900/20 border-amber-800 text-amber-400" :
+                                                                h.type === 'ORDER' ? "bg-emerald-900/20 border-emerald-800 text-emerald-400" :
+                                                                    "bg-gray-900/20 border-gray-800 text-gray-400"
+                                                        )}>
+                                                            {h.type === 'QUOTATION' ? '견적' : h.type === 'ORDER' ? '수주' : h.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 truncate max-w-[150px]">{h.partner_name}</td>
+                                                    <td className="px-4 py-3 text-right">{h.quantity ? h.quantity.toLocaleString() : '-'}</td>
+                                                    <td className="px-4 py-3 text-right text-blue-400 font-medium">₩{h.unit_price ? h.unit_price.toLocaleString() : '0'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-500 border border-dashed border-gray-700 rounded-lg">
+                                    단가 변동 이력이 없습니다.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

@@ -192,7 +192,7 @@ async def read_pending_purchase_items(
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .options(
             selectinload(ProductionPlanItem.product).options(
-                selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
                 selectinload(Product.bom_items)
             ),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
@@ -237,7 +237,7 @@ async def read_pending_outsourcing_items(
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .options(
             selectinload(ProductionPlanItem.product).options(
-                selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
                 selectinload(Product.bom_items)
             ),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
@@ -344,7 +344,7 @@ async def create_purchase_order(
     # Re-fetch with eager load
     query = select(PurchaseOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items)
         ),
         selectinload(PurchaseOrder.partner),
@@ -374,7 +374,7 @@ async def read_purchase_orders(
 
     query = select(PurchaseOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items)
         ),
         selectinload(PurchaseOrder.partner),
@@ -520,7 +520,7 @@ async def update_purchase_order(
     from app.models.production import ProductionPlanItem, ProductionPlan
     query = select(PurchaseOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items)
         ),
         selectinload(PurchaseOrder.partner),
@@ -628,7 +628,7 @@ async def create_outsourcing_order(
     # Re-fetch
     query = select(OutsourcingOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items)
         ),
         selectinload(OutsourcingOrder.partner),
@@ -657,7 +657,7 @@ async def read_outsourcing_orders(
 
     query = select(OutsourcingOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items)
         ),
         selectinload(OutsourcingOrder.partner),
@@ -782,7 +782,7 @@ async def update_outsourcing_order(
     from app.models.production import ProductionPlanItem, ProductionPlan
     query = select(OutsourcingOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).options(
-            selectinload(Product.standard_processes).joinedload(ProductProcess.process),
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items)
         ),
         selectinload(OutsourcingOrder.partner),
