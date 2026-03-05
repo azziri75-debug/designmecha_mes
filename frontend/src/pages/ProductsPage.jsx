@@ -255,11 +255,11 @@ const ProductsPage = ({ type }) => {
                 unit: productFormData.unit || 'EA'
             };
 
-            // Auto-assign item_type based on the 'type' prop if not 'PROCESSES'
+            // Auto-assign item_type based on the 'type' prop (PRODUCED, PART, CONSUMABLE)
             if (type && type !== 'PROCESSES') {
                 payload.item_type = type;
-            } else if (!payload.item_type) { // Default if type is not provided or is PROCESSES
-                payload.item_type = 'PRODUCED'; // Or a suitable default
+            } else {
+                payload.item_type = 'PRODUCED'; // Default fallback
             }
 
             if (productFormData.id) {
