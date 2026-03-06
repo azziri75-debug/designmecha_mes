@@ -562,6 +562,62 @@ async def startup_event():
                 print(f"Startup: StockTransaction table creation failed: {e}")
                 await db.rollback()
 
+            # 14. MRP Schema Fix (Auto-Patch)
+            try:
+                # 14-1. purchase_order_items: material_requirement_id
+                if is_sqlite:
+                    r = await db.execute(text("PRAGMA table_info(purchase_order_items)"))
+                    cols = [c[1] for c in r.fetchall()]
+                    if "material_requirement_id" not in cols:
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN material_requirement_id INTEGER"))
+                        print("Startup: Added material_requirement_id to purchase_order_items (SQLite)")
+                else:
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='purchase_order_items' AND column_name='material_requirement_id'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN material_requirement_id INTEGER"))
+                        print("Startup: Added material_requirement_id to purchase_order_items (Postgres)")
+
+                # 14-2. material_requirements table
+                if is_sqlite:
+                    r = await db.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='material_requirements'"))
+                    if not r.scalar():
+                        await db.execute(text("""
+                            CREATE TABLE material_requirements (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                product_id INTEGER NOT NULL REFERENCES products(id),
+                                order_id INTEGER REFERENCES sales_orders(id),
+                                required_quantity INTEGER NOT NULL,
+                                current_stock INTEGER DEFAULT 0,
+                                open_purchase_qty INTEGER DEFAULT 0,
+                                shortage_quantity INTEGER NOT NULL,
+                                status VARCHAR DEFAULT 'PENDING',
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            )
+                        """))
+                        print("Startup: Created material_requirements table (SQLite)")
+                else:
+                    r = await db.execute(text("SELECT to_regclass('public.material_requirements')"))
+                    if not r.scalar():
+                        await db.execute(text("""
+                            CREATE TABLE material_requirements (
+                                id SERIAL PRIMARY KEY,
+                                product_id INTEGER NOT NULL REFERENCES products(id),
+                                order_id INTEGER REFERENCES sales_orders(id),
+                                required_quantity INTEGER NOT NULL,
+                                current_stock INTEGER DEFAULT 0,
+                                open_purchase_qty INTEGER DEFAULT 0,
+                                shortage_quantity INTEGER NOT NULL,
+                                status VARCHAR DEFAULT 'PENDING',
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            )
+                        """))
+                        print("Startup: Created material_requirements table (Postgres)")
+                
+                await db.commit()
+            except Exception as e:
+                print(f"Startup: MRP auto-patch failed: {e}")
+                await db.rollback()
+
     except Exception as e:
         print(f"Startup: DB initialization crashed: {e}")
 
