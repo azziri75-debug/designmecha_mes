@@ -57,14 +57,14 @@ const Layout = () => {
         { icon: Factory, label: '생산관리', to: '/production', menuKey: 'production' },
         { icon: ShoppingCart, label: '자재구매관리', to: '/purchasing/materials', menuKey: 'purchasing' },
         { icon: Truck, label: '외주발주관리', to: '/outsourcing', menuKey: 'outsourcing' },
-        { icon: ClipboardCheck, label: '작업일지관리', to: '/work-logs', menuKey: 'production' },
-        { icon: Truck, label: '납품관리', to: '/delivery', menuKey: 'sales' },
+        { icon: ClipboardCheck, label: '작업일지관리', to: '/work-logs', menuKey: 'worklogs' },
+        { icon: Truck, label: '납품관리', to: '/delivery', menuKey: 'delivery' },
         { icon: Boxes, label: '재고및재고생산관리', to: '/inventory', menuKey: 'inventory' },
         { icon: ClipboardCheck, label: '품질관리', to: '/quality', menuKey: 'quality' },
         { icon: Wrench, label: '소모품관리', to: '/products/consumables', menuKey: 'products' },
         { icon: ShoppingBag, label: '소모품발주관리', to: '/purchasing/consumables', menuKey: 'purchasing' },
         { icon: FileText, label: '전자결재및문서관리', to: '/approval', menuKey: 'approval' },
-        { icon: Clock, label: '근태관리', to: '/attendance', menuKey: 'basics' },
+        { icon: Clock, label: '근태관리', to: '/attendance', menuKey: 'hr' },
         { icon: Database, label: 'DB관리', to: '/db-management', menuKey: 'ADMIN' },
     ];
 

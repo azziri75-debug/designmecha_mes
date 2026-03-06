@@ -71,13 +71,13 @@ const App = () => {
         <Route path="purchasing/consumables" element={<ProtectedRoute menuKey="purchasing"><PurchasePage type="CONSUMABLE" /></ProtectedRoute>} />
         <Route path="purchasing" element={<Navigate to="/purchasing/materials" replace />} />
         <Route path="production" element={<ProtectedRoute menuKey="production"><ProductionPage /></ProtectedRoute>} />
-        <Route path="work-logs" element={<ProtectedRoute menuKey="production"><WorkLogPage /></ProtectedRoute>} />
+        <Route path="work-logs" element={<ProtectedRoute menuKey="worklogs"><WorkLogPage /></ProtectedRoute>} />
         <Route path="outsourcing" element={<ProtectedRoute menuKey="outsourcing"><OutsourcingPage /></ProtectedRoute>} />
         <Route path="quality" element={<ProtectedRoute menuKey="quality"><QualityPage /></ProtectedRoute>} />
-        <Route path="delivery" element={<ProtectedRoute menuKey="sales"><DeliveryPage /></ProtectedRoute>} />
+        <Route path="delivery" element={<ProtectedRoute menuKey="delivery"><DeliveryPage /></ProtectedRoute>} />
         <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
         <Route path="approval" element={<ProtectedRoute menuKey="approval"><ApprovalPage /></ProtectedRoute>} />
-        <Route path="attendance" element={<ProtectedRoute menuKey="basics"><AttendancePage /></ProtectedRoute>} />
+        <Route path="attendance" element={<ProtectedRoute menuKey="hr"><AttendancePage /></ProtectedRoute>} />
         <Route path="db-management" element={<ProtectedRoute menuKey="ADMIN"><DataManagementPage /></ProtectedRoute>} />
       </Route>
       <Route path="/mobile/work-logs" element={<ProtectedRoute><MobileWorkLogPage /></ProtectedRoute>} />

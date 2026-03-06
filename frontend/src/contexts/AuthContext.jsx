@@ -7,10 +7,13 @@ const MENUS = [
     { key: 'products', label: '제품 및 공정 관리' },
     { key: 'sales', label: '영업 관리 (견적/수주)' },
     { key: 'production', label: '생산 관리 (계획/지시)' },
-    { key: 'purchase', label: '자재 구매 관리' },
+    { key: 'purchasing', label: '자재/소모품 구매 관리' },
     { key: 'outsourcing', label: '외주 발주 관리' },
     { key: 'quality', label: '품질 관리' },
-    { key: 'inventory', label: '납품 및 재고' },
+    { key: 'inventory', label: '재고 관리' },
+    { key: 'delivery', label: '납품 관리' },
+    { key: 'worklogs', label: '작업 일지 관리' },
+    { key: 'hr', label: '근태 관리' },
     { key: 'approval', label: '전자결재 및 문서 관리' },
 ];
 

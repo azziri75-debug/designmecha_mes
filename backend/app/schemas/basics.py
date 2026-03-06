@@ -66,6 +66,10 @@ class StaffBase(BaseModel):
     is_active: bool = True
     user_type: Optional[str] = "USER"  # ADMIN or USER
     password: Optional[str] = None
+    login_id: Optional[str] = None
+    department: Optional[str] = None
+    email: Optional[str] = None
+    join_date: Optional[date] = None
     menu_permissions: Optional[Union[List[str], dict]] = [] # List or dict for granular perms
     stamp_image: Optional[dict] = None # {name, url}
     mac_address: Optional[str] = None

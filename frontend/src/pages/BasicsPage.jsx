@@ -1028,7 +1028,10 @@ const BasicsPageContent = () => {
                                                     {member.user_type === 'ADMIN' ? '관리자' : '사용자'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">{member.role}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-white font-medium">{member.role}</div>
+                                                {member.department && <div className="text-[11px] text-gray-500">{member.department}</div>}
+                                            </td>
                                             <td className="px-6 py-4">{member.main_duty || '-'}</td>
                                             <td className="px-6 py-4">{member.phone}</td>
                                             <td className="px-6 py-4">
@@ -1295,8 +1298,8 @@ const BasicsPageContent = () => {
             {/* Modal Overlay */}
             {
                 showModal && (
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                        <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg shadow-2xl overflow-hidden animation-fade-in">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+                        <div className={`bg-gray-800 rounded-xl border border-gray-700 w-full shadow-2xl overflow-hidden animation-fade-in my-auto ${(modalType === 'create_staff' || modalType === 'edit_staff') ? 'max-w-4xl' : 'max-w-lg'}`}>
                             <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     {activeTab === 'partners' ? <Building2 className="w-5 h-5 text-blue-500" /> : <User className="w-5 h-5 text-purple-500" />}
@@ -1513,90 +1516,116 @@ const BasicsPageContent = () => {
                                 {/* Staff Forms */}
                                 {(modalType === 'create_staff' || modalType === 'edit_staff') && (
                                     <>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300">이름 <span className="text-red-500">*</span></label>
-                                                <input name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            {/* Left Column */}
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-300">이름 <span className="text-red-500">*</span></label>
+                                                    <input name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-300">로그인 아이디 <span className="text-red-500">*</span></label>
+                                                    <input name="login_id" value={formData.login_id || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="사번 또는 아이디" required />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-300">로그인 비밀번호</label>
+                                                    <input
+                                                        type="password"
+                                                        name="password"
+                                                        value={formData.password || ''}
+                                                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                                                        placeholder={modalType === 'edit_staff' ? "변경할 때만 입력" : "비밀번호 입력"}
+                                                        autoComplete="new-password"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-300">부서</label>
+                                                    <input name="department" value={formData.department || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 생산팀, 영업팀" />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-gray-300">직책</label>
+                                                        <select
+                                                            name="role"
+                                                            value={formData.role || '사원'}
+                                                            onChange={handleInputChange}
+                                                            className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        >
+                                                            <option value="연구원">연구원</option>
+                                                            <option value="사원">사원</option>
+                                                            <option value="대리">대리</option>
+                                                            <option value="과장">과장</option>
+                                                            <option value="차장">차장</option>
+                                                            <option value="부장">부장</option>
+                                                            <option value="이사">이사</option>
+                                                            <option value="대표이사">대표이사</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-gray-300">구분 <span className="text-red-500">*</span></label>
+                                                        <select
+                                                            name="user_type"
+                                                            value={formData.user_type || 'USER'}
+                                                            onChange={(e) => setFormData(prev => ({ ...prev, user_type: e.target.value }))}
+                                                            className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        >
+                                                            <option value="USER">사용자</option>
+                                                            <option value="ADMIN">관리자</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300">직책</label>
-                                                <select
-                                                    name="role"
-                                                    value={formData.role || '사원'}
-                                                    onChange={handleInputChange}
-                                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                >
-                                                    <option value="연구원">연구원</option>
-                                                    <option value="사원">사원</option>
-                                                    <option value="대리">대리</option>
-                                                    <option value="과장">과장</option>
-                                                    <option value="차장">차장</option>
-                                                    <option value="부장">부장</option>
-                                                    <option value="이사">이사</option>
-                                                    <option value="대표이사">대표이사</option>
-                                                </select>
+
+                                            {/* Right Column */}
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-300">연락처</label>
+                                                    <input name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="010-0000-0000" maxLength="13" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-300">이메일</label>
+                                                    <input name="email" type="email" value={formData.email || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="example@company.com" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-300">입사일</label>
+                                                    <input type="date" name="join_date" value={formData.join_date || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                                                </div>
+                                                <div className="flex items-center gap-2 pt-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="is_active"
+                                                        id="staff_is_active"
+                                                        checked={formData.is_active !== false}
+                                                        onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                                                        className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-800"
+                                                    />
+                                                    <label htmlFor="staff_is_active" className="text-sm font-medium text-gray-300 cursor-pointer">재직 중 (시스템 접속 가능)</label>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-gray-300">MAC 주소</label>
+                                                        <input name="mac_address" value={formData.mac_address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" placeholder="AA:BB:CC..." />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-gray-300">IP 주소</label>
+                                                        <input name="ip_address" value={formData.ip_address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" placeholder="192.168..." />
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">주업무</label>
-                                            <input name="main_duty" value={formData.main_duty || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 생산 관리, 품질 검사" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">연락처</label>
-                                            <input name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="010-0000-0000" maxLength="13" />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300">MAC 주소</label>
-                                                <input name="mac_address" value={formData.mac_address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" placeholder="00:00:00:00:00:00" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300">IP 주소</label>
-                                                <input name="ip_address" value={formData.ip_address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" placeholder="192.168.0.XX" />
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                name="is_active"
-                                                checked={formData.is_active !== false}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
-                                                className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-800"
-                                            />
-                                            <label className="text-sm font-medium text-gray-300">재직 중</label>
                                         </div>
 
-                                        {/* 구분 (ADMIN/USER) */}
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">구분 <span className="text-red-500">*</span></label>
-                                            <select
-                                                name="user_type"
-                                                value={formData.user_type || 'USER'}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, user_type: e.target.value }))}
-                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                            >
-                                                <option value="USER">사용자</option>
-                                                <option value="ADMIN">관리자</option>
-                                            </select>
+                                        <div className="space-y-2 pt-4 border-t border-gray-700">
+                                            <label className="text-sm font-medium text-gray-300">주업무/비고</label>
+                                            <input name="main_duty" value={formData.main_duty || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 금형 설계, CNC 선반 가공" />
                                         </div>
 
-                                        {/* 비밀번호 */}
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">로그인 비밀번호</label>
-                                            <input
-                                                type="text"
-                                                name="password"
-                                                value={formData.password || ''}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                placeholder="비밀번호 입력"
-                                            />
-                                        </div>
-
-                                        {/* 메뉴 접근 권한 */}
                                         {/* 메뉴 상세 권한 설정 */}
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">메뉴별 상세 권한 설정</label>
+                                        <div className="space-y-3 pt-4 border-t border-gray-700">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-sm font-medium text-gray-300">메뉴별 상세 권한 설정</label>
+                                                <span className="text-[11px] text-gray-500">※ 조회 권한이 있어야 해당 메뉴가 보입니다.</span>
+                                            </div>
                                             <div className="overflow-x-auto bg-gray-900/50 rounded-lg border border-gray-700">
                                                 <table className="w-full text-left text-sm">
                                                     <thead>
@@ -1610,14 +1639,17 @@ const BasicsPageContent = () => {
                                                     <tbody>
                                                         {[
                                                             { key: 'basics', label: '기초 정보' },
-                                                            { key: 'products', label: '제품 관리' },
+                                                            { key: 'products', label: '제품/공정 관리' },
                                                             { key: 'sales', label: '영업 관리' },
                                                             { key: 'production', label: '생산 관리' },
-                                                            { key: 'purchase', label: '자재 구매' },
+                                                            { key: 'worklogs', label: '작업 일지' },
+                                                            { key: 'purchasing', label: '자재/소모품 구매' },
                                                             { key: 'outsourcing', label: '외주 발주' },
                                                             { key: 'quality', label: '품질 관리' },
-                                                            { key: 'inventory', label: '납품/재고' },
-                                                            { key: 'approval', label: '전자결재' },
+                                                            { key: 'inventory', label: '재고 관리' },
+                                                            { key: 'delivery', label: '납품 관리' },
+                                                            { key: 'hr', label: '근태 관리' },
+                                                            { key: 'approval', label: '전자결재/문서' },
                                                         ].map(menu => {
                                                             const isAdmin = formData.user_type === 'ADMIN';
                                                             const perms = formData.menu_permissions || {};
@@ -1693,7 +1725,7 @@ const BasicsPageContent = () => {
                                         </div>
 
                                         {/* 도장/서명 이미지 */}
-                                        <div className="space-y-2 pt-2 border-t border-gray-700">
+                                        <div className="space-y-2 pt-4 border-t border-gray-700">
                                             <label className="text-sm font-medium text-gray-300">결재용 도장/서명 이미지</label>
                                             <div className="flex items-center gap-4">
                                                 {formData.stamp_image ? (
@@ -1712,7 +1744,7 @@ const BasicsPageContent = () => {
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    <div className="relative w-20 h-20 bg-gray-900 border border-gray-700 border-dashed rounded flex items-center justify-center group hover:border-blue-500 transition-colors">
+                                                    <div className="relative w-24 h-24 bg-gray-900 border border-gray-700 border-dashed rounded flex items-center justify-center group hover:border-blue-500 transition-colors">
                                                         <Upload className="w-5 h-5 text-gray-500 group-hover:text-blue-500" />
                                                         <input
                                                             type="file"
@@ -1731,8 +1763,8 @@ const BasicsPageContent = () => {
                                                     </div>
                                                 )}
                                                 <div className="flex-1">
-                                                    <p className="text-[11px] text-gray-500">배경이 투명한 PNG 이미지를 권장합니다. (최대 1MB)</p>
-                                                    <p className="text-[11px] text-gray-500">전자결재 시 해당 이미지가 문서에 서명으로 삽입됩니다.</p>
+                                                    <p className="text-[11px] text-gray-400">배경이 투명한 PNG 이미지를 권장합니다. (최대 1MB)</p>
+                                                    <p className="text-[11px] text-gray-400">전자결재 시 해당 이미지가 문서에 서명으로 삽입됩니다.</p>
                                                 </div>
                                             </div>
                                         </div>

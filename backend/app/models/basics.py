@@ -82,6 +82,11 @@ class Staff(Base):
     menu_permissions = Column(JSON, default=[]) # List of allowed menu keys
     stamp_image = Column(JSON, nullable=True) # {name, url}
     
+    login_id = Column(String, unique=True, index=True, nullable=True)
+    department = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    join_date = Column(Date, nullable=True)
+    
     # Wi-Fi attendance tracking
     mac_address = Column(String, nullable=True)
     ip_address = Column(String, nullable=True)
