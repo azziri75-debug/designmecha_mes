@@ -43,7 +43,8 @@ const PurchasePage = ({ type }) => {
 
     useEffect(() => {
         if (type === 'CONSUMABLE') {
-            if (tabValue === 0) fetchOrders();
+            if (tabValue === 0) fetchPendingItems();
+            else if (tabValue === 1) fetchOrders();
             else fetchCompletedOrders();
         } else {
             if (tabValue === 0) fetchPendingItems();
@@ -88,8 +89,13 @@ const PurchasePage = ({ type }) => {
 
     const fetchPendingItems = async () => {
         try {
-            const response = await api.get('/purchasing/purchase/pending-items');
-            setPendingItems(response.data);
+            if (type === 'CONSUMABLE') {
+                const response = await api.get('/purchasing/purchase/consumable-waits');
+                setPendingItems(response.data);
+            } else {
+                const response = await api.get('/purchasing/purchase/pending-items');
+                setPendingItems(response.data);
+            }
             setSelectedPendingItems([]); // Reset selection on refresh
         } catch (error) {
             console.error("Failed to fetch pending items", error);
@@ -158,7 +164,7 @@ const PurchasePage = ({ type }) => {
 
         let itemsToOrder = pendingItems.filter(item => selectedPendingItems.includes(item.id));
 
-        if (itemsToOrder.length === 1) {
+        if (itemsToOrder.length === 1 && type !== 'CONSUMABLE') {
             const refItem = itemsToOrder[0];
             const refOrderNo = refItem.plan?.order?.order_no || refItem.plan?.stock_production?.production_no;
             const refPartner = refItem.partner_name;
@@ -180,7 +186,16 @@ const PurchasePage = ({ type }) => {
         }
 
         setSelectedOrder(null);
-        setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'PENDING' }))); // Mark as pending item
+        if (type === 'CONSUMABLE') {
+            // For consumable, map fields logic internally in modal or here
+            setInitialModalItems(itemsToOrder.map(i => ({
+                ...i,
+                type: 'CONSUMABLE_WAIT',
+                consumable_purchase_wait_id: i.id
+            })));
+        } else {
+            setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'PENDING' }))); // Mark as pending item
+        }
         setModalOpen(true);
     };
 
@@ -195,7 +210,8 @@ const PurchasePage = ({ type }) => {
 
     const handleSuccess = () => {
         if (type === 'CONSUMABLE') {
-            if (tabValue === 0) fetchOrders();
+            if (tabValue === 0) fetchPendingItems();
+            else if (tabValue === 1) fetchOrders();
             else fetchCompletedOrders();
         } else {
             if (tabValue === 0) fetchPendingItems();
@@ -267,8 +283,9 @@ const PurchasePage = ({ type }) => {
                 >
                     {type === 'CONSUMABLE' ? (
                         [
-                            <Tab key="current" label="발주 현황" />,
-                            <Tab key="history" label="발주 이력" />
+                            <Tab key="pending_con" label="소모품 발주 대기" />,
+                            <Tab key="current_con" label="발주 진행 현황" />,
+                            <Tab key="history_con" label="발주 완료 이력" />
                         ]
                     ) : (
                         [
@@ -304,15 +321,29 @@ const PurchasePage = ({ type }) => {
                                             onChange={handleSelectAllPending}
                                         />
                                     </TableCell>
-                                    <TableCell>수주/재고번호</TableCell>
-                                    <TableCell>공정명</TableCell>
-                                    <TableCell>품목명</TableCell>
-                                    <TableCell>규격</TableCell>
-                                    <TableCell>수량</TableCell>
-                                    <TableCell>단위</TableCell>
-                                    <TableCell>계획일자</TableCell>
-                                    <TableCell>구매처(계획)</TableCell>
-                                    <TableCell>비고</TableCell>
+                                    {type === 'CONSUMABLE' ? (
+                                        <>
+                                            <TableCell>연관 결재문서</TableCell>
+                                            <TableCell>기안자</TableCell>
+                                            <TableCell>품목명</TableCell>
+                                            <TableCell>규격</TableCell>
+                                            <TableCell>신청 수량</TableCell>
+                                            <TableCell>사유/비고</TableCell>
+                                            <TableCell>신청일자</TableCell>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <TableCell>수주/재고번호</TableCell>
+                                            <TableCell>공정명</TableCell>
+                                            <TableCell>품목명</TableCell>
+                                            <TableCell>규격</TableCell>
+                                            <TableCell>수량</TableCell>
+                                            <TableCell>단위</TableCell>
+                                            <TableCell>계획일자</TableCell>
+                                            <TableCell>구매처(계획)</TableCell>
+                                            <TableCell>비고</TableCell>
+                                        </>
+                                    )}
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -324,29 +355,47 @@ const PurchasePage = ({ type }) => {
                                             <TableCell padding="checkbox">
                                                 <Checkbox checked={selectedPendingItems.includes(item.id)} />
                                             </TableCell>
-                                            <TableCell>
-                                                <Box>
-                                                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                                        {item.plan?.order ? (
-                                                            <Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem', color: 'primary.main' }} />
-                                                        ) : item.plan?.stock_production ? (
-                                                            <Chip label="재고" size="small" variant="outlined" color="success" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }} />
-                                                        ) : null}
-                                                        {item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="textSecondary">
-                                                        {item.plan?.order?.partner?.name || (item.plan?.stock_production ? '사내 생산(재고)' : '-')}
-                                                    </Typography>
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell>{item.process_name || '-'}</TableCell>
-                                            <TableCell>{item.product?.name}</TableCell>
-                                            <TableCell>{item.product?.specification}</TableCell>
-                                            <TableCell>{item.quantity}</TableCell>
-                                            <TableCell>{item.product?.unit}</TableCell>
-                                            <TableCell>{item.start_date || item.plan?.plan_date || '-'}</TableCell>
-                                            <TableCell>{item.partner_name || '-'}</TableCell>
-                                            <TableCell>{item.note}</TableCell>
+                                            {type === 'CONSUMABLE' ? (
+                                                <>
+                                                    <TableCell>
+                                                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                                            {item.approval_title || '-'}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell>{item.author_name || '-'}</TableCell>
+                                                    <TableCell>{item.product?.name}</TableCell>
+                                                    <TableCell>{item.product?.specification}</TableCell>
+                                                    <TableCell>{item.quantity} {item.product?.unit || 'EA'}</TableCell>
+                                                    <TableCell>{item.remarks}</TableCell>
+                                                    <TableCell>{new Date(item.created_at).toLocaleDateString()}</TableCell>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <TableCell>
+                                                        <Box>
+                                                            <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                                                {item.plan?.order ? (
+                                                                    <Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem', color: 'primary.main' }} />
+                                                                ) : item.plan?.stock_production ? (
+                                                                    <Chip label="재고" size="small" variant="outlined" color="success" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }} />
+                                                                ) : null}
+                                                                {item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="textSecondary">
+                                                                {item.plan?.order?.partner?.name || (item.plan?.stock_production ? '사내 생산(재고)' : '-')}
+                                                            </Typography>
+                                                        </Box>
+                                                    </TableCell>
+                                                    <TableCell>{item.process_name || '-'}</TableCell>
+                                                    <TableCell>{item.product?.name}</TableCell>
+                                                    <TableCell>{item.product?.specification}</TableCell>
+                                                    <TableCell>{item.quantity}</TableCell>
+                                                    <TableCell>{item.product?.unit}</TableCell>
+                                                    <TableCell>{item.start_date || item.plan?.plan_date || '-'}</TableCell>
+                                                    <TableCell>{item.partner_name || '-'}</TableCell>
+                                                    <TableCell>{item.note}</TableCell>
+                                                </>
+                                            )}
                                         </TableRow>
                                     ))
                                 )}

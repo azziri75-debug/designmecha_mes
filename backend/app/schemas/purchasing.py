@@ -13,6 +13,7 @@ class PurchaseOrderItemBase(BaseModel):
     note: Optional[str] = None
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
+    consumable_purchase_wait_id: Optional[int] = None
 
 class PurchaseOrderItemCreate(PurchaseOrderItemBase):
     pass
@@ -33,6 +34,7 @@ class PurchaseOrderItem(PurchaseOrderItemBase):
     received_quantity: Optional[int] = 0
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
+    consumable_purchase_wait_id: Optional[int] = None
     product: Optional[Product] = None
     process_name: Optional[str] = None
 
@@ -216,3 +218,22 @@ class MaterialRequirementResponse(MaterialRequirementBase):
 
     class Config:
         from_attributes = True
+
+# --- Consumable Purchase Wait ---
+class ConsumablePurchaseWaitBase(BaseModel):
+    approval_id: int
+    product_id: int
+    quantity: int
+    remarks: Optional[str] = None
+    status: str = "PENDING"
+
+class ConsumablePurchaseWaitResponse(ConsumablePurchaseWaitBase):
+    id: int
+    created_at: datetime
+    product: Optional[Product] = None
+    author_name: Optional[str] = None # For UI
+    approval_title: Optional[str] = None # For UI
+
+    class Config:
+        from_attributes = True
+

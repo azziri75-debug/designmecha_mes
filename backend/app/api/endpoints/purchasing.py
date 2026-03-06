@@ -12,6 +12,7 @@ from app.models.inventory import StockProduction
 from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
 from app.models.product import Product, ProductProcess, Process, BOM
 from app.models.inventory import Stock, TransactionType
+from app.models.purchasing import ConsumablePurchaseWait
 from app.schemas import purchasing as schemas
 from app.schemas import production as prod_schemas
 from app.api.utils.inventory import handle_stock_movement
@@ -60,6 +61,38 @@ async def get_unordered_requirements(
             req.linkage_info = f"수주({req.order.order_no})"
             
     return requirements
+
+@router.get("/purchase/consumable-waits", response_model=List[schemas.ConsumablePurchaseWaitResponse])
+async def get_consumable_waits(
+    db: AsyncSession = Depends(deps.get_db),
+    status: str = "PENDING"
+):
+    """
+    결재 승인된 소모품 발주 대기열 조회
+    """
+    from app.models.approval import ApprovalDocument
+    from app.models.basics import Staff
+    
+    query = select(ConsumablePurchaseWait)\
+        .where(ConsumablePurchaseWait.status == status)\
+        .options(
+            selectinload(ConsumablePurchaseWait.product),
+            selectinload(ConsumablePurchaseWait.approval_document)
+        )
+    
+    result = await db.execute(query)
+    waits = result.scalars().all()
+    
+    for wait in waits:
+        if wait.approval_document:
+            wait.approval_title = wait.approval_document.title
+            # Retrieve Author
+            staff_res = await db.execute(select(Staff).where(Staff.id == wait.approval_document.author_id))
+            staff = staff_res.scalar_one_or_none()
+            if staff:
+                wait.author_name = staff.name
+                
+    return waits
 
     # 2. 총 소요량(Demand) 계산 (부품별 합계)
     total_demand = {} # product_id -> quantity
@@ -342,8 +375,8 @@ async def create_purchase_order(
             quantity=item.quantity,
             unit_price=item.unit_price,
             note=item.note,
-            production_plan_item_id=item.production_plan_item_id, # Save link
-            material_requirement_id=item.material_requirement_id
+            material_requirement_id=item.material_requirement_id,
+            consumable_purchase_wait_id=item.consumable_purchase_wait_id
         )
         db.add(db_item)
         
@@ -354,6 +387,13 @@ async def create_purchase_order(
             if req:
                 req.status = "ORDERED"
                 db.add(req)
+                
+        # Update ConsumablePurchaseWait status if linked
+        if item.consumable_purchase_wait_id:
+            wait_req = await db.get(ConsumablePurchaseWait, item.consumable_purchase_wait_id)
+            if wait_req:
+                wait_req.status = "ORDERED"
+                db.add(wait_req)
         
         # Update ProductionPlanItem status if linked
         if item.production_plan_item_id:

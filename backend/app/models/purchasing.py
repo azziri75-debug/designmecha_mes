@@ -165,3 +165,19 @@ class MaterialRequirement(Base):
     product = relationship("Product")
     order = relationship("SalesOrder")
     plan = relationship("ProductionPlan", back_populates="material_requirements")
+
+class ConsumablePurchaseWait(Base):
+    """결재 완료된 소모품 신청 발주 대기 관리"""
+    __tablename__ = "consumable_purchase_waits"
+
+    id = Column(Integer, primary_key=True, index=True)
+    approval_id = Column(Integer, ForeignKey("approval_documents.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    remarks = Column(String, nullable=True) # 용도/비고
+    status = Column(String, default="PENDING") # PENDING 발주 대기, ORDERED 발주 완료, CANCELLED 취소됨
+    created_at = Column(DateTime, default=func.now())
+
+    # Relationships
+    product = relationship("Product")
+    approval_document = relationship("ApprovalDocument", foreign_keys=[approval_id])

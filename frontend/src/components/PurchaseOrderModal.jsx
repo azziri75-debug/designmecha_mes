@@ -151,7 +151,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             note: item.note,
                             production_plan_item_id: item.id
                         };
-                    } else {
+                    } else if (item.type === 'MRP') {
                         // MRP Item
                         const product = products.find(p => p.id === item.product_id);
                         let unitPrice = 0;
@@ -171,7 +171,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             production_plan_item_id: null,
                             material_requirement_id: item.id
                         };
+                    } else if (item.type === 'CONSUMABLE_WAIT') {
+                        // Consumable Purchase Wait Item
+                        return {
+                            product_id: item.product_id,
+                            quantity: item.quantity,
+                            unit_price: 0,
+                            note: item.remarks || '',
+                            consumable_purchase_wait_id: item.id
+                        };
                     }
+                    return item;
                 })
             });
         } else if (isOpen) {

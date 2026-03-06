@@ -44,6 +44,7 @@ const ApprovalPage = () => {
     const [editDocId, setEditDocId] = useState(null); // New: track doc being edited
     const [selectedDocType, setSelectedDocType] = useState('VACATION');
     const [formData, setFormData] = useState({});
+    const [consumables, setConsumables] = useState([]); // Master datat for SUPPLIES
     const [showDocDetail, setShowDocDetail] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState(null);
 
@@ -64,12 +65,14 @@ const ApprovalPage = () => {
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            const [staffRes, docRes] = await Promise.all([
+            const [staffRes, docRes, consRes] = await Promise.all([
                 api.get('/basics/staff/'),
-                api.get(`/approval/documents?view_mode=${viewMode}`)
+                api.get(`/approval/documents?view_mode=${viewMode}`),
+                api.get('/products/?item_type=CONSUMABLE')
             ]);
             setStaff(staffRes.data);
             setDocuments(docRes.data);
+            setConsumables(consRes.data);
 
             if (activeTab === 'settings') {
                 const types = Object.keys(DOC_TYPES);
@@ -536,14 +539,93 @@ const ApprovalPage = () => {
 
                                 {selectedDocType === 'SUPPLIES' && (
                                     <div className="space-y-4">
-                                        <div className="space-y-2">
+                                        <div className="flex justify-between items-end mb-2">
                                             <label className="text-sm font-medium text-gray-400">신청 품목 및 수량</label>
-                                            <textarea value={formData.items || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="예) A4 용지 2박스, 모나미 볼펜 10자루" onChange={(e) => setFormData({ ...formData, items: e.target.value })} required />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const items = formData.items || [];
+                                                    setFormData({ ...formData, items: [...items, { product_name: '', quantity: 1, remarks: '' }] });
+                                                }}
+                                                className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors"
+                                            >
+                                                <Plus className="w-3 h-3" />
+                                                품목 추가
+                                            </button>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">용도/비고</label>
-                                            <input value={formData.remarks || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" placeholder="사무용" onChange={(e) => setFormData({ ...formData, remarks: e.target.value })} />
-                                        </div>
+
+                                        {(formData.items || []).length === 0 ? (
+                                            <div className="text-center py-6 bg-gray-900 border border-gray-700 border-dashed rounded-lg text-gray-500 text-sm">
+                                                품목 추가 버튼을 눌러 신청할 소모품을 입력하세요.
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {formData.items.map((item, idx) => (
+                                                    <div key={idx} className="flex gap-2 items-start bg-gray-900 p-3 rounded-lg border border-gray-700">
+                                                        <div className="flex-1 space-y-3">
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="품명 검색 (또는 직접 입력)"
+                                                                    value={item.product_name || ''}
+                                                                    onChange={(e) => {
+                                                                        const newItems = [...formData.items];
+                                                                        newItems[idx].product_name = e.target.value;
+                                                                        setFormData({ ...formData, items: newItems });
+                                                                    }}
+                                                                    className="w-full bg-gray-800 border border-gray-600 focus:border-blue-500 text-white text-sm rounded-lg px-3 py-2 outline-none"
+                                                                    list={`consumable_list_${idx}`}
+                                                                    required
+                                                                />
+                                                                <datalist id={`consumable_list_${idx}`}>
+                                                                    {consumables.map(c => (
+                                                                        <option key={c.id} value={c.name} />
+                                                                    ))}
+                                                                </datalist>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <div className="w-32 relative">
+                                                                    <input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        value={item.quantity || 1}
+                                                                        onChange={(e) => {
+                                                                            const newItems = [...formData.items];
+                                                                            newItems[idx].quantity = e.target.value;
+                                                                            setFormData({ ...formData, items: newItems });
+                                                                        }}
+                                                                        className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg pl-3 pr-8 py-2 outline-none"
+                                                                        required
+                                                                    />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">EA</span>
+                                                                </div>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="비고 (특이사항 등)"
+                                                                    value={item.remarks || ''}
+                                                                    onChange={(e) => {
+                                                                        const newItems = [...formData.items];
+                                                                        newItems[idx].remarks = e.target.value;
+                                                                        setFormData({ ...formData, items: newItems });
+                                                                    }}
+                                                                    className="flex-1 bg-gray-800 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 outline-none"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newItems = formData.items.filter((_, i) => i !== idx);
+                                                                setFormData({ ...formData, items: newItems });
+                                                            }}
+                                                            className="p-2 text-gray-500 hover:text-red-400 hover:bg-gray-800 rounded bg-gray-800"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -732,11 +814,30 @@ const ApprovalPage = () => {
                                     <>
                                         <div className="md:col-span-2 space-y-1">
                                             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">신청 품목 및 수량</p>
-                                            <p className="text-white bg-gray-900/50 p-4 rounded-lg border border-gray-700/50 min-h-[100px] whitespace-pre-wrap">{selectedDoc.content.items}</p>
-                                        </div>
-                                        <div className="md:col-span-2 space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">용도/비고</p>
-                                            <p className="text-white font-medium">{selectedDoc.content.remarks || '---'}</p>
+                                            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50 min-h-[100px] overflow-hidden">
+                                                {Array.isArray(selectedDoc.content.items) ? (
+                                                    <table className="w-full text-left text-sm">
+                                                        <thead>
+                                                            <tr className="border-b border-gray-700 text-gray-400">
+                                                                <th className="pb-2">품목명</th>
+                                                                <th className="pb-2 text-center w-20">수량</th>
+                                                                <th className="pb-2">비고</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {selectedDoc.content.items.map((item, idx) => (
+                                                                <tr key={idx} className="border-b border-gray-800 last:border-0">
+                                                                    <td className="py-2 text-white font-medium">{item.product_name}</td>
+                                                                    <td className="py-2 text-center text-blue-400 font-bold">{item.quantity} EA</td>
+                                                                    <td className="py-2 text-gray-400 truncate">{item.remarks || '-'}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                ) : (
+                                                    <p className="text-white whitespace-pre-wrap">{selectedDoc.content.items}</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </>
                                 )}

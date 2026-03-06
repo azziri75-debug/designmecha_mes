@@ -71,6 +71,33 @@ async def read_stock_by_product(product_id: int, db: AsyncSession = Depends(get_
         return Stock(product_id=product_id, current_quantity=0, in_production_quantity=0)
     return stock
 
+@router.post("/stocks/init", response_model=StockResponse)
+async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = Depends(get_db)):
+    """수동 재고 초기화 API"""
+    query = select(Stock).where(Stock.product_id == product_id)
+    result = await db.execute(query)
+    stock = result.scalar_one_or_none()
+    
+    if stock:
+        raise HTTPException(status_code=400, detail="이미 해당 품목의 재고 레코드가 존재합니다.")
+        
+    stock = Stock(
+        product_id=product_id,
+        current_quantity=stock_in.current_quantity or 0,
+        in_production_quantity=stock_in.in_production_quantity or 0,
+        location=stock_in.location
+    )
+    db.add(stock)
+    await db.commit()
+    await db.refresh(stock)
+    
+    # Reload with product and its standard processes
+    query = select(Stock).where(Stock.id == stock.id).options(
+        selectinload(Stock.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
+    )
+    result = await db.execute(query)
+    return result.scalar_one()
+
 @router.put("/stocks/{product_id}", response_model=StockResponse)
 async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession = Depends(get_db)):
     query = select(Stock).where(Stock.product_id == product_id)

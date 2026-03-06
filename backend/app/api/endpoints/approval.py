@@ -342,8 +342,11 @@ async def process_approval(
             doc.status = ApprovalStatus.IN_PROGRESS
         else:
             doc.status = ApprovalStatus.COMPLETED
-            # 최종 승인 시 근태 기록 생성
-            await create_attendance_record(db, doc)
+            # 최종 승인 시 처리
+            if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+                await create_attendance_record(db, doc)
+            elif doc.doc_type == "SUPPLIES":
+                await process_consumables(db, doc)
             
     await db.commit()
     return {"message": "처리되었습니다.", "status": doc.status}
@@ -413,6 +416,59 @@ def calculate_ot_details(record_date, start_time_str, end_time_str):
     except Exception as e:
         print(f"OT Calculation Error: {e}")
         return None
+
+async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
+    """결재 완료된 소모품 신청서를 기반으로 품목 마스터 자동 등록 및 발주 대기 생성"""
+    try:
+        from app.models.product import Product
+        from app.models.purchasing import ConsumablePurchaseWait
+        
+        content = doc.content or {}
+        items = content.get("items")
+        
+        # 만약 과거 데이터라서 문자열(Textarea)로 들어왔다면 무시 (하위 호환)
+        if not isinstance(items, list):
+            return
+            
+        for item in items:
+            name = item.get("product_name")
+            qty = int(item.get("quantity", 1))
+            remarks = item.get("remarks", "")
+            
+            if not name: continue
+            
+            # 마스터 조회 및 생성
+            stmt = select(Product).where(Product.name == name)
+            res = await db.execute(stmt)
+            product = res.scalar_one_or_none()
+            
+            if not product:
+                # generate placeholder code
+                import time
+                new_code = f"CON-{int(time.time())}-{name[:2]}"
+                product = Product(
+                    name=name,
+                    code=new_code,
+                    item_type="CONSUMABLE",
+                    specification=remarks[:50] if remarks else "",
+                    unit="EA",
+                    safe_stock=0
+                )
+                db.add(product)
+                await db.flush() # get product.id
+                
+            # 대기열 등록
+            wait_record = ConsumablePurchaseWait(
+                approval_id=doc.id,
+                product_id=product.id,
+                quantity=qty,
+                remarks=remarks
+            )
+            db.add(wait_record)
+            
+        await db.flush()
+    except Exception as e:
+        print(f"Error processing consumables: {e}")
 
 async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
     """결재 완료된 문서 기반 근태 기록 자동 생성"""

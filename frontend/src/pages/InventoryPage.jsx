@@ -21,6 +21,7 @@ import { cn } from '../lib/utils';
 import api from '../lib/api';
 import StockProductionModal from '../components/StockProductionModal';
 import StockEditModal from '../components/StockEditModal';
+import StockInitModal from '../components/StockInitModal';
 
 const InventoryPage = () => {
     const [activeTab, setActiveTab] = useState('status'); // 'status', 'productions'
@@ -30,6 +31,7 @@ const InventoryPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showProdModal, setShowProdModal] = useState(false);
     const [showStockEditModal, setShowStockEditModal] = useState(false);
+    const [showStockInitModal, setShowStockInitModal] = useState(false);
     const [editingProduction, setEditingProduction] = useState(null);
     const [editingStock, setEditingStock] = useState(null);
 
@@ -99,6 +101,15 @@ const InventoryPage = () => {
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={fetchData} size="sm">
                         새로고침
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        className="bg-gray-800 hover:bg-gray-700 text-white border border-gray-700"
+                        onClick={() => setShowStockInitModal(true)}
+                    >
+                        <Boxes className="w-4 h-4 mr-2" />
+                        초기 재고 등록
                     </Button>
                     <Button
                         className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -331,6 +342,14 @@ const InventoryPage = () => {
                 onSuccess={() => {
                     setShowStockEditModal(false);
                     setEditingStock(null);
+                    fetchData();
+                }}
+            />
+            <StockInitModal
+                isOpen={showStockInitModal}
+                onClose={() => setShowStockInitModal(false)}
+                onSuccess={() => {
+                    setShowStockInitModal(false);
                     fetchData();
                 }}
             />

@@ -258,6 +258,17 @@ async def startup_event():
                         comment TEXT,
                         processed_at TIMESTAMP WITH TIME ZONE
                     )
+                """),
+                ("consumable_purchase_waits", """
+                    CREATE TABLE consumable_purchase_waits (
+                        id SERIAL PRIMARY KEY,
+                        approval_id INTEGER NOT NULL REFERENCES approval_documents(id) ON DELETE CASCADE,
+                        product_id INTEGER NOT NULL REFERENCES products(id),
+                        quantity INTEGER NOT NULL,
+                        remarks VARCHAR,
+                        status VARCHAR DEFAULT 'PENDING',
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
                 """)
             ]
 
