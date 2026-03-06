@@ -97,18 +97,35 @@ async def startup_event():
             
             # 1. Structural Migrations (Before any SQLAlchemy model queries)
             try:
-                # Staff: stamp_image
+                # Staff: stamp_image, mac_address, ip_address
                 if is_sqlite:
                     r = await db.execute(text("PRAGMA table_info(staff)"))
                     cols = [c[1] for c in r.fetchall()]
                     if "stamp_image" not in cols:
                         await db.execute(text("ALTER TABLE staff ADD COLUMN stamp_image JSON"))
                         print("Startup: Added stamp_image to staff (SQLite)")
+                    if "mac_address" not in cols:
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN mac_address VARCHAR"))
+                        print("Startup: Added mac_address to staff (SQLite)")
+                    if "ip_address" not in cols:
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN ip_address VARCHAR"))
+                        print("Startup: Added ip_address to staff (SQLite)")
                 else:
+                    # stamp_image
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE staff ADD COLUMN stamp_image JSONB"))
                         print("Startup: Added stamp_image to staff (Postgres)")
+                    # mac_address
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='mac_address'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN mac_address VARCHAR"))
+                        print("Startup: Added mac_address to staff (Postgres)")
+                    # ip_address
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='ip_address'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN ip_address VARCHAR"))
+                        print("Startup: Added ip_address to staff (Postgres)")
                 
                 await db.commit() # Commit migration before using model
             except Exception as e:

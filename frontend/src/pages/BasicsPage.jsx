@@ -877,6 +877,7 @@ const BasicsPageContent = () => {
                                             <tr
                                                 className="hover:bg-gray-700/50 transition-colors cursor-pointer group"
                                                 onClick={() => toggleExpand(partner.id)}
+                                                onDoubleClick={() => openEditPartnerModal(partner)}
                                             >
                                                 <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
@@ -1013,7 +1014,7 @@ const BasicsPageContent = () => {
                                     )
                                 ) : activeTab === 'staff' ? (
                                     filteredStaff.length > 0 ? filteredStaff.map((member) => (
-                                        <tr key={member.id} className="hover:bg-gray-700/50 transition-colors">
+                                        <tr key={member.id} className="hover:bg-gray-700/50 transition-colors cursor-pointer" onDoubleClick={() => openEditStaffModal(member)}>
                                             <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
                                                     <User className="w-4 h-4 text-purple-400" />
@@ -1063,7 +1064,7 @@ const BasicsPageContent = () => {
                                 ) : activeTab === 'equipments' ? (
                                     filteredEquipments.length > 0 ? filteredEquipments.map((eq) => (
                                         <React.Fragment key={eq.id}>
-                                            <tr className="hover:bg-gray-700/50 transition-colors cursor-pointer group" onClick={() => toggleEquipmentExpand(eq.id)}>
+                                            <tr className="hover:bg-gray-700/50 transition-colors cursor-pointer group" onClick={() => toggleEquipmentExpand(eq.id)} onDoubleClick={() => openEditEquipmentModal(eq)}>
                                                 <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
                                                         <Factory className="w-4 h-4 text-orange-400" />
@@ -1174,7 +1175,7 @@ const BasicsPageContent = () => {
                                 ) : (
                                     filteredInstruments.length > 0 ? filteredInstruments.map((inst) => (
                                         <React.Fragment key={inst.id}>
-                                            <tr className="hover:bg-gray-700/50 transition-colors cursor-pointer group" onClick={() => toggleInstrumentExpand(inst.id)}>
+                                            <tr className="hover:bg-gray-700/50 transition-colors cursor-pointer group" onClick={() => toggleInstrumentExpand(inst.id)} onDoubleClick={() => openEditInstrumentModal(inst)}>
                                                 <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
                                                         <FileText className="w-4 h-4 text-emerald-400" />
