@@ -393,9 +393,17 @@ async def read_staff(
     limit: int = 100,
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(Staff).offset(skip).limit(limit))
-    staff_list = result.scalars().all()
-    return staff_list
+    try:
+        result = await db.execute(select(Staff).offset(skip).limit(limit))
+        staff_list = result.scalars().all()
+        return staff_list
+    except Exception as e:
+        import traceback
+        import logging
+        error_msg = f"Error fetching staff list: {str(e)}\n{traceback.format_exc()}"
+        logging.error(error_msg)
+        print(error_msg)
+        raise HTTPException(status_code=500, detail="Internal Server Error while fetching staff.")
 
 @router.put("/staff/{staff_id}", response_model=StaffResponse)
 async def update_staff(
