@@ -453,10 +453,10 @@ const PurchasePage = ({ type }) => {
                                                 <Chip label={item.item_type} size="small" variant="outlined" />
                                             </TableCell>
                                             <TableCell>{item.linkage_info || "-"}</TableCell>
-                                            <TableCell align="right">{item.total_demand.toLocaleString()}</TableCell>
-                                            <TableCell align="right">{item.current_stock.toLocaleString()}</TableCell>
-                                            <TableCell align="right">{item.open_purchase_qty.toLocaleString()}</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: 'error.main' }}>{item.required_purchase_qty.toLocaleString()}</TableCell>
+                                            <TableCell align="right">{item.total_demand?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell align="right">{item.current_stock?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell align="right">{item.open_purchase_qty?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: 'error.main' }}>{item.required_purchase_qty?.toLocaleString() || '0'}</TableCell>
                                         </TableRow>
                                     ))
                                 )}
@@ -653,8 +653,8 @@ const PurchasePage = ({ type }) => {
                                                                             <TableCell>{item.product?.name}</TableCell>
                                                                             <TableCell>{item.product?.specification}</TableCell>
                                                                             <TableCell>{item.quantity} {item.product?.unit}</TableCell>
-                                                                            <TableCell>{item.unit_price?.toLocaleString()}</TableCell>
-                                                                            <TableCell>{(item.quantity * item.unit_price)?.toLocaleString()}</TableCell>
+                                                                            <TableCell>{(item.unit_price || 0).toLocaleString()}</TableCell>
+                                                                            <TableCell>{((item.quantity || 0) * (item.unit_price || 0)).toLocaleString()}</TableCell>
                                                                             <TableCell>{item.note}</TableCell>
                                                                         </TableRow>
                                                                     ))}

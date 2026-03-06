@@ -480,12 +480,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                         <>
                                             <TableCell>
                                                 <Typography variant="body2" sx={{ textAlign: 'right', pr: 2 }}>
-                                                    {item.current_stock != null ? item.current_stock.toLocaleString() : '-'}
+                                                    {item.current_stock?.toLocaleString() || '-'}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell>
                                                 <Typography variant="body2" sx={{ textAlign: 'right', pr: 2 }}>
-                                                    {item.total_demand != null ? item.total_demand.toLocaleString() : '-'}
+                                                    {item.total_demand?.toLocaleString() || '-'}
                                                 </Typography>
                                             </TableCell>
                                         </>
@@ -594,7 +594,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                             {h.order_date}
                                         </Typography>
                                         <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                                            ₩{h.unit_price.toLocaleString()}
+                                            ₩{(h.unit_price || 0).toLocaleString()}
                                         </Typography>
                                     </Box>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
