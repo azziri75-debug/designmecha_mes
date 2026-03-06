@@ -169,7 +169,8 @@ const ProductsPage = ({ type }) => {
 
     const fetchPartners = async () => {
         try {
-            const res = await api.get('/basics/partners/');
+            const partnerType = (type === 'PART' || type === 'CONSUMABLE') ? 'SUPPLIER' : 'CUSTOMER';
+            const res = await api.get('/basics/partners/', { params: { type: partnerType } });
             setPartners(res.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);

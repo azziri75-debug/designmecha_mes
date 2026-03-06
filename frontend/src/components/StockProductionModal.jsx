@@ -56,7 +56,7 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess, initialData }) => {
     const fetchPartners = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/basics/partners/');
+            const res = await api.get('/basics/partners/', { params: { type: 'CUSTOMER' } });
             setPartners(res.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);

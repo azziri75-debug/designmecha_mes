@@ -35,7 +35,7 @@ const DeliveryPage = () => {
 
     const fetchPartners = async () => {
         try {
-            const res = await api.get('/basics/partners/');
+            const res = await api.get('/basics/partners/', { params: { type: 'CUSTOMER' } });
             setPartners(res.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);

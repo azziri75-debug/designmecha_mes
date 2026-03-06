@@ -131,11 +131,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     const fetchPartners = async () => {
         try {
-            const response = await api.get('/basics/partners');
-            setPartners(response.data.filter(p => {
-                const types = Array.isArray(p.partner_type) ? p.partner_type : [];
-                return types.includes('SUPPLIER') || types.includes('SUBCONTRACTOR');
-            }));
+            const response = await api.get('/basics/partners/', { params: { type: 'SUPPLIER' } });
+            setPartners(response.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);
         }

@@ -199,6 +199,7 @@ class MRPRequirement(BaseModel):
 class MaterialRequirementBase(BaseModel):
     product_id: int
     order_id: Optional[int] = None
+    plan_id: Optional[int] = None
     required_quantity: int
     current_stock: int = 0
     open_purchase_qty: int = 0

@@ -586,6 +586,7 @@ async def startup_event():
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                                 product_id INTEGER NOT NULL REFERENCES products(id),
                                 order_id INTEGER REFERENCES sales_orders(id),
+                                plan_id INTEGER REFERENCES production_plans(id),
                                 required_quantity INTEGER NOT NULL,
                                 current_stock INTEGER DEFAULT 0,
                                 open_purchase_qty INTEGER DEFAULT 0,
@@ -595,6 +596,13 @@ async def startup_event():
                             )
                         """))
                         print("Startup: Created material_requirements table (SQLite)")
+                    else:
+                        # Check for missing columns in existing table
+                        r = await db.execute(text("PRAGMA table_info(material_requirements)"))
+                        cols = [c[1] for c in r.fetchall()]
+                        if "plan_id" not in cols:
+                            await db.execute(text("ALTER TABLE material_requirements ADD COLUMN plan_id INTEGER REFERENCES production_plans(id)"))
+                            print("Startup: Added plan_id to material_requirements (SQLite)")
                 else:
                     r = await db.execute(text("SELECT to_regclass('public.material_requirements')"))
                     if not r.scalar():
@@ -603,6 +611,7 @@ async def startup_event():
                                 id SERIAL PRIMARY KEY,
                                 product_id INTEGER NOT NULL REFERENCES products(id),
                                 order_id INTEGER REFERENCES sales_orders(id),
+                                plan_id INTEGER REFERENCES production_plans(id),
                                 required_quantity INTEGER NOT NULL,
                                 current_stock INTEGER DEFAULT 0,
                                 open_purchase_qty INTEGER DEFAULT 0,
@@ -612,6 +621,12 @@ async def startup_event():
                             )
                         """))
                         print("Startup: Created material_requirements table (Postgres)")
+                    else:
+                        # Check for missing columns in existing table
+                        r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='material_requirements' AND column_name='plan_id'"))
+                        if not r.scalar():
+                            await db.execute(text("ALTER TABLE material_requirements ADD COLUMN plan_id INTEGER REFERENCES production_plans(id)"))
+                            print("Startup: Added plan_id to material_requirements (Postgres)")
                 
                 await db.commit()
             except Exception as e:

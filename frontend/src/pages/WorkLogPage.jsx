@@ -136,7 +136,17 @@ const WorkLogPage = () => {
                 </Button>
             </Box>
 
-            <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs
+                value={tabValue}
+                onChange={(e, v) => setTabValue(v)}
+                sx={{
+                    mb: 3,
+                    borderBottom: 1,
+                    borderColor: 'divider',
+                    '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                    '& .Mui-selected': { color: '#fff !important' },
+                }}
+            >
                 <Tab icon={<ListIcon />} iconPosition="start" label="작업일지 목록" />
                 <Tab icon={<PerformanceIcon />} iconPosition="start" label="실적 관리 (작업자별)" />
             </Tabs>

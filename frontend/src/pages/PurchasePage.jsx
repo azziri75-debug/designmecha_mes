@@ -257,7 +257,14 @@ const PurchasePage = ({ type }) => {
             </Box>
 
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-                <Tabs value={tabValue} onChange={handleTabChange}>
+                <Tabs
+                    value={tabValue}
+                    onChange={handleTabChange}
+                    sx={{
+                        '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                        '& .Mui-selected': { color: '#fff !important' },
+                    }}
+                >
                     {type === 'CONSUMABLE' ? (
                         [
                             <Tab key="current" label="발주 현황" />,

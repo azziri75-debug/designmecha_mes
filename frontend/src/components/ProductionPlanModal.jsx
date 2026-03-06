@@ -22,7 +22,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
     useEffect(() => {
         if (isOpen) {
             // Fetch partners, staff, and equipments
-            api.get('/basics/partners/').then(res => setPartners(res.data)).catch(() => { });
+            api.get('/basics/partners/', { params: { type: 'SUBCONTRACTOR' } }).then(res => setPartners(res.data)).catch(() => { });
             api.get('/basics/staff/').then(res => setStaffList(res.data)).catch(() => { });
             api.get('/basics/equipments/').then(res => setEquipments(res.data)).catch(() => { });
             if (plan) {

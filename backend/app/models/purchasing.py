@@ -164,4 +164,4 @@ class MaterialRequirement(Base):
     
     product = relationship("Product")
     order = relationship("SalesOrder")
-    plan = relationship("ProductionPlan")
+    plan = relationship("ProductionPlan", back_populates="material_requirements")

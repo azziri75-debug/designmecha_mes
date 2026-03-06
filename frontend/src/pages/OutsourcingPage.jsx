@@ -204,7 +204,14 @@ const OutsourcingPage = () => {
             </Box>
 
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-                <Tabs value={tabValue} onChange={handleTabChange}>
+                <Tabs
+                    value={tabValue}
+                    onChange={handleTabChange}
+                    sx={{
+                        '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                        '& .Mui-selected': { color: '#fff !important' },
+                    }}
+                >
                     <Tab label="미발주 현황 (Pending)" />
                     <Tab label="발주 현황 (Ordered)" />
                     <Tab label="완료 내역 (Completed)" />

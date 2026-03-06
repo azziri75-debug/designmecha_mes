@@ -37,6 +37,7 @@ class ProductionPlan(Base):
     order = relationship("SalesOrder")
     stock_production = relationship("StockProduction", backref="production_plans")
     items = relationship("ProductionPlanItem", back_populates="plan", cascade="all, delete-orphan", lazy="selectin", order_by="ProductionPlanItem.sequence")
+    material_requirements = relationship("app.models.purchasing.MaterialRequirement", back_populates="plan")
 
 class ProductionPlanItem(Base):
     """

@@ -160,7 +160,7 @@ const ProductionPage = () => {
 
     const fetchPartners = async () => {
         try {
-            const response = await api.get('/basics/partners/');
+            const response = await api.get('/basics/partners/', { params: { type: 'CUSTOMER' } });
             setPartners(response.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);
@@ -374,7 +374,16 @@ const ProductionPage = () => {
             </Typography>
 
             <Paper sx={{ width: '100%', mb: 2 }}>
-                <Tabs value={tabIndex} onChange={handleTabChange} indicatorColor="primary" textColor="primary">
+                <Tabs
+                    value={tabIndex}
+                    onChange={handleTabChange}
+                    indicatorColor="primary"
+                    textColor="primary"
+                    sx={{
+                        '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                        '& .Mui-selected': { color: '#fff !important' },
+                    }}
+                >
                     <Tab label="생산 대기 수주" />
                     <Tab label="생산현황" />
                     <Tab label="생산 완료" />

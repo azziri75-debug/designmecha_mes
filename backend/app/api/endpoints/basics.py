@@ -94,9 +94,17 @@ async def create_partner(
 async def read_partners(
     skip: int = 0,
     limit: int = 100,
+    type: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(Partner).options(selectinload(Partner.contacts)).offset(skip).limit(limit))
+    from sqlalchemy import String, func
+    query = select(Partner).options(selectinload(Partner.contacts))
+    
+    if type:
+        # JSON list contains check. Using cast to string and contains for flexibility
+        query = query.where(func.cast(Partner.partner_type, String).contains(type))
+        
+    result = await db.execute(query.offset(skip).limit(limit))
     partners = result.scalars().all()
     return partners
 
