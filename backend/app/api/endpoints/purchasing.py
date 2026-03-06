@@ -494,6 +494,8 @@ async def update_purchase_order(
     if not db_order:
         raise HTTPException(status_code=404, detail="Purchase Order not found")
 
+    old_status = db_order.status
+
     # Update Header
     update_data = order_in.model_dump(exclude_unset=True)
     items_data = update_data.pop("items", None)
@@ -579,14 +581,16 @@ async def update_purchase_order(
                     db.add(plan_item)
         
         # --- Stock Movement Hook ---
-        for item in db_order.items:
-            await handle_stock_movement(
-                db=db,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                transaction_type=TransactionType.IN,
-                reference=db_order.order_no
-            )
+        if old_status != PurchaseStatus.COMPLETED:
+            for item in db_order.items:
+                item.received_quantity = item.quantity # Set received quantity automatically
+                await handle_stock_movement(
+                    db=db,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    transaction_type=TransactionType.IN,
+                    reference=db_order.order_no
+                )
 
     await db.commit()
     await db.refresh(db_order)
@@ -774,6 +778,8 @@ async def update_outsourcing_order(
     if not db_order:
         raise HTTPException(status_code=404, detail="Outsourcing Order not found")
 
+    old_status = db_order.status
+
     # Update Header
     update_data = order_in.model_dump(exclude_unset=True)
     items_data = update_data.pop("items", None)
@@ -841,14 +847,15 @@ async def update_outsourcing_order(
                     db.add(plan_item)
         
         # --- Stock Movement Hook ---
-        for item in db_order.items:
-            await handle_stock_movement(
-                db=db,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                transaction_type=TransactionType.IN,
-                reference=db_order.order_no
-            )
+        if old_status != OutsourcingStatus.COMPLETED:
+            for item in db_order.items:
+                await handle_stock_movement(
+                    db=db,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    transaction_type=TransactionType.IN,
+                    reference=db_order.order_no
+                )
 
     await db.commit()
     await db.refresh(db_order)

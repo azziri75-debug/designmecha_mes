@@ -518,6 +518,14 @@ async def update_production_plan(
 
     await db.commit()
     
+    # --- Trigger MRP if status changed to CONFIRMED ---
+    is_now_confirmed = getattr(plan, 'status', None) == ProductionStatus.CONFIRMED
+    if update_data.get('status') == ProductionStatus.CONFIRMED or is_now_confirmed:
+        # Avoid triggering if it was already confirmed before? The requirement says "When updated to CONFIRMED, trigger MRP."
+        # The mrp utility handles duplicate deletion automatically for plan_id.
+        from app.api.utils.mrp import calculate_and_record_mrp
+        await calculate_and_record_mrp(db, plan_id=plan.id)
+    
     # 4. Re-fetch with full options for response
     result = await db.execute(
         select(ProductionPlan)

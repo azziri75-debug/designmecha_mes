@@ -169,7 +169,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             unit_price: unitPrice,
                             note: 'MRP 소요량 기반 발주',
                             production_plan_item_id: null,
-                            material_requirement_id: item.id
+                            material_requirement_id: item.id,
+                            current_stock: item.current_stock,
+                            total_demand: item.total_demand
                         };
                     } else if (item.type === 'CONSUMABLE_WAIT') {
                         // Consumable Purchase Wait Item
@@ -437,6 +439,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             <TableRow>
                                 <TableCell>품목</TableCell>
                                 <TableCell width="15%">규격</TableCell>
+                                {initialItems?.some(i => i.type === 'MRP') && (
+                                    <>
+                                        <TableCell width="10%">현재고</TableCell>
+                                        <TableCell width="10%">총 소요량</TableCell>
+                                    </>
+                                )}
                                 <TableCell width="10%">수량</TableCell>
                                 <TableCell width="15%">단가</TableCell>
                                 <TableCell width="15%">비고</TableCell>
@@ -468,6 +476,20 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                             {products.find(p => p.id === item.product_id)?.specification || '-'}
                                         </Typography>
                                     </TableCell>
+                                    {initialItems?.some(i => i.type === 'MRP') && (
+                                        <>
+                                            <TableCell>
+                                                <Typography variant="body2" sx={{ textAlign: 'right', pr: 2 }}>
+                                                    {item.current_stock != null ? item.current_stock.toLocaleString() : '-'}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2" sx={{ textAlign: 'right', pr: 2 }}>
+                                                    {item.total_demand != null ? item.total_demand.toLocaleString() : '-'}
+                                                </Typography>
+                                            </TableCell>
+                                        </>
+                                    )}
                                     <TableCell>
                                         <TextField
                                             type="number"
