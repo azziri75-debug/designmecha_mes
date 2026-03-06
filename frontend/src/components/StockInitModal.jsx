@@ -24,7 +24,7 @@ const StockInitModal = ({ isOpen, onClose, onSuccess }) => {
 
     const fetchProducts = async (type) => {
         try {
-            const endpoint = type === 'ALL' ? '/products/' : `/products/?item_type=${type}`;
+            const endpoint = type === 'ALL' ? '/product/products/' : `/product/products/?item_type=${type}`;
             const res = await api.get(endpoint);
             setProducts(res.data);
         } catch (error) {
@@ -109,8 +109,8 @@ const StockInitModal = ({ isOpen, onClose, onSuccess }) => {
                                     type="button"
                                     onClick={() => setSelectedProduct(p)}
                                     className={`w-full text-left p-3 rounded-lg border transition-all ${selectedProduct?.id === p.id
-                                            ? 'bg-blue-900/40 border-blue-500 text-white'
-                                            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                                        ? 'bg-blue-900/40 border-blue-500 text-white'
+                                        : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
                                         }`}
                                 >
                                     <div className="font-bold text-sm truncate">{p.name}</div>

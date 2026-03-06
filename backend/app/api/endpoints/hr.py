@@ -223,7 +223,7 @@ async def clock_in(
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user),
 ):
-    now = datetime.now(KST)
+    now = datetime.now(KST).replace(tzinfo=None)
     today = now.date()
 
     # 1. 원시 로그 기록
@@ -291,7 +291,7 @@ async def clock_out(
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user),
 ):
-    now = datetime.now(KST)
+    now = datetime.now(KST).replace(tzinfo=None)
     today = now.date()
 
     # 1. 원시 로그 기록

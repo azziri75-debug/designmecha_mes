@@ -380,8 +380,8 @@ const ProductionPage = () => {
                     indicatorColor="primary"
                     textColor="primary"
                     sx={{
-                        '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                        '& .Mui-selected': { color: '#fff !important' },
+                        '& .MuiTab-root': { color: 'rgba(0, 0, 0, 0.7)' },
+                        '& .Mui-selected': { color: '#000 !important' },
                     }}
                 >
                     <Tab label="생산 대기 수주" />

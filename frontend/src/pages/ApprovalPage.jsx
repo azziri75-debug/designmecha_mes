@@ -68,7 +68,7 @@ const ApprovalPage = () => {
             const [staffRes, docRes, consRes] = await Promise.all([
                 api.get('/basics/staff/'),
                 api.get(`/approval/documents?view_mode=${viewMode}`),
-                api.get('/products/?item_type=CONSUMABLE')
+                api.get('/product/products/', { params: { item_type: 'CONSUMABLE' } })
             ]);
             setStaff(staffRes.data);
             setDocuments(docRes.data);

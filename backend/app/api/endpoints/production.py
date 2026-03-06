@@ -9,7 +9,10 @@ from app.api import deps
 from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus, WorkLog, WorkLogItem
 from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
 from app.models.product import Product, ProductProcess, Process, BOM
-from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, PurchaseStatus, OutsourcingStatus
+from app.models.purchasing import (
+    PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, 
+    PurchaseStatus, OutsourcingStatus, MaterialRequirement
+)
 from app.models.basics import Partner
 from app.models.inventory import StockProduction, Stock, StockProductionStatus, TransactionType
 from app.api.utils.inventory import handle_stock_movement, handle_backflush
@@ -918,7 +921,6 @@ async def update_production_plan_status(
     if status == ProductionStatus.CONFIRMED and old_status != ProductionStatus.CONFIRMED:
         print(f"MRP Generation Started for Plan {plan_id}")
         from app.models.product import BOM
-        from app.models.purchasing import MaterialRequirement
         from app.models.inventory import Stock
 
         # 기존 해당 계획과 관련된 MRP 데이터 삭제 (중복 방지)
