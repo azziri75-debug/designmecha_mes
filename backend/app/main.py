@@ -97,7 +97,7 @@ async def startup_event():
             
             # 1. Structural Migrations (Before any SQLAlchemy model queries)
             try:
-                # Staff: stamp_image, mac_address, ip_address
+                # Staff: stamp_image, mac_address, ip_address, login_id, department, email, join_date
                 if is_sqlite:
                     r = await db.execute(text("PRAGMA table_info(staff)"))
                     cols = [c[1] for c in r.fetchall()]
@@ -110,6 +110,18 @@ async def startup_event():
                     if "ip_address" not in cols:
                         await db.execute(text("ALTER TABLE staff ADD COLUMN ip_address VARCHAR"))
                         print("Startup: Added ip_address to staff (SQLite)")
+                    if "login_id" not in cols:
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN login_id VARCHAR"))
+                        print("Startup: Added login_id to staff (SQLite)")
+                    if "department" not in cols:
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN department VARCHAR"))
+                        print("Startup: Added department to staff (SQLite)")
+                    if "email" not in cols:
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN email VARCHAR"))
+                        print("Startup: Added email to staff (SQLite)")
+                    if "join_date" not in cols:
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN join_date DATE"))
+                        print("Startup: Added join_date to staff (SQLite)")
                 else:
                     # stamp_image
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
@@ -126,6 +138,26 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE staff ADD COLUMN ip_address VARCHAR"))
                         print("Startup: Added ip_address to staff (Postgres)")
+                    # login_id
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='login_id'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN login_id VARCHAR"))
+                        print("Startup: Added login_id to staff (Postgres)")
+                    # department
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='department'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN department VARCHAR"))
+                        print("Startup: Added department to staff (Postgres)")
+                    # email
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='email'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN email VARCHAR"))
+                        print("Startup: Added email to staff (Postgres)")
+                    # join_date
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='join_date'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN join_date DATE"))
+                        print("Startup: Added join_date to staff (Postgres)")
                 
                 await db.commit() # Commit migration before using model
             except Exception as e:
