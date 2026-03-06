@@ -165,13 +165,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
                         return {
                             product_id: item.product_id,
-                            quantity: item.required_purchase_qty,
+                            quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : (item.required_purchase_qty || 0),
                             unit_price: unitPrice,
                             note: 'MRP 소요량 기반 발주',
                             production_plan_item_id: null,
                             material_requirement_id: item.id,
                             current_stock: item.current_stock,
-                            total_demand: item.total_demand
+                            required_quantity: item.required_quantity !== undefined ? item.required_quantity : item.total_demand,
+                            shortage_quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : item.required_purchase_qty
                         };
                     } else if (item.type === 'CONSUMABLE_WAIT') {
                         // Consumable Purchase Wait Item
@@ -485,7 +486,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                             </TableCell>
                                             <TableCell>
                                                 <Typography variant="body2" sx={{ textAlign: 'right', pr: 2 }}>
-                                                    {item.total_demand?.toLocaleString() || '-'}
+                                                    {item.required_quantity?.toLocaleString() || '-'}
                                                 </Typography>
                                             </TableCell>
                                         </>

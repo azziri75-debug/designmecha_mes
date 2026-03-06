@@ -453,10 +453,10 @@ const PurchasePage = ({ type }) => {
                                                 <Chip label={item.item_type} size="small" variant="outlined" />
                                             </TableCell>
                                             <TableCell>{item.linkage_info || "-"}</TableCell>
-                                            <TableCell align="right">{item.total_demand?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell align="right">{item.required_quantity?.toLocaleString() || '0'}</TableCell>
                                             <TableCell align="right">{item.current_stock?.toLocaleString() || '0'}</TableCell>
                                             <TableCell align="right">{item.open_purchase_qty?.toLocaleString() || '0'}</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: 'error.main' }}>{item.required_purchase_qty?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: 'error.main' }}>{item.shortage_quantity?.toLocaleString() || '0'}</TableCell>
                                         </TableRow>
                                     ))
                                 )}

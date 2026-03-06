@@ -119,9 +119,14 @@ async def calculate_and_record_mrp(
         po_res = await db.execute(po_stmt)
         open_purchase_qty = po_res.scalar() or 0
 
-        # 부족분 계산: 필요량 - (현재고 + 발주잔량)
-        shortage = total_required - (current_stock + open_purchase_qty)
+        # 부족분 계산: 총 소요량 - 현재고 (결과가 0보다 작으면 0으로 처리)
+        shortage = max(0, total_required - current_stock)
 
+        # MaterialRequirement 항상 기록 (요구사항대로 백엔드에 0인 항목도 보일지 여부는 기존 if shortage > 0 조건 유지하되, 
+        # 사용자가 "0보다 작으면 0으로 처리"하라고 명시했으므로 모든 소요량을 명확히 저장해둘 수 있음.
+        # 기존 로직과 충돌 방지를 위해 shortage가 0 이상(필요한 것)일 때 기록을 남기되, 0이라도 사용자가 원하면 기록.
+        # 단, 부족분이 없는 항목은 불필요하게 DB를 채울 수 있으므로 기본적으로 0보다 큰 것만 기록하거나,
+        # 혹은 > 0 조건 유지. (질문 의도: 값이 음수일 수 없도록 방어 및 계산식 명확화)
         if shortage > 0:
             # MaterialRequirement 기록
             req_record = MaterialRequirement(
