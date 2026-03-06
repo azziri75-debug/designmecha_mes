@@ -97,7 +97,10 @@ async def read_production_plans(
     result = await db.execute(
         stmt
         .options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(Product.bom_items).selectinload(BOM.child_product)
+            ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
@@ -154,7 +157,10 @@ async def create_production_plan(
             result = await db.execute(
                 select(ProductionPlan)
                 .options(
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
+                        selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                        selectinload(Product.bom_items).selectinload(BOM.child_product)
+                    ),
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
                     selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
@@ -183,7 +189,10 @@ async def create_production_plan(
             result = await db.execute(
                 select(ProductionPlan)
                 .options(
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
+                        selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                        selectinload(Product.bom_items).selectinload(BOM.child_product)
+                    ),
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
                     selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
                     selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
@@ -378,7 +387,10 @@ async def create_production_plan(
     result = await db.execute(
         select(ProductionPlan)
         .options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(Product.bom_items).selectinload(BOM.child_product)
+            ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
@@ -500,7 +512,10 @@ async def update_production_plan(
     result = await db.execute(
         select(ProductionPlan)
         .options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(Product.bom_items).selectinload(BOM.child_product)
+            ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
