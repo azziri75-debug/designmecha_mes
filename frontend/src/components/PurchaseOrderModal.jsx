@@ -173,22 +173,33 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         setFormData({ ...formData, items: newItems });
     };
 
-    const handleItemChange = (index, field, value) => {
+    const handleItemChange = async (index, field, value) => {
         const newItems = [...formData.items];
         newItems[index][field] = value;
 
         // Auto-fill price if product selected
-        if (field === 'product_id') {
+        if (field === 'product_id' && value) {
             const product = products.find(p => p.id === value);
-            if (product && product.standard_processes) {
-                // Find PURCHASE process
-                const purchaseProc = product.standard_processes.find(sp =>
-                    sp.course_type?.includes('PURCHASE') ||
-                    sp.process?.course_type?.includes('PURCHASE')
-                );
-                if (purchaseProc) {
-                    newItems[index].unit_price = purchaseProc.cost || 0;
+
+            // 1. Try to fetch LATEST purchase price from history
+            try {
+                const res = await api.get('/purchasing/price-history', {
+                    params: { product_id: value, limit: 1 }
+                });
+                if (res.data && res.data.length > 0) {
+                    newItems[index].unit_price = res.data[0].unit_price;
+                } else if (product && product.standard_processes) {
+                    // 2. Fallback to standard process cost
+                    const purchaseProc = product.standard_processes.find(sp =>
+                        sp.course_type?.includes('PURCHASE') ||
+                        sp.process?.course_type?.includes('PURCHASE')
+                    );
+                    if (purchaseProc) {
+                        newItems[index].unit_price = purchaseProc.cost || 0;
+                    }
                 }
+            } catch (err) {
+                console.error("Failed to fetch latest price", err);
             }
         }
 

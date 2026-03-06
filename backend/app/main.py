@@ -577,6 +577,16 @@ async def startup_event():
                         await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN material_requirement_id INTEGER"))
                         print("Startup: Added material_requirement_id to purchase_order_items (Postgres)")
 
+                # 14. productionstatus Enum type repair (ensure 'CONFIRMED' exists)
+                if not is_sqlite:
+                    try:
+                        await db.execute(text("ALTER TYPE productionstatus ADD VALUE IF NOT EXISTS 'CONFIRMED'"))
+                        await db.commit()
+                        print("Startup: Added 'CONFIRMED' to productionstatus Enum (PostgreSQL)")
+                    except Exception as e:
+                        await db.rollback()
+                        print(f"Startup: productionstatus Enum update skipped or failed: {e}")
+
                 # 14-2. material_requirements table
                 if is_sqlite:
                     r = await db.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='material_requirements'"))
