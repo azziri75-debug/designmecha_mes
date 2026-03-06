@@ -89,3 +89,11 @@ class AttendanceMonthlyResponse(BaseModel):
     records: List[EmployeeTimeRecordResponse]
 
 
+class EmployeeTimeRecordUpdate(BaseModel):
+    clock_in_time: Optional[datetime] = None
+    clock_out_time: Optional[datetime] = None
+    attendance_status: Optional[str] = None
+    category: Optional[str] = None
+    note: Optional[str] = None
+
+

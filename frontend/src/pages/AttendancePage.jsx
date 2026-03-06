@@ -20,6 +20,13 @@ const AttendancePage = () => {
     const [summaryData, setSummaryData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingRecord, setEditingRecord] = useState(null);
+    const [editFormData, setEditFormData] = useState({
+        clock_in_time: '',
+        clock_out_time: '',
+        attendance_status: 'NORMAL'
+    });
 
     // Fetch staff list for sidebar
     useEffect(() => {
@@ -53,7 +60,7 @@ const AttendancePage = () => {
             // Map data by day for easy lookup
             const mapped = {};
             res.data.records.forEach(record => {
-                const day = new Date(record.date).getDate();
+                const day = parseInt(record.record_date.split('-')[2]);
                 mapped[day] = record;
             });
             setAttendanceData(mapped);
@@ -93,6 +100,42 @@ const AttendancePage = () => {
         setCurrentMonth(next);
     };
 
+    const handleOpenEdit = (record) => {
+        const toLocalISO = (dateStr) => {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const offset = date.getTimezoneOffset() * 60000;
+            return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+        };
+
+        setEditingRecord(record);
+        setEditFormData({
+            clock_in_time: toLocalISO(record.clock_in_time),
+            clock_out_time: toLocalISO(record.clock_out_time),
+            attendance_status: record.attendance_status || 'NORMAL'
+        });
+        setShowEditModal(true);
+    };
+
+    const handleUpdateAttendance = async () => {
+        try {
+            setLoading(true);
+            await api.put(`/hr/attendance/records/${editingRecord.id}`, {
+                clock_in_time: editFormData.clock_in_time || null,
+                clock_out_time: editFormData.clock_out_time || null,
+                attendance_status: editFormData.attendance_status,
+                category: editingRecord.category
+            });
+            setShowEditModal(false);
+            fetchAttendance();
+        } catch (err) {
+            console.error('Failed to update attendance:', err);
+            alert('수정에 실패했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Calendar generation logic
     const renderCalendar = () => {
         const year = currentMonth.getFullYear();
@@ -113,7 +156,11 @@ const AttendancePage = () => {
             const isAnomaly = record?.attendance_status === 'LATE' || record?.attendance_status === 'EARLY_LEAVE';
 
             days.push(
-                <div key={day} className={`h-32 border-b border-r border-slate-100 p-2 transition-colors hover:bg-slate-50 relative ${isToday ? 'bg-blue-50/30' : ''}`}>
+                <div
+                    key={day}
+                    onClick={() => user?.user_type === 'ADMIN' && record && handleOpenEdit(record)}
+                    className={`h-32 border-b border-r border-slate-100 p-2 transition-colors hover:bg-slate-50 relative ${isToday ? 'bg-blue-50/30' : ''} ${user?.user_type === 'ADMIN' ? 'cursor-pointer' : ''}`}
+                >
                     <div className="flex justify-between items-start">
                         <span className={`text-sm font-bold ${isToday ? 'text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full' : 'text-slate-500'}`}>
                             {day}
@@ -130,13 +177,9 @@ const AttendancePage = () => {
                         <div className="mt-2 space-y-1.5">
                             <div className={`p-1.5 rounded-lg border ${isAnomaly ? 'bg-red-50 border-red-100' : 'bg-white border-slate-200'} shadow-sm`}>
                                 <div className="flex flex-col">
-                                    <div className="flex items-center text-[11px] font-semibold text-slate-700">
-                                        <ClockIcon className="w-3 h-3 mr-1 text-blue-500" />
-                                        IN: {record.clock_in_time ? new Date(record.clock_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                    </div>
-                                    <div className="flex items-center text-[11px] font-semibold text-slate-700 mt-1">
-                                        <ClockIcon className="w-3 h-3 mr-1 text-orange-500" />
-                                        OUT: {record.clock_out_time ? new Date(record.clock_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                    <div className="flex items-center text-[10px] font-bold text-slate-700">
+                                        출근 {record.clock_in_time ? new Date(record.clock_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '-'} /
+                                        퇴근 {record.clock_out_time ? new Date(record.clock_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
                                     </div>
                                 </div>
                             </div>
@@ -335,6 +378,79 @@ const AttendancePage = () => {
                     )}
                 </div>
             </main>
+
+            {/* Attendance Edit Modal (Admin only) */}
+            {showEditModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+                        <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
+                            <h3 className="text-xl font-black text-slate-800">근태 기록 수정</h3>
+                            <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <ChevronRightIcon className="w-6 h-6 rotate-90" />
+                            </button>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">사원명</label>
+                                    <input type="text" disabled value={selectedStaff?.name || ''} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm font-bold text-slate-400" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">날짜</label>
+                                    <input type="text" disabled value={editingRecord?.record_date || ''} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm font-bold text-slate-400" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">출근 시간</label>
+                                        <input
+                                            type="datetime-local"
+                                            value={editFormData.clock_in_time}
+                                            onChange={e => setEditFormData({ ...editFormData, clock_in_time: e.target.value })}
+                                            className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">퇴근 시간</label>
+                                        <input
+                                            type="datetime-local"
+                                            value={editFormData.clock_out_time}
+                                            onChange={e => setEditFormData({ ...editFormData, clock_out_time: e.target.value })}
+                                            className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">근태 상태</label>
+                                    <select
+                                        value={editFormData.attendance_status}
+                                        onChange={e => setEditFormData({ ...editFormData, attendance_status: e.target.value })}
+                                        className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all"
+                                    >
+                                        <option value="NORMAL">정상</option>
+                                        <option value="LATE">지각</option>
+                                        <option value="EARLY_LEAVE">조퇴</option>
+                                        <option value="ABSENT">결근</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex space-x-3 pt-4">
+                                <button
+                                    onClick={() => setShowEditModal(false)}
+                                    className="flex-1 px-6 py-4 bg-slate-100 text-slate-400 font-black rounded-2xl hover:bg-slate-200 transition-all uppercase tracking-widest text-xs"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpdateAttendance}
+                                    className="flex-[2] px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest text-xs"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

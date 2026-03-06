@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import Optional
-from datetime import date, datetime, timedelta, time as time_type
+from datetime import date, datetime, timedelta, time as time_type, timezone
 
 from app.api import deps
 from app.models.approval import ApprovalDocument, ApprovalStatus
@@ -12,8 +12,11 @@ from app.schemas.hr import (
     AttendanceDocItem, 
     AttendanceClockInUpdate, 
     AttendanceClockOutUpdate, 
-    AttendanceMonthlyResponse
+    AttendanceMonthlyResponse,
+    EmployeeTimeRecordUpdate
 )
+
+KST = timezone(timedelta(hours=9))
 
 router = APIRouter()
 
@@ -219,8 +222,7 @@ async def clock_in(
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user),
 ):
-    """수동 출근 기록"""
-    now = datetime.now()
+    now = datetime.now(KST)
     today = now.date()
 
     # 1. 원시 로그 기록
@@ -288,8 +290,7 @@ async def clock_out(
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user),
 ):
-    """수동 퇴근 기록"""
-    now = datetime.now()
+    now = datetime.now(KST)
     today = now.date()
 
     # 1. 원시 로그 기록
@@ -396,4 +397,36 @@ async def get_monthly_attendance(
         month=month,
         records=records
     )
+
+
+@router.put("/attendance/records/{record_id}", response_model=EmployeeTimeRecordResponse)
+async def update_attendance_record(
+    record_id: int,
+    data: EmployeeTimeRecordUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """관리자용 근태 기록 수동 수정"""
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="관리자만 수정 가능합니다.")
+
+    res = await db.execute(select(EmployeeTimeRecord).where(EmployeeTimeRecord.id == record_id))
+    record = res.scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail="기록을 찾을 수 없습니다.")
+
+    if data.clock_in_time is not None:
+        record.clock_in_time = data.clock_in_time
+    if data.clock_out_time is not None:
+        record.clock_out_time = data.clock_out_time
+    if data.attendance_status is not None:
+        record.attendance_status = data.attendance_status
+    if data.category is not None:
+        record.category = data.category
+    
+    record.record_source = "ADMIN_MODIFIED"
+    
+    await db.commit()
+    await db.refresh(record)
+    return record
 
