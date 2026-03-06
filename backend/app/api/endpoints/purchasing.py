@@ -20,20 +20,32 @@ router = APIRouter()
 
 # --- MRP (Material Requirements Planning) ---
 
-@router.get("/mrp/unordered-requirements", response_model=List[schemas.MRPRequirement])
-async def get_unordered_requirements(db: AsyncSession = Depends(deps.get_db)):
+@router.get("/mrp/unordered-requirements", response_model=List[schemas.MaterialRequirementResponse])
+async def get_unordered_requirements(
+    db: AsyncSession = Depends(deps.get_db),
+    status: str = "PENDING"
+):
     """
-    수주 기반 미발주 소요량 산출 API
+    기록된 미발주 소요량(MRP) 리스트 조회 API
     """
-    # 1. 대상 수주 조회 (PENDING, CONFIRMED)
-    sales_orders_query = select(SalesOrder).where(
-        SalesOrder.status.in_([OrderStatus.PENDING, OrderStatus.CONFIRMED])
-    ).options(
-        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.bom_items)
-    )
+    from app.models.purchasing import MaterialRequirement
+    query = select(MaterialRequirement).where(MaterialRequirement.status == status)\
+        .options(
+            selectinload(MaterialRequirement.product),
+            selectinload(MaterialRequirement.order).selectinload(SalesOrder.partner)
+        )
     
-    result = await db.execute(sales_orders_query)
-    sales_orders = result.scalars().all()
+    result = await db.execute(query)
+    requirements = result.scalars().all()
+    
+    # Flatten metadata for response
+    for req in requirements:
+        if req.product:
+            req.product_name = req.product.name
+            req.specification = req.product.specification
+            req.item_type = req.product.item_type
+            
+    return requirements
 
     # 2. 총 소요량(Demand) 계산 (부품별 합계)
     total_demand = {} # product_id -> quantity
@@ -316,9 +328,18 @@ async def create_purchase_order(
             quantity=item.quantity,
             unit_price=item.unit_price,
             note=item.note,
-            production_plan_item_id=item.production_plan_item_id # Save link
+            production_plan_item_id=item.production_plan_item_id, # Save link
+            material_requirement_id=item.material_requirement_id
         )
         db.add(db_item)
+        
+        # Update MaterialRequirement status if linked
+        if item.material_requirement_id:
+            from app.models.purchasing import MaterialRequirement
+            req = await db.get(MaterialRequirement, item.material_requirement_id)
+            if req:
+                req.status = "ORDERED"
+                db.add(req)
         
         # Update ProductionPlanItem status if linked
         if item.production_plan_item_id:

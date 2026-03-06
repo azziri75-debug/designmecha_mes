@@ -12,6 +12,7 @@ class PurchaseOrderItemBase(BaseModel):
     unit_price: float
     note: Optional[str] = None
     production_plan_item_id: Optional[int] = None
+    material_requirement_id: Optional[int] = None
 
 class PurchaseOrderItemCreate(PurchaseOrderItemBase):
     pass
@@ -24,12 +25,14 @@ class PurchaseOrderItemUpdate(BaseModel):
     received_quantity: Optional[int] = None
     note: Optional[str] = None
     production_plan_item_id: Optional[int] = None
+    material_requirement_id: Optional[int] = None
 
 class PurchaseOrderItem(PurchaseOrderItemBase):
     id: int
     purchase_order_id: int
     received_quantity: Optional[int] = 0
     production_plan_item_id: Optional[int] = None
+    material_requirement_id: Optional[int] = None
     product: Optional[Product] = None
     process_name: Optional[str] = None
 
@@ -183,12 +186,32 @@ class OutsourcingOrderItemSimple(BaseModel):
 class MRPRequirement(BaseModel):
     product_id: int
     product_name: str
-    product_code: str
+    specification: str
     item_type: str
     total_demand: int
     current_stock: int
     open_purchase_qty: int
     required_purchase_qty: int
+
+    class Config:
+        from_attributes = True
+
+class MaterialRequirementBase(BaseModel):
+    product_id: int
+    order_id: Optional[int] = None
+    required_quantity: int
+    current_stock: int = 0
+    open_purchase_qty: int = 0
+    shortage_quantity: int
+    status: str = "PENDING"
+
+class MaterialRequirementResponse(MaterialRequirementBase):
+    id: int
+    created_at: datetime
+    product: Optional[Product] = None
+    product_name: Optional[str] = None
+    specification: Optional[str] = None
+    item_type: Optional[str] = None
 
     class Config:
         from_attributes = True

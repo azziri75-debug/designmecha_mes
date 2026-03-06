@@ -20,6 +20,7 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side
 from app.core import config
 import json
+from app.api.utils.mrp import calculate_and_record_mrp
 
 router = APIRouter()
 
@@ -426,6 +427,9 @@ async def create_order(
             delivered_quantity=item.delivered_quantity
         )
         db.add(db_item)
+    
+    # MRP 계산 및 부족분 기록
+    await calculate_and_record_mrp(db, db_order.id)
     
     await db.commit()
     await db.refresh(db_order)

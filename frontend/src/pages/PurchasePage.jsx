@@ -372,7 +372,7 @@ const PurchasePage = ({ type }) => {
                                             onChange={handleSelectAllMrp}
                                         />
                                     </TableCell>
-                                    <TableCell>품목코드</TableCell>
+                                    <TableCell>규격</TableCell>
                                     <TableCell>품목명</TableCell>
                                     <TableCell>구분</TableCell>
                                     <TableCell align="right">총 소요량</TableCell>
@@ -390,7 +390,7 @@ const PurchasePage = ({ type }) => {
                                             <TableCell padding="checkbox">
                                                 <Checkbox checked={selectedMrpItems.includes(item.product_id)} />
                                             </TableCell>
-                                            <TableCell>{item.product_code}</TableCell>
+                                            <TableCell>{item.specification}</TableCell>
                                             <TableCell>{item.product_name}</TableCell>
                                             <TableCell>
                                                 <Chip label={item.item_type} size="small" variant="outlined" />

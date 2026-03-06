@@ -73,6 +73,7 @@ class PurchaseOrderItem(Base):
     note = Column(String, nullable=True)
     
     production_plan_item_id = Column(Integer, ForeignKey("production_plan_items.id"), nullable=True)
+    material_requirement_id = Column(Integer, ForeignKey("material_requirements.id"), nullable=True)
 
     # Relationships
     purchase_order = relationship("PurchaseOrder", back_populates="items")
@@ -143,3 +144,22 @@ class OutsourcingOrderItem(Base):
     outsourcing_order = relationship("OutsourcingOrder", back_populates="items")
     production_plan_item = relationship("ProductionPlanItem", back_populates="outsourcing_items")
     product = relationship("Product")
+
+class MaterialRequirement(Base):
+    """자재 소요량/부족분 (MRP 결과 기록)"""
+    __tablename__ = "material_requirements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True) # 어떤 수주 때문에 발생했는지
+    
+    required_quantity = Column(Integer, nullable=False) # 총 필요량 (EXPLODED BOM * ORDER QTY)
+    current_stock = Column(Integer, default=0) # 발생 시점의 재고 (참고용)
+    open_purchase_qty = Column(Integer, default=0) # 발생 시점의 발주 잔량 (참고용)
+    shortage_quantity = Column(Integer, nullable=False) # 실제 부족분 (계산 결과)
+    
+    status = Column(String, default="PENDING") # PENDING, ORDERED, CANCELLED
+    created_at = Column(DateTime, default=func.now())
+    
+    product = relationship("Product")
+    order = relationship("SalesOrder")

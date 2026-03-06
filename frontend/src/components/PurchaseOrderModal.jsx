@@ -110,7 +110,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             quantity: item.required_purchase_qty,
                             unit_price: unitPrice,
                             note: 'MRP 소요량 기반 발주',
-                            production_plan_item_id: null
+                            production_plan_item_id: null,
+                            material_requirement_id: item.id
                         };
                     }
                 })
@@ -248,7 +249,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     quantity: parseInt(item.quantity) || 0,
                     unit_price: parseFloat(item.unit_price) || 0,
                     note: item.note || '',
-                    production_plan_item_id: item.production_plan_item_id || null
+                    production_plan_item_id: item.production_plan_item_id || null,
+                    material_requirement_id: item.material_requirement_id || null
                 }))
             };
 
