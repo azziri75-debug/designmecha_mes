@@ -1627,98 +1627,91 @@ const BasicsPageContent = () => {
                                                 <label className="text-sm font-medium text-gray-300">메뉴별 상세 권한 설정</label>
                                                 <span className="text-[11px] text-gray-500">※ 조회 권한이 있어야 해당 메뉴가 보입니다.</span>
                                             </div>
-                                            <div className="overflow-x-auto bg-gray-900/50 rounded-lg border border-gray-700">
-                                                <table className="w-full text-left text-sm">
-                                                    <thead>
-                                                        <tr className="border-b border-gray-700 bg-gray-800/50">
-                                                            <th className="px-3 py-2 text-gray-400 font-medium">메뉴명</th>
-                                                            <th className="px-2 py-2 text-center text-gray-400 font-medium w-16">조회</th>
-                                                            <th className="px-2 py-2 text-center text-gray-400 font-medium w-16">편집</th>
-                                                            <th className="px-2 py-2 text-center text-gray-400 font-medium w-16">단가</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {[
-                                                            { key: 'basics', label: '기초 정보' },
-                                                            { key: 'products', label: '제품/공정 관리' },
-                                                            { key: 'sales', label: '영업 관리' },
-                                                            { key: 'production', label: '생산 관리' },
-                                                            { key: 'worklogs', label: '작업 일지' },
-                                                            { key: 'purchasing', label: '자재/소모품 구매' },
-                                                            { key: 'outsourcing', label: '외주 발주' },
-                                                            { key: 'quality', label: '품질 관리' },
-                                                            { key: 'inventory', label: '재고 관리' },
-                                                            { key: 'delivery', label: '납품 관리' },
-                                                            { key: 'hr', label: '근태 관리' },
-                                                            { key: 'approval', label: '전자결재/문서' },
-                                                        ].map(menu => {
-                                                            const isAdmin = formData.user_type === 'ADMIN';
-                                                            const perms = formData.menu_permissions || {};
-                                                            const isArray = Array.isArray(perms);
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {[
+                                                    { key: 'basics', label: '기초 정보' },
+                                                    { key: 'products', label: '제품/공정 관리' },
+                                                    { key: 'sales', label: '영업 관리' },
+                                                    { key: 'production', label: '생산 관리' },
+                                                    { key: 'worklogs', label: '작업 일지' },
+                                                    { key: 'purchasing', label: '자재/소모품 구매' },
+                                                    { key: 'outsourcing', label: '외주 발주' },
+                                                    { key: 'quality', label: '품질 관리' },
+                                                    { key: 'inventory', label: '재고 관리' },
+                                                    { key: 'delivery', label: '납품 관리' },
+                                                    { key: 'hr', label: '근태 관리' },
+                                                    { key: 'approval', label: '전자결재/문서' },
+                                                ].map(menu => {
+                                                    const isAdmin = formData.user_type === 'ADMIN';
+                                                    const perms = formData.menu_permissions || {};
+                                                    const isArray = Array.isArray(perms);
 
-                                                            const getVal = (action) => {
-                                                                if (isAdmin) return true;
-                                                                if (isArray) return perms.includes(menu.key);
-                                                                return !!(perms[menu.key] && perms[menu.key][action]);
-                                                            };
+                                                    const getVal = (action) => {
+                                                        if (isAdmin) return true;
+                                                        if (isArray) return perms.includes(menu.key);
+                                                        return !!(perms[menu.key] && perms[menu.key][action]);
+                                                    };
 
-                                                            const handleChange = (action, val) => {
-                                                                let newPerms = isArray ? {} : { ...perms };
-                                                                if (isArray) {
-                                                                    perms.forEach(k => {
-                                                                        newPerms[k] = { view: true, edit: true, showPrice: true };
-                                                                    });
-                                                                }
+                                                    const handleChange = (action, val) => {
+                                                        let newPerms = isArray ? {} : { ...perms };
+                                                        if (isArray) {
+                                                            perms.forEach(k => {
+                                                                newPerms[k] = { view: true, edit: true, showPrice: true };
+                                                            });
+                                                        }
 
-                                                                if (!newPerms[menu.key]) {
-                                                                    newPerms[menu.key] = { view: false, edit: false, showPrice: false };
-                                                                } else {
-                                                                    newPerms[menu.key] = { ...newPerms[menu.key] };
-                                                                }
+                                                        if (!newPerms[menu.key]) {
+                                                            newPerms[menu.key] = { view: false, edit: false, showPrice: false };
+                                                        } else {
+                                                            newPerms[menu.key] = { ...newPerms[menu.key] };
+                                                        }
 
-                                                                newPerms[menu.key][action] = val;
-                                                                if ((action === 'edit' || action === 'showPrice') && val) {
-                                                                    newPerms[menu.key].view = true;
-                                                                }
+                                                        newPerms[menu.key][action] = val;
+                                                        if ((action === 'edit' || action === 'showPrice') && val) {
+                                                            newPerms[menu.key].view = true;
+                                                        }
 
-                                                                setFormData(prev => ({ ...prev, menu_permissions: newPerms }));
-                                                            };
+                                                        setFormData(prev => ({ ...prev, menu_permissions: newPerms }));
+                                                    };
 
-                                                            return (
-                                                                <tr key={menu.key} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/30 transition-colors">
-                                                                    <td className="px-3 py-2 text-gray-300">{menu.label}</td>
-                                                                    <td className="px-2 py-2 text-center">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={getVal('view')}
-                                                                            disabled={isAdmin}
-                                                                            onChange={(e) => handleChange('view', e.target.checked)}
-                                                                            className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-800 disabled:opacity-50"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="px-2 py-2 text-center">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={getVal('edit')}
-                                                                            disabled={isAdmin}
-                                                                            onChange={(e) => handleChange('edit', e.target.checked)}
-                                                                            className="w-4 h-4 rounded border-gray-600 text-green-600 focus:ring-green-500 bg-gray-800 disabled:opacity-50"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="px-2 py-2 text-center">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={getVal('showPrice')}
-                                                                            disabled={isAdmin}
-                                                                            onChange={(e) => handleChange('showPrice', e.target.checked)}
-                                                                            className="w-4 h-4 rounded border-gray-600 text-amber-600 focus:ring-amber-500 bg-gray-800 disabled:opacity-50"
-                                                                        />
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
+                                                    return (
+                                                        <div key={menu.key} className="bg-gray-900 border border-gray-700 rounded-lg p-3 hover:bg-gray-800/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
+                                                            <div className="text-sm font-medium text-gray-300">{menu.label}</div>
+                                                            <div className="flex items-center gap-4">
+                                                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={getVal('view')}
+                                                                        disabled={isAdmin}
+                                                                        onChange={(e) => handleChange('view', e.target.checked)}
+                                                                        className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-800 disabled:opacity-50"
+                                                                    />
+                                                                    <span className="text-[13px] text-gray-400">조회</span>
+                                                                </label>
+                                                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={getVal('edit')}
+                                                                        disabled={isAdmin}
+                                                                        onChange={(e) => handleChange('edit', e.target.checked)}
+                                                                        className="w-4 h-4 rounded border-gray-600 text-green-600 focus:ring-green-500 bg-gray-800 disabled:opacity-50"
+                                                                    />
+                                                                    <span className="text-[13px] text-gray-400">편집</span>
+                                                                </label>
+                                                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={getVal('showPrice')}
+                                                                        disabled={isAdmin}
+                                                                        onChange={(e) => handleChange('showPrice', e.target.checked)}
+                                                                        className="w-4 h-4 rounded border-gray-600 text-amber-600 focus:ring-amber-500 bg-gray-800 disabled:opacity-50"
+                                                                    />
+                                                                    <span className="text-[13px] text-gray-400">단가</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                             {formData.user_type === 'ADMIN' && (
                                                 <p className="text-[11px] text-purple-400 mt-1">※ 관리자는 모든 권한을 가집니다.</p>
