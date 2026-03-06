@@ -11,6 +11,7 @@ from app.schemas.basics import EquipmentSimple, StaffSimple
 class ProductionStatus(str, Enum):
     PENDING = "PENDING"
     PLANNED = "PLANNED"
+    CONFIRMED = "CONFIRMED"
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
     CANCELED = "CANCELED"

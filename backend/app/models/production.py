@@ -9,6 +9,7 @@ from app.models.inventory import StockProduction
 class ProductionStatus(str, enum.Enum):
     PENDING = "PENDING"       # 대기
     PLANNED = "PLANNED"       # 계획 수립
+    CONFIRMED = "CONFIRMED"   # 계획 확정 (MRP 트리거)
     IN_PROGRESS = "IN_PROGRESS" # 진행 중
     COMPLETED = "COMPLETED"     # 완료
     CANCELED = "CANCELED"       # 취소

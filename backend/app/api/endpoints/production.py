@@ -242,6 +242,13 @@ async def create_production_plan(
             )
             db.add(plan_item)
             await sync_plan_item_cost(db, plan_item)
+        
+        await db.flush()
+        
+        # 5. Trigger MRP if status is CONFIRMED
+        if plan.status == ProductionStatus.CONFIRMED:
+            from app.api.utils.mrp import calculate_and_record_mrp
+            await calculate_and_record_mrp(db, plan_id=plan.id)
     else:
         # Default logic for Sales Order (already exists) or Stock Production
         # If stock production, it's usually just one product.
@@ -906,6 +913,11 @@ async def update_production_plan_status(
         
     old_status = plan.status
     plan.status = status
+    
+    # 0. CONFIRMED Trigger: Calculate MRP
+    if status == ProductionStatus.CONFIRMED and old_status != ProductionStatus.CONFIRMED:
+        from app.api.utils.mrp import calculate_and_record_mrp
+        await calculate_and_record_mrp(db, plan_id=plan.id)
     
     # Auto-Complete Logic
     if status == ProductionStatus.COMPLETED:

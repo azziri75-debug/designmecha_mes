@@ -152,6 +152,7 @@ class MaterialRequirement(Base):
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True) # 어떤 수주 때문에 발생했는지
+    plan_id = Column(Integer, ForeignKey("production_plans.id"), nullable=True) # 어떤 생산계획 때문에 발생했는지
     
     required_quantity = Column(Integer, nullable=False) # 총 필요량 (EXPLODED BOM * ORDER QTY)
     current_stock = Column(Integer, default=0) # 발생 시점의 재고 (참고용)
@@ -163,3 +164,4 @@ class MaterialRequirement(Base):
     
     product = relationship("Product")
     order = relationship("SalesOrder")
+    plan = relationship("ProductionPlan")

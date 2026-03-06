@@ -1,12 +1,14 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_, cast, String
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.product import BOM, Product, Inventory
+from app.models.product import BOM, Product
 from app.models.purchasing import MaterialRequirement, PurchaseOrder, PurchaseOrderItem, PurchaseStatus
 from app.models.sales import SalesOrder, SalesOrderItem
-from typing import Dict, List
+from app.models.inventory import Stock
+from app.models.production import ProductionPlan, ProductionPlanItem
+from typing import Dict, List, Optional
 
-async def explode_bom_recursive(db: AsyncSession, product_id: int, quantity: float, requirements: Dict[int, float]):
+async def explode_bom(db: AsyncSession, product_id: int, quantity: float, requirements: Dict[int, float]):
     """
     Recursively explodes BOM for a product.
     requirements: Dict[product_id, total_needed_quantity]
@@ -22,59 +24,116 @@ async def explode_bom_recursive(db: AsyncSession, product_id: int, quantity: flo
 
     for bi in bom_items:
         child_needed = bi.required_quantity * quantity
-        await explode_bom_recursive(db, bi.child_product_id, child_needed, requirements)
+        await explode_bom(db, bi.child_product_id, child_needed, requirements)
 
-async def calculate_and_record_mrp(db: AsyncSession, order_id: int):
+async def calculate_and_record_mrp(
+    db: AsyncSession, 
+    order_id: Optional[int] = None, 
+    plan_id: Optional[int] = None
+):
     """
-    Explodes all items in a Sales Order and records shortage requirements.
+    BOM 전개 및 재고 확인을 통한 부족분 산출 및 MaterialRequirement 기록
     """
-    # 1. Fetch Sales Order Items
-    query = select(SalesOrderItem).where(SalesOrderItem.order_id == order_id).options(selectinload(SalesOrderItem.product))
-    result = await db.execute(query)
-    order_items = result.scalars().all()
+    # 1. 대상 선택 (SalesOrder 또는 ProductionPlan)
+    items = []
+    ref_order_id = order_id
     
-    total_requirements = {} # product_id -> total_needed
-    
-    for item in order_items:
-        # Explode each item
-        await explode_bom_recursive(db, item.product_id, item.quantity, total_requirements)
+    if plan_id:
+        result = await db.execute(
+            select(ProductionPlan).where(ProductionPlan.id == plan_id)
+            .options(selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product))
+        )
+        plan = result.scalar_one_or_none()
+        if not plan:
+            return
         
-    # 2. For each required item, check stock and open POs
-    for pid, needed in total_requirements.items():
-        # Skip the top-level produced items if they are not meant to be purchased
-        # Usually we only care about PART, CONSUMABLE, RAW_MATERIAL for purchasing
-        product = await db.get(Product, pid)
+        # 중복 체크: 이미 해당 plan_id로 생성된 MRP가 있는지 확인
+        dup_stmt = select(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id).limit(1)
+        dup_res = await db.execute(dup_stmt)
+        if dup_res.scalar_one_or_none():
+            print(f"MRP already recorded for Plan {plan_id}. Skipping.")
+            return
+
+        # 생산 계획 항목들로부터 품목 및 수량 추출
+        product_qtys = {}
+        for pi in plan.items:
+            product_qtys[pi.product_id] = pi.quantity
+        
+        for pid, qty in product_qtys.items:
+            items.append({"product_id": pid, "quantity": qty})
+        
+        if plan.order_id:
+            ref_order_id = plan.order_id
+
+    elif order_id:
+        result = await db.execute(
+            select(SalesOrder).where(SalesOrder.id == order_id)
+            .options(selectinload(SalesOrder.items).selectinload(SalesOrderItem.product))
+        )
+        order = result.scalar_one_or_none()
+        if not order:
+            return
+            
+        # 중복 체크 (SalesOrder용)
+        dup_stmt = select(MaterialRequirement).where(MaterialRequirement.order_id == order_id).limit(1)
+        dup_res = await db.execute(dup_stmt)
+        if dup_res.scalar_one_or_none():
+            print(f"MRP already recorded for SalesOrder {order_id}. Skipping.")
+            return
+
+        for oi in order.items:
+            items.append({"product_id": oi.product_id, "quantity": oi.quantity})
+
+    if not items:
+        return
+
+    # 2. BOM 전개 및 하위 부품 필요량 합산
+    requirements = {} # {product_id: total_quantity}
+
+    for item in items:
+        await explode_bom(db, item["product_id"], item["quantity"], requirements)
+
+    # 3. 각 부품별 재고 및 발주 잔량 확인 후 부족분 기록
+    for product_id, total_required in requirements.items():
+        # 생산되는 품목(PRODUCED)은 발주 대상이 아니므로 제외
+        product = await db.get(Product, product_id)
         if not product or product.item_type == "PRODUCED":
             continue
-            
-        # Current Stock
-        stock_query = select(Inventory).where(Inventory.product_id == pid)
-        s_res = await db.execute(stock_query)
-        stock = s_res.scalar_one_or_none()
-        current_stock = stock.quantity if stock else 0
-        
-        # Open PO Quantity
-        po_query = select(func.sum(PurchaseOrderItem.quantity - PurchaseOrderItem.received_quantity))\
-            .join(PurchaseOrder)\
-            .where(PurchaseOrderItem.product_id == pid)\
-            .where(PurchaseOrder.status.in_([PurchaseStatus.PENDING, PurchaseStatus.ORDERED, PurchaseStatus.PARTIAL]))
-        po_res = await db.execute(po_query)
+
+        # 현재고 조회
+        stock_stmt = select(Stock).where(Stock.product_id == product_id)
+        stock_res = await db.execute(stock_stmt)
+        stock = stock_res.scalar_one_or_none()
+        current_stock = stock.current_quantity if stock else 0
+
+        # 발주 잔량(입고 대기 수량) 조회
+        po_stmt = (
+            select(func.sum(PurchaseOrderItem.quantity - PurchaseOrderItem.received_quantity))
+            .join(PurchaseOrder)
+            .where(
+                PurchaseOrderItem.product_id == product_id,
+                PurchaseOrder.status.in_([PurchaseStatus.PENDING, PurchaseStatus.ORDERED, PurchaseStatus.PARTIAL])
+            )
+        )
+        po_res = await db.execute(po_stmt)
         open_purchase_qty = po_res.scalar() or 0
-        
-        # Calculate Shortage
-        shortage = needed - current_stock - open_purchase_qty
-        
+
+        # 부족분 계산: 필요량 - (현재고 + 발주잔량)
+        shortage = total_required - (current_stock + open_purchase_qty)
+
         if shortage > 0:
-            # 3. Record in MaterialRequirement
-            req = MaterialRequirement(
-                product_id=pid,
-                order_id=order_id,
-                required_quantity=int(needed),
+            # MaterialRequirement 기록
+            req_record = MaterialRequirement(
+                product_id=product_id,
+                order_id=ref_order_id,
+                plan_id=plan_id,
+                required_quantity=int(total_required),
                 current_stock=int(current_stock),
                 open_purchase_qty=int(open_purchase_qty),
                 shortage_quantity=int(shortage),
                 status="PENDING"
             )
-            db.add(req)
+            db.add(req_record)
     
     await db.flush()
+    await db.commit()

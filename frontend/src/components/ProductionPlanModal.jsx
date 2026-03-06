@@ -252,8 +252,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     cost: parseFloat(item.cost) || 0,
                     quantity: parseInt(item.quantity) || 0,
                     note: item.note,
-                    status: item.status || 'PLANNED'
-                }))
+                    status: item.status || 'CONFIRMED'
+                })),
+                status: 'CONFIRMED'
             };
 
             if (plan) {
@@ -539,8 +540,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
-                <Button onClick={handleSubmit} variant="contained" disabled={loading}>
-                    {loading ? "저장 중..." : "확정 (Confirm)"}
+                <Button onClick={handleSubmit} variant="contained" disabled={loading} color="secondary">
+                    {loading ? "저장 중..." : "계획 확정 (Confirm & MRP)"}
                 </Button>
             </DialogActions>
         </Dialog>

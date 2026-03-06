@@ -29,10 +29,12 @@ async def get_unordered_requirements(
     기록된 미발주 소요량(MRP) 리스트 조회 API
     """
     from app.models.purchasing import MaterialRequirement
+    from app.models.production import ProductionPlan
     query = select(MaterialRequirement).where(MaterialRequirement.status == status)\
         .options(
             selectinload(MaterialRequirement.product),
-            selectinload(MaterialRequirement.order).selectinload(SalesOrder.partner)
+            selectinload(MaterialRequirement.order).selectinload(SalesOrder.partner),
+            selectinload(MaterialRequirement.plan)
         )
     
     result = await db.execute(query)
@@ -44,6 +46,18 @@ async def get_unordered_requirements(
             req.product_name = req.product.name
             req.specification = req.product.specification
             req.item_type = req.product.item_type
+        
+        # Add linkage info for UI
+        req.linkage_info = "-"
+        if req.plan:
+            if req.plan.order:
+                req.linkage_info = f"생산계획({req.plan.order.order_no})"
+            elif req.plan.stock_production:
+                req.linkage_info = f"생산계획({req.plan.stock_production.production_no})"
+            else:
+                req.linkage_info = f"생산계획(ID:{req.plan.id})"
+        elif req.order:
+            req.linkage_info = f"수주({req.order.order_no})"
             
     return requirements
 

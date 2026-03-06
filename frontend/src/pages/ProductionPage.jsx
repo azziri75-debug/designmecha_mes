@@ -227,6 +227,18 @@ const ProductionPage = () => {
         }
     };
 
+    const handleConfirmPlan = async (planId) => {
+        if (!window.confirm("생산 계획을 확정하시겠습니까? 확정 시 자동으로 자재 소요량(MRP)이 산출되고 미발주 목록에 등록됩니다.")) return;
+        try {
+            await api.patch(`/production/plans/${planId}/status?status=CONFIRMED`);
+            alert("계획이 확정되었습니다. 자재구매관리에서 MRP 리스트를 확인해 주세요.");
+            fetchPlans();
+        } catch (error) {
+            console.error("Confirm failed", error);
+            alert("확정 처리 실패");
+        }
+    };
+
     const handleCompletePlan = async (planId) => {
         const plan = plans.find(p => p.id === planId);
         if (!plan) return;
@@ -432,6 +444,7 @@ const ProductionPage = () => {
                             onEdit={handleEditClick}
                             onDelete={handleDeletePlan}
                             onComplete={handleCompletePlan}
+                            onConfirm={handleConfirmPlan}
                             onPrint={handlePrintClick}
                             onDeleteAttachment={handleDeleteAttachment}
                             onOpenFiles={(files, plan) => {
@@ -886,7 +899,13 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                 <TableCell>{plan.order?.partner?.name || '사내 생산(재고)'}</TableCell>
                 <TableCell>{order?.delivery_date || '-'}</TableCell>
                 <TableCell>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
-                <TableCell><Chip label={plan.status} color={plan.status === 'COMPLETED' ? "success" : "primary"} variant="outlined" /></TableCell>
+                <TableCell>
+                    <Chip
+                        label={plan.status}
+                        color={plan.status === 'COMPLETED' ? "success" : plan.status === 'CONFIRMED' ? "secondary" : "primary"}
+                        variant={plan.status === 'CONFIRMED' ? "filled" : "outlined"}
+                    />
+                </TableCell>
                 <TableCell>{defects && defects.length > 0 && (
                     <IconButton
                         size="small"
@@ -961,6 +980,11 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                     <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="삭제">
                                         <DeleteIcon />
                                     </IconButton>
+                                    {plan.status === 'PLANNED' && (
+                                        <IconButton size="small" color="secondary" onClick={() => onConfirm(plan.id)} title="계획 확정 (MRP 실행)">
+                                            <CheckIcon />
+                                        </IconButton>
+                                    )}
                                     <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="생산 완료">
                                         <CheckIcon />
                                     </IconButton>
