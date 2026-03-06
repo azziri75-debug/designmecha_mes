@@ -59,7 +59,7 @@ async def calculate_and_record_mrp(
         for pi in plan.items:
             product_qtys[pi.product_id] = max(product_qtys.get(pi.product_id, 0), pi.quantity)
         
-        for pid, qty in product_qtys.items:
+        for pid, qty in product_qtys.items():
             items.append({"product_id": pid, "quantity": qty})
             print(f"[MRP] Target Plan Item: ProductID={pid}, Qty={qty}")
         
