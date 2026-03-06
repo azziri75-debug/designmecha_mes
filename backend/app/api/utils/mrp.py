@@ -39,28 +39,30 @@ async def calculate_and_record_mrp(
     ref_order_id = order_id
     
     if plan_id:
+        print(f"[MRP] Starting MRP calculation for Plan ID: {plan_id}")
         result = await db.execute(
             select(ProductionPlan).where(ProductionPlan.id == plan_id)
             .options(selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product))
         )
         plan = result.scalar_one_or_none()
         if not plan:
+            print(f"[MRP] Plan {plan_id} not found.")
             return
         
-        # 중복 체크: 이미 해당 plan_id로 생성된 MRP가 있는지 확인
-        dup_stmt = select(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id).limit(1)
-        dup_res = await db.execute(dup_stmt)
-        if dup_res.scalar_one_or_none():
-            print(f"MRP already recorded for Plan {plan_id}. Skipping.")
-            return
+        # 중복 제거 대신 '강제'를 위해 기존 해당 plan_id의 MRP 데이터 삭제
+        from app.models.purchasing import MaterialRequirement
+        from sqlalchemy import delete
+        await db.execute(delete(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id))
+        print(f"[MRP] Deleted existing records for Plan {plan_id} to force refresh.")
 
-        # 생산 계획 항목들로부터 품목 및 수량 추출
+        # 생산 계획 항목들로부터 품목 및 수량 추출 (고유 품목별 최대 수량 추출)
         product_qtys = {}
         for pi in plan.items:
-            product_qtys[pi.product_id] = pi.quantity
+            product_qtys[pi.product_id] = max(product_qtys.get(pi.product_id, 0), pi.quantity)
         
         for pid, qty in product_qtys.items:
             items.append({"product_id": pid, "quantity": qty})
+            print(f"[MRP] Target Plan Item: ProductID={pid}, Qty={qty}")
         
         if plan.order_id:
             ref_order_id = plan.order_id
@@ -134,6 +136,7 @@ async def calculate_and_record_mrp(
                 status="PENDING"
             )
             db.add(req_record)
+            print(f"[MRP] Created Requirement for ProductID={product_id}, Shortage={shortage}")
     
     await db.flush()
     await db.commit()

@@ -8,6 +8,60 @@ import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@m
 import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
 import api from '../lib/api';
 
+const ProductSelectionModal = ({ isOpen, onClose, onSelect, products }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const filteredProducts = products.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.specification && p.specification.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    return (
+        <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>제품 선택</DialogTitle>
+            <DialogContent>
+                <TextField
+                    fullWidth
+                    label="검색 (품명 또는 규격)"
+                    variant="outlined"
+                    size="small"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    sx={{ mb: 2, mt: 1 }}
+                />
+                <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
+                    <Table stickyHeader size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 'bold' }}>품목명</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>규격</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>현재고</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>주거래처</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>선택</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {filteredProducts.map((p) => (
+                                <TableRow key={p.id}>
+                                    <TableCell>{p.name}</TableCell>
+                                    <TableCell>{p.specification || '-'}</TableCell>
+                                    <TableCell align="right">{p.current_inventory || 0}</TableCell>
+                                    <TableCell>{p.partner_name || '-'}</TableCell>
+                                    <TableCell align="center">
+                                        <Button size="small" variant="contained" onClick={() => onSelect(p)}>선택</Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>취소</Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
+
 const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, purchaseType }) => {
     const [partners, setPartners] = useState([]);
     const [products, setProducts] = useState([]);
@@ -30,6 +84,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [priceHistory, setPriceHistory] = useState([]);
     const [activeItemIndex, setActiveItemIndex] = useState(null);
     const [loadingHistory, setLoadingHistory] = useState(false);
+
+    // Product Modal State
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [activeRowIndex, setActiveRowIndex] = useState(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -206,6 +264,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         setFormData({ ...formData, items: newItems });
     };
 
+    const handleSelectProduct = (product) => {
+        if (activeRowIndex !== null) {
+            handleItemChange(activeRowIndex, 'product_id', product.id);
+        }
+        setIsProductModalOpen(false);
+        setActiveRowIndex(null);
+    };
+
+
     const handleLookupHistory = async (event, index, productId) => {
         if (!productId) return;
         setAnchorEl(event.currentTarget);
@@ -359,9 +426,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         <TableHead>
                             <TableRow>
                                 <TableCell>품목</TableCell>
-                                <TableCell width="15%">수량</TableCell>
-                                <TableCell width="20%">단가</TableCell>
-                                <TableCell width="20%">비고</TableCell>
+                                <TableCell width="15%">규격</TableCell>
+                                <TableCell width="10%">수량</TableCell>
+                                <TableCell width="15%">단가</TableCell>
+                                <TableCell width="15%">비고</TableCell>
                                 <TableCell width="5%"></TableCell>
                             </TableRow>
                         </TableHead>
@@ -369,18 +437,26 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             {formData.items.map((item, index) => (
                                 <TableRow key={index}>
                                     <TableCell>
-                                        <TextField
-                                            select
-                                            value={item.product_id}
-                                            onChange={(e) => handleItemChange(index, 'product_id', e.target.value)}
-                                            fullWidth
-                                            size="small"
-                                            variant="standard"
-                                        >
-                                            {products.map((p) => (
-                                                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-                                            ))}
-                                        </TextField>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography variant="body2" sx={{ flexGrow: 1, minWidth: 100 }}>
+                                                {products.find(p => p.id === item.product_id)?.name || '품목 선택'}
+                                            </Typography>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                onClick={() => {
+                                                    setActiveRowIndex(index);
+                                                    setIsProductModalOpen(true);
+                                                }}
+                                            >
+                                                찾기
+                                            </Button>
+                                        </Box>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="caption">
+                                            {products.find(p => p.id === item.product_id)?.specification || '-'}
+                                        </Typography>
                                     </TableCell>
                                     <TableCell>
                                         <TextField
@@ -440,6 +516,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 <Button onClick={onClose}>취소</Button>
                 <Button onClick={handleSubmit} variant="contained">저장</Button>
             </DialogActions>
+
+            <ProductSelectionModal
+                isOpen={isProductModalOpen}
+                onClose={() => {
+                    setIsProductModalOpen(false);
+                    setActiveRowIndex(null);
+                }}
+                onSelect={handleSelectProduct}
+                products={products}
+            />
 
             <Popover
                 open={Boolean(anchorEl)}

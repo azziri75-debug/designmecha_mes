@@ -135,6 +135,7 @@ class ProductResponse(ProductBase):
     bom_items: List[BOMItemResponse] = []
     current_inventory: int = 0 # Computed field
     latest_price: float = 0.0 # Latest quotation/order price
+    partner_name: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -785,17 +785,17 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
             <Table>
                 <TableHead>
                     <TableRow>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }} />
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>수주/재고번호</TableCell>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>거래처</TableCell>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>납기일</TableCell>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>금액</TableCell>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>상태</TableCell>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>불량</TableCell>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>공정 수</TableCell>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>총 공정 비용</TableCell>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>첨부파일</TableCell>
-                        <TableCell sx={{ color: '#333333', fontWeight: 'bold' }}>관리</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }} />
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>수주/재고번호</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>거래처</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>납기일</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>금액</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>상태</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>불량</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>공정 수</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>총 공정 비용</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>첨부파일</TableCell>
+                        <TableCell sx={{ color: '#000000 !important', fontWeight: 'bold' }}>관리</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>

@@ -152,11 +152,13 @@ async def create_product(
         select(Product)
         .options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items).selectinload(BOM.child_product)
+            selectinload(Product.bom_items).selectinload(BOM.child_product),
+            joinedload(Product.partner)
         )
         .where(Product.id == new_product.id)
     )
     created_product = result.scalar_one()
+    created_product.partner_name = created_product.partner.name if created_product.partner else None
     return created_product
 
 @router.get("/products/", response_model=List[ProductResponse])
@@ -170,7 +172,8 @@ async def read_products(
     # Eager loading needed for standard_processes AND its nested process relationship
     query = select(Product).options(
         selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-        selectinload(Product.bom_items).selectinload(BOM.child_product)
+        selectinload(Product.bom_items).selectinload(BOM.child_product),
+        joinedload(Product.partner)
     )
     
     if partner_id:
@@ -194,6 +197,7 @@ async def read_products(
         p_history = await get_product_price_history(p.id, db)
         latest_price = p_history[0].unit_price if p_history else 0.0
         p.latest_price = latest_price
+        p.partner_name = p.partner.name if p.partner else None
         enriched_products.append(p)
         
     return enriched_products
@@ -253,11 +257,13 @@ async def update_product(
         .select_from(Product)
         .options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items).selectinload(BOM.child_product)
+            selectinload(Product.bom_items).selectinload(BOM.child_product),
+            joinedload(Product.partner)
         )
         .where(Product.id == product_id)
     )
     updated_product = result.scalar_one()
+    updated_product.partner_name = updated_product.partner.name if updated_product.partner else None
     return updated_product
 
 @router.delete("/products/{product_id}")

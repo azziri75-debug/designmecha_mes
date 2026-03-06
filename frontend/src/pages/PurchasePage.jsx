@@ -434,6 +434,7 @@ const PurchasePage = ({ type }) => {
                                     <TableCell>연결 정보 (수주/재고)</TableCell>
                                     <TableCell>발주일자</TableCell>
                                     <TableCell>공급사</TableCell>
+                                    <TableCell>규격</TableCell>
                                     <TableCell>품목 수</TableCell>
                                     <TableCell>납기일자</TableCell>
                                     <TableCell>상태</TableCell>
@@ -479,6 +480,7 @@ const PurchasePage = ({ type }) => {
                                                 </TableCell>
                                                 <TableCell>{order.order_date}</TableCell>
                                                 <TableCell>{order.partner?.name}</TableCell>
+                                                <TableCell>{order.items[0]?.product?.specification || '-'}</TableCell>
                                                 <TableCell>{order.items.length} 품목</TableCell>
                                                 <TableCell>{order.delivery_date}</TableCell>
                                                 <TableCell>
