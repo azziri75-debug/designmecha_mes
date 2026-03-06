@@ -52,6 +52,8 @@ const MobileAttendancePage = () => {
         }
     };
 
+    const [approvalRecords, setApprovalRecords] = useState([]);
+
     const fetchMonthlyRecords = async () => {
         if (!user) return;
         setLoading(true);
@@ -62,6 +64,7 @@ const MobileAttendancePage = () => {
             });
             // Reverse to show latest first
             setAttendanceRecords([...res.data.records].reverse());
+            setApprovalRecords(res.data.approval_items || []);
         } catch (err) {
             console.error('Attendance Fetch Error:', err);
         } finally {
@@ -164,32 +167,73 @@ const MobileAttendancePage = () => {
                     </div>
 
                     <div className="space-y-4">
-                        {attendanceRecords.map((record, i) => (
-                            <div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="text-sm font-black text-slate-400 tabular-nums">
-                                        {new Date(record.record_date).toLocaleDateString([], { month: '2-digit', day: '2-digit', weekday: 'short' })}
+                        {attendanceRecords.map((record, i) => {
+                            const dateStr = record.record_date;
+                            // Find matching approvals for this date
+                            const dayApprovals = approvalRecords.filter(ap => {
+                                if (ap.date.includes('~')) {
+                                    const [s, e] = ap.date.split('~').map(d => d.trim());
+                                    return dateStr >= s && dateStr <= e;
+                                }
+                                return ap.date === dateStr;
+                            });
+
+                            return (
+                                <div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-sm font-black text-slate-400 tabular-nums">
+                                            {new Date(record.record_date).toLocaleDateString([], { month: '2-digit', day: '2-digit', weekday: 'short' })}
+                                        </div>
+                                        <div className="flex space-x-1">
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${record.attendance_status === 'NORMAL' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                                {record.attendance_status === 'LATE' ? '지각' : record.attendance_status === 'EARLY_LEAVE' ? '조퇴' : '정상'}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${record.attendance_status === 'NORMAL' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                                        {record.attendance_status}
-                                    </span>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-slate-50 p-3 rounded-2xl">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Clock In</p>
+                                            <p className="text-lg font-black text-slate-800">
+                                                {record.clock_in_time ? new Date(record.clock_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                            </p>
+                                        </div>
+                                        <div className="bg-slate-50 p-3 rounded-2xl">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Clock Out</p>
+                                            <p className="text-lg font-black text-slate-800">
+                                                {record.clock_out_time ? new Date(record.clock_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Approval Tags */}
+                                    {dayApprovals.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 pt-1">
+                                            {dayApprovals.map((ap, idx) => {
+                                                let label = ap.title;
+                                                let colorClass = "bg-slate-100 text-slate-600";
+                                                if (ap.doc_type === 'VACATION') {
+                                                    label = "연차/휴가";
+                                                    colorClass = "bg-indigo-50 text-indigo-600";
+                                                } else if (ap.doc_type === 'OVERTIME') {
+                                                    label = `야근/특근 (${ap.applied_value}h)`;
+                                                    colorClass = "bg-rose-50 text-rose-600";
+                                                } else if (ap.doc_type === 'EARLY_LEAVE') {
+                                                    label = ap.title.includes('외출') ? "외출" : "조퇴원";
+                                                    colorClass = "bg-amber-50 text-amber-600";
+                                                }
+
+                                                return (
+                                                    <div key={idx} className={`${colorClass} px-3 py-1 rounded-xl text-[10px] font-black flex items-center`}>
+                                                        <div className="w-1 h-1 rounded-full bg-current mr-2" />
+                                                        {label}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-slate-50 p-3 rounded-2xl">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Clock In</p>
-                                        <p className="text-lg font-black text-slate-800">
-                                            {record.clock_in_time ? new Date(record.clock_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                                        </p>
-                                    </div>
-                                    <div className="bg-slate-50 p-3 rounded-2xl">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Clock Out</p>
-                                        <p className="text-lg font-black text-slate-800">
-                                            {record.clock_out_time ? new Date(record.clock_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                         {attendanceRecords.length === 0 && (
                             <div className="py-20 text-center space-y-2">
                                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">

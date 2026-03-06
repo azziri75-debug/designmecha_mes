@@ -391,12 +391,124 @@ async def get_monthly_attendance(
     )
     records = records_res.scalars().all()
 
+    # 해당 월의 승인된 결재 문서 조회 (VACATION, EARLY_LEAVE, OVERTIME)
+    # 날짜 필터링을 위해 content 내의 date/start_date 등을 체크해야 함.
+    # 여기서는 단순하게 created_at 기준으로 가져오되, 실제 적용 날짜가 해당 월에 포함되는지 확인하는 로직이 필요함.
+    # 우선 created_at 기반으로 가져오고 summary 로직과 유사하게 AttendanceDocItem으로 변환.
+    
+    TARGET_TYPES = ["VACATION", "EARLY_LEAVE", "OVERTIME"]
+    # 월 시작/종료 datetime (created_at 필터용으로 넉넉하게 앞뒤 7일 포함 - 실제 날짜가 해당 월일 수 있으므로)
+    search_start = datetime.combine(start_date - timedelta(days=7), time_type.min)
+    search_end = datetime.combine(end_date + timedelta(days=7), time_type.max)
+
+    docs_res = await db.execute(
+        select(ApprovalDocument).where(
+            ApprovalDocument.author_id == staff_id,
+            ApprovalDocument.doc_type.in_(TARGET_TYPES),
+            ApprovalDocument.status == ApprovalStatus.COMPLETED,
+            ApprovalDocument.created_at >= search_start,
+            ApprovalDocument.created_at <= search_end,
+        )
+    )
+    docs = docs_res.scalars().all()
+    
+    approval_items = []
+    
+    # 회사 근무 종료 시간 (조퇴 계산용)
+    comp_res = await db.execute(select(Company))
+    company = comp_res.scalars().first()
+    work_end_minutes = 17 * 60 + 30
+    if company and company.work_end_time:
+        if isinstance(company.work_end_time, str):
+            work_end_minutes = _to_minutes(company.work_end_time)
+        elif isinstance(company.work_end_time, time_type):
+            work_end_minutes = _time_obj_to_minutes(company.work_end_time)
+
+    for doc in docs:
+        content = doc.content or {}
+        doc_date_str = None
+        applied_value = 0.0
+        applied_unit = "일"
+
+        if doc.doc_type == "VACATION":
+            s_str = content.get("start_date")
+            e_str = content.get("end_date") or s_str
+            if not s_str: continue
+            
+            try:
+                s_date = date.fromisoformat(s_str)
+                e_date = date.fromisoformat(e_str) if e_str else s_date
+                
+                # 해당 월에 하루라도 걸쳐 있는지 확인
+                if not (s_date <= end_date and e_date >= start_date):
+                    continue
+                
+                doc_date_str = f"{s_str} ~ {e_str}" if s_str != e_str else s_str
+                v_type = content.get("vacation_type", "")
+                if "반차" in v_type:
+                    applied_value = 0.5
+                else:
+                    applied_value = float(_business_days_between(s_date, e_date))
+            except: continue
+
+        elif doc.doc_type == "EARLY_LEAVE":
+            d_str = content.get("date")
+            if not d_str: continue
+            try:
+                d_date = date.fromisoformat(d_str)
+                if not (start_date <= d_date <= end_date): continue
+                doc_date_str = d_str
+                applied_unit = "시간"
+                
+                t_str = content.get("leave_time") or content.get("time")
+                ret_str = content.get("return_time") or content.get("end_time")
+                
+                if (content.get("type") in ("외출", "Outing")) and ret_str:
+                    m1 = _to_minutes(t_str)
+                    m2 = _to_minutes(ret_str)
+                    applied_value = round((m2 - m1) / 60.0, 2)
+                elif t_str:
+                    m1 = _to_minutes(t_str)
+                    applied_value = round((work_end_minutes - m1) / 60.0, 2)
+            except: continue
+
+        elif doc.doc_type == "OVERTIME":
+            d_str = content.get("date")
+            if not d_str: continue
+            try:
+                d_date = date.fromisoformat(d_str)
+                if not (start_date <= d_date <= end_date): continue
+                doc_date_str = d_str
+                applied_unit = "시간"
+                
+                s_t = content.get("start_time")
+                e_t = content.get("end_time")
+                if s_t and e_t:
+                    m1 = _to_minutes(s_t)
+                    m2 = _to_minutes(e_t)
+                    delta = m2 - m1
+                    if delta < 0: delta += 1440
+                    applied_value = round(delta / 60.0, 2)
+            except: continue
+
+        if doc_date_str:
+            approval_items.append(AttendanceDocItem(
+                id=doc.id,
+                doc_type=doc.doc_type,
+                title=doc.title,
+                date=doc_date_str,
+                applied_value=applied_value,
+                applied_unit=applied_unit,
+                status=doc.status
+            ))
+
     return AttendanceMonthlyResponse(
         staff_id=staff_id,
         staff_name=target_staff.name,
         year=year,
         month=month,
-        records=records
+        records=records,
+        approval_items=approval_items
     )
 
 

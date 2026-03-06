@@ -87,6 +87,7 @@ class AttendanceMonthlyResponse(BaseModel):
     year: int
     month: int
     records: List[EmployeeTimeRecordResponse]
+    approval_items: List[AttendanceDocItem] = []
 
 
 class EmployeeTimeRecordUpdate(BaseModel):

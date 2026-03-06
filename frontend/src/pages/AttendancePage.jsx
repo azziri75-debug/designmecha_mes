@@ -44,6 +44,8 @@ const AttendancePage = () => {
         fetchStaff();
     }, []);
 
+    const [approvalData, setApprovalData] = useState({});
+
     // Fetch attendance for the selected staff and month
     const fetchAttendance = useCallback(async () => {
         if (!selectedStaff) return;
@@ -57,13 +59,32 @@ const AttendancePage = () => {
                 params: { year, month }
             });
 
-            // Map data by day for easy lookup
-            const mapped = {};
+            // Map records by day
+            const mappedRecords = {};
             res.data.records.forEach(record => {
                 const day = parseInt(record.record_date.split('-')[2]);
-                mapped[day] = record;
+                mappedRecords[day] = record;
             });
-            setAttendanceData(mapped);
+            setAttendanceData(mappedRecords);
+
+            // Map approvals by day
+            const mappedApprovals = {};
+            res.data.approval_items.forEach(doc => {
+                // date can be "YYYY-MM-DD" or "YYYY-MM-DD ~ YYYY-MM-DD"
+                const parts = doc.date.split('~');
+                const startStr = parts[0].trim();
+                const endStr = (parts[1] || parts[0]).trim();
+
+                const startIdx = new Date(startStr).getDate();
+                const endIdx = new Date(endStr).getDate();
+
+                for (let i = startIdx; i <= endIdx; i++) {
+                    if (!mappedApprovals[i]) mappedApprovals[i] = [];
+                    mappedApprovals[i].push(doc);
+                }
+            });
+            setApprovalData(mappedApprovals);
+
         } catch (err) {
             console.error('Failed to fetch attendance:', err);
             setError('근태 데이터를 불러오는데 실패했습니다.');
@@ -152,6 +173,7 @@ const AttendancePage = () => {
         // Month days
         for (let day = 1; day <= daysInMonth; day++) {
             const record = attendanceData[day];
+            const approvals = approvalData[day] || [];
             const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
             const isAnomaly = record?.attendance_status === 'LATE' || record?.attendance_status === 'EARLY_LEAVE';
 
@@ -159,34 +181,56 @@ const AttendancePage = () => {
                 <div
                     key={day}
                     onClick={() => user?.user_type === 'ADMIN' && record && handleOpenEdit(record)}
-                    className={`h-32 border-b border-r border-slate-100 p-2 transition-colors hover:bg-slate-50 relative ${isToday ? 'bg-blue-50/30' : ''} ${user?.user_type === 'ADMIN' ? 'cursor-pointer' : ''}`}
+                    className={`h-32 border-b border-r border-slate-100 p-2 transition-colors hover:bg-slate-50 relative overflow-y-auto custom-scrollbar ${isToday ? 'bg-blue-50/30' : ''} ${user?.user_type === 'ADMIN' ? 'cursor-pointer' : ''}`}
                 >
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start mb-1">
                         <span className={`text-sm font-bold ${isToday ? 'text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full' : 'text-slate-500'}`}>
                             {day}
                         </span>
                         {isAnomaly && (
-                            <span className="flex items-center text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full animate-pulse">
-                                <ExclamationTriangleIcon className="w-3 h-3 mr-0.5" />
+                            <span className="flex items-center text-[9px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full">
+                                <ExclamationTriangleIcon className="w-2.5 h-2.5 mr-0.5" />
                                 {record.attendance_status === 'LATE' ? '지각' : '조퇴'}
                             </span>
                         )}
                     </div>
 
-                    {record ? (
-                        <div className="mt-2 space-y-1.5">
-                            <div className={`p-1.5 rounded-lg border ${isAnomaly ? 'bg-red-50 border-red-100' : 'bg-white border-slate-200'} shadow-sm`}>
-                                <div className="flex flex-col">
-                                    <div className="flex items-center text-[10px] font-bold text-slate-700">
-                                        출근 {record.clock_in_time ? new Date(record.clock_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '-'} /
-                                        퇴근 {record.clock_out_time ? new Date(record.clock_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
-                                    </div>
+                    {/* Attendance Clock In/Out */}
+                    {record && (
+                        <div className="mb-1.5">
+                            <div className={`p-1 rounded border ${isAnomaly ? 'bg-red-50/50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
+                                <div className="text-[9px] font-bold text-slate-600 flex justify-between tabular-nums">
+                                    <span>IN {record.clock_in_time ? new Date(record.clock_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}</span>
+                                    <span>OUT {record.clock_out_time ? new Date(record.clock_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}</span>
                                 </div>
                             </div>
                         </div>
-                    ) : (
-                        <div className="mt-2 text-[10px] text-slate-300 italic text-center py-4">
-                            기록 없음
+                    )}
+
+                    {/* Approval Labels (Vacation, Overtime, etc.) */}
+                    <div className="space-y-1">
+                        {approvals.map((ap, idx) => {
+                            let config = { bg: 'bg-slate-100', text: 'text-slate-600', label: ap.title };
+                            if (ap.doc_type === 'VACATION') {
+                                config = { bg: 'bg-blue-100', text: 'text-blue-700', label: '휴가' };
+                            } else if (ap.doc_type === 'OVERTIME') {
+                                config = { bg: 'bg-red-100', text: 'text-red-700', label: '특근' };
+                            } else if (ap.doc_type === 'EARLY_LEAVE') {
+                                config = { bg: 'bg-amber-100', text: 'text-amber-700', label: ap.title.includes('외출') ? '외출' : '조퇴' };
+                            }
+
+                            return (
+                                <div key={idx} className={`${config.bg} ${config.text} text-[9px] font-black px-1.5 py-0.5 rounded flex items-center shadow-sm`}>
+                                    <div className="w-1 h-1 rounded-full bg-current mr-1 animate-pulse" />
+                                    {config.label}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {!record && approvals.length === 0 && (
+                        <div className="mt-2 text-[10px] text-slate-300 italic text-center opacity-50">
+                            -
                         </div>
                     )}
                 </div>
