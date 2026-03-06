@@ -718,7 +718,10 @@ const ProductsPage = ({ type }) => {
                     <button
                         type="button"
                         onClick={() => {
-                            setProductFormData({});
+                            setProductFormData({
+                                item_type: type === 'PROCESSES' ? 'PRODUCED' : type,
+                                unit: 'EA'
+                            });
                             setDetailSubTab('info');
                             setShowProductModal(true);
                         }}
@@ -1208,10 +1211,14 @@ const ProductsPage = ({ type }) => {
                                                     {partners.filter(p => {
                                                         const types = Array.isArray(p.partner_type) ? p.partner_type :
                                                             (typeof p.partner_type === 'string' ? JSON.parse(p.partner_type) : []);
-                                                        if (productFormData.item_type === 'PRODUCED') {
+
+                                                        // Get the current item type from form data or page prop
+                                                        const currentItemType = productFormData.item_type || type;
+
+                                                        if (currentItemType === 'PRODUCED') {
                                                             return types.includes('CUSTOMER');
                                                         } else {
-                                                            // 부품, 소모품은 구입처(SUPPLIER)만 표시
+                                                            // For PART or CONSUMABLE, show SUPPLIERs
                                                             return types.includes('SUPPLIER');
                                                         }
                                                     }).map(p => (
