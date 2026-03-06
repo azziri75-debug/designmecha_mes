@@ -50,7 +50,6 @@ async def calculate_and_record_mrp(
             return
         
         # 중복 제거 대신 '강제'를 위해 기존 해당 plan_id의 MRP 데이터 삭제
-        from app.models.purchasing import MaterialRequirement
         from sqlalchemy import delete
         await db.execute(delete(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id))
         print(f"[MRP] Deleted existing records for Plan {plan_id} to force refresh.")

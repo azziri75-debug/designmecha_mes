@@ -12,7 +12,7 @@ from app.models.product import Product, ProductProcess, BOM
 from app.models.basics import Partner
 from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder
 from app.models.quality import InspectionResult, QualityDefect
-from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem
+from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, MaterialRequirement
 import uuid
 from datetime import datetime, date
 import os

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
 from app.api import deps
-from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
+from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus, MaterialRequirement
 from app.models.production import ProductionPlanItem, ProductionPlan, ProductionStatus
 from app.models.inventory import StockProduction
 from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
@@ -29,8 +29,9 @@ async def get_unordered_requirements(
     """
     기록된 미발주 소요량(MRP) 리스트 조회 API
     """
-    from app.models.purchasing import MaterialRequirement
-    from app.models.production import ProductionPlan
+    """
+    기록된 미발주 소요량(MRP) 리스트 조회 API
+    """
     query = select(MaterialRequirement).where(MaterialRequirement.status == status)\
         .options(
             selectinload(MaterialRequirement.product),
@@ -382,7 +383,6 @@ async def create_purchase_order(
         
         # Update MaterialRequirement status if linked
         if item.material_requirement_id:
-            from app.models.purchasing import MaterialRequirement
             req = await db.get(MaterialRequirement, item.material_requirement_id)
             if req:
                 req.status = "ORDERED"
