@@ -13,7 +13,8 @@ from app.schemas.hr import (
     AttendanceClockInUpdate, 
     AttendanceClockOutUpdate, 
     AttendanceMonthlyResponse,
-    EmployeeTimeRecordUpdate
+    EmployeeTimeRecordUpdate,
+    EmployeeTimeRecordResponse
 )
 
 KST = timezone(timedelta(hours=9))
