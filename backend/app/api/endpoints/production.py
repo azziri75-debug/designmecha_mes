@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.api import deps
 from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus, WorkLog, WorkLogItem
 from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
-from app.models.product import Product, ProductProcess, Process
+from app.models.product import Product, ProductProcess, Process, BOM
 from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, PurchaseStatus, OutsourcingStatus
 from app.models.basics import Partner
 from app.models.inventory import StockProduction, Stock, StockProductionStatus, TransactionType
