@@ -356,82 +356,83 @@ async def create_purchase_order(
         
     order_no = f"PO-{date_str}-{new_seq:03d}"
 
-    db_order = PurchaseOrder(
-        order_no=order_no,
-        partner_id=order_in.partner_id,
-        order_id=order_in.order_id,
-        order_date=order_in.order_date,
-        delivery_date=order_in.delivery_date,
-        note=order_in.note,
-        status=PurchaseStatus.PENDING,
-        purchase_type=order_in.purchase_type or "PART"
-    )
-    db.add(db_order)
-    await db.flush()
-
-    for item in order_in.items:
-        db_item = PurchaseOrderItem(
-            purchase_order_id=db_order.id,
-            product_id=item.product_id,
-            quantity=item.quantity,
-            unit_price=item.unit_price,
-            note=item.note,
-            material_requirement_id=item.material_requirement_id,
-            consumable_purchase_wait_id=item.consumable_purchase_wait_id
+    try:
+        db_order = PurchaseOrder(
+            order_no=order_no,
+            partner_id=order_in.partner_id,
+            order_id=order_in.order_id,
+            order_date=order_in.order_date,
+            delivery_date=order_in.delivery_date,
+            note=order_in.note,
+            status=PurchaseStatus.PENDING,
+            purchase_type=order_in.purchase_type or "PART"
         )
-        db.add(db_item)
-        
-        # Update MaterialRequirement status if linked
-        if item.material_requirement_id:
-            req = await db.get(MaterialRequirement, item.material_requirement_id)
-            if req:
-                req.status = "ORDERED"
-                db.add(req)
-                
-        # Update ConsumablePurchaseWait status if linked
-        if item.consumable_purchase_wait_id:
-            wait_req = await db.get(ConsumablePurchaseWait, item.consumable_purchase_wait_id)
-            if wait_req:
-                wait_req.status = "ORDERED"
-                db.add(wait_req)
-        
-        # Update ProductionPlanItem status if linked
-        if item.production_plan_item_id:
-            from app.models.production import ProductionStatus, ProductionPlanItem
-            # Fetch the item to update status. 
-            # We can use update statement or fetch object.
-            # Since we are in a loop, update statement is efficient but we need to check if it exists?
-            # It should exist if ID is valid.
-            # Let's use direct update on the model class or fetch.
-            # Fetching is safer to ensure it exists.
+        db.add(db_order)
+        await db.flush()
+
+        for item in order_in.items:
+            db_item = PurchaseOrderItem(
+                purchase_order_id=db_order.id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                note=item.note,
+                material_requirement_id=item.material_requirement_id,
+                consumable_purchase_wait_id=item.consumable_purchase_wait_id
+            )
+            db.add(db_item)
             
-            # Use `await db.get(...)`? No, session.get is sync in some versions or async in 1.4+?
-            # async_session.get is available.
-            plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
-            if plan_item:
-                # Do not set status here, wait for ORDERED or COMPLETED status sync
-                plan_item.cost = item.unit_price * item.quantity
-                db.add(plan_item)
+        # Ensure all purchase order items are explicitly flushed to avoid autoflush issues
+        await db.flush()
+        
+        for item in order_in.items:
+            # Update MaterialRequirement status if linked
+            if item.material_requirement_id:
+                req = await db.get(MaterialRequirement, item.material_requirement_id)
+                if req:
+                    req.status = "ORDERED"
+                    db.add(req)
+                    
+            # Update ConsumablePurchaseWait status if linked
+            if item.consumable_purchase_wait_id:
+                wait_req = await db.get(ConsumablePurchaseWait, item.consumable_purchase_wait_id)
+                if wait_req:
+                    wait_req.status = "ORDERED"
+                    db.add(wait_req)
+            
+            # Update ProductionPlanItem status if linked
+            if item.production_plan_item_id:
+                from app.models.production import ProductionStatus, ProductionPlanItem
+                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+                if plan_item:
+                    plan_item.cost = item.unit_price * item.quantity
+                    db.add(plan_item)
 
-    await db.commit()
-    await db.refresh(db_order)
+        await db.commit()
+        await db.refresh(db_order)
 
-    # Re-fetch with eager load
-    query = select(PurchaseOrder).options(
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
-            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
-        ),
-        selectinload(PurchaseOrder.partner),
-        selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
-        # Load related SO/SP info
-        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
-        )
-    ).where(PurchaseOrder.id == db_order.id)
-    result = await db.execute(query)
-    return result.scalar_one()
+        # Re-fetch with eager load
+        query = select(PurchaseOrder).options(
+            selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(Product.bom_items)
+            ),
+            selectinload(PurchaseOrder.partner),
+            selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
+            # Load related SO/SP info
+            selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
+                selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            )
+        ).where(PurchaseOrder.id == db_order.id)
+        result = await db.execute(query)
+        return result.scalar_one()
+
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create purchase order: {str(e)}")
 
 @router.get("/purchase/orders", response_model=List[schemas.PurchaseOrder])
 async def read_purchase_orders(
