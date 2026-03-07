@@ -635,6 +635,13 @@ async def update_purchase_order(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+        ),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.material_requirement).options(
+            selectinload(MaterialRequirement.order).selectinload(SalesOrder.partner),
+            selectinload(MaterialRequirement.plan).options(
+                selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            )
         )
     ).where(PurchaseOrder.id == order_id)
     result = await db.execute(query)
