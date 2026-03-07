@@ -220,7 +220,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
         setShowPriceHistory(true);
         setLoadingHistory(true);
         try {
-            const res = await api.get(`/product/${productId}/price-history`);
+            const res = await api.get(`/product/${productId}/sales-history`);
             setPriceHistory(res.data);
         } catch (error) {
             console.error("Failed to fetch price history", error);
@@ -338,7 +338,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                 />
                             </div>
                             <div className="flex-1">
-                                <label className="block text-sm font-medium text-gray-400 mb-1">납기일자</label>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">납품요청일</label>
                                 <input
                                     type="date"
                                     value={formData.delivery_date}

@@ -409,7 +409,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         fullWidth
                     />
                     <TextField
-                        label="납기일자"
+                        label="납품요청일"
                         type="date"
                         value={formData.delivery_date}
                         onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}

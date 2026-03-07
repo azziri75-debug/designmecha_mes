@@ -129,6 +129,19 @@ async def startup_event():
                     if "consumable_purchase_wait_id" not in poi_cols_list:
                         await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN consumable_purchase_wait_id INTEGER"))
                         print("Startup: Added consumable_purchase_wait_id to purchase_order_items (SQLite)")
+
+                    # PurchaseOrders, OutsourcingOrders migrations
+                    po_cols = await db.execute(text("PRAGMA table_info('purchase_orders')"))
+                    po_cols_list = [row[1] for row in po_cols.fetchall()]
+                    if "actual_delivery_date" not in po_cols_list:
+                        await db.execute(text("ALTER TABLE purchase_orders ADD COLUMN actual_delivery_date DATE"))
+                        print("Startup: Added actual_delivery_date to purchase_orders (SQLite)")
+                        
+                    oo_cols = await db.execute(text("PRAGMA table_info('outsourcing_orders')"))
+                    oo_cols_list = [row[1] for row in oo_cols.fetchall()]
+                    if "actual_delivery_date" not in oo_cols_list:
+                        await db.execute(text("ALTER TABLE outsourcing_orders ADD COLUMN actual_delivery_date DATE"))
+                        print("Startup: Added actual_delivery_date to outsourcing_orders (SQLite)")
                 else:
                     # stamp_image
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
@@ -171,6 +184,17 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN consumable_purchase_wait_id INTEGER"))
                         print("Startup: Added consumable_purchase_wait_id to purchase_order_items (Postgres)")
+
+                    # PurchaseOrders, OutsourcingOrders migrations
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='purchase_orders' AND column_name='actual_delivery_date'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE purchase_orders ADD COLUMN actual_delivery_date DATE"))
+                        print("Startup: Added actual_delivery_date to purchase_orders (Postgres)")
+                        
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='outsourcing_orders' AND column_name='actual_delivery_date'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE outsourcing_orders ADD COLUMN actual_delivery_date DATE"))
+                        print("Startup: Added actual_delivery_date to outsourcing_orders (Postgres)")
                 
                 await db.commit() # Commit migration before using model
             except Exception as e:

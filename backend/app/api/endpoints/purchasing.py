@@ -601,6 +601,8 @@ async def update_purchase_order(
 
     if db_order.status == PurchaseStatus.COMPLETED:
         from app.models.production import ProductionPlanItem, ProductionStatus
+        if old_status != PurchaseStatus.COMPLETED:
+            db_order.actual_delivery_date = datetime.now().date()
         for item in db_order.items:
             if item.production_plan_item_id:
                 plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
@@ -877,6 +879,13 @@ async def update_outsourcing_order(
                     plan_item.status = ProductionStatus.IN_PROGRESS
                     db.add(plan_item)
 
+    if db_order.status == OutsourcingStatus.COMPLETED:
+        from app.models.production import ProductionPlanItem, ProductionStatus
+        if old_status != OutsourcingStatus.COMPLETED:
+            db_order.actual_delivery_date = datetime.now().date()
+        for item in db_order.items:
+            if item.production_plan_item_id:
+                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
                 if plan_item and plan_item.status != ProductionStatus.COMPLETED:
                     plan_item.status = ProductionStatus.COMPLETED
                     db.add(plan_item)

@@ -57,13 +57,13 @@ const InventoryPage = () => {
     };
 
     const filteredStocks = stocks.filter(s =>
-        s.product?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.product?.code.toLowerCase().includes(searchTerm.toLowerCase())
+        (s.product?.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+        (s.product?.code || '').toLowerCase().includes((searchTerm || '').toLowerCase())
     );
 
     const filteredProductions = productions.filter(p =>
-        p.production_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.product?.name.toLowerCase().includes(searchTerm.toLowerCase())
+        (p.production_no || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+        (p.product?.name || '').toLowerCase().includes((searchTerm || '').toLowerCase())
     );
 
     const handleEdit = (prod) => {
@@ -101,15 +101,6 @@ const InventoryPage = () => {
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={fetchData} size="sm">
                         새로고침
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        className="bg-gray-800 hover:bg-gray-700 text-white border border-gray-700"
-                        onClick={() => setShowStockInitModal(true)}
-                    >
-                        <Boxes className="w-4 h-4 mr-2" />
-                        초기 재고 등록
                     </Button>
                     <Button
                         className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -174,6 +165,7 @@ const InventoryPage = () => {
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-gray-800/50 text-gray-400 uppercase text-xs">
                                     <tr>
+                                        <th className="px-6 py-4 font-medium">구분</th>
                                         <th className="px-6 py-4 font-medium">품목명</th>
                                         <th className="px-6 py-4 font-medium">코드 / 규격</th>
                                         <th className="px-6 py-4 font-medium">보관 위치</th>
@@ -185,7 +177,12 @@ const InventoryPage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
                                     {filteredStocks.map((stock) => (
-                                        <tr key={stock.id} className="hover:bg-gray-800/30 transition-colors">
+                                        <tr key={stock.id} className="hover:bg-gray-800/30 transition-colors cursor-pointer" onDoubleClick={() => handleStockEdit(stock)}>
+                                            <td className="px-6 py-4">
+                                                <Badge variant="outline" className="bg-gray-800 text-gray-300 border-gray-700">
+                                                    {stock.product?.item_type === 'PRODUCT' ? '제품' : stock.product?.item_type === 'PART' ? '부품' : stock.product?.item_type === 'RAW_MATERIAL' ? '원자재' : stock.product?.item_type || '-'}
+                                                </Badge>
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-white font-bold">{stock.product?.name}</div>
                                             </td>
@@ -230,7 +227,7 @@ const InventoryPage = () => {
                                     ))}
                                     {filteredStocks.length === 0 && (
                                         <tr>
-                                            <td colSpan="7" className="px-6 py-10 text-center text-gray-500 italic">
+                                            <td colSpan="8" className="px-6 py-10 text-center text-gray-500 italic">
                                                 재고 내역이 없습니다.
                                             </td>
                                         </tr>
@@ -259,7 +256,7 @@ const InventoryPage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
                                     {filteredProductions.map((p) => (
-                                        <tr key={p.id} className="hover:bg-gray-800/30 transition-colors">
+                                        <tr key={p.id} className="hover:bg-gray-800/30 transition-colors cursor-pointer" onDoubleClick={() => handleEdit(p)}>
                                             <td className="px-6 py-4 font-mono text-blue-400">{p.production_no}</td>
                                             <td className="px-6 py-4">
                                                 <div className="text-white font-medium">{p.product?.name}</div>

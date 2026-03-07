@@ -452,6 +452,7 @@ async def read_orders(
     limit: int = 100,
     partner_id: Optional[int] = None,
     status: Optional[str] = None,
+    date_type: Optional[str] = "order",
     start_date: Union[date, None] = None,
     end_date: Union[date, None] = None,
     db: AsyncSession = Depends(deps.get_db)
@@ -468,11 +469,20 @@ async def read_orders(
     if status:
         query = query.where(SalesOrder.status == status)
     if start_date:
-        query = query.where(SalesOrder.order_date >= start_date)
+        if date_type == "delivery":
+            query = query.where(SalesOrder.delivery_date >= start_date)
+        else:
+            query = query.where(SalesOrder.order_date >= start_date)
     if end_date:
-        query = query.where(SalesOrder.order_date <= end_date)
+        if date_type == "delivery":
+            query = query.where(SalesOrder.delivery_date <= end_date)
+        else:
+            query = query.where(SalesOrder.order_date <= end_date)
 
-    query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit)
+    if date_type == "delivery":
+        query = query.order_by(desc(SalesOrder.delivery_date)).offset(skip).limit(limit)
+    else:
+        query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit)
     
     result = await db.execute(query)
     return result.scalars().all()

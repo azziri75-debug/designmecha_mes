@@ -130,6 +130,11 @@ async def create_product(
     db.add(new_product)
     await db.flush() # ID generation
 
+    # Auto-initialize Stock with 0 quantity
+    from app.models.inventory import Stock
+    new_stock = Stock(product_id=new_product.id, current_quantity=0, location="기본창고")
+    db.add(new_stock)
+
     # 2. Add Standard Processes (Routing)
     for pp in product.standard_processes:
         new_pp = ProductProcess(

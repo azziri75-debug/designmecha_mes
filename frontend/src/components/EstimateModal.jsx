@@ -161,7 +161,7 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
         setShowPriceHistory(true);
         setLoadingHistory(true);
         try {
-            const res = await api.get(`/product/${productId}/price-history`);
+            const res = await api.get(`/product/${productId}/sales-history`);
             setPriceHistory(res.data);
         } catch (error) {
             console.error("Failed to fetch price history", error);

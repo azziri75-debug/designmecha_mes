@@ -110,6 +110,10 @@ async def set_approval_lines(
 @router.get("/documents", response_model=List[ApprovalDocumentResponse])
 async def list_documents(
     view_mode: str = "ALL", # ALL, MY_DRAFTS, MY_WAITING, MY_COMPLETED, MY_REJECTED, WAITING_FOR_ME, ALL_PENDING, ALL_COMPLETED, ALL_REJECTED
+    doc_type: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    author_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ):
@@ -117,7 +121,18 @@ async def list_documents(
     query = select(ApprovalDocument).options(
         selectinload(ApprovalDocument.author),
         selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver)
-    ).order_by(ApprovalDocument.created_at.desc())
+    )
+
+    if doc_type:
+        query = query.where(ApprovalDocument.doc_type == doc_type)
+    if start_date:
+        query = query.where(func.date(ApprovalDocument.created_at) >= start_date)
+    if end_date:
+        query = query.where(func.date(ApprovalDocument.created_at) <= end_date)
+    if author_id:
+        query = query.where(ApprovalDocument.author_id == author_id)
+
+    query = query.order_by(ApprovalDocument.created_at.desc())
     
     # 일반 사용자의 경우 본인이 작성자이거나 결재자인 문서만 조회 가능하도록 가시성 제한
     if current_user.user_type != "ADMIN":

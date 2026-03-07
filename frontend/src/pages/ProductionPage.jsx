@@ -1131,8 +1131,14 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                         <select
                                                             value={item.status}
                                                             onChange={async (e) => {
+                                                                const newStatus = e.target.value;
+                                                                if (newStatus === 'COMPLETED' && (item.course_type === 'PURCHASE' || item.course_type === 'OUTSOURCING')) {
+                                                                    if (!window.confirm(`'${item.process_name}' 공정을 완료 처리하시겠습니까?\n이 작업과 연결된 발주/외주 발주가 함께 '처리완료' 상태로 변경될 수 있습니다.`)) {
+                                                                        return;
+                                                                    }
+                                                                }
                                                                 try {
-                                                                    await api.patch(`/production/plan-items/${item.id}`, { status: e.target.value });
+                                                                    await api.patch(`/production/plan-items/${item.id}`, { status: newStatus });
                                                                     if (onRefresh) onRefresh();
                                                                 } catch (err) {
                                                                     console.error("Status update error", err);
@@ -1145,8 +1151,8 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                 borderRadius: '4px',
                                                                 fontSize: '0.75rem',
                                                                 border: '1px solid ' + (item.status === 'COMPLETED' ? '#4caf50' : '#ccc'),
-                                                                backgroundColor: item.status === 'COMPLETED' ? '#e8f5e9' : (item.course_type !== 'INTERNAL' ? '#f5f5f5' : 'white'),
-                                                                cursor: item.course_type !== 'INTERNAL' ? 'not-allowed' : 'pointer'
+                                                                backgroundColor: item.status === 'COMPLETED' ? '#e8f5e9' : 'white',
+                                                                cursor: 'pointer'
                                                             }}
                                                         >
                                                             <option value="PLANNED">계획</option>

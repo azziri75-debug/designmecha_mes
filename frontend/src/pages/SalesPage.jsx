@@ -285,7 +285,8 @@ const SalesPage = () => {
                                         <>
                                             <ResizableTh className="px-6 py-3">수주번호</ResizableTh>
                                             <ResizableTh className="px-6 py-3">수주일자</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">납기일자</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">납품요청일</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">실 납품일</ResizableTh>
                                             <ResizableTh className="px-6 py-3">거래처</ResizableTh>
                                             <ResizableTh className="px-6 py-3">상태</ResizableTh>
                                             <ResizableTh className="px-6 py-3">총 금액</ResizableTh>
@@ -302,8 +303,9 @@ const SalesPage = () => {
                                     estimates.map((est) => (
                                         <React.Fragment key={est.id}>
                                             <tr
-                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer"
+                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer select-none"
                                                 onClick={() => toggleEstimate(est.id)}
+                                                onDoubleClick={() => handleEdit(est)}
                                             >
                                                 <td className="px-6 py-4 text-center">
                                                     {expandedEstimates.has(est.id) ? '▼' : '▶'}
@@ -406,8 +408,9 @@ const SalesPage = () => {
                                     orders.map((ord) => (
                                         <React.Fragment key={ord.id}>
                                             <tr
-                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer"
+                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer select-none"
                                                 onClick={() => toggleOrder(ord.id)}
+                                                onDoubleClick={() => handleEditOrder(ord)}
                                             >
                                                 <td className="px-6 py-4 text-center">
                                                     {expandedOrders.has(ord.id) ? '▼' : '▶'}
@@ -415,6 +418,7 @@ const SalesPage = () => {
                                                 <td className="px-6 py-4 font-mono text-xs text-gray-300">{ord.order_no}</td>
                                                 <td className="px-6 py-4">{ord.order_date}</td>
                                                 <td className="px-6 py-4 text-orange-400">{ord.delivery_date || '-'}</td>
+                                                <td className="px-6 py-4 text-emerald-400">{ord.actual_delivery_date || '-'}</td>
                                                 <td className="px-6 py-4 font-medium text-white">{ord.partner?.name}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={cn(
@@ -478,7 +482,7 @@ const SalesPage = () => {
                                             </tr>
                                             {expandedOrders.has(ord.id) && (
                                                 <tr className="bg-gray-800/50">
-                                                    <td colSpan="11" className="px-6 py-4">
+                                                    <td colSpan="12" className="px-6 py-4">
                                                         <div className="ml-8 p-4 bg-gray-900 rounded-lg border border-gray-700">
                                                             <h4 className="text-sm font-semibold mb-2 text-gray-300">수주 품목 상세</h4>
                                                             <table className="w-full text-sm text-gray-400">

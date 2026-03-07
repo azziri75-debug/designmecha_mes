@@ -1211,6 +1211,22 @@ async def update_production_plan_item(
     # --- Auto-Complete Check ---
     if "status" in update_data and update_data["status"] == ProductionStatus.COMPLETED:
         await check_and_complete_production_plan(db, item.plan_id)
+
+        # Link completed external processes to their respective orders
+        if item.course_type == "PURCHASE":
+            for pi in item.purchase_items:
+                if pi.purchase_order and pi.purchase_order.status != PurchaseStatus.COMPLETED:
+                    pi.purchase_order.status = PurchaseStatus.COMPLETED
+                    pi.purchase_order.actual_delivery_date = datetime.now().date()
+                    db.add(pi.purchase_order)
+            await db.commit()
+        elif item.course_type == "OUTSOURCING":
+            for oi in item.outsourcing_items:
+                if oi.outsourcing_order and oi.outsourcing_order.status != OutsourcingStatus.COMPLETED:
+                    oi.outsourcing_order.status = OutsourcingStatus.COMPLETED
+                    oi.outsourcing_order.actual_delivery_date = datetime.now().date()
+                    db.add(oi.outsourcing_order)
+            await db.commit()
     
     # Reload for full schema
     result = await db.execute(

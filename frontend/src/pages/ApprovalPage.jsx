@@ -38,6 +38,12 @@ const ApprovalPage = () => {
     const initialMode = searchParams.get('mode') || 'ALL';
     const [viewMode, setViewMode] = useState(initialMode); // ALL, MY_WAITING, MY_COMPLETED, MY_REJECTED, WAITING_FOR_ME
 
+    // Filter states
+    const [filterDocType, setFilterDocType] = useState('');
+    const [filterStartDate, setFilterStartDate] = useState('');
+    const [filterEndDate, setFilterEndDate] = useState('');
+    const [filterAuthorId, setFilterAuthorId] = useState('');
+
     // Modal states
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false); // New: distinguish create vs edit
@@ -60,14 +66,20 @@ const ApprovalPage = () => {
 
     useEffect(() => {
         fetchInitialData();
-    }, [activeTab, viewMode]);
+    }, [activeTab, viewMode, filterDocType, filterStartDate, filterEndDate, filterAuthorId]);
 
     const fetchInitialData = async () => {
         setLoading(true);
         try {
+            const params = { view_mode: viewMode };
+            if (filterDocType) params.doc_type = filterDocType;
+            if (filterStartDate) params.start_date = filterStartDate;
+            if (filterEndDate) params.end_date = filterEndDate;
+            if (filterAuthorId) params.author_id = filterAuthorId;
+
             const [staffRes, docRes, consRes] = await Promise.all([
                 api.get('/basics/staff/'),
-                api.get(`/approval/documents?view_mode=${viewMode}`),
+                api.get('/approval/documents', { params }),
                 api.get('/product/products/', { params: { item_type: 'CONSUMABLE' } })
             ]);
             setStaff(staffRes.data);
@@ -278,6 +290,53 @@ const ApprovalPage = () => {
                             </button>
                         ))}
                     </div>
+
+                    <Card className="p-4 flex flex-wrap gap-4 items-end">
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400">문서 종류</label>
+                            <select
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
+                                value={filterDocType}
+                                onChange={(e) => setFilterDocType(e.target.value)}
+                            >
+                                <option value="">전체</option>
+                                {Object.entries(DOC_TYPES).map(([k, v]) => (
+                                    <option key={k} value={k}>{v.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400">기안자</label>
+                            <select
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
+                                value={filterAuthorId}
+                                onChange={(e) => setFilterAuthorId(e.target.value)}
+                            >
+                                <option value="">전체 기안자</option>
+                                {staff.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400">시작일(기안일)</label>
+                            <input
+                                type="date"
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
+                                value={filterStartDate}
+                                onChange={(e) => setFilterStartDate(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400">종료일(기안일)</label>
+                            <input
+                                type="date"
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
+                                value={filterEndDate}
+                                onChange={(e) => setFilterEndDate(e.target.value)}
+                            />
+                        </div>
+                    </Card>
 
                     <Card>
                         <div className="overflow-x-auto">

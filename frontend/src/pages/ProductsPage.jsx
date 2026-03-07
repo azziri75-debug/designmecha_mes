@@ -102,7 +102,8 @@ const ProductsPage = ({ type }) => {
     // [Fix] Sync price history for expanded row
     useEffect(() => {
         if (expandedProductId && detailSubTab === 'priceHistory') {
-            fetchPriceHistory(expandedProductId);
+            const p = products.find(prod => prod.id === expandedProductId);
+            if (p) fetchPriceHistory(p);
         }
     }, [expandedProductId, detailSubTab]);
 
@@ -111,7 +112,7 @@ const ProductsPage = ({ type }) => {
         if (showProductModal && productFormData.id) {
             // When modal opens or tab changes, ensure data is synced
             if (detailSubTab === 'priceHistory') {
-                fetchPriceHistory(productFormData.id);
+                fetchPriceHistory(productFormData);
             } else if (detailSubTab === 'routing') {
                 const p = productFormData;
                 const existing = (p.standard_processes || []).map(proc => ({
@@ -546,10 +547,14 @@ const ProductsPage = ({ type }) => {
         }
     };
 
-    const fetchPriceHistory = async (productId) => {
+    const fetchPriceHistory = async (product) => {
+        if (!product) return;
         setLoadingHistory(true);
         try {
-            const res = await api.get(`/product/${productId}/price-history`);
+            const endpoint = product.item_type === 'PRODUCED'
+                ? `/product/${product.id}/sales-history`
+                : `/product/${product.id}/purchase-history`;
+            const res = await api.get(endpoint);
             setPriceHistory(res.data);
         } catch (error) {
             console.error("Failed to fetch price history", error);
@@ -771,7 +776,7 @@ const ProductsPage = ({ type }) => {
                                     <ResizableTh className="px-6 py-3">규격</ResizableTh>
                                     <ResizableTh className="px-6 py-3">재질</ResizableTh>
                                     <ResizableTh className="px-6 py-3">단위</ResizableTh>
-                                    <ResizableTh className="px-6 py-3">공정 수</ResizableTh>
+                                    {type !== 'PART' && <ResizableTh className="px-6 py-3">공정 수</ResizableTh>}
                                     <ResizableTh className="px-6 py-3">최근 단가</ResizableTh>
                                     <ResizableTh className="px-6 py-3">첨부파일</ResizableTh>
                                     <ResizableTh className="px-6 py-3">비고</ResizableTh>
@@ -831,11 +836,13 @@ const ProductsPage = ({ type }) => {
                                                 <td className="px-6 py-4">{product.specification}</td>
                                                 <td className="px-6 py-4">{product.material}</td>
                                                 <td className="px-6 py-4">{product.unit}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className="bg-gray-700 text-white px-2 py-1 rounded text-xs">
-                                                        {product.standard_processes ? product.standard_processes.length : 0} 공정
-                                                    </span>
-                                                </td>
+                                                {type !== 'PART' && (
+                                                    <td className="px-6 py-4">
+                                                        <span className="bg-gray-700 text-white px-2 py-1 rounded text-xs">
+                                                            {product.standard_processes ? product.standard_processes.length : 0} 공정
+                                                        </span>
+                                                    </td>
+                                                )}
                                                 <td className="px-6 py-4 font-medium text-blue-400">
                                                     {product.latest_price ? `₩${product.latest_price.toLocaleString()}` : '-'}
                                                 </td>
@@ -891,20 +898,22 @@ const ProductsPage = ({ type }) => {
                                                         <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
                                                             <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
                                                                 <div className="flex space-x-4">
-                                                                    <button
-                                                                        onClick={() => setDetailSubTab('routing')}
-                                                                        className={cn(
-                                                                            "pb-2 text-xs font-semibold flex items-center gap-2 transition-colors",
-                                                                            detailSubTab === 'routing' ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-500 hover:text-gray-300"
-                                                                        )}
-                                                                    >
-                                                                        <Settings className="w-3.5 h-3.5" />
-                                                                        공정 구성
-                                                                    </button>
+                                                                    {product.item_type !== 'PART' && (
+                                                                        <button
+                                                                            onClick={() => setDetailSubTab('routing')}
+                                                                            className={cn(
+                                                                                "pb-2 text-xs font-semibold flex items-center gap-2 transition-colors",
+                                                                                detailSubTab === 'routing' ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-500 hover:text-gray-300"
+                                                                            )}
+                                                                        >
+                                                                            <Settings className="w-3.5 h-3.5" />
+                                                                            공정 구성
+                                                                        </button>
+                                                                    )}
                                                                     <button
                                                                         onClick={() => {
                                                                             setDetailSubTab('priceHistory');
-                                                                            fetchPriceHistory(product.id);
+                                                                            fetchPriceHistory(product);
                                                                         }}
                                                                         className={cn(
                                                                             "pb-2 text-xs font-semibold flex items-center gap-2 transition-colors",
@@ -912,7 +921,7 @@ const ProductsPage = ({ type }) => {
                                                                         )}
                                                                     >
                                                                         <History className="w-3.5 h-3.5" />
-                                                                        견적/수주 이력
+                                                                        {product.item_type === 'PRODUCED' ? '견적/수주 이력' : '발주 이력'}
                                                                     </button>
                                                                     {product.item_type === 'PRODUCED' && (
                                                                         <button
@@ -1091,9 +1100,11 @@ const ProductsPage = ({ type }) => {
                                                                                         <td className="px-4 py-2">
                                                                                             <span className={cn(
                                                                                                 "text-[10px] px-1.5 py-0.5 rounded border",
-                                                                                                item.type === 'QUOTATION' ? "bg-amber-900/30 border-amber-800 text-amber-300" : "bg-emerald-900/30 border-emerald-800 text-emerald-300"
+                                                                                                item.type === 'QUOTATION' ? "bg-amber-900/30 border-amber-800 text-amber-300" :
+                                                                                                    item.type === 'PURCHASE' ? "bg-blue-900/30 border-blue-800 text-blue-300" :
+                                                                                                        "bg-emerald-900/30 border-emerald-800 text-emerald-300"
                                                                                             )}>
-                                                                                                {item.type === 'QUOTATION' ? '견적' : '수주'}
+                                                                                                {item.type === 'QUOTATION' ? '견적' : item.type === 'PURCHASE' ? '발주' : '수주'}
                                                                                             </span>
                                                                                         </td>
                                                                                         <td className="px-4 py-2 text-white">{item.partner_name}</td>
@@ -1181,7 +1192,7 @@ const ProductsPage = ({ type }) => {
                                                     else if (tab === 'bom') setDetailSubTab('bom');
                                                 }}
                                             >
-                                                {tab === 'info' ? '기본 정보' : tab === 'routing' ? '상세 공정' : tab === 'bom' ? '🧩 BOM' : '이력'}
+                                                {tab === 'info' ? '기본 정보' : tab === 'routing' ? '상세 공정' : tab === 'bom' ? '🧩 BOM' : (productFormData.item_type === 'PRODUCED' ? '견적/수주 이력' : '발주 이력')}
                                             </button>
                                         ))}
                                     </div>

@@ -25,6 +25,7 @@ class PurchaseOrder(Base):
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)
     order_date = Column(Date, nullable=False)
     delivery_date = Column(Date, nullable=True)
+    actual_delivery_date = Column(Date, nullable=True)
     total_amount = Column(Float, default=0.0)
     note = Column(String, nullable=True)
     attachment_file = Column(Text, nullable=True)  # JSON array of {name, url}
@@ -112,6 +113,7 @@ class OutsourcingOrder(Base):
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)
     order_date = Column(Date, nullable=False)
     delivery_date = Column(Date, nullable=True)
+    actual_delivery_date = Column(Date, nullable=True)
     total_amount = Column(Float, default=0.0)
     note = Column(String, nullable=True)
     attachment_file = Column(Text, nullable=True)  # JSON array of {name, url}

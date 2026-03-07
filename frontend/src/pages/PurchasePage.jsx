@@ -485,7 +485,7 @@ const PurchasePage = ({ type }) => {
                                     <TableCell>공급사</TableCell>
                                     <TableCell>규격</TableCell>
                                     <TableCell>품목 수</TableCell>
-                                    <TableCell>납기일자</TableCell>
+                                    <TableCell>납품예정일</TableCell>
                                     <TableCell>상태</TableCell>
                                     <TableCell>관리</TableCell>
                                 </TableRow>
