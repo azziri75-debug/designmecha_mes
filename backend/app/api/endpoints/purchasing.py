@@ -80,7 +80,10 @@ async def get_consumable_waits(
     query = select(ConsumablePurchaseWait)\
         .where(ConsumablePurchaseWait.status == status)\
         .options(
-            selectinload(ConsumablePurchaseWait.product),
+            selectinload(ConsumablePurchaseWait.product).options(
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(Product.bom_items)
+            ),
             selectinload(ConsumablePurchaseWait.approval_document)
         )
     

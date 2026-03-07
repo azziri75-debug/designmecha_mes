@@ -47,6 +47,7 @@ class PurchaseOrderBase(BaseModel):
     order_id: Optional[int] = None
     order_date: Optional[date] = None
     delivery_date: Optional[date] = None
+    actual_delivery_date: Optional[date] = None
     note: Optional[str] = None
     status: Optional[PurchaseStatus] = PurchaseStatus.PENDING
     purchase_type: Optional[str] = "PART" # PART, CONSUMABLE
@@ -119,6 +120,7 @@ class OutsourcingOrderBase(BaseModel):
     order_id: Optional[int] = None
     order_date: Optional[date] = None
     delivery_date: Optional[date] = None
+    actual_delivery_date: Optional[date] = None
     note: Optional[str] = None
     status: Optional[OutsourcingStatus] = OutsourcingStatus.PENDING
 
