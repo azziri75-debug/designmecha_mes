@@ -51,15 +51,18 @@ async def get_unordered_requirements(
         
         # Add linkage info for UI
         req.linkage_info = "-"
+        req.sales_order_number = None
         if req.plan:
             if req.plan.order:
                 req.linkage_info = f"생산계획({req.plan.order.order_no})"
+                req.sales_order_number = req.plan.order.order_no
             elif req.plan.stock_production:
                 req.linkage_info = f"생산계획({req.plan.stock_production.production_no})"
             else:
                 req.linkage_info = f"생산계획(ID:{req.plan.id})"
         elif req.order:
             req.linkage_info = f"수주({req.order.order_no})"
+            req.sales_order_number = req.order.order_no
             
     return requirements
 
@@ -357,16 +360,23 @@ async def create_purchase_order(
     order_no = f"PO-{date_str}-{new_seq:03d}"
 
     try:
-        db_order = PurchaseOrder(
-            order_no=order_no,
-            partner_id=order_in.partner_id,
-            order_id=order_in.order_id,
-            order_date=order_in.order_date,
-            delivery_date=order_in.delivery_date,
-            note=order_in.note,
-            status=PurchaseStatus.PENDING,
-            purchase_type=order_in.purchase_type or "PART"
-        )
+        # Get raw data and exclude unset to prevent default 0 passing instead of Null when not provided
+        if hasattr(order_in, "model_dump"):
+            order_data = order_in.model_dump(exclude_unset=True, exclude={"items"})
+        else:
+            order_data = order_in.dict(exclude_unset=True, exclude={"items"})
+            
+        # Ensure only columns that exist in the DB model are included
+        valid_keys = {c.name for c in PurchaseOrder.__table__.columns}
+        filtered_data = {k: v for k, v in order_data.items() if k in valid_keys}
+        
+        # Override guaranteed fields
+        filtered_data["order_no"] = order_no
+        filtered_data["status"] = PurchaseStatus.PENDING
+        if not filtered_data.get("purchase_type"):
+            filtered_data["purchase_type"] = "PART"
+
+        db_order = PurchaseOrder(**filtered_data)
         db.add(db_order)
         await db.flush()
 
@@ -431,8 +441,11 @@ async def create_purchase_order(
     except Exception as e:
         await db.rollback()
         import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to create purchase order: {str(e)}")
+        import logging
+        logger = logging.getLogger(__name__)
+        error_msg = traceback.format_exc()
+        logger.error(f"Failed to create purchase order: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"발주 등록 중 오류 발생 (DB 제약조건 혹은 스키마 충돌): {str(e)}")
 
 @router.get("/purchase/orders", response_model=List[schemas.PurchaseOrder])
 async def read_purchase_orders(

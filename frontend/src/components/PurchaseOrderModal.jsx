@@ -118,7 +118,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
             // Extract SO or SP code for display
-            const displayCode = initialItems[0]?.plan?.order?.order_no ||
+            const displayCode = initialItems[0]?.sales_order_number ||
+                initialItems[0]?.plan?.order?.order_no ||
                 initialItems[0]?.plan?.stock_production?.production_no || '';
 
             setFormData({
@@ -375,10 +376,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     </TextField>
                     {(initialItems && initialItems.length > 0) ? (
                         <TextField
-                            label="연결 수주/재고번호"
-                            value={formData.display_order_no || '재고용'}
+                            label="연결 데이터 소스"
+                            value={formData.display_order_no ? `연결 수주번호: [${formData.display_order_no}]` : '연결 수주번호: [없음/재고용]'}
                             fullWidth
                             disabled
+                            InputProps={{
+                                style: { fontWeight: 'bold', color: '#1976d2' }
+                            }}
                         />
                     ) : (
                         <TextField

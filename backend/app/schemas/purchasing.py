@@ -215,6 +215,7 @@ class MaterialRequirementResponse(MaterialRequirementBase):
     product_name: Optional[str] = None
     specification: Optional[str] = None
     item_type: Optional[str] = None
+    sales_order_number: Optional[str] = None
 
     class Config:
         from_attributes = True
