@@ -334,12 +334,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 partner_id: formData.partner_id || null,
                 order_id: formData.order_id || null,
                 items: formData.items.map(item => ({
+                    id: item.id || undefined,
                     product_id: item.product_id,
                     quantity: parseInt(item.quantity) || 0,
                     unit_price: parseFloat(item.unit_price) || 0,
                     note: item.note || '',
                     production_plan_item_id: item.production_plan_item_id || null,
-                    material_requirement_id: item.material_requirement_id || null
+                    material_requirement_id: item.material_requirement_id || null,
+                    consumable_purchase_wait_id: item.consumable_purchase_wait_id || null
                 }))
             };
 

@@ -571,7 +571,9 @@ async def update_purchase_order(
                     quantity=item_in.quantity,
                     unit_price=item_in.unit_price,
                     note=item_in.note,
-                    production_plan_item_id=item_in.production_plan_item_id
+                    production_plan_item_id=item_in.production_plan_item_id,
+                    material_requirement_id=item_in.material_requirement_id,
+                    consumable_purchase_wait_id=getattr(item_in, 'consumable_purchase_wait_id', None)
                  )
                  db.add(db_item)
          
@@ -670,6 +672,18 @@ async def delete_purchase_order(
                 if plan_item:
                     plan_item.status = ProductionStatus.PLANNED
                     db.add(plan_item)
+            if getattr(item, 'material_requirement_id', None):
+                from app.models.purchasing import MaterialRequirement
+                mrp_req = await db.get(MaterialRequirement, item.material_requirement_id)
+                if mrp_req:
+                    mrp_req.status = "PENDING"
+                    db.add(mrp_req)
+            if getattr(item, 'consumable_purchase_wait_id', None):
+                from app.models.purchasing import ConsumablePurchaseWait
+                wait_req = await db.get(ConsumablePurchaseWait, item.consumable_purchase_wait_id)
+                if wait_req:
+                    wait_req.status = "PENDING"
+                    db.add(wait_req)
         
     await db.delete(db_order)
     await db.commit()
