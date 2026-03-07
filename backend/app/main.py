@@ -122,6 +122,13 @@ async def startup_event():
                     if "join_date" not in cols:
                         await db.execute(text("ALTER TABLE staff ADD COLUMN join_date DATE"))
                         print("Startup: Added join_date to staff (SQLite)")
+                        
+                    # PurchaseOrderItem migrations
+                    poi_cols = await db.execute(text("PRAGMA table_info('purchase_order_items')"))
+                    poi_cols_list = [row[1] for row in poi_cols.fetchall()]
+                    if "consumable_purchase_wait_id" not in poi_cols_list:
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN consumable_purchase_wait_id INTEGER"))
+                        print("Startup: Added consumable_purchase_wait_id to purchase_order_items (SQLite)")
                 else:
                     # stamp_image
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
@@ -158,6 +165,12 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE staff ADD COLUMN join_date DATE"))
                         print("Startup: Added join_date to staff (Postgres)")
+                        
+                    # PurchaseOrderItem migrations
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='purchase_order_items' AND column_name='consumable_purchase_wait_id'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN consumable_purchase_wait_id INTEGER"))
+                        print("Startup: Added consumable_purchase_wait_id to purchase_order_items (Postgres)")
                 
                 await db.commit() # Commit migration before using model
             except Exception as e:

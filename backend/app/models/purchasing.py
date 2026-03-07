@@ -74,6 +74,7 @@ class PurchaseOrderItem(Base):
     
     production_plan_item_id = Column(Integer, ForeignKey("production_plan_items.id"), nullable=True)
     material_requirement_id = Column(Integer, ForeignKey("material_requirements.id"), nullable=True)
+    consumable_purchase_wait_id = Column(Integer, ForeignKey("consumable_purchase_waits.id"), nullable=True)
 
     # Relationships
     purchase_order = relationship("PurchaseOrder", back_populates="items")

@@ -431,7 +431,7 @@ const PurchasePage = ({ type }) => {
                                     <TableCell>규격</TableCell>
                                     <TableCell>품목명</TableCell>
                                     <TableCell>구분</TableCell>
-                                    <TableCell>관련 근거</TableCell>
+                                    <TableCell>수주 번호</TableCell>
                                     <TableCell align="right">총 소요량</TableCell>
                                     <TableCell align="right">현재고</TableCell>
                                     <TableCell align="right">발주잔량</TableCell>
@@ -452,7 +452,6 @@ const PurchasePage = ({ type }) => {
                                             <TableCell>
                                                 <Chip label={item.item_type} size="small" variant="outlined" />
                                             </TableCell>
-                                            <TableCell>{item.linkage_info || "-"}</TableCell>
                                             <TableCell>{item.sales_order_number || "-"}</TableCell>
                                             <TableCell align="right">{item.required_quantity?.toLocaleString() || '0'}</TableCell>
                                             <TableCell align="right">{item.current_stock?.toLocaleString() || '0'}</TableCell>
