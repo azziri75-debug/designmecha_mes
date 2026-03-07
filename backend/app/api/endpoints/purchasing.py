@@ -433,6 +433,13 @@ async def create_purchase_order(
             selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            ),
+            selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.material_requirement).options(
+                selectinload(MaterialRequirement.order).selectinload(SalesOrder.partner),
+                selectinload(MaterialRequirement.plan).options(
+                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                )
             )
         ).where(PurchaseOrder.id == db_order.id)
         result = await db.execute(query)
@@ -472,6 +479,13 @@ async def read_purchase_orders(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
             selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+        ),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.material_requirement).options(
+            selectinload(MaterialRequirement.order).selectinload(SalesOrder.partner),
+            selectinload(MaterialRequirement.plan).options(
+                selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            )
         )
     )
     if status:

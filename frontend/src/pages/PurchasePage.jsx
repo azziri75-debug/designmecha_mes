@@ -509,16 +509,14 @@ const PurchasePage = ({ type }) => {
                                                 <TableCell>
                                                     <Box>
                                                         <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-                                                            {order.order ? (
-                                                                <span style={{ color: '#1976d2' }}>[수주] {order.order.order_no}</span>
-                                                            ) : order.related_sales_order_info ? (
+                                                            {order.sales_order_number ? (
                                                                 <>
-                                                                    {order.related_sales_order_info.includes('SP') ? (
+                                                                    {order.sales_order_number.includes('SP') ? (
                                                                         <span style={{ color: '#2e7d32' }}>[재고] </span>
                                                                     ) : (
                                                                         <span style={{ color: '#1976d2' }}>[수주] </span>
                                                                     )}
-                                                                    {order.related_sales_order_info}
+                                                                    {order.sales_order_number}
                                                                 </>
                                                             ) : (
                                                                 <span style={{ color: '#757575' }}>재고용</span>

@@ -76,6 +76,7 @@ class PurchaseOrder(PurchaseOrderBase):
     attachment_file: Optional[Any] = None
     order: Optional[Any] = None
     related_sales_order_info: Optional[str] = None
+    sales_order_number: Optional[str] = None
     related_customer_names: Optional[str] = None
 
     class Config:

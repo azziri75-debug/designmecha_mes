@@ -47,7 +47,20 @@ class PurchaseOrder(Base):
                     codes.add(plan.order.order_no)
                 elif plan.stock_production:
                     codes.add(plan.stock_production.production_no)
+            if getattr(item, 'material_requirement', None):
+                req = item.material_requirement
+                if req.order:
+                    codes.add(req.order.order_no)
+                elif req.plan:
+                    if req.plan.order:
+                        codes.add(req.plan.order.order_no)
+                    elif req.plan.stock_production:
+                        codes.add(req.plan.stock_production.production_no)
         return ", ".join(sorted(codes)) if codes else None
+
+    @property
+    def sales_order_number(self):
+        return self.related_sales_order_info
 
     @property
     def related_customer_names(self):
@@ -59,6 +72,15 @@ class PurchaseOrder(Base):
                     names.add(plan.order.partner.name)
                 elif plan.stock_production:
                     names.add("사내 재고용")
+            if getattr(item, 'material_requirement', None):
+                req = item.material_requirement
+                if req.order and req.order.partner:
+                    names.add(req.order.partner.name)
+                elif req.plan:
+                    if req.plan.order and req.plan.order.partner:
+                        names.add(req.plan.order.partner.name)
+                    elif req.plan.stock_production:
+                        names.add("사내 재고용")
         return ", ".join(sorted(names)) if names else None
 
 class PurchaseOrderItem(Base):
@@ -80,6 +102,7 @@ class PurchaseOrderItem(Base):
     purchase_order = relationship("PurchaseOrder", back_populates="items")
     product = relationship("Product")
     production_plan_item = relationship("ProductionPlanItem", back_populates="purchase_items") 
+    material_requirement = relationship("MaterialRequirement")
 
 class OutsourcingOrder(Base):
     __tablename__ = "outsourcing_orders"
