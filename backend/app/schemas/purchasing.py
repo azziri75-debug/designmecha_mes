@@ -75,7 +75,6 @@ class PurchaseOrder(PurchaseOrderBase):
     partner: Optional[Partner] = None
     items: List[PurchaseOrderItem] = []
     attachment_file: Optional[Any] = None
-    order: Optional[Any] = None
     related_sales_order_info: Optional[str] = None
     sales_order_number: Optional[str] = None
     related_customer_names: Optional[str] = None
@@ -145,7 +144,6 @@ class OutsourcingOrder(OutsourcingOrderBase):
     partner: Optional[Partner] = None
     items: List[OutsourcingOrderItem] = []
     attachment_file: Optional[Any] = None
-    order: Optional[Any] = None # Include sales order details if needed
     related_sales_order_info: Optional[str] = None
     related_customer_names: Optional[str] = None
 
