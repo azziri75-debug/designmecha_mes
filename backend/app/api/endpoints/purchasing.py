@@ -62,7 +62,7 @@ async def get_unordered_requirements(
                 req.linkage_info = f"생산계획(ID:{req.plan.id})"
         elif req.order:
             req.linkage_info = f"수주({req.order.order_no})"
-            req.sales_order_number = req.order.order_no
+            req.sales_order_number = str(req.order.order_no)
             
     return requirements
 
@@ -502,6 +502,10 @@ async def read_purchase_orders(
     
     # Calculate related info and process names
     for po in pos:
+        # Manually extract string to avoid Pydantic serialization of SalesOrder object
+        po.sales_order_number = str(po.related_so_info_attr) if po.related_so_info_attr else None
+        po.related_customer_names = str(po.related_cust_names_attr) if po.related_cust_names_attr else None
+        
         for item in po.items:
             if item.production_plan_item:
                 plan_item = item.production_plan_item
@@ -809,6 +813,10 @@ async def read_outsourcing_orders(
     oos = result.scalars().all()
     
     for oo in oos:
+        # Manually extract string to avoid Pydantic serialization of SalesOrder object
+        oo.related_sales_order_info = str(oo.related_so_info_attr) if oo.related_so_info_attr else None
+        oo.related_customer_names = str(oo.related_cust_names_attr) if oo.related_cust_names_attr else None
+        
         for item in oo.items:
             if item.production_plan_item:
                 plan_item = item.production_plan_item

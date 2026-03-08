@@ -49,19 +49,24 @@ async def calculate_and_record_mrp(
             print(f"[MRP] Plan {plan_id} not found.")
             return
         
-        # 중복 제거 대신 '강제'를 위해 기존 해당 plan_id의 MRP 데이터 삭제
-        from sqlalchemy import delete
-        await db.execute(delete(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id))
-        print(f"[MRP] Deleted existing records for Plan {plan_id} to force refresh.")
+        # 1.1 Clear existing records strictly for idempotency
+        # Fetch them first to delete via session to avoid any sync issues
+        existing_stmt = select(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id)
+        existing_res = await db.execute(existing_stmt)
+        for mr in existing_res.scalars().all():
+            await db.delete(mr)
+        
+        await db.flush() # Ensure deletions are processed
+        print(f"[MRP] Cleared existing records for Plan {plan_id} for refresh.")
 
-        # 생산 계획 항목들로부터 품목 및 수량 추출 (고유 품목별 최대 수량 추출)
+        # 2. Collect targets from plan items
+        # Aggregate quantities by product_id to handle potential duplicates in the plan itself
         product_qtys = {}
         for pi in plan.items:
-            product_qtys[pi.product_id] = max(product_qtys.get(pi.product_id, 0), pi.quantity)
+            product_qtys[pi.product_id] = product_qtys.get(pi.product_id, 0) + pi.quantity
         
         for pid, qty in product_qtys.items():
             items.append({"product_id": pid, "quantity": qty})
-            print(f"[MRP] Target Plan Item: ProductID={pid}, Qty={qty}")
         
         if plan.order_id:
             ref_order_id = plan.order_id
@@ -75,12 +80,12 @@ async def calculate_and_record_mrp(
         if not order:
             return
             
-        # 중복 체크 (SalesOrder용)
-        dup_stmt = select(MaterialRequirement).where(MaterialRequirement.order_id == order_id).limit(1)
-        dup_res = await db.execute(dup_stmt)
-        if dup_res.scalar_one_or_none():
-            print(f"MRP already recorded for SalesOrder {order_id}. Skipping.")
-            return
+        # Clear existing records for idempotency (SalesOrder context)
+        existing_stmt = select(MaterialRequirement).where(MaterialRequirement.order_id == order_id, MaterialRequirement.plan_id == None)
+        existing_res = await db.execute(existing_stmt)
+        for mr in existing_res.scalars().all():
+            await db.delete(mr)
+        await db.flush()
 
         for oi in order.items:
             items.append({"product_id": oi.product_id, "quantity": oi.quantity})
@@ -88,26 +93,27 @@ async def calculate_and_record_mrp(
     if not items:
         return
 
-    # 2. BOM 전개 및 하위 부품 필요량 합산
+    # 3. BOM Explosion & Aggregation
+    # Shared requirements dict across all top-level items
     requirements = {} # {product_id: total_quantity}
 
     for item in items:
         await explode_bom(db, item["product_id"], item["quantity"], requirements)
 
-    # 3. 각 부품별 재고 및 발주 잔량 확인 후 부족분 기록
+    # 4. Record Requirements
     for product_id, total_required in requirements.items():
-        # 생산되는 품목(PRODUCED)은 발주 대상이 아니므로 제외
+        # Exclude produced items (only parts/consumables are purchasing targets)
         product = await db.get(Product, product_id)
         if not product or product.item_type == "PRODUCED":
             continue
 
-        # 현재고 조회
+        # Check stock
         stock_stmt = select(Stock).where(Stock.product_id == product_id)
         stock_res = await db.execute(stock_stmt)
         stock = stock_res.scalar_one_or_none()
         current_stock = stock.current_quantity if stock else 0
 
-        # 발주 잔량(입고 대기 수량) 조회
+        # Check open POs
         po_stmt = (
             select(func.sum(PurchaseOrderItem.quantity - PurchaseOrderItem.received_quantity))
             .join(PurchaseOrder)
@@ -119,16 +125,11 @@ async def calculate_and_record_mrp(
         po_res = await db.execute(po_stmt)
         open_purchase_qty = po_res.scalar() or 0
 
-        # 부족분 계산: 총 소요량 - 현재고 (결과가 0보다 작으면 0으로 처리)
         shortage = max(0, total_required - current_stock)
 
-        # MaterialRequirement 항상 기록 (요구사항대로 백엔드에 0인 항목도 보일지 여부는 기존 if shortage > 0 조건 유지하되, 
-        # 사용자가 "0보다 작으면 0으로 처리"하라고 명시했으므로 모든 소요량을 명확히 저장해둘 수 있음.
-        # 기존 로직과 충돌 방지를 위해 shortage가 0 이상(필요한 것)일 때 기록을 남기되, 0이라도 사용자가 원하면 기록.
-        # 단, 부족분이 없는 항목은 불필요하게 DB를 채울 수 있으므로 기본적으로 0보다 큰 것만 기록하거나,
-        # 혹은 > 0 조건 유지. (질문 의도: 값이 음수일 수 없도록 방어 및 계산식 명확화)
-        if shortage > 0:
-            # MaterialRequirement 기록
+        # Only record if there's a requirement (total_required > 0)
+        # Even if shortage is 0, we might want to see the requirement in the list for transparency
+        if total_required > 0:
             req_record = MaterialRequirement(
                 product_id=product_id,
                 order_id=ref_order_id,
@@ -140,7 +141,6 @@ async def calculate_and_record_mrp(
                 status="PENDING"
             )
             db.add(req_record)
-            print(f"[MRP] Created Requirement for ProductID={product_id}, Shortage={shortage}")
     
-    await db.flush()
     await db.commit()
+    print(f"[MRP] Completed MRP calculation.")

@@ -928,49 +928,8 @@ async def update_production_plan_status(
     # 0. CONFIRMED Trigger: Calculate MRP directly inline
     if status == ProductionStatus.CONFIRMED and old_status != ProductionStatus.CONFIRMED:
         print(f"MRP Generation Started for Plan {plan_id}")
-        from app.models.product import BOM
-        from app.models.inventory import Stock
-
-        # 기존 해당 계획과 관련된 MRP 데이터 삭제 (중복 방지)
-        delete_stmt = select(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id)
-        existing_mrp_res = await db.execute(delete_stmt)
-        for mr in existing_mrp_res.scalars().all():
-            await db.delete(mr)
-
-        for p_item in plan.items:
-            # 재귀적으로 BOM 탐색하여 부족분 계산
-            async def resolve_bom(product_id: int, base_qty: float):
-                stmt_bom = select(BOM).where(BOM.parent_product_id == product_id)
-                res_bom = await db.execute(stmt_bom)
-                boms = res_bom.scalars().all()
-
-                for bom in boms:
-                    required_qty = base_qty * bom.required_quantity
-
-                    # 현재 재고 확인
-                    stock_stmt = select(Stock).where(Stock.product_id == bom.child_product_id)
-                    stock_res = await db.execute(stock_stmt)
-                    stock = stock_res.scalar_one_or_none()
-                    current_stock = stock.quantity if stock else 0
-
-                    shortage = max(0, required_qty - current_stock)
-
-                    if shortage > 0:
-                        mr = MaterialRequirement(
-                            product_id=bom.child_product_id,
-                            plan_id=plan_id,
-                            order_id=plan.order_id,
-                            required_quantity=required_qty,
-                            current_stock=current_stock
-                        )
-                        db.add(mr)
-                    
-                    # 하위 BOM 추가 전개
-                    await resolve_bom(bom.child_product_id, required_qty)
-
-            await resolve_bom(p_item.product_id, p_item.quantity)
-
-        await db.commit()
+        from app.api.utils.mrp import calculate_and_record_mrp
+        await calculate_and_record_mrp(db, plan_id=plan_id)
         print(f"MRP Generation Completed for Plan {plan_id}")
     
     # Auto-Complete Logic

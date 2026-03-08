@@ -39,7 +39,7 @@ class PurchaseOrder(Base):
     items = relationship("PurchaseOrderItem", back_populates="purchase_order", cascade="all, delete-orphan")
 
     @property
-    def related_sales_order_info(self):
+    def related_so_info_attr(self):
         codes = set()
         for item in self.items:
             if item.production_plan_item and item.production_plan_item.plan:
@@ -60,11 +60,11 @@ class PurchaseOrder(Base):
         return ", ".join(sorted(codes)) if codes else None
 
     @property
-    def sales_order_number(self):
-        return self.related_sales_order_info
+    def so_no_attr(self):
+        return self.related_so_info_attr
 
     @property
-    def related_customer_names(self):
+    def related_cust_names_attr(self):
         names = set()
         for item in self.items:
             if item.production_plan_item and item.production_plan_item.plan:
@@ -126,7 +126,7 @@ class OutsourcingOrder(Base):
     items = relationship("OutsourcingOrderItem", back_populates="outsourcing_order", cascade="all, delete-orphan")
 
     @property
-    def related_sales_order_info(self):
+    def related_so_info_attr(self):
         codes = set()
         for item in self.items:
             if item.production_plan_item and item.production_plan_item.plan:
@@ -138,7 +138,7 @@ class OutsourcingOrder(Base):
         return ", ".join(sorted(codes)) if codes else None
 
     @property
-    def related_customer_names(self):
+    def related_cust_names_attr(self):
         names = set()
         for item in self.items:
             if item.production_plan_item and item.production_plan_item.plan:
