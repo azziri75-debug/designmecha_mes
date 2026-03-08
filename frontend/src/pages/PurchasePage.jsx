@@ -208,6 +208,39 @@ const PurchasePage = ({ type }) => {
         setModalOpen(true);
     };
 
+    const handleDeleteMrpItem = async (mrpId) => {
+        if (!window.confirm("이 소요량 항목을 삭제하시겠습니까?")) return;
+        try {
+            await api.delete(`/purchasing/mrp/requirements/${mrpId}`);
+            alert("삭제되었습니다.");
+            fetchMrpItems();
+        } catch (error) {
+            console.error("Delete failed", error);
+            alert("삭제 실패: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const handleDeleteSelectedMrp = async () => {
+        if (selectedMrpItems.length === 0) return;
+        if (!window.confirm(`선택한 ${selectedMrpItems.length}개의 항목을 삭제하시겠습니까??`)) return;
+
+        try {
+            for (const productId of selectedMrpItems) {
+                const item = mrpItems.find(i => i.product_id === productId);
+                if (item && item.id) {
+                    await api.delete(`/purchasing/mrp/requirements/${item.id}`);
+                }
+            }
+            alert("삭제되었습니다.");
+            fetchMrpItems();
+            setSelectedMrpItems([]);
+        } catch (error) {
+            console.error("Batch delete failed", error);
+            alert("일부 항목 삭제 실패");
+            fetchMrpItems();
+        }
+    };
+
     const handleSuccess = () => {
         if (type === 'CONSUMABLE') {
             if (tabValue === 0) fetchPendingItems();
@@ -407,7 +440,16 @@ const PurchasePage = ({ type }) => {
 
             {tabValue === 1 && (
                 <>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 1 }}>
+                        <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={handleDeleteSelectedMrp}
+                            disabled={selectedMrpItems.length === 0}
+                        >
+                            선택 품목 삭제
+                        </Button>
                         <Button
                             variant="contained"
                             startIcon={<AddIcon />}
@@ -436,6 +478,7 @@ const PurchasePage = ({ type }) => {
                                     <TableCell align="right">현재고</TableCell>
                                     <TableCell align="right">발주잔량</TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>최종 발주필요</TableCell>
+                                    <TableCell align="center">관리</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -457,6 +500,13 @@ const PurchasePage = ({ type }) => {
                                             <TableCell align="right">{item.current_stock?.toLocaleString() || '0'}</TableCell>
                                             <TableCell align="right">{item.open_purchase_qty?.toLocaleString() || '0'}</TableCell>
                                             <TableCell align="right" sx={{ fontWeight: 'bold', color: 'error.main' }}>{item.shortage_quantity?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+                                                <Tooltip title="삭제">
+                                                    <IconButton size="small" color="error" onClick={() => handleDeleteMrpItem(item.id)}>
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </TableCell>
                                         </TableRow>
                                     ))
                                 )}

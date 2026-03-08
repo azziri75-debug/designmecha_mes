@@ -819,76 +819,134 @@ async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
 @router.delete("/plans/{plan_id}", status_code=200)
 async def delete_production_plan(
     plan_id: int,
-    delete_related_orders: bool = False,
     db: AsyncSession = Depends(deps.get_db),
 ):
     """
-    Delete a production plan.
-    If delete_related_orders=True, also delete linked PO/OO.
-    Otherwise, unlink them.
+    Delete a production plan and related data (MRP, linked Purchase/Outsourcing Items).
+    Blocks if any linked material is already COMPLETED.
     """
+    # 1. Fetch Plan with all relevant info for safeguard check
     result = await db.execute(select(ProductionPlan).where(ProductionPlan.id == plan_id))
     plan = result.scalar_one_or_none()
     
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
-    
-    # 0. Manual Cleanup for linked records that might have FK constraints
+
+    from sqlalchemy.orm import joinedload
     from app.models.quality import QualityDefect
     from app.models.production import WorkOrder
+
+    # 2. Collect all linked records to check status and handle deletion
+    # MRPs linked to the plan
+    mrp_stmt = select(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id)
+    mrp_res = await db.execute(mrp_stmt)
+    mrps = mrp_res.scalars().all()
+    mrp_ids = [m.id for m in mrps]
     
-    # Delete Quality Defects linked to this plan
+    # Plan Items
+    pi_stmt = select(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
+    pi_res = await db.execute(pi_stmt)
+    plan_items = pi_res.scalars().all()
+    plan_item_ids = [pi.id for pi in plan_items]
+
+    all_po_items = []
+    all_oo_items = []
+
+    # Gather Purchase Items via MRP
+    if mrp_ids:
+        po_via_mrp = await db.execute(
+            select(PurchaseOrderItem).options(joinedload(PurchaseOrderItem.purchase_order))
+            .where(PurchaseOrderItem.material_requirement_id.in_(mrp_ids))
+        )
+        all_po_items.extend(po_via_mrp.scalars().all())
+
+    # Gather Purchase/Outsourcing Items via Plan Items
+    if plan_item_ids:
+        po_via_pi = await db.execute(
+            select(PurchaseOrderItem).options(joinedload(PurchaseOrderItem.purchase_order))
+            .where(PurchaseOrderItem.production_plan_item_id.in_(plan_item_ids))
+        )
+        all_po_items.extend(po_via_pi.scalars().all())
+        
+        oo_via_pi = await db.execute(
+            select(OutsourcingOrderItem).options(joinedload(OutsourcingOrderItem.outsourcing_order))
+            .where(OutsourcingOrderItem.production_plan_item_id.in_(plan_item_ids))
+        )
+        all_oo_items.extend(oo_via_pi.scalars().all())
+
+    # 🚨 ERP Safeguard: Check for COMPLETED status
+    for p_item in all_po_items:
+        if p_item.purchase_order and p_item.purchase_order.status == PurchaseStatus.COMPLETED:
+            raise HTTPException(
+                status_code=400, 
+                detail="이미 입고 완료된 자재가 있어 생산계획을 삭제할 수 없습니다. 입고를 먼저 취소해 주세요."
+            )
+    
+    for o_item in all_oo_items:
+        if o_item.outsourcing_order and o_item.outsourcing_order.status == OutsourcingStatus.COMPLETED:
+            raise HTTPException(
+                status_code=400, 
+                detail="이미 입고 완료된 외주 건이 있어 생산계획을 삭제할 수 없습니다. 입고를 먼저 취소해 주세요."
+            )
+
+    # 3. Cascading Deletion
+    affected_po_ids = set(p.purchase_order_id for p in all_po_items if p.purchase_order_id)
+    affected_oo_ids = set(o.outsourcing_order_id for o in all_oo_items if o.outsourcing_order_id)
+
+    # Delete Purchase/Outsourcing Items
+    # Note: Use a set of unique item IDs to avoid double-deletion if linked to BOTH plan and MRP
+    unique_po_ids = set()
+    for p_item in all_po_items:
+        if p_item.id not in unique_po_ids:
+            await db.delete(p_item)
+            unique_po_ids.add(p_item.id)
+            
+    unique_oo_ids = set()
+    for o_item in all_oo_items:
+        if o_item.id not in unique_oo_ids:
+            await db.delete(o_item)
+            unique_oo_ids.add(o_item.id)
+    
+    await db.flush()
+
+    # Delete empty Order headers (headers with no items left)
+    from sqlalchemy import func
+    for po_id in affected_po_ids:
+        rem_res = await db.execute(select(func.count(PurchaseOrderItem.id)).where(PurchaseOrderItem.purchase_order_id == po_id))
+        if rem_res.scalar() == 0:
+            po = await db.get(PurchaseOrder, po_id)
+            if po: await db.delete(po)
+
+    for oo_id in affected_oo_ids:
+        rem_res = await db.execute(select(func.count(OutsourcingOrderItem.id)).where(OutsourcingOrderItem.outsourcing_order_id == oo_id))
+        if rem_res.scalar() == 0:
+            oo = await db.get(OutsourcingOrder, oo_id)
+            if oo: await db.delete(oo)
+
+    # Delete MRPs
+    for m in mrps:
+        await db.delete(m)
+
+    # 4. Cleanup other plan-linked entities
+    # Delete Quality Defects
     qd_stmt = select(QualityDefect).where(QualityDefect.plan_id == plan_id)
-    qd_result = await db.execute(qd_stmt)
-    for qd in qd_result.scalars().all():
+    qd_res = await db.execute(qd_stmt)
+    for qd in qd_res.scalars().all():
         await db.delete(qd)
         
-    # Delete Work Orders linked to this plan's items
-    wo_stmt = select(WorkOrder).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
-    wo_result = await db.execute(wo_stmt)
-    for wo in wo_result.scalars().all():
-        await db.delete(wo)
-    
-    # Find linked Purchase Order Items
-    stmt_po = select(PurchaseOrderItem).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
-    result_po = await db.execute(stmt_po)
-    po_items = result_po.scalars().all()
-    
-    # Find linked Outsourcing Order Items
-    stmt_oo = select(OutsourcingOrderItem).join(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
-    result_oo = await db.execute(stmt_oo)
-    oo_items = result_oo.scalars().all()
-    
-    if delete_related_orders:
-        # Collect unique order IDs to delete
-        po_ids = set(item.purchase_order_id for item in po_items)
-        oo_ids = set(item.outsourcing_order_id for item in oo_items)
-        
-        # Delete Purchase Orders
-        for po_id in po_ids:
-            po_result = await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))
-            po = po_result.scalar_one_or_none()
-            if po:
-                await db.delete(po)
-        
-        # Delete Outsourcing Orders
-        for oo_id in oo_ids:
-            oo_result = await db.execute(select(OutsourcingOrder).where(OutsourcingOrder.id == oo_id))
-            oo = oo_result.scalar_one_or_none()
-            if oo:
-                await db.delete(oo)
-    else:
-        # Unlink only
-        for po_item in po_items:
-            po_item.production_plan_item_id = None
-            db.add(po_item)
-        for oo_item in oo_items:
-            oo_item.production_plan_item_id = None
-            db.add(oo_item)
+    # Delete Work Orders
+    if plan_item_ids:
+        wo_stmt = select(WorkOrder).where(WorkOrder.plan_item_id.in_(plan_item_ids))
+        wo_res = await db.execute(wo_stmt)
+        for wo in wo_res.scalars().all():
+            await db.delete(wo)
 
+    # Finally, delete the plan itself
     await db.delete(plan)
     await db.commit()
-    return {"message": "Production Plan deleted successfully"}
+    
+    return {"message": "Production Plan and all related data (MRP, unreceived orders) deleted successfully"}
+
 
 @router.patch("/plans/{plan_id}/status", response_model=schemas.ProductionPlan)
 async def update_production_plan_status(

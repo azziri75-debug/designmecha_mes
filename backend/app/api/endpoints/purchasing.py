@@ -971,3 +971,35 @@ async def delete_outsourcing_order(
     await db.delete(db_order)
     await db.commit()
     return None
+@router.delete("/mrp/requirements/{requirement_id}")
+async def delete_material_requirement(
+    requirement_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+):
+    """
+    미발주 소요량(MRP) 레코드 개별 삭제.
+    단, 이미 발주(ORDERED) 상태이거나 발주 품목이 연결된 경우 삭제 불가.
+    """
+    req = await db.get(MaterialRequirement, requirement_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="소요량 데이터를 찾을 수 없습니다.")
+
+    # 1. 상태 체크
+    if req.status == "ORDERED":
+         raise HTTPException(
+             status_code=400, 
+             detail="이미 발주가 완료된 소요량 데이터는 삭제할 수 없습니다. 발주를 먼저 취소해 주세요."
+         )
+
+    # 2. 발주 품목 연결 체크 (방어적 확인)
+    stmt = select(PurchaseOrderItem).where(PurchaseOrderItem.material_requirement_id == requirement_id)
+    result = await db.execute(stmt)
+    if result.scalars().first():
+        raise HTTPException(
+            status_code=400,
+            detail="이 소요량과 연결된 발주 품목이 존재합니다. 발주 품목을 먼저 삭제해 주세요."
+        )
+
+    await db.delete(req)
+    await db.commit()
+    return {"message": "정상적으로 삭제되었습니다."}
