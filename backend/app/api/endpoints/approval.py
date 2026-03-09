@@ -271,8 +271,13 @@ async def create_document(
     db_doc.current_sequence = current_seq
     if all_auto_approved:
         db_doc.status = ApprovalStatus.COMPLETED
-        # 자동 승인 시 근태 기록 생성
-        await create_attendance_record(db, db_doc)
+        print(f"[DEBUG] Document {db_doc.id} auto-completed. Type: {db_doc.doc_type}")
+        # 자동 승인 시 처리 (근태/소모품)
+        if db_doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+            await create_attendance_record(db, db_doc)
+        elif db_doc.doc_type == "SUPPLIES":
+            print(f"[DEBUG] Triggering process_consumables for auto-approved doc {db_doc.id}")
+            await process_consumables(db, db_doc)
     elif current_seq > 1:
         db_doc.status = ApprovalStatus.IN_PROGRESS
 
@@ -357,10 +362,12 @@ async def process_approval(
             doc.status = ApprovalStatus.IN_PROGRESS
         else:
             doc.status = ApprovalStatus.COMPLETED
+            print(f"[DEBUG] Document {doc.id} completed via process_approval. Type: {doc.doc_type}")
             # 최종 승인 시 처리
             if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
                 await create_attendance_record(db, doc)
             elif doc.doc_type == "SUPPLIES":
+                print(f"[DEBUG] Triggering process_consumables for approved doc {doc.id}")
                 await process_consumables(db, doc)
             
     await db.commit()
@@ -434,23 +441,39 @@ def calculate_ot_details(record_date, start_time_str, end_time_str):
 
 async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
     """결재 완료된 소모품 신청서를 기반으로 품목 마스터 자동 등록 및 발주 대기 생성"""
+    print(f"[DEBUG] process_consumables called for Doc ID: {doc.id}, Type: {doc.doc_type}")
     try:
         from app.models.product import Product
         from app.models.purchasing import ConsumablePurchaseWait
         
         content = doc.content or {}
         items = content.get("items")
+        print(f"[DEBUG] Items in doc {doc.id}: {items}")
         
         # 만약 과거 데이터라서 문자열(Textarea)로 들어왔다면 무시 (하위 호환)
-        if not isinstance(items, list):
+        if not items or not isinstance(items, list):
+            print(f"[DEBUG] No items list found in doc {doc.id}. Skipping.")
             return
             
         for item in items:
+            # Handle potential non-dict items (legacy or malformed data)
+            if not isinstance(item, dict):
+                print(f"[DEBUG] Skipping non-dict item in consumables: {item}")
+                continue
+                
             name = item.get("product_name")
-            qty = int(item.get("quantity", 1))
+            qty_val = item.get("quantity", 1)
+            try:
+                qty = int(qty_val) if qty_val else 1
+            except (ValueError, TypeError):
+                qty = 1
             remarks = item.get("remarks", "")
             
-            if not name: continue
+            if not name: 
+                print("[DEBUG] Skipping item with no product_name")
+                continue
+            
+            print(f"[DEBUG] Processing consumable: {name}, Qty: {qty}")
             
             # 마스터 조회 및 생성
             stmt = select(Product).where(Product.name == name)
@@ -461,27 +484,31 @@ async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
                 # generate placeholder code
                 import time
                 new_code = f"CON-{int(time.time())}-{name[:2]}"
+                print(f"[DEBUG] Creating new product master for {name} with code {new_code}")
                 product = Product(
                     name=name,
                     code=new_code,
                     item_type="CONSUMABLE",
                     specification=remarks[:50] if remarks else "",
                     unit="EA",
-                    safe_stock=0
+                    note=f"자동등록(기안ID:{doc.id})"
                 )
                 db.add(product)
                 await db.flush() # get product.id
                 
-            # 대기열 등록
+            # 대기열 등록 (중복 방지 로직이 필요할 수 있으나, 현재는 기안당 1회 실행 전제)
+            print(f"[DEBUG] Adding to ConsumablePurchaseWait: ProductID {product.id}, Qty {qty}")
             wait_record = ConsumablePurchaseWait(
                 approval_id=doc.id,
                 product_id=product.id,
                 quantity=qty,
-                remarks=remarks
+                remarks=remarks,
+                status="PENDING" # Explicitly set
             )
             db.add(wait_record)
             
         await db.flush()
+        print(f"[DEBUG] process_consumables completed for Doc ID: {doc.id}")
     except Exception as e:
         print(f"Error processing consumables: {e}")
 
@@ -708,6 +735,13 @@ async def update_document(
         doc.current_sequence = current_seq
         if all_auto_approved:
             doc.status = ApprovalStatus.COMPLETED
+            print(f"[DEBUG] Document {doc.id} auto-completed after update. Type: {doc.doc_type}")
+            # 자동 승인 시 처리 (근태/소모품)
+            if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+                await create_attendance_record(db, doc)
+            elif doc.doc_type == "SUPPLIES":
+                print(f"[DEBUG] Triggering process_consumables for updated/auto-approved doc {doc.id}")
+                await process_consumables(db, doc)
         elif current_seq > 1:
             doc.status = ApprovalStatus.IN_PROGRESS
         else:

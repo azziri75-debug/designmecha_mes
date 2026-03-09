@@ -206,6 +206,50 @@ const ProductsPage = ({ type }) => {
         PURCHASE: "구매"
     };
 
+    const handleCreatePartner = async (inputValue) => {
+        if (!window.confirm('등록되지 않은 거래처입니다. 신규 등록하시겠습니까?')) {
+            console.log('[DEBUG] Partner creation cancelled by user');
+            return;
+        }
+        console.log('[DEBUG] Creating new partner:', inputValue);
+
+        try {
+            // Determine partner type based on current page type
+            // If it's PART or CONSUMABLE, mark as SUPPLIER. Otherwise CUSTOMER.
+            const newType = (type === 'PART' || type === 'CONSUMABLE') ? ['SUPPLIER'] : ['CUSTOMER'];
+
+            const res = await api.post('/basics/partners/', {
+                name: inputValue,
+                partner_type: newType
+            });
+            const newPartner = res.data;
+
+            // Update partners list to include the new one
+            setPartners(prev => [...prev, newPartner]);
+
+            // Select the newly created partner
+            setProductFormData(prev => ({ ...prev, partner_id: newPartner.id }));
+
+            alert('새로운 거래처가 등록되었습니다.');
+        } catch (error) {
+            console.error('Failed to create partner', error);
+            alert('거래처 등록 실패: ' + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const partnerOptions = partners.filter(p => {
+        const types = Array.isArray(p.partner_type) ? p.partner_type :
+            (typeof p.partner_type === 'string' ? JSON.parse(p.partner_type) : []);
+        const currentItemType = productFormData.item_type || type;
+        if (currentItemType === 'PRODUCED') {
+            return types.includes('CUSTOMER');
+        } else {
+            return types.includes('SUPPLIER') || types.includes('BOTH');
+        }
+    }).map(p => ({ value: p.id, label: p.name }));
+
+    console.log('[DEBUG] Partner options count:', partnerOptions.length);
+
     // --- Product Handlers ---
     const handleFileUpload = async (file) => {
         const formData = new FormData();
@@ -1213,31 +1257,59 @@ const ProductsPage = ({ type }) => {
                                         <div className="space-y-4">
                                             <div className="space-y-2">
                                                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">거래처 <span className="text-red-500">*</span></label>
-                                                <select
-                                                    name="partner_id"
-                                                    onChange={handleProductInputChange}
-                                                    value={productFormData.partner_id || ""}
-                                                    className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                                                    required
-                                                >
-                                                    <option value="">거래처 선택</option>
-                                                    {partners.filter(p => {
-                                                        const types = Array.isArray(p.partner_type) ? p.partner_type :
-                                                            (typeof p.partner_type === 'string' ? JSON.parse(p.partner_type) : []);
-
-                                                        // Get the current item type from form data or page prop
-                                                        const currentItemType = productFormData.item_type || type;
-
-                                                        if (currentItemType === 'PRODUCED') {
-                                                            return types.includes('CUSTOMER');
-                                                        } else {
-                                                            // For PART or CONSUMABLE, show SUPPLIERs
-                                                            return types.includes('SUPPLIER');
-                                                        }
-                                                    }).map(p => (
-                                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                                    ))}
-                                                </select>
+                                                <CreatableSelect
+                                                    isClearable
+                                                    options={partnerOptions}
+                                                    value={partnerOptions.find(opt => opt.value === parseInt(productFormData.partner_id)) || null}
+                                                    onChange={(option) => {
+                                                        setProductFormData(prev => ({ ...prev, partner_id: option ? option.value : "" }));
+                                                    }}
+                                                    onCreateOption={handleCreatePartner}
+                                                    placeholder="거래처 검색 또는 신규 입력"
+                                                    noOptionsMessage={() => "검색 결과가 없습니다"}
+                                                    formatCreateLabel={(inputValue) => `"${inputValue}" 신규 등록`}
+                                                    className="text-sm"
+                                                    styles={{
+                                                        control: (base) => ({
+                                                            ...base,
+                                                            backgroundColor: 'rgba(17, 24, 39, 0.5)',
+                                                            borderColor: 'rgb(55, 65, 81)',
+                                                            color: 'white',
+                                                            borderRadius: '0.5rem',
+                                                            padding: '1px',
+                                                            boxShadow: 'none',
+                                                            '&:hover': {
+                                                                borderColor: 'rgb(75, 85, 99)'
+                                                            }
+                                                        }),
+                                                        menu: (base) => ({
+                                                            ...base,
+                                                            backgroundColor: 'rgb(31, 41, 55)',
+                                                            border: '1px solid rgb(55, 65, 81)',
+                                                            zIndex: 9999
+                                                        }),
+                                                        option: (base, state) => ({
+                                                            ...base,
+                                                            backgroundColor: state.isFocused ? 'rgb(55, 65, 81)' : 'transparent',
+                                                            color: 'white',
+                                                            '&:active': {
+                                                                backgroundColor: 'rgb(75, 85, 99)'
+                                                            }
+                                                        }),
+                                                        singleValue: (base) => ({
+                                                            ...base,
+                                                            color: 'white'
+                                                        }),
+                                                        input: (base) => ({
+                                                            ...base,
+                                                            color: 'white'
+                                                        }),
+                                                        placeholder: (base) => ({
+                                                            ...base,
+                                                            color: 'rgb(156, 163, 175)'
+                                                        })
+                                                    }}
+                                                />
                                             </div>
 
                                             {type !== 'CONSUMABLE' && (

@@ -103,7 +103,7 @@ const ApprovalPage = () => {
     };
 
     const handleCreateConsumable = async (inputValue, idx) => {
-        if (!window.confirm(`'${inputValue}'은(는) 새로운 소모품입니다. 지금 제품 마스터에 등록하시겠습니까?\n(확인을 누르면 즉시 등록됩니다.)`)) {
+        if (!window.confirm('등록되지 않은 품목입니다. 신규 등록하시겠습니까?')) {
             return;
         }
 

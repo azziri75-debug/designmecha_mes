@@ -37,7 +37,7 @@ class PartnerBase(BaseModel):
     description: Optional[str] = None # 비고
 
 class PartnerCreate(PartnerBase):
-    contacts: List[ContactCreate] = []
+    contacts: Optional[List[ContactCreate]] = []
 
 class PartnerUpdate(PartnerBase):
     pass
