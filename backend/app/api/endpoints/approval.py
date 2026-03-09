@@ -799,7 +799,21 @@ async def delete_document(
     if not await is_editable(doc, current_user):
         raise HTTPException(status_code=400, detail="결재가 이미 진행되어 삭제할 수 없습니다.")
     
-    await db.delete(doc) # Cascade delete will handle steps
+    # 소모품 신청 기안(SUPPLIES)인 경우 관련 발주 대기 상태 확인 및 연쇄 삭제
+    if doc.doc_type == "SUPPLIES":
+        from app.models.purchasing import ConsumablePurchaseWait
+        # 1. 이미 발주가 진행된(PENDING이 아닌) 항목이 있는지 확인
+        active_waits = await db.execute(
+            select(ConsumablePurchaseWait)
+            .where(ConsumablePurchaseWait.approval_id == doc_id)
+            .where(ConsumablePurchaseWait.status != "PENDING")
+        )
+        if active_waits.scalars().first():
+            raise HTTPException(status_code=400, detail="이미 발주가 진행된 소모품 기안은 삭제할 수 없습니다.")
+        
+        # 2. 안전한 경우 연결된 소모품 발주 대기 레코드 선행 삭제 (DB 무결성 유지)
+        await db.execute(delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc_id))
+    
+    await db.delete(doc) # 연쇄 삭제(Cascade) 설정에 의해 steps 등은 자동 삭제됨
     await db.commit()
-    return {"message": "삭제되었습니다."}
     return {"message": "삭제되었습니다."}
