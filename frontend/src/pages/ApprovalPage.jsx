@@ -934,28 +934,40 @@ const ApprovalPage = () => {
                                         <div className="md:col-span-2 space-y-1">
                                             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">신청 품목 및 수량</p>
                                             <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50 min-h-[100px] overflow-hidden">
-                                                {Array.isArray(selectedDoc.content.items) ? (
-                                                    <table className="w-full text-left text-sm">
-                                                        <thead>
-                                                            <tr className="border-b border-gray-700 text-gray-400">
-                                                                <th className="pb-2">품목명</th>
-                                                                <th className="pb-2 text-center w-20">수량</th>
-                                                                <th className="pb-2">비고</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {selectedDoc.content.items.map((item, idx) => (
-                                                                <tr key={idx} className="border-b border-gray-800 last:border-0">
-                                                                    <td className="py-2 text-white font-medium">{item.product_name}</td>
-                                                                    <td className="py-2 text-center text-blue-400 font-bold">{item.quantity} EA</td>
-                                                                    <td className="py-2 text-gray-400 truncate">{item.remarks || '-'}</td>
+                                                {(() => {
+                                                    const items = Array.isArray(selectedDoc.content.items)
+                                                        ? selectedDoc.content.items
+                                                        : (selectedDoc.content.items ? [selectedDoc.content.items] : []);
+
+                                                    if (items.length === 0) return <p className="text-gray-500 text-center py-4">기입된 품목이 없습니다.</p>;
+
+                                                    return (
+                                                        <table className="w-full text-left text-sm">
+                                                            <thead>
+                                                                <tr className="border-b border-gray-700 text-gray-400">
+                                                                    <th className="pb-2">품목명</th>
+                                                                    <th className="pb-2 text-center w-20">수량</th>
+                                                                    <th className="pb-2">비고</th>
                                                                 </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                ) : (
-                                                    <p className="text-white whitespace-pre-wrap">{selectedDoc.content.items}</p>
-                                                )}
+                                                            </thead>
+                                                            <tbody>
+                                                                {items.map((item, idx) => (
+                                                                    <tr key={idx} className="border-b border-gray-800 last:border-0">
+                                                                        <td className="py-2 text-white font-medium">
+                                                                            {typeof item === 'object' ? (item.product_name || '-') : String(item)}
+                                                                        </td>
+                                                                        <td className="py-2 text-center text-blue-400 font-bold">
+                                                                            {typeof item === 'object' ? (item.quantity || '0') : '-'} EA
+                                                                        </td>
+                                                                        <td className="py-2 text-gray-400 truncate">
+                                                                            {typeof item === 'object' ? (item.remarks || '-') : '-'}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     </>
