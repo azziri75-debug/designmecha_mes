@@ -438,7 +438,7 @@ const PurchasePage = ({ type }) => {
                 </>
             )}
 
-            {tabValue === 1 && (
+            {type !== 'CONSUMABLE' && tabValue === 1 && (
                 <>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 1 }}>
                         <Button
@@ -516,10 +516,10 @@ const PurchasePage = ({ type }) => {
                 </>
             )}
 
-            {((type === 'CONSUMABLE' && (tabValue === 0 || tabValue === 1)) || (type !== 'CONSUMABLE' && (tabValue === 2 || tabValue === 3))) && (
+            {(type === 'CONSUMABLE' ? (tabValue === 1 || tabValue === 2) : (tabValue === 2 || tabValue === 3)) && (
                 <>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                        {((type === 'CONSUMABLE' && tabValue === 0) || (type !== 'CONSUMABLE' && tabValue === 2)) && (
+                        {((type === 'CONSUMABLE' && tabValue === 1) || (type !== 'CONSUMABLE' && tabValue === 2)) && (
                             <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
                                 신규 발주 직접 등록
                             </Button>
@@ -542,7 +542,7 @@ const PurchasePage = ({ type }) => {
                             </TableHead>
                             <TableBody>
                                 {orders.length === 0 ? (
-                                    <TableRow><TableCell colSpan={8} align="center">{(type === 'CONSUMABLE' ? tabValue === 0 : tabValue === 2) ? "진행 중인 발주 내역이 없습니다." : "완료된 발주 내역이 없습니다."}</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={9} align="center">{(type === 'CONSUMABLE' ? tabValue === 1 : tabValue === 2) ? "진행 중인 발주 내역이 없습니다." : "완료된 발주 내역이 없습니다."}</TableCell></TableRow>
                                 ) : (
                                     orders.map((order) => (
                                         <React.Fragment key={order.id}>

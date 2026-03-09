@@ -6,6 +6,7 @@ import {
     Calendar, User, Layers, Info, Settings, ClipboardList,
     ChevronRight, ArrowRight, Download, Eye, Upload
 } from 'lucide-react';
+import CreatableSelect from 'react-select/creatable';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 import Card from '../components/Card';
@@ -99,6 +100,38 @@ const ApprovalPage = () => {
             console.error('Failed to fetch data', error);
         }
         setLoading(false);
+    };
+
+    const handleCreateConsumable = async (inputValue, idx) => {
+        if (!window.confirm(`'${inputValue}'은(는) 새로운 소모품입니다. 지금 제품 마스터에 등록하시겠습니까?\n(확인을 누르면 즉시 등록됩니다.)`)) {
+            return;
+        }
+
+        try {
+            const res = await api.post('/product/products/', {
+                name: inputValue,
+                item_type: 'CONSUMABLE',
+                unit: 'EA'
+            });
+            const newConsumable = res.data;
+
+            // 실시간 마스터 데이터 반영
+            setConsumables(prev => [...prev, newConsumable]);
+
+            // 폼 데이터 상태 동기화 (ID와 이름 즉시 반영)
+            const newItems = [...(formData.items || [])];
+            newItems[idx] = {
+                ...newItems[idx],
+                product_id: newConsumable.id,
+                product_name: newConsumable.name
+            };
+            setFormData({ ...formData, items: newItems });
+
+            alert('새로운 소모품이 마스터에 등록되었습니다.');
+        } catch (error) {
+            console.error('Failed to create consumable', error);
+            alert('등록 실패: ' + (error.response?.data?.detail || error.message));
+        }
     };
 
     // 문서 종류별로 사용자가 입력한 신청 날짜를 제목에 사용
@@ -622,25 +655,52 @@ const ApprovalPage = () => {
                                                 {formData.items.map((item, idx) => (
                                                     <div key={idx} className="flex gap-2 items-start bg-gray-900 p-3 rounded-lg border border-gray-700">
                                                         <div className="flex-1 space-y-3">
-                                                            <div className="relative">
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="품명 검색 (또는 직접 입력)"
-                                                                    value={item.product_name || ''}
-                                                                    onChange={(e) => {
+                                                            <div className="relative text-black">
+                                                                <CreatableSelect
+                                                                    isClearable
+                                                                    placeholder="품명 검색 또는 직접 입력하여 등록"
+                                                                    options={consumables.map(c => ({ value: c.id, label: c.name }))}
+                                                                    value={item.product_name ? { value: item.product_id, label: item.product_name } : null}
+                                                                    onChange={(selected) => {
                                                                         const newItems = [...formData.items];
-                                                                        newItems[idx].product_name = e.target.value;
+                                                                        newItems[idx].product_id = selected?.value || null;
+                                                                        newItems[idx].product_name = selected?.label || '';
                                                                         setFormData({ ...formData, items: newItems });
                                                                     }}
-                                                                    className="w-full bg-gray-800 border border-gray-600 focus:border-blue-500 text-white text-sm rounded-lg px-3 py-2 outline-none"
-                                                                    list={`consumable_list_${idx}`}
-                                                                    required
+                                                                    onCreateOption={(inputValue) => handleCreateConsumable(inputValue, idx)}
+                                                                    styles={{
+                                                                        control: (base) => ({
+                                                                            ...base,
+                                                                            backgroundColor: '#1f2937',
+                                                                            borderColor: '#4b5563',
+                                                                            color: 'white',
+                                                                            fontSize: '14px',
+                                                                            borderRadius: '0.5rem',
+                                                                            minHeight: '38px',
+                                                                        }),
+                                                                        menu: (base) => ({
+                                                                            ...base,
+                                                                            backgroundColor: '#1f2937',
+                                                                            zIndex: 9999
+                                                                        }),
+                                                                        option: (base, state) => ({
+                                                                            ...base,
+                                                                            backgroundColor: state.isFocused ? '#374151' : '#1f2937',
+                                                                            color: 'white',
+                                                                            '&:active': {
+                                                                                backgroundColor: '#4b5563',
+                                                                            }
+                                                                        }),
+                                                                        singleValue: (base) => ({
+                                                                            ...base,
+                                                                            color: 'white'
+                                                                        }),
+                                                                        input: (base) => ({
+                                                                            ...base,
+                                                                            color: 'white'
+                                                                        })
+                                                                    }}
                                                                 />
-                                                                <datalist id={`consumable_list_${idx}`}>
-                                                                    {consumables.map(c => (
-                                                                        <option key={c.id} value={c.name} />
-                                                                    ))}
-                                                                </datalist>
                                                             </div>
                                                             <div className="flex gap-2">
                                                                 <div className="w-32 relative">

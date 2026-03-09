@@ -771,10 +771,10 @@ const ProductsPage = ({ type }) => {
                             <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
                                     <ResizableTh className="px-6 py-3">{type === 'PART' ? '구입처' : '거래처'}</ResizableTh>
-                                    <ResizableTh className="px-6 py-3">{type === 'PART' ? '부품 그룹' : '제품 그룹'}</ResizableTh>
+                                    {type !== 'CONSUMABLE' && <ResizableTh className="px-6 py-3">{type === 'PART' ? '부품 그룹' : '제품 그룹'}</ResizableTh>}
                                     <ResizableTh className="px-6 py-3">{type === 'PART' ? '부품명' : '품명'}</ResizableTh>
                                     <ResizableTh className="px-6 py-3">규격</ResizableTh>
-                                    <ResizableTh className="px-6 py-3">재질</ResizableTh>
+                                    {type !== 'CONSUMABLE' && <ResizableTh className="px-6 py-3">재질</ResizableTh>}
                                     <ResizableTh className="px-6 py-3">단위</ResizableTh>
                                     {type !== 'PART' && <ResizableTh className="px-6 py-3">공정 수</ResizableTh>}
                                     <ResizableTh className="px-6 py-3">최근 단가</ResizableTh>
@@ -817,16 +817,18 @@ const ProductsPage = ({ type }) => {
                                                 <td className="px-6 py-4">
                                                     {partners.find(p => p.id === product.partner_id)?.name || '-'}
                                                 </td>
-                                                <td className="px-6 py-4 text-xs font-medium">
-                                                    {(() => {
-                                                        if (!product.group_id) return <span className="text-gray-600">-</span>;
-                                                        const minor = groups.find(g => g.id === product.group_id);
-                                                        const major = minor ? groups.find(g => g.id === minor.parent_id) : null;
-                                                        if (major && minor) return <span className="text-blue-300">{major.name} &gt; {minor.name}</span>;
-                                                        if (minor) return <span className="text-blue-300">{minor.name}</span>;
-                                                        return <span className="text-gray-600">-</span>;
-                                                    })()}
-                                                </td>
+                                                {type !== 'CONSUMABLE' && (
+                                                    <td className="px-6 py-4 text-xs font-medium">
+                                                        {(() => {
+                                                            if (!product.group_id) return <span className="text-gray-600">-</span>;
+                                                            const minor = groups.find(g => g.id === product.group_id);
+                                                            const major = minor ? groups.find(g => g.id === minor.parent_id) : null;
+                                                            if (major && minor) return <span className="text-blue-300">{major.name} &gt; {minor.name}</span>;
+                                                            if (minor) return <span className="text-blue-300">{minor.name}</span>;
+                                                            return <span className="text-gray-600">-</span>;
+                                                        })()}
+                                                    </td>
+                                                )}
                                                 <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
                                                         <Package className="w-4 h-4 text-emerald-400" />
@@ -834,7 +836,7 @@ const ProductsPage = ({ type }) => {
                                                     {product.name}
                                                 </td>
                                                 <td className="px-6 py-4">{product.specification}</td>
-                                                <td className="px-6 py-4">{product.material}</td>
+                                                {type !== 'CONSUMABLE' && <td className="px-6 py-4">{product.material}</td>}
                                                 <td className="px-6 py-4">{product.unit}</td>
                                                 {type !== 'PART' && (
                                                     <td className="px-6 py-4">
@@ -1238,38 +1240,40 @@ const ProductsPage = ({ type }) => {
                                                 </select>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">대그룹</label>
-                                                    <select
-                                                        name="major_group_id"
-                                                        onChange={handleProductInputChange}
-                                                        value={productFormData.major_group_id || ""}
-                                                        className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                                                    >
-                                                        <option value="">선택</option>
-                                                        {groups.filter(g => g.type === 'MAJOR').map(g => (
-                                                            <option key={g.id} value={g.id}>{g.name}</option>
-                                                        ))}
-                                                    </select>
+                                            {type !== 'CONSUMABLE' && (
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">대그룹</label>
+                                                        <select
+                                                            name="major_group_id"
+                                                            onChange={handleProductInputChange}
+                                                            value={productFormData.major_group_id || ""}
+                                                            className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                                        >
+                                                            <option value="">선택</option>
+                                                            {groups.filter(g => g.type === 'MAJOR').map(g => (
+                                                                <option key={g.id} value={g.id}>{g.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">소그룹 <span className="text-red-500">*</span></label>
+                                                        <select
+                                                            name="group_id"
+                                                            onChange={handleProductInputChange}
+                                                            value={productFormData.group_id || ""}
+                                                            className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                                            required
+                                                            disabled={!productFormData.major_group_id}
+                                                        >
+                                                            <option value="">선택</option>
+                                                            {groups.filter(g => g.parent_id === parseInt(productFormData.major_group_id)).map(g => (
+                                                                <option key={g.id} value={g.id}>{g.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">소그룹 <span className="text-red-500">*</span></label>
-                                                    <select
-                                                        name="group_id"
-                                                        onChange={handleProductInputChange}
-                                                        value={productFormData.group_id || ""}
-                                                        className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                                                        required
-                                                        disabled={!productFormData.major_group_id}
-                                                    >
-                                                        <option value="">선택</option>
-                                                        {groups.filter(g => g.parent_id === parseInt(productFormData.major_group_id)).map(g => (
-                                                            <option key={g.id} value={g.id}>{g.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            </div>
+                                            )}
 
                                             <div className="space-y-2">
                                                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">품명 <span className="text-red-500">*</span></label>
@@ -1284,10 +1288,12 @@ const ProductsPage = ({ type }) => {
 
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-2 gap-3">
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">재질</label>
-                                                    <input name="material" value={productFormData.material || ""} onChange={handleProductInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="재질" />
-                                                </div>
+                                                {type !== 'CONSUMABLE' && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">재질</label>
+                                                        <input name="material" value={productFormData.material || ""} onChange={handleProductInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="재질" />
+                                                    </div>
+                                                )}
                                                 <div className="space-y-2">
                                                     <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">단위</label>
                                                     <input name="unit" value={productFormData.unit || "EA"} onChange={handleProductInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="EA" />
