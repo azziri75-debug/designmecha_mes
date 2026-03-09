@@ -583,6 +583,19 @@ async def startup_event():
                         await db.execute(text("ALTER TABLE products ADD COLUMN item_type VARCHAR DEFAULT 'FINISHED'"))
                         print("Startup: Added item_type to products (Postgres)")
 
+                # 12-3. recent_price 컬럼 추가 (소모품 단가 추적용)
+                if is_sqlite:
+                    r = await db.execute(text("PRAGMA table_info(products)"))
+                    cols = [c[1] for c in r.fetchall()]
+                    if "recent_price" not in cols:
+                        await db.execute(text("ALTER TABLE products ADD COLUMN recent_price FLOAT DEFAULT 0.0"))
+                        print("Startup: Added recent_price to products (SQLite)")
+                else:
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='products' AND column_name='recent_price'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE products ADD COLUMN recent_price DOUBLE PRECISION DEFAULT 0.0"))
+                        print("Startup: Added recent_price to products (Postgres)")
+
                 # 12-2. 기존 데이터 item_type 기본값 일괄 업데이트 (NULL인 경우만)
                 await db.execute(text("UPDATE products SET item_type = 'FINISHED' WHERE item_type IS NULL"))
                 await db.commit()

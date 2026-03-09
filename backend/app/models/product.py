@@ -29,6 +29,7 @@ class Product(Base):
     drawing_file = Column(String, nullable=True) # 도면 파일 경로
     note = Column(Text, nullable=True) # 비고
     item_type = Column(String, default="PRODUCED", nullable=True) # PRODUCED(생산제품), PART(부품), CONSUMABLE(소모품)
+    recent_price = Column(Float, default=0.0) # 최근 단가 (구매 시 자동 갱신)
     
     # Relationships
     group = relationship("ProductGroup", back_populates="products")

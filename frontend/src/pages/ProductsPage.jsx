@@ -944,7 +944,7 @@ const ProductsPage = ({ type }) => {
                                                         <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
                                                             <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
                                                                 <div className="flex space-x-4">
-                                                                    {product.item_type !== 'PART' && (
+                                                                    {product.item_type === 'PRODUCED' && (
                                                                         <button
                                                                             onClick={() => setDetailSubTab('routing')}
                                                                             className={cn(

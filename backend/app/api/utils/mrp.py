@@ -41,12 +41,20 @@ async def calculate_and_record_mrp(
     if plan_id:
         print(f"[MRP] Starting MRP calculation for Plan ID: {plan_id}")
         result = await db.execute(
-            select(ProductionPlan).where(ProductionPlan.id == plan_id)
+            select(ProductionPlan)
+            .where(ProductionPlan.id == plan_id)
+            .where(ProductionPlan.status != ProductionStatus.CANCELED)
             .options(selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product))
         )
         plan = result.scalar_one_or_none()
         if not plan:
-            print(f"[MRP] Plan {plan_id} not found.")
+            print(f"[MRP] Plan {plan_id} not found or is CANCELED.")
+            # Clear existing requirements if plan was canceled
+            existing_stmt = select(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id)
+            existing_res = await db.execute(existing_stmt)
+            for mr in existing_res.scalars().all():
+                await db.delete(mr)
+            await db.commit()
             return
         
         # 1.1 Clear existing records strictly for idempotency
@@ -73,11 +81,19 @@ async def calculate_and_record_mrp(
 
     elif order_id:
         result = await db.execute(
-            select(SalesOrder).where(SalesOrder.id == order_id)
+            select(SalesOrder)
+            .where(SalesOrder.id == order_id)
+            .where(SalesOrder.status != OrderStatus.CANCELLED)
             .options(selectinload(SalesOrder.items).selectinload(SalesOrderItem.product))
         )
         order = result.scalar_one_or_none()
         if not order:
+            # Clear existing requirements if order was canceled
+            existing_stmt = select(MaterialRequirement).where(MaterialRequirement.order_id == order_id, MaterialRequirement.plan_id == None)
+            existing_res = await db.execute(existing_stmt)
+            for mr in existing_res.scalars().all():
+                await db.delete(mr)
+            await db.commit()
             return
             
         # Clear existing records for idempotency (SalesOrder context)

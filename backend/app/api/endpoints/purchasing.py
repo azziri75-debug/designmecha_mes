@@ -630,6 +630,12 @@ async def update_purchase_order(
                     transaction_type=TransactionType.IN,
                     reference=db_order.order_no
                 )
+                
+                # Update recent price in Product table
+                product = await db.get(Product, item.product_id)
+                if product:
+                    product.recent_price = item.unit_price
+                    db.add(product)
 
     await db.commit()
     await db.refresh(db_order)
