@@ -1274,7 +1274,18 @@ const MobileWorkLogPage = () => {
                         )}
                         {selectedDocType === 'SUPPLIES' && (
                             <Stack spacing={2}>
-                                <TextField label="품목 및 수량" multiline rows={4} fullWidth size="small" placeholder="A4용지 1박스 등" value={docFormData.items || ''} onChange={e => setDocFormData({ ...docFormData, items: e.target.value })} />
+                                <TextField
+                                    label="품목 및 수량"
+                                    multiline
+                                    rows={4}
+                                    fullWidth
+                                    size="small"
+                                    placeholder="A4용지 1박스 등"
+                                    value={Array.isArray(docFormData.items)
+                                        ? docFormData.items.map(i => typeof i === 'object' ? `${i.product_name || '-'} (${i.quantity || 0}EA)${i.remarks ? ` [${i.remarks}]` : ''}` : String(i)).join('\n')
+                                        : (docFormData.items || '')}
+                                    onChange={e => setDocFormData({ ...docFormData, items: e.target.value })}
+                                />
                                 <TextField label="비고" fullWidth size="small" value={docFormData.remarks || ''} onChange={e => setDocFormData({ ...docFormData, remarks: e.target.value })} />
                             </Stack>
                         )}
@@ -1326,7 +1337,29 @@ const MobileWorkLogPage = () => {
                                     )}
                                     {selectedDoc.doc_type === 'SUPPLIES' && (
                                         <Stack spacing={1}>
-                                            <Typography variant="body2"><b>품목:</b> {selectedDoc.content.items}</Typography>
+                                            <Typography variant="body2" component="div">
+                                                <b>품목:</b>
+                                                {(() => {
+                                                    const items = Array.isArray(selectedDoc.content.items)
+                                                        ? selectedDoc.content.items
+                                                        : (selectedDoc.content.items ? [selectedDoc.content.items] : []);
+
+                                                    if (items.length === 0) return " -";
+
+                                                    return (
+                                                        <Box sx={{ mt: 0.5, pl: 1 }}>
+                                                            {items.map((item, idx) => (
+                                                                <Typography key={idx} variant="caption" display="block" sx={{ mb: 0.5, borderLeft: '2px solid #e0e0e0', pl: 1, color: 'text.secondary' }}>
+                                                                    {typeof item === 'object'
+                                                                        ? `${item.product_name || '-'} (${item.quantity || 0}EA)${item.remarks ? ` - ${item.remarks}` : ''}`
+                                                                        : String(item)
+                                                                    }
+                                                                </Typography>
+                                                            ))}
+                                                        </Box>
+                                                    );
+                                                })()}
+                                            </Typography>
                                             {selectedDoc.content.remarks && <Typography variant="body2"><b>비고:</b> {selectedDoc.content.remarks}</Typography>}
                                         </Stack>
                                     )}
