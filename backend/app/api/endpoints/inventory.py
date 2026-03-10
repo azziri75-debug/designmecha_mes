@@ -18,13 +18,26 @@ router = APIRouter()
 # --- Stock Endpoints ---
 
 @router.get("/stocks", response_model=List[StockResponse])
-async def read_stocks(db: AsyncSession = Depends(get_db)):
+async def read_stocks(
+    item_type: Optional[str] = None,
+    partner_id: Optional[int] = None,
+    product_name: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
     from app.models.production import ProductionPlan, ProductionPlanItem
     from app.models.inventory import StockProduction
     
-    query = select(Stock).options(
+    query = select(Stock).join(Product).options(
         selectinload(Stock.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process)
     )
+
+    if item_type:
+        query = query.where(Product.item_type == item_type)
+    if partner_id:
+        query = query.where(Product.partner_id == partner_id)
+    if product_name:
+        query = query.where(Product.name.ilike(f"%{product_name}%"))
+
     result = await db.execute(query)
     stocks = result.scalars().all()
     
@@ -133,19 +146,46 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
     result = await db.execute(query)
     return result.scalar_one()
 
+@router.delete("/stocks/{product_id}")
+async def delete_stock(product_id: int, db: AsyncSession = Depends(get_db)):
+    """재고 레코드 개별 삭제 (관리자용 청소 도구)"""
+    query = select(Stock).where(Stock.product_id == product_id)
+    result = await db.execute(query)
+    stock = result.scalar_one_or_none()
+    if not stock:
+        raise HTTPException(status_code=404, detail="재고 정보를 찾을 수 없습니다.")
+    
+    await db.delete(stock)
+    await db.commit()
+    return {"status": "success"}
+
+
 # --- Stock Production Endpoints ---
 
 @router.get("/productions", response_model=List[StockProductionResponse])
 async def read_stock_productions(
     status: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    partner_id: Optional[int] = None,
+    product_name: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(StockProduction).options(
+    query = select(StockProduction).join(Product).options(
         selectinload(StockProduction.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
         selectinload(StockProduction.partner)
     )
     if status:
         query = query.where(StockProduction.status == status)
+    if start_date:
+        query = query.where(StockProduction.request_date >= start_date)
+    if end_date:
+        query = query.where(StockProduction.request_date <= end_date)
+    if partner_id:
+        query = query.where(StockProduction.partner_id == partner_id)
+    if product_name:
+        query = query.where(Product.name.ilike(f"%{product_name}%"))
+
     
     result = await db.execute(query)
     return result.scalars().all()

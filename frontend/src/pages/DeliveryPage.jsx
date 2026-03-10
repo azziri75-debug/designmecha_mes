@@ -22,6 +22,8 @@ const DeliveryPage = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+
 
     // Modal States
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
@@ -34,7 +36,8 @@ const DeliveryPage = () => {
     useEffect(() => {
         fetchPartners();
         fetchOrders();
-    }, [startDate, endDate, statusFilter]);
+    }, [startDate, endDate, statusFilter, partnerFilter, searchQuery, dateFilterType]);
+
 
     const fetchPartners = async () => {
         try {
@@ -54,6 +57,8 @@ const DeliveryPage = () => {
             if (endDate) params.end_date = endDate;
             if (statusFilter) params.status = statusFilter;
             if (partnerFilter) params.partner_id = partnerFilter;
+            if (searchQuery) params.product_name = searchQuery;
+
 
             const res = await api.get('/sales/orders/', { params });
             setOrders(res.data);
@@ -129,27 +134,32 @@ const DeliveryPage = () => {
                         />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-xs text-gray-400">상태</label>
-                        <select
-                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                        >
-                            <option value="">전체 (Status)</option>
-                            <option value="PENDING">대기</option>
-                            <option value="CONFIRMED">확정</option>
-                            <option value="PRODUCTION_COMPLETED">생산 완료</option>
-                            <option value="DELIVERY_COMPLETED">납품 완료</option>
-                        </select>
+                        <label className="text-xs text-gray-400">품명/품번</label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="검색어 입력..."
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white pl-9 pr-3 py-2 text-sm h-[38px]"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        </div>
                     </div>
                     <button
-                        onClick={fetchOrders}
-                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm flex items-center gap-2"
+                        onClick={() => {
+                            setStartDate('');
+                            setEndDate('');
+                            setStatusFilter('');
+                            setPartnerFilter('');
+                            setSearchQuery('');
+                        }}
+                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm h-[38px]"
                     >
-                        <Search className="w-4 h-4" />
-                        조회
+                        초기화
                     </button>
                 </Card>
+
 
                 <Card className="p-0 overflow-hidden min-h-[500px]">
                     {loading ? (

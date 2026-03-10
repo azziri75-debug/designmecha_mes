@@ -39,6 +39,18 @@ const OutsourcingPage = () => {
     const [sourceStockModalOpen, setSourceStockModalOpen] = useState(false);
     const [selectedSourceStock, setSelectedSourceStock] = useState(null);
 
+    // Filter states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedPartnerId, setSelectedPartnerId] = useState(null);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [partners, setPartners] = useState([]);
+
+
+    useEffect(() => {
+        fetchPartners();
+    }, []);
+
     useEffect(() => {
         if (tabValue === 0) {
             fetchPendingItems();
@@ -47,11 +59,27 @@ const OutsourcingPage = () => {
         } else {
             fetchCompletedOrders();
         }
-    }, [tabValue]);
+    }, [tabValue, searchQuery, selectedPartnerId, startDate, endDate]);
+
+
+    const fetchPartners = async () => {
+        try {
+            const res = await api.get('/basics/partners/');
+            setPartners(res.data);
+        } catch (err) {
+            console.error("Fetch partners failed", err);
+        }
+    };
 
     const fetchOrders = async () => {
         try {
-            const response = await api.get('/purchasing/outsourcing/orders');
+            const params = {};
+            if (searchQuery) params.product_name = searchQuery;
+            if (selectedPartnerId) params.partner_id = selectedPartnerId;
+            if (startDate) params.start_date = startDate;
+            if (endDate) params.end_date = endDate;
+
+            const response = await api.get('/purchasing/outsourcing/orders', { params });
             setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
         } catch (error) {
             console.error("Failed to fetch outsourcing orders", error);
@@ -60,12 +88,19 @@ const OutsourcingPage = () => {
 
     const fetchCompletedOrders = async () => {
         try {
-            const response = await api.get('/purchasing/outsourcing/orders', { params: { status: 'COMPLETED' } });
+            const params = { status: 'COMPLETED' };
+            if (searchQuery) params.product_name = searchQuery;
+            if (selectedPartnerId) params.partner_id = selectedPartnerId;
+            if (startDate) params.start_date = startDate;
+            if (endDate) params.end_date = endDate;
+
+            const response = await api.get('/purchasing/outsourcing/orders', { params });
             setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch completed outsourcing orders", error);
         }
     };
+
 
     const fetchPendingItems = async () => {
         try {
@@ -217,6 +252,69 @@ const OutsourcingPage = () => {
                     <Tab label="완료 내역 (Completed)" />
                 </Tabs>
             </Box>
+
+            {/* Filter Section */}
+            {(tabValue === 1 || tabValue === 2) && (
+                <Paper sx={{ p: 2, mb: 2, bgcolor: '#fcfcfc', border: '1px solid #eee' }}>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" color="textSecondary">기간:</Typography>
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
+                            />
+                            <span>~</span>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
+                            />
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
+                            <Typography variant="body2" color="textSecondary">외주처:</Typography>
+                            <Box sx={{ flex: 1 }}>
+                                <select
+                                    value={selectedPartnerId || ''}
+                                    onChange={(e) => setSelectedPartnerId(e.target.value || null)}
+                                    style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', fontSize: '14px' }}
+                                >
+                                    <option value="">전체 외주처</option>
+                                    {partners.filter(p => p.type === 'SUPPLIER').map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </Box>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" color="textSecondary">품명/품번:</Typography>
+                            <input
+                                type="text"
+                                placeholder="검색어 입력..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '150px', fontSize: '14px' }}
+                            />
+                        </Box>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            color="inherit"
+                            onClick={() => {
+                                setStartDate('');
+                                setEndDate('');
+                                setSelectedPartnerId(null);
+                                setSearchQuery('');
+                            }}
+                        >
+                            초기화
+                        </Button>
+                    </Box>
+                </Paper>
+            )}
+
 
             {tabValue === 0 && (
                 <>

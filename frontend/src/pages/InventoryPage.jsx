@@ -29,24 +29,54 @@ const InventoryPage = () => {
     const [productions, setProductions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [itemType, setItemType] = useState(''); // For stocks
+    const [selectedPartnerId, setSelectedPartnerId] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [statusFilter, setStatusFilter] = useState(''); // For productions
+    const [partners, setPartners] = useState([]);
+
     const [showProdModal, setShowProdModal] = useState(false);
     const [showStockEditModal, setShowStockEditModal] = useState(false);
     const [showStockInitModal, setShowStockInitModal] = useState(false);
     const [editingProduction, setEditingProduction] = useState(null);
     const [editingStock, setEditingStock] = useState(null);
 
+
+    useEffect(() => {
+        fetchPartners();
+    }, []);
+
     useEffect(() => {
         fetchData();
-    }, [activeTab]);
+    }, [activeTab, searchTerm, itemType, selectedPartnerId, startDate, endDate, statusFilter]);
+
+
+    const fetchPartners = async () => {
+        try {
+            const res = await api.get('/basics/partners/');
+            setPartners(res.data);
+        } catch (err) {
+            console.error("Fetch partners failed", err);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
         try {
+            const params = {};
+            if (searchTerm) params.product_name = searchTerm;
+            if (selectedPartnerId) params.partner_id = selectedPartnerId;
+
             if (activeTab === 'status') {
-                const res = await api.get('/inventory/stocks');
+                if (itemType) params.item_type = itemType;
+                const res = await api.get('/inventory/stocks', { params });
                 setStocks(res.data);
             } else {
-                const res = await api.get('/inventory/productions');
+                if (startDate) params.start_date = startDate;
+                if (endDate) params.end_date = endDate;
+                if (statusFilter) params.status = statusFilter;
+                const res = await api.get('/inventory/productions', { params });
                 setProductions(res.data);
             }
         } catch (err) {
@@ -56,15 +86,11 @@ const InventoryPage = () => {
         }
     };
 
-    const filteredStocks = stocks.filter(s =>
-        (s.product?.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
-        (s.product?.code || '').toLowerCase().includes((searchTerm || '').toLowerCase())
-    );
 
-    const filteredProductions = productions.filter(p =>
-        (p.production_no || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
-        (p.product?.name || '').toLowerCase().includes((searchTerm || '').toLowerCase())
-    );
+    // Since we use backend filtering, we don't need extensive client-side filter
+    const filteredStocks = stocks;
+    const filteredProductions = productions;
+
 
     const handleEdit = (prod) => {
         setEditingProduction(prod);
@@ -140,18 +166,94 @@ const InventoryPage = () => {
                 </button>
             </div>
 
-            {/* Content Control */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="relative w-full md:w-96">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                    <Input
-                        placeholder="품목명, 코드 검색..."
-                        className="pl-10 bg-gray-900 border-gray-800 focus:ring-blue-500"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+            {/* Content Control & Filters */}
+            <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800 space-y-4">
+                <div className="flex flex-wrap gap-4 items-end">
+                    <div className="flex-1 min-w-[240px]">
+                        <label className="text-xs text-gray-500 mb-1 block">품목 검색</label>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                            <Input
+                                placeholder="품목명, 코드 검색..."
+                                className="pl-10 bg-gray-950 border-gray-800 focus:ring-blue-500"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {activeTab === 'status' && (
+                        <div className="w-40">
+                            <label className="text-xs text-gray-500 mb-1 block">구분</label>
+                            <select
+                                className="w-full bg-gray-950 border-gray-800 rounded-md text-sm px-3 py-2 text-white h-10 focus:ring-blue-500"
+                                value={itemType}
+                                onChange={(e) => setItemType(e.target.value)}
+                            >
+                                <option value="">전체</option>
+                                <option value="PRODUCT">제품</option>
+                                <option value="PART">부품</option>
+                                <option value="RAW_MATERIAL">원자재</option>
+                                <option value="CONSUMABLE">소모품</option>
+                            </select>
+                        </div>
+                    )}
+
+                    {activeTab === 'productions' && (
+                        <>
+                            <div className="w-40">
+                                <label className="text-xs text-gray-500 mb-1 block">상태</label>
+                                <select
+                                    className="w-full bg-gray-950 border-gray-800 rounded-md text-sm px-3 py-2 text-white h-10 focus:ring-blue-500"
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                >
+                                    <option value="">전체 (Status)</option>
+                                    <option value="PENDING">대기</option>
+                                    <option value="IN_PROGRESS">생산중</option>
+                                    <option value="COMPLETED">생산완료</option>
+                                </select>
+                            </div>
+                            <div className="w-40">
+                                <label className="text-xs text-gray-500 mb-1 block">시작일</label>
+                                <Input
+                                    type="date"
+                                    className="bg-gray-950 border-gray-800"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                />
+                            </div>
+                            <div className="w-40">
+                                <label className="text-xs text-gray-500 mb-1 block">종료일</label>
+                                <Input
+                                    type="date"
+                                    className="bg-gray-950 border-gray-800"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    <div className="w-40">
+                        <Button
+                            variant="ghost"
+                            className="text-gray-500 hover:text-white"
+                            onClick={() => {
+                                setSearchTerm('');
+                                setItemType('');
+                                setSelectedPartnerId('');
+                                setStartDate('');
+                                setEndDate('');
+                                setStatusFilter('');
+                            }}
+                        >
+                            필터 초기화
+                        </Button>
+                    </div>
                 </div>
             </div>
+
 
             {loading ? (
                 <div className="py-20 text-center">

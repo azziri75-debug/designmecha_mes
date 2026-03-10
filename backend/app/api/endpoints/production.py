@@ -87,18 +87,41 @@ async def read_production_plans(
     skip: int = 0,
     limit: int = 1000,
     worker_id: Optional[int] = None,
+    status: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    partner_id: Optional[int] = None,
+    product_name: Optional[str] = None,
+    customer_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
-    Retrieve production plans. Optional worker_id filter for mobile workers.
+    Retrieve production plans with advanced filtering.
     """
-    stmt = select(ProductionPlan)
+    stmt = select(ProductionPlan).outerjoin(SalesOrder).outerjoin(StockProduction)
     
     if worker_id:
         stmt = stmt.join(ProductionPlanItem).where(ProductionPlanItem.worker_id == worker_id).distinct()
+    
+    if status:
+        stmt = stmt.where(ProductionPlan.status == status)
+    if start_date:
+        stmt = stmt.where(ProductionPlan.plan_date >= start_date)
+    if end_date:
+        stmt = stmt.where(ProductionPlan.plan_date <= end_date)
+    if partner_id:
+        stmt = stmt.where(or_(
+            SalesOrder.partner_id == partner_id,
+            StockProduction.partner_id == partner_id
+        ))
+    if customer_id:
+        stmt = stmt.where(SalesOrder.partner_id == customer_id)
+    if product_name:
+        stmt = stmt.join(ProductionPlanItem).join(Product).where(Product.name.ilike(f"%{product_name}%")).distinct()
 
     result = await db.execute(
         stmt
+
         .options(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
                 selectinload(Product.standard_processes).selectinload(ProductProcess.process),

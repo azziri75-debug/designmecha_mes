@@ -84,7 +84,9 @@ const ProductionPage = () => {
     const [filterPartner, setFilterPartner] = useState('all');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [defects, setDefects] = useState([]);
+
 
     // Defect Modal
     const [defectModalOpen, setDefectModalOpen] = useState(false);
@@ -133,12 +135,29 @@ const ProductionPage = () => {
 
     const fetchPlans = async () => {
         try {
-            const response = await api.get('/production/plans');
+            const params = {};
+            if (startDate) params.start_date = startDate;
+            if (endDate) params.end_date = endDate;
+            if (filterPartner !== 'all') {
+                if (filterPartner === 'internal') {
+                    // How to filter internal plans? 
+                    // Backend logic for partner_id: 
+                    // if partner_id: stmt = stmt.where(or_(SalesOrder.partner_id == partner_id, StockProduction.partner_id == partner_id))
+                    // For 'internal', maybe we need a special check or just 0? 
+                    // Let's assume partner_id filter on backend handles IDs.
+                } else {
+                    params.partner_id = filterPartner;
+                }
+            }
+            if (searchQuery) params.product_name = searchQuery;
+
+            const response = await api.get('/production/plans', { params });
             setPlans(response.data);
         } catch (error) {
             console.error("Failed to fetch plans", error);
         }
     };
+
 
     const fetchStockProductions = async () => {
         try {
@@ -171,10 +190,14 @@ const ProductionPage = () => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchOrders();
         fetchStockProductions();
-        fetchPlans();
         fetchPartners();
         fetchDefects();
     }, []);
+
+    useEffect(() => {
+        fetchPlans();
+    }, [startDate, endDate, filterPartner, searchQuery]);
+
 
     const handleCreateClick = (order, stockProd = null) => {
         setSelectedOrder(order);
@@ -389,8 +412,8 @@ const ProductionPage = () => {
                     <Tab label="생산 완료" />
                 </Tabs>
 
-                {tabIndex === 2 && (
-                    <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, alignItems: 'center', bgcolor: '#fcfcfc' }}>
+                {(tabIndex === 1 || tabIndex === 2) && (
+                    <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: '#fcfcfc' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Typography variant="body2" color="textSecondary">기간:</Typography>
                             <input
@@ -407,19 +430,39 @@ const ProductionPage = () => {
                                 style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
                             />
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
                             <Typography variant="body2" color="textSecondary">거래처:</Typography>
-                            <select
-                                value={filterPartner}
-                                onChange={(e) => setFilterPartner(e.target.value)}
-                                style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '120px' }}
-                            >
-                                <option value="all">전체 거래처</option>
-                                <option value="internal">사내(재고)</option>
-                                {partners.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+                            <div style={{ flex: 1 }}>
+                                <Select
+                                    isClearable
+                                    placeholder="전체 거래처"
+                                    options={[
+                                        { value: 'all', label: '전체 거래처' },
+                                        { value: 'internal', label: '사내(재고)' },
+                                        ...partners.map(p => ({ value: p.id.toString(), label: p.name }))
+                                    ]}
+                                    value={filterPartner === 'all' ? { value: 'all', label: '전체 거래처' } :
+                                        filterPartner === 'internal' ? { value: 'internal', label: '사내(재고)' } :
+                                            partners.find(p => p.id.toString() === filterPartner) ? { value: filterPartner, label: partners.find(p => p.id.toString() === filterPartner).name } : null}
+                                    onChange={(opt) => setFilterPartner(opt ? opt.value : 'all')}
+                                    styles={{
+                                        control: (base) => ({ ...base, minHeight: '32px', height: '32px', fontSize: '0.875rem' }),
+                                        valueContainer: (base) => ({ ...base, padding: '0 8px' }),
+                                        input: (base) => ({ ...base, margin: '0' }),
+                                        indicatorsContainer: (base) => ({ ...base, height: '32px' }),
+                                    }}
+                                />
+                            </div>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" color="textSecondary">품명/품번:</Typography>
+                            <input
+                                type="text"
+                                placeholder="검색어 입력..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '150px' }}
+                            />
                         </Box>
                         <Button
                             size="small"
@@ -429,12 +472,14 @@ const ProductionPage = () => {
                                 setStartDate('');
                                 setEndDate('');
                                 setFilterPartner('all');
+                                setSearchQuery('');
                             }}
                         >
                             필터 초기화
                         </Button>
                     </Box>
                 )}
+
 
                 <Box sx={{ p: 3 }}>
                     {tabIndex === 0 && (

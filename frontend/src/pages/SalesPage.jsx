@@ -61,6 +61,8 @@ const SalesPage = () => {
     const [endDate, setEndDate] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [selectedPartnerId, setSelectedPartnerId] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+
 
     useEffect(() => {
         fetchPartners();
@@ -73,7 +75,8 @@ const SalesPage = () => {
         } else {
             fetchOrders();
         }
-    }, [activeTab, startDate, endDate, statusFilter, selectedPartnerId]);
+    }, [activeTab, startDate, endDate, statusFilter, selectedPartnerId, searchQuery]);
+
     // Note: Re-fetching on filter change
 
     const fetchPartners = async () => {
@@ -93,6 +96,8 @@ const SalesPage = () => {
             if (endDate) params.end_date = endDate;
             if (statusFilter) params.status = statusFilter;
             if (selectedPartnerId) params.partner_id = selectedPartnerId;
+            if (searchQuery) params.product_name = searchQuery;
+
 
             const res = await api.get('/sales/estimates/', { params });
             setEstimates(res.data);
@@ -111,6 +116,8 @@ const SalesPage = () => {
             if (endDate) params.end_date = endDate;
             if (statusFilter) params.status = statusFilter;
             if (selectedPartnerId) params.partner_id = selectedPartnerId;
+            if (searchQuery) params.product_name = searchQuery;
+
 
             const res = await api.get('/sales/orders/', { params });
             setOrders(res.data);
@@ -261,6 +268,19 @@ const SalesPage = () => {
                     />
                 </div>
                 <div className="space-y-1">
+                    <label className="text-xs text-gray-400">품명/품번</label>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="검색어 입력..."
+                            className="w-full bg-gray-700 border-gray-600 rounded text-white pl-9 pr-3 py-2 text-sm h-[38px]"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                </div>
+                <div className="space-y-1">
                     <label className="text-xs text-gray-400">시작일</label>
                     <input
                         type="date"
@@ -278,6 +298,7 @@ const SalesPage = () => {
                         onChange={(e) => setEndDate(e.target.value)}
                     />
                 </div>
+
                 {activeTab === 'orders' && (
                     <div className="space-y-1">
                         <label className="text-xs text-gray-400">상태</label>

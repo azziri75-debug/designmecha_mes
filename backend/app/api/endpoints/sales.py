@@ -12,7 +12,8 @@ from app.models.product import Product, ProductProcess, BOM
 from app.models.basics import Partner
 from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder
 from app.models.quality import InspectionResult, QualityDefect
-from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem, MaterialRequirement
+from app.models.purchasing import PurchaseOrder, PurchaseStatus, PurchaseOrderItem, OutsourcingOrder, OutsourcingStatus, OutsourcingOrderItem, MaterialRequirement
+
 import uuid
 from datetime import datetime, date
 import os
@@ -73,8 +74,14 @@ async def read_estimates(
     skip: int = 0,
     limit: int = 100,
     partner_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    product_name: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db)
 ):
+    """
+    Retrieve estimates with advanced filtering.
+    """
     query = select(Estimate).options(
         selectinload(Estimate.items).selectinload(EstimateItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
@@ -82,9 +89,18 @@ async def read_estimates(
         ),
         selectinload(Estimate.partner)
     )
+
     if partner_id:
         query = query.where(Estimate.partner_id == partner_id)
+    if start_date:
+        query = query.where(Estimate.estimate_date >= start_date)
+    if end_date:
+        query = query.where(Estimate.estimate_date <= end_date)
+    if product_name:
+        query = query.join(EstimateItem).join(Product).where(Product.name.ilike(f"%{product_name}%")).distinct()
+
     query = query.order_by(desc(Estimate.estimate_date)).offset(skip).limit(limit)
+
     
     result = await db.execute(query)
     return result.scalars().all()
@@ -453,10 +469,14 @@ async def read_orders(
     partner_id: Optional[int] = None,
     status: Optional[str] = None,
     date_type: Optional[str] = "order",
-    start_date: Union[date, None] = None,
-    end_date: Union[date, None] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    product_name: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db)
 ):
+    """
+    Retrieve sales orders with advanced filtering.
+    """
     query = select(SalesOrder).options(
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
@@ -464,10 +484,14 @@ async def read_orders(
         ),
         selectinload(SalesOrder.partner)
     )
+
     if partner_id:
         query = query.where(SalesOrder.partner_id == partner_id)
     if status:
         query = query.where(SalesOrder.status == status)
+    if product_name:
+        query = query.join(SalesOrderItem).join(Product).where(Product.name.ilike(f"%{product_name}%")).distinct()
+
     if start_date:
         if date_type == "delivery":
             query = query.where(SalesOrder.delivery_date >= start_date)
@@ -583,6 +607,46 @@ async def delete_order(
     plans_query = select(ProductionPlan.id).where(ProductionPlan.order_id == order_id)
     plans_result = await db.execute(plans_query)
     plan_ids = plans_result.scalars().all()
+
+    # [안전 장치] 이미 발주/외주가 진행된 연관 데이터가 있는지 확인 (PENDING 상태 제외)
+    # 1) 직결된 MRP(자재소요량) 기반 발주 확인
+    mrp_po_check = await db.execute(
+        select(PurchaseOrder.id)
+        .join(PurchaseOrderItem, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+        .join(MaterialRequirement, MaterialRequirement.id == PurchaseOrderItem.material_requirement_id)
+        .where(MaterialRequirement.order_id == order_id)
+        .where(PurchaseOrder.status != PurchaseStatus.PENDING)
+    )
+    if mrp_po_check.scalars().first():
+        raise HTTPException(status_code=400, detail="이미 자재 발주가 진행된 수주 건은 삭제할 수 없습니다.")
+
+    if plan_ids:
+        # 생산 계획에 엮인 공정 아이템들 식별
+        items_query = select(ProductionPlanItem.id).where(ProductionPlanItem.plan_id.in_(plan_ids))
+        items_res = await db.execute(items_query)
+        item_ids = items_res.scalars().all()
+
+        if item_ids:
+            # 2) 생산 계획 공차/부품 발주 확인
+            po_check = await db.execute(
+                select(PurchaseOrder.id)
+                .join(PurchaseOrderItem, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+                .where(PurchaseOrderItem.production_plan_item_id.in_(item_ids))
+                .where(PurchaseOrder.status != PurchaseStatus.PENDING)
+            )
+            if po_check.scalars().first():
+                raise HTTPException(status_code=400, detail="이미 자재 발주가 진행된 수주 건은 삭제할 수 없습니다.")
+
+            # 3) 외주 발주 확인
+            os_check = await db.execute(
+                select(OutsourcingOrder.id)
+                .join(OutsourcingOrderItem, OutsourcingOrderItem.outsourcing_order_id == OutsourcingOrder.id)
+                .where(OutsourcingOrderItem.production_plan_item_id.in_(item_ids))
+                .where(OutsourcingOrder.status != OutsourcingStatus.PENDING)
+            )
+            if os_check.scalars().first():
+                raise HTTPException(status_code=400, detail="이미 외주 발주가 진행된 수주 건은 삭제할 수 없습니다.")
+
 
     if plan_ids:
         # 2. 연관된 생산 공정(Item) ID들 가져오기

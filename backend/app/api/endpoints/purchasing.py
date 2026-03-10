@@ -461,17 +461,21 @@ async def create_purchase_order(
 async def read_purchase_orders(
     skip: int = 0,
     limit: int = 100,
-    status: str = None, 
+    status: Optional[str] = None,
     purchase_type: Optional[str] = None,
+    partner_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    customer_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
-    Retrieve purchase orders.
+    Retrieve purchase orders with advanced filtering.
     """
     # Local import for deep loading
     from app.models.production import ProductionPlanItem, ProductionPlan
 
-    query = select(PurchaseOrder).options(
+    query = select(PurchaseOrder).outerjoin(SalesOrder).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items)
@@ -495,8 +499,17 @@ async def read_purchase_orders(
         query = query.where(PurchaseOrder.status == status)
     if purchase_type:
         query = query.where(PurchaseOrder.purchase_type == purchase_type)
+    if partner_id:
+        query = query.where(PurchaseOrder.partner_id == partner_id)
+    if start_date:
+        query = query.where(PurchaseOrder.order_date >= start_date)
+    if end_date:
+        query = query.where(PurchaseOrder.order_date <= end_date)
+    if customer_id:
+        query = query.where(SalesOrder.partner_id == customer_id)
 
     query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit)
+
     result = await db.execute(query)
     pos = result.scalars().all()
     
@@ -793,16 +806,20 @@ async def create_outsourcing_order(
 async def read_outsourcing_orders(
     skip: int = 0,
     limit: int = 100,
-    status: str = None,
+    status: Optional[str] = None,
+    partner_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    customer_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
-    Retrieve outsourcing orders.
+    Retrieve outsourcing orders with advanced filtering.
     """
     # Local import
     from app.models.production import ProductionPlanItem, ProductionPlan
 
-    query = select(OutsourcingOrder).options(
+    query = select(OutsourcingOrder).outerjoin(SalesOrder).options(
         selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items)
@@ -817,8 +834,17 @@ async def read_outsourcing_orders(
     )
     if status:
         query = query.where(OutsourcingOrder.status == status)
+    if partner_id:
+        query = query.where(OutsourcingOrder.partner_id == partner_id)
+    if start_date:
+        query = query.where(OutsourcingOrder.order_date >= start_date)
+    if end_date:
+        query = query.where(OutsourcingOrder.order_date <= end_date)
+    if customer_id:
+        query = query.where(SalesOrder.partner_id == customer_id)
 
     query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit)
+
     result = await db.execute(query)
     oos = result.scalars().all()
     
