@@ -799,21 +799,50 @@ async def delete_document(
     if not await is_editable(doc, current_user):
         raise HTTPException(status_code=400, detail="결재가 이미 진행되어 삭제할 수 없습니다.")
     
-    # 소모품 신청 기안(SUPPLIES)인 경우 관련 발주 대기 상태 확인 및 연쇄 삭제
+    # 소모품 신청 기안(SUPPLIES)인 경우의 비즈니스 로직 처리
     if doc.doc_type == "SUPPLIES":
-        from app.models.purchasing import ConsumablePurchaseWait
-        # 1. 이미 발주가 진행된(PENDING이 아닌) 항목이 있는지 확인
-        active_waits = await db.execute(
-            select(ConsumablePurchaseWait)
-            .where(ConsumablePurchaseWait.approval_id == doc_id)
-            .where(ConsumablePurchaseWait.status != "PENDING")
-        )
-        if active_waits.scalars().first():
-            raise HTTPException(status_code=400, detail="이미 발주가 진행된 소모품 기안은 삭제할 수 없습니다.")
+        from app.models.purchasing import ConsumablePurchaseWait, PurchaseOrder, PurchaseOrderItem, PurchaseStatus
         
-        # 2. 안전한 경우 연결된 소모품 발주 대기 레코드 선행 삭제 (DB 무결성 유지)
-        await db.execute(delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc_id))
-    
-    await db.delete(doc) # 연쇄 삭제(Cascade) 설정에 의해 steps 등은 자동 삭제됨
+        # 1. 연결된 소모품 발주 대기 데이터 조회
+        stmt = select(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc_id)
+        res = await db.execute(stmt)
+        waits = res.scalars().all()
+        wait_ids = [w.id for w in waits]
+        
+        # 2. 발주 진행 여부 확인 (PENDING이 아닌 항목이 있는지)
+        has_active_order = any(w.status != "PENDING" for w in waits)
+        
+        if not has_active_order:
+            # 2-1. 전부 대기 상태인 경우: 자식 데이터부터 강제 연쇄 삭제 (고아 데이터 방지)
+            if waits:
+                await db.execute(delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc_id))
+            await db.delete(doc) # steps 등은 relationship 설정에 의해 자동 삭제됨
+            await db.commit()
+            return {"message": "기안이 삭제되었으며, 연관된 발주 대기 항목도 모두 정리되었습니다."}
+        else:
+            # 2-2. 이미 발주가 진행된 경우: 삭제 대신 '취소(CANCELLED)' 상태로 전환 (비즈니스 우회 로직)
+            doc.status = ApprovalStatus.CANCELLED
+            
+            # 연결된 발주 대기 항목들도 모두 취소 처리
+            for w in waits:
+                w.status = "CANCELLED"
+            
+            # 발주서(PurchaseOrder)가 생성되어 있다면 해당 발주서도 취소 검토
+            if wait_ids:
+                po_stmt = select(PurchaseOrder).join(PurchaseOrderItem).where(
+                    PurchaseOrderItem.consumable_purchase_wait_id.in_(wait_ids)
+                )
+                po_res = await db.execute(po_stmt)
+                linked_pos = po_res.scalars().all()
+                for po in linked_pos:
+                    # 입고가 이미 완료된 건이 아니라면 취소 상태로 변경
+                    if po.status not in [PurchaseStatus.COMPLETED, PurchaseStatus.PARTIAL]:
+                        po.status = PurchaseStatus.CANCELED
+            
+            await db.commit()
+            return {"message": "이미 발주가 진행된 항목이 있어 삭제 대신 기안과 발주 상태를 '취소'로 변경했습니다."}
+
+    # 일반 문서(휴가 등)의 경우 기본 연쇄 삭제 처리
+    await db.delete(doc)
     await db.commit()
     return {"message": "삭제되었습니다."}

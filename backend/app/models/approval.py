@@ -14,6 +14,7 @@ class ApprovalStatus(str, enum.Enum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
     REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
 
 class ApprovalLine(Base):
     """결재선 설정 (Template)"""

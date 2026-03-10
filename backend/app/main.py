@@ -598,6 +598,12 @@ async def startup_event():
 
                 # 12-2. 기존 데이터 item_type 기본값 일괄 업데이트 (NULL인 경우만)
                 await db.execute(text("UPDATE products SET item_type = 'FINISHED' WHERE item_type IS NULL"))
+
+                # 13. 고아(Orphan) 소모품 발주 대기 데이터 청소
+                # 결재 문서(approval_documents)가 이미 삭제되었는데 남아있는 소모품 발주 대기 항목 삭제
+                cleanup_query = "DELETE FROM consumable_purchase_waits WHERE approval_id NOT IN (SELECT id FROM approval_documents)"
+                await db.execute(text(cleanup_query))
+                print("Startup: Cleaned up orphan consumable_purchase_waits")
                 await db.commit()
                 print("Startup: BOM item_type migration done")
             except Exception as e:
