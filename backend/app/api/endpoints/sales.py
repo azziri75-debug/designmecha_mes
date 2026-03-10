@@ -601,6 +601,10 @@ async def delete_order(
     
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    # Bug 4 Safety Check: Block if already delivered or status is COMPLETED
+    if db_order.status == OrderStatus.DELIVERY_COMPLETED or db_order.actual_delivery_date:
+        raise HTTPException(status_code=400, detail="이미 납품이 완료된 수주 건은 삭제할 수 없습니다.")
     
     # Cascade delete 연관 데이터 (의존 관계 역순 및 명시적 삭제)
     # 1. 연관된 생산 계획 ID들 가져오기
@@ -685,6 +689,9 @@ async def delete_order(
     
     # 10. 수주 품목 삭제
     await db.execute(delete(SalesOrderItem).where(SalesOrderItem.order_id == order_id))
+    
+    # Bug 4 Fix: Explicitly delete MaterialRequirement for this Order
+    await db.execute(delete(MaterialRequirement).where(MaterialRequirement.order_id == order_id))
         
     # 11. 수주 헤더 삭제
     await db.delete(db_order)

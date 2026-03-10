@@ -281,6 +281,10 @@ async def delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     
+    # Bug 1 Fix: Explicitly delete related Stock records
+    from app.models.inventory import Stock
+    await db.execute(delete(Stock).where(Stock.product_id == product_id))
+    
     await db.delete(product)
     await db.commit()
     return {"message": "Product deleted successfully"}

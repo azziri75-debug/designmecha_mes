@@ -38,6 +38,9 @@ async def read_stocks(
     if product_name:
         query = query.where(Product.name.ilike(f"%{product_name}%"))
 
+    # Bug 2 Fix: Exclude CONSUMABLE items from inventory list
+    query = query.where(Product.item_type != 'CONSUMABLE')
+
     result = await db.execute(query)
     stocks = result.scalars().all()
     

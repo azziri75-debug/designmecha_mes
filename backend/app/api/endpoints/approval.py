@@ -9,6 +9,7 @@ from datetime import datetime
 from app.api import deps
 from app.models.approval import ApprovalDocument, ApprovalLine, ApprovalStep, ApprovalStatus
 from app.models.basics import Staff, EmployeeTimeRecord
+from app.models.purchasing import ConsumablePurchaseWait, PurchaseOrder, PurchaseOrderItem, PurchaseStatus, MaterialRequirement
 from app.schemas.approval import (
     ApprovalDocumentCreate, ApprovalDocumentResponse,
     ApprovalLineCreate, ApprovalLineResponse,
@@ -40,17 +41,20 @@ async def get_approval_stats(
     # 1. 시스템 전체의 결제 진행 상황 (Dashboard는 관리용이므로 전역 수치 표시)
     # 기안 대기 (작성 중 또는 결재 진행 중인 모든 문서)
     pending = await db.execute(select(func.count(ApprovalDocument.id)).where(
-        ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS])
+        ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS]),
+        ApprovalDocument.deleted_at.is_(None)
     ))
     
     # 결재 완료 (전체)
     completed = await db.execute(select(func.count(ApprovalDocument.id)).where(
-        ApprovalDocument.status == ApprovalStatus.COMPLETED
+        ApprovalDocument.status == ApprovalStatus.COMPLETED,
+        ApprovalDocument.deleted_at.is_(None)
     ))
     
     # 반려 문서 (전체)
     rejected = await db.execute(select(func.count(ApprovalDocument.id)).where(
-        ApprovalDocument.status == ApprovalStatus.REJECTED
+        ApprovalDocument.status == ApprovalStatus.REJECTED,
+        ApprovalDocument.deleted_at.is_(None)
     ))
     
     # 2. 내가 결재해야 할 대기 건수 (개인화된 수치)
@@ -58,7 +62,8 @@ async def get_approval_stats(
         ApprovalStep.approver_id == current_user.id,
         ApprovalStep.status == "PENDING",
         ApprovalDocument.current_sequence == ApprovalStep.sequence,
-        ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS])
+        ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS]),
+        ApprovalDocument.deleted_at.is_(None)
     ))
 
     return {
@@ -121,7 +126,7 @@ async def list_documents(
     query = select(ApprovalDocument).options(
         selectinload(ApprovalDocument.author),
         selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver)
-    )
+    ).where(ApprovalDocument.deleted_at.is_(None))
 
     if doc_type:
         query = query.where(ApprovalDocument.doc_type == doc_type)
@@ -305,7 +310,7 @@ async def get_document(
             selectinload(ApprovalDocument.author),
             selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver)
         )
-        .where(ApprovalDocument.id == doc_id)
+        .where(ApprovalDocument.id == doc_id, ApprovalDocument.deleted_at.is_(None))
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -816,7 +821,8 @@ async def delete_document(
             # 2-1. 전부 대기 상태인 경우: 자식 데이터부터 강제 연쇄 삭제 (고아 데이터 방지)
             if waits:
                 await db.execute(delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc_id))
-            await db.delete(doc) # steps 등은 relationship 설정에 의해 자동 삭제됨
+            # Bug 3 Fix: Use Soft Delete
+            doc.deleted_at = datetime.now()
             await db.commit()
             return {"message": "기안이 삭제되었으며, 연관된 발주 대기 항목도 모두 정리되었습니다."}
         else:
@@ -842,7 +848,7 @@ async def delete_document(
             await db.commit()
             return {"message": "이미 발주가 진행된 항목이 있어 삭제 대신 기안과 발주 상태를 '취소'로 변경했습니다."}
 
-    # 일반 문서(휴가 등)의 경우 기본 연쇄 삭제 처리
-    await db.delete(doc)
+    # 일반 문서(휴가 등)의 경우 Soft Delete 처리
+    doc.deleted_at = datetime.now()
     await db.commit()
     return {"message": "삭제되었습니다."}

@@ -364,8 +364,26 @@ async def startup_event():
                         status VARCHAR DEFAULT 'PENDING',
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
-                """)
+                """),
             ]
+
+            # Bug 3: Add deleted_at column to approval_documents if missing
+            try:
+                if is_sqlite:
+                    r = await db.execute(text("PRAGMA table_info(approval_documents)"))
+                    cols = [c[1] for c in r.fetchall()]
+                    if "deleted_at" not in cols:
+                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN deleted_at TIMESTAMP"))
+                        print("Startup: Added deleted_at to approval_documents (SQLite)")
+                else:
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='approval_documents' AND column_name='deleted_at'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN deleted_at TIMESTAMP"))
+                        print("Startup: Added deleted_at to approval_documents (Postgres)")
+                await db.commit()
+            except Exception as e:
+                print(f"Startup: approval_documents migration failed: {e}")
+                await db.rollback()
 
             for t_name, create_sql in new_tables:
                 try:

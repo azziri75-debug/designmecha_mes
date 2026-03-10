@@ -47,6 +47,7 @@ class ApprovalDocument(Base):
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
+    deleted_at = Column(DateTime, nullable=True) # Soft delete
 
     author = relationship("Staff", foreign_keys=[author_id], lazy="selectin")
     steps = relationship("ApprovalStep", back_populates="document", cascade="all, delete-orphan", lazy="selectin")
