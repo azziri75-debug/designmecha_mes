@@ -74,6 +74,13 @@ async def read_stock_by_product(product_id: int, db: AsyncSession = Depends(get_
 @router.post("/stocks/init", response_model=StockResponse)
 async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = Depends(get_db)):
     """수동 재고 초기화 API"""
+    # 품목 타입 확인 (소모품 차단)
+    product = await db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="품목을 찾을 수 없습니다.")
+    if product.item_type == 'CONSUMABLE':
+        raise HTTPException(status_code=400, detail="소모품은 재고를 관리하지 않습니다.")
+
     query = select(Stock).where(Stock.product_id == product_id)
     result = await db.execute(query)
     stock = result.scalar_one_or_none()
@@ -100,6 +107,11 @@ async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = 
 
 @router.put("/stocks/{product_id}", response_model=StockResponse)
 async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession = Depends(get_db)):
+    # 품목 타입 확인 (소모품 차단)
+    product = await db.get(Product, product_id)
+    if product and product.item_type == 'CONSUMABLE':
+        raise HTTPException(status_code=400, detail="소모품은 재고를 관리하지 않습니다.")
+
     query = select(Stock).where(Stock.product_id == product_id)
     result = await db.execute(query)
     stock = result.scalar_one_or_none()

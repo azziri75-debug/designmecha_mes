@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
+import Select from 'react-select';
 import { cn } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import ProcessGroupManager from '../components/ProcessGroupManager';

@@ -20,7 +20,13 @@ async def handle_stock_movement(
     if quantity == 0:
         return None
 
-    # 1. Stock 레코드 조회 또는 생성
+    # 1. 품목 타입 확인 (소모품은 재고 관리 제외)
+    product = await db.get(Product, product_id)
+    if not product or product.item_type == 'CONSUMABLE':
+        logger.info(f"Stock movement skipped: Product {product_id} is CONSUMABLE or not found.")
+        return None
+
+    # 2. Stock 레코드 조회 또는 생성
     query = select(Stock).where(Stock.product_id == product_id)
     result = await db.execute(query)
     stock = result.scalar_one_or_none()
