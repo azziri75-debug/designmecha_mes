@@ -895,7 +895,7 @@ const ProductsPage = ({ type }) => {
                                                     </td>
                                                 )}
                                                 <td className="px-6 py-4 font-medium text-blue-400">
-                                                    {product.latest_price ? `₩${product.latest_price.toLocaleString()}` : '-'}
+                                                    {product.recent_price ? `₩${product.recent_price.toLocaleString()}` : '-'}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-500 truncate max-w-xs" title={product.note}>{product.note || '-'}</td>
                                                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
@@ -1107,8 +1107,8 @@ const ProductsPage = ({ type }) => {
                                                                                         <td className="px-4 py-2 text-right text-emerald-400 font-medium">{item.required_quantity}</td>
                                                                                         <td className="px-4 py-2 text-xs">{item.child_product?.unit || 'EA'}</td>
                                                                                         <td className="px-4 py-2 text-right font-medium text-blue-400">
-                                                                                            {allParts.find(p => p.id === item.child_product_id)?.latest_price ?
-                                                                                                `₩${allParts.find(p => p.id === item.child_product_id).latest_price.toLocaleString()}` : '-'}
+                                                                                            {allParts.find(p => p.id === item.child_product_id)?.recent_price ?
+                                                                                                `₩${allParts.find(p => p.id === item.child_product_id).recent_price.toLocaleString()}` : '-'}
                                                                                         </td>
                                                                                         <td className="px-4 py-2 text-center">
                                                                                             <button
@@ -1532,7 +1532,7 @@ const ProductsPage = ({ type }) => {
                                                                     type="number"
                                                                     value={p.cost}
                                                                     onChange={(e) => updateRoutingProcess(index, 'cost', e.target.value)}
-                                                                    className="w-full bg-gray-900 border border-gray-600 text-white text-xs rounded pl-2 pr-12 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none text-right"
+                                                                    className="w-full bg-gray-900 border border-gray-600 text-white text-xs rounded pl-2 pr-12 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
                                                                     placeholder="단가"
                                                                 />
                                                                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
@@ -1687,8 +1687,8 @@ const ProductsPage = ({ type }) => {
                                                             </td>
                                                             <td className="px-4 py-3 text-xs text-gray-400">{item.child_product?.unit || 'EA'}</td>
                                                             <td className="px-4 py-3 text-right font-medium text-blue-400">
-                                                                {allParts.find(p => p.id === item.child_product_id)?.latest_price ?
-                                                                    `₩${allParts.find(p => p.id === item.child_product_id).latest_price.toLocaleString()}` : '-'}
+                                                                {allParts.find(p => p.id === item.child_product_id)?.recent_price ?
+                                                                    `₩${allParts.find(p => p.id === item.child_product_id).recent_price.toLocaleString()}` : '-'}
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className="flex items-center justify-center gap-2">

@@ -764,6 +764,12 @@ async def startup_event():
                             print("Startup: Added plan_id to material_requirements (Postgres)")
                 
                 await db.commit()
+                # 15. Clean up existing consumable stock data (requested by user)
+                try:
+                    from cleanup_consumable_stocks import cleanup_consumable_stocks
+                    await cleanup_consumable_stocks()
+                except Exception as e:
+                    print(f"Startup: Consumable stock cleanup failed: {e}")
             except Exception as e:
                 print(f"Startup: MRP auto-patch failed: {e}")
                 await db.rollback()

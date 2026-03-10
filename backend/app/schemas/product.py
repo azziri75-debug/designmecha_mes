@@ -107,6 +107,7 @@ class ProductBase(BaseModel):
     drawing_file: Optional[str] = None
     note: Optional[str] = None
     item_type: Optional[str] = None  # PRODUCED, PART, CONSUMABLE
+    recent_price: Optional[float] = 0.0 # 구매 시 자동 갱신되는 단가
 
 class ProductCreate(ProductBase):
     standard_processes: List[ProductProcessCreate] = []
