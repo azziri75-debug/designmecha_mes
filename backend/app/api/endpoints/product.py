@@ -281,13 +281,31 @@ async def delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     
-    # Bug 1 Fix: Explicitly delete related Stock records
-    from app.models.inventory import Stock
+    # Deep Cascade Deletion (Bottom-up)
+    from app.models.inventory import Stock, StockTransaction
+    from app.models.purchasing import PurchaseOrderItem, ConsumablePurchaseWait, MaterialRequirement, OutsourcingOrderItem
+    
+    # 1. Get associated Stock IDs
+    stock_q = await db.execute(select(Stock.id).where(Stock.product_id == product_id))
+    stock_ids = stock_q.scalars().all()
+    
+    # 2. Delete StockTransactions (Deepest level)
+    if stock_ids:
+        await db.execute(delete(StockTransaction).where(StockTransaction.stock_id.in_(stock_ids)))
+    
+    # 3. Delete Stocks
     await db.execute(delete(Stock).where(Stock.product_id == product_id))
     
+    # 4. Delete Purchasing related data
+    await db.execute(delete(PurchaseOrderItem).where(PurchaseOrderItem.product_id == product_id))
+    await db.execute(delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.product_id == product_id))
+    await db.execute(delete(MaterialRequirement).where(MaterialRequirement.product_id == product_id))
+    await db.execute(delete(OutsourcingOrderItem).where(OutsourcingOrderItem.product_id == product_id))
+    
+    # 5. Delete the Product
     await db.delete(product)
     await db.commit()
-    return {"message": "Product deleted successfully"}
+    return {"message": "Product and all its dependencies deleted successfully"}
 
 # --- Process CRUD Operations ---
 
