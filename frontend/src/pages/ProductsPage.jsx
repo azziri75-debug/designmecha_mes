@@ -585,9 +585,18 @@ const ProductsPage = ({ type }) => {
 
 
     const toggleExpand = (id) => {
-        setExpandedProductId(expandedProductId === id ? null : id);
-        if (expandedProductId !== id) {
-            setDetailSubTab('routing');
+        const isExpanding = expandedProductId !== id;
+        setExpandedProductId(isExpanding ? id : null);
+
+        if (isExpanding) {
+            const product = products.find(p => p.id === id);
+            // PART 또는 CONSUMABLE인 경우 '발주 이력' 탭을 기본으로
+            if (product && (product.item_type === 'PART' || product.item_type === 'CONSUMABLE')) {
+                setDetailSubTab('priceHistory');
+                fetchPriceHistory(product);
+            } else {
+                setDetailSubTab('routing');
+            }
         }
     };
 
@@ -795,19 +804,15 @@ const ProductsPage = ({ type }) => {
                                 className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Filter className="w-4 h-4 text-gray-400" />
-                            <select
-                                className="bg-gray-900 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                value={selectedPartnerId}
-                                onChange={(e) => setSelectedPartnerId(e.target.value)}
-                            >
-                                <option value="">전체 거래처</option>
-                                {partners.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        <Select
+                            isClearable
+                            placeholder="전체 거래처"
+                            options={partners.map(p => ({ value: p.id, label: p.name }))}
+                            value={partners.find(p => p.id === selectedPartnerId) ? { value: selectedPartnerId, label: partners.find(p => p.id === selectedPartnerId).name } : null}
+                            onChange={(opt) => setSelectedPartnerId(opt ? opt.value : "")}
+                            styles={selectStyles}
+                            className="min-w-[150px]"
+                        />
                     </div>
 
                     <div className="overflow-x-auto">
@@ -1483,7 +1488,7 @@ const ProductsPage = ({ type }) => {
                                                                         setShowQuickProcessModal(true);
                                                                     }}
                                                                     styles={selectStyles}
-                                                                    placeholder="(공격 선택 또는 입력)"
+                                                                    placeholder="(공정 선택 및 입력)"
                                                                     formatCreateLabel={(inputValue) => `"${inputValue}" 신규 등록`}
                                                                 />
                                                             </div>

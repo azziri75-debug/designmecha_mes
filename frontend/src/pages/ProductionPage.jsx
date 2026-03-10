@@ -665,6 +665,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
             <TableRow
                 sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5' } }}
                 onClick={() => setOpen(!open)}
+                onDoubleClick={() => onCreatePlan(order)}
             >
                 <TableCell>
                     <Chip label="수주" size="small" variant="outlined" sx={{ mr: 1 }} />
@@ -725,6 +726,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
             <TableRow
                 sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5' } }}
                 onClick={() => setOpen(!open)}
+                onDoubleClick={() => onCreatePlan(null, stockProduction)}
             >
                 <TableCell>
                     <Chip label="재고생산" size="small" sx={{ mr: 1, bgcolor: '#e8f5e9', color: '#2e7d32' }} />
@@ -875,6 +877,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
             <TableRow
                 sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer' }}
                 onClick={() => setOpen(!open)}
+                onDoubleClick={() => onEdit(plan)}
                 hover
             >
                 <TableCell>

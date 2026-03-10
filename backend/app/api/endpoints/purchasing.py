@@ -623,17 +623,21 @@ async def update_purchase_order(
         if old_status != PurchaseStatus.COMPLETED:
             for item in db_order.items:
                 item.received_quantity = item.quantity # Set received quantity automatically
-                await handle_stock_movement(
-                    db=db,
-                    product_id=item.product_id,
-                    quantity=item.quantity,
-                    transaction_type=TransactionType.IN,
-                    reference=db_order.order_no
-                )
                 
-                # Update recent price in Product table
+                # Fetch product to check item_type
                 product = await db.get(Product, item.product_id)
                 if product:
+                    # Only handle stock movement for non-consumable items
+                    if product.item_type != 'CONSUMABLE':
+                        await handle_stock_movement(
+                            db=db,
+                            product_id=item.product_id,
+                            quantity=item.quantity,
+                            transaction_type=TransactionType.IN,
+                            reference=db_order.order_no
+                        )
+                    
+                    # Update recent price for all items (including consumables)
                     product.recent_price = item.unit_price
                     db.add(product)
 

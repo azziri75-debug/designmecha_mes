@@ -3,7 +3,47 @@ import { X, Plus, Trash2, Search, FileText, Download, Upload, History } from 'lu
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 
+import Select from 'react-select';
+
 const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }) => {
+    // Select styling
+    const selectStyles = {
+        control: (base) => ({
+            ...base,
+            backgroundColor: '#374151',
+            borderColor: '#4B5563',
+            color: 'white',
+            '&:hover': {
+                borderColor: '#6B7280'
+            }
+        }),
+        menu: (base) => ({
+            ...base,
+            backgroundColor: '#1F2937',
+            border: '1px solid #374151'
+        }),
+        option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isFocused ? '#374151' : 'transparent',
+            color: 'white',
+            '&:active': {
+                backgroundColor: '#4B5563'
+            }
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: 'white'
+        }),
+        input: (base) => ({
+            ...base,
+            color: 'white'
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#9CA3AF'
+        })
+    };
+
     // Form State
     const [formData, setFormData] = useState({
         partner_id: '',
@@ -316,16 +356,14 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">거래처 (고객사)</label>
-                            <select
-                                value={formData.partner_id}
-                                onChange={(e) => setFormData({ ...formData, partner_id: e.target.value })}
-                                className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5"
-                            >
-                                <option value="">선택하세요</option>
-                                {partners.filter(p => p.partner_type.includes('CUSTOMER')).map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+                            <Select
+                                value={partners.filter(p => p.partner_type.includes('CUSTOMER')).map(p => ({ value: p.id, label: p.name })).find(opt => opt.value === formData.partner_id)}
+                                onChange={(option) => setFormData({ ...formData, partner_id: option ? option.value : '' })}
+                                options={partners.filter(p => p.partner_type.includes('CUSTOMER')).map(p => ({ value: p.id, label: p.name }))}
+                                styles={selectStyles}
+                                placeholder="거래처를 선택하세요"
+                                isClearable
+                            />
                         </div>
                         <div className="flex gap-4">
                             <div className="flex-1">

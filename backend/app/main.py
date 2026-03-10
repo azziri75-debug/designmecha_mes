@@ -224,6 +224,15 @@ async def startup_event():
                 print(f"Startup: Sales orders migration failed: {e}")
                 await db.rollback()
 
+            # 5. Clean up existing consumable stock data (requested by user)
+            try:
+                await db.execute(text("DELETE FROM stocks WHERE product_id IN (SELECT id FROM products WHERE item_type = 'CONSUMABLE')"))
+                await db.commit()
+                print("Successfully cleaned up existing consumable stocks.")
+            except Exception as e:
+                print(f"Failed to clean up consumable stocks: {e}")
+                await db.rollback()
+                
             # 3. Base Table Creation (Safe Sync Fix)
             try:
                 # Use run_sync to avoid AsyncEngine/Sync create_all conflict

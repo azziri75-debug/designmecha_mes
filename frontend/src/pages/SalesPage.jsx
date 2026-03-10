@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, Printer, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import Select from 'react-select';
 import FileViewerModal from '../components/FileViewerModal';
 import EstimateModal from '../components/EstimateModal';
 import OrderModal from '../components/OrderModal';
@@ -59,6 +60,7 @@ const SalesPage = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [selectedPartnerId, setSelectedPartnerId] = useState("");
 
     useEffect(() => {
         fetchPartners();
@@ -71,7 +73,7 @@ const SalesPage = () => {
         } else {
             fetchOrders();
         }
-    }, [activeTab, startDate, endDate, statusFilter]);
+    }, [activeTab, startDate, endDate, statusFilter, selectedPartnerId]);
     // Note: Re-fetching on filter change
 
     const fetchPartners = async () => {
@@ -86,7 +88,13 @@ const SalesPage = () => {
     const fetchEstimates = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/sales/estimates/');
+            const params = {};
+            if (startDate) params.start_date = startDate;
+            if (endDate) params.end_date = endDate;
+            if (statusFilter) params.status = statusFilter;
+            if (selectedPartnerId) params.partner_id = selectedPartnerId;
+
+            const res = await api.get('/sales/estimates/', { params });
             setEstimates(res.data);
         } catch (error) {
             console.error("Failed to fetch estimates", error);
@@ -102,6 +110,7 @@ const SalesPage = () => {
             if (startDate) params.start_date = startDate;
             if (endDate) params.end_date = endDate;
             if (statusFilter) params.status = statusFilter;
+            if (selectedPartnerId) params.partner_id = selectedPartnerId;
 
             const res = await api.get('/sales/orders/', { params });
             setOrders(res.data);
@@ -224,30 +233,56 @@ const SalesPage = () => {
             </div>
 
             {/* Content & Filters */}
-            {activeTab === 'orders' && (
-                <Card className="p-4 flex flex-wrap gap-4 items-end mb-4">
-                    <div className="space-y-1">
-                        <label className="text-xs text-gray-400">시작일</label>
-                        <input
-                            type="date"
-                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-gray-400">종료일</label>
-                        <input
-                            type="date"
-                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                        />
-                    </div>
+            <Card className="p-4 flex flex-wrap gap-4 items-end mb-4">
+                <div className="flex-1 min-w-[200px] space-y-1">
+                    <label className="text-xs text-gray-400">거래처 검색</label>
+                    <Select
+                        isClearable
+                        placeholder="전체 거래처"
+                        options={partners.map(p => ({ value: p.id, label: p.name }))}
+                        value={partners.find(p => p.id === selectedPartnerId) ? { value: selectedPartnerId, label: partners.find(p => p.id === selectedPartnerId).name } : null}
+                        onChange={(opt) => setSelectedPartnerId(opt ? opt.value : "")}
+                        styles={{
+                            control: (base) => ({
+                                ...base,
+                                backgroundColor: '#374151',
+                                borderColor: '#4b5563',
+                                color: 'white',
+                                fontSize: '0.875rem'
+                            }),
+                            menu: (base) => ({ ...base, backgroundColor: '#1f2937', color: 'white', zIndex: 99 }),
+                            option: (base, state) => ({
+                                ...base,
+                                backgroundColor: state.isFocused ? '#374151' : 'transparent',
+                                color: 'white'
+                            }),
+                            singleValue: (base) => ({ ...base, color: 'white' })
+                        }}
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs text-gray-400">시작일</label>
+                    <input
+                        type="date"
+                        className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs text-gray-400">종료일</label>
+                    <input
+                        type="date"
+                        className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                    />
+                </div>
+                {activeTab === 'orders' && (
                     <div className="space-y-1">
                         <label className="text-xs text-gray-400">상태</label>
                         <select
-                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
+                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
                         >
@@ -259,8 +294,8 @@ const SalesPage = () => {
                             <option value="CANCELLED">취소</option>
                         </select>
                     </div>
-                </Card>
-            )}
+                )}
+            </Card>
 
             <Card className="p-0 overflow-hidden min-h-[500px]">
                 {loading ? (

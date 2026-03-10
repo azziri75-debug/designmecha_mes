@@ -176,7 +176,11 @@ const ApprovalPage = () => {
             await api.delete(`/approval/documents/${docId}`);
             alert('삭제되었습니다.');
             setShowDocDetail(false);
-            fetchInitialData();
+            // 즉시 리스트에서 제거 (새로고침 없이 반영)
+            setDocuments(prev => prev.filter(doc => doc.id !== docId));
+
+            // 만약 서버 데이터의 최신 상태가 필요하다면 fetchInitialData()를 호출할 수도 있지만,
+            // 사용자 요청은 "새로고침하지 않아도 사라지도록" 하는 것이므로 state update가 우선입니다.
         } catch (error) {
             alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
         }
