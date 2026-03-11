@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, DateTime, func
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum, DateTime, func, Float
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import enum
@@ -17,4 +17,22 @@ class AttendanceLog(Base):
     log_time = Column(DateTime, default=func.now(), nullable=False)
     log_type = Column(Enum(AttendanceLogType), nullable=False)
     
+    staff = relationship("Staff")
+
+class EmployeeAnnualLeave(Base):
+    """사원별 연차 내역 관리"""
+    __tablename__ = "employee_annual_leaves"
+
+    id = Column(Integer, primary_key=True, index=True)
+    staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False)
+    year = Column(Integer, nullable=False)
+    base_days = Column(Float, default=0.0)
+    adjustment_days = Column(Float, default=0.0)
+    used_leave_hours = Column(Float, default=0.0)
+    sick_leave_days = Column(Float, default=0.0)
+    event_leave_days = Column(Float, default=0.0)
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
     staff = relationship("Staff")

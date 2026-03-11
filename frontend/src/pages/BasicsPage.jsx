@@ -102,6 +102,10 @@ const BasicsPageContent = () => {
     const [mergeSource, setMergeSource] = useState(null);
     const [mergeTarget, setMergeTarget] = useState(null);
 
+    // Staff Tab & Leave History
+    const [staffTab, setStaffTab] = useState('info'); // 'info', 'leave'
+    const [leaveHistory, setLeaveHistory] = useState([]);
+
     // Form State
     const [formData, setFormData] = useState({});
 
@@ -268,7 +272,31 @@ const BasicsPageContent = () => {
         setModalType('edit_staff');
         setSelectedStaff(staffMember);
         setFormData(staffMember);
+        setStaffTab('info');
+        setLeaveHistory([]);
         setShowModal(true);
+        fetchLeaveHistory(staffMember.id);
+    };
+
+    const fetchLeaveHistory = async (staffId) => {
+        try {
+            const res = await api.get(`/hr/annual-leave/${staffId}`);
+            setLeaveHistory(res.data.leaves || []);
+        } catch (error) {
+            console.error("Failed to fetch leave history", error);
+        }
+    };
+
+    const handleUpdateLeave = async (leaveId, field, value) => {
+        try {
+            const val = parseFloat(value);
+            if (isNaN(val)) return;
+            const res = await api.put(`/hr/annual-leave/${leaveId}`, { [field]: val });
+            setLeaveHistory(prev => prev.map(l => l.id === leaveId ? res.data : l));
+        } catch (error) {
+            console.error("Failed to update leave", error);
+            alert("수정 실패");
+        }
     };
 
     const openEditEquipmentModal = (eq) => {
@@ -1304,24 +1332,49 @@ const BasicsPageContent = () => {
                             <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     {activeTab === 'partners' ? <Building2 className="w-5 h-5 text-blue-500" /> : <User className="w-5 h-5 text-purple-500" />}
-                                    {modalType === 'create' ? '신규 거래처 등록' :
-                                        modalType === 'edit' ? '거래처 정보 수정' :
-                                            modalType === 'add_contact' ? '담당자 추가' :
-                                                modalType === 'edit_contact' ? '담당자 수정' :
-                                                    modalType === 'create_staff' ? '신규 사원 등록' :
-                                                        modalType === 'create_equipment' ? '신규 생산 장비 등록' :
-                                                            modalType === 'edit_equipment' ? '장비 정보 수정' :
-                                                                modalType === 'add_eq_history' ? '장비 이력 추가' :
-                                                                    modalType === 'edit_eq_history' ? '장비 이력 수정' :
-                                                                        modalType === 'create_instrument' ? '신규 측정기 등록' :
-                                                                            modalType === 'edit_instrument' ? '측정기 정보 수정' :
-                                                                                modalType === 'add_inst_history' ? '측정기 이력(교정/수리) 추가' :
-                                                                                    modalType === 'edit_inst_history' ? '측정기 이력(교정/수리) 수정' : '사원 정보 수정'}
+                                    {modalType === 'create' ? '신규 거래처 등록' : null}
                                 </h3>
+                                {modalType === 'add_contact' && <h2 className="text-xl font-bold text-white">담당자 추가 ({selectedPartner?.name})</h2>}
+                                {modalType === 'edit_contact' && <h2 className="text-xl font-bold text-white">담당자 수정 ({selectedPartner?.name})</h2>}
+                                {modalType === 'create_staff' && <h2 className="text-xl font-bold text-white">신규 사원 등록</h2>}
+                                {modalType === 'edit_staff' && <h2 className="text-xl font-bold text-white">사원 정보 수정</h2>}
+                                {modalType === 'create_equipment' && <h2 className="text-xl font-bold text-white">신규 장비 등록</h2>}
+                                {modalType === 'edit_equipment' && <h2 className="text-xl font-bold text-white">장비 정보 수정</h2>}
+                                {modalType === 'add_eq_history' && <h2 className="text-xl font-bold text-white">장비 이력 추가 ({selectedEquipment?.name})</h2>}
+                                {modalType === 'edit_eq_history' && <h2 className="text-xl font-bold text-white">장비 이력 수정 ({selectedEquipment?.name})</h2>}
+                                {modalType === 'create_instrument' && <h2 className="text-xl font-bold text-white">신규 측정기 등록</h2>}
+                                {modalType === 'edit_instrument' && <h2 className="text-xl font-bold text-white">측정기 정보 수정</h2>}
+                                {modalType === 'add_inst_history' && <h2 className="text-xl font-bold text-white">측정기 이력 추가 ({selectedInstrument?.name})</h2>}
+                                {modalType === 'edit_inst_history' && <h2 className="text-xl font-bold text-white">측정기 이력 수정 ({selectedInstrument?.name})</h2>}
                                 <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white transition-colors">
-                                    <X className="w-5 h-5" />
+                                    <X className="w-6 h-6" />
                                 </button>
                             </div>
+
+                            {modalType === 'edit_staff' && (
+                                <div className="px-6 py-2 border-b border-gray-700 bg-gray-800/50 flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStaffTab('info')}
+                                        className={cn(
+                                            "text-sm font-medium px-4 py-2 rounded-md transition-colors",
+                                            staffTab === 'info' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+                                        )}
+                                    >
+                                        기본 정보
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setStaffTab('leave')}
+                                        className={cn(
+                                            "text-sm font-medium px-4 py-2 rounded-md transition-colors",
+                                            staffTab === 'leave' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+                                        )}
+                                    >
+                                        연차 이력
+                                    </button>
+                                </div>
+                            )}
 
                             <form onSubmit={handleSubmit} className="p-6 space-y-5">
                                 {(modalType === 'create' || modalType === 'edit') && (
@@ -1514,8 +1567,83 @@ const BasicsPageContent = () => {
                                     </>
                                 )}
 
-                                {/* Staff Forms */}
-                                {(modalType === 'create_staff' || modalType === 'edit_staff') && (
+
+                                {modalType === 'edit_staff' && staffTab === 'leave' && (
+                                    <div className="space-y-4">
+                                        <div className="bg-blue-600/10 border border-blue-500/30 p-4 rounded-xl">
+                                            <p className="text-xs text-blue-400 leading-relaxed">
+                                                💡 <b>[연차 관리 안내]</b><br />
+                                                - 시스템 발생: 근로기준법(1년 미만 월 1일, 1년 이상 15~25일)에 따라 자동 계산된 일수입니다.<br />
+                                                - 관리자 조정: 과거 잔여 연차 이관이나 포상/차감 시 사용하며 <b>0.5 단위</b>로 입력 가능합니다.<br />
+                                                - 사용 시간: 전자결재(휴가원/외출/조퇴) 승격 시 실시간으로 합산됩니다.
+                                            </p>
+                                        </div>
+                                        <div className="overflow-x-auto rounded-xl border border-gray-700 bg-gray-900/50">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="text-xs uppercase bg-gray-800 text-gray-400">
+                                                    <tr>
+                                                        <th className="px-4 py-3 border-b border-gray-700">연도</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700">시스템 발생(A)</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700 text-blue-400">관리자 조정(B)</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700 text-red-400">사용한 시간(H)</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700">사용(일) (C=H/8)</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700 font-bold text-green-400 bg-gray-700/30 text-center">잔여 연차<br />(A+B-C)</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700 text-orange-400">병가(일)</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700 text-orange-400">경조사(일)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-800">
+                                                    {leaveHistory.map(leave => (
+                                                        <tr key={leave.id} className="hover:bg-gray-800/50 transition-colors">
+                                                            <td className="px-4 py-3 font-medium text-white">{leave.year}년</td>
+                                                            <td className="px-4 py-3 text-gray-400">{leave.base_days}일</td>
+                                                            <td className="px-4 py-3">
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.5"
+                                                                    defaultValue={leave.adjustment_days}
+                                                                    onBlur={(e) => handleUpdateLeave(leave.id, 'adjustment_days', e.target.value)}
+                                                                    className="w-16 bg-blue-900/20 border border-blue-500/30 text-blue-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.1"
+                                                                    defaultValue={leave.used_leave_hours}
+                                                                    onBlur={(e) => handleUpdateLeave(leave.id, 'used_leave_hours', e.target.value)}
+                                                                    className="w-16 bg-red-900/20 border border-red-500/30 text-red-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-red-500"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3 text-gray-500">{(leave.used_leave_hours / 8).toFixed(2)}일</td>
+                                                            <td className="px-4 py-3 font-bold text-green-400 bg-green-400/5 text-center">{leave.remaining_days}일</td>
+                                                            <td className="px-4 py-3">
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.5"
+                                                                    defaultValue={leave.sick_leave_days}
+                                                                    onBlur={(e) => handleUpdateLeave(leave.id, 'sick_leave_days', e.target.value)}
+                                                                    className="w-14 bg-gray-800 border border-gray-700 text-gray-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <input
+                                                                    type="number"
+                                                                    step="1"
+                                                                    defaultValue={leave.event_leave_days}
+                                                                    onBlur={(e) => handleUpdateLeave(leave.id, 'event_leave_days', e.target.value)}
+                                                                    className="w-14 bg-gray-800 border border-gray-700 text-gray-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
+                                                                />
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(modalType === 'create_staff' || (modalType === 'edit_staff' && staffTab === 'info')) && (
                                     <>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             {/* Left Column */}
@@ -1945,8 +2073,8 @@ const BasicsPageContent = () => {
                                     </button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
+                        </div >
+                    </div >
                 )
             }
 

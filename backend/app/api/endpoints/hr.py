@@ -14,8 +14,12 @@ from app.schemas.hr import (
     AttendanceClockOutUpdate, 
     AttendanceMonthlyResponse,
     EmployeeTimeRecordUpdate,
-    EmployeeTimeRecordResponse
+    EmployeeTimeRecordResponse,
+    EmployeeAnnualLeaveResponse,
+    AnnualLeaveHistoryResponse,
+    AnnualLeaveUpdate
 )
+from app.models.hr import EmployeeAnnualLeave, AttendanceLog, AttendanceLogType
 
 KST = timezone(timedelta(hours=9))
 
@@ -46,6 +50,35 @@ def _business_days_between(start: date, end: date) -> int:
             count += 1
         curr += timedelta(days=1)
     return count
+
+
+def calculate_base_days(join_date: date, target_year: int) -> float:
+    """근로기준법 기반 연차 계산 로직"""
+    if not join_date:
+        return 15.0
+    
+    # 1. 1년 미만 근속자 여부 판단
+    # target_year 1월 1일 이전에 1년이 되었는지 확인
+    first_anniversary = join_date.replace(year=join_date.year + 1)
+    year_start = date(target_year, 1, 1)
+    
+    if first_anniversary > year_start:
+        # 아직 1년이 안 된 상태로 target_year를 시작함
+        if join_date.year == target_year:
+            # 올해 입사자: 입사월부터 12월까지 최대 발생 가능한 연차 (1개월 만근 시 1일)
+            return float(max(0, 12 - join_date.month))
+        elif join_date.year == target_year - 1:
+            # 작년 중도 입사자: 올해 1년이 되기 전까지 남은 개수 (최대 11일 기준)
+            # 여기서는 단순하게 1년 미만 기간 동안 총 11일이 발생한다고 가정
+            return 11.0 
+        return 0.0
+    
+    # 2. 1년 이상 근속자 (15일 + 가산연차)
+    years_of_service = target_year - join_date.year
+    # 가산연차: 1년 초과하는 매 2년마다 1일 (최대 25일)
+    extra_days = (years_of_service - 1) // 2
+    base = 15.0 + extra_days
+    return float(min(25.0, base))
 
 
 @router.get("/attendance/summary", response_model=AttendanceSummaryResponse)
@@ -101,6 +134,8 @@ async def get_attendance_summary(
     docs = docs_res.scalars().all()
 
     total_vacation_days = 0.0
+    total_sick_leave_days = 0.0
+    total_event_leave_days = 0.0
     total_leave_outing_hours = 0.0
     total_overtime_hours = 0.0
     document_items: list[AttendanceDocItem] = []
@@ -129,7 +164,13 @@ async def get_attendance_summary(
                     except (ValueError, TypeError):
                         applied_value = 1.0
 
-            total_vacation_days += applied_value
+            if vacation_type == "병가":
+                total_sick_leave_days += applied_value
+            elif vacation_type == "경조휴가":
+                total_event_leave_days += applied_value
+            else:
+                total_vacation_days += applied_value
+
             document_items.append(AttendanceDocItem(
                 id=doc.id,
                 doc_type=doc.doc_type,
@@ -138,6 +179,7 @@ async def get_attendance_summary(
                 applied_value=round(applied_value, 2),
                 applied_unit="일",
                 status=doc.status,
+                vacation_type=vacation_type
             ))
 
         elif doc.doc_type == "EARLY_LEAVE":
@@ -211,6 +253,8 @@ async def get_attendance_summary(
         user_id=target_id,
         user_name=target_staff.name,
         total_vacation_days=total_vacation_days,
+        total_sick_leave_days=total_sick_leave_days,
+        total_event_leave_days=total_event_leave_days,
         total_leave_outing_hours=total_leave_outing_hours,
         total_overtime_hours=total_overtime_hours,
         documents=document_items
@@ -542,4 +586,114 @@ async def update_attendance_record(
     await db.commit()
     await db.refresh(record)
     return record
+
+
+@router.get("/annual-leave/{staff_id}", response_model=AnnualLeaveHistoryResponse)
+async def get_annual_leave_history(
+    staff_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """사원별 최근 3년 연차 내역 조회"""
+    if current_user.user_type != "ADMIN" and current_user.id != staff_id:
+        raise HTTPException(status_code=403, detail="조회 권한이 없습니다.")
+    
+    current_year = datetime.now().year
+    years = [current_year, current_year - 1, current_year - 2]
+    
+    history_records = []
+    for year in years:
+        record = await get_or_create_annual_leave(db, staff_id, year)
+        history_records.append(record)
+    
+    # 잔여 연차 계산 포함하여 반환
+    resp_leaves = []
+    for r in history_records:
+        remaining = r.base_days + r.adjustment_days - (r.used_leave_hours / 8.0)
+        resp_leaves.append(EmployeeAnnualLeaveResponse(
+            id=r.id,
+            staff_id=r.staff_id,
+            year=r.year,
+            base_days=r.base_days,
+            adjustment_days=r.adjustment_days,
+            used_leave_hours=r.used_leave_hours,
+            sick_leave_days=r.sick_leave_days,
+            event_leave_days=r.event_leave_days,
+            remaining_days=round(remaining, 2)
+        ))
+        
+    return AnnualLeaveHistoryResponse(staff_id=staff_id, leaves=resp_leaves)
+
+
+async def get_or_create_annual_leave(db: AsyncSession, staff_id: int, year: int) -> EmployeeAnnualLeave:
+    """연차 레코드 조회 또는 자동 생성 (근로기준법 로직 포함)"""
+    res = await db.execute(
+        select(EmployeeAnnualLeave).where(
+            EmployeeAnnualLeave.staff_id == staff_id,
+            EmployeeAnnualLeave.year == year
+        )
+    )
+    record = res.scalar_one_or_none()
+    
+    if not record:
+        res_s = await db.execute(select(Staff).where(Staff.id == staff_id))
+        staff = res_s.scalar_one_or_none()
+        if not staff:
+            raise ValueError(f"Staff id {staff_id} not found")
+            
+        base = calculate_base_days(staff.join_date, year)
+        record = EmployeeAnnualLeave(
+            staff_id=staff_id,
+            year=year,
+            base_days=base,
+            adjustment_days=0.0,
+            used_leave_hours=0.0,
+            sick_leave_days=0.0,
+            event_leave_days=0.0
+        )
+        db.add(record)
+        await db.flush()
+    return record
+
+
+@router.put("/annual-leave/{record_id}", response_model=EmployeeAnnualLeaveResponse)
+async def update_annual_leave(
+    record_id: int,
+    data: AnnualLeaveUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """관리자용 연차 내역 수동 수정 (마이그레이션용)"""
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="관리자만 수정 가능합니다.")
+        
+    res = await db.execute(select(EmployeeAnnualLeave).where(EmployeeAnnualLeave.id == record_id))
+    record = res.scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail="내역을 찾을 수 없습니다.")
+        
+    if data.adjustment_days is not None:
+        record.adjustment_days = float(data.adjustment_days)
+    if data.used_leave_hours is not None:
+        record.used_leave_hours = float(data.used_leave_hours)
+    if data.sick_leave_days is not None:
+        record.sick_leave_days = float(data.sick_leave_days)
+    if data.event_leave_days is not None:
+        record.event_leave_days = float(data.event_leave_days)
+        
+    await db.commit()
+    await db.refresh(record)
+    
+    remaining = record.base_days + record.adjustment_days - (record.used_leave_hours / 8.0)
+    return EmployeeAnnualLeaveResponse(
+        id=record.id,
+        staff_id=record.staff_id,
+        year=record.year,
+        base_days=record.base_days,
+        adjustment_days=record.adjustment_days,
+        used_leave_hours=record.used_leave_hours,
+        sick_leave_days=record.sick_leave_days,
+        event_leave_days=record.event_leave_days,
+        remaining_days=round(remaining, 2)
+    )
 

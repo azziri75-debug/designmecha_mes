@@ -365,6 +365,20 @@ async def startup_event():
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
                 """),
+                ("employee_annual_leaves", """
+                    CREATE TABLE employee_annual_leaves (
+                        id SERIAL PRIMARY KEY,
+                        staff_id INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+                        year INTEGER NOT NULL,
+                        base_days DOUBLE PRECISION DEFAULT 0.0,
+                        adjustment_days DOUBLE PRECISION DEFAULT 0.0,
+                        used_leave_hours DOUBLE PRECISION DEFAULT 0.0,
+                        sick_leave_days DOUBLE PRECISION DEFAULT 0.0,
+                        event_leave_days DOUBLE PRECISION DEFAULT 0.0,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
             ]
 
             # Bug 3: Add deleted_at column to approval_documents if missing

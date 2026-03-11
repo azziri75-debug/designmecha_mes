@@ -518,12 +518,13 @@ async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
         print(f"Error processing consumables: {e}")
 
 async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
-    """결재 완료된 문서 기반 근태 기록 자동 생성"""
+    """결재 완료된 문서 기반 근태 기록 자동 생성 및 연차 차감"""
     try:
         if doc.doc_type not in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
             return
 
         from datetime import date
+        from app.api.endpoints.hr import get_or_create_annual_leave, _business_days_between
         content = doc.content or {}
         
         if doc.doc_type == "VACATION":
@@ -534,11 +535,27 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             end_date = date.fromisoformat(end_date_str) if end_date_str else start_date
             v_type = content.get("vacation_type", "연차")
             
-            # Simple loop for multi-day (using pandas for business day logic if available, or simple loop)
+            # 연차 레코드 조회/생성
+            leave_record = await get_or_create_annual_leave(db, doc.author_id, start_date.year)
+            
+            # 사용 일수 계산
+            if v_type == "반차":
+                applied_days = 0.5
+            else:
+                applied_days = float(_business_days_between(start_date, end_date))
+            
+            # 연차 유형별 업데이트
+            if v_type == "병가":
+                leave_record.sick_leave_days += applied_days
+            elif v_type == "경조사":
+                leave_record.event_leave_days += applied_days
+            else: # 연차, 반차 등
+                leave_record.used_leave_hours += applied_days * 8.0
+            
+            # 개별 근태 기록 생성
             from datetime import timedelta
             curr = start_date
             while curr <= end_date:
-                # SKIP weekends (Saturday=5, Sunday=6)
                 if curr.weekday() < 5:
                     record = EmployeeTimeRecord(
                         staff_id=doc.author_id,
@@ -557,16 +574,18 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             record_date = date.fromisoformat(date_str)
             e_type = content.get("type", "조퇴")
             
-            # Calculate duration using robust minute-based arithmetic
+            # 연차 레코드 조회/생성
+            leave_record = await get_or_create_annual_leave(db, doc.author_id, record_date.year)
+            
+            # 시간 계산
             hours = 0.0
             try:
-                t1_str = content.get("time") # Leaving time
-                t2_str = content.get("end_time") # Return time (for Outing)
+                t1_str = content.get("time")
+                t2_str = content.get("end_time")
                 
                 if t1_str:
                     def to_minutes(t_s):
                         if not t_s: return 0
-                        # Handle HH:MM or HH:MM:SS
                         parts = t_s.split(':')
                         h = int(parts[0])
                         m = int(parts[1]) if len(parts) > 1 else 0
@@ -575,24 +594,19 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
                     m1 = to_minutes(t1_str)
                     
                     if t2_str:
-                        # Case: Outing (has return time)
                         m2 = to_minutes(t2_str)
                         delta = m2 - m1
-                        if delta < 0: delta += 1440 # Day cross
+                        if delta < 0: delta += 1440
                         hours = round(delta / 60.0, 2)
                     else:
-                        # Case: Early Leave (until end of work)
-                        from sqlalchemy import select
                         from app.models.basics import Company
                         comp_res = await db.execute(select(Company))
                         comp = comp_res.scalars().first()
-                        
-                        # Use company end time or default 17:30
                         work_end_str = "17:30"
                         if comp:
                             if isinstance(comp.work_end_time, str):
                                 work_end_str = comp.work_end_time
-                            elif comp.work_end_time: # time object
+                            elif comp.work_end_time:
                                 work_end_str = comp.work_end_time.strftime("%H:%M")
                         
                         m_end = to_minutes(work_end_str)
@@ -601,8 +615,10 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
                             hours = round(delta / 60.0, 2)
             except Exception as e:
                 print(f"Error calculating duration: {e}")
-                pass
-
+            
+            # 조퇴/외출은 연차(시간)에서 차감
+            leave_record.used_leave_hours += float(hours)
+            
             record = EmployeeTimeRecord(
                 staff_id=doc.author_id,
                 record_date=record_date,

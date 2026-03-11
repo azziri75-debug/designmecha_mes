@@ -349,18 +349,26 @@ const AttendancePage = () => {
                     ) : (
                         <div className="max-w-6xl mx-auto space-y-6">
                             {/* Summary Stats */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 rounded-[2rem] text-white shadow-xl shadow-indigo-200">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Total Vacation Used</p>
-                                    <p className="text-3xl font-black">{summaryData?.total_vacation_days || 0} <span className="text-sm">Days</span></p>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-4 rounded-2xl text-white shadow-lg">
+                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Annual Leave</p>
+                                    <p className="text-2xl font-black">{summaryData?.total_vacation_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
                                 </div>
-                                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-[2rem] text-white shadow-xl shadow-blue-200">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Time Off / Outing</p>
-                                    <p className="text-3xl font-black">{summaryData?.total_leave_outing_hours || 0} <span className="text-sm">Hours</span></p>
+                                <div className="bg-gradient-to-br from-rose-500 to-rose-600 p-4 rounded-2xl text-white shadow-lg">
+                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Sick Leave</p>
+                                    <p className="text-2xl font-black">{summaryData?.total_sick_leave_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
                                 </div>
-                                <div className="bg-gradient-to-br from-slate-700 to-slate-800 p-6 rounded-[2rem] text-white shadow-xl shadow-slate-300">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Overtime Total</p>
-                                    <p className="text-3xl font-black">{summaryData?.total_overtime_hours || 0} <span className="text-sm">Hours</span></p>
+                                <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-4 rounded-2xl text-white shadow-lg">
+                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Event Leave</p>
+                                    <p className="text-2xl font-black">{summaryData?.total_event_leave_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                                </div>
+                                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-2xl text-white shadow-lg">
+                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Time Off/Outing</p>
+                                    <p className="text-2xl font-black">{summaryData?.total_leave_outing_hours?.toFixed(1) || 0} <span className="text-xs">Hours</span></p>
+                                </div>
+                                <div className="bg-gradient-to-br from-slate-700 to-slate-800 p-4 rounded-2xl text-white shadow-lg">
+                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Overtime</p>
+                                    <p className="text-2xl font-black">{summaryData?.total_overtime_hours?.toFixed(1) || 0} <span className="text-xs">Hours</span></p>
                                 </div>
                             </div>
 
@@ -382,7 +390,10 @@ const AttendancePage = () => {
                                                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
                                                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Title</th>
                                                 <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Value</th>
+                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Annual</th>
+                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Sick</th>
+                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Event</th>
+                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Etc (Hrs)</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
@@ -396,8 +407,17 @@ const AttendancePage = () => {
                                                     </td>
                                                     <td className="px-8 py-4 text-sm font-bold text-slate-700">{doc.title}</td>
                                                     <td className="px-8 py-4 text-xs font-bold text-slate-400 tabular-nums">{doc.date}</td>
+                                                    <td className="px-8 py-4 text-sm font-black text-slate-900 text-center">
+                                                        {doc.doc_type === 'VACATION' && (doc.vacation_type === '연차' || doc.vacation_type === '반차') ? doc.applied_value.toFixed(1) : '-'}
+                                                    </td>
+                                                    <td className="px-8 py-4 text-sm font-black text-rose-600 text-center">
+                                                        {doc.doc_type === 'VACATION' && doc.vacation_type === '병가' ? doc.applied_value.toFixed(1) : '-'}
+                                                    </td>
+                                                    <td className="px-8 py-4 text-sm font-black text-amber-600 text-center">
+                                                        {doc.doc_type === 'VACATION' && doc.vacation_type === '경조휴가' ? doc.applied_value.toFixed(1) : '-'}
+                                                    </td>
                                                     <td className="px-8 py-4 text-sm font-black text-slate-900 text-right">
-                                                        {doc.applied_value} <span className="text-[10px] text-slate-400 ml-0.5">{doc.applied_unit}</span>
+                                                        {doc.doc_type !== 'VACATION' ? doc.applied_value.toFixed(1) : '-'}
                                                     </td>
                                                 </tr>
                                             ))}

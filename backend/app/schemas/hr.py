@@ -12,6 +12,7 @@ class AttendanceDocItem(BaseModel):
     applied_value: float   # 계산된 값 (일수 또는 시간)
     applied_unit: str      # "일" 또는 "시간"
     status: str            # COMPLETED 등
+    vacation_type: Optional[str] = None  # 연차, 병가, 경조휴가 등 (VACATION 인 경우)
 
 
 class AttendanceSummaryResponse(BaseModel):
@@ -21,6 +22,8 @@ class AttendanceSummaryResponse(BaseModel):
     user_name: Optional[str] = None
 
     total_vacation_days: float       # 연간 누적 휴가 사용 일수
+    total_sick_leave_days: float     # 누적 병가 일수
+    total_event_leave_days: float    # 누적 경조사 일수
     total_leave_outing_hours: float  # 누적 조퇴/외출 시간
     total_overtime_hours: float      # 누적 야근/특근 시간
 
@@ -96,5 +99,32 @@ class EmployeeTimeRecordUpdate(BaseModel):
     attendance_status: Optional[str] = None
     category: Optional[str] = None
     note: Optional[str] = None
+
+
+class EmployeeAnnualLeaveBase(BaseModel):
+    staff_id: int
+    year: int
+    base_days: float
+    adjustment_days: float
+    used_leave_hours: float
+    sick_leave_days: float
+    event_leave_days: float
+
+class EmployeeAnnualLeaveResponse(EmployeeAnnualLeaveBase):
+    id: int
+    remaining_days: float
+    
+    class Config:
+        from_attributes = True
+
+class AnnualLeaveHistoryResponse(BaseModel):
+    staff_id: int
+    leaves: List[EmployeeAnnualLeaveResponse]
+
+class AnnualLeaveUpdate(BaseModel):
+    adjustment_days: Optional[float] = None
+    used_leave_hours: Optional[float] = None
+    sick_leave_days: Optional[float] = None
+    event_leave_days: Optional[float] = None
 
 

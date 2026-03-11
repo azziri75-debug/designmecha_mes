@@ -54,9 +54,27 @@ const ApprovalPage = () => {
     const [consumables, setConsumables] = useState([]); // Master datat for SUPPLIES
     const [showDocDetail, setShowDocDetail] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState(null);
+    const [userLeaveInfo, setUserLeaveInfo] = useState(null);
 
     // Settings states
     const [approvalLines, setApprovalLines] = useState({}); // { [doc_type]: lines[] }
+
+    useEffect(() => {
+        if (showCreateModal && selectedDocType === 'VACATION' && currentUser) {
+            fetchUserLeave();
+        }
+    }, [showCreateModal, selectedDocType, currentUser]);
+
+    const fetchUserLeave = async () => {
+        try {
+            const res = await api.get(`/hr/annual-leave/${currentUser.id}`);
+            const currentYear = new Date().getFullYear();
+            const info = res.data.history.find(h => h.year === currentYear);
+            setUserLeaveInfo(info);
+        } catch (error) {
+            console.error("Failed to fetch leave info", error);
+        }
+    };
 
     useEffect(() => {
         const modeFromUrl = searchParams.get('mode') || 'ALL';
@@ -585,6 +603,28 @@ const ApprovalPage = () => {
                                                 <option value="기타">기타</option>
                                             </select>
                                         </div>
+                                        {userLeaveInfo && (
+                                            <div className={cn(
+                                                "p-3 rounded-lg border flex items-center justify-between",
+                                                userLeaveInfo.remaining_days <= 0
+                                                    ? "bg-red-900/20 border-red-800 text-red-400"
+                                                    : "bg-blue-900/20 border-blue-800 text-blue-400"
+                                            )}>
+                                                <div className="flex items-center gap-2">
+                                                    <Info className="w-4 h-4" />
+                                                    <span className="text-sm font-medium">잔여 연차 현황 ({userLeaveInfo.year}년)</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-lg font-bold">{userLeaveInfo.remaining_days}</span>
+                                                    <span className="text-xs">일 남음</span>
+                                                </div>
+                                                {userLeaveInfo.remaining_days <= 0 && (
+                                                    <div className="absolute -bottom-6 left-0 text-[11px] text-red-500 font-bold animate-pulse">
+                                                        ※ 잔여 연차가 부족합니다. 승인이 거절될 수 있습니다.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         {formData.vacation_type === '반차' && (
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-gray-400">반차 구분</label>
