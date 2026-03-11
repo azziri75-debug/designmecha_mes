@@ -17,6 +17,7 @@ import WorkLogPage from './pages/WorkLogPage';
 import MobileWorkLogPage from './pages/MobileWorkLogPage';
 import ApprovalPage from './pages/ApprovalPage';
 import DataManagementPage from './pages/DataManagementPage';
+import CustomerComplaintPage from './pages/CustomerComplaintPage';
 import MobileAttendancePage from './pages/MobileAttendancePage';
 import AttendancePage from './pages/AttendancePage';
 
@@ -78,6 +79,7 @@ const App = () => {
         <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
         <Route path="approval" element={<ProtectedRoute menuKey="approval"><ApprovalPage /></ProtectedRoute>} />
         <Route path="attendance" element={<ProtectedRoute menuKey="hr"><AttendancePage /></ProtectedRoute>} />
+        <Route path="complaints" element={<ProtectedRoute menuKey="quality"><CustomerComplaintPage /></ProtectedRoute>} />
         <Route path="db-management" element={<ProtectedRoute menuKey="ADMIN"><DataManagementPage /></ProtectedRoute>} />
       </Route>
       <Route path="/mobile/work-logs" element={<ProtectedRoute><MobileWorkLogPage /></ProtectedRoute>} />

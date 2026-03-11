@@ -138,3 +138,48 @@ class SalesOrder(SalesOrderBase):
 
     class Config:
         from_attributes = True
+
+
+# --- Delivery History Schemas ---
+
+class DeliveryHistoryItemBase(BaseModel):
+    order_item_id: int
+    quantity: int
+
+class DeliveryHistoryItemCreate(DeliveryHistoryItemBase):
+    pass
+
+class DeliveryHistoryItem(DeliveryHistoryItemBase):
+    id: int
+    delivery_id: int
+    order_item: Optional[SalesOrderItemSimple] = None
+
+    class Config:
+        from_attributes = True
+
+class DeliveryHistoryBase(BaseModel):
+    order_id: int
+    delivery_date: Optional[date] = None
+    delivery_no: Optional[str] = None
+    note: Optional[str] = None
+    attachment_files: Optional[List[Any]] = None
+    statement_json: Optional[dict] = None
+    supplier_info: Optional[dict] = None
+
+class DeliveryHistoryCreate(DeliveryHistoryBase):
+    items: List[DeliveryHistoryItemCreate]
+
+class DeliveryHistoryUpdate(BaseModel):
+    delivery_date: Optional[date] = None
+    note: Optional[str] = None
+    attachment_files: Optional[List[Any]] = None
+    statement_json: Optional[dict] = None
+    supplier_info: Optional[dict] = None
+
+class DeliveryHistory(DeliveryHistoryBase):
+    id: int
+    created_at: datetime
+    items: List[DeliveryHistoryItem] = []
+
+    class Config:
+        from_attributes = True

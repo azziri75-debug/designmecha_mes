@@ -786,3 +786,175 @@ async def get_product_sales_history(
     # Sort by date
     history.sort(key=lambda x: x['date'], reverse=True)
     return history
+
+
+# --- Delivery History Endpoints ---
+
+@router.post("/orders/{order_id}/delivery", response_model=schemas.DeliveryHistory)
+async def create_delivery(
+    order_id: int,
+    delivery_in: schemas.DeliveryHistoryCreate,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    """
+    부분 납품 처리:
+    1. SalesOrderItem의 delivered_quantity 업데이트
+    2. SalesOrder 상태를 PARTIALLY_DELIVERED 또는 DELIVERED로 변경
+    3. DeliveryHistory 및 품목 생성
+    """
+    order_query = select(SalesOrder).options(selectinload(SalesOrder.items)).where(SalesOrder.id == order_id)
+    order_res = await db.execute(order_query)
+    db_order = order_res.scalar_one_or_none()
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Generate Delivery No
+    date_str = datetime.now().strftime("%Y%m%d")
+    dh_query = select(DeliveryHistory.delivery_no).where(DeliveryHistory.delivery_no.like(f"DH-{date_str}-%")).order_by(desc(DeliveryHistory.delivery_no)).limit(1)
+    dh_res = await db.execute(dh_query)
+    last_dh_no = dh_res.scalar()
+    new_seq = 1
+    if last_dh_no:
+        try: new_seq = int(last_dh_no.split("-")[-1]) + 1
+        except: pass
+    delivery_no = f"DH-{date_str}-{new_seq:03d}"
+
+    # Create Delivery History Header
+    db_delivery = DeliveryHistory(
+        order_id=order_id,
+        delivery_date=delivery_in.delivery_date or datetime.now().date(),
+        delivery_no=delivery_no,
+        note=delivery_in.note,
+        attachment_files=delivery_in.attachment_files,
+        statement_json=delivery_in.statement_json,
+        supplier_info=delivery_in.supplier_info
+    )
+    db.add(db_delivery)
+    await db.flush()
+
+    # Process Items and Update Order Items
+    all_completed = True
+    for item_in in delivery_in.items:
+        # Find order item
+        order_item = next((oi for oi in db_order.items if oi.id == item_in.order_item_id), None)
+        if not order_item: continue
+        
+        # Create History Item
+        db_item = DeliveryHistoryItem(
+            delivery_id=db_delivery.id,
+            order_item_id=item_in.order_item_id,
+            quantity=item_in.quantity
+        )
+        db.add(db_item)
+        
+        # Update delivered_quantity
+        order_item.delivered_quantity += item_in.quantity
+        
+        # Check if this item is fulfilled
+        if order_item.delivered_quantity < order_item.quantity:
+            all_completed = False
+
+    # Check remaining items in order
+    for oi in db_order.items:
+        if oi.delivered_quantity < oi.quantity:
+            all_completed = False
+            break
+
+    # Update Order Status
+    if all_completed:
+        db_order.status = OrderStatus.DELIVERED
+        db_order.actual_delivery_date = db_delivery.delivery_date
+    else:
+        db_order.status = OrderStatus.PARTIALLY_DELIVERED
+
+    await db.commit()
+    await db.refresh(db_delivery)
+    
+    # Eager load for response
+    query = select(DeliveryHistory).options(
+        selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product)
+    ).where(DeliveryHistory.id == db_delivery.id)
+    res = await db.execute(query)
+    return res.scalar_one()
+
+@router.get("/orders/{order_id}/delivery", response_model=List[schemas.DeliveryHistory])
+async def get_delivery_histories(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    query = select(DeliveryHistory).options(
+        selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product)
+    ).where(DeliveryHistory.order_id == order_id).order_by(desc(DeliveryHistory.delivery_date))
+    res = await db.execute(query)
+    return res.scalars().all()
+
+@router.post("/orders/{order_id}/batch-complete")
+async def batch_complete_order(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    """
+    납품 완결 시 후방 공정(생산계획, 발주) 일괄 완료 처리
+    """
+    # 1. 생산 계획 COMPLETED
+    plans_query = select(ProductionPlan).where(ProductionPlan.order_id == order_id)
+    plans_res = await db.execute(plans_query)
+    plans = plans_res.scalars().all()
+    plan_ids = [p.id for p in plans]
+    
+    for plan in plans:
+        plan.status = "COMPLETED"
+        db.add(plan)
+
+    # 2. 관련 생산 공정(ProductionPlanItem) COMPLETED
+    if plan_ids:
+        items_query = select(ProductionPlanItem).where(ProductionPlanItem.plan_id.in_(plan_ids))
+        items_res = await db.execute(items_query)
+        plan_items = items_res.scalars().all()
+        plan_item_ids = [pi.id for pi in plan_items]
+        for pi in plan_items:
+            pi.status = "COMPLETED"
+            db.add(pi)
+
+    # 3. 관련 자재 발주(PurchaseOrder) COMPLETED (PENDING/ORDERED 건)
+    # 직접 연결된 PO
+    po_query = select(PurchaseOrder).where(
+        PurchaseOrder.order_id == order_id,
+        PurchaseOrder.status.in_(["PENDING", "ORDERED", "PARTIAL"])
+    )
+    po_res = await db.execute(po_query)
+    for po in po_res.scalars().all():
+        po.status = PurchaseStatus.COMPLETED
+        db.add(po)
+
+    # 생산계획(PlanItem)을 통해 연결된 PO
+    if plan_ids:
+        sub_po_query = select(PurchaseOrder).join(PurchaseOrderItem).where(
+            PurchaseOrderItem.production_plan_item_id.in_(plan_item_ids),
+            PurchaseOrder.status.in_(["PENDING", "ORDERED", "PARTIAL"])
+        ).distinct()
+        sub_po_res = await db.execute(sub_po_query)
+        for po in sub_po_res.scalars().all():
+            po.status = PurchaseStatus.COMPLETED
+            db.add(po)
+
+    # 4. 관련 외주 발주(OutsourcingOrder) COMPLETED
+    if plan_ids:
+        os_query = select(OutsourcingOrder).join(OutsourcingOrderItem).where(
+            OutsourcingOrderItem.production_plan_item_id.in_(plan_item_ids),
+            OutsourcingOrder.status.in_(["PENDING", "ORDERED"])
+        ).distinct()
+        os_res = await db.execute(os_query)
+        for os_card in os_res.scalars().all():
+            os_card.status = OutsourcingStatus.COMPLETED
+            db.add(os_card)
+
+    # 5. MRP(MaterialRequirement) COMPLETED
+    mrp_query = select(MaterialRequirement).where(MaterialRequirement.order_id == order_id)
+    mrp_res = await db.execute(mrp_query)
+    for mrp in mrp_res.scalars().all():
+        mrp.status = "COMPLETED"
+        db.add(mrp)
+
+    await db.commit()
+    return {"message": "Success", "plan_count": len(plans)}

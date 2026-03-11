@@ -8,7 +8,8 @@ class OrderStatus(str, enum.Enum):
     PENDING = "PENDING"       # 대기
     CONFIRMED = "CONFIRMED"   # 확정 (수주 승인)
     PRODUCTION_COMPLETED = "PRODUCTION_COMPLETED" # 생산 완료
-    DELIVERY_COMPLETED = "DELIVERY_COMPLETED" # 납품 완료
+    PARTIALLY_DELIVERED = "PARTIALLY_DELIVERED" # 부분 납품
+    DELIVERED = "DELIVERED" # 납품 완료 (전체)
     CANCELLED = "CANCELLED"   # 취소
 
 class OrderItemStatus(str, enum.Enum):
@@ -84,3 +85,36 @@ class SalesOrderItem(Base):
 
     order = relationship("SalesOrder", back_populates="items")
     product = relationship("Product")
+
+class DeliveryHistory(Base):
+    """납품 이력 (Header)"""
+    __tablename__ = "delivery_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=False)
+    delivery_date = Column(Date, default=func.now())
+    delivery_no = Column(String, unique=True, index=True) # DH-YYYYMMDD-XXX
+    
+    note = Column(Text, nullable=True)
+    attachment_files = Column(JSON, nullable=True) # [{name, url}]
+    statement_json = Column(JSON, nullable=True) # 발행 시점의 거래명세서 데이터 스냅샷
+    
+    # 공급자 정보 (Editable용 스냅샷)
+    supplier_info = Column(JSON, nullable=True) 
+    
+    created_at = Column(DateTime, default=func.now())
+
+    order = relationship("SalesOrder", backref="delivery_histories")
+    items = relationship("DeliveryHistoryItem", back_populates="delivery_history", cascade="all, delete-orphan")
+
+class DeliveryHistoryItem(Base):
+    """납품 내역 상세"""
+    __tablename__ = "delivery_history_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    delivery_id = Column(Integer, ForeignKey("delivery_histories.id"), nullable=False)
+    order_item_id = Column(Integer, ForeignKey("sales_order_items.id"), nullable=False)
+    quantity = Column(Integer, nullable=False)
+
+    delivery_history = relationship("DeliveryHistory", back_populates="items")
+    order_item = relationship("SalesOrderItem")

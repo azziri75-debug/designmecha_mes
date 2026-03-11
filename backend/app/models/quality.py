@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text, JSON, Date, Enum as SqEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base import Base
@@ -76,3 +76,31 @@ class QualityDefect(Base):
     order = relationship("SalesOrder")
     plan = relationship("ProductionPlan")
     plan_item = relationship("ProductionPlanItem")
+
+class ComplaintStatus(str, enum.Enum):
+    RECEIVED = "RECEIVED"     # 접수
+    IN_PROGRESS = "IN_PROGRESS" # 조치중
+    COMPLETED = "COMPLETED"   # 조치완료
+
+class CustomerComplaint(Base):
+    """고객 불만 관리"""
+    __tablename__ = "customer_complaints"
+
+    id = Column(Integer, primary_key=True, index=True)
+    partner_id = Column(Integer, ForeignKey("partners.id"), nullable=False)
+    order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True) # 관련 수주
+    delivery_history_id = Column(Integer, ForeignKey("delivery_histories.id"), nullable=True) # 관련 납품
+    
+    receipt_date = Column(Date, default=func.now())
+    content = Column(Text, nullable=False)     # 불만 내용
+    action_note = Column(Text, nullable=True)  # 조치 내용
+    status = Column(SqEnum(ComplaintStatus), default=ComplaintStatus.RECEIVED)
+    
+    attachment_files = Column(JSON, nullable=True) # [{name, url}]
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+    partner = relationship("Partner")
+    order = relationship("SalesOrder")
+    delivery_history = relationship("DeliveryHistory")

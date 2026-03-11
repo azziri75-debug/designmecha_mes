@@ -311,7 +311,8 @@ const SalesPage = () => {
                             <option value="PENDING">대기</option>
                             <option value="CONFIRMED">확정</option>
                             <option value="PRODUCTION_COMPLETED">생산 완료</option>
-                            <option value="DELIVERY_COMPLETED">납품 완료</option>
+                            <option value="PARTIALLY_DELIVERED">부분 납품</option>
+                            <option value="DELIVERED">납품 완료</option>
                             <option value="CANCELLED">취소</option>
                         </select>
                     </div>
@@ -481,9 +482,12 @@ const SalesPage = () => {
                                                         "px-2 py-0.5 rounded text-xs font-medium",
                                                         ord.status === 'PENDING' ? "bg-yellow-900/50 text-yellow-400 border border-yellow-700" :
                                                             ord.status === 'CONFIRMED' ? "bg-blue-900/50 text-blue-400 border border-blue-700" :
-                                                                "bg-gray-800 text-gray-400"
+                                                                ord.status === 'PARTIALLY_DELIVERED' ? "bg-orange-900/50 text-orange-400 border border-orange-700" :
+                                                                    ord.status === 'DELIVERED' ? "bg-green-900/50 text-green-400 border border-green-700" :
+                                                                        "bg-gray-800 text-gray-400"
                                                     )}>
-                                                        {ord.status}
+                                                        {ord.status === 'PARTIALLY_DELIVERED' ? '부분납품' :
+                                                            ord.status === 'DELIVERED' ? '납품완료' : ord.status}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4">{ord.total_amount?.toLocaleString()} 원</td>

@@ -69,3 +69,38 @@ class QualityDefectResponse(QualityDefectBase):
 
     class Config:
         from_attributes = True
+
+
+# --- Customer Complaint ---
+
+class CustomerComplaintBase(BaseModel):
+    partner_id: int
+    order_id: Optional[int] = None
+    delivery_history_id: Optional[int] = None
+    receipt_date: Optional[date] = None
+    content: str
+    action_note: Optional[str] = None
+    status: Optional[str] = "RECEIVED"
+    attachment_files: Optional[List[Any]] = None
+
+class CustomerComplaintCreate(CustomerComplaintBase):
+    pass
+
+class CustomerComplaintUpdate(BaseModel):
+    receipt_date: Optional[date] = None
+    content: Optional[str] = None
+    action_note: Optional[str] = None
+    status: Optional[str] = None
+    attachment_files: Optional[List[Any]] = None
+
+from app.schemas.basics import PartnerSimple
+
+class CustomerComplaintResponse(CustomerComplaintBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    partner: Optional[PartnerSimple] = None
+    order: Optional[SalesOrderSimple] = None
+
+    class Config:
+        from_attributes = True

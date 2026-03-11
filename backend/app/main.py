@@ -77,6 +77,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+from app.api.endpoints import quality
+app.include_router(quality.router, prefix=f"{settings.API_V1_STR}/quality", tags=["quality"])
+
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "MES ERP Backend is running"}
@@ -375,6 +378,42 @@ async def startup_event():
                         used_leave_hours DOUBLE PRECISION DEFAULT 0.0,
                         sick_leave_days DOUBLE PRECISION DEFAULT 0.0,
                         event_leave_days DOUBLE PRECISION DEFAULT 0.0,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
+                ("delivery_histories", """
+                    CREATE TABLE delivery_histories (
+                        id SERIAL PRIMARY KEY,
+                        order_id INTEGER NOT NULL REFERENCES sales_orders(id),
+                        delivery_date DATE DEFAULT CURRENT_DATE,
+                        delivery_no VARCHAR UNIQUE,
+                        note TEXT,
+                        attachment_files JSONB,
+                        statement_json JSONB,
+                        supplier_info JSONB,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
+                ("delivery_history_items", """
+                    CREATE TABLE delivery_history_items (
+                        id SERIAL PRIMARY KEY,
+                        delivery_id INTEGER NOT NULL REFERENCES delivery_histories(id) ON DELETE CASCADE,
+                        order_item_id INTEGER NOT NULL REFERENCES sales_order_items(id),
+                        quantity INTEGER NOT NULL
+                    )
+                """),
+                ("customer_complaints", """
+                    CREATE TABLE customer_complaints (
+                        id SERIAL PRIMARY KEY,
+                        partner_id INTEGER NOT NULL REFERENCES partners(id),
+                        order_id INTEGER REFERENCES sales_orders(id),
+                        delivery_history_id INTEGER REFERENCES delivery_histories(id),
+                        receipt_date DATE DEFAULT CURRENT_DATE,
+                        content TEXT NOT NULL,
+                        action_note TEXT,
+                        status VARCHAR DEFAULT 'RECEIVED',
+                        attachment_files JSONB,
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
@@ -743,6 +782,17 @@ async def startup_event():
                     except Exception as e:
                         await db.rollback()
                         print(f"Startup: productionstatus Enum update skipped or failed: {e}")
+
+                # 14-3. Update orderstatus enum (Postgres)
+                if not is_sqlite:
+                    try:
+                        await db.execute(text("ALTER TYPE orderstatus ADD VALUE IF NOT EXISTS 'PARTIALLY_DELIVERED'"))
+                        await db.execute(text("ALTER TYPE orderstatus ADD VALUE IF NOT EXISTS 'DELIVERED'"))
+                        await db.commit()
+                        print("Startup: Updated orderstatus Enum (PostgreSQL)")
+                    except Exception as e:
+                        await db.rollback()
+                        print(f"Startup: orderstatus Enum update skipped or failed: {e}")
 
                 # 14-2. material_requirements table
                 if is_sqlite:
