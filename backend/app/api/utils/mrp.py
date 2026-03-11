@@ -3,9 +3,9 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.product import BOM, Product
 from app.models.purchasing import MaterialRequirement, PurchaseOrder, PurchaseOrderItem, PurchaseStatus
-from app.models.sales import SalesOrder, SalesOrderItem
+from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
 from app.models.inventory import Stock
-from app.models.production import ProductionPlan, ProductionPlanItem
+from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
 from typing import Dict, List, Optional
 
 async def explode_bom(db: AsyncSession, product_id: int, quantity: float, requirements: Dict[int, float]):

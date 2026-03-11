@@ -524,7 +524,7 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             return
 
         from datetime import date
-        from app.api.endpoints.hr import get_or_create_annual_leave, _business_days_between
+        from app.api.endpoints.hr import get_or_create_annual_leave, _business_days_between, sync_annual_leave_usage
         content = doc.content or {}
         
         if doc.doc_type == "VACATION":
@@ -839,6 +839,12 @@ async def delete_document(
                 await db.execute(delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc_id))
             # Bug 3 Fix: Use Soft Delete
             doc.deleted_at = datetime.now()
+            
+            # Trigger leave sync if relevant
+            if doc.doc_type in ["VACATION", "EARLY_LEAVE"]:
+                from app.api.endpoints.hr import sync_annual_leave_usage
+                await sync_annual_leave_usage(db, doc.author_id, doc.created_at.year)
+                
             await db.commit()
             return {"message": "기안이 삭제되었으며, 연관된 발주 대기 항목도 모두 정리되었습니다."}
         else:
@@ -866,5 +872,11 @@ async def delete_document(
 
     # 일반 문서(휴가 등)의 경우 Soft Delete 처리
     doc.deleted_at = datetime.now()
+    
+    # Trigger leave sync if relevant
+    if doc.doc_type in ["VACATION", "EARLY_LEAVE"]:
+        from app.api.endpoints.hr import sync_annual_leave_usage
+        await sync_annual_leave_usage(db, doc.author_id, doc.created_at.year)
+        
     await db.commit()
     return {"message": "삭제되었습니다."}

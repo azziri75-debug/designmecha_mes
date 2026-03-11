@@ -656,6 +656,7 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
             ApprovalDocument.author_id == staff_id,
             ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE"]),
             ApprovalDocument.status == ApprovalStatus.COMPLETED,
+            ApprovalDocument.deleted_at.is_(None),
             ApprovalDocument.created_at >= year_start,
             ApprovalDocument.created_at <= year_end,
         )
