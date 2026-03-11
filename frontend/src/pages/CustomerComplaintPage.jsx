@@ -3,6 +3,7 @@ import {
     Search, Plus, Shield, Clock, CheckCircle2, AlertCircle,
     MoreVertical, FileText, ChevronRight, MessageSquare, Trash2
 } from 'lucide-react';
+import Select from 'react-select';
 import api from '../lib/api';
 import { formatNumber, cn } from '../lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
@@ -17,8 +18,8 @@ const CustomerComplaintPage = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedComplaint, setSelectedComplaint] = useState(null);
     const [formData, setFormData] = useState({
-        partner_id: '',
-        order_id: '',
+        partner_id: null,
+        order_id: null,
         content: '',
         action_note: '',
         status: 'RECEIVED',
@@ -63,7 +64,7 @@ const CustomerComplaintPage = () => {
             setSelectedComplaint(complaint);
             setFormData({
                 partner_id: complaint.partner_id,
-                order_id: complaint.order_id || '',
+                order_id: complaint.order_id || null,
                 content: complaint.content,
                 action_note: complaint.action_note || '',
                 status: complaint.status,
@@ -72,8 +73,8 @@ const CustomerComplaintPage = () => {
         } else {
             setSelectedComplaint(null);
             setFormData({
-                partner_id: '',
-                order_id: '',
+                partner_id: null,
+                order_id: null,
                 content: '',
                 action_note: '',
                 status: 'RECEIVED',
@@ -260,28 +261,85 @@ const CustomerComplaintPage = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-gray-400">고객사(업체)</label>
-                                    <select
+                                    <Select
                                         required
-                                        className="w-full bg-gray-700 border-none rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500"
-                                        value={formData.partner_id}
-                                        onChange={(e) => setFormData({ ...formData, partner_id: e.target.value })}
-                                    >
-                                        <option value="">선택하세요</option>
-                                        {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                    </select>
+                                        options={partners.map(p => ({ value: p.id, label: p.name }))}
+                                        value={partners.filter(p => p.id === formData.partner_id).map(p => ({ value: p.id, label: p.name }))[0] || null}
+                                        onChange={(selected) => setFormData({ ...formData, partner_id: selected ? selected.value : null, order_id: null })}
+                                        placeholder="고객사 선택..."
+                                        className="react-select-container"
+                                        classNamePrefix="react-select"
+                                        styles={{
+                                            control: (base) => ({
+                                                ...base,
+                                                backgroundColor: '#374151',
+                                                borderColor: 'transparent',
+                                                color: 'white',
+                                                borderRadius: '0.5rem',
+                                                padding: '2px'
+                                            }),
+                                            menu: (base) => ({ ...base, backgroundColor: '#1f2937', zIndex: 100 }),
+                                            option: (base, state) => ({
+                                                ...base,
+                                                backgroundColor: state.isFocused ? '#374151' : 'transparent',
+                                                color: 'white',
+                                                '&:active': { backgroundColor: '#3b82f6' }
+                                            }),
+                                            singleValue: (base) => ({ ...base, color: 'white' }),
+                                            input: (base) => ({ ...base, color: 'white' }),
+                                            placeholder: (base) => ({ ...base, color: '#9ca3af' })
+                                        }}
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-gray-400">관련 수주 (선택)</label>
-                                    <select
-                                        className="w-full bg-gray-700 border-none rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500"
-                                        value={formData.order_id}
-                                        onChange={(e) => setFormData({ ...formData, order_id: e.target.value })}
-                                    >
-                                        <option value="">연관 없음</option>
-                                        {orders.filter(o => !formData.partner_id || o.partner_id == formData.partner_id).map(o => (
-                                            <option key={o.id} value={o.id}>{o.order_no} ({o.order_date})</option>
-                                        ))}
-                                    </select>
+                                    <Select
+                                        isClearable
+                                        options={orders
+                                            .filter(o => !formData.partner_id || String(o.partner_id) === String(formData.partner_id))
+                                            .map(o => {
+                                                const productName = o.items?.[0]?.product?.name || '품목 정보 없음';
+                                                const extraCount = o.items?.length > 1 ? ` 외 ${o.items.length - 1}건` : '';
+                                                const totalQty = o.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+                                                return {
+                                                    value: o.id,
+                                                    label: `[${o.order_no}] ${productName}${extraCount} - ${totalQty}개 (${o.order_date})`
+                                                };
+                                            })
+                                        }
+                                        value={orders.filter(o => o.id === formData.order_id).map(o => {
+                                            const productName = o.items?.[0]?.product?.name || '품목 정보 없음';
+                                            const extraCount = o.items?.length > 1 ? ` 외 ${o.items.length - 1}건` : '';
+                                            const totalQty = o.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+                                            return {
+                                                value: o.id,
+                                                label: `[${o.order_no}] ${productName}${extraCount} - ${totalQty}개 (${o.order_date})`
+                                            };
+                                        })[0] || null}
+                                        onChange={(selected) => setFormData({ ...formData, order_id: selected ? selected.value : null })}
+                                        placeholder="수주 건 선택..."
+                                        noOptionsMessage={() => (formData.partner_id ? "해당 고객사의 수주 내역이 없습니다." : "고객사를 먼저 선택하세요.")}
+                                        styles={{
+                                            control: (base) => ({
+                                                ...base,
+                                                backgroundColor: '#374151',
+                                                borderColor: 'transparent',
+                                                color: 'white',
+                                                borderRadius: '0.5rem',
+                                                padding: '2px'
+                                            }),
+                                            menu: (base) => ({ ...base, backgroundColor: '#1f2937', zIndex: 100 }),
+                                            option: (base, state) => ({
+                                                ...base,
+                                                backgroundColor: state.isFocused ? '#374151' : 'transparent',
+                                                color: 'white',
+                                                '&:active': { backgroundColor: '#3b82f6' }
+                                            }),
+                                            singleValue: (base) => ({ ...base, color: 'white' }),
+                                            input: (base) => ({ ...base, color: 'white' }),
+                                            placeholder: (base) => ({ ...base, color: '#9ca3af' })
+                                        }}
+                                    />
                                 </div>
                             </div>
 
