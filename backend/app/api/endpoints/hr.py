@@ -617,7 +617,7 @@ async def get_annual_leave_history(
         raise HTTPException(status_code=403, detail="조회 권한이 없습니다.")
     
     current_year = datetime.now().year
-    years = [current_year + 1, current_year, current_year - 1, current_year - 2]
+    years = [current_year, current_year - 1, current_year - 2, current_year - 3]
     
     history_records = []
     for year in years:
