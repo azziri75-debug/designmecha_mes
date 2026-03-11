@@ -44,6 +44,7 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
         setLoading(true);
         try {
             const payload = {
+                order_id: order.id,
                 delivery_date: formData.delivery_date,
                 note: formData.note,
                 attachment_files: formData.attachment_files,
