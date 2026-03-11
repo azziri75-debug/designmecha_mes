@@ -158,10 +158,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSave }) => {
                         <TableBody>
                             {[...Array(Math.max(items.length, 10))].map((_, idx) => {
                                 const item = items[idx];
+                                const dateToUse = data.delivery_date || data.order_date || '';
                                 return (
                                     <TableRow key={idx} sx={{ height: 25 }}>
-                                        <TableCell sx={{ p: 0.5, border: `1px solid ${borderColor}`, textAlign: 'center' }}>{item ? (data.order_date?.split('-')[1] || '') : ''}</TableCell>
-                                        <TableCell sx={{ p: 0.5, border: `1px solid ${borderColor}`, textAlign: 'center' }}>{item ? (data.order_date?.split('-')[2] || '') : ''}</TableCell>
+                                        <TableCell sx={{ p: 0.5, border: `1px solid ${borderColor}`, textAlign: 'center' }}>{item ? (dateToUse?.split('-')[1] || '') : ''}</TableCell>
+                                        <TableCell sx={{ p: 0.5, border: `1px solid ${borderColor}`, textAlign: 'center' }}>{item ? (dateToUse?.split('-')[2] || '') : ''}</TableCell>
                                         <TableCell sx={{ p: 0.5, border: `1px solid ${borderColor}` }}>{item?.product?.name || item?.item_name || ''}</TableCell>
                                         <TableCell sx={{ p: 0.5, border: `1px solid ${borderColor}`, textAlign: 'right' }}>{item ? formatNumber(item.quantity) : ''}</TableCell>
                                         <TableCell sx={{ p: 0.5, border: `1px solid ${borderColor}`, textAlign: 'right' }}>{item ? formatNumber(item.unit_price) : ''}</TableCell>

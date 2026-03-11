@@ -355,12 +355,12 @@ const DeliveryPage = () => {
             )}
             {showStatementModal && statementData && (
                 <TransactionStatementModal
-                    isOpen={showStatementModal}
+                    open={showStatementModal}
                     onClose={() => {
                         setShowStatementModal(false);
                         setStatementData(null);
                     }}
-                    orderData={statementData}
+                    data={statementData}
                 />
             )}
         </div>

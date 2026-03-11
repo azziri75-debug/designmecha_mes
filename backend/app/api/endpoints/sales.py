@@ -891,6 +891,31 @@ async def get_delivery_histories(
     res = await db.execute(query)
     return res.scalars().all()
 
+@router.put("/orders/{order_id}/delivery/{delivery_id}", response_model=schemas.DeliveryHistory)
+async def update_delivery_history(
+    order_id: int,
+    delivery_id: int,
+    delivery_update: schemas.DeliveryHistoryUpdate,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    query = select(DeliveryHistory).where(
+        DeliveryHistory.id == delivery_id,
+        DeliveryHistory.order_id == order_id
+    )
+    res = await db.execute(query)
+    db_delivery = res.scalar_one_or_none()
+    if not db_delivery:
+        raise HTTPException(status_code=404, detail="Delivery history not found")
+
+    if delivery_update.statement_json is not None:
+        db_delivery.statement_json = delivery_update.statement_json
+    if delivery_update.supplier_info is not None:
+        db_delivery.supplier_info = delivery_update.supplier_info
+    
+    await db.commit()
+    await db.refresh(db_delivery)
+    return db_delivery
+
 @router.post("/orders/{order_id}/batch-complete")
 async def batch_complete_order(
     order_id: int,

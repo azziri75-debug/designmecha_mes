@@ -172,14 +172,11 @@ class DeliveryHistoryCreate(DeliveryHistoryBase):
 class DeliveryHistoryUpdate(BaseModel):
     delivery_date: Optional[date] = None
     note: Optional[str] = None
-    attachment_files: Optional[List[Any]] = None
     statement_json: Optional[dict] = None
     supplier_info: Optional[dict] = None
 
 class DeliveryHistory(DeliveryHistoryBase):
     id: int
-    created_at: datetime
     items: List[DeliveryHistoryItem] = []
-
     class Config:
         from_attributes = True
