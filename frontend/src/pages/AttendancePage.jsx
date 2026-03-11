@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Box } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 import {

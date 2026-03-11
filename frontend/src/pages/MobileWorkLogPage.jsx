@@ -627,7 +627,22 @@ const MobileWorkLogPage = () => {
                                                                 <Typography variant="subtitle1" fontWeight="bold">
                                                                     {productName}
                                                                 </Typography>
-                                                                <Typography variant="caption" color="textSecondary">
+                                                                <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
+                                                                        고객사: {plan.order?.partner?.name || '-'}
+                                                                    </Typography>
+                                                                    {plan.order?.order_date && (
+                                                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                                                            <Typography variant="caption" color="textSecondary">
+                                                                                수주일: {plan.order.order_date}
+                                                                            </Typography>
+                                                                            <Typography variant="caption" color="primary" sx={{ fontWeight: 'bold' }}>
+                                                                                납기: {plan.order.delivery_date || '-'}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    )}
+                                                                </Box>
+                                                                <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
                                                                     {plan.items?.length || 0}개 공정
                                                                 </Typography>
                                                             </Box>
