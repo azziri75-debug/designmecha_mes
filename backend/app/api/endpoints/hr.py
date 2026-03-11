@@ -140,6 +140,11 @@ async def get_attendance_summary(
     total_overtime_hours = 0.0
     document_items: list[AttendanceDocItem] = []
 
+    # [Sync] Sync annual leave record with these documents
+    # used_leave_hours(Annual+Half-day), sick_leave_days, event_leave_days
+    # Note: overtime is not part of annual leave, outing/early_leave is part of used_leave_hours
+    leave_record = await get_or_create_annual_leave(db, target_id, year)
+
     for doc in docs:
         content = doc.content or {}
 
@@ -248,6 +253,17 @@ async def get_attendance_summary(
                 status=doc.status,
             ))
     
+    # After calculating everything from docs, update and commit the annual leave record for consistency
+    leave_record.used_leave_hours = float(total_vacation_days * 8.0 + total_leave_outing_hours)
+    leave_record.sick_leave_days = float(total_sick_leave_days)
+    leave_record.event_leave_days = float(total_event_leave_days)
+    db.add(leave_record)
+    await db.commit()
+    await db.refresh(leave_record)
+
+    total_annual = leave_record.base_days + leave_record.adjustment_days
+    remaining = total_annual - (leave_record.used_leave_hours / 8.0)
+
     return AttendanceSummaryResponse(
         year=year,
         user_id=target_id,
@@ -257,6 +273,8 @@ async def get_attendance_summary(
         total_event_leave_days=total_event_leave_days,
         total_leave_outing_hours=total_leave_outing_hours,
         total_overtime_hours=total_overtime_hours,
+        total_annual_days=round(total_annual, 2),
+        remaining_annual_days=round(remaining, 2),
         documents=document_items
     )
 
@@ -601,6 +619,9 @@ async def get_annual_leave_history(
     current_year = datetime.now().year
     years = [current_year, current_year - 1, current_year - 2]
     
+    # Sync current year usage before returning
+    await sync_annual_leave_usage(db, staff_id, current_year)
+    
     history_records = []
     for year in years:
         record = await get_or_create_annual_leave(db, staff_id, year)
@@ -623,6 +644,76 @@ async def get_annual_leave_history(
         ))
         
     return AnnualLeaveHistoryResponse(staff_id=staff_id, leaves=resp_leaves)
+
+
+async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
+    """전자결재 COMPLETED 문서를 순회하여 연차 사용량을 테이블에 동기화합니다."""
+    year_start = datetime(year, 1, 1)
+    year_end = datetime(year, 12, 31, 23, 59, 59)
+    
+    docs_res = await db.execute(
+        select(ApprovalDocument).where(
+            ApprovalDocument.author_id == staff_id,
+            ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE"]),
+            ApprovalDocument.status == ApprovalStatus.COMPLETED,
+            ApprovalDocument.created_at >= year_start,
+            ApprovalDocument.created_at <= year_end,
+        )
+    )
+    docs = docs_res.scalars().all()
+    
+    # 회사 근무 종료 시간 (조퇴 계산용)
+    comp_res = await db.execute(select(Company))
+    company = comp_res.scalars().first()
+    work_end_minutes = 17 * 60 + 30
+    if company and company.work_end_time:
+        if isinstance(company.work_end_time, str):
+            work_end_minutes = _to_minutes(company.work_end_time)
+        elif isinstance(company.work_end_time, time_type):
+            work_end_minutes = _time_obj_to_minutes(company.work_end_time)
+
+    v_days = 0.0
+    s_days = 0.0
+    e_days = 0.0
+    o_hours = 0.0
+    
+    for doc in docs:
+        content = doc.content or {}
+        if doc.doc_type == "VACATION":
+            v_type = content.get("vacation_type", "연차")
+            val = 0.0
+            if "반차" in v_type:
+                val = 0.5
+            else:
+                try:
+                    s_date = date.fromisoformat(content.get("start_date"))
+                    e_date = date.fromisoformat(content.get("end_date") or content.get("start_date"))
+                    val = float(_business_days_between(s_date, e_date))
+                except: val = 1.0
+            
+            if v_type == "병가": s_days += val
+            elif v_type == "경조휴가": e_days += val
+            else: v_days += val
+            
+        elif doc.doc_type == "EARLY_LEAVE":
+            try:
+                t_str = content.get("leave_time") or content.get("time")
+                ret_str = content.get("return_time") or content.get("end_time")
+                if content.get("type") in ("외출", "Outing") and ret_str:
+                    m1 = _to_minutes(t_str)
+                    m2 = _to_minutes(ret_str)
+                    o_hours += round((m2 - m1) / 60.0, 2)
+                elif t_str:
+                    m1 = _to_minutes(t_str)
+                    o_hours += round((work_end_minutes - m1) / 60.0, 2)
+            except: pass
+            
+    record = await get_or_create_annual_leave(db, staff_id, year)
+    record.used_leave_hours = float(v_days * 8.0 + o_hours)
+    record.sick_leave_days = float(s_days)
+    record.event_leave_days = float(e_days)
+    db.add(record)
+    await db.commit()
 
 
 async def get_or_create_annual_leave(db: AsyncSession, staff_id: int, year: int) -> EmployeeAnnualLeave:

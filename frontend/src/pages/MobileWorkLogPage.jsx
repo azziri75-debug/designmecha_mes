@@ -1085,6 +1085,20 @@ const MobileWorkLogPage = () => {
                                     {attendanceSummary.year}년 · <strong>{attendanceSummary.user_name}</strong> 근태 현황
                                 </Typography>
                                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
+                                    <Card sx={{ borderRadius: 3, bgcolor: '#ebfdf2', border: '1px solid #d1fae5', boxShadow: 'none' }}>
+                                        <CardContent sx={{ p: 2, textAlign: 'center', '&:last-child': { pb: 2 } }}>
+                                            <CheckCircleIcon sx={{ color: '#10b981', fontSize: 20, mb: 0.5 }} />
+                                            <Typography variant="caption" color="#10b981" fontWeight="bold" display="block">잔여 연차</Typography>
+                                            <Typography variant="h5" fontWeight="bold" color="#065f46">{attendanceSummary.remaining_annual_days}일</Typography>
+                                        </CardContent>
+                                    </Card>
+                                    <Card sx={{ borderRadius: 3, bgcolor: '#f0f9ff', border: '1px solid #e0f2fe', boxShadow: 'none' }}>
+                                        <CardContent sx={{ p: 2, textAlign: 'center', '&:last-child': { pb: 2 } }}>
+                                            <AssignmentIndIcon sx={{ color: '#0ea5e9', fontSize: 20, mb: 0.5 }} />
+                                            <Typography variant="caption" color="#0ea5e9" fontWeight="bold" display="block">총 연차</Typography>
+                                            <Typography variant="h5" fontWeight="bold" color="#075985">{attendanceSummary.total_annual_days}일</Typography>
+                                        </CardContent>
+                                    </Card>
                                     <Card sx={{ borderRadius: 3, bgcolor: '#eff6ff', border: '1px solid #dbeafe', boxShadow: 'none' }}>
                                         <CardContent sx={{ p: 2, textAlign: 'center', '&:last-child': { pb: 2 } }}>
                                             <VacationIcon sx={{ color: '#3b82f6', fontSize: 20, mb: 0.5 }} />

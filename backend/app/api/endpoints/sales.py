@@ -604,7 +604,8 @@ async def delete_order(
 
     # Bug 4 Safety Check: Block if already delivered or status is COMPLETED
     if db_order.status == OrderStatus.DELIVERY_COMPLETED or db_order.actual_delivery_date:
-        raise HTTPException(status_code=400, detail="이미 납품이 완료된 수주 건은 삭제할 수 없습니다.")
+        if db_order.status != OrderStatus.PENDING:
+            raise HTTPException(status_code=400, detail="이미 납품이 완료된 수주 건은 삭제할 수 없습니다.")
     
     # Cascade delete 연관 데이터 (의존 관계 역순 및 명시적 삭제)
     # 1. 연관된 생산 계획 ID들 가져오기

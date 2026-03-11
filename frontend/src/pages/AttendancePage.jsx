@@ -349,9 +349,17 @@ const AttendancePage = () => {
                     ) : (
                         <div className="max-w-6xl mx-auto space-y-6">
                             {/* Summary Stats */}
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-4 rounded-2xl text-white shadow-lg">
+                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Total Annual</p>
+                                    <p className="text-2xl font-black">{summaryData?.total_annual_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                                </div>
+                                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl text-white shadow-lg">
+                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Remaining Annual</p>
+                                    <p className="text-2xl font-black">{summaryData?.remaining_annual_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                                </div>
                                 <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-4 rounded-2xl text-white shadow-lg">
-                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Annual Leave</p>
+                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Used Annual</p>
                                     <p className="text-2xl font-black">{summaryData?.total_vacation_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
                                 </div>
                                 <div className="bg-gradient-to-br from-rose-500 to-rose-600 p-4 rounded-2xl text-white shadow-lg">
