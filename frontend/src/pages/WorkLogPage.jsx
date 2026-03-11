@@ -291,13 +291,13 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                             <Table size="small" sx={{ mt: 1 }}>
                                 <TableHead>
                                     <TableRow sx={{ backgroundColor: '#fff' }}>
-                                        <TableCell>관련 수주/재고번호</TableCell>
+                                        <TableCell>수주/재고번호</TableCell>
+                                        <TableCell>고객사</TableCell>
+                                        <TableCell>수주일/납기일</TableCell>
                                         <TableCell>품명</TableCell>
                                         <TableCell>공정명</TableCell>
-                                        <TableCell>개별 작업자</TableCell>
-                                        <TableCell align="right">양품수량</TableCell>
-                                        <TableCell align="right">불량수량</TableCell>
-                                        <TableCell>비고</TableCell>
+                                        <TableCell align="right">양품</TableCell>
+                                        <TableCell align="right">불량</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -315,13 +315,20 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
 
                                             return (
                                                 <TableRow key={item.id} sx={{ backgroundColor: '#fff' }}>
-                                                    <TableCell>{orderNo}</TableCell>
+                                                    <TableCell sx={{ fontSize: '0.8rem' }}>{orderNo}</TableCell>
+                                                    <TableCell sx={{ fontSize: '0.8rem' }}>{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</TableCell>
+                                                    <TableCell sx={{ fontSize: '0.75rem' }}>
+                                                        {plan?.order?.order_date ? (
+                                                            <div>
+                                                                <div>오더: {plan.order.order_date}</div>
+                                                                <div style={{ color: '#1a237e' }}>납기: {plan.order.delivery_date || '-'}</div>
+                                                            </div>
+                                                        ) : '-'}
+                                                    </TableCell>
                                                     <TableCell>{item.plan_item?.product?.name || '-'}</TableCell>
                                                     <TableCell>{item.plan_item?.process_name || '-'}</TableCell>
-                                                    <TableCell>{item.worker?.name || '-'}</TableCell>
                                                     <TableCell align="right" sx={{ color: '#2e7d32', fontWeight: 500 }}>{item.good_quantity}</TableCell>
                                                     <TableCell align="right" sx={{ color: '#d32f2f', fontWeight: 500 }}>{item.bad_quantity}</TableCell>
-                                                    <TableCell>{item.note || '-'}</TableCell>
                                                 </TableRow>
                                             );
                                         })
@@ -412,7 +419,9 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
                                 <TableHead>
                                     <TableRow sx={{ backgroundColor: '#eee' }}>
                                         <TableCell>작업일자</TableCell>
-                                        <TableCell>수주/재고</TableCell>
+                                        <TableCell>수주/재고번호</TableCell>
+                                        <TableCell>고객사</TableCell>
+                                        <TableCell>수주일/납기일</TableCell>
                                         <TableCell>공정명 (품명)</TableCell>
                                         <TableCell align="right">양품수량</TableCell>
                                         <TableCell align="right">공정단가</TableCell>
@@ -468,6 +477,15 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
         <TableRow>
             <TableCell>{item.work_log?.work_date}</TableCell>
             <TableCell sx={{ fontSize: '0.75rem' }}>{orderNo}</TableCell>
+            <TableCell sx={{ fontSize: '0.75rem' }}>{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</TableCell>
+            <TableCell sx={{ fontSize: '0.7rem' }}>
+                {plan?.order?.order_date ? (
+                    <div>
+                        <div>{plan.order.order_date}</div>
+                        <div style={{ color: '#1a237e' }}>({plan.order.delivery_date || '-'})</div>
+                    </div>
+                ) : '-'}
+            </TableCell>
             <TableCell>
                 {item.plan_item?.process_name}
                 <Typography variant="caption" display="block" color="textSecondary">

@@ -485,7 +485,8 @@ async def read_orders(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
-        selectinload(SalesOrder.partner)
+        selectinload(SalesOrder.partner),
+        selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items)
     )
 
     if partner_id:

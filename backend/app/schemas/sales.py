@@ -135,6 +135,7 @@ class SalesOrder(SalesOrderBase):
     created_at: datetime
     partner: Optional[Partner] = None
     items: List[SalesOrderItem] = []
+    delivery_histories: List["DeliveryHistory"] = []
 
     class Config:
         from_attributes = True

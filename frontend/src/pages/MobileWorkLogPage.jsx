@@ -1084,47 +1084,35 @@ const MobileWorkLogPage = () => {
                                 <Typography variant="caption" color="textSecondary" sx={{ px: 0.5 }}>
                                     {attendanceSummary.year}년 · <strong>{attendanceSummary.user_name}</strong> 근태 현황
                                 </Typography>
-                                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
-                                    <Card sx={{ borderRadius: 3, bgcolor: '#ebfdf2', border: '1px solid #d1fae5', boxShadow: 'none' }}>
+                                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1.5 }}>
+                                    <Card sx={{ gridColumn: 'span 2', borderRadius: 3, bgcolor: '#ebfdf2', border: '1px solid #d1fae5', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.1)' }}>
                                         <CardContent sx={{ p: 2, textAlign: 'center', '&:last-child': { pb: 2 } }}>
-                                            <CheckCircleIcon sx={{ color: '#10b981', fontSize: 20, mb: 0.5 }} />
-                                            <Typography variant="caption" color="#10b981" fontWeight="bold" display="block">잔여 연차</Typography>
-                                            <Typography variant="h5" fontWeight="bold" color="#065f46">{attendanceSummary.remaining_annual_days}일</Typography>
+                                            <CheckCircleIcon sx={{ color: '#10b981', fontSize: 24, mb: 0.5 }} />
+                                            <Typography variant="caption" color="#10b981" fontWeight="heavy" display="block" sx={{ fontSize: '10px' }}>잔여 연차</Typography>
+                                            <Typography variant="h5" fontWeight="900" color="#065f46" sx={{ letterSpacing: -1 }}>{attendanceSummary.remaining_annual_days}일</Typography>
                                         </CardContent>
                                     </Card>
-                                    <Card sx={{ borderRadius: 3, bgcolor: '#f0f9ff', border: '1px solid #e0f2fe', boxShadow: 'none' }}>
+                                    <Card sx={{ gridColumn: 'span 2', borderRadius: 3, bgcolor: '#f0f9ff', border: '1px solid #e0f2fe', boxShadow: '0 4px 12px rgba(14, 165, 233, 0.1)' }}>
                                         <CardContent sx={{ p: 2, textAlign: 'center', '&:last-child': { pb: 2 } }}>
-                                            <AssignmentIndIcon sx={{ color: '#0ea5e9', fontSize: 20, mb: 0.5 }} />
-                                            <Typography variant="caption" color="#0ea5e9" fontWeight="bold" display="block">총 연차</Typography>
-                                            <Typography variant="h5" fontWeight="bold" color="#075985">{attendanceSummary.total_annual_days}일</Typography>
+                                            <AssignmentIndIcon sx={{ color: '#0ea5e9', fontSize: 24, mb: 0.5 }} />
+                                            <Typography variant="caption" color="#0ea5e9" fontWeight="heavy" display="block" sx={{ fontSize: '10px' }}>총 연차</Typography>
+                                            <Typography variant="h5" fontWeight="900" color="#075985" sx={{ letterSpacing: -1 }}>{attendanceSummary.total_annual_days}일</Typography>
                                         </CardContent>
                                     </Card>
-                                    <Card sx={{ borderRadius: 3, bgcolor: '#eff6ff', border: '1px solid #dbeafe', boxShadow: 'none' }}>
-                                        <CardContent sx={{ p: 2, textAlign: 'center', '&:last-child': { pb: 2 } }}>
-                                            <VacationIcon sx={{ color: '#3b82f6', fontSize: 20, mb: 0.5 }} />
-                                            <Typography variant="caption" color="#3b82f6" fontWeight="bold" display="block">휴가 사용</Typography>
-                                            <Typography variant="h5" fontWeight="bold" color="#1e40af">{attendanceSummary.total_vacation_days}일</Typography>
+                                    <Card sx={{ gridColumn: 'span 2', borderRadius: 3, bgcolor: '#fff1f2', border: '1px solid #ffe4e6', boxShadow: 'none' }}>
+                                        <CardContent sx={{ p: 1.5, textAlign: 'center', '&:last-child': { pb: 1.5 } }}>
+                                            <Typography variant="caption" color="#e11d48" fontWeight="bold" display="block" sx={{ fontSize: '9px' }}>사용 연차</Typography>
+                                            <Typography variant="subtitle1" fontWeight="bold" color="#9f1239">{attendanceSummary.total_vacation_days}일</Typography>
                                         </CardContent>
                                     </Card>
-                                    <Card sx={{ borderRadius: 3, bgcolor: '#f5f3ff', border: '1px solid #ede9fe', boxShadow: 'none' }}>
-                                        <CardContent sx={{ p: 2, textAlign: 'center', '&:last-child': { pb: 2 } }}>
-                                            <TimerIcon sx={{ color: '#a855f7', fontSize: 20, mb: 0.5 }} />
-                                            <Typography variant="caption" color="#a855f7" fontWeight="bold" display="block">조퇴 / 외출</Typography>
-                                            <Typography variant="h5" fontWeight="bold" color="#5b21b6">{attendanceSummary.total_leave_outing_hours}h</Typography>
-                                        </CardContent>
-                                    </Card>
-                                    <Card sx={{ borderRadius: 3, bgcolor: '#fffbeb', border: '1px solid #fef3c7', boxShadow: 'none', gridColumn: 'span 2' }}>
-                                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                                <Stack direction="row" spacing={0.8} alignItems="center">
-                                                    <OvertimeIcon sx={{ color: '#f59e0b', fontSize: 20 }} />
-                                                    <Typography variant="subtitle2" color="#92400e" fontWeight="bold">야근 / 특근</Typography>
-                                                </Stack>
-                                                <Typography variant="h5" fontWeight="bold" color="#92400e">{attendanceSummary.total_overtime_hours}h</Typography>
-                                            </Stack>
+                                    <Card sx={{ gridColumn: 'span 2', borderRadius: 3, bgcolor: '#f8fafc', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+                                        <CardContent sx={{ p: 1.5, textAlign: 'center', '&:last-child': { pb: 1.5 } }}>
+                                            <Typography variant="caption" color="#64748b" fontWeight="bold" display="block" sx={{ fontSize: '9px' }}>외출/조퇴</Typography>
+                                            <Typography variant="subtitle1" fontWeight="bold" color="#334155">{attendanceSummary.total_leave_outing_hours}h</Typography>
                                         </CardContent>
                                     </Card>
                                 </Box>
+
                                 <Box sx={{ mt: 1 }}>
                                     <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, px: 0.5, color: '#374151' }}>
                                         결재 완료 내역 ({attendanceSummary.documents.length}건)
@@ -1169,10 +1157,10 @@ const MobileWorkLogPage = () => {
                         )}
                     </Box>
                 </Box>
-            </Box>
+            </Box >
 
             {/* Bottom Nav */}
-            <Paper sx={{ flexShrink: 0 }} elevation={10}>
+            < Paper sx={{ flexShrink: 0 }} elevation={10} >
                 <BottomNavigation
                     showLabels
                     value={tab}
@@ -1188,10 +1176,10 @@ const MobileWorkLogPage = () => {
                     <BottomNavigationAction label="전자결재" icon={<DescriptionIcon />} />
                     <BottomNavigationAction label="근태현황" icon={<AssignmentIndIcon />} />
                 </BottomNavigation>
-            </Paper>
+            </Paper >
 
             {/* Conflict Dialog */}
-            <Dialog open={conflictOpen} onClose={() => setConflictOpen(false)}>
+            < Dialog open={conflictOpen} onClose={() => setConflictOpen(false)}>
                 <DialogTitle>일지 중복 감지</DialogTitle>
                 <DialogContent>
                     <DialogContentText>
@@ -1205,10 +1193,10 @@ const MobileWorkLogPage = () => {
                     <Button variant="outlined" color="error" fullWidth onClick={() => handleSaveLog("REPLACE")}>기존 일지 삭제 후 새로 등록</Button>
                     <Button variant="text" fullWidth onClick={() => setConflictOpen(false)}>취소</Button>
                 </DialogActions>
-            </Dialog>
+            </Dialog >
 
             {/* Create Doc Modal (Mobile optimized) */}
-            <Dialog fullScreen open={showCreateModal} onClose={() => { setShowCreateModal(false); setEditingDocId(null); }}>
+            < Dialog fullScreen open={showCreateModal} onClose={() => { setShowCreateModal(false); setEditingDocId(null); }}>
                 <AppBar sx={{ position: 'relative', bgcolor: '#fff', color: '#000' }}>
                     <Toolbar size="small">
                         <IconButton edge="start" color="inherit" onClick={() => { setShowCreateModal(false); setEditingDocId(null); }}>
@@ -1315,10 +1303,10 @@ const MobileWorkLogPage = () => {
                         )}
                     </Paper>
                 </Box>
-            </Dialog>
+            </Dialog >
 
             {/* Doc Detail Modal */}
-            <Dialog fullScreen open={showDetailModal} onClose={() => setShowDetailModal(false)}>
+            < Dialog fullScreen open={showDetailModal} onClose={() => setShowDetailModal(false)}>
                 <AppBar sx={{ position: 'relative', bgcolor: '#fff', color: '#000' }}>
                     <Toolbar size="small">
                         <IconButton edge="start" color="inherit" onClick={() => setShowDetailModal(false)}>
@@ -1471,8 +1459,8 @@ const MobileWorkLogPage = () => {
                         </Stack>
                     )}
                 </Box>
-            </Dialog>
-        </Box>
+            </Dialog >
+        </Box >
     );
 };
 

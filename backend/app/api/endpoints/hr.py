@@ -617,13 +617,12 @@ async def get_annual_leave_history(
         raise HTTPException(status_code=403, detail="조회 권한이 없습니다.")
     
     current_year = datetime.now().year
-    years = [current_year, current_year - 1, current_year - 2]
-    
-    # Sync current year usage before returning
-    await sync_annual_leave_usage(db, staff_id, current_year)
+    years = [current_year + 1, current_year, current_year - 1, current_year - 2]
     
     history_records = []
     for year in years:
+        # Sync usage for the year (to ensure it's up to date)
+        await sync_annual_leave_usage(db, staff_id, year)
         record = await get_or_create_annual_leave(db, staff_id, year)
         history_records.append(record)
     

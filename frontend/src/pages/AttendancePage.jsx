@@ -111,10 +111,8 @@ const AttendancePage = () => {
     }, [selectedStaff, currentMonth]);
 
     useEffect(() => {
-        if (activeTab === 'history') {
-            fetchSummary();
-        }
-    }, [activeTab, fetchSummary]);
+        fetchSummary();
+    }, [selectedStaff, fetchSummary]);
 
     const changeMonth = (offset) => {
         const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1);
@@ -323,6 +321,42 @@ const AttendancePage = () => {
                     </div>
                 </header>
 
+                {/* Always Visible Summary Info at Top */}
+                {selectedStaff && summaryData && (
+                    <Box sx={{ px: 8, pt: 4, pb: 0 }}>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-4 rounded-2xl text-white shadow-lg border border-white/10">
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Total Annual</p>
+                                <p className="text-2xl font-black">{summaryData.total_annual_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                            </div>
+                            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl text-white shadow-lg border border-white/10">
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Remaining Annual</p>
+                                <p className="text-2xl font-black">{summaryData.remaining_annual_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                            </div>
+                            <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-4 rounded-2xl text-white shadow-lg border border-white/10">
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Used Annual</p>
+                                <p className="text-2xl font-black">{summaryData.total_vacation_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                            </div>
+                            <div className="bg-gradient-to-br from-rose-500 to-rose-600 p-4 rounded-2xl text-white shadow-lg border border-white/10">
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Sick Leave</p>
+                                <p className="text-2xl font-black">{summaryData.total_sick_leave_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                            </div>
+                            <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-4 rounded-2xl text-white shadow-lg border border-white/10">
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Event Leave</p>
+                                <p className="text-2xl font-black">{summaryData.total_event_leave_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-400 to-blue-500 p-4 rounded-2xl text-white shadow-lg border border-white/10">
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Time Off/Outing</p>
+                                <p className="text-2xl font-black">{summaryData.total_leave_outing_hours?.toFixed(1) || 0} <span className="text-xs">Hours</span></p>
+                            </div>
+                            <div className="bg-gradient-to-br from-slate-700 to-slate-800 p-4 rounded-2xl text-white shadow-lg border border-white/10">
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Overtime</p>
+                                <p className="text-2xl font-black">{summaryData.total_overtime_hours?.toFixed(1) || 0} <span className="text-xs">Hours</span></p>
+                            </div>
+                        </div>
+                    </Box>
+                )}
+
                 {/* Calendar Grid */}
                 <div className="flex-1 overflow-auto p-8">
                     {loading ? (
@@ -348,37 +382,6 @@ const AttendancePage = () => {
                         </div>
                     ) : (
                         <div className="max-w-6xl mx-auto space-y-6">
-                            {/* Summary Stats */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-4 rounded-2xl text-white shadow-lg">
-                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Total Annual</p>
-                                    <p className="text-2xl font-black">{summaryData?.total_annual_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
-                                </div>
-                                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl text-white shadow-lg">
-                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Remaining Annual</p>
-                                    <p className="text-2xl font-black">{summaryData?.remaining_annual_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
-                                </div>
-                                <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-4 rounded-2xl text-white shadow-lg">
-                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Used Annual</p>
-                                    <p className="text-2xl font-black">{summaryData?.total_vacation_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
-                                </div>
-                                <div className="bg-gradient-to-br from-rose-500 to-rose-600 p-4 rounded-2xl text-white shadow-lg">
-                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Sick Leave</p>
-                                    <p className="text-2xl font-black">{summaryData?.total_sick_leave_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
-                                </div>
-                                <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-4 rounded-2xl text-white shadow-lg">
-                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Event Leave</p>
-                                    <p className="text-2xl font-black">{summaryData?.total_event_leave_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
-                                </div>
-                                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-2xl text-white shadow-lg">
-                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Time Off/Outing</p>
-                                    <p className="text-2xl font-black">{summaryData?.total_leave_outing_hours?.toFixed(1) || 0} <span className="text-xs">Hours</span></p>
-                                </div>
-                                <div className="bg-gradient-to-br from-slate-700 to-slate-800 p-4 rounded-2xl text-white shadow-lg">
-                                    <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Overtime</p>
-                                    <p className="text-2xl font-black">{summaryData?.total_overtime_hours?.toFixed(1) || 0} <span className="text-xs">Hours</span></p>
-                                </div>
-                            </div>
 
                             {/* Records Table */}
                             <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden">
@@ -452,78 +455,80 @@ const AttendancePage = () => {
             </main>
 
             {/* Attendance Edit Modal (Admin only) */}
-            {showEditModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
-                        <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
-                            <h3 className="text-xl font-black text-slate-800">근태 기록 수정</h3>
-                            <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600">
-                                <ChevronRightIcon className="w-6 h-6 rotate-90" />
-                            </button>
-                        </div>
-                        <div className="p-8 space-y-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">사원명</label>
-                                    <input type="text" disabled value={selectedStaff?.name || ''} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm font-bold text-slate-400" />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">날짜</label>
-                                    <input type="text" disabled value={editingRecord?.record_date || ''} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm font-bold text-slate-400" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">출근 시간</label>
-                                        <input
-                                            type="datetime-local"
-                                            value={editFormData.clock_in_time}
-                                            onChange={e => setEditFormData({ ...editFormData, clock_in_time: e.target.value })}
-                                            className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">퇴근 시간</label>
-                                        <input
-                                            type="datetime-local"
-                                            value={editFormData.clock_out_time}
-                                            onChange={e => setEditFormData({ ...editFormData, clock_out_time: e.target.value })}
-                                            className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">근태 상태</label>
-                                    <select
-                                        value={editFormData.attendance_status}
-                                        onChange={e => setEditFormData({ ...editFormData, attendance_status: e.target.value })}
-                                        className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all"
-                                    >
-                                        <option value="NORMAL">정상</option>
-                                        <option value="LATE">지각</option>
-                                        <option value="EARLY_LEAVE">조퇴</option>
-                                        <option value="ABSENT">결근</option>
-                                    </select>
-                                </div>
+            {
+                showEditModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+                            <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
+                                <h3 className="text-xl font-black text-slate-800">근태 기록 수정</h3>
+                                <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600">
+                                    <ChevronRightIcon className="w-6 h-6 rotate-90" />
+                                </button>
                             </div>
-                            <div className="flex space-x-3 pt-4">
-                                <button
-                                    onClick={() => setShowEditModal(false)}
-                                    className="flex-1 px-6 py-4 bg-slate-100 text-slate-400 font-black rounded-2xl hover:bg-slate-200 transition-all uppercase tracking-widest text-xs"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleUpdateAttendance}
-                                    className="flex-[2] px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest text-xs"
-                                >
-                                    Save Changes
-                                </button>
+                            <div className="p-8 space-y-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">사원명</label>
+                                        <input type="text" disabled value={selectedStaff?.name || ''} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm font-bold text-slate-400" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">날짜</label>
+                                        <input type="text" disabled value={editingRecord?.record_date || ''} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm font-bold text-slate-400" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">출근 시간</label>
+                                            <input
+                                                type="datetime-local"
+                                                value={editFormData.clock_in_time}
+                                                onChange={e => setEditFormData({ ...editFormData, clock_in_time: e.target.value })}
+                                                className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">퇴근 시간</label>
+                                            <input
+                                                type="datetime-local"
+                                                value={editFormData.clock_out_time}
+                                                onChange={e => setEditFormData({ ...editFormData, clock_out_time: e.target.value })}
+                                                className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">근태 상태</label>
+                                        <select
+                                            value={editFormData.attendance_status}
+                                            onChange={e => setEditFormData({ ...editFormData, attendance_status: e.target.value })}
+                                            className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all"
+                                        >
+                                            <option value="NORMAL">정상</option>
+                                            <option value="LATE">지각</option>
+                                            <option value="EARLY_LEAVE">조퇴</option>
+                                            <option value="ABSENT">결근</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex space-x-3 pt-4">
+                                    <button
+                                        onClick={() => setShowEditModal(false)}
+                                        className="flex-1 px-6 py-4 bg-slate-100 text-slate-400 font-black rounded-2xl hover:bg-slate-200 transition-all uppercase tracking-widest text-xs"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleUpdateAttendance}
+                                        className="flex-[2] px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest text-xs"
+                                    >
+                                        Save Changes
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
