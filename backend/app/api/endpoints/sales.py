@@ -1,5 +1,5 @@
 from typing import List, Optional, Union
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc, or_
 from sqlalchemy.future import select
@@ -916,6 +916,48 @@ async def update_delivery_history(
     await db.commit()
     await db.refresh(db_delivery)
     return db_delivery
+
+@router.post("/orders/delivery/{delivery_id}/attach-statement")
+async def attach_delivery_statement(
+    delivery_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(deps.get_db)
+):
+    """
+    거래명세서 PDF를 납품 이력에 첨부파일로 저장
+    """
+    query = select(DeliveryHistory).where(DeliveryHistory.id == delivery_id)
+    res = await db.execute(query)
+    db_delivery = res.scalar_one_or_none()
+    
+    if not db_delivery:
+        raise HTTPException(status_code=404, detail="Delivery history not found")
+
+    # Ensure uploads directory exists
+    upload_dir = os.path.join("uploads", "statements")
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+
+    # Save File
+    file_ext = os.path.splitext(file.filename)[1]
+    file_name = f"stmt_{delivery_id}_{uuid.uuid4().hex[:8]}{file_ext}"
+    file_path = os.path.join(upload_dir, file_name)
+    
+    with open(file_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
+
+    # Update attachment_files (JSON list)
+    current_files = db_delivery.attachment_files or []
+    new_file_url = f"/uploads/statements/{file_name}"
+    if new_file_url not in current_files:
+        current_files.append(new_file_url)
+        db_delivery.attachment_files = current_files
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(db_delivery, "attachment_files")
+
+    await db.commit()
+    return {"status": "success", "file_url": new_file_url}
 
 @router.post("/orders/{order_id}/batch-complete")
 async def batch_complete_order(
