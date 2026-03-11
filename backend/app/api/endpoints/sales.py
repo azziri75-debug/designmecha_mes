@@ -6,7 +6,10 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import delete
 from app.api import deps
-from app.models.sales import Estimate, EstimateItem, SalesOrder, SalesOrderItem, OrderStatus
+from app.models.sales import (
+    Estimate, EstimateItem, SalesOrder, SalesOrderItem, OrderStatus,
+    DeliveryHistory, DeliveryHistoryItem
+)
 from app.schemas import sales as schemas
 from app.models.product import Product, ProductProcess, BOM
 from app.models.basics import Partner
