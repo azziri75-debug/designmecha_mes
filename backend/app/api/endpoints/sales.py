@@ -1031,6 +1031,7 @@ async def batch_complete_order(
     return {"message": "Success", "plan_count": len(plans)}
 
 @router.get("/delivery-status", response_model=List[schemas.SalesOrder])
+@router.get("/delivery-status/", response_model=List[schemas.SalesOrder], include_in_schema=False)
 async def read_delivery_status(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

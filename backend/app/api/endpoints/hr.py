@@ -655,7 +655,7 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
             ApprovalDocument.author_id == staff_id,
             ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE"]),
             ApprovalDocument.status == ApprovalStatus.COMPLETED,
-            ApprovalDocument.deleted_at.is_(None),  # [Fix] 엄격한 필터링: 삭제된 문서는 제외
+            ApprovalDocument.deleted_at == None,  # [Fix] Explicitly filter out soft-deleted documents
             ApprovalDocument.created_at >= year_start,
             ApprovalDocument.created_at <= year_end,
         )

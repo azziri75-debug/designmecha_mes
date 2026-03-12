@@ -880,6 +880,15 @@ async def delete_document(
     if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
         await db.execute(delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc_id))
     
+    # [Fix] Hard cleanup of orphaned HR data
+    if db_doc.doc_type in ["VACATION", "EARLY_LEAVE"]:
+        # Delete linked EmployeeTimeRecord entries using approval_id
+        from app.models.hr import EmployeeTimeRecord
+        await db.execute(
+            delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc_id)
+        )
+        print(f"Deleted related EmployeeTimeRecord entries for document {doc_id}")
+
     await db.commit()
     
     # [Fix] 잔여 연차 동기화 (commit 직후 호출)

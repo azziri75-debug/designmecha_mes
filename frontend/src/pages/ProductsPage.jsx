@@ -874,13 +874,17 @@ const ProductsPage = ({ type }) => {
                                     const q = searchQuery.toLowerCase();
                                     const sorted = [...products]
                                         .filter(p => {
-                                            if (!q) return true;
-                                            const partnerName = partners.find(pt => pt.id === p.partner_id)?.name || '';
-                                            return (
+                                            // Search Query Filter
+                                            const matchesSearch = !q || (
                                                 (p.name || '').toLowerCase().includes(q) ||
                                                 (p.specification || '').toLowerCase().includes(q) ||
-                                                partnerName.toLowerCase().includes(q)
+                                                (partners.find(pt => pt.id === p.partner_id)?.name || '').toLowerCase().includes(q)
                                             );
+
+                                            // Partner Selector Filter
+                                            const matchesPartner = !selectedPartnerId || p.partner_id === selectedPartnerId;
+
+                                            return matchesSearch && matchesPartner;
                                         })
                                         .sort((a, b) => {
                                             const pa = partners.find(pt => pt.id === a.partner_id)?.name || '';

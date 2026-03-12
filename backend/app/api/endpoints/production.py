@@ -1322,7 +1322,10 @@ async def read_work_logs(
                 selectinload(ProductionPlanItem.outsourcing_items),
                 selectinload(ProductionPlanItem.plan).options(
                     selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                    selectinload(ProductionPlan.stock_production).options(
+                        selectinload(StockProduction.product),
+                        selectinload(StockProduction.partner)
+                    )
                 )
             )
         )

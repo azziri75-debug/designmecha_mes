@@ -371,10 +371,8 @@ const ProductionPage = () => {
     };
 
     // Filter plans by status based on tab
-    const inProgressPlans = plans.filter(p => p.status !== 'COMPLETED' && p.status !== 'CANCELED');
-    const completedPlans = plans.filter(p => {
-        if (p.status !== 'COMPLETED') return false;
-
+    // Filter logic
+    const filterData = (p) => {
         // Partner Filter
         if (filterPartner !== 'all') {
             if (filterPartner === 'internal') {
@@ -384,12 +382,33 @@ const ProductionPage = () => {
             }
         }
 
-        // Date Filter (Plan Date)
+        // Date Filter (Plan Date) - Default to matching if no date set
         if (startDate && p.plan_date < startDate) return false;
         if (endDate && p.plan_date > endDate) return false;
 
+        // Search Query (Order No, Partner, Product Name/Spec)
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            const orderNo = (p.order?.order_no || '').toLowerCase();
+            const prodNo = (p.stock_production?.production_no || '').toLowerCase();
+            const partnerName = (p.order?.partner?.name || '').toLowerCase();
+
+            // Check items for product info
+            const hasMatchingProduct = (p.items || []).some(item =>
+                (item.product?.name || '').toLowerCase().includes(q) ||
+                (item.product?.specification || '').toLowerCase().includes(q)
+            );
+
+            if (!orderNo.includes(q) && !prodNo.includes(q) && !partnerName.includes(q) && !hasMatchingProduct) {
+                return false;
+            }
+        }
+
         return true;
-    });
+    };
+
+    const inProgressPlans = plans.filter(p => p.status !== 'COMPLETED' && p.status !== 'CANCELED' && filterData(p));
+    const completedPlans = plans.filter(p => p.status === 'COMPLETED' && filterData(p));
 
     return (
         <Box sx={{ width: '100%' }}>
@@ -414,72 +433,70 @@ const ProductionPage = () => {
                 </Tabs>
 
                 <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: '#fcfcfc' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="textSecondary">기간:</Typography>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
-                            />
-                            <span>~</span>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
-                            />
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
-                            <Typography variant="body2" color="textSecondary">거래처:</Typography>
-                            <div style={{ flex: 1 }}>
-                                <Select
-                                    isClearable
-                                    placeholder="전체 거래처"
-                                    options={[
-                                        { value: 'all', label: '전체 거래처' },
-                                        { value: 'internal', label: '사내(재고)' },
-                                        ...partners.map(p => ({ value: p.id.toString(), label: p.name }))
-                                    ]}
-                                    value={filterPartner === 'all' ? { value: 'all', label: '전체 거래처' } :
-                                        filterPartner === 'internal' ? { value: 'internal', label: '사내(재고)' } :
-                                            partners.find(p => p.id.toString() === filterPartner) ? { value: filterPartner, label: partners.find(p => p.id.toString() === filterPartner).name } : null}
-                                    onChange={(opt) => setFilterPartner(opt ? opt.value : 'all')}
-                                    styles={{
-                                        control: (base) => ({ ...base, minHeight: '32px', height: '32px', fontSize: '0.875rem' }),
-                                        valueContainer: (base) => ({ ...base, padding: '0 8px' }),
-                                        input: (base) => ({ ...base, margin: '0' }),
-                                        indicatorsContainer: (base) => ({ ...base, height: '32px' }),
-                                    }}
-                                />
-                            </div>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="textSecondary">품명/품번:</Typography>
-                            <input
-                                type="text"
-                                placeholder="검색어 입력..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '150px' }}
-                            />
-                        </Box>
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            color="inherit"
-                            onClick={() => {
-                                setStartDate('');
-                                setEndDate('');
-                                setFilterPartner('all');
-                                setSearchQuery('');
-                            }}
-                        >
-                            필터 초기화
-                        </Button>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" color="textSecondary">기간:</Typography>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                        />
+                        <span>~</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                        />
                     </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
+                        <Typography variant="body2" color="textSecondary">거래처:</Typography>
+                        <div style={{ flex: 1 }}>
+                            <Select
+                                isClearable
+                                placeholder="전체 거래처"
+                                options={[
+                                    { value: 'all', label: '전체 거래처' },
+                                    { value: 'internal', label: '사내(재고)' },
+                                    ...partners.map(p => ({ value: p.id.toString(), label: p.name }))
+                                ]}
+                                value={filterPartner === 'all' ? { value: 'all', label: '전체 거래처' } :
+                                    filterPartner === 'internal' ? { value: 'internal', label: '사내(재고)' } :
+                                        partners.find(p => p.id.toString() === filterPartner) ? { value: filterPartner, label: partners.find(p => p.id.toString() === filterPartner).name } : null}
+                                onChange={(opt) => setFilterPartner(opt ? opt.value : 'all')}
+                                styles={{
+                                    control: (base) => ({ ...base, minHeight: '32px', height: '32px', fontSize: '0.875rem' }),
+                                    valueContainer: (base) => ({ ...base, padding: '0 8px' }),
+                                    input: (base) => ({ ...base, margin: '0' }),
+                                    indicatorsContainer: (base) => ({ ...base, height: '32px' }),
+                                }}
+                            />
+                        </div>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" color="textSecondary">품명/품번:</Typography>
+                        <input
+                            type="text"
+                            placeholder="검색어 입력..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '150px' }}
+                        />
+                    </Box>
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        color="inherit"
+                        onClick={() => {
+                            setStartDate('');
+                            setEndDate('');
+                            setFilterPartner('all');
+                            setSearchQuery('');
+                        }}
+                    >
+                        필터 초기화
+                    </Button>
                 </Box>
-
 
                 <Box sx={{ p: 3 }}>
                     {tabIndex === 0 && (
@@ -571,50 +588,50 @@ const ProductionPage = () => {
                 onSave={fetchPlans}
             />
 
-{
-    showFileModal && (
-        <FileViewerModal
-            isOpen={showFileModal}
-            onClose={() => {
-                setShowFileModal(false);
-                setOnDeleteFile(null);
-            }}
-            files={viewingFiles}
-            title={viewingFileTitle}
-            onDeleteFile={onDeleteFile}
-        />
-    )
-}
+            {
+                showFileModal && (
+                    <FileViewerModal
+                        isOpen={showFileModal}
+                        onClose={() => {
+                            setShowFileModal(false);
+                            setOnDeleteFile(null);
+                        }}
+                        files={viewingFiles}
+                        title={viewingFileTitle}
+                        onDeleteFile={onDeleteFile}
+                    />
+                )
+            }
 
-{
-    viewOrderOpen && (
-        <OrderModal
-            isOpen={viewOrderOpen}
-            onClose={() => setViewOrderOpen(false)}
-            partners={partners}
-            orderToEdit={itemToView}
-            onSuccess={() => { }} // View only, so no success handler needed or just fetchPlans
-        />
-    )
-}
+            {
+                viewOrderOpen && (
+                    <OrderModal
+                        isOpen={viewOrderOpen}
+                        onClose={() => setViewOrderOpen(false)}
+                        partners={partners}
+                        orderToEdit={itemToView}
+                        onSuccess={() => { }} // View only, so no success handler needed or just fetchPlans
+                    />
+                )
+            }
 
-{
-    viewStockOpen && (
-        <StockProductionModal
-            isOpen={viewStockOpen}
-            onClose={() => setViewStockOpen(false)}
-            partners={partners}
-            stockProductionToEdit={itemToView}
-            onSuccess={() => { }}
-        />
-    )
-}
+            {
+                viewStockOpen && (
+                    <StockProductionModal
+                        isOpen={viewStockOpen}
+                        onClose={() => setViewStockOpen(false)}
+                        partners={partners}
+                        stockProductionToEdit={itemToView}
+                        onSuccess={() => { }}
+                    />
+                )
+            }
 
-<DefectInfoModal
-    isOpen={defectModalOpen}
-    onClose={() => setDefectModalOpen(false)}
-    defects={selectedDefects}
-/>
+            <DefectInfoModal
+                isOpen={defectModalOpen}
+                onClose={() => setDefectModalOpen(false)}
+                defects={selectedDefects}
+            />
         </Box >
     );
 };
