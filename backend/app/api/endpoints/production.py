@@ -1690,7 +1690,8 @@ async def get_performance_details(
                 selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
                 selectinload(ProductionPlanItem.plan).options(
                     selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
                 )
             )
         )

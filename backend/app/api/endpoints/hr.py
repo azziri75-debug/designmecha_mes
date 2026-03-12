@@ -254,14 +254,17 @@ async def get_attendance_summary(
             ))
     
     # After calculating everything from docs, update and commit the annual leave record for consistency
-    leave_record.used_leave_hours = float(total_vacation_days * 8.0 + total_leave_outing_hours)
+    # [Requirement Update] used_leave_hours = (actual approval docs usage) + (adjustment_days * 8)
+    leave_record.used_leave_hours = float(total_vacation_days * 8.0 + total_leave_outing_hours) + float((leave_record.adjustment_days or 0.0) * 8.0)
     leave_record.sick_leave_days = float(total_sick_leave_days)
     leave_record.event_leave_days = float(total_event_leave_days)
     db.add(leave_record)
     await db.commit()
     await db.refresh(leave_record)
 
-    total_annual = leave_record.base_days + leave_record.adjustment_days
+    # [Requirement Update] total_annual = base_days (fixed)
+    # Remaining = (base_days * 8 - total_used_hours) / 8
+    total_annual = leave_record.base_days
     remaining = total_annual - (leave_record.used_leave_hours / 8.0)
 
     return AttendanceSummaryResponse(
@@ -709,7 +712,10 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
             except: pass
             
     record = await get_or_create_annual_leave(db, staff_id, year)
-    record.used_leave_hours = float(v_days * 8.0 + o_hours)
+    # [Requirement Update] used_leave_hours = (actual approval docs usage) + (adjustment_days * 8)
+    # Note: adjustment_days > 0 increases used hours (decreases remaining balance)
+    # adjustment_days < 0 decreases used hours (increases remaining balance)
+    record.used_leave_hours = float(v_days * 8.0 + o_hours) + float((record.adjustment_days or 0.0) * 8.0)
     record.sick_leave_days = float(s_days)
     record.event_leave_days = float(e_days)
     db.add(record)
@@ -775,7 +781,7 @@ async def update_annual_leave(
     await db.commit()
     await db.refresh(record)
     
-    remaining = record.base_days + record.adjustment_days - (record.used_leave_hours / 8.0)
+    remaining = record.base_days - (record.used_leave_hours / 8.0)
     return EmployeeAnnualLeaveResponse(
         id=record.id,
         staff_id=record.staff_id,
