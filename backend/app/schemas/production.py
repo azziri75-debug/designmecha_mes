@@ -69,12 +69,20 @@ class ProductionPlanSimple(ProductionPlanBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
-    stock_production: Optional[StockProductionResponse] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
 # Forward refs for Purchasing
 from app.schemas.purchasing import PurchaseOrderItemSimple, OutsourcingOrderItemSimple
+from app.schemas.inventory import StockProductionResponse, StockProductionSimple
+
+class ProductionPlanSimple(ProductionPlanBase):
+    id: int
+    order_id: Optional[int] = None
+    stock_production_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    order: Optional[SalesOrderSimple] = None
+    stock_production: Optional[StockProductionSimple] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 class ProductionPlanItem(ProductionPlanItemBase):
     id: int
@@ -114,7 +122,7 @@ class ProductionPlan(ProductionPlanBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
-    stock_production: Optional[StockProductionResponse] = None
+    stock_production: Optional[StockProductionSimple] = None
     items: List[ProductionPlanItem] = []
 
     model_config = ConfigDict(from_attributes=True)

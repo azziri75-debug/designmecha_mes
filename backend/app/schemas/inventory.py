@@ -45,6 +45,15 @@ class StockProductionUpdate(BaseModel):
     status: Optional[str] = None
     note: Optional[str] = None
 
+class StockProductionSimple(StockProductionBase):
+    id: int
+    production_no: str
+    request_date: date
+    status: str
+    created_at: datetime
+    product: Optional[ProductSimple] = None
+    model_config = ConfigDict(from_attributes=True)
+
 class StockProductionResponse(StockProductionBase):
     id: int
     production_no: str
