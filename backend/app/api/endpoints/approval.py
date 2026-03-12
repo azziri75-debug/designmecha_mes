@@ -563,7 +563,8 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
                         category="HALF_DAY" if v_type == "반차" else ("SICK" if v_type == "병가" else "ANNUAL"),
                         content=f"{v_type} ({content.get('half_day_type', '')}) - {content.get('reason', '')}",
                         author_id=doc.author_id,
-                        status="APPROVED"
+                        status="APPROVED",
+                        approval_id=doc.id
                     )
                     db.add(record)
                 curr += timedelta(days=1)
@@ -626,7 +627,8 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
                 content=f"{e_type}: {content.get('time', '')} ~ {content.get('end_time', '')} - {content.get('reason', '')}",
                 author_id=doc.author_id,
                 status="APPROVED",
-                hours=hours
+                hours=hours,
+                approval_id=doc.id
             )
             db.add(record)
             
@@ -645,7 +647,8 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
                 category="OVERTIME",
                 content=f"특근: {start_t} ~ {end_t} - {content.get('reason', '')}",
                 author_id=doc.author_id,
-                status="APPROVED"
+                status="APPROVED",
+                approval_id=doc.id
             )
             
             if ot_details:
@@ -870,13 +873,18 @@ async def delete_document(
             await db.commit()
             return {"message": "이미 발주가 진행된 항목이 있어 삭제 대신 기안과 발주 상태를 '취소'로 변경했습니다."}
 
-    # 일반 문서(휴가 등)의 경우 Soft Delete 처리
+    # 일반 문서(휴가 등)의 경우 Soft Delete 처리 및 연계 기록 삭제
     doc.deleted_at = datetime.now()
     
-    # Trigger leave sync if relevant
+    # [Fix] 전자결재 문서와 연계된 Attendance 기록이 있다면 물리적 삭제 (찌꺼기 제거)
+    if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+        await db.execute(delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc_id))
+    
+    await db.commit()
+    
+    # [Fix] 잔여 연차 동기화 (commit 직후 호출)
     if doc.doc_type in ["VACATION", "EARLY_LEAVE"]:
         from app.api.endpoints.hr import sync_annual_leave_usage
         await sync_annual_leave_usage(db, doc.author_id, doc.created_at.year)
         
-    await db.commit()
     return {"message": "삭제되었습니다."}

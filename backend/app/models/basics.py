@@ -120,10 +120,14 @@ class EmployeeTimeRecord(Base):
     # 가시성을 위한 작성자 연계 (전자결재 연동 시 결재 상신자)
     author_id = Column(Integer, ForeignKey("staff.id", ondelete="SET NULL"), nullable=True)
     
+    # [Fix] 전자결재 문서와 명시적으로 연결을 위한 컬럼 추가
+    approval_id = Column(Integer, ForeignKey("approval_documents.id", ondelete="CASCADE"), nullable=True)
+    
     created_at = Column(DateTime, default=func.now())
 
     staff = relationship("Staff", foreign_keys=[staff_id])
     author = relationship("Staff", foreign_keys=[author_id])
+    approval_doc = relationship("ApprovalDocument", foreign_keys=[approval_id])
 
 class Equipment(Base):
     """공정 장비 (Master Data)"""

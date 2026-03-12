@@ -1029,3 +1029,32 @@ async def batch_complete_order(
 
     await db.commit()
     return {"message": "Success", "plan_count": len(plans)}
+
+@router.get("/delivery-status", response_model=List[schemas.SalesOrder])
+async def read_delivery_status(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    partner_name: Optional[str] = None,
+    status: Optional[str] = None,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    """
+    납품 현황 조회를 위한 수주 목록 (배송 이력 포함)
+    """
+    query = select(SalesOrder).options(
+        joinedload(SalesOrder.partner),
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+        selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product)
+    ).order_by(desc(SalesOrder.order_date))
+
+    if start_date:
+        query = query.where(SalesOrder.order_date >= start_date)
+    if end_date:
+        query = query.where(SalesOrder.order_date <= end_date)
+    if partner_name:
+        query = query.join(Partner).where(Partner.name.ilike(f"%{partner_name}%"))
+    if status and status != 'ALL':
+        query = query.where(SalesOrder.status == status)
+
+    result = await db.execute(query)
+    return result.scalars().unique().all()

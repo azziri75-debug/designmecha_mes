@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt } from 'lucide-react';
+import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt, Copy } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
 import { cn } from '../lib/utils';
@@ -400,6 +400,36 @@ const ProductsPage = ({ type }) => {
             console.error("Failed to delete product", error);
             alert("삭제 실패: " + (error.response?.data?.detail || error.message));
         }
+    };
+
+    const handleDuplicateProduct = (product) => {
+        // Prepare the duplicated data
+        const { id, created_at, updated_at, vendor, partner, ...cleanData } = product;
+
+        // Append "- 복사본" to the name
+        const duplicatedName = `${product.name} - 복사본`;
+
+        // Handle standard_processes duplication
+        // We need to clear IDs from processes to trigger new creation on the backend
+        const duplicatedProcesses = (product.standard_processes || []).map((proc, idx) => {
+            const { id, product_id, created_at, updated_at, process, ...procData } = proc;
+            return {
+                ...procData,
+                sequence: idx + 1,
+                _tempId: Math.random()
+            };
+        });
+
+        setProductFormData({
+            ...cleanData,
+            name: duplicatedName,
+            major_group_id: getMajorGroupId(product.group_id),
+            standard_processes: duplicatedProcesses
+        });
+
+        setRoutingProcesses(duplicatedProcesses);
+        setDetailSubTab('info');
+        setShowProductModal(true);
     };
 
     const handleDeleteAttachment = async (targetId, indexToRemove) => {
@@ -927,6 +957,13 @@ const ProductsPage = ({ type }) => {
                                                     })()}
                                                 </td>
                                                 <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={() => handleDuplicateProduct(product)}
+                                                        className="text-gray-400 hover:text-emerald-400"
+                                                        title="복사"
+                                                    >
+                                                        <Copy className="w-4 h-4" />
+                                                    </button>
                                                     <button
                                                         onClick={() => handleEditProduct(product)}
                                                         className="text-gray-400 hover:text-blue-400"
