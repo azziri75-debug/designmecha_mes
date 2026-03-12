@@ -650,9 +650,44 @@ async def get_annual_leave_history(
 
 async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
     """전자결재 COMPLETED 문서를 순회하여 연차 사용량을 테이블에 동기화합니다."""
+    from sqlalchemy import delete as sa_delete, or_, and_
+
     year_start = datetime(year, 1, 1)
     year_end = datetime(year, 12, 31, 23, 59, 59)
-    
+
+    # === [Hard Cleanup] 유령 데이터(Zombie Data) 강제 삭제 ===
+    # 결재 문서와 연결된 카테고리 목록 (결재로 생성되는 근태 기록만 대상으로)
+    approval_categories = ["ANNUAL", "HALF_DAY", "SICK", "EARLY_LEAVE", "OUTING", "EVENT_LEAVE"]
+
+    # 1) approval_id가 NULL인 유령 기록 삭제
+    await db.execute(
+        sa_delete(EmployeeTimeRecord).where(
+            EmployeeTimeRecord.staff_id == staff_id,
+            EmployeeTimeRecord.category.in_(approval_categories),
+            EmployeeTimeRecord.record_date >= year_start.date(),
+            EmployeeTimeRecord.record_date <= year_end.date(),
+            EmployeeTimeRecord.approval_id == None,  # noqa: E711
+        )
+    )
+
+    # 2) 연결된 결재 문서가 소프트 삭제된 경우도 삭제
+    deleted_doc_subq = (
+        select(ApprovalDocument.id).where(
+            ApprovalDocument.deleted_at != None,  # noqa: E711
+        ).scalar_subquery()
+    )
+    await db.execute(
+        sa_delete(EmployeeTimeRecord).where(
+            EmployeeTimeRecord.staff_id == staff_id,
+            EmployeeTimeRecord.category.in_(approval_categories),
+            EmployeeTimeRecord.record_date >= year_start.date(),
+            EmployeeTimeRecord.record_date <= year_end.date(),
+            EmployeeTimeRecord.approval_id.in_(deleted_doc_subq),
+        )
+    )
+    await db.commit()
+    # === [End Cleanup] ===
+
     docs_res = await db.execute(
         select(ApprovalDocument).where(
             ApprovalDocument.author_id == staff_id,

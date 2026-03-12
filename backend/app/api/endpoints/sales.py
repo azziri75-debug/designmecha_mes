@@ -1043,13 +1043,17 @@ async def read_delivery_status(
     납품 현황 조회를 위한 수주 목록 (배송 이력 포함)
     """
     query = select(SalesOrder).options(
-        joinedload(SalesOrder.partner),
+        # partner (required by SalesOrder schema)
+        selectinload(SalesOrder.partner),
+        # items -> product (required by SalesOrderItem schema)
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
-        selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product)
+        # delivery_histories -> items -> order_item -> product
+        selectinload(SalesOrder.delivery_histories).selectinload(
+            DeliveryHistory.items
+        ).selectinload(
+            DeliveryHistoryItem.order_item
+        ).selectinload(SalesOrderItem.product),
     ).order_by(desc(SalesOrder.order_date))
-    
-    # [Note] If Pydantic still complains, ensure DeliveryHistory itself loads its parent order if used in any computed fields, 
-    # but base schema doesn't seem to require it.
 
     if start_date:
         query = query.where(SalesOrder.order_date >= start_date)
