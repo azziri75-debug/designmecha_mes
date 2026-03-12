@@ -1320,8 +1320,10 @@ async def read_work_logs(
                 selectinload(ProductionPlanItem.worker),
                 selectinload(ProductionPlanItem.purchase_items),
                 selectinload(ProductionPlanItem.outsourcing_items),
-                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                selectinload(ProductionPlanItem.plan).options(
+                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                )
             )
         )
         .order_by(WorkLog.work_date.desc())

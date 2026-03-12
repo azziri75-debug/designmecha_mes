@@ -327,32 +327,32 @@ const AttendancePage = () => {
                     <Box sx={{ px: 8, pt: 4, pb: 0 }}>
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-4 rounded-2xl text-white shadow-lg border border-white/10">
-                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Total Annual</p>
-                                <p className="text-2xl font-black">{summaryData.total_annual_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">총 연차</p>
+                                <p className="text-2xl font-black">{summaryData.total_annual_days?.toFixed(1) || 0} <span className="text-xs">일</span></p>
                             </div>
                             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl text-white shadow-lg border border-white/10">
-                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Remaining Annual</p>
-                                <p className="text-2xl font-black">{summaryData.remaining_annual_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">잔여 연차</p>
+                                <p className="text-2xl font-black">{summaryData.remaining_annual_days?.toFixed(1) || 0} <span className="text-xs">일</span></p>
                             </div>
                             <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-4 rounded-2xl text-white shadow-lg border border-white/10">
-                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Used Annual</p>
-                                <p className="text-2xl font-black">{summaryData.total_vacation_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">사용 연차</p>
+                                <p className="text-2xl font-black">{summaryData.total_vacation_days?.toFixed(1) || 0} <span className="text-xs">일</span></p>
                             </div>
                             <div className="bg-gradient-to-br from-rose-500 to-rose-600 p-4 rounded-2xl text-white shadow-lg border border-white/10">
-                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Sick Leave</p>
-                                <p className="text-2xl font-black">{summaryData.total_sick_leave_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">병가</p>
+                                <p className="text-2xl font-black">{summaryData.total_sick_leave_days?.toFixed(1) || 0} <span className="text-xs">일</span></p>
                             </div>
                             <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-4 rounded-2xl text-white shadow-lg border border-white/10">
-                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Event Leave</p>
-                                <p className="text-2xl font-black">{summaryData.total_event_leave_days?.toFixed(1) || 0} <span className="text-xs">Days</span></p>
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">경조휴가</p>
+                                <p className="text-2xl font-black">{summaryData.total_event_leave_days?.toFixed(1) || 0} <span className="text-xs">일</span></p>
                             </div>
                             <div className="bg-gradient-to-br from-blue-400 to-blue-500 p-4 rounded-2xl text-white shadow-lg border border-white/10">
-                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Time Off/Outing</p>
-                                <p className="text-2xl font-black">{summaryData.total_leave_outing_hours?.toFixed(1) || 0} <span className="text-xs">Hours</span></p>
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">외출/조퇴</p>
+                                <p className="text-2xl font-black">{summaryData.total_leave_outing_hours?.toFixed(1) || 0} <span className="text-xs">시간</span></p>
                             </div>
                             <div className="bg-gradient-to-br from-slate-700 to-slate-800 p-4 rounded-2xl text-white shadow-lg border border-white/10">
-                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">Overtime</p>
-                                <p className="text-2xl font-black">{summaryData.total_overtime_hours?.toFixed(1) || 0} <span className="text-xs">Hours</span></p>
+                                <p className="text-[9px] font-black uppercase tracking-wider opacity-70 mb-1">특근</p>
+                                <p className="text-2xl font-black">{summaryData.total_overtime_hours?.toFixed(1) || 0} <span className="text-xs">시간</span></p>
                             </div>
                         </div>
                     </Box>

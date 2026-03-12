@@ -323,7 +323,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                                                 <div>오더: {plan.order.order_date}</div>
                                                                 <div style={{ color: '#1a237e' }}>납기: {plan.order.delivery_date || '-'}</div>
                                                             </div>
-                                                        ) : '-'}
+                                                        ) : (plan?.stock_production ? '재고생산' : '-')}
                                                     </TableCell>
                                                     <TableCell>{item.plan_item?.product?.name || '-'}</TableCell>
                                                     <TableCell>{item.plan_item?.process_name || '-'}</TableCell>
@@ -484,7 +484,7 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
                         <div>{plan.order.order_date}</div>
                         <div style={{ color: '#1a237e' }}>({plan.order.delivery_date || '-'})</div>
                     </div>
-                ) : '-'}
+                ) : (plan?.stock_production ? '재고생산' : '-')}
             </TableCell>
             <TableCell>
                 {item.plan_item?.process_name}
