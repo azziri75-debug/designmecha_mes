@@ -413,8 +413,7 @@ const ProductionPage = () => {
                     <Tab label="생산 완료" />
                 </Tabs>
 
-                {(tabIndex === 1 || tabIndex === 2) && (
-                    <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: '#fcfcfc' }}>
+                <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: '#fcfcfc' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Typography variant="body2" color="textSecondary">기간:</Typography>
                             <input
@@ -479,7 +478,7 @@ const ProductionPage = () => {
                             필터 초기화
                         </Button>
                     </Box>
-                )}
+                </Box>
 
 
                 <Box sx={{ p: 3 }}>
@@ -489,6 +488,8 @@ const ProductionPage = () => {
                             stockProductions={stockProductions}
                             plans={plans}
                             onCreatePlan={handleCreateClick}
+                            searchQuery={searchQuery}
+                            filterPartner={filterPartner}
                         />
                     )}
                     {tabIndex === 1 && (
@@ -551,7 +552,7 @@ const ProductionPage = () => {
                         />
                     )}
                 </Box>
-            </Paper>
+            </Paper >
 
             <ProductionPlanModal
                 isOpen={modalOpen}
@@ -570,45 +571,51 @@ const ProductionPage = () => {
                 onSave={fetchPlans}
             />
 
-            {showFileModal && (
-                <FileViewerModal
-                    isOpen={showFileModal}
-                    onClose={() => {
-                        setShowFileModal(false);
-                        setOnDeleteFile(null);
-                    }}
-                    files={viewingFiles}
-                    title={viewingFileTitle}
-                    onDeleteFile={onDeleteFile}
-                />
-            )}
+{
+    showFileModal && (
+        <FileViewerModal
+            isOpen={showFileModal}
+            onClose={() => {
+                setShowFileModal(false);
+                setOnDeleteFile(null);
+            }}
+            files={viewingFiles}
+            title={viewingFileTitle}
+            onDeleteFile={onDeleteFile}
+        />
+    )
+}
 
-            {viewOrderOpen && (
-                <OrderModal
-                    isOpen={viewOrderOpen}
-                    onClose={() => setViewOrderOpen(false)}
-                    partners={partners}
-                    orderToEdit={itemToView}
-                    onSuccess={() => { }} // View only, so no success handler needed or just fetchPlans
-                />
-            )}
+{
+    viewOrderOpen && (
+        <OrderModal
+            isOpen={viewOrderOpen}
+            onClose={() => setViewOrderOpen(false)}
+            partners={partners}
+            orderToEdit={itemToView}
+            onSuccess={() => { }} // View only, so no success handler needed or just fetchPlans
+        />
+    )
+}
 
-            {viewStockOpen && (
-                <StockProductionModal
-                    isOpen={viewStockOpen}
-                    onClose={() => setViewStockOpen(false)}
-                    partners={partners}
-                    stockProductionToEdit={itemToView}
-                    onSuccess={() => { }}
-                />
-            )}
+{
+    viewStockOpen && (
+        <StockProductionModal
+            isOpen={viewStockOpen}
+            onClose={() => setViewStockOpen(false)}
+            partners={partners}
+            stockProductionToEdit={itemToView}
+            onSuccess={() => { }}
+        />
+    )
+}
 
-            <DefectInfoModal
-                isOpen={defectModalOpen}
-                onClose={() => setDefectModalOpen(false)}
-                defects={selectedDefects}
-            />
-        </Box>
+<DefectInfoModal
+    isOpen={defectModalOpen}
+    onClose={() => setDefectModalOpen(false)}
+    defects={selectedDefects}
+/>
+        </Box >
     );
 };
 
@@ -657,19 +664,43 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
     );
 };
 
-const UnplannedOrdersTable = ({ orders, stockProductions, plans, onCreatePlan }) => {
+const UnplannedOrdersTable = ({ orders, stockProductions, plans, onCreatePlan, searchQuery, filterPartner }) => {
     const planOrderIds = plans.map(p => p.order_id);
     const planStockProdIds = plans.map(p => p.stock_production_id);
 
     // Filter out planned orders AND filter by status (PENDING or CONFIRMED)
-    const unplannedOrders = orders.filter(o =>
+    let unplannedOrders = orders.filter(o =>
         !planOrderIds.includes(o.id) &&
         (o.status === 'PENDING' || o.status === 'CONFIRMED')
     );
 
-    const unplannedStockProductions = stockProductions.filter(sp =>
+    let unplannedStockProductions = stockProductions.filter(sp =>
         !planStockProdIds.includes(sp.id)
     );
+
+    // Apply Client-side Filtering
+    if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        unplannedOrders = unplannedOrders.filter(o =>
+            o.order_no?.toLowerCase().includes(query) ||
+            o.partner?.name?.toLowerCase().includes(query) ||
+            o.items?.some(it => it.product?.name?.toLowerCase().includes(query) || it.product?.specification?.toLowerCase().includes(query))
+        );
+        unplannedStockProductions = unplannedStockProductions.filter(sp =>
+            sp.production_no?.toLowerCase().includes(query) ||
+            sp.product?.name?.toLowerCase().includes(query) ||
+            sp.product?.specification?.toLowerCase().includes(query)
+        );
+    }
+
+    if (filterPartner !== 'all') {
+        if (filterPartner === 'internal') {
+            unplannedOrders = []; // Stock productions are 'internal'
+        } else {
+            unplannedOrders = unplannedOrders.filter(o => o.partner_id === parseInt(filterPartner));
+            unplannedStockProductions = []; // No partner links for stock production usually
+        }
+    }
 
     return (
         <TableContainer>

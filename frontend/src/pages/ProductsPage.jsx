@@ -320,6 +320,10 @@ const ProductsPage = ({ type }) => {
                 await api.put(`/product/products/${productFormData.id}`, payload);
                 alert("수정되었습니다.");
             } else {
+                // For new products (including duplication), send standard_processes if they exist
+                if (routingProcesses && routingProcesses.length > 0) {
+                    payload.standard_processes = routingProcesses;
+                }
                 await api.post('/product/products/', payload);
                 alert("등록되었습니다.");
             }
@@ -1259,9 +1263,9 @@ const ProductsPage = ({ type }) => {
                                     <Package className="w-5 h-5 text-emerald-500" />
                                     {productFormData.id ? `제품 정보: ${productFormData.name}` : "신규 제품 등록"}
                                 </h3>
-                                {productFormData.id && (
+                                {(productFormData.id || routingProcesses.length > 0) && (
                                     <div className="flex gap-4 mt-3">
-                                        {['info', ...(productFormData.item_type === 'PRODUCED' ? ['routing'] : []), 'history', ...(BOM_ITEM_TYPES.includes(productFormData.item_type) ? ['bom'] : [])].map((tab) => (
+                                        {['info', ...((productFormData.item_type === 'PRODUCED' || (!productFormData.id && routingProcesses.length > 0)) ? ['routing'] : []), ...(productFormData.id ? ['history'] : []), ...(BOM_ITEM_TYPES.includes(productFormData.item_type) ? ['bom'] : [])].map((tab) => (
                                             <button
                                                 key={tab}
                                                 className={cn(
@@ -1294,7 +1298,7 @@ const ProductsPage = ({ type }) => {
 
                         {/* Modal Body */}
                         <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
-                            {(detailSubTab === 'info' || !productFormData.id) && (
+                            {(detailSubTab === 'info' || (!productFormData.id && routingProcesses.length === 0)) && (
                                 <form id="productForm" onSubmit={handleCreateProduct} className="space-y-6 max-w-3xl mx-auto py-2">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
                                         <div className="space-y-4">
@@ -1473,7 +1477,7 @@ const ProductsPage = ({ type }) => {
                                 </form>
                             )}
 
-                            {detailSubTab === 'routing' && productFormData.id && (
+                            {(detailSubTab === 'routing' && (productFormData.id || routingProcesses.length > 0)) && (
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center mb-4">
                                         <h4 className="text-sm font-semibold text-gray-300">공정 순서 정의</h4>
