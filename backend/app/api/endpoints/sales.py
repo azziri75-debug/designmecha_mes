@@ -1047,6 +1047,9 @@ async def read_delivery_status(
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
         selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product)
     ).order_by(desc(SalesOrder.order_date))
+    
+    # [Note] If Pydantic still complains, ensure DeliveryHistory itself loads its parent order if used in any computed fields, 
+    # but base schema doesn't seem to require it.
 
     if start_date:
         query = query.where(SalesOrder.order_date >= start_date)

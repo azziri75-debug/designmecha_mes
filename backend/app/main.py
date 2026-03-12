@@ -145,6 +145,13 @@ async def startup_event():
                     if "actual_delivery_date" not in oo_cols_list:
                         await db.execute(text("ALTER TABLE outsourcing_orders ADD COLUMN actual_delivery_date DATE"))
                         print("Startup: Added actual_delivery_date to outsourcing_orders (SQLite)")
+
+                    # employee_time_records migrations
+                    etr_cols = await db.execute(text("PRAGMA table_info('employee_time_records')"))
+                    etr_cols_list = [row[1] for row in etr_cols.fetchall()]
+                    if "approval_id" not in etr_cols_list:
+                        await db.execute(text("ALTER TABLE employee_time_records ADD COLUMN approval_id INTEGER"))
+                        print("Startup: Added approval_id to employee_time_records (SQLite)")
                 else:
                     # stamp_image
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
@@ -198,6 +205,14 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE outsourcing_orders ADD COLUMN actual_delivery_date DATE"))
                         print("Startup: Added actual_delivery_date to outsourcing_orders (Postgres)")
+
+                    # employee_time_records migrations
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='employee_time_records' AND column_name='approval_id'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE employee_time_records ADD COLUMN approval_id INTEGER"))
+                        print("Startup: Added approval_id to employee_time_records (Postgres)")
+                    
+                    await db.commit()
                 
                 await db.commit() # Commit migration before using model
             except Exception as e:
