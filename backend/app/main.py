@@ -212,6 +212,20 @@ async def startup_event():
                         await db.execute(text("ALTER TABLE employee_time_records ADD COLUMN approval_id INTEGER"))
                         print("Startup: Added approval_id to employee_time_records (Postgres)")
                     
+                    # [Hard Cleanup] 유령 근태 데이터 강제 삭제
+                    # approval_id가 NULL이거나 연결된 결재 문서가 삭제된 기록을 서버 시작 시 자동으로 정리
+                    await db.execute(text("""
+                        DELETE FROM employee_time_records 
+                        WHERE category IN ('휴가', '연차', '외출', '반차', 'ANNUAL', 'HALF_DAY', 'OUTING', 'EARLY_LEAVE')
+                        AND (
+                            approval_id IS NULL
+                            OR approval_id IN (
+                                SELECT id FROM approval_documents WHERE deleted_at IS NOT NULL
+                            )
+                        )
+                    """))
+                    print("Startup: Zombie employee_time_records cleaned up (Postgres)")
+                    
                     await db.commit()
                 
                 await db.commit() # Commit migration before using model

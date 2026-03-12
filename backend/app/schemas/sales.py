@@ -181,3 +181,60 @@ class DeliveryHistory(DeliveryHistoryBase):
     items: List[DeliveryHistoryItem] = []
     class Config:
         from_attributes = True
+
+
+# --- Delivery Status (lean list view) ---
+
+class DeliveryHistoryForStatus(BaseModel):
+    """납품 현황 목록 전용 슬림 스키마 - 깊은 중첩 없이 기본 필드만 포함"""
+    id: int
+    order_id: int
+    delivery_date: Optional[date] = None
+    delivery_no: Optional[str] = None
+    note: Optional[str] = None
+    attachment_files: Optional[List[Any]] = None
+    statement_json: Optional[dict] = None
+    supplier_info: Optional[dict] = None
+    # items: shallow (no product join required for list view)
+    items: List[DeliveryHistoryItem] = []
+
+    class Config:
+        from_attributes = True
+
+
+class SalesOrderItemForStatus(BaseModel):
+    """납품 현황 목록 전용 수주 항목 슬림 스키마"""
+    id: int
+    order_id: int
+    product_id: int
+    unit_price: float
+    quantity: int
+    delivered_quantity: int = 0
+    status: str
+    note: Optional[str] = None
+    product: Optional[ProductSimple] = None
+
+    class Config:
+        from_attributes = True
+
+
+class DeliveryStatusResponse(BaseModel):
+    """납품 현황 목록 전용 응답 스키마 - 직렬화 오류 방지를 위한 슬림 버전"""
+    id: int
+    order_no: Optional[str] = None
+    partner_id: int
+    order_date: Optional[date] = None
+    delivery_date: Optional[date] = None
+    actual_delivery_date: Optional[date] = None
+    delivery_method: Optional[str] = None
+    transaction_date: Optional[date] = None
+    total_amount: float
+    note: Optional[str] = None
+    status: Optional[str] = None
+    created_at: datetime
+    partner: Optional[PartnerSimple] = None
+    items: List[SalesOrderItemForStatus] = []
+    delivery_histories: List[DeliveryHistoryForStatus] = []
+
+    class Config:
+        from_attributes = True
