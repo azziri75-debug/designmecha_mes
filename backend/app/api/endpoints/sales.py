@@ -1045,8 +1045,7 @@ async def read_delivery_status(
     query = select(SalesOrder).options(
         joinedload(SalesOrder.partner),
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
-        selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product),
-        selectinload(SalesOrder.delivery_histories).joinedload(DeliveryHistory.attachment_files) # Ensure attachment_files are loaded if needed
+        selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product)
     ).order_by(desc(SalesOrder.order_date))
 
     if start_date:

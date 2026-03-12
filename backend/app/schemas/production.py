@@ -179,3 +179,10 @@ class WorkLog(WorkLogBase):
     items: List[WorkLogItem] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+# Rebuild models for forward references (Pydantic v2)
+WorkLog.model_rebuild()
+WorkLogItem.model_rebuild()
+ProductionPlan.model_rebuild()
+ProductionPlanItem.model_rebuild()
+ProductionPlanSimple.model_rebuild()
