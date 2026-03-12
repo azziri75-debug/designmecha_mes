@@ -1,70 +1,42 @@
 import React, { useState, useEffect } from 'react';
+import { Card, Button, Typography, TextField, Grid, Divider, CircularProgress, IconButton, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { Search, Plus, Printer, FileText, CheckCircle2, Clock, AlertCircle, TrendingUp, Package, Truck, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
 import api from '../lib/api';
-import { Search, Package, Truck, Calendar, FileText } from 'lucide-react';
-import { cn, getImageUrl } from '../lib/utils';
 import DeliveryModal from '../components/DeliveryModal';
 import FileViewerModal from '../components/FileViewerModal';
 import TransactionStatementModal from '../components/TransactionStatementModal';
 
-const Card = ({ children, className }) => (
-    <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
-        {children}
-    </div>
-);
-
 const DeliveryPage = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [partners, setPartners] = useState([]);
-
-    // Filter States
-    const [dateFilterType, setDateFilterType] = useState('order');
-    const [partnerFilter, setPartnerFilter] = useState('');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-
-
-    // Modal States
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [expandedOrder, setExpandedOrder] = useState(null);
+
+    // File Viewer
     const [showFileModal, setShowFileModal] = useState(false);
-    const [viewingFiles, setViewingFiles] = useState([]);
-    const [fileModalTitle, setFileModalTitle] = useState('');
-    const [expandedRows, setExpandedRows] = useState(new Set());
+    const [currentFiles, setCurrentFiles] = useState([]);
+
+    // Transaction Statement Modal
     const [showStatementModal, setShowStatementModal] = useState(false);
     const [statementData, setStatementData] = useState(null);
 
-    useEffect(() => {
-        fetchPartners();
-        fetchOrders();
-    }, [startDate, endDate, statusFilter, partnerFilter, searchQuery, dateFilterType]);
-
-
-    const fetchPartners = async () => {
-        try {
-            const res = await api.get('/basics/partners/', { params: { type: 'CUSTOMER' } });
-            setPartners(res.data);
-        } catch (error) {
-            console.error("Failed to fetch partners", error);
-        }
-    };
+    // Filters
+    const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [partnerFilter, setPartnerFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
 
     const fetchOrders = async () => {
         setLoading(true);
         try {
-            const params = {};
-            if (dateFilterType) params.date_type = dateFilterType;
-            if (startDate) params.start_date = startDate;
-            if (endDate) params.end_date = endDate;
-            if (statusFilter) params.status = statusFilter;
-            if (partnerFilter) params.partner_id = partnerFilter;
-            if (searchQuery) params.product_name = searchQuery;
+            const params = new URLSearchParams();
+            if (dateRange.start) params.append('start_date', dateRange.start);
+            if (dateRange.end) params.append('end_date', dateRange.end);
+            if (partnerFilter) params.append('partner_name', partnerFilter);
+            if (statusFilter !== 'ALL') params.append('status', statusFilter);
 
-
-            const res = await api.get('/sales/orders/', { params });
-            setOrders(res.data);
+            const response = await api.get(`/sales/delivery-status?${params.toString()}`);
+            setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch orders", error);
         } finally {
@@ -72,181 +44,173 @@ const DeliveryPage = () => {
         }
     };
 
-    const handleRowDoubleClick = (order) => {
+    useEffect(() => {
+        fetchOrders();
+    }, []);
+
+    const handleDeliveryClick = (order) => {
         setSelectedOrder(order);
         setShowDeliveryModal(true);
     };
 
-    const toggleRow = (orderId) => {
-        const newSet = new Set(expandedRows);
-        if (newSet.has(orderId)) newSet.delete(orderId);
-        else newSet.add(orderId);
-        setExpandedRows(newSet);
+    const handleExpandToggle = (orderId) => {
+        setExpandedOrder(expandedOrder === orderId ? null : orderId);
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-white">납품 관리</h1>
-            </div>
+        <div className="min-h-screen bg-black text-gray-100 p-8">
+            <div className="max-w-7xl mx-auto space-y-8">
+                {/* Header Section */}
+                <div className="flex justify-between items-end">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-500/20 rounded-lg">
+                                <Truck className="w-8 h-8 text-blue-500" />
+                            </div>
+                            <h1 className="text-4xl font-black tracking-tight text-white uppercase italic">
+                                납품현황 및 관리
+                            </h1>
+                        </div>
+                        <p className="text-gray-500 font-medium">Delivery & Shipments Management System</p>
+                    </div>
 
-            {/* Content */}
-            <div className="space-y-4">
-                {/* Filters */}
-                <Card className="p-4 flex flex-wrap gap-4 items-end">
-                    <div className="space-y-1">
-                        <label className="text-xs text-gray-400">거래처</label>
-                        <select
-                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm max-w-[150px]"
-                            value={partnerFilter}
-                            onChange={(e) => setPartnerFilter(e.target.value)}
-                        >
-                            <option value="">전체 거래처</option>
-                            {partners.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-gray-400">기준일자</label>
-                        <select
-                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
-                            value={dateFilterType}
-                            onChange={(e) => setDateFilterType(e.target.value)}
-                        >
-                            <option value="order">수주일</option>
-                            <option value="delivery">납품일</option>
-                        </select>
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-gray-400">시작일</label>
-                        <input
-                            type="date"
-                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-gray-400">종료일</label>
-                        <input
-                            type="date"
-                            className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-gray-400">품명/품번</label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="검색어 입력..."
-                                className="w-full bg-gray-700 border-gray-600 rounded text-white pl-9 pr-3 py-2 text-sm h-[38px]"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    {/* Stats Cards */}
+                    <div className="flex gap-4">
+                        <div className="bg-gray-900 border border-gray-800 p-4 rounded-2xl min-w-[200px]">
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Total Active Orders</p>
+                            <div className="flex items-center justify-between">
+                                <span className="text-2xl font-black text-white">{orders.length}</span>
+                                <Package className="w-5 h-5 text-blue-500" />
+                            </div>
+                        </div>
+                        <div className="bg-gray-900 border border-gray-800 p-4 rounded-2xl min-w-[200px]">
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Delivered Today</p>
+                            <div className="flex items-center justify-between">
+                                <span className="text-2xl font-black text-green-500">0</span>
+                                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            </div>
                         </div>
                     </div>
-                    <button
-                        onClick={() => {
-                            setStartDate('');
-                            setEndDate('');
-                            setStatusFilter('');
-                            setPartnerFilter('');
-                            setSearchQuery('');
-                        }}
-                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm h-[38px]"
-                    >
-                        초기화
-                    </button>
+                </div>
+
+                {/* Filter section */}
+                <Card sx={{ bgcolor: '#111', border: '1px solid #333', borderRadius: '1.5rem', p: 3 }}>
+                    <Grid container spacing={4} alignItems="center">
+                        <Grid item xs={12} md={3}>
+                            <TextField
+                                label="고객사명"
+                                fullWidth
+                                size="small"
+                                value={partnerFilter}
+                                onChange={(e) => setPartnerFilter(e.target.value)}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': { color: '#fff', '& fieldset': { borderColor: '#333' } },
+                                    '& .MuiInputLabel-root': { color: '#666' }
+                                }}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={5}>
+                            <div className="flex items-center gap-3">
+                                <TextField
+                                    type="date"
+                                    size="small"
+                                    value={dateRange.start}
+                                    onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                    sx={{ '& .MuiOutlinedInput-root': { color: '#fff', '& fieldset': { borderColor: '#333' } } }}
+                                />
+                                <span className="text-gray-600">to</span>
+                                <TextField
+                                    type="date"
+                                    size="small"
+                                    value={dateRange.end}
+                                    onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                    sx={{ '& .MuiOutlinedInput-root': { color: '#fff', '& fieldset': { borderColor: '#333' } } }}
+                                />
+                            </div>
+                        </Grid>
+                        <Grid item xs={12} md={4} className="flex justify-end gap-3">
+                            <Button
+                                variant="contained"
+                                onClick={fetchOrders}
+                                startIcon={<Search className="w-4 h-4" />}
+                                sx={{ bgcolor: '#3b82f6', '&:hover': { bgcolor: '#2563eb' }, borderRadius: '0.75rem', px: 4, py: 1 }}
+                            >
+                                SEARCH
+                            </Button>
+                        </Grid>
+                    </Grid>
                 </Card>
 
-
-                <Card className="p-0 overflow-hidden min-h-[500px]">
+                {/* Orders List */}
+                <Card sx={{ bgcolor: '#0a0a0a', border: '1px solid #222', borderRadius: '2rem', overflow: 'hidden' }}>
                     {loading ? (
-                        <div className="p-8 text-center text-gray-400">로딩 중...</div>
+                        <div className="p-20 flex flex-col items-center justify-center gap-4">
+                            <CircularProgress sx={{ color: '#3b82f6' }} />
+                            <p className="text-gray-500 animate-pulse font-black italic tracking-widest text-xs">PROCESSING DATA...</p>
+                        </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-gray-400">
-                                <thead className="bg-gray-900/50 text-gray-200 uppercase font-medium">
-                                    <tr>
-                                        <th className="px-6 py-3">수주번호</th>
-                                        <th className="px-6 py-3">거래처</th>
-                                        <th className="px-6 py-3">수주일</th>
-                                        <th className="px-6 py-3 text-orange-400">납품요청일</th>
-                                        <th className="px-6 py-3 text-green-400">실제 납품일</th>
-                                        <th className="px-6 py-3 text-right">금액</th>
-                                        <th className="px-6 py-3">상태</th>
-                                        <th className="px-6 py-3">품목 요약</th>
-                                        <th className="px-6 py-3 text-center">첨부</th>
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="bg-gray-900/50 border-b border-gray-800">
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Customer</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Date</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Due Date</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Total Items</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Total Amount</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Status</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-center">Actions</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-right">Details</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-700">
+                                <tbody className="divide-y divide-gray-800/50">
                                     {orders.map((ord) => (
                                         <React.Fragment key={ord.id}>
-                                            <tr
-                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer border-b border-gray-700/50"
-                                                onClick={() => toggleRow(ord.id)}
-                                                onDoubleClick={() => handleRowDoubleClick(ord)}
-                                            >
-                                                <td className="px-6 py-4 font-mono text-xs text-gray-300">{ord.order_no}</td>
-                                                <td className="px-6 py-4 font-bold text-white">{ord.partner?.name}</td>
-                                                <td className="px-6 py-4">{ord.order_date || '-'}</td>
-                                                <td className="px-6 py-4 text-orange-500/80">{ord.delivery_date || '-'}</td>
-                                                <td className="px-6 py-4 text-green-400 font-medium">{ord.actual_delivery_date || '-'}</td>
-                                                <td className="px-6 py-4 text-right font-semibold">₩{ord.total_amount?.toLocaleString() || 0}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className={cn(
-                                                        "px-2 py-0.5 rounded text-xs font-bold border",
-                                                        ord.status === 'DELIVERED' ? "bg-green-600/20 text-green-500 border-green-500/20" :
-                                                            ord.status === 'PARTIALLY_DELIVERED' ? "bg-orange-600/20 text-orange-500 border-orange-500/20" :
-                                                                ord.status === 'PRODUCTION_COMPLETED' ? "bg-blue-600/20 text-blue-500 border-blue-500/20" :
-                                                                    "bg-gray-800 text-gray-400"
-                                                    )}>
-                                                        {ord.status === 'PARTIALLY_DELIVERED' ? '부분납품' :
-                                                            ord.status === 'DELIVERED' ? '납품완료' : ord.status}
-                                                    </span>
+                                            <tr className={`group transition-all duration-300 hover:bg-gray-900/40 ${expandedOrder === ord.id ? 'bg-gray-900/60' : ''}`}>
+                                                <td className="px-6 py-5">
+                                                    <div className="font-bold text-gray-200">{ord.partner?.name}</div>
+                                                    <div className="text-[10px] text-gray-600 font-mono mt-0.5">{ord.order_no}</div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    {ord.items?.length > 0 ? (
-                                                        <span className="truncate block max-w-[150px]">{ord.items[0].product?.name} {ord.items.length > 1 ? `외 ${ord.items.length - 1}건` : ''}</span>
-                                                    ) : '-'}
+                                                <td className="px-6 py-5 text-sm font-mono text-gray-400">{ord.order_date}</td>
+                                                <td className="px-6 py-5 text-sm font-mono text-blue-400 font-bold">{ord.delivery_date || '-'}</td>
+                                                <td className="px-6 py-5 text-sm text-gray-400">{ord.items?.length || 0}</td>
+                                                <td className="px-6 py-5">
+                                                    <span className="text-sm font-black text-white">{(ord.total_amount || 0).toLocaleString()}</span>
+                                                    <span className="text-[10px] text-gray-500 ml-1 font-bold">원</span>
                                                 </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    {(() => {
-                                                        let fileList = [];
-                                                        try {
-                                                            if (ord.attachment_file) {
-                                                                const parsed = typeof ord.attachment_file === 'string' ? JSON.parse(ord.attachment_file) : ord.attachment_file;
-                                                                fileList = Array.isArray(parsed) ? parsed : [parsed];
-                                                            }
-                                                        } catch { fileList = []; }
-                                                        if (fileList.length > 0) {
-                                                            return (
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setViewingFiles(fileList);
-                                                                        setFileModalTitle(`${ord.order_no} 첨부파일`);
-                                                                        setShowFileModal(true);
-                                                                    }}
-                                                                    className="text-blue-400 hover:text-blue-300 transition-colors p-1"
-                                                                >
-                                                                    <FileText className="w-4 h-4" />
-                                                                </button>
-                                                            );
-                                                        }
-                                                        return <span className="text-gray-600 text-xs">-</span>;
-                                                    })()}
+                                                <td className="px-6 py-5">
+                                                    <div className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-black italic tracking-tighter ${ord.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500' :
+                                                            ord.status === 'IN_PROGRESS' ? 'bg-blue-500/10 text-blue-500' :
+                                                                'bg-gray-800 text-gray-500'
+                                                        }`}>
+                                                        {ord.status}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5 text-center">
+                                                    <button
+                                                        onClick={() => handleDeliveryClick(ord)}
+                                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black italic shadow-lg shadow-blue-900/20 active:scale-95 transition-all"
+                                                    >
+                                                        DELIVERY
+                                                    </button>
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleExpandToggle(ord.id)}
+                                                        sx={{ color: expandedOrder === ord.id ? '#3b82f6' : '#555' }}
+                                                    >
+                                                        {expandedOrder === ord.id ? <ChevronDown /> : <ChevronRight />}
+                                                    </IconButton>
                                                 </td>
                                             </tr>
-                                            {expandedRows.has(ord.id) && (
-                                                <tr className="bg-gray-800/40">
-                                                    <td colSpan="9" className="px-6 py-6 border-b border-gray-700">
-                                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                                            {/* Items Section */}
+
+                                            {/* Expanded Detail Panel */}
+                                            {expandedOrder === ord.id && (
+                                                <tr>
+                                                    <td colSpan="9" className="px-8 py-0 bg-gray-950/30">
+                                                        <div className="py-6 grid grid-cols-2 gap-8 border-t border-gray-800/50">
+                                                            {/* Items Detail Table */}
                                                             <div className="bg-gray-950/50 rounded-xl border border-gray-700 p-4 shadow-xl">
                                                                 <h4 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
                                                                     <Package className="w-4 h-4" /> 수주 품목 및 납품 잔량
@@ -289,21 +253,19 @@ const DeliveryPage = () => {
                                                                                     <div className="text-[10px] text-gray-500">{dh.items?.length || 0}개 품목 납품</div>
                                                                                 </div>
                                                                                 <div className="flex gap-2">
-                                                                                    {dh.statement_json && (
-                                                                                        <button
-                                                                                            className="text-[10px] bg-blue-900/30 text-blue-400 border border-blue-900/50 px-2 py-1 rounded hover:bg-blue-900/50 flex items-center gap-1"
-                                                                                            onClick={() => {
-                                                                                                setStatementData({
-                                                                                                    ...dh.statement_json,
-                                                                                                    deliveryHistoryId: dh.id,
-                                                                                                    deliveryDate: dh.delivery_date
-                                                                                                });
-                                                                                                setShowStatementModal(true);
-                                                                                            }}
-                                                                                        >
-                                                                                            <FileText className="w-3 h-3" /> 명세서
-                                                                                        </button>
-                                                                                    )}
+                                                                                    <button
+                                                                                        className="text-[10px] bg-blue-900/30 text-blue-400 border border-blue-900/50 px-2 py-1 rounded hover:bg-blue-900/50 flex items-center gap-1"
+                                                                                        onClick={() => {
+                                                                                            setStatementData({
+                                                                                                ...(dh.statement_json || {}),
+                                                                                                deliveryHistoryId: dh.id,
+                                                                                                deliveryDate: dh.delivery_date
+                                                                                            });
+                                                                                            setShowStatementModal(true);
+                                                                                        }}
+                                                                                    >
+                                                                                        <FileText className="w-3 h-3" /> 명세서
+                                                                                    </button>
                                                                                 </div>
                                                                             </div>
                                                                         ))}
@@ -349,18 +311,20 @@ const DeliveryPage = () => {
                 <FileViewerModal
                     open={showFileModal}
                     onClose={() => setShowFileModal(false)}
-                    files={viewingFiles}
-                    title={fileModalTitle}
+                    files={currentFiles}
+                    title="수주 관련 문서"
                 />
             )}
+
             {showStatementModal && statementData && (
                 <TransactionStatementModal
-                    open={showStatementModal}
+                    isOpen={showStatementModal}
                     onClose={() => {
                         setShowStatementModal(false);
                         setStatementData(null);
                     }}
-                    data={statementData}
+                    initialData={statementData}
+                    onSuccess={fetchOrders}
                 />
             )}
         </div>
