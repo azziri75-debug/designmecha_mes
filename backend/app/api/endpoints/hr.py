@@ -152,6 +152,7 @@ async def get_attendance_summary(
             ApprovalDocument.author_id == target_id,
             ApprovalDocument.doc_type.in_(TARGET_TYPES),
             ApprovalDocument.status == ApprovalStatus.COMPLETED,
+            ApprovalDocument.deleted_at.is_(None),   # [Fix] 소프트 삭제된 문서 제외
             ApprovalDocument.created_at >= year_start,
             ApprovalDocument.created_at <= year_end,
         ).order_by(ApprovalDocument.created_at.desc())

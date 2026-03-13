@@ -876,17 +876,10 @@ async def delete_document(
     # 일반 문서(휴가 등)의 경우 Soft Delete 처리 및 연계 기록 삭제
     doc.deleted_at = datetime.now()
     
-    # [Fix] 전자결재 문서와 연계된 Attendance 기록이 있다면 물리적 삭제 (찌꺼기 제거)
+    # [Fix] 전자결재 문서와 연계된 Attendance 기록 물리적 삭제 (찌꺼기 제거)
+    # EmployeeTimeRecord is imported at top of file from app.models.basics
     if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
         await db.execute(delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc_id))
-    
-    # [Fix] Hard cleanup of orphaned HR data
-    if db_doc.doc_type in ["VACATION", "EARLY_LEAVE"]:
-        # Delete linked EmployeeTimeRecord entries using approval_id
-        from app.models.hr import EmployeeTimeRecord
-        await db.execute(
-            delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc_id)
-        )
         print(f"Deleted related EmployeeTimeRecord entries for document {doc_id}")
 
     await db.commit()
