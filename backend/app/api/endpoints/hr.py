@@ -277,20 +277,27 @@ async def get_attendance_summary(
                 applied_unit="시간",
                 status=doc.status,
             ))
-    
-    # After calculating everything from docs, update and commit the annual leave record for consistency
-    # [Requirement Update] used_leave_hours = (actual approval docs usage) + (adjustment_days * 8)
-    leave_record.used_leave_hours = float(total_vacation_days * 8.0 + total_leave_outing_hours) + float((leave_record.adjustment_days or 0.0) * 8.0)
+
+    # [FIXED] Single Source of Truth:
+    # used_leave_hours = ONLY actual approved doc usage (휴가일수*8 + 외출/조퇴 시간)
+    # adjustment_days is applied SEPARATELY when computing remaining_days
+    # This prevents double-counting in get_annual_leave_history which adds adjustment_days separately.
+    leave_record.used_leave_hours = float(total_vacation_days * 8.0 + total_leave_outing_hours)
     leave_record.sick_leave_days = float(total_sick_leave_days)
     leave_record.event_leave_days = float(total_event_leave_days)
     db.add(leave_record)
     await db.commit()
     await db.refresh(leave_record)
 
-    # [Requirement Update] total_annual = base_days (fixed)
-    # Remaining = (base_days * 8 - total_used_hours) / 8
+    # [FIXED] remaining = base + adjustment - (used / 8)
+    # adjustment_days > 0 → admin gave extra leave → remaining goes UP
+    # adjustment_days < 0 → admin penalized → remaining goes DOWN
+    # [FIXED] total_annual_days = base_days + adjustment_days (effective total)
+    # This matches the employee management page's display of total available leave.
     total_annual = leave_record.base_days
-    remaining = total_annual - (leave_record.used_leave_hours / 8.0)
+    adj_days = leave_record.adjustment_days or 0.0
+    total_effective_annual = total_annual + adj_days
+    remaining = total_effective_annual - (leave_record.used_leave_hours / 8.0)
 
     return AttendanceSummaryResponse(
         year=year,
@@ -301,7 +308,7 @@ async def get_attendance_summary(
         total_event_leave_days=total_event_leave_days,
         total_leave_outing_hours=total_leave_outing_hours,
         total_overtime_hours=total_overtime_hours,
-        total_annual_days=round(total_annual, 2),
+        total_annual_days=round(total_effective_annual, 2),   # base + adjustment
         remaining_annual_days=round(remaining, 2),
         documents=document_items
     )
@@ -792,10 +799,9 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
             except: pass
             
     record = await get_or_create_annual_leave(db, staff_id, year)
-    # [Requirement Update] used_leave_hours = (actual approval docs usage) + (adjustment_days * 8)
-    # Note: adjustment_days > 0 increases used hours (decreases remaining balance)
-    # adjustment_days < 0 decreases used hours (increases remaining balance)
-    record.used_leave_hours = float(v_days * 8.0 + o_hours) + float((record.adjustment_days or 0.0) * 8.0)
+    # [FIXED] used_leave_hours = ONLY actual approval-doc-based usage (no adjustment inside)
+    # adjustment_days is applied separately in all remaining_days calculations
+    record.used_leave_hours = float(v_days * 8.0 + o_hours)
     record.sick_leave_days = float(s_days)
     record.event_leave_days = float(e_days)
     db.add(record)
@@ -861,7 +867,7 @@ async def update_annual_leave(
     await db.commit()
     await db.refresh(record)
     
-    remaining = record.base_days - (record.used_leave_hours / 8.0)
+    remaining = record.base_days + (record.adjustment_days or 0.0) - (record.used_leave_hours / 8.0)
     return EmployeeAnnualLeaveResponse(
         id=record.id,
         staff_id=record.staff_id,
