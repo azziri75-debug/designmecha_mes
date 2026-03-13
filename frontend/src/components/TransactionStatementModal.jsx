@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-    Modal, Box, Typography, Button, IconButton,
+    Modal, Box, Button, IconButton,
     CircularProgress, Alert
 } from '@mui/material';
 import { X, Printer, Save, CheckCircle2 } from 'lucide-react';
@@ -9,7 +9,9 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 
-// A4 Landscape 인쇄용 CSS - .print-container 기반 완전 교체
+// ────────────────────────────────────────────
+// A4 Landscape 전용 인쇄 CSS
+// ────────────────────────────────────────────
 const PRINT_STYLE_ID = 'tsm-print-style';
 const injectPrintCSS = () => {
     if (document.getElementById(PRINT_STYLE_ID)) return;
@@ -23,18 +25,13 @@ const injectPrintCSS = () => {
             .tsm-print-container * { visibility: visible !important; }
             .tsm-print-container {
                 position: fixed !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 297mm !important;
-                height: 210mm !important;
-                display: flex !important;
-                flex-direction: row !important;
-                gap: 8mm !important;
-                padding: 6mm !important;
-                background: #fff !important;
-                box-shadow: none !important;
-                overflow: hidden !important;
-                box-sizing: border-box !important;
+                left: 0 !important; top: 0 !important;
+                width: 297mm !important; height: 210mm !important;
+                transform: none !important;
+                display: flex !important; flex-direction: row !important;
+                gap: 5mm !important; padding: 4mm !important;
+                background: #fff !important; box-shadow: none !important;
+                overflow: hidden !important; box-sizing: border-box !important;
             }
             .tsm-print-container > * { flex: 1 !important; }
             .tsm-no-print { display: none !important; }
@@ -47,9 +44,42 @@ const removePrintCSS = () => {
     if (el) el.remove();
 };
 
-// 도장(직인) SVG - 인라인 Data URI로 외부 의존성 없이 항상 표시
-const SEAL_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="#c00" stroke-width="5"/><circle cx="50" cy="50" r="38" fill="none" stroke="#c00" stroke-width="1.5"/><text x="50" y="38" text-anchor="middle" font-size="11" fill="#c00" font-family="Malgun Gothic,serif" font-weight="bold">(주)디자인메카</text><text x="50" y="55" text-anchor="middle" font-size="13" fill="#c00" font-family="Malgun Gothic,serif" font-weight="900">인</text><text x="50" y="70" text-anchor="middle" font-size="9" fill="#c00" font-family="Malgun Gothic,serif">대표이사</text></svg>`)}`;
+// ────────────────────────────────────────────
+// 직인 SVG (인라인 Data URI — 외부 의존 없음)
+// ────────────────────────────────────────────
+const makeSealURI = (companyName = '(주)디자인메카') =>
+    `data:image/svg+xml;utf8,${encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
+        `<circle cx="50" cy="50" r="46" fill="none" stroke="#c00" stroke-width="6"/>` +
+        `<circle cx="50" cy="50" r="37" fill="none" stroke="#c00" stroke-width="1.5"/>` +
+        `<text x="50" y="35" text-anchor="middle" font-size="10" fill="#c00" font-family="Malgun Gothic,serif" font-weight="bold">${companyName}</text>` +
+        `<text x="50" y="54" text-anchor="middle" font-size="22" fill="#c00" font-family="Malgun Gothic,serif" font-weight="900">인</text>` +
+        `<text x="50" y="70" text-anchor="middle" font-size="8.5" fill="#c00" font-family="Malgun Gothic,serif">대표이사</text>` +
+        `</svg>`
+    )}`;
 
+// ────────────────────────────────────────────
+// 공통 table CSS
+// ────────────────────────────────────────────
+const tblStyle = (c) => ({
+    borderCollapse: 'collapse',
+    width: '100%',
+    fontFamily: '"Malgun Gothic","맑은 고딕",sans-serif',
+    color: c,
+    tableLayout: 'fixed',
+});
+const td = (c, extra = {}) => ({
+    border: `0.7px solid ${c}`,
+    padding: '1px 2px',
+    fontSize: '8.5px',
+    color: c,
+    verticalAlign: 'middle',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    ...extra,
+});
+
+// ════════════════════════════════════════════════════════════════
 const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     if (!data) return null;
 
@@ -60,68 +90,49 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         owner_name: '조인호',
         address: '충남 아산시 음봉면 월암로 336-35',
         biz_type: '제조업',
-        biz_item: '나이프,베어링'
+        biz_item: '나이프,베어링',
     });
-
     const [footerInfo, setFooterInfo] = useState({
         prev_balance: data.prev_balance || 0,
         paid_amount: data.paid_amount || 0,
-        receiver_name: data.receiver_name || ''
+        receiver_name: data.receiver_name || '',
     });
-
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState(null);
     const printRef = useRef();
 
-    // Inject/remove A4 landscape print CSS when modal is open
     useEffect(() => {
         if (open) injectPrintCSS();
         return () => removePrintCSS();
     }, [open]);
 
-    // Column Resizing
-    const [colWidths, setColWidths] = useState({ date: 40, name: 160, spec: 100, qty: 45, price: 80, supply: 95, tax: 75 });
-    const resizingCol = useRef(null);
-    const startX = useRef(0);
-    const startWidth = useRef(0);
+    // ── 계산 ──────────────────────────────────
+    const totalSupply = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+    const totalTax = Math.floor(totalSupply * 0.1);
+    const totalAmount = totalSupply + totalTax;
+    const balance = (footerInfo.prev_balance + totalAmount) - footerInfo.paid_amount;
 
-    const onMouseDown = (col, e) => {
-        resizingCol.current = col;
-        startX.current = e.pageX;
-        startWidth.current = colWidths[col];
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    };
-    const onMouseMove = useCallback((e) => {
-        if (!resizingCol.current) return;
-        setColWidths(prev => ({ ...prev, [resizingCol.current]: Math.max(25, startWidth.current + (e.pageX - startX.current)) }));
-    }, []);
-    const onMouseUp = useCallback(() => {
-        resizingCol.current = null;
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-    }, [onMouseMove]);
+    const ROWS = 13;
+    const filledRows = items.length;
+    const emptyCount = Math.max(0, ROWS - filledRows);
 
-    const totalSupplyValue = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-    const totalTax = Math.floor(totalSupplyValue * 0.1);
-    const totalAmount = totalSupplyValue + totalTax;
-    const currentBalance = (footerInfo.prev_balance + totalAmount) - footerInfo.paid_amount;
-
+    // ── PDF / 저장 ────────────────────────────
     const generatePDFBlob = async () => {
-        const canvas = await html2canvas(printRef.current, { scale: 3, useCORS: true, logging: false });
+        const cvs = await html2canvas(printRef.current, { scale: 3, useCORS: true, logging: false });
         const pdf = new jsPDF('l', 'mm', 'a4');
         const w = pdf.internal.pageSize.getWidth();
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, (canvas.height * w) / canvas.width);
+        pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, w, (cvs.height * w) / cvs.width);
         return pdf.output('blob');
     };
-
     const handleSaveAndAttach = async (silent = false) => {
         setIsSaving(true);
         try {
             const blob = await generatePDFBlob();
             const fd = new FormData();
             fd.append('file', blob, `Statement_${data.delivery_no || 'No'}.pdf`);
-            await api.post(`/sales/delivery-histories/${data.id}/attach-statement`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            await api.post(`/sales/delivery-histories/${data.id}/attach-statement`, fd, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
             setSaveStatus('success');
             if (!silent && onSuccess) setTimeout(() => onSuccess(), 1000);
         } catch (err) {
@@ -131,237 +142,315 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
             setIsSaving(false);
         }
     };
-
     const handlePrint = () => {
         window.print();
         const after = () => {
             window.removeEventListener('afterprint', after);
-            if (window.confirm('인쇄를 완료하셨습니까? 명세서를 납품 내역에 자동 첨부하시겠습니까?')) handleSaveAndAttach(true);
+            if (window.confirm('인쇄 완료 후 명세서를 납품 내역에 자동 첨부하시겠습니까?'))
+                handleSaveAndAttach(true);
         };
         window.addEventListener('afterprint', after);
         setTimeout(() => window.removeEventListener('afterprint', after), 5000);
     };
 
-    const ROW_H = '21px';
-    const ROWS = 13;
-    const emptyRows = Array(Math.max(0, ROWS - items.length)).fill(null);
-
+    // ════════════════════════════════════════
+    // 단일 양식 (blue / red)
+    // ════════════════════════════════════════
     const StatementForm = ({ color }) => {
-        const pColor = color === 'blue' ? '#003AC1' : '#C10000';
+        const C = color === 'blue' ? '#003AC1' : '#C10000';
+        const sealSrc = data.company_seal || makeSealURI(supplierInfo.company_name);
+
+        const ROW_H = '17px';
 
         return (
-            <Box sx={{
-                width: '100%', border: `1.5px solid ${pColor}`, bgcolor: '#fff', p: '3px',
-                '& *': { color: pColor, borderColor: pColor, fontFamily: '"Malgun Gothic", "맑은 고딕", sans-serif' }
+            <div style={{
+                border: `1.5px solid ${C}`,
+                width: '100%', height: '100%',
+                backgroundColor: '#fff',
+                display: 'flex', flexDirection: 'column',
+                fontFamily: '"Malgun Gothic","맑은 고딕",sans-serif',
+                boxSizing: 'border-box',
+                overflow: 'hidden',
             }}>
-                {/* TOP HEADER */}
-                <Box sx={{ display: 'flex', mb: '2px', alignItems: 'flex-start' }}>
-                    {/* Left column: No, Date, Title */}
-                    <Box sx={{ flex: 1 }}>
-                        <Box sx={{ display: 'flex', height: '20px', border: `1px solid ${pColor}`, mb: '-1px' }}>
-                            <Box sx={{ width: '32px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold', fontStyle: 'italic' }}>No.</Box>
-                            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', px: 1, fontSize: '11px', fontWeight: 'bold' }}>{data.delivery_no?.slice(-6) || '000000'}</Box>
-                        </Box>
-                        <Box sx={{ display: 'flex', height: '20px', border: `1px solid ${pColor}`, mb: '4px' }}>
-                            <Box sx={{ width: '32px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold' }}>일자</Box>
-                            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', px: 1, fontSize: '10px' }}>{data.delivery_date || ''}</Box>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: '6px' }}>
-                            <Typography sx={{ fontSize: '26px', fontWeight: '900', letterSpacing: 6, borderBottom: `2.5px double ${pColor}`, lineHeight: 1.1, pb: '2px' }}>거래명세표</Typography>
-                        </Box>
-                    </Box>
+                {/* ── 상단: No/일자 + 거래명세표 타이틀 + 공급자 테이블 ── */}
+                <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: `1px solid ${C}` }}>
 
-                    {/* Right column: 공급자 block */}
-                    <Box sx={{ width: '295px', border: `1.5px solid ${pColor}`, ml: '6px' }}>
-                        <Box sx={{ display: 'flex' }}>
-                            {/* Vertical 공급자 label */}
-                            <Box sx={{
-                                width: '16px', writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: 2,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                borderRight: `1px solid ${pColor}`, fontSize: '9px', fontWeight: 'bold', py: '4px'
-                            }}>공급자</Box>
-                            <Box sx={{ flex: 1 }}>
-                                {/* Reg No */}
-                                <Box sx={{ display: 'flex', height: '20px', borderBottom: `1px solid ${pColor}`, alignItems: 'center' }}>
-                                    <Box sx={{ width: '42px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', height: '100%', textAlign: 'center', lineHeight: 1 }}>등록번호</Box>
-                                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '900', letterSpacing: 1 }}>{supplierInfo.biz_no}</Box>
-                                </Box>
-                                {/* 상호 + 성명 */}
-                                <Box sx={{ display: 'flex', height: '22px', borderBottom: `1px solid ${pColor}`, alignItems: 'center' }}>
-                                    <Box sx={{ width: '22px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8.5px', height: '100%' }}>상호</Box>
-                                    <Box sx={{ flex: 1, borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', px: '3px', fontSize: '9.5px', fontWeight: 'bold', height: '100%' }}>{supplierInfo.company_name}</Box>
-                                    <Box sx={{ width: '22px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8.5px', height: '100%' }}>성명</Box>
-                                    {/* Owner + Seal */}
-                                    <Box sx={{ width: '75px', display: 'flex', alignItems: 'center', px: '3px', fontSize: '9.5px', fontWeight: 'bold', position: 'relative', height: '100%', overflow: 'visible' }}>
+                    {/* 왼쪽: No, 일자, 거래명세표, 귀하 */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        {/* No 행 */}
+                        <div style={{ display: 'flex', height: '17px', borderBottom: `0.7px solid ${C}` }}>
+                            <div style={{ width: '28px', borderRight: `0.7px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold', fontStyle: 'italic', color: C }}>No.</div>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '4px', fontSize: '9px', fontWeight: 'bold', color: C }}>{data.delivery_no?.slice(-6) || '000000'}</div>
+                        </div>
+                        {/* 일자 행 */}
+                        <div style={{ display: 'flex', height: '17px', borderBottom: `0.7px solid ${C}` }}>
+                            <div style={{ width: '28px', borderRight: `0.7px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold', color: C }}>일자</div>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '4px', fontSize: '8.5px', color: C }}>{data.delivery_date || ''}</div>
+                        </div>
+                        {/* 거래명세표 */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 0 2px' }}>
+                            <span style={{ fontSize: '22px', fontWeight: '900', letterSpacing: '4px', borderBottom: `2.5px double ${C}`, color: C, lineHeight: 1.1 }}>거래명세표</span>
+                        </div>
+                        {/* 귀하 */}
+                        <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '6px', paddingBottom: '4px', gap: '6px' }}>
+                            <span style={{ fontSize: '15px', fontWeight: '900', color: C, borderBottom: `1px solid ${C}`, minWidth: '90px', textAlign: 'center' }}>{data.partner?.name || ''}</span>
+                            <span style={{ fontSize: '14px', fontWeight: '900', color: C }}>귀하</span>
+                        </div>
+                    </div>
+
+                    {/* 오른쪽: 공급자 정보 table */}
+                    <div style={{ borderLeft: `1px solid ${C}` }}>
+                        <table style={{ ...tblStyle(C), width: '220px' }}>
+                            <colgroup>
+                                {/* "공급자" 세로 레이블 */}
+                                <col style={{ width: '14px' }} />
+                                {/* 항목 레이블 */}
+                                <col style={{ width: '36px' }} />
+                                {/* 값 (왼쪽) */}
+                                <col style={{ width: '90px' }} />
+                                {/* 성명 레이블 */}
+                                <col style={{ width: '22px' }} />
+                                {/* 성명 + 도장 */}
+                                <col style={{ width: '58px' }} />
+                            </colgroup>
+                            <tbody>
+                                {/* 등록번호 행 */}
+                                <tr>
+                                    <td rowSpan={4} style={{ ...td(C), textAlign: 'center', padding: '0', writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: '3px', fontSize: '9px', fontWeight: 'bold', width: '14px' }}>공급자</td>
+                                    <td colSpan={1} style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>등록번호</td>
+                                    <td colSpan={3} style={{ ...td(C), textAlign: 'center', fontSize: '11px', fontWeight: '900', letterSpacing: '1px' }}>{supplierInfo.biz_no}</td>
+                                </tr>
+                                {/* 상호 + 성명 행 */}
+                                <tr>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>상호</td>
+                                    <td style={{ ...td(C), fontWeight: 'bold', fontSize: '8.5px' }}>{supplierInfo.company_name}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>성명</td>
+                                    <td style={{ ...td(C), fontSize: '8.5px', fontWeight: 'bold', position: 'relative', overflow: 'visible' }}>
                                         {supplierInfo.owner_name}
-                                        {/* 직인 이미지 오버레이 - SVG 도장 */}
+                                        {/* ★ 직인 이미지 — <img> 태그만 사용, CSS 동그라미 없음 */}
                                         <img
-                                            src={data.company_seal || SEAL_DATA_URI}
+                                            src={sealSrc}
                                             alt="직인"
                                             style={{
                                                 position: 'absolute',
-                                                right: -4,
+                                                right: '-4px',
                                                 top: '50%',
                                                 transform: 'translateY(-50%)',
-                                                width: 44,
-                                                height: 44,
-                                                opacity: 0.82,
+                                                width: '40px',
+                                                height: '40px',
+                                                opacity: 0.85,
                                                 objectFit: 'contain',
                                                 mixBlendMode: 'multiply',
                                                 pointerEvents: 'none',
                                             }}
                                         />
-                                    </Box>
-                                </Box>
-                                {/* Address */}
-                                <Box sx={{ display: 'flex', height: '20px', borderBottom: `1px solid ${pColor}`, alignItems: 'center' }}>
-                                    <Box sx={{ width: '42px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', textAlign: 'center', lineHeight: 1.1, height: '100%' }}>사업장주소</Box>
-                                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', px: '3px', fontSize: '8.5px', height: '100%' }}>{supplierInfo.address}</Box>
-                                </Box>
-                                {/* 업태 + 종목 */}
-                                <Box sx={{ display: 'flex', height: '20px', alignItems: 'center' }}>
-                                    <Box sx={{ width: '22px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8.5px', height: '100%' }}>업태</Box>
-                                    <Box sx={{ flex: 1, borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', px: '3px', fontSize: '8.5px', height: '100%' }}>{supplierInfo.biz_type}</Box>
-                                    <Box sx={{ width: '22px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8.5px', height: '100%' }}>종목</Box>
-                                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', px: '3px', fontSize: '8.5px', height: '100%' }}>{supplierInfo.biz_item}</Box>
-                                </Box>
-                            </Box>
-                        </Box>
-                    </Box>
-                </Box>
+                                    </td>
+                                </tr>
+                                {/* 사업장주소 행 */}
+                                <tr>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '7.5px', lineHeight: '1.1' }}>사업장주소</td>
+                                    <td colSpan={3} style={{ ...td(C), fontSize: '7.5px' }}>{supplierInfo.address}</td>
+                                </tr>
+                                {/* 업태 + 종목 행 */}
+                                <tr>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>업태</td>
+                                    <td style={{ ...td(C), fontSize: '8px' }}>{supplierInfo.biz_type}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>종목</td>
+                                    <td style={{ ...td(C), fontSize: '8px' }}>{supplierInfo.biz_item}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-                {/* 귀하 */}
-                <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: '3px', px: 0.5 }}>
-                    <Typography sx={{ fontSize: '20px', fontWeight: '900', borderBottom: `1px solid ${pColor}`, minWidth: '140px', textAlign: 'center', mr: 1 }}>{data.partner?.name || ''}</Typography>
-                    <Typography sx={{ fontSize: '18px', fontWeight: '900' }}>귀하</Typography>
-                </Box>
+                {/* ── 합계 행 ── */}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '2px 4px', borderBottom: `1px solid ${C}` }}>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: C, marginRight: '6px' }}>합계</span>
+                    <span style={{ flex: 1, fontSize: '10px', fontWeight: 'bold', color: C }}>{toKoreanCurrency(totalAmount)} (￦{formatNumber(totalAmount)})</span>
+                    <span style={{ fontSize: '7.5px', color: C }}>(전잔금+금기)</span>
+                </div>
 
-                {/* Total line */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: '2px', borderTop: `2px solid ${pColor}`, pt: '2px' }}>
-                    <Typography sx={{ fontSize: '13px', fontWeight: '900', mr: 1 }}>합계</Typography>
-                    <Typography sx={{ flex: 1, fontSize: '12px', fontWeight: 'bold' }}>{toKoreanCurrency(totalAmount)} (￦{formatNumber(totalAmount)})</Typography>
-                    <Typography sx={{ fontSize: '8px', fontWeight: 'bold' }}>(전잔금+금기)</Typography>
-                </Box>
+                {/* ── 품목 테이블 ── */}
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <table style={{ ...tblStyle(C) }}>
+                        <colgroup>
+                            <col style={{ width: '32px' }} />
+                            <col /> {/* 내역: 나머지 */}
+                            <col style={{ width: '70px' }} />
+                            <col style={{ width: '32px' }} />
+                            <col style={{ width: '60px' }} />
+                            <col style={{ width: '68px' }} />
+                            <col style={{ width: '55px' }} />
+                        </colgroup>
+                        <thead>
+                            <tr style={{ backgroundColor: 'rgba(0,0,0,0.03)', height: '18px' }}>
+                                {['월/일', '내  역', '규  격', '수량', '단  가', '공급가액', '세  액'].map((h, i) => (
+                                    <th key={i} style={{ ...td(C), textAlign: 'center', fontWeight: '900', fontSize: '8.5px', borderRight: i === 6 ? 'none' : `0.7px solid ${C}` }}>{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.map((item, idx) => (
+                                <tr key={idx} style={{ height: ROW_H }}>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>{(item.date || '').slice(5)}</td>
+                                    <td style={{ ...td(C), fontWeight: 'bold', fontSize: '8px' }}>{item.product?.name || item.item_name || ''}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '7.5px' }}>{item.product?.spec || ''}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>{formatNumber(item.quantity)}</td>
+                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '8px' }}>{formatNumber(item.unit_price)}</td>
+                                    <td style={{ ...td(C), textAlign: 'right', fontWeight: 'bold', fontSize: '8px' }}>{formatNumber(item.quantity * item.unit_price)}</td>
+                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '8px', borderRight: 'none' }}>{formatNumber(Math.floor(item.quantity * item.unit_price * 0.1))}</td>
+                                </tr>
+                            ))}
+                            {/* 이하여백 행 */}
+                            {emptyCount > 0 && (
+                                <tr style={{ height: ROW_H }}>
+                                    <td style={{ ...td(C), borderBottom: `0.7px dotted ${C}` }} />
+                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '8px', borderBottom: `0.7px dotted ${C}`, borderRight: 'none' }}>= 이하여백 =</td>
+                                </tr>
+                            )}
+                            {Array(Math.max(0, emptyCount - 1)).fill(null).map((_, i) => (
+                                <tr key={i} style={{ height: ROW_H }}>
+                                    <td colSpan={7} style={{ borderBottom: `0.7px dotted ${C}`, borderLeft: `0.7px solid ${C}`, borderRight: `0.7px solid ${C}` }} />
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
 
-                {/* Main table */}
-                <Box sx={{ border: `1.5px solid ${pColor}`, borderBottom: 'none' }}>
-                    <Box sx={{ display: 'flex', height: '22px', borderBottom: `1px solid ${pColor}`, bgcolor: '#f5f5f5', '& > div': { borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9.5px', fontWeight: '900', position: 'relative' } }}>
-                        <div style={{ width: colWidths.date }}>월/일</div>
-                        <div style={{ width: colWidths.name }}>내&nbsp;&nbsp;&nbsp;역<Box onMouseDown={e => onMouseDown('name', e)} sx={{ position: 'absolute', right: -2, top: 0, bottom: 0, width: 5, cursor: 'col-resize', zIndex: 10 }} /></div>
-                        <div style={{ width: colWidths.spec }}>규&nbsp;&nbsp;격<Box onMouseDown={e => onMouseDown('spec', e)} sx={{ position: 'absolute', right: -2, top: 0, bottom: 0, width: 5, cursor: 'col-resize', zIndex: 10 }} /></div>
-                        <div style={{ width: colWidths.qty }}>수량</div>
-                        <div style={{ width: colWidths.price }}>단&nbsp;&nbsp;가</div>
-                        <div style={{ width: colWidths.supply }}>공급가액</div>
-                        <div style={{ width: colWidths.tax, borderRight: 'none' }}>세&nbsp;&nbsp;액</div>
-                    </Box>
-                    <Box sx={{ minHeight: '280px' }}>
-                        {items.map((item, idx) => (
-                            <Box key={idx} sx={{ display: 'flex', height: ROW_H, borderBottom: `1px dotted ${pColor}`, '& > div': { borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', fontSize: '9px', px: '3px' } }}>
-                                <div style={{ width: colWidths.date, justifyContent: 'center' }}>{(item.date || '').slice(5)}</div>
-                                <div style={{ width: colWidths.name, fontWeight: 'bold' }}>{item.product?.name || item.item_name || ''}</div>
-                                <div style={{ width: colWidths.spec, justifyContent: 'center' }}>{item.product?.spec || ''}</div>
-                                <div style={{ width: colWidths.qty, justifyContent: 'center' }}>{formatNumber(item.quantity)}</div>
-                                <div style={{ width: colWidths.price, justifyContent: 'flex-end' }}>{formatNumber(item.unit_price)}</div>
-                                <div style={{ width: colWidths.supply, justifyContent: 'flex-end', fontWeight: 'bold' }}>{formatNumber(item.quantity * item.unit_price)}</div>
-                                <div style={{ width: colWidths.tax, borderRight: 'none', justifyContent: 'flex-end' }}>{formatNumber(Math.floor(item.quantity * item.unit_price * 0.1))}</div>
-                            </Box>
-                        ))}
-                        {items.length < ROWS && (
-                            <Box sx={{ display: 'flex', height: ROW_H, borderBottom: `1px dotted ${pColor}` }}>
-                                <Box sx={{ width: colWidths.date, borderRight: `1px solid ${pColor}` }} />
-                                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', px: '6px', fontSize: '9px', color: '#aaa' }}>= 이하여백 =</Box>
-                            </Box>
-                        )}
-                        {emptyRows.slice(1).map((_, i) => (
-                            <Box key={i} sx={{ height: ROW_H, borderBottom: `1px dotted ${pColor}` }} />
-                        ))}
-                    </Box>
-                </Box>
+                {/* ── 하단 Footer 테이블 ── */}
+                <table style={{ ...tblStyle(C), borderTop: `1.5px solid ${C}` }}>
+                    <colgroup>
+                        <col style={{ width: '40px' }} />
+                        <col />
+                        <col style={{ width: '36px' }} />
+                        <col style={{ width: '110px' }} />
+                    </colgroup>
+                    <tbody>
+                        <tr style={{ height: '19px' }}>
+                            <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '8.5px' }}>전잔금</td>
+                            <td style={{ ...td(C) }}>
+                                <input
+                                    value={formatNumber(footerInfo.prev_balance)}
+                                    onChange={e => setFooterInfo(p => ({ ...p, prev_balance: Number(e.target.value.replace(/,/g, '')) || 0 }))}
+                                    style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: C, fontSize: '9px', background: 'transparent' }}
+                                />
+                            </td>
+                            <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '8.5px' }}>합계</td>
+                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '10px', paddingRight: '4px', borderRight: 'none' }}>￦{formatNumber(totalAmount)}</td>
+                        </tr>
+                        <tr style={{ height: '19px' }}>
+                            <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '8.5px' }}>입금</td>
+                            <td style={{ ...td(C) }}>
+                                <input
+                                    value={formatNumber(footerInfo.paid_amount)}
+                                    onChange={e => setFooterInfo(p => ({ ...p, paid_amount: Number(e.target.value.replace(/,/g, '')) || 0 }))}
+                                    style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: C, fontSize: '9px', background: 'transparent' }}
+                                />
+                            </td>
+                            <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '8.5px' }}>잔금</td>
+                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '10px', paddingRight: '4px', borderRight: 'none' }}>
+                                ￦{formatNumber(balance)}
+                                <span style={{ fontSize: '7px', marginLeft: '4px' }}>인수자&nbsp;&nbsp;<input value={footerInfo.receiver_name} onChange={e => setFooterInfo(p => ({ ...p, receiver_name: e.target.value }))} style={{ border: 'none', width: '40px', outline: 'none', color: C, fontSize: '8.5px', background: 'transparent' }} /></span>
+                                <span style={{ fontSize: '9px', marginLeft: '4px' }}>(인)</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
 
-                {/* Footer */}
-                <Box sx={{ border: `1.5px solid ${pColor}`, borderTop: 'none' }}>
-                    <Box sx={{ display: 'flex', height: '22px', borderBottom: `1px solid ${pColor}` }}>
-                        <Box sx={{ width: '50px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold' }}>전잔금</Box>
-                        <Box sx={{ flex: 1, borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', px: 1 }}>
-                            <input value={formatNumber(footerInfo.prev_balance)} onChange={e => setFooterInfo(p => ({ ...p, prev_balance: Number(e.target.value.replace(/,/g, '')) || 0 }))} style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: pColor, fontSize: '10px' }} />
-                        </Box>
-                        <Box sx={{ width: '42px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold' }}>합계</Box>
-                        <Box sx={{ width: '150px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', px: 1, fontSize: '11px', fontWeight: '900' }}>￦{formatNumber(totalAmount)}</Box>
-                    </Box>
-                    <Box sx={{ display: 'flex', height: '22px' }}>
-                        <Box sx={{ width: '50px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold' }}>입금</Box>
-                        <Box sx={{ flex: 1, borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', px: 1 }}>
-                            <input value={formatNumber(footerInfo.paid_amount)} onChange={e => setFooterInfo(p => ({ ...p, paid_amount: Number(e.target.value.replace(/,/g, '')) || 0 }))} style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: pColor, fontSize: '10px' }} />
-                        </Box>
-                        <Box sx={{ width: '42px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold' }}>잔금</Box>
-                        <Box sx={{ width: '90px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', px: 1, fontSize: '11px', fontWeight: '900' }}>￦{formatNumber(currentBalance)}</Box>
-                        <Box sx={{ width: '38px', borderRight: `1px solid ${pColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold' }}>인수자</Box>
-                        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', px: 1, justifyContent: 'space-between' }}>
-                            <input value={footerInfo.receiver_name} onChange={e => setFooterInfo(p => ({ ...p, receiver_name: e.target.value }))} placeholder="성함" style={{ border: 'none', width: '80px', outline: 'none', color: pColor, fontSize: '10px' }} />
-                            <Typography sx={{ fontSize: '10px', fontWeight: 'bold' }}>(인)</Typography>
-                        </Box>
-                    </Box>
-                </Box>
-
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: '3px', borderTop: `1px solid ${pColor}` }}>
-                    <Typography sx={{ fontSize: '10px', fontWeight: '900' }}>상기와 같이 계산합니다. 감사합니다.</Typography>
-                </Box>
-            </Box>
+                {/* ── 하단 감사 문구 ── */}
+                <div style={{ textAlign: 'center', padding: '2px 0', borderTop: `0.7px solid ${C}`, fontSize: '8.5px', fontWeight: '900', color: C }}>
+                    상기와 같이 계산합니다. 감사합니다.
+                </div>
+            </div>
         );
     };
 
+    // ────────────────────────────────────────────────────────────
+    // 화면 비율 = 뷰포트 너비를 기준으로 297mm 폼이 꽉 차도록 scale
+    // ────────────────────────────────────────────────────────────
+    const [scale, setScale] = useState(1);
+    const wrapRef = useRef();
+    useEffect(() => {
+        const calc = () => {
+            if (!wrapRef.current) return;
+            // 297mm ≈ 1122px @ 96dpi, 두 폼 + 패딩
+            const availW = wrapRef.current.clientWidth - 32;
+            const formNaturalW = 1122; // 297mm at 96dpi
+            setScale(Math.min(1, availW / formNaturalW));
+        };
+        calc();
+        window.addEventListener('resize', calc);
+        return () => window.removeEventListener('resize', calc);
+    }, [open]);
+
     return (
-        <Modal open={open} onClose={onClose} sx={{ '& .MuiBackdrop-root': { bgcolor: 'rgba(0,0,0,0.88)' } }}>
-            {/* 모달 전체 컨테이너: 세로 중앙 정렬, 화면 높이 안에서 스크롤 가능 */}
+        <Modal open={open} onClose={onClose} sx={{ '& .MuiBackdrop-root': { bgcolor: 'rgba(0,0,0,0.9)' } }}>
             <Box sx={{
                 position: 'absolute', top: '50%', left: '50%',
                 transform: 'translate(-50%, -50%)',
+                width: '96vw', maxWidth: '1200px',
                 maxHeight: '98vh', display: 'flex', flexDirection: 'column',
-                bgcolor: '#fff', boxShadow: 24, borderRadius: 1.5, overflow: 'hidden',
-                // A4 landscape 고정 너비
-                width: '315mm',
+                bgcolor: '#1e293b', boxShadow: 24, borderRadius: 2, overflow: 'hidden',
             }}>
-                {/* 상단 헤더 - 인쇄시 숨김 */}
-                <Box className="tsm-no-print" sx={{ p: 1.5, bgcolor: '#1e293b', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Printer size={18} /> 거래명세서 출력 및 관리
-                    </Typography>
+                {/* 헤더 */}
+                <Box className="tsm-no-print" sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                    <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Printer size={16} /> 거래명세서 출력 및 관리
+                    </span>
                     <IconButton onClick={onClose} sx={{ color: '#fff' }}><X size={20} /></IconButton>
                 </Box>
 
-                {/* 본문 스크롤 영역 */}
-                <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {/* 본문 */}
+                <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: '#334155', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     {saveStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ 명세서가 정상적으로 첨부되었습니다.</Alert>}
                     {saveStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>저장에 실패했습니다. 다시 시도해 주세요.</Alert>}
 
-                    {/* A4 고정 크기 인쇄 영역 */}
-                    <Box
+                    {/* ── A4 고정 블록: 297mm × 210mm, 화면에서는 scale로 축소 ── */}
+                    <div
                         ref={printRef}
                         className="tsm-print-container"
-                        sx={{
-                            // 화면에서 A4 landscape 비율로 고정
+                        style={{
+                            /* 절대 297×210mm 고수 */
                             width: '297mm',
-                            minHeight: '210mm',
+                            height: '210mm',
+                            minWidth: '297mm',
+                            boxSizing: 'border-box',
+                            overflow: 'hidden',
+                            /* 화면에서 축소 표시 */
+                            transform: `scale(${scale})`,
+                            transformOrigin: 'top center',
+                            /* 실제 렌더링 높이를 scale에 맞게 확보 */
+                            marginBottom: `calc(210mm * ${scale} - 210mm)`,
+                            /* 표시용 */
                             display: 'flex',
                             flexDirection: 'row',
-                            gap: '8mm',
-                            padding: '6mm',
+                            gap: '5mm',
+                            padding: '4mm',
                             backgroundColor: '#fff',
-                            boxSizing: 'border-box',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                            flexShrink: 0,
+                            boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
                         }}
                     >
-                        <Box sx={{ flex: 1 }}><StatementForm color="blue" /></Box>
-                        <Box sx={{ flex: 1 }}><StatementForm color="red" /></Box>
-                    </Box>
+                        <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="blue" /></div>
+                        <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="red" /></div>
+                    </div>
                 </Box>
 
-                {/* 하단 버튼 - 인쇄시 숨김 */}
-                <Box className="tsm-no-print" sx={{ p: 2, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#f8fafc', flexShrink: 0 }}>
-                    <Button variant="contained" size="large" startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <Save />} onClick={() => handleSaveAndAttach(false)} disabled={isSaving} sx={{ bgcolor: '#0f172a', fontWeight: 'bold', px: 4, borderRadius: 2 }}>저장 및 첨부</Button>
-                    <Button variant="contained" size="large" startIcon={<Printer />} onClick={handlePrint} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>인쇄</Button>
-                    <Button variant="outlined" size="large" onClick={onClose} sx={{ borderColor: '#e2e8f0', color: '#64748b', fontWeight: 'bold', px: 4, borderRadius: 2 }}>닫기</Button>
+                {/* 하단 버튼 */}
+                <Box className="tsm-no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #475569', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#1e293b', flexShrink: 0 }}>
+                    <Button variant="contained" size="large"
+                        startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <Save />}
+                        onClick={() => handleSaveAndAttach(false)} disabled={isSaving}
+                        sx={{ bgcolor: '#0f172a', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
+                        저장 및 첨부
+                    </Button>
+                    <Button variant="contained" size="large" startIcon={<Printer />} onClick={handlePrint}
+                        sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
+                        인쇄
+                    </Button>
+                    <Button variant="outlined" size="large" onClick={onClose}
+                        sx={{ borderColor: '#475569', color: '#94a3b8', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
+                        닫기
+                    </Button>
                 </Box>
             </Box>
         </Modal>
