@@ -42,6 +42,7 @@ const injectPrintCSS = () => {
             .tsm-print-container td,
             .tsm-print-container th { height: auto !important; min-height: 18px !important; }
             .tsm-no-print { display: none !important; }
+            .tsm-remarks-textarea { border: none !important; resize: none !important; overflow: hidden !important; background: transparent !important; }
         }
     `;
     document.head.appendChild(style);
@@ -136,9 +137,10 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const onResizerMouseMove = useCallback((e) => {
         if (!resizingCol.current) return;
         const diff = e.pageX - startX.current;
+        const MAX_W = 500;
         setColWidths(prev => ({
             ...prev,
-            [resizingCol.current]: Math.max(30, startWidth.current + diff)
+            [resizingCol.current]: Math.min(MAX_W, Math.max(30, startWidth.current + diff))
         }));
     }, []);
 
@@ -179,6 +181,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const ROWS = 13;
     const filledRows = items.length;
     const emptyCount = Math.max(0, ROWS - filledRows);
+
+    const [remarks, setRemarks] = useState(data.remarks || '');
 
     // ── PDF / 저장 ────────────────────────────
     const generatePDFBlob = async () => {
@@ -264,7 +268,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
 
                     {/* 오른쪽: 공급자 정보 table */}
                     <div style={{ borderLeft: `1.2px solid ${C}`, display: 'flex', flexDirection: 'column' }}>
-                        <table style={{ ...tblStyle(C), width: '300px', flex: 1 }}>
+                        <table style={{ ...tblStyle(C), width: '300px', flex: 1, tableLayout: 'fixed' }}>
                             <colgroup>
                                 <col style={{ width: '18px' }} />
                                 <col style={{ width: '56px' }} />
@@ -331,7 +335,16 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
 
                 {/* ── 품목 테이블 ── */}
                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <table style={{ ...tblStyle(C) }}>
+                    <table style={{ ...tblStyle(C), tableLayout: 'fixed', width: '100%' }}>
+                        <colgroup>
+                            <col style={{ width: colWidths.date }} />
+                            <col style={{ width: colWidths.name }} />
+                            <col style={{ width: colWidths.spec }} />
+                            <col style={{ width: colWidths.qty }} />
+                            <col style={{ width: colWidths.price }} />
+                            <col style={{ width: colWidths.supply }} />
+                            <col style={{ width: colWidths.tax }} />
+                        </colgroup>
                         <thead>
                             <tr style={{ backgroundColor: 'rgba(0,0,0,0.03)', height: '24px' }}>
                                 {[
@@ -346,7 +359,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <th
                                         key={h.key}
                                         style={{
-                                            ...td(C),
+                                            ...td(C, { textOverflow: 'ellipsis' }),
                                             width: colWidths[h.key],
                                             textAlign: 'center',
                                             fontWeight: '900',
@@ -360,6 +373,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                         {i < 6 && (
                                             <div
                                                 onMouseDown={(e) => onResizerMouseDown(h.key, e)}
+                                                className="tsm-no-print"
                                                 style={{
                                                     position: 'absolute',
                                                     right: -3,
@@ -378,27 +392,57 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         <tbody>
                             {items.map((item, idx) => (
                                 <tr key={idx} style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>{(item.date || '').slice(5)}</td>
-                                    <td style={{ ...td(C), fontWeight: 'bold', fontSize: '11.5px' }}>{item.product?.name || item.item_name || ''}</td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>{item.product?.spec || ''}</td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px' }}>{formatNumber(item.quantity)}</td>
-                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px' }}>{formatNumber(item.unit_price)}</td>
-                                    <td style={{ ...td(C), textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{formatNumber(item.quantity * item.unit_price)}</td>
-                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '12px', borderRight: 'none' }}>{formatNumber(Math.floor(item.quantity * item.unit_price * 0.1))}</td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{(item.date || '').slice(5)}</td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), fontWeight: 'bold', fontSize: '11.5px' }}>{item.product?.name || item.item_name || ''}</td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{item.product?.spec || ''}</td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11.5px' }}>{formatNumber(item.quantity)}</td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '11.5px' }}>{formatNumber(item.unit_price)}</td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{formatNumber(item.quantity * item.unit_price)}</td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '12px', borderRight: 'none' }}>{formatNumber(Math.floor(item.quantity * item.unit_price * 0.1))}</td>
                                 </tr>
                             ))}
-                            {/* 이하여백 행 */}
+                            {/* 이하여백 행 + 격자 유지 */}
                             {emptyCount > 0 && (
                                 <tr style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), borderBottom: `0.8px dotted ${C}` }} />
-                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', borderBottom: `0.8px dotted ${C}`, borderRight: 'none' }}>= 이하여백 =</td>
+                                    <td style={{ ...td(C), textAlign: 'center', borderBottom: `0.8px dotted ${C}` }} />
+                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', borderBottom: `0.8px dotted ${C}`, borderRight: 'none', textAlign: 'center' }}>= 이하여백 =</td>
                                 </tr>
                             )}
                             {Array(Math.max(0, emptyCount - 1)).fill(null).map((_, i) => (
                                 <tr key={i} style={{ height: ROW_H }}>
-                                    <td colSpan={7} style={{ borderBottom: `0.8px dotted ${C}`, borderLeft: `0.8px solid ${C}`, borderRight: `0.8px solid ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}`, borderRight: 'none' }} />
                                 </tr>
                             ))}
+                            {/* 비고란 추가 */}
+                            <tr style={{ height: '60px' }}>
+                                <td colSpan={7} style={{ ...td(C), borderTop: `1.2px solid ${C}`, borderRight: 'none', padding: '4px 8px', verticalAlign: 'top' }}>
+                                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '2px' }}>비고:</div>
+                                    <textarea
+                                        value={remarks}
+                                        onChange={(e) => setRemarks(e.target.value)}
+                                        placeholder="비고 사항을 입력하세요..."
+                                        style={{
+                                            width: '100%',
+                                            height: '35px',
+                                            border: 'none',
+                                            resize: 'none',
+                                            background: 'transparent',
+                                            fontSize: '11px',
+                                            color: C,
+                                            outline: 'none',
+                                            padding: '0',
+                                            fontFamily: 'inherit'
+                                        }}
+                                        className="tsm-remarks-textarea"
+                                    />
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
