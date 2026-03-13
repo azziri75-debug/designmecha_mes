@@ -1115,3 +1115,97 @@ async def attach_statement_to_delivery_history(
     await db.refresh(history)
 
     return {"status": "ok", "pdf_url": file_url, "history_id": history_id}
+
+
+# ─────────────────────────────────────────────────────────────
+# 납품 이력 수정 (PUT)
+# ─────────────────────────────────────────────────────────────
+@router.put("/delivery-histories/{history_id}")
+async def update_delivery_history(
+    history_id: int,
+    payload: dict,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user=Depends(deps.get_current_user),
+):
+    """납품 이력 메모/날짜 수정 API"""
+    result = await db.execute(
+        select(DeliveryHistory)
+        .options(selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item))
+        .where(DeliveryHistory.id == history_id)
+    )
+    history = result.scalar_one_or_none()
+    if not history:
+        raise HTTPException(status_code=404, detail="DeliveryHistory not found")
+
+    # 변경 가능 필드: note, delivery_date
+    if "note" in payload:
+        history.note = payload["note"]
+    if "delivery_date" in payload:
+        from datetime import date as _date
+        try:
+            history.delivery_date = _date.fromisoformat(payload["delivery_date"])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid delivery_date format (YYYY-MM-DD)")
+
+    await db.commit()
+    await db.refresh(history)
+    return {"status": "ok", "history_id": history_id}
+
+
+# ─────────────────────────────────────────────────────────────
+# 납품 이력 삭제/취소 (DELETE) - 수주 잔량 복원 포함
+# ─────────────────────────────────────────────────────────────
+@router.delete("/delivery-histories/{history_id}")
+async def delete_delivery_history(
+    history_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user=Depends(deps.get_current_user),
+):
+    """납품 이력 삭제 API (삭제 시 수주 잔량 원복 포함)"""
+    result = await db.execute(
+        select(DeliveryHistory)
+        .options(selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item))
+        .where(DeliveryHistory.id == history_id)
+    )
+    history = result.scalar_one_or_none()
+    if not history:
+        raise HTTPException(status_code=404, detail="DeliveryHistory not found")
+
+    order_id = history.order_id
+
+    # 1) 납품된 수량을 수주 품목의 delivered_quantity에서 차감 (원복)
+    for dh_item in history.items:
+        order_item = dh_item.order_item
+        if order_item:
+            order_item.delivered_quantity = max(0, (order_item.delivered_quantity or 0) - dh_item.quantity)
+
+    # 2) 납품 이력 삭제
+    await db.delete(history)
+    await db.flush()
+
+    # 3) 해당 수주의 상태 재계산
+    order_result = await db.execute(
+        select(SalesOrder)
+        .options(selectinload(SalesOrder.items))
+        .where(SalesOrder.id == order_id)
+    )
+    order = order_result.scalar_one_or_none()
+    if order:
+        remaining_histories = await db.execute(
+            select(DeliveryHistory).where(DeliveryHistory.order_id == order_id)
+        )
+        has_deliveries = remaining_histories.scalars().first() is not None
+
+        if not has_deliveries:
+            order.status = OrderStatus.CONFIRMED
+        else:
+            total_qty = sum(it.quantity for it in order.items)
+            delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
+            if delivered_qty >= total_qty:
+                order.status = OrderStatus.DELIVERED
+            else:
+                order.status = OrderStatus.PARTIALLY_DELIVERED
+
+    await db.commit()
+    return {"status": "ok", "message": f"DeliveryHistory {history_id} deleted and quantities reverted"}
+

@@ -469,25 +469,44 @@ async def get_monthly_attendance(
     start_date = date(year, month, 1)
     end_date = date(year, month, last_day)
 
-    # 근태 기록 조회
+    # [Ghost-proof] 결재 카테고리 목록 - NULL approval_id 또는 소프트 삭제된 결재 연결 기록 제외
+    APPROVAL_CATEGORIES = ["ANNUAL", "HALF_DAY", "SICK", "EARLY_LEAVE", "OUTING", "EVENT_LEAVE"]
+    from sqlalchemy import or_ as sa_or, and_ as sa_and, not_ as sa_not
+    from sqlalchemy import delete as sa_delete
+
+    # 소프트 삭제된 결재문서 ID 서브쿼리
+    deleted_approval_ids_subq = (
+        select(ApprovalDocument.id)
+        .where(ApprovalDocument.deleted_at != None)  # noqa: E711
+        .scalar_subquery()
+    )
+
+    # 근태 기록 조회 - 유령 데이터 제외:
+    # 1) 결재 카테고리인데 approval_id가 NULL인 것 제외
+    # 2) 결재 카테고리인데 연결된 approval_doc가 소프트 삭제된 것 제외
     records_res = await db.execute(
         select(EmployeeTimeRecord)
         .where(
             EmployeeTimeRecord.staff_id == staff_id,
             EmployeeTimeRecord.record_date >= start_date,
-            EmployeeTimeRecord.record_date <= end_date
+            EmployeeTimeRecord.record_date <= end_date,
+            # Ghost record filter
+            sa_not(
+                sa_and(
+                    EmployeeTimeRecord.category.in_(APPROVAL_CATEGORIES),
+                    sa_or(
+                        EmployeeTimeRecord.approval_id == None,  # noqa: E711
+                        EmployeeTimeRecord.approval_id.in_(deleted_approval_ids_subq)
+                    )
+                )
+            )
         )
         .order_by(EmployeeTimeRecord.record_date.asc())
     )
     records = records_res.scalars().all()
 
-    # 해당 월의 승인된 결재 문서 조회 (VACATION, EARLY_LEAVE, OVERTIME)
-    # 날짜 필터링을 위해 content 내의 date/start_date 등을 체크해야 함.
-    # 여기서는 단순하게 created_at 기준으로 가져오되, 실제 적용 날짜가 해당 월에 포함되는지 확인하는 로직이 필요함.
-    # 우선 created_at 기반으로 가져오고 summary 로직과 유사하게 AttendanceDocItem으로 변환.
-    
+    # 해당 월의 승인된 결재 문서 조회 (VACATION, EARLY_LEAVE, OVERTIME) - 소프트 삭제 제외
     TARGET_TYPES = ["VACATION", "EARLY_LEAVE", "OVERTIME"]
-    # 월 시작/종료 datetime (created_at 필터용으로 넉넉하게 앞뒤 7일 포함 - 실제 날짜가 해당 월일 수 있으므로)
     search_start = datetime.combine(start_date - timedelta(days=7), time_type.min)
     search_end = datetime.combine(end_date + timedelta(days=7), time_type.max)
 
@@ -496,6 +515,7 @@ async def get_monthly_attendance(
             ApprovalDocument.author_id == staff_id,
             ApprovalDocument.doc_type.in_(TARGET_TYPES),
             ApprovalDocument.status == ApprovalStatus.COMPLETED,
+            ApprovalDocument.deleted_at == None,  # noqa: E711  [Ghost-proof]
             ApprovalDocument.created_at >= search_start,
             ApprovalDocument.created_at <= search_end,
         )
@@ -854,3 +874,18 @@ async def update_annual_leave(
         remaining_days=round(remaining, 2)
     )
 
+
+@router.post("/sync-annual-leave/{staff_id}")
+async def trigger_sync_annual_leave(
+    staff_id: int,
+    year: Optional[int] = Query(None, description="동기화할 연도 (기본: 올해)"),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """관리자가 특정 사원의 연차 데이터를 강제로 재계산/동기화하는 API"""
+    if current_user.user_type != "ADMIN" and current_user.id != staff_id:
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+    from datetime import date as _date
+    target_year = year or _date.today().year
+    await sync_annual_leave_usage(db, staff_id, target_year)
+    return {"status": "ok", "staff_id": staff_id, "year": target_year, "message": "연차 데이터가 재동기화되었습니다."}

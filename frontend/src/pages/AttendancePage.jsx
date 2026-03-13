@@ -159,6 +159,22 @@ const AttendancePage = () => {
         }
     };
 
+    const handleSyncAnnualLeave = async () => {
+        if (!selectedStaff) return;
+        const year = currentMonth.getFullYear();
+        try {
+            setLoading(true);
+            await api.post(`/hr/sync-annual-leave/${selectedStaff.id}?year=${year}`);
+            await fetchAttendance();
+            await fetchSummary();
+            alert(`✅ ${selectedStaff.name} 사원의 ${year}년 연차 데이터가 강제 동기화되었습니다.`);
+        } catch (err) {
+            alert('동기화 실패: ' + (err?.response?.data?.detail || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Calendar generation logic
     const renderCalendar = () => {
         const year = currentMonth.getFullYear();
@@ -306,22 +322,34 @@ const AttendancePage = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl shadow-inner">
-                        <button
-                            onClick={() => changeMonth(-1)}
-                            className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all text-slate-600"
-                        >
-                            <ChevronLeftIcon className="w-5 h-5" />
-                        </button>
-                        <div className="px-6 text-lg font-black text-slate-800 tabular-nums">
-                            {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
+                    <div className="flex items-center gap-3 flex-wrap justify-end">
+                        {user?.user_type === 'ADMIN' && selectedStaff && (
+                            <button
+                                onClick={handleSyncAnnualLeave}
+                                disabled={loading}
+                                className="text-[10px] font-black tracking-tight bg-orange-500 hover:bg-orange-400 text-white px-3 py-2 rounded-xl shadow-lg shadow-orange-900/30 flex items-center gap-1.5 transition-all disabled:opacity-50"
+                                title="선택 사원의 연차 데이터를 전자결재 기준으로 강제 재계산합니다"
+                            >
+                                ⚡ 근태/연차 강제 동기화
+                            </button>
+                        )}
+                        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl shadow-inner">
+                            <button
+                                onClick={() => changeMonth(-1)}
+                                className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all text-slate-600"
+                            >
+                                <ChevronLeftIcon className="w-5 h-5" />
+                            </button>
+                            <div className="px-6 text-lg font-black text-slate-800 tabular-nums">
+                                {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
+                            </div>
+                            <button
+                                onClick={() => changeMonth(1)}
+                                className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all text-slate-600"
+                            >
+                                <ChevronRightIcon className="w-5 h-5" />
+                            </button>
                         </div>
-                        <button
-                            onClick={() => changeMonth(1)}
-                            className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all text-slate-600"
-                        >
-                            <ChevronRightIcon className="w-5 h-5" />
-                        </button>
                     </div>
                 </header>
 

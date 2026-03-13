@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     Modal, Box, Typography, Button, IconButton,
     CircularProgress, Alert
@@ -8,6 +8,47 @@ import { formatNumber, toKoreanCurrency } from '../lib/utils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
+
+// A4 Landscape 인쇄용 CSS (전역 style 태그로 삽입)
+const PRINT_STYLE_ID = 'tsm-print-style';
+const injectPrintCSS = () => {
+    if (document.getElementById(PRINT_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = PRINT_STYLE_ID;
+    style.innerHTML = `
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 8mm;
+            }
+            body > * { display: none !important; }
+            #tsm-print-root { display: block !important; }
+            .MuiModal-root { position: static !important; }
+            .MuiBackdrop-root { display: none !important; }
+            .tsm-no-print { display: none !important; }
+            .tsm-print-area {
+                display: flex !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                gap: 10mm !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                background: #fff !important;
+                transform: none !important;
+            }
+            .tsm-print-area > div {
+                flex: 1 !important;
+                page-break-inside: avoid !important;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+};
+const removePrintCSS = () => {
+    const el = document.getElementById(PRINT_STYLE_ID);
+    if (el) el.remove();
+};
+
 
 const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     if (!data) return null;
@@ -31,6 +72,12 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState(null);
     const printRef = useRef();
+
+    // Inject/remove A4 landscape print CSS when modal is open
+    useEffect(() => {
+        if (open) injectPrintCSS();
+        return () => removePrintCSS();
+    }, [open]);
 
     // Column Resizing
     const [colWidths, setColWidths] = useState({ date: 40, name: 160, spec: 100, qty: 45, price: 80, supply: 95, tax: 75 });
@@ -265,12 +312,12 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#f1f5f9', '@media print': { p: 0, bgcolor: '#fff', overflow: 'visible' } }}>
                     {saveStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2 }}>✅ 명세서가 정상적으로 첨부되었습니다.</Alert>}
                     {saveStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>저장에 실패했습니다. 다시 시도해 주세요.</Alert>}
-                    <Box ref={printRef} sx={{ width: '100%', display: 'flex', gap: '14px', padding: '8px', backgroundColor: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', '@media print': { boxShadow: 'none', p: 0, gap: '8px' } }}>
+                    <Box ref={printRef} className="tsm-print-area" sx={{ width: '100%', display: 'flex', gap: '28px', padding: '12px', backgroundColor: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
                         <Box sx={{ flex: 1 }}><StatementForm color="blue" /></Box>
                         <Box sx={{ flex: 1 }}><StatementForm color="red" /></Box>
                     </Box>
                 </Box>
-                <Box sx={{ p: 2, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#f8fafc', '@media print': { display: 'none' } }}>
+                <Box className="tsm-no-print" sx={{ p: 2, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#f8fafc' }}>
                     <Button variant="contained" size="large" startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <Save />} onClick={() => handleSaveAndAttach(false)} disabled={isSaving} sx={{ bgcolor: '#0f172a', fontWeight: 'bold', px: 4, borderRadius: 2 }}>저장 및 첨부</Button>
                     <Button variant="contained" size="large" startIcon={<Printer />} onClick={handlePrint} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>인쇄</Button>
                     <Button variant="outlined" size="large" onClick={onClose} sx={{ borderColor: '#e2e8f0', color: '#64748b', fontWeight: 'bold', px: 4, borderRadius: 2 }}>닫기</Button>

@@ -21,6 +21,9 @@ const DeliveryPage = () => {
     const [showStatementModal, setShowStatementModal] = useState(false);
     const [statementData, setStatementData] = useState(null);
 
+    // Delivery History Edit Modal
+    const [editHistoryModal, setEditHistoryModal] = useState(null); // { id, delivery_date, note }
+
     // Filters
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [partnerFilter, setPartnerFilter] = useState('');
@@ -55,6 +58,30 @@ const DeliveryPage = () => {
 
     const handleExpandToggle = (orderId) => {
         setExpandedOrder(expandedOrder === orderId ? null : orderId);
+    };
+
+    const handleDeleteDelivery = async (dhId) => {
+        if (!window.confirm('이 납품 이력을 삭제하시겠습니까?\n\n삭제하면 수주의 납품 수량이 원래대로 복원됩니다.')) return;
+        try {
+            await api.delete(`/sales/delivery-histories/${dhId}`);
+            fetchOrders();
+        } catch (err) {
+            alert('삭제 실패: ' + (err?.response?.data?.detail || err.message));
+        }
+    };
+
+    const handleSaveDeliveryEdit = async () => {
+        if (!editHistoryModal) return;
+        try {
+            await api.put(`/sales/delivery-histories/${editHistoryModal.id}`, {
+                note: editHistoryModal.note,
+                delivery_date: editHistoryModal.delivery_date,
+            });
+            setEditHistoryModal(null);
+            fetchOrders();
+        } catch (err) {
+            alert('수정 실패: ' + (err?.response?.data?.detail || err.message));
+        }
     };
 
     return (
@@ -257,14 +284,11 @@ const DeliveryPage = () => {
                                                                                         className="text-[10px] bg-blue-900/30 text-blue-400 border border-blue-900/50 px-2 py-1 rounded hover:bg-blue-900/50 flex items-center gap-1"
                                                                                         onClick={() => {
                                                                                             setStatementData({
-                                                                                                // Delivery-specific data
                                                                                                 id: dh.id,
                                                                                                 delivery_no: dh.delivery_no,
                                                                                                 delivery_date: dh.delivery_date,
-                                                                                                // Order-level data for statement
                                                                                                 order_no: ord.order_no,
                                                                                                 partner: ord.partner,
-                                                                                                // Map delivery items for the form
                                                                                                 items: (dh.items || []).map(it => ({
                                                                                                     date: dh.delivery_date,
                                                                                                     item_name: it.order_item?.product?.name || '',
@@ -272,13 +296,24 @@ const DeliveryPage = () => {
                                                                                                     quantity: it.quantity,
                                                                                                     unit_price: it.order_item?.unit_price || 0,
                                                                                                 })),
-                                                                                                // Saved statement data if any
                                                                                                 ...(dh.statement_json || {}),
                                                                                             });
                                                                                             setShowStatementModal(true);
                                                                                         }}
                                                                                     >
                                                                                         <FileText className="w-3 h-3" /> 명세서
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="text-[10px] bg-yellow-900/30 text-yellow-400 border border-yellow-900/50 px-2 py-1 rounded hover:bg-yellow-900/50 flex items-center gap-1"
+                                                                                        onClick={() => setEditHistoryModal({ id: dh.id, delivery_date: dh.delivery_date || '', note: dh.note || '' })}
+                                                                                    >
+                                                                                        ✏️ 수정
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="text-[10px] bg-red-900/30 text-red-400 border border-red-900/50 px-2 py-1 rounded hover:bg-red-900/50 flex items-center gap-1"
+                                                                                        onClick={() => handleDeleteDelivery(dh.id)}
+                                                                                    >
+                                                                                        🗑 삭제
                                                                                     </button>
                                                                                 </div>
                                                                             </div>
@@ -345,6 +380,49 @@ const DeliveryPage = () => {
                         setStatementData(null);
                     }}
                 />
+            )}
+            {/* Delivery History Edit Modal */}
+            {editHistoryModal && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 w-full max-w-md shadow-2xl">
+                        <h3 className="text-lg font-black text-white mb-6">📝 납품 이력 수정</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-gray-400 font-bold block mb-1">납품 일자</label>
+                                <input
+                                    type="date"
+                                    value={editHistoryModal.delivery_date}
+                                    onChange={e => setEditHistoryModal(p => ({ ...p, delivery_date: e.target.value }))}
+                                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400 font-bold block mb-1">비고</label>
+                                <textarea
+                                    value={editHistoryModal.note}
+                                    onChange={e => setEditHistoryModal(p => ({ ...p, note: e.target.value }))}
+                                    rows={3}
+                                    placeholder="비고 입력..."
+                                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6 justify-end">
+                            <button
+                                onClick={() => setEditHistoryModal(null)}
+                                className="px-4 py-2 rounded-lg text-sm text-gray-400 border border-gray-600 hover:bg-gray-800"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleSaveDeliveryEdit}
+                                className="px-5 py-2 rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white"
+                            >
+                                저장
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
