@@ -19,21 +19,28 @@ const injectPrintCSS = () => {
     style.id = PRINT_STYLE_ID;
     style.innerHTML = `
         @media print {
-            @page { size: A4 landscape; margin: 0; }
+            @page { size: A4 landscape; margin: 10mm; }
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             body * { visibility: hidden !important; }
             .tsm-print-container,
             .tsm-print-container * { visibility: visible !important; }
             .tsm-print-container {
                 position: fixed !important;
                 left: 0 !important; top: 0 !important;
-                width: 297mm !important; height: 210mm !important;
+                width: 277mm !important;   /* 297mm - 2*10mm margin */
+                height: auto !important;
+                min-height: 0 !important;
                 transform: none !important;
                 display: flex !important; flex-direction: row !important;
-                gap: 5mm !important; padding: 4mm !important;
+                gap: 5mm !important; padding: 0 !important;
                 background: #fff !important; box-shadow: none !important;
-                overflow: hidden !important; box-sizing: border-box !important;
+                overflow: visible !important; box-sizing: border-box !important;
             }
-            .tsm-print-container > * { flex: 1 !important; }
+            .tsm-print-container > * { flex: 1 !important; height: auto !important; }
+            .tsm-print-container table { width: 100% !important; }
+            .tsm-print-container tr,
+            .tsm-print-container td,
+            .tsm-print-container th { height: auto !important; min-height: 18px !important; }
             .tsm-no-print { display: none !important; }
         }
     `;
@@ -99,10 +106,27 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     });
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState(null);
+    const [companyStampUrl, setCompanyStampUrl] = useState(null); // DB 직인 이미지 URL
     const printRef = useRef();
 
+    // 모달 열릴 때: (1) 인쇄 CSS 주입, (2) 회사 직인 이미지 로드
     useEffect(() => {
-        if (open) injectPrintCSS();
+        if (!open) { removePrintCSS(); return; }
+        injectPrintCSS();
+        // GET /api/v1/basics/company → stamp_image.url 가져오기
+        api.get('/basics/company').then(res => {
+            const stamp = res.data?.stamp_image;
+            if (stamp?.url) {
+                // stamp.url이 상대경로(/uploads/...)면 backend 기본 주소를 붙여준다
+                const apiBase = import.meta.env.VITE_API_URL || '';
+                // '/api/v1' 접미사를 제거해서 backend origin만 추출
+                const backendOrigin = apiBase.replace(/\/api\/v1\/?$/, '');
+                const fullUrl = stamp.url.startsWith('http')
+                    ? stamp.url
+                    : `${backendOrigin}${stamp.url}`;
+                setCompanyStampUrl(fullUrl);
+            }
+        }).catch(() => {/* 실패해도 SVG fallback 사용 */ });
         return () => removePrintCSS();
     }, [open]);
 
@@ -158,7 +182,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     // ════════════════════════════════════════
     const StatementForm = ({ color }) => {
         const C = color === 'blue' ? '#003AC1' : '#C10000';
-        const sealSrc = data.company_seal || makeSealURI(supplierInfo.company_name);
+        const sealSrc = companyStampUrl || makeSealURI(supplierInfo.company_name);
 
         const ROW_H = '17px';
 
