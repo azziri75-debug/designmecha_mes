@@ -77,8 +77,8 @@ const tblStyle = (c) => ({
 });
 const td = (c, extra = {}) => ({
     border: `0.7px solid ${c}`,
-    padding: '1px 2px',
-    fontSize: '8.5px',
+    padding: '2px 3px',
+    fontSize: '11px',
     color: c,
     verticalAlign: 'middle',
     whiteSpace: 'nowrap',
@@ -108,6 +108,46 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const [saveStatus, setSaveStatus] = useState(null);
     const [companyStampUrl, setCompanyStampUrl] = useState(null); // DB 직인 이미지 URL
     const printRef = useRef();
+
+    // ── Resizable Columns State & Logic ───────────────────────
+    const [colWidths, setColWidths] = useState({
+        date: 45,
+        name: 180,
+        spec: 90,
+        qty: 40,
+        price: 75,
+        supply: 85,
+        tax: 70
+    });
+    const resizingCol = useRef(null);
+    const startX = useRef(0);
+    const startWidth = useRef(0);
+
+    const onResizerMouseDown = (col, e) => {
+        e.preventDefault();
+        resizingCol.current = col;
+        startX.current = e.pageX;
+        startWidth.current = colWidths[col];
+        document.addEventListener('mousemove', onResizerMouseMove);
+        document.addEventListener('mouseup', onResizerMouseUp);
+        document.body.style.cursor = 'col-resize';
+    };
+
+    const onResizerMouseMove = useCallback((e) => {
+        if (!resizingCol.current) return;
+        const diff = e.pageX - startX.current;
+        setColWidths(prev => ({
+            ...prev,
+            [resizingCol.current]: Math.max(30, startWidth.current + diff)
+        }));
+    }, []);
+
+    const onResizerMouseUp = useCallback(() => {
+        resizingCol.current = null;
+        document.removeEventListener('mousemove', onResizerMouseMove);
+        document.removeEventListener('mouseup', onResizerMouseUp);
+        document.body.style.cursor = 'default';
+    }, [onResizerMouseMove]);
 
     // 모달 열릴 때: (1) 인쇄 CSS 주입, (2) 회사 직인 이미지 로드
     useEffect(() => {
@@ -184,11 +224,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         const C = color === 'blue' ? '#003AC1' : '#C10000';
         const sealSrc = companyStampUrl || makeSealURI(supplierInfo.company_name);
 
-        const ROW_H = '17px';
+        const ROW_H = '24px';
 
         return (
             <div style={{
-                border: `1.5px solid ${C}`,
+                border: `1.8px solid ${C}`,
                 width: '100%', height: '100%',
                 backgroundColor: '#fff',
                 display: 'flex', flexDirection: 'column',
@@ -197,90 +237,85 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 overflow: 'hidden',
             }}>
                 {/* ── 상단: No/일자 + 거래명세표 타이틀 + 공급자 테이블 ── */}
-                <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: `1px solid ${C}` }}>
+                <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: `1.2px solid ${C}` }}>
 
                     {/* 왼쪽: No, 일자, 거래명세표, 귀하 */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         {/* No 행 */}
-                        <div style={{ display: 'flex', height: '17px', borderBottom: `0.7px solid ${C}` }}>
-                            <div style={{ width: '28px', borderRight: `0.7px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold', fontStyle: 'italic', color: C }}>No.</div>
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '4px', fontSize: '9px', fontWeight: 'bold', color: C }}>{data.delivery_no?.slice(-6) || '000000'}</div>
+                        <div style={{ display: 'flex', height: '22px', borderBottom: `0.8px solid ${C}` }}>
+                            <div style={{ width: '40px', borderRight: `0.8px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', fontStyle: 'italic', color: C }}>No.</div>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '13px', fontWeight: 'bold', color: C }}>{data.delivery_no?.slice(-8) || '00000000'}</div>
                         </div>
                         {/* 일자 행 */}
-                        <div style={{ display: 'flex', height: '17px', borderBottom: `0.7px solid ${C}` }}>
-                            <div style={{ width: '28px', borderRight: `0.7px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold', color: C }}>일자</div>
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '4px', fontSize: '8.5px', color: C }}>{data.delivery_date || ''}</div>
+                        <div style={{ display: 'flex', height: '22px', borderBottom: `0.8px solid ${C}` }}>
+                            <div style={{ width: '40px', borderRight: `0.8px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', color: C }}>일자</div>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '12px', color: C }}>{data.delivery_date || ''}</div>
                         </div>
                         {/* 거래명세표 */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 0 2px' }}>
-                            <span style={{ fontSize: '22px', fontWeight: '900', letterSpacing: '4px', borderBottom: `2.5px double ${C}`, color: C, lineHeight: 1.1 }}>거래명세표</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 0 8px' }}>
+                            <span style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '8px', borderBottom: `3px double ${C}`, color: C, lineHeight: 1.1 }}>거래명세표</span>
                         </div>
                         {/* 귀하 */}
-                        <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '6px', paddingBottom: '4px', gap: '6px' }}>
-                            <span style={{ fontSize: '15px', fontWeight: '900', color: C, borderBottom: `1px solid ${C}`, minWidth: '90px', textAlign: 'center' }}>{data.partner?.name || ''}</span>
-                            <span style={{ fontSize: '14px', fontWeight: '900', color: C }}>귀하</span>
+                        <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '12px', paddingBottom: '8px', gap: '8px' }}>
+                            <span style={{ fontSize: '22px', fontWeight: '900', color: C, borderBottom: `1.5px solid ${C}`, minWidth: '150px', textAlign: 'center' }}>{data.partner?.name || ''}</span>
+                            <span style={{ fontSize: '20px', fontWeight: '900', color: C }}>귀하</span>
                         </div>
                     </div>
 
                     {/* 오른쪽: 공급자 정보 table */}
-                    <div style={{ borderLeft: `1px solid ${C}` }}>
-                        <table style={{ ...tblStyle(C), width: '220px' }}>
+                    <div style={{ borderLeft: `1.2px solid ${C}` }}>
+                        <table style={{ ...tblStyle(C), width: '320px' }}>
                             <colgroup>
-                                {/* "공급자" 세로 레이블 */}
-                                <col style={{ width: '14px' }} />
-                                {/* 항목 레이블 */}
-                                <col style={{ width: '36px' }} />
-                                {/* 값 (왼쪽) */}
-                                <col style={{ width: '90px' }} />
-                                {/* 성명 레이블 */}
-                                <col style={{ width: '22px' }} />
-                                {/* 성명 + 도장 */}
-                                <col style={{ width: '58px' }} />
+                                <col style={{ width: '18px' }} />
+                                <col style={{ width: '60px' }} />
+                                <col style={{ width: '130px' }} />
+                                <col style={{ width: '30px' }} />
+                                <col style={{ width: '82px' }} />
                             </colgroup>
                             <tbody>
                                 {/* 등록번호 행 */}
-                                <tr>
-                                    <td rowSpan={4} style={{ ...td(C), textAlign: 'center', padding: '0', writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: '3px', fontSize: '9px', fontWeight: 'bold', width: '14px' }}>공급자</td>
-                                    <td colSpan={1} style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>등록번호</td>
-                                    <td colSpan={3} style={{ ...td(C), textAlign: 'center', fontSize: '11px', fontWeight: '900', letterSpacing: '1px' }}>{supplierInfo.biz_no}</td>
+                                <tr style={{ height: '26px' }}>
+                                    <td rowSpan={4} style={{ ...td(C), textAlign: 'center', padding: '0', writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: '4px', fontSize: '11px', fontWeight: 'bold', width: '18px', borderLeft: 'none' }}>공급자</td>
+                                    <td colSpan={1} style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>등록번호</td>
+                                    <td colSpan={3} style={{ ...td(C), textAlign: 'center', fontSize: '18px', fontWeight: '900', letterSpacing: '1.5px' }}>{supplierInfo.biz_no}</td>
                                 </tr>
                                 {/* 상호 + 성명 행 */}
-                                <tr>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>상호</td>
-                                    <td style={{ ...td(C), fontWeight: 'bold', fontSize: '8.5px' }}>{supplierInfo.company_name}</td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>성명</td>
-                                    <td style={{ ...td(C), fontSize: '8.5px', fontWeight: 'bold', position: 'relative', overflow: 'visible' }}>
+                                <tr style={{ height: '30px' }}>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>상호</td>
+                                    <td style={{ ...td(C), fontWeight: 'bold', fontSize: '13px' }}>{supplierInfo.company_name}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>성명</td>
+                                    <td style={{ ...td(C), fontSize: '13px', fontWeight: 'bold', position: 'relative', overflow: 'visible' }}>
                                         {supplierInfo.owner_name}
-                                        {/* ★ 직인 이미지 — <img> 태그만 사용, CSS 동그라미 없음 */}
                                         <img
                                             src={sealSrc}
                                             alt="직인"
                                             style={{
                                                 position: 'absolute',
-                                                right: '-4px',
+                                                right: '10px',
                                                 top: '50%',
                                                 transform: 'translateY(-50%)',
-                                                width: '40px',
-                                                height: '40px',
-                                                opacity: 0.85,
+                                                width: '50px',
+                                                height: '50px',
+                                                opacity: 0.9,
                                                 objectFit: 'contain',
                                                 mixBlendMode: 'multiply',
                                                 pointerEvents: 'none',
+                                                zIndex: 10
                                             }}
                                         />
                                     </td>
                                 </tr>
                                 {/* 사업장주소 행 */}
-                                <tr>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '7.5px', lineHeight: '1.1' }}>사업장주소</td>
-                                    <td colSpan={3} style={{ ...td(C), fontSize: '7.5px' }}>{supplierInfo.address}</td>
+                                <tr style={{ height: '28px' }}>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '10.5px', lineHeight: '1.2' }}>사업장주소</td>
+                                    <td colSpan={3} style={{ ...td(C), fontSize: '11px', whiteSpace: 'normal', lineHeight: '1.2' }}>{supplierInfo.address}</td>
                                 </tr>
                                 {/* 업태 + 종목 행 */}
-                                <tr>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>업태</td>
-                                    <td style={{ ...td(C), fontSize: '8px' }}>{supplierInfo.biz_type}</td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>종목</td>
-                                    <td style={{ ...td(C), fontSize: '8px' }}>{supplierInfo.biz_item}</td>
+                                <tr style={{ height: '26px' }}>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>업태</td>
+                                    <td style={{ ...td(C), fontSize: '11px' }}>{supplierInfo.biz_type}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>종목</td>
+                                    <td style={{ ...td(C), fontSize: '11px' }}>{supplierInfo.biz_item}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -288,53 +323,80 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 </div>
 
                 {/* ── 합계 행 ── */}
-                <div style={{ display: 'flex', alignItems: 'center', padding: '2px 4px', borderBottom: `1px solid ${C}` }}>
-                    <span style={{ fontSize: '11px', fontWeight: '900', color: C, marginRight: '6px' }}>합계</span>
-                    <span style={{ flex: 1, fontSize: '10px', fontWeight: 'bold', color: C }}>{toKoreanCurrency(totalAmount)} (￦{formatNumber(totalAmount)})</span>
-                    <span style={{ fontSize: '7.5px', color: C }}>(전잔금+금기)</span>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', borderBottom: `1.5px solid ${C}` }}>
+                    <span style={{ fontSize: '15px', fontWeight: '900', color: C, marginRight: '10px' }}>합계</span>
+                    <span style={{ flex: 1, fontSize: '14px', fontWeight: 'bold', color: C }}>{toKoreanCurrency(totalAmount)} (￦{formatNumber(totalAmount)})</span>
+                    <span style={{ fontSize: '10px', color: C }}>(전잔금+금기)</span>
                 </div>
 
                 {/* ── 품목 테이블 ── */}
                 <div style={{ flex: 1, overflow: 'hidden' }}>
                     <table style={{ ...tblStyle(C) }}>
-                        <colgroup>
-                            <col style={{ width: '32px' }} />
-                            <col /> {/* 내역: 나머지 */}
-                            <col style={{ width: '70px' }} />
-                            <col style={{ width: '32px' }} />
-                            <col style={{ width: '60px' }} />
-                            <col style={{ width: '68px' }} />
-                            <col style={{ width: '55px' }} />
-                        </colgroup>
                         <thead>
-                            <tr style={{ backgroundColor: 'rgba(0,0,0,0.03)', height: '18px' }}>
-                                {['월/일', '내  역', '규  격', '수량', '단  가', '공급가액', '세  액'].map((h, i) => (
-                                    <th key={i} style={{ ...td(C), textAlign: 'center', fontWeight: '900', fontSize: '8.5px', borderRight: i === 6 ? 'none' : `0.7px solid ${C}` }}>{h}</th>
+                            <tr style={{ backgroundColor: 'rgba(0,0,0,0.03)', height: '24px' }}>
+                                {[
+                                    { key: 'date', label: '월/일' },
+                                    { key: 'name', label: '내  역' },
+                                    { key: 'spec', label: '규  격' },
+                                    { key: 'qty', label: '수량' },
+                                    { key: 'price', label: '단  가' },
+                                    { key: 'supply', label: '공급가액' },
+                                    { key: 'tax', label: '세  액' }
+                                ].map((h, i) => (
+                                    <th
+                                        key={h.key}
+                                        style={{
+                                            ...td(C),
+                                            width: colWidths[h.key],
+                                            textAlign: 'center',
+                                            fontWeight: '900',
+                                            fontSize: '12px',
+                                            borderRight: i === 6 ? 'none' : `0.8px solid ${C}`,
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        {h.label}
+                                        {/* Resizer Handle */}
+                                        {i < 6 && (
+                                            <div
+                                                onMouseDown={(e) => onResizerMouseDown(h.key, e)}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: -3,
+                                                    top: 0,
+                                                    bottom: 0,
+                                                    width: 6,
+                                                    cursor: 'col-resize',
+                                                    zIndex: 10
+                                                }}
+                                            />
+                                        )}
+                                    </th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {items.map((item, idx) => (
                                 <tr key={idx} style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>{(item.date || '').slice(5)}</td>
-                                    <td style={{ ...td(C), fontWeight: 'bold', fontSize: '8px' }}>{item.product?.name || item.item_name || ''}</td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '7.5px' }}>{item.product?.spec || ''}</td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '8px' }}>{formatNumber(item.quantity)}</td>
-                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '8px' }}>{formatNumber(item.unit_price)}</td>
-                                    <td style={{ ...td(C), textAlign: 'right', fontWeight: 'bold', fontSize: '8px' }}>{formatNumber(item.quantity * item.unit_price)}</td>
-                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '8px', borderRight: 'none' }}>{formatNumber(Math.floor(item.quantity * item.unit_price * 0.1))}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>{(item.date || '').slice(5)}</td>
+                                    <td style={{ ...td(C), fontWeight: 'bold', fontSize: '11.5px' }}>{item.product?.name || item.item_name || ''}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>{item.product?.spec || ''}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px' }}>{formatNumber(item.quantity)}</td>
+                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px' }}>{formatNumber(item.unit_price)}</td>
+                                    <td style={{ ...td(C), textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{formatNumber(item.quantity * item.unit_price)}</td>
+                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '12px', borderRight: 'none' }}>{formatNumber(Math.floor(item.quantity * item.unit_price * 0.1))}</td>
                                 </tr>
                             ))}
                             {/* 이하여백 행 */}
                             {emptyCount > 0 && (
                                 <tr style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), borderBottom: `0.7px dotted ${C}` }} />
-                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '8px', borderBottom: `0.7px dotted ${C}`, borderRight: 'none' }}>= 이하여백 =</td>
+                                    <td style={{ ...td(C), borderBottom: `0.8px dotted ${C}` }} />
+                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', borderBottom: `0.8px dotted ${C}`, borderRight: 'none' }}>= 이하여백 =</td>
                                 </tr>
                             )}
                             {Array(Math.max(0, emptyCount - 1)).fill(null).map((_, i) => (
                                 <tr key={i} style={{ height: ROW_H }}>
-                                    <td colSpan={7} style={{ borderBottom: `0.7px dotted ${C}`, borderLeft: `0.7px solid ${C}`, borderRight: `0.7px solid ${C}` }} />
+                                    <td colSpan={7} style={{ borderBottom: `0.8px dotted ${C}`, borderLeft: `0.8px solid ${C}`, borderRight: `0.8px solid ${C}` }} />
                                 </tr>
                             ))}
                         </tbody>
@@ -342,47 +404,47 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 </div>
 
                 {/* ── 하단 Footer 테이블 ── */}
-                <table style={{ ...tblStyle(C), borderTop: `1.5px solid ${C}` }}>
-                    <colgroup>
-                        <col style={{ width: '40px' }} />
-                        <col />
-                        <col style={{ width: '36px' }} />
-                        <col style={{ width: '110px' }} />
-                    </colgroup>
+                <table style={{ ...tblStyle(C), borderTop: `1.8px solid ${C}` }}>
                     <tbody>
-                        <tr style={{ height: '19px' }}>
-                            <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '8.5px' }}>전잔금</td>
+                        <tr style={{ height: '24px' }}>
+                            <td style={{ ...td(C), width: '60px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>전잔금</td>
                             <td style={{ ...td(C) }}>
                                 <input
                                     value={formatNumber(footerInfo.prev_balance)}
                                     onChange={e => setFooterInfo(p => ({ ...p, prev_balance: Number(e.target.value.replace(/,/g, '')) || 0 }))}
-                                    style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: C, fontSize: '9px', background: 'transparent' }}
+                                    style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: C, fontSize: '13px', background: 'transparent', fontWeight: 'bold' }}
                                 />
                             </td>
-                            <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '8.5px' }}>합계</td>
-                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '10px', paddingRight: '4px', borderRight: 'none' }}>￦{formatNumber(totalAmount)}</td>
+                            <td style={{ ...td(C), width: '50px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>합계</td>
+                            <td style={{ ...td(C), width: '150px', textAlign: 'right', fontWeight: '900', fontSize: '15px', paddingRight: '12px', borderRight: 'none' }}>￦{formatNumber(totalAmount)}</td>
                         </tr>
-                        <tr style={{ height: '19px' }}>
-                            <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '8.5px' }}>입금</td>
+                        <tr style={{ height: '24px' }}>
+                            <td style={{ ...td(C), width: '60px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>입금</td>
                             <td style={{ ...td(C) }}>
                                 <input
                                     value={formatNumber(footerInfo.paid_amount)}
                                     onChange={e => setFooterInfo(p => ({ ...p, paid_amount: Number(e.target.value.replace(/,/g, '')) || 0 }))}
-                                    style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: C, fontSize: '9px', background: 'transparent' }}
+                                    style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: C, fontSize: '13px', background: 'transparent', fontWeight: 'bold' }}
                                 />
                             </td>
-                            <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '8.5px' }}>잔금</td>
-                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '10px', paddingRight: '4px', borderRight: 'none' }}>
+                            <td style={{ ...td(C), width: '50px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>잔금</td>
+                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '15px', paddingRight: '12px', borderRight: 'none' }}>
                                 ￦{formatNumber(balance)}
-                                <span style={{ fontSize: '7px', marginLeft: '4px' }}>인수자&nbsp;&nbsp;<input value={footerInfo.receiver_name} onChange={e => setFooterInfo(p => ({ ...p, receiver_name: e.target.value }))} style={{ border: 'none', width: '40px', outline: 'none', color: C, fontSize: '8.5px', background: 'transparent' }} /></span>
-                                <span style={{ fontSize: '9px', marginLeft: '4px' }}>(인)</span>
+                                <span style={{ fontSize: '11px', marginLeft: '12px', fontWeight: 'bold' }}>인수자&nbsp;</span>
+                                <input
+                                    value={footerInfo.receiver_name}
+                                    onChange={e => setFooterInfo(p => ({ ...p, receiver_name: e.target.value }))}
+                                    placeholder="성함"
+                                    style={{ border: 'none', width: '60px', outline: 'none', color: C, fontSize: '12px', background: 'transparent', borderBottom: `0.5px solid ${C}`, textAlign: 'center' }}
+                                />
+                                <span style={{ fontSize: '12px', marginLeft: '6px', fontWeight: 'bold' }}>(인)</span>
                             </td>
                         </tr>
                     </tbody>
                 </table>
 
                 {/* ── 하단 감사 문구 ── */}
-                <div style={{ textAlign: 'center', padding: '2px 0', borderTop: `0.7px solid ${C}`, fontSize: '8.5px', fontWeight: '900', color: C }}>
+                <div style={{ textAlign: 'center', padding: '2px 0', borderTop: `0.7px solid ${C}`, fontSize: '9.5px', fontWeight: '900', color: C }}>
                     상기와 같이 계산합니다. 감사합니다.
                 </div>
             </div>
@@ -425,7 +487,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 </Box>
 
                 {/* 본문 */}
-                <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: '#334155', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#334155', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     {saveStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ 명세서가 정상적으로 첨부되었습니다.</Alert>}
                     {saveStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>저장에 실패했습니다. 다시 시도해 주세요.</Alert>}
 
@@ -440,6 +502,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             minWidth: '297mm',
                             boxSizing: 'border-box',
                             overflow: 'hidden',
+                            position: 'relative', // For perforation line
                             /* 화면에서 축소 표시 */
                             transform: `scale(${scale})`,
                             transformOrigin: 'top center',
@@ -448,12 +511,22 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             /* 표시용 */
                             display: 'flex',
                             flexDirection: 'row',
-                            gap: '5mm',
-                            padding: '4mm',
+                            gap: '12mm', // 여백 확대
+                            padding: '10mm', // 여백 확대
                             backgroundColor: '#fff',
-                            boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+                            boxShadow: '0 12px 60px rgba(0,0,0,0.5)',
                         }}
                     >
+                        {/* 중앙 절취선 */}
+                        <div style={{
+                            position: 'absolute',
+                            left: '50%', top: '5mm', bottom: '5mm',
+                            borderRight: '1.5px dashed #999',
+                            pointerEvents: 'none',
+                            zIndex: 1,
+                            transform: 'translateX(-50%)'
+                        }} className="tsm-no-print" />
+
                         <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="blue" /></div>
                         <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="red" /></div>
                     </div>
