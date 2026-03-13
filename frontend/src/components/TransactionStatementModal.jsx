@@ -19,30 +19,45 @@ const injectPrintCSS = () => {
     style.id = PRINT_STYLE_ID;
     style.innerHTML = `
         @media print {
-            @page { size: A4 landscape; margin: 10mm; }
-            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            @page { size: A4 landscape; margin: 0 !important; }
+            
+            /* 모든 요소 숨김 */
             body * { visibility: hidden !important; }
+            
+            /* 모달 껍데기 및 불필요한 UI 완전 제거 */
+            .MuiModal-root, .MuiBox-root, .tsm-no-print { display: none !important; }
+            
+            /* 명세서 컨테이너 부활 및 절대 좌표 고정 */
             .tsm-print-container,
-            .tsm-print-container * { visibility: visible !important; }
-            .tsm-print-container {
-                position: fixed !important;
-                left: 0 !important; top: 0 !important;
-                width: 277mm !important;   /* 297mm - 2*10mm margin */
-                height: auto !important;
-                min-height: 0 !important;
-                transform: none !important;
-                display: flex !important; flex-direction: row !important;
-                gap: 5mm !important; padding: 0 !important;
-                background: #fff !important; box-shadow: none !important;
-                overflow: visible !important; box-sizing: border-box !important;
+            .tsm-print-container * { 
+                visibility: visible !important; 
+                display: flex !important; 
             }
-            .tsm-print-container > * { flex: 1 !important; height: auto !important; }
-            .tsm-print-container table { width: 100% !important; }
-            .tsm-print-container tr,
-            .tsm-print-container td,
-            .tsm-print-container th { height: auto !important; min-height: 18px !important; }
-            .tsm-no-print { display: none !important; }
+            
+            .tsm-print-container {
+                display: flex !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 297mm !important;
+                height: 210mm !important;
+                margin: 0 !important;
+                padding: 10mm !important;
+                box-sizing: border-box !important;
+                transform: none !important;
+                background-color: white !important;
+                visibility: visible !important;
+                z-index: 9999 !important;
+            }
+            .tsm-print-container > div { flex: 1 !important; height: auto !important; }
+            
+            /* 테이블 및 텍스트 최적화 */
+            .tsm-print-container table { width: 100% !important; table-layout: fixed !important; }
+            .tsm-print-container td, .tsm-print-container th { height: auto !important; }
             .tsm-remarks-textarea { border: none !important; resize: none !important; overflow: hidden !important; background: transparent !important; }
+            
+            /* 브라우저 컬러 출력 강제 */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     `;
     document.head.appendChild(style);
