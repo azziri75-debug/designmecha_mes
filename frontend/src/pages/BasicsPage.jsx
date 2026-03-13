@@ -2069,7 +2069,7 @@ const BasicsPageContent = () => {
                                         type="submit"
                                         className="px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40"
                                     >
-                                        {modalType === 'create' || modalType === 'add_contact' || modalType === 'create_staff' || modalType === 'create_equipment' ? '등록완료' : '수정완료'}
+                                        {modalType === 'create' || modalType === 'add_contact' || modalType === 'create_staff' || modalType === 'create_equipment' || modalType === 'create_instrument' || modalType === 'add_inst_history' || modalType === 'add_eq_history' ? '등록완료' : '수정완료'}
                                     </button>
                                 </div>
                             </form>

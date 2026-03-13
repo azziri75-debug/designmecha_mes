@@ -59,7 +59,7 @@ const DeliveryPage = () => {
 
     return (
         <div className="min-h-screen bg-black text-gray-100 p-8">
-            <div className="max-w-7xl mx-auto space-y-8">
+            <div className="w-full space-y-8">
                 {/* Header Section */}
                 <div className="flex justify-between items-end">
                     <div className="space-y-2">

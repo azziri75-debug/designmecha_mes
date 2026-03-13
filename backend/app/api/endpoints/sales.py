@@ -1066,3 +1066,52 @@ async def read_delivery_status(
 
     result = await db.execute(query)
     return result.scalars().unique().all()
+
+
+# ─────────────────────────────────────────────────────────────
+# 거래명세서 PDF 첨부 (납품 이력 → statement_json 업데이트)
+# ─────────────────────────────────────────────────────────────
+@router.post("/delivery-histories/{history_id}/attach-statement")
+async def attach_statement_to_delivery_history(
+    history_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user=Depends(deps.get_current_user),
+):
+    """거래명세서 PDF를 저장하고 해당 DeliveryHistory에 링크를 저장합니다."""
+    # 1. Fetch delivery history
+    result = await db.execute(select(DeliveryHistory).where(DeliveryHistory.id == history_id))
+    history = result.scalar_one_or_none()
+    if not history:
+        raise HTTPException(status_code=404, detail="DeliveryHistory not found")
+
+    # 2. Save PDF file to disk
+    _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    save_dir = os.path.join(_BASE_DIR, "uploads", "statements")
+    os.makedirs(save_dir, exist_ok=True)
+
+    filename = f"statement_{history_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+    file_path = os.path.join(save_dir, filename)
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    # 3. Build public URL
+    file_url = f"/static/statements/{filename}"
+
+    # 4. Update statement_json on the history record
+    existing = history.statement_json or {}
+    if isinstance(existing, str):
+        import json as _json
+        try:
+            existing = _json.loads(existing)
+        except Exception:
+            existing = {}
+    existing["pdf_url"] = file_url
+    existing["attached_at"] = datetime.now().isoformat()
+    history.statement_json = existing
+
+    await db.commit()
+    await db.refresh(history)
+
+    return {"status": "ok", "pdf_url": file_url, "history_id": history_id}
