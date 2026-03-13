@@ -26,6 +26,31 @@ KST = timezone(timedelta(hours=9))
 router = APIRouter()
 
 
+@router.post("/cleanup-ghost-data")
+async def cleanup_ghost_data(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """
+    유령 근태 데이터 강제 삭제 (마운트 시 프론트엔드에서 자동 호출)
+    - approval_id가 NULL인 결재 연계 카테고리 기록 삭제
+    - 연결된 결재 문서가 소프트 삭제된 기록 삭제
+    """
+    from sqlalchemy import text as sql_text
+    await db.execute(sql_text("""
+        DELETE FROM employee_time_records 
+        WHERE category IN ('휴가', '연차', '외출', '반차', 'ANNUAL', 'HALF_DAY', 'OUTING', 'EARLY_LEAVE', 'EVENT_LEAVE')
+        AND (
+            approval_id IS NULL
+            OR approval_id IN (
+                SELECT id FROM approval_documents WHERE deleted_at IS NOT NULL
+            )
+        )
+    """))
+    await db.commit()
+    return {"status": "ok", "message": "Ghost employee_time_records cleaned up"}
+
+
 def _to_minutes(t_str: str) -> int:
     """'HH:MM' 또는 'HH:MM:SS' 문자열을 분(Minutes)으로 변환"""
     if not t_str:

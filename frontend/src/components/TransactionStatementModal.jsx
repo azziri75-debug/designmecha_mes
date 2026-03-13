@@ -99,14 +99,14 @@ const TransactionStatementModal = ({ open, onClose, data }) => {
             const formData = new FormData();
             formData.append('file', pdfBlob, `Statement_${data.delivery_no || 'No'}.pdf`);
 
-            // Upload to backend (Assume we have an endpoint for this)
-            await api.post(`/orders/delivery/${data.id}/attach-statement`, formData, {
+            // Upload the PDF as an attachment to the delivery history record
+            await api.post(`/sales/delivery-histories/${data.id}/attach-statement`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
             setSaveStatus('success');
-            if (!autoSilent) {
-                setTimeout(() => onClose(), 1500);
+            if (!autoSilent && onSuccess) {
+                setTimeout(() => onSuccess(), 1000);
             }
         } catch (error) {
             console.error('Failed to save statement:', error);
@@ -177,10 +177,23 @@ const TransactionStatementModal = ({ open, onClose, data }) => {
                                     <Grid item xs={3} sx={{ borderBottom: '1px solid', borderRight: '1px solid', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '20px' }}>상호</Grid>
                                     <Grid item xs={5} sx={{ borderBottom: '1px solid', borderRight: '1px solid', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', pl: 0.5 }}>{supplierInfo.company_name}</Grid>
                                     <Grid item xs={1.5} sx={{ borderBottom: '1px solid', borderRight: '1px solid', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>성명</Grid>
-                                    <Grid item xs={2.5} sx={{ borderBottom: '1px solid', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                                    <Grid item xs={2.5} sx={{ borderBottom: '1px solid', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: '36px' }}>
                                         {supplierInfo.owner_name}
-                                        <Box sx={{ position: 'absolute', right: -2, top: -5, opacity: 0.6 }}>
-                                            <div style={{ width: 25, height: 25, border: `1.5px solid ${pColor}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold' }}>인</div>
+                                        {/* Company Seal / 직인 */}
+                                        <Box sx={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40 }}>
+                                            {data.company_seal ? (
+                                                <img src={data.company_seal} alt="직인" style={{ width: 40, height: 40, opacity: 0.65, objectFit: 'contain' }} />
+                                            ) : (
+                                                <Box sx={{
+                                                    width: 38, height: 38,
+                                                    border: '2px solid #E50000',
+                                                    borderRadius: '50%',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: '#E50000', fontSize: '10px', fontWeight: '900',
+                                                    opacity: 0.7,
+                                                    background: 'rgba(229,0,0,0.05)'
+                                                }}>직인</Box>
+                                            )}
                                         </Box>
                                     </Grid>
 

@@ -31,6 +31,9 @@ const AttendancePage = () => {
 
     // Fetch staff list for sidebar
     useEffect(() => {
+        // [Cleanup] 마운트 시 유령 데이터(과거 결재 삭제 후 남은 near records) 자동 삭제
+        api.post('/hr/cleanup-ghost-data').catch(() => { }); // 실패해도 조용히 넘김
+
         const fetchStaff = async () => {
             try {
                 const res = await api.get('/basics/staff/');

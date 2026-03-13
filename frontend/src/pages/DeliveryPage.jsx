@@ -180,8 +180,8 @@ const DeliveryPage = () => {
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     <div className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-black italic tracking-tighter ${ord.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500' :
-                                                            ord.status === 'IN_PROGRESS' ? 'bg-blue-500/10 text-blue-500' :
-                                                                'bg-gray-800 text-gray-500'
+                                                        ord.status === 'IN_PROGRESS' ? 'bg-blue-500/10 text-blue-500' :
+                                                            'bg-gray-800 text-gray-500'
                                                         }`}>
                                                         {ord.status}
                                                     </div>
@@ -257,9 +257,23 @@ const DeliveryPage = () => {
                                                                                         className="text-[10px] bg-blue-900/30 text-blue-400 border border-blue-900/50 px-2 py-1 rounded hover:bg-blue-900/50 flex items-center gap-1"
                                                                                         onClick={() => {
                                                                                             setStatementData({
+                                                                                                // Delivery-specific data
+                                                                                                id: dh.id,
+                                                                                                delivery_no: dh.delivery_no,
+                                                                                                delivery_date: dh.delivery_date,
+                                                                                                // Order-level data for statement
+                                                                                                order_no: ord.order_no,
+                                                                                                partner: ord.partner,
+                                                                                                // Map delivery items for the form
+                                                                                                items: (dh.items || []).map(it => ({
+                                                                                                    date: dh.delivery_date,
+                                                                                                    item_name: it.order_item?.product?.name || '',
+                                                                                                    product: it.order_item?.product || {},
+                                                                                                    quantity: it.quantity,
+                                                                                                    unit_price: it.order_item?.unit_price || 0,
+                                                                                                })),
+                                                                                                // Saved statement data if any
                                                                                                 ...(dh.statement_json || {}),
-                                                                                                deliveryHistoryId: dh.id,
-                                                                                                deliveryDate: dh.delivery_date
                                                                                             });
                                                                                             setShowStatementModal(true);
                                                                                         }}
@@ -318,13 +332,18 @@ const DeliveryPage = () => {
 
             {showStatementModal && statementData && (
                 <TransactionStatementModal
-                    isOpen={showStatementModal}
+                    open={showStatementModal}
                     onClose={() => {
                         setShowStatementModal(false);
                         setStatementData(null);
                     }}
-                    initialData={statementData}
-                    onSuccess={fetchOrders}
+                    data={statementData}
+                    onSuccess={() => {
+                        fetchOrders();
+                        alert('✅ 명세서가 첨부되었습니다.');
+                        setShowStatementModal(false);
+                        setStatementData(null);
+                    }}
                 />
             )}
         </div>
