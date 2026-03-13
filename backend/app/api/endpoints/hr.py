@@ -481,36 +481,41 @@ async def get_monthly_attendance(
     from sqlalchemy import or_ as sa_or, and_ as sa_and, not_ as sa_not
     from sqlalchemy import delete as sa_delete
 
-    # 소프트 삭제된 결재문서 ID 서브쿼리
+    # =====================================================================
+    # [HARD DELETE] 유령 데이터 영구 삭제 - 조회 전에 DB에서 완전히 제거
+    # 조건: 결재 카테고리인데 (1) approval_id가 NULL이거나
+    #        (2) 연결된 approval_doc이 소프트 삭제(deleted_at IS NOT NULL)된 것
+    # =====================================================================
     deleted_approval_ids_subq = (
         select(ApprovalDocument.id)
         .where(ApprovalDocument.deleted_at != None)  # noqa: E711
         .scalar_subquery()
     )
 
-    # 근태 기록 조회 - 유령 데이터 제외:
-    # 1) 결재 카테고리인데 approval_id가 NULL인 것 제외
-    # 2) 결재 카테고리인데 연결된 approval_doc가 소프트 삭제된 것 제외
+    await db.execute(
+        sa_delete(EmployeeTimeRecord).where(
+            EmployeeTimeRecord.staff_id == staff_id,
+            EmployeeTimeRecord.category.in_(APPROVAL_CATEGORIES),
+            sa_or(
+                EmployeeTimeRecord.approval_id == None,  # noqa: E711
+                EmployeeTimeRecord.approval_id.in_(deleted_approval_ids_subq)
+            )
+        )
+    )
+    await db.commit()
+
+    # 근태 기록 조회 (유령 데이터는 위 DELETE 단계에서 이미 제거됨)
     records_res = await db.execute(
         select(EmployeeTimeRecord)
         .where(
             EmployeeTimeRecord.staff_id == staff_id,
             EmployeeTimeRecord.record_date >= start_date,
             EmployeeTimeRecord.record_date <= end_date,
-            # Ghost record filter
-            sa_not(
-                sa_and(
-                    EmployeeTimeRecord.category.in_(APPROVAL_CATEGORIES),
-                    sa_or(
-                        EmployeeTimeRecord.approval_id == None,  # noqa: E711
-                        EmployeeTimeRecord.approval_id.in_(deleted_approval_ids_subq)
-                    )
-                )
-            )
         )
         .order_by(EmployeeTimeRecord.record_date.asc())
     )
     records = records_res.scalars().all()
+
 
     # 해당 월의 승인된 결재 문서 조회 (VACATION, EARLY_LEAVE, OVERTIME) - 소프트 삭제 제외
     TARGET_TYPES = ["VACATION", "EARLY_LEAVE", "OVERTIME"]

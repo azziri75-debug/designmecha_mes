@@ -9,7 +9,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 
-// A4 Landscape 인쇄용 CSS (전역 style 태그로 삽입)
+// A4 Landscape 인쇄용 CSS - .print-container 기반 완전 교체
 const PRINT_STYLE_ID = 'tsm-print-style';
 const injectPrintCSS = () => {
     if (document.getElementById(PRINT_STYLE_ID)) return;
@@ -17,29 +17,27 @@ const injectPrintCSS = () => {
     style.id = PRINT_STYLE_ID;
     style.innerHTML = `
         @media print {
-            @page {
-                size: A4 landscape;
-                margin: 8mm;
-            }
-            body > * { display: none !important; }
-            #tsm-print-root { display: block !important; }
-            .MuiModal-root { position: static !important; }
-            .MuiBackdrop-root { display: none !important; }
-            .tsm-no-print { display: none !important; }
-            .tsm-print-area {
+            @page { size: A4 landscape; margin: 0; }
+            body * { visibility: hidden !important; }
+            .tsm-print-container,
+            .tsm-print-container * { visibility: visible !important; }
+            .tsm-print-container {
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 297mm !important;
+                height: 210mm !important;
                 display: flex !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                gap: 10mm !important;
-                padding: 0 !important;
-                box-shadow: none !important;
+                flex-direction: row !important;
+                gap: 8mm !important;
+                padding: 6mm !important;
                 background: #fff !important;
-                transform: none !important;
+                box-shadow: none !important;
+                overflow: hidden !important;
+                box-sizing: border-box !important;
             }
-            .tsm-print-area > div {
-                flex: 1 !important;
-                page-break-inside: avoid !important;
-            }
+            .tsm-print-container > * { flex: 1 !important; }
+            .tsm-no-print { display: none !important; }
         }
     `;
     document.head.appendChild(style);
@@ -49,6 +47,8 @@ const removePrintCSS = () => {
     if (el) el.remove();
 };
 
+// 도장(직인) SVG - 인라인 Data URI로 외부 의존성 없이 항상 표시
+const SEAL_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="#c00" stroke-width="5"/><circle cx="50" cy="50" r="38" fill="none" stroke="#c00" stroke-width="1.5"/><text x="50" y="38" text-anchor="middle" font-size="11" fill="#c00" font-family="Malgun Gothic,serif" font-weight="bold">(주)디자인메카</text><text x="50" y="55" text-anchor="middle" font-size="13" fill="#c00" font-family="Malgun Gothic,serif" font-weight="900">인</text><text x="50" y="70" text-anchor="middle" font-size="9" fill="#c00" font-family="Malgun Gothic,serif">대표이사</text></svg>`)}`;
 
 const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     if (!data) return null;
@@ -194,13 +194,23 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     {/* Owner + Seal */}
                                     <Box sx={{ width: '75px', display: 'flex', alignItems: 'center', px: '3px', fontSize: '9.5px', fontWeight: 'bold', position: 'relative', height: '100%', overflow: 'visible' }}>
                                         {supplierInfo.owner_name}
-                                        {data.company_seal ? (
-                                            <img src={data.company_seal} alt="직인" style={{ position: 'absolute', right: -2, top: '50%', transform: 'translateY(-50%)', width: 42, height: 42, opacity: 0.7, objectFit: 'contain' }} />
-                                        ) : (
-                                            <Box sx={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 38, height: 38, border: `2px solid ${pColor}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7.5px', fontWeight: '900', opacity: 0.65, background: color === 'blue' ? 'rgba(0,58,193,0.05)' : 'rgba(193,0,0,0.05)' }}>
-                                                (직인)
-                                            </Box>
-                                        )}
+                                        {/* 직인 이미지 오버레이 - SVG 도장 */}
+                                        <img
+                                            src={data.company_seal || SEAL_DATA_URI}
+                                            alt="직인"
+                                            style={{
+                                                position: 'absolute',
+                                                right: -4,
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                width: 44,
+                                                height: 44,
+                                                opacity: 0.82,
+                                                objectFit: 'contain',
+                                                mixBlendMode: 'multiply',
+                                                pointerEvents: 'none',
+                                            }}
+                                        />
                                     </Box>
                                 </Box>
                                 {/* Address */}
@@ -301,23 +311,54 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     };
 
     return (
-        <Modal open={open} onClose={onClose} sx={{ '& .MuiBackdrop-root': { bgcolor: 'rgba(0,0,0,0.85)' } }}>
-            <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '1320px', maxHeight: '98vh', bgcolor: '#fff', boxShadow: 24, borderRadius: 1.5, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <Box sx={{ p: 1.5, bgcolor: '#1e293b', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', '@media print': { display: 'none' } }}>
+        <Modal open={open} onClose={onClose} sx={{ '& .MuiBackdrop-root': { bgcolor: 'rgba(0,0,0,0.88)' } }}>
+            {/* 모달 전체 컨테이너: 세로 중앙 정렬, 화면 높이 안에서 스크롤 가능 */}
+            <Box sx={{
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                maxHeight: '98vh', display: 'flex', flexDirection: 'column',
+                bgcolor: '#fff', boxShadow: 24, borderRadius: 1.5, overflow: 'hidden',
+                // A4 landscape 고정 너비
+                width: '315mm',
+            }}>
+                {/* 상단 헤더 - 인쇄시 숨김 */}
+                <Box className="tsm-no-print" sx={{ p: 1.5, bgcolor: '#1e293b', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Printer size={18} /> 거래명세서 출력 및 관리
                     </Typography>
                     <IconButton onClick={onClose} sx={{ color: '#fff' }}><X size={20} /></IconButton>
                 </Box>
-                <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#f1f5f9', '@media print': { p: 0, bgcolor: '#fff', overflow: 'visible' } }}>
-                    {saveStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2 }}>✅ 명세서가 정상적으로 첨부되었습니다.</Alert>}
-                    {saveStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>저장에 실패했습니다. 다시 시도해 주세요.</Alert>}
-                    <Box ref={printRef} className="tsm-print-area" sx={{ width: '100%', display: 'flex', gap: '28px', padding: '12px', backgroundColor: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+
+                {/* 본문 스크롤 영역 */}
+                <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {saveStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ 명세서가 정상적으로 첨부되었습니다.</Alert>}
+                    {saveStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>저장에 실패했습니다. 다시 시도해 주세요.</Alert>}
+
+                    {/* A4 고정 크기 인쇄 영역 */}
+                    <Box
+                        ref={printRef}
+                        className="tsm-print-container"
+                        sx={{
+                            // 화면에서 A4 landscape 비율로 고정
+                            width: '297mm',
+                            minHeight: '210mm',
+                            display: 'flex',
+                            flexDirection: 'row',
+                            gap: '8mm',
+                            padding: '6mm',
+                            backgroundColor: '#fff',
+                            boxSizing: 'border-box',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                            flexShrink: 0,
+                        }}
+                    >
                         <Box sx={{ flex: 1 }}><StatementForm color="blue" /></Box>
                         <Box sx={{ flex: 1 }}><StatementForm color="red" /></Box>
                     </Box>
                 </Box>
-                <Box className="tsm-no-print" sx={{ p: 2, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#f8fafc' }}>
+
+                {/* 하단 버튼 - 인쇄시 숨김 */}
+                <Box className="tsm-no-print" sx={{ p: 2, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#f8fafc', flexShrink: 0 }}>
                     <Button variant="contained" size="large" startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <Save />} onClick={() => handleSaveAndAttach(false)} disabled={isSaving} sx={{ bgcolor: '#0f172a', fontWeight: 'bold', px: 4, borderRadius: 2 }}>저장 및 첨부</Button>
                     <Button variant="contained" size="large" startIcon={<Printer />} onClick={handlePrint} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>인쇄</Button>
                     <Button variant="outlined" size="large" onClick={onClose} sx={{ borderColor: '#e2e8f0', color: '#64748b', fontWeight: 'bold', px: 4, borderRadius: 2 }}>닫기</Button>
