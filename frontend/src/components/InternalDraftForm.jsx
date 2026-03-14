@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
     Box, Button, TextField, Table, TableBody, TableCell, TableHead, TableRow,
-    Typography, Paper
+    Typography, Paper, Radio, RadioGroup, FormControlLabel, FormControl
 } from '@mui/material';
 import { Printer, FileDown, Plus, Trash2, FileText, Send } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -28,6 +28,7 @@ const injectPrintCSS = () => {
                 margin: 0 !important; 
                 padding: 0 !important; 
                 overflow: hidden !important; 
+                background: white !important;
             }
             body * { visibility: hidden !important; }
             .idf-no-print { display: none !important; }
@@ -45,6 +46,15 @@ const injectPrintCSS = () => {
                 box-shadow: none !important;
             }
             .idf-print-container * { visibility: visible !important; }
+            
+            /* Remove borders/backgrounds of inputs in print */
+            input, textarea {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                resize: none !important;
+                overflow: hidden !important;
+            }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     `;
@@ -61,12 +71,17 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
     const docIdFromUrl = searchParams.get('id');
 
     const [documentData, setDocumentData] = useState(initialData || null);
+    const [draftType, setDraftType] = useState('PAYMENT'); // PAYMENT, GENERAL
     const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
+    const [content, setContent] = useState(''); // Only used in GENERAL
+    const [introText, setIntroText] = useState('아래와 같이 납품을 위한 발주를 하고자 하오니 재가하여 주시기 바랍니다.');
+    const [companyName, setCompanyName] = useState('(주)디자인메카');
     const [docNo, setDocNo] = useState('');
     const [draftDate, setDraftDate] = useState(new Date().toISOString().split('T')[0]);
-    const [items, setItems] = useState([]);
+    const [items, setItems] = useState([{ date: '', name: '', spec: '', qty: 0, amount: 0 }]);
     const [attachments, setAttachments] = useState([]);
+    const [attachmentsText, setAttachmentsText] = useState('해당사항 없음');
+    
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     
@@ -85,12 +100,19 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
 
     useEffect(() => {
         if (documentData) {
+            const c = documentData.content || {};
+            setDraftType(c.draft_type || 'PAYMENT');
             setTitle(documentData.title || '');
-            setContent(documentData.content?.reason || '');
-            setDocNo(documentData.content?.doc_no || `DM${new Date().getFullYear()}-H${Math.floor(Math.random()*1000).toString().padStart(3, '0')}`);
+            setContent(c.reason || '');
+            setIntroText(c.intro_text || '아래와 같이 납품을 위한 발주를 하고자 하오니 재가하여 주시기 바랍니다.');
+            setCompanyName(c.company_name || '(주)디자인메카');
+            setDocNo(c.doc_no || `DM${new Date().getFullYear()}-H${Math.floor(Math.random()*1000).toString().padStart(3, '0')}`);
             setDraftDate(documentData.created_at?.split('T')[0] || new Date().toISOString().split('T')[0]);
-            setItems(documentData.content?.items || []);
+            setItems(c.items || []);
             setAttachments(documentData.attachments || []);
+            setAttachmentsText(c.attachments_text || (documentData.attachments?.length > 0 ? '' : '해당사항 없음'));
+        } else {
+            setDocNo(`DM${new Date().getFullYear()}-H${Math.floor(Math.random()*1000).toString().padStart(3, '0')}`);
         }
     }, [documentData]);
 
@@ -108,7 +130,7 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
     };
 
     const handleAddItem = () => {
-        setItems([...items, { date: new Date().toISOString().split('T')[0], name: '', spec: '', qty: 0, amount: 0 }]);
+        setItems([...items, { date: '', name: '', spec: '', qty: 0, amount: 0 }]);
     };
 
     const handleRemoveItem = (idx) => {
@@ -146,9 +168,13 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                 title,
                 doc_type: 'INTERNAL_DRAFT',
                 content: {
+                    draft_type: draftType,
                     reason: content,
+                    intro_text: introText,
+                    company_name: companyName,
                     doc_no: docNo,
                     items: items,
+                    attachments_text: attachmentsText,
                     dept: '사업본부'
                 },
                 attachments_to_add: attachments.map(a => ({ filename: a.name || a.filename, url: a.url }))
@@ -174,7 +200,7 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
         if (step?.status === 'APPROVED') {
             return (
                 <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold' }}>승인</Typography>
+                    <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '10px' }}>승인</Typography>
                     <Typography variant="caption" sx={{ fontSize: '8px' }}>{step.processed_at?.split('T')[0]}</Typography>
                     <Box sx={{ 
                         position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -193,18 +219,30 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
     };
 
     const totalAmount = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const totalQty = items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
 
     return (
         <Box sx={{ p: 4, bgcolor: '#f4f4f7', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             {/* Action Bar */}
-            <Paper className="idf-no-print" sx={{ p: 2, mb: 3, width: '100%', maxWidth: '800px', display: 'flex', gap: 2, position: 'sticky', top: 10, zIndex: 10 }}>
-                <Button variant="contained" startIcon={<Send />} onClick={handleSubmit} disabled={isSaving || (documentData && documentData.status !== 'PENDING' && documentData.status !== 'REJECTED')}>
-                    {documentData?.id ? '수정하기' : '기안하기'}
-                </Button>
-                <Button variant="outlined" startIcon={<Printer />} onClick={handlePrint}>인쇄</Button>
-                <Button variant="outlined" startIcon={<FileDown />} onClick={handleDownloadPDF}>PDF 다운로드</Button>
-                <Box sx={{ flexGrow: 1 }} />
-                <Button color="inherit" onClick={() => (onCancel ? onCancel() : navigate('/approval'))}>닫기</Button>
+            <Paper className="idf-no-print" sx={{ p: 3, mb: 3, width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: 2, position: 'sticky', top: 10, zIndex: 10 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button variant="contained" startIcon={<Send />} onClick={handleSubmit} disabled={isSaving || (documentData && documentData.status !== 'PENDING' && documentData.status !== 'REJECTED')}>
+                            {documentData?.id ? '수정하기' : '기안하기'}
+                        </Button>
+                        <Button variant="outlined" startIcon={<Printer />} onClick={handlePrint}>인쇄</Button>
+                        <Button variant="outlined" startIcon={<FileDown />} onClick={handleDownloadPDF}>PDF 다운로드</Button>
+                    </Box>
+                    <Button color="inherit" onClick={() => (onCancel ? onCancel() : navigate('/approval'))}>닫기</Button>
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, pt: 1, borderTop: '1px solid #eee' }}>
+                    <Typography sx={{ fontWeight: 'bold', color: '#666' }}>기안 종류:</Typography>
+                    <RadioGroup row value={draftType} onChange={(e) => setDraftType(e.target.value)}>
+                        <FormControlLabel value="GENERAL" control={<Radio size="small" />} label="일반기안" />
+                        <FormControlLabel value="PAYMENT" control={<Radio size="small" />} label="대금지급기안" />
+                    </RadioGroup>
+                </Box>
             </Paper>
 
             {/* A4 Form */}
@@ -217,12 +255,13 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                     p: '15mm',
                     display: 'flex',
                     flexDirection: 'column',
-                    boxShadow: '0 0 20px rgba(0,0,0,0.1)',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
                     bgcolor: 'white',
                     fontFamily: '"Malgun Gothic", "Dotum", sans-serif',
                     color: '#000',
                     lineHeight: 1.5,
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    position: 'relative'
                 }}
             >
                 {/* 1. Header Area */}
@@ -246,52 +285,44 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                 {/* 2. Top Section: Doc Info & Approval Grid */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4, alignItems: 'flex-start' }}>
                     {/* Left: Document Info */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, pt: 1 }}>
                         <Typography sx={{ fontSize: '13px', display: 'flex' }}>
-                            <Box component="span" sx={{ width: '80px' }}>문서번호 :</Box> {docNo}
+                            <Box component="span" sx={{ width: '70px', fontWeight: 'bold' }}>문서번호 :</Box> {docNo}
                         </Typography>
                         <Typography sx={{ fontSize: '13px', display: 'flex' }}>
-                            <Box component="span" sx={{ width: '80px' }}>시행일자 :</Box> {draftDate.replace(/-/g, '. ')}.
+                            <Box component="span" sx={{ width: '70px', fontWeight: 'bold' }}>시행일자 :</Box> {draftDate.replace(/-/g, '. ')}.
                         </Typography>
                         <Typography sx={{ fontSize: '13px', display: 'flex' }}>
-                            <Box component="span" sx={{ width: '80px' }}>수&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;신 :</Box> 내부결재
+                            <Box component="span" sx={{ width: '70px', fontWeight: 'bold' }}>수&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;신 :</Box> 내부결재
                         </Typography>
                     </Box>
 
-                    {/* Right: Approval Grid (Exact PDF Layout) */}
+                    {/* Right: Approval Grid (4 Columns) */}
                     <Table size="small" sx={{ 
                         width: '320px', 
                         borderCollapse: 'collapse',
-                        '& td': { border: '1px solid #000', p: 0, textAlign: 'center', fontSize: '12px' } 
+                        '& td': { border: '1px solid #000', p: 0, textAlign: 'center', fontSize: '11px' } 
                     }}>
                         <TableBody>
-                            <TableRow sx={{ height: '30px' }}>
-                                <Box component="td" sx={{ width: '60px', bgcolor: '#fff' }}>부 장</Box>
-                                <td rowSpan={2} style={{ width: '100px', fontSize: '14px' }}>
-                                    {getStatusMarker(2)}
-                                    {!documentData?.steps?.find(s => s.sequence === 2) && '/'}
-                                </td>
-                                <Box component="td" sx={{ width: '80px' }}>이 사</Box>
-                                <Box component="td" sx={{ width: '80px' }}>대표이사</Box>
+                            <TableRow sx={{ height: '24px' }}>
+                                <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>기안자</Box>
+                                <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>부 장</Box>
+                                <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>이 사</Box>
+                                <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>대표이사</Box>
                             </TableRow>
-                            <TableRow sx={{ height: '30px' }}>
-                                <Box component="td" sx={{ bgcolor: '#fff' }}>기안자</Box>
+                            <TableRow sx={{ height: '80px' }}>
+                                <td>{getStatusMarker(1)}</td>
+                                <td>{getStatusMarker(2)}</td>
                                 <td>{getStatusMarker(3)}</td>
                                 <td>{getStatusMarker(4)}</td>
-                            </TableRow>
-                            <TableRow sx={{ height: '30px' }}>
-                                <Box component="td" sx={{ bgcolor: '#fff' }}>기안일</Box>
-                                <td>{draftDate.replace(/-/g, '. ')}.</td>
-                                <Box component="td" sx={{ bgcolor: '#fff' }}>부서명</Box>
-                                <td>사업본부</td>
                             </TableRow>
                         </TableBody>
                     </Table>
                 </Box>
 
                 {/* 3. Title Section */}
-                <Box sx={{ borderTop: '2px solid #000', borderBottom: '1px solid #000', py: 1, mb: 3, px: 1 }}>
-                    <Typography sx={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ borderTop: '2.5px solid #000', borderBottom: '1px solid #000', py: 1.2, mb: 3, px: 1.5 }}>
+                    <Typography sx={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
                         제&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;목 :&nbsp;
                         <TextField 
                             variant="standard" 
@@ -299,7 +330,7 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                             placeholder="제목을 입력하세요"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            InputProps={{ disableUnderline: true, sx: { fontSize: '15px', fontWeight: 'bold' } }}
+                            InputProps={{ disableUnderline: true, sx: { fontSize: '16px', fontWeight: 'bold' } }}
                             sx={{ '& input': { p: 0 } }}
                         />
                     </Typography>
@@ -307,55 +338,117 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
 
                 {/* 4. Content Area */}
                 <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Typography sx={{ fontSize: '14px', px: 2, textIndent: '30px', mb: 2 }}>
-                        아래와 같이 납품을 위한 발주를 하고자 하오니 재가하여 주시기 바랍니다.
-                    </Typography>
-                    <Typography align="center" sx={{ fontSize: '14px', mb: 2, fontWeight: 'bold' }}>= 아&nbsp;&nbsp;&nbsp;&nbsp;래 =</Typography>
-                    
-                    <Box sx={{ px: 2, mb: 2 }}>
-                        <Typography sx={{ fontSize: '14px', mb: 1 }}>1. 업&nbsp;&nbsp;&nbsp;&nbsp;체 : (주)디자인메카</Typography>
-                        <Typography sx={{ fontSize: '14px', mb: 1 }}>2. 발주내역 :</Typography>
-                        
-                        <Table size="small" sx={{ 
-                            borderCollapse: 'collapse', 
-                            '& td, & th': { border: '1px solid #000', p: 0.5, fontSize: '12px', textAlign: 'center' } 
-                        }}>
-                            <TableHead>
-                                <TableRow sx={{ bgcolor: '#fff' }}>
-                                    <th style={{ width: '15%' }}>일자</th>
-                                    <th style={{ width: '30%' }}>품명</th>
-                                    <th style={{ width: '25%' }}>규격</th>
-                                    <th style={{ width: '10%' }}>수량</th>
-                                    <th style={{ width: '20%' }}>금액 (원)</th>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {items.map((item, idx) => (
-                                    <TableRow key={idx}>
-                                        <td><input type="text" value={item.date.slice(5).replace('-', '/')} onChange={(e) => handleItemChange(idx, 'date', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                        <td><input value={item.name} onChange={(e) => handleItemChange(idx, 'name', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                        <td><input value={item.spec} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                        <td><input type="number" value={item.qty} onChange={(e) => handleItemChange(idx, 'qty', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                        <td><input type="number" value={item.amount} onChange={(e) => handleItemChange(idx, 'amount', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'right' }} /></td>
-                                    </TableRow>
-                                ))}
-                                <TableRow sx={{ fontWeight: 'bold' }}>
-                                    <td colSpan={3}>계</td>
-                                    <td>{items.reduce((s, i) => s + (Number(i.qty) || 0), 0)}</td>
-                                    <td style={{ textAlign: 'right' }}>{formatNumber(totalAmount)}</td>
-                                </TableRow>
-                            </TableBody>
-                        </Table>
-                        
-                        <Typography sx={{ fontSize: '14px', mt: 2 }}>
-                            3. 총 금액 : {formatNumber(totalAmount)} 원 (부가세별도)
-                        </Typography>
-                    </Box>
+                    {draftType === 'GENERAL' ? (
+                        <Box sx={{ px: 1, flexGrow: 1 }}>
+                            <textarea
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                placeholder="기안 내용을 입력하세요..."
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    border: 'none',
+                                    outline: 'none',
+                                    fontSize: '14px',
+                                    fontFamily: 'inherit',
+                                    lineHeight: '1.8',
+                                    resize: 'none',
+                                    padding: '10px'
+                                }}
+                            />
+                        </Box>
+                    ) : (
+                        <>
+                            <Box sx={{ px: 1.5, mb: 2 }}>
+                                <textarea
+                                    value={introText}
+                                    onChange={(e) => setIntroText(e.target.value)}
+                                    rows={2}
+                                    style={{
+                                        width: '100%',
+                                        border: 'none',
+                                        outline: 'none',
+                                        fontSize: '14px',
+                                        fontFamily: 'inherit',
+                                        textIndent: '30px',
+                                        lineHeight: '1.6',
+                                        resize: 'none'
+                                    }}
+                                />
+                            </Box>
+                            <Typography align="center" sx={{ fontSize: '15px', mb: 3, fontWeight: 'bold' }}>= 아&nbsp;&nbsp;&nbsp;&nbsp;래 =</Typography>
+                            
+                            <Box sx={{ px: 2, mb: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                                    <Typography sx={{ fontSize: '14px', fontWeight: 'bold', width: '80px' }}>1. 업&nbsp;&nbsp;&nbsp;&nbsp;체 :</Typography>
+                                    <TextField 
+                                        variant="standard" 
+                                        value={companyName}
+                                        onChange={(e) => setCompanyName(e.target.value)}
+                                        InputProps={{ disableUnderline: true, sx: { fontSize: '14px' } }}
+                                        sx={{ flexGrow: 1, '& input': { p: 0 } }}
+                                    />
+                                </Box>
+                                <Typography sx={{ fontSize: '14px', fontWeight: 'bold', mb: 1.5 }}>2. 발주내역 :</Typography>
+                                
+                                <Table size="small" sx={{ 
+                                    borderCollapse: 'collapse', 
+                                    '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center' } 
+                                }}>
+                                    <TableHead>
+                                        <TableRow sx={{ bgcolor: '#f7f7f7' }}>
+                                            <th style={{ width: '15%' }}>일자</th>
+                                            <th style={{ width: '30%' }}>품명</th>
+                                            <th style={{ width: '25%' }}>규격</th>
+                                            <th style={{ width: '10%' }}>수량</th>
+                                            <th style={{ width: '20%' }}>금액 (원)</th>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {items.map((item, idx) => (
+                                            <TableRow key={idx}>
+                                                <td><input type="text" value={item.date} onChange={(e) => handleItemChange(idx, 'date', e.target.value)} placeholder="00/00" style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
+                                                <td><input value={item.name} onChange={(e) => handleItemChange(idx, 'name', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
+                                                <td><input value={item.spec} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
+                                                <td><input type="number" value={item.qty} onChange={(e) => handleItemChange(idx, 'qty', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
+                                                <td><input type="number" value={item.amount} onChange={(e) => handleItemChange(idx, 'amount', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'right', fontSize: '12px' }} /></td>
+                                                <td className="idf-no-print" style={{ border: 'none', width: '30px', padding: 0 }}>
+                                                    <IconButton size="small" color="error" onClick={() => handleRemoveItem(idx)}><Trash2 size={14} /></IconButton>
+                                                </td>
+                                            </TableRow>
+                                        ))}
+                                        <TableRow sx={{ fontWeight: 'bold', bgcolor: '#fafafa' }}>
+                                            <td colSpan={3}>계</td>
+                                            <td>{totalQty}</td>
+                                            <td style={{ textAlign: 'right' }}>{formatNumber(totalAmount)}</td>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+                                
+                                <Box className="idf-no-print" sx={{ mt: 1, textAlign: 'left' }}>
+                                    <Button size="small" startIcon={<Plus size={14} />} onClick={handleAddItem} sx={{ color: '#777' }}>행 추가</Button>
+                                </Box>
 
-                    <Box sx={{ mt: 'auto', mb: 8, px: 2 }}>
-                        <Typography sx={{ fontSize: '13px' }}>
-                            붙임 : {attachments.length > 0 ? attachments.map(a => a.name || a.filename).join(', ') : '해당사항 없음'}
-                        </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 3 }}>
+                                    <Typography sx={{ fontSize: '14px', fontWeight: 'bold', width: '100px' }}>3. 총 금액 :</Typography>
+                                    <Typography sx={{ fontSize: '14px', fontWeight: 'bold' }}>{formatNumber(totalAmount)} 원 (부가세별도)</Typography>
+                                </Box>
+                            </Box>
+                        </>
+                    )}
+
+                    <Box sx={{ mt: 'auto', mb: 8, px: 2, display: 'flex', alignItems: 'flex-start' }}>
+                        <Typography sx={{ fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap', pt: 0.2 }}>붙&nbsp;&nbsp;&nbsp;&nbsp;임 :&nbsp;</Typography>
+                        <TextField 
+                            variant="standard" 
+                            fullWidth 
+                            multiline
+                            value={attachmentsText}
+                            onChange={(e) => setAttachmentsText(e.target.value)}
+                            placeholder="파일 설명을 입력하세요 (예: 견적서 1부)"
+                            InputProps={{ disableUnderline: true, sx: { fontSize: '14px', lineHeight: '1.4' } }}
+                            sx={{ '& textarea': { p: 0 } }}
+                        />
                     </Box>
 
                     {/* Footer Department */}
@@ -367,8 +460,8 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
 
             {/* Attachments UI (No-Print) */}
             <Box className="idf-no-print" sx={{ mt: 4, width: '100%', maxWidth: '800px' }}>
-                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <FileText size={20} /> 첨부파일 관리
+                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: '#333' }}>
+                    <FileText size={20} /> 첨부파일 업로드
                 </Typography>
                 <MultiFileUpload 
                     files={attachments} 

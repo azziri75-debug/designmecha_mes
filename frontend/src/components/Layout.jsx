@@ -66,7 +66,6 @@ const Layout = () => {
         { icon: Wrench, label: '소모품관리', to: '/products/consumables', menuKey: 'products' },
         { icon: ShoppingBag, label: '소모품발주관리', to: '/purchasing/consumables', menuKey: 'purchasing' },
         { icon: FileText, label: '전자결재및문서관리', to: '/approval', menuKey: 'approval' },
-        { icon: Plus, label: '내부기안 작성', to: '/approval/internal-draft', menuKey: 'approval' },
         { icon: Clock, label: '근태관리', to: '/attendance', menuKey: 'hr' },
         { icon: Database, label: 'DB관리', to: '/db-management', menuKey: 'ADMIN' },
     ];
