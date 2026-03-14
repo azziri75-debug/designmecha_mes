@@ -17,7 +17,8 @@ const DOC_TYPES = {
     VACATION: { label: '휴가원', color: 'blue' },
     EARLY_LEAVE: { label: '조퇴/외출원', color: 'purple' },
     SUPPLIES: { label: '소모품 신청서', color: 'emerald' },
-    OVERTIME: { label: '야근/특근신청서', color: 'orange' }
+    OVERTIME: { label: '야근/특근신청서', color: 'orange' },
+    INTERNAL_DRAFT: { label: '내부기안', color: 'blue' }
 };
 
 const STATUS_MAP = {
@@ -28,6 +29,7 @@ const STATUS_MAP = {
 };
 
 const ApprovalPage = () => {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('documents'); // documents, settings
     const [documents, setDocuments] = useState([]);
     const [staff, setStaff] = useState([]);
@@ -205,6 +207,10 @@ const ApprovalPage = () => {
     };
 
     const handleEditDoc = (doc) => {
+        if (doc.doc_type === 'INTERNAL_DRAFT') {
+            navigate(`/approval/internal-draft?id=${doc.id}`);
+            return;
+        }
         setIsEditing(true);
         setEditDocId(doc.id);
         setSelectedDocType(doc.doc_type);
@@ -293,6 +299,13 @@ const ApprovalPage = () => {
                     <p className="text-gray-500 text-sm mt-1">휴가, 조퇴, 소모품 신청 및 결재 프로세스</p>
                 </div>
                 <div className="flex gap-2">
+                    <button
+                        onClick={() => navigate('/approval/internal-draft')}
+                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                        <Plus className="w-4 h-4" />
+                        내부기안 작성
+                    </button>
                     <button
                         onClick={() => { setSelectedDocType('VACATION'); setShowCreateModal(true); }}
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -416,7 +429,14 @@ const ApprovalPage = () => {
                                             <tr
                                                 key={doc.id}
                                                 className="hover:bg-gray-800/50 transition-colors group cursor-pointer"
-                                                onClick={() => { setSelectedDoc(doc); setShowDocDetail(true); }}
+                                                onClick={() => { 
+                                                    if (doc.doc_type === 'INTERNAL_DRAFT') {
+                                                        navigate(`/approval/internal-draft?id=${doc.id}`);
+                                                    } else {
+                                                        setSelectedDoc(doc); 
+                                                        setShowDocDetail(true); 
+                                                    }
+                                                }}
                                             >
                                                 <td className="px-6 py-4 text-sm text-gray-400">
                                                     {format(new Date(doc.created_at), 'yyyy-MM-dd')}

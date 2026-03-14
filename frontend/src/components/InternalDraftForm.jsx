@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     Box, Button, TextField, Table, TableBody, TableCell, TableHead, TableRow,
-    IconButton, Typography, Paper, Divider, Stack
+    Typography, Paper
 } from '@mui/material';
 import { Printer, FileDown, Plus, Trash2, FileText, Send } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../lib/api';
 import MultiFileUpload from './MultiFileUpload';
 import { formatNumber } from '../lib/utils';
@@ -54,14 +55,20 @@ const removePrintCSS = () => {
     if (el) el.remove();
 };
 
-const InternalDraftForm = ({ documentData, onSave, onCancel }) => {
-    const [title, setTitle] = useState(documentData?.title || '');
-    const [content, setContent] = useState(documentData?.content?.reason || '');
-    const [docNo, setDocNo] = useState(documentData?.content?.doc_no || `DM${new Date().getFullYear()}-B${Math.floor(Math.random()*1000).toString().padStart(3, '0')}`);
-    const [draftDate, setDraftDate] = useState(documentData?.created_at?.split('T')[0] || new Date().toISOString().split('T')[0]);
-    const [items, setItems] = useState(documentData?.content?.items || []);
-    const [attachments, setAttachments] = useState(documentData?.attachments || []);
+const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const docIdFromUrl = searchParams.get('id');
+
+    const [documentData, setDocumentData] = useState(initialData || null);
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [docNo, setDocNo] = useState('');
+    const [draftDate, setDraftDate] = useState(new Date().toISOString().split('T')[0]);
+    const [items, setItems] = useState([]);
+    const [attachments, setAttachments] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     
     const printRef = useRef();
 
@@ -69,6 +76,36 @@ const InternalDraftForm = ({ documentData, onSave, onCancel }) => {
         injectPrintCSS();
         return () => removePrintCSS();
     }, []);
+
+    useEffect(() => {
+        if (docIdFromUrl) {
+            fetchDocument(docIdFromUrl);
+        }
+    }, [docIdFromUrl]);
+
+    useEffect(() => {
+        if (documentData) {
+            setTitle(documentData.title || '');
+            setContent(documentData.content?.reason || '');
+            setDocNo(documentData.content?.doc_no || `DM${new Date().getFullYear()}-H${Math.floor(Math.random()*1000).toString().padStart(3, '0')}`);
+            setDraftDate(documentData.created_at?.split('T')[0] || new Date().toISOString().split('T')[0]);
+            setItems(documentData.content?.items || []);
+            setAttachments(documentData.attachments || []);
+        }
+    }, [documentData]);
+
+    const fetchDocument = async (id) => {
+        setIsLoading(true);
+        try {
+            const res = await api.get(`/approval/documents/${id}`);
+            setDocumentData(res.data);
+        } catch (err) {
+            console.error(err);
+            alert('문서를 불러오는데 실패했습니다.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleAddItem = () => {
         setItems([...items, { date: new Date().toISOString().split('T')[0], name: '', spec: '', qty: 0, amount: 0 }]);
@@ -122,7 +159,8 @@ const InternalDraftForm = ({ documentData, onSave, onCancel }) => {
             } else {
                 await api.post('/approval/documents', payload);
             }
-            onSave();
+            if (onSave) onSave();
+            else navigate('/approval');
         } catch (err) {
             console.error(err);
             alert('저장에 실패했습니다.');
@@ -160,11 +198,13 @@ const InternalDraftForm = ({ documentData, onSave, onCancel }) => {
         <Box sx={{ p: 4, bgcolor: '#f4f4f7', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             {/* Action Bar */}
             <Paper className="idf-no-print" sx={{ p: 2, mb: 3, width: '100%', maxWidth: '800px', display: 'flex', gap: 2, position: 'sticky', top: 10, zIndex: 10 }}>
-                <Button variant="contained" startIcon={<Send />} onClick={handleSubmit} disabled={isSaving}>기안하기</Button>
+                <Button variant="contained" startIcon={<Send />} onClick={handleSubmit} disabled={isSaving || (documentData && documentData.status !== 'PENDING' && documentData.status !== 'REJECTED')}>
+                    {documentData?.id ? '수정하기' : '기안하기'}
+                </Button>
                 <Button variant="outlined" startIcon={<Printer />} onClick={handlePrint}>인쇄</Button>
                 <Button variant="outlined" startIcon={<FileDown />} onClick={handleDownloadPDF}>PDF 다운로드</Button>
                 <Box sx={{ flexGrow: 1 }} />
-                <Button color="inherit" onClick={onCancel}>취소</Button>
+                <Button color="inherit" onClick={() => (onCancel ? onCancel() : navigate('/approval'))}>닫기</Button>
             </Paper>
 
             {/* A4 Form */}
