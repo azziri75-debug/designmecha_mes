@@ -325,17 +325,6 @@ const InternalDraftForm = ({ documentData, onSave, onCancel }) => {
                 </Box>
             </Paper>
 
-                {/* 4. Footer */}
-                <Box sx={{ mt: 3 }}>
-                    <Typography sx={{ fontSize: '13px' }}>
-                        붙임: {attachments.length > 0 ? attachments.map(a => a.name || a.filename).join(', ') : '해당사항 없음'}
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                        <Typography sx={{ fontSize: '18px', fontWeight: '900', letterSpacing: '2px' }}>사업본부</Typography>
-                    </Box>
-                </Box>
-            </Paper>
-
             {/* Attachments UI (No-Print) */}
             <Box className="idf-no-print" sx={{ mt: 4, width: '100%', maxWidth: '800px' }}>
                 <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
