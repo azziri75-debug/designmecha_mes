@@ -19,24 +19,14 @@ const injectPrintCSS = () => {
     style.id = PRINT_STYLE_ID;
     style.innerHTML = `
         @media print {
-            @page { size: A4 landscape; margin: 0 !important; }
+            @page { size: A4 landscape; margin: 5mm !important; }
             
-            /* 모든 요소 숨김 */
-            body * { visibility: hidden !important; }
-            
-            /* 모달 껍데기 및 불필요한 UI 완전 제거 */
-            .MuiModal-root, .MuiBox-root, .tsm-no-print { display: none !important; }
-            
-            /* 명세서 컨테이너 부활 및 절대 좌표 고정 */
-            .tsm-print-container,
-            .tsm-print-container * { 
-                visibility: visible !important; 
-                display: flex !important; 
-            }
+            /* 핵심: visibility: hidden 대신 display: none 사용 (React Portal/Modal 백화 현상 방지) */
+            .tsm-no-print, .MuiBackdrop-root, .MuiModal-backdrop { display: none !important; }
             
             .tsm-print-container {
                 display: flex !important;
-                position: absolute !important;
+                position: fixed !important; 
                 left: 0 !important;
                 top: 0 !important;
                 width: 297mm !important;
@@ -46,9 +36,9 @@ const injectPrintCSS = () => {
                 box-sizing: border-box !important;
                 transform: none !important;
                 background-color: white !important;
-                visibility: visible !important;
                 z-index: 9999 !important;
             }
+            .tsm-print-container * { visibility: visible !important; }
             .tsm-print-container > div { flex: 1 !important; height: auto !important; }
             
             /* 테이블 및 텍스트 최적화 */
@@ -56,7 +46,7 @@ const injectPrintCSS = () => {
             .tsm-print-container td, .tsm-print-container th { height: auto !important; }
             .tsm-remarks-textarea { border: none !important; resize: none !important; overflow: hidden !important; background: transparent !important; }
             
-            /* 브라우저 컬러 출력 강제 */
+            /* 컬러 강제 출력 */
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     `;
@@ -200,40 +190,44 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const [remarks, setRemarks] = useState(data.remarks || '');
 
     // ── PDF / 저장 ────────────────────────────
-    const generatePDFBlob = async () => {
-        const cvs = await html2canvas(printRef.current, { scale: 3, useCORS: true, logging: false });
-        const pdf = new jsPDF('l', 'mm', 'a4');
-        const w = pdf.internal.pageSize.getWidth();
-        pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, w, (cvs.height * w) / cvs.width);
-        return pdf.output('blob');
-    };
-    const handleSaveAndAttach = async (silent = false) => {
+    const handleDownloadPDF = async () => {
         setIsSaving(true);
         try {
-            const blob = await generatePDFBlob();
-            const fd = new FormData();
-            fd.append('file', blob, `Statement_${data.delivery_no || 'No'}.pdf`);
-            await api.post(`/sales/delivery-histories/${data.id}/attach-statement`, fd, {
-                headers: { 'Content-Type': 'multipart/form-data' },
+            // 캡처용 high-scale 캔버스 생성
+            const cvs = await html2canvas(printRef.current, {
+                scale: 2.5,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false
             });
+
+            const pdf = new jsPDF('l', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            pdf.addImage(
+                cvs.toDataURL('image/png'),
+                'PNG',
+                0, 0,
+                pageWidth, pageHeight,
+                undefined, 'FAST'
+            );
+
+            const fileName = `거래명세서_${data.delivery_date || '날짜미상'}_${data.partner?.name || '공급처미상'}.pdf`;
+            pdf.save(fileName);
+
             setSaveStatus('success');
-            if (!silent && onSuccess) setTimeout(() => onSuccess(), 1000);
+            setTimeout(() => setSaveStatus(null), 3000);
         } catch (err) {
-            console.error('Failed to save statement:', err);
+            console.error('Failed to generate PDF:', err);
             setSaveStatus('error');
         } finally {
             setIsSaving(false);
         }
     };
+
     const handlePrint = () => {
         window.print();
-        const after = () => {
-            window.removeEventListener('afterprint', after);
-            if (window.confirm('인쇄 완료 후 명세서를 납품 내역에 자동 첨부하시겠습니까?'))
-                handleSaveAndAttach(true);
-        };
-        window.addEventListener('afterprint', after);
-        setTimeout(() => window.removeEventListener('afterprint', after), 5000);
     };
 
     // ════════════════════════════════════════
@@ -535,7 +529,14 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     }, [open]);
 
     return (
-        <Modal open={open} onClose={onClose} sx={{ '& .MuiBackdrop-root': { bgcolor: 'rgba(0,0,0,0.9)' } }}>
+        <Modal
+            open={open}
+            onClose={onClose}
+            sx={{ '& .MuiBackdrop-root': { bgcolor: 'rgba(0,0,0,0.9)' } }}
+            slotProps={{
+                backdrop: { className: 'tsm-no-print' }
+            }}
+        >
             <Box sx={{
                 position: 'absolute', top: '50%', left: '50%',
                 transform: 'translate(-50%, -50%)',
@@ -553,8 +554,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
 
                 {/* 본문 */}
                 <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#334155', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {saveStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ 명세서가 정상적으로 첨부되었습니다.</Alert>}
-                    {saveStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>저장에 실패했습니다. 다시 시도해 주세요.</Alert>}
+                    {saveStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
+                    {saveStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
 
                     {/* ── A4 고정 블록: 297mm × 210mm, 화면에서는 scale로 축소 ── */}
                     <div
@@ -601,9 +602,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 <Box className="tsm-no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #475569', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#1e293b', flexShrink: 0 }}>
                     <Button variant="contained" size="large"
                         startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <Save />}
-                        onClick={() => handleSaveAndAttach(false)} disabled={isSaving}
+                        onClick={handleDownloadPDF} disabled={isSaving}
                         sx={{ bgcolor: '#0f172a', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
-                        저장 및 첨부
+                        PDF 다운로드
                     </Button>
                     <Button variant="contained" size="large" startIcon={<Printer />} onClick={handlePrint}
                         sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
