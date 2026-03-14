@@ -3,7 +3,7 @@ import {
     Modal, Box, Button, IconButton,
     CircularProgress, Alert
 } from '@mui/material';
-import { X, Printer, Save, CheckCircle2 } from 'lucide-react';
+import { X, Printer, FileDown, CheckCircle2 } from 'lucide-react';
 import { formatNumber, toKoreanCurrency } from '../lib/utils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -22,7 +22,7 @@ const injectPrintCSS = () => {
             @page { size: A4 landscape; margin: 5mm !important; }
             
             /* 핵심: visibility 대신 display: none 사용 (React Portal/Modal 백화 현상 방지) */
-            .no-print, .MuiBackdrop-root, .MuiModal-backdrop { display: none !important; }
+            .tsm-no-print, .MuiBackdrop-root, .MuiModal-backdrop { display: none !important; }
             
             .tsm-print-container {
                 display: flex !important;
@@ -109,8 +109,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         paid_amount: data.paid_amount || 0,
         receiver_name: data.receiver_name || '',
     });
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveStatus, setSaveStatus] = useState(null);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [pdfStatus, setPdfStatus] = useState(null);
     const [companyStampUrl, setCompanyStampUrl] = useState(null); // DB 직인 이미지 URL
     const printRef = useRef();
 
@@ -188,9 +188,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
 
     const [remarks, setRemarks] = useState(data.remarks || '');
 
-    // ── PDF / 저장 ────────────────────────────
+    // ── PDF 다운로드 ────────────────────────────
     const handleDownloadPDF = async () => {
-        setIsSaving(true);
+        setIsGeneratingPdf(true);
         try {
             // 캡처용 high-scale 캔버스 생성
             const cvs = await html2canvas(printRef.current, {
@@ -212,16 +212,16 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 undefined, 'FAST'
             );
 
-            const fileName = `거래명세서_${data.delivery_date || '날짜미상'}_${data.partner?.name || '공급처미상'}.pdf`;
+            const fileName = `거래명세서_${data.partner?.name || '공급처'}_${data.delivery_date || ''}.pdf`;
             pdf.save(fileName);
 
-            setSaveStatus('success');
-            setTimeout(() => setSaveStatus(null), 3000);
+            setPdfStatus('success');
+            setTimeout(() => setPdfStatus(null), 3000);
         } catch (err) {
             console.error('Failed to generate PDF:', err);
-            setSaveStatus('error');
+            setPdfStatus('error');
         } finally {
-            setIsSaving(false);
+            setIsGeneratingPdf(false);
         }
     };
 
@@ -381,7 +381,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                         {i < 6 && (
                                             <div
                                                 onMouseDown={(e) => onResizerMouseDown(h.key, e)}
-                                                className="no-print"
+                                                className="tsm-no-print"
                                                 style={{
                                                     position: 'absolute',
                                                     right: -3,
@@ -533,7 +533,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
             onClose={onClose}
             sx={{ '& .MuiBackdrop-root': { bgcolor: 'rgba(0,0,0,0.9)' } }}
             slotProps={{
-                backdrop: { className: 'no-print' }
+                backdrop: { className: 'tsm-no-print' }
             }}
         >
             <Box sx={{
@@ -544,7 +544,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 bgcolor: '#1e293b', boxShadow: 24, borderRadius: 2, overflow: 'hidden',
             }}>
                 {/* 헤더 */}
-                <Box className="no-print" sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <Box className="tsm-no-print" sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Printer size={16} /> 거래명세서 출력 및 관리
                     </span>
@@ -553,8 +553,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
 
                 {/* 본문 */}
                 <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#334155', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {saveStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
-                    {saveStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
+                    {pdfStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
+                    {pdfStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
 
                     {/* ── A4 고정 블록: 297mm × 210mm, 화면에서는 scale로 축소 ── */}
                     <div
@@ -590,7 +590,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             pointerEvents: 'none',
                             zIndex: 1,
                             transform: 'translateX(-50%)'
-                        }} className="no-print" />
+                        }} className="tsm-no-print" />
 
                         <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="blue" /></div>
                         <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="red" /></div>
@@ -598,10 +598,10 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 </Box>
 
                 {/* 하단 버튼 */}
-                <Box className="no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #475569', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#1e293b', flexShrink: 0 }}>
+                <Box className="tsm-no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #475569', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#1e293b', flexShrink: 0 }}>
                     <Button variant="contained" size="large"
-                        startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <Save />}
-                        onClick={handleDownloadPDF} disabled={isSaving}
+                        startIcon={isGeneratingPdf ? <CircularProgress size={16} color="inherit" /> : <FileDown />}
+                        onClick={handleDownloadPDF} disabled={isGeneratingPdf}
                         sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
                         PDF 다운로드
                     </Button>
