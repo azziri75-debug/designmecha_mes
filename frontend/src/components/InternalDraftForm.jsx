@@ -187,36 +187,46 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
     const isReadOnly = (documentData && documentData.status !== 'PENDING' && documentData.status !== 'REJECTED') || (documentData && documentData.author_id !== currentUser?.id);
     const isCurrentApprover = documentData?.steps?.find(s => s.sequence === documentData.current_sequence && s.approver_id === currentUser?.id && s.status === 'PENDING');
 
-    const getStatusMarker = (stepSequence) => {
-        // Special case for drafter (sequence 1)
-        if (stepSequence === 1) {
+    const getStepByRole = (roleType) => {
+        if (!documentData?.steps) return null;
+        if (roleType === '부장') return documentData.steps.find(s => s.approver?.role === '부장' || s.approver?.role?.includes('부장'));
+        if (roleType === '이사') return documentData.steps.find(s => s.approver?.role === '이사' || s.approver?.role?.includes('이사'));
+        if (roleType === '대표이사') return documentData.steps.find(s => s.approver?.role === '대표이사' || s.approver?.role?.includes('대표'));
+        return null;
+    };
+
+    const getStatusMarker = (roleType) => {
+        // 1. Author (Drafter) slot
+        if (roleType === '기안자') {
             const author = documentData?.author || currentUser;
             return (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {author?.stamp_image ? (
-                        <img src={author.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                        <img src={author.stamp_image.url} alt="Stamp" style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scale(1.3)' }} />
                     ) : (
-                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{author?.name}</Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '14px' }}>{author?.name}</Typography>
                     )}
                 </Box>
             );
         }
 
-        const step = documentData?.steps?.find(s => s.sequence === stepSequence);
+        // 2. Approver slots
+        const step = getStepByRole(roleType);
+        
         if (step?.status === 'APPROVED') {
             return (
-                <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box sx={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {step.approver?.stamp_image ? (
-                        <img src={step.approver.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                        <img src={step.approver.stamp_image.url} alt="Stamp" style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scale(1.3)' }} />
                     ) : (
                         <>
-                            <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '10px' }}>승인</Typography>
+                            <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '11px' }}>승인</Typography>
                             <Box sx={{ 
                                 position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                                width: '35px', height: '35px', border: '1.5px solid rgba(0,0,255,0.3)', borderRadius: '50%',
+                                width: '45px', height: '45px', border: '1.5px solid rgba(0,0,255,0.3)', borderRadius: '50%',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5
                             }}>
-                                <Typography sx={{ color: 'blue', fontSize: '10px', fontWeight: 'bold' }}>인</Typography>
+                                <Typography sx={{ color: 'blue', fontSize: '12px', fontWeight: 'bold' }}>인</Typography>
                             </Box>
                         </>
                     )}
@@ -225,15 +235,19 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
         }
 
         if (step?.status === 'REJECTED') {
-            return <Typography variant="caption" sx={{ color: 'red', fontWeight: 'bold' }}>반려</Typography>;
+            return (
+                <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography sx={{ color: 'red', fontWeight: 'bold', fontSize: '16px', border: '2px solid red', px: 1, borderRadius: '4px', transform: 'rotate(-15deg)' }}>반 려</Typography>
+                </Box>
+            );
         }
 
-        // Diagonal slash if step is skipped or not present
+        // 3. Diagonal slash if step is missing (skipped/전결) or document is already submitted
         if (documentData?.id && !step) {
             return (
                 <Box sx={{ 
                     width: '100%', height: '100%', 
-                    background: 'linear-gradient(to top right, transparent calc(50% - 0.5px), #ccc, transparent calc(50% + 0.5px))' 
+                    background: 'linear-gradient(to top right, transparent calc(50% - 0.5px), #bbb, transparent calc(50% + 0.5px))' 
                 }} />
             );
         }
@@ -241,12 +255,12 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
         return null;
     };
 
-    const getApprovalDate = (stepSequence) => {
-        if (stepSequence === 1) {
+    const getApprovalDate = (roleType) => {
+        if (roleType === '기안자') {
             const date = documentData?.created_at || new Date().toISOString();
             return date.split('T')[0].replace(/-/g, '.');
         }
-        const step = documentData?.steps?.find(s => s.sequence === stepSequence);
+        const step = getStepByRole(roleType);
         if (step?.status === 'APPROVED' && step.processed_at) {
             return step.processed_at.split('T')[0].replace(/-/g, '.');
         }
@@ -395,16 +409,16 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                                 <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>대표이사</Box>
                             </TableRow>
                             <TableRow sx={{ height: '80px' }}>
-                                <td>{getStatusMarker(1)}</td>
-                                <td>{getStatusMarker(2)}</td>
-                                <td>{getStatusMarker(3)}</td>
-                                <td>{getStatusMarker(4)}</td>
+                                <Box component="td" sx={{ p: '0 !important' }}>{getStatusMarker('기안자')}</Box>
+                                <Box component="td" sx={{ p: '0 !important' }}>{getStatusMarker('부장')}</Box>
+                                <Box component="td" sx={{ p: '0 !important' }}>{getStatusMarker('이사')}</Box>
+                                <Box component="td" sx={{ p: '0 !important' }}>{getStatusMarker('대표이사')}</Box>
                             </TableRow>
                             <TableRow sx={{ height: '20px' }}>
-                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate(1)}</Box>
-                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate(2)}</Box>
-                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate(3)}</Box>
-                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate(4)}</Box>
+                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate('기안자')}</Box>
+                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate('부장')}</Box>
+                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate('이사')}</Box>
+                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate('대표이사')}</Box>
                             </TableRow>
                         </TableBody>
                     </Table>
