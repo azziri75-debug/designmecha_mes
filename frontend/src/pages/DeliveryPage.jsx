@@ -188,7 +188,8 @@ const DeliveryPage = () => {
                                         <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Date</th>
                                         <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Due Date</th>
                                         <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Total Items</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Total Amount</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Amount</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-blue-400">Deliv. Amount</th>
                                         <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Status</th>
                                         <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-center">Actions</th>
                                         <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-right">Details</th>
@@ -207,6 +208,10 @@ const DeliveryPage = () => {
                                                 <td className="px-6 py-5 text-sm text-gray-400">{ord.items?.length || 0}</td>
                                                 <td className="px-6 py-5">
                                                     <span className="text-sm font-black text-white">{(ord.total_amount || 0).toLocaleString()}</span>
+                                                    <span className="text-[10px] text-gray-500 ml-1 font-bold">원</span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className="text-sm font-black text-blue-400">{(ord.total_delivered_amount || 0).toLocaleString()}</span>
                                                     <span className="text-[10px] text-gray-500 ml-1 font-bold">원</span>
                                                 </td>
                                                 <td className="px-6 py-5">
@@ -279,9 +284,27 @@ const DeliveryPage = () => {
                                                                     <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-800">
                                                                         {ord.delivery_histories.map((dh) => (
                                                                             <div key={dh.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3 flex justify-between items-center group">
-                                                                                <div>
-                                                                                    <div className="text-xs font-bold text-gray-300">{dh.delivery_date}</div>
-                                                                                    <div className="text-[10px] text-gray-500">{dh.items?.length || 0}개 품목 납품</div>
+                                                                                <div className="w-full">
+                                                                                    <div className="flex justify-between items-center mb-2">
+                                                                                        <div>
+                                                                                            <div className="text-xs font-bold text-gray-300">{dh.delivery_date}</div>
+                                                                                            <div className="text-[10px] text-gray-500 font-mono italic">{dh.delivery_no}</div>
+                                                                                        </div>
+                                                                                        <div className="text-right">
+                                                                                            <div className="text-[10px] text-gray-400">총 납품액</div>
+                                                                                            <div className="text-sm font-black text-blue-400">₩{(dh.delivery_amount || 0).toLocaleString()}</div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    {/* Minimal Items List */}
+                                                                                    <div className="bg-black/20 rounded border border-gray-800/50 p-2 text-[10px] text-gray-400">
+                                                                                        {dh.items?.map(it => (
+                                                                                            <div key={it.id} className="flex justify-between py-0.5">
+                                                                                                <span className="truncate flex-1">{it.order_item?.product?.name}</span>
+                                                                                                <span className="w-12 text-right">{it.quantity?.toLocaleString()}개</span>
+                                                                                                <span className="w-20 text-right font-bold text-gray-300">₩{(it.delivery_amount || 0).toLocaleString()}</span>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
                                                                                 </div>
                                                                                 <div className="flex gap-2">
                                                                                     <button
@@ -426,8 +449,9 @@ const DeliveryPage = () => {
                                             <div className="text-xs font-bold text-gray-200 truncate">
                                                 {item.order_item?.product?.name || '품목명 없음'}
                                             </div>
-                                            <div className="text-[10px] text-gray-500 font-mono">
-                                                Order Item ID: {item.order_item_id}
+                                            <div className="text-[10px] text-gray-500">
+                                                단가: ₩{(item.order_item?.unit_price || 0).toLocaleString()} ·
+                                                <span className="text-blue-400 font-bold ml-1">계: ₩{(item.quantity * (item.order_item?.unit_price || 0)).toLocaleString()}</span>
                                             </div>
                                         </div>
                                         <div className="w-24">

@@ -172,7 +172,9 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                         <th className="px-4 py-3 text-right">총 수량</th>
                                         <th className="px-4 py-3 text-right">기 납품</th>
                                         <th className="px-4 py-3 text-right">잔량</th>
+                                        <th className="px-4 py-3 text-right">단가</th>
                                         <th className="px-4 py-3 text-right text-blue-400 font-bold">이번 납품</th>
+                                        <th className="px-4 py-3 text-right text-blue-400 font-bold">납품금액</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-700">
@@ -182,6 +184,7 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                             <td className="px-4 py-3 text-right text-gray-500">{item.quantity}</td>
                                             <td className="px-4 py-3 text-right text-green-500">{item.delivered_quantity || 0}</td>
                                             <td className="px-4 py-3 text-right font-bold">{item.remaining_quantity}</td>
+                                            <td className="px-4 py-3 text-right text-gray-400 font-mono">₩{(item.unit_price || 0).toLocaleString()}</td>
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="number"
@@ -196,6 +199,9 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                                         setFormData({ ...formData, items: newItems });
                                                     }}
                                                 />
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-black text-blue-400">
+                                                ₩{(item.current_delivered_quantity * (item.unit_price || 0)).toLocaleString()}
                                             </td>
                                         </tr>
                                     ))}

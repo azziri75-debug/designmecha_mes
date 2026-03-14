@@ -154,6 +154,7 @@ class DeliveryHistoryItem(DeliveryHistoryItemBase):
     id: int
     delivery_id: int
     order_item: Optional[SalesOrderItemSimple] = None
+    delivery_amount: float = 0.0
 
     class Config:
         from_attributes = True
@@ -180,6 +181,7 @@ class DeliveryHistoryUpdate(BaseModel):
 class DeliveryHistory(DeliveryHistoryBase):
     id: int
     items: List[DeliveryHistoryItem] = []
+    delivery_amount: float = 0.0
     class Config:
         from_attributes = True
 
@@ -196,6 +198,7 @@ class DeliveryHistoryForStatus(BaseModel):
     attachment_files: Optional[List[Any]] = None
     statement_json: Optional[dict] = None
     supplier_info: Optional[dict] = None
+    delivery_amount: float = 0.0
     # items: shallow (no product join required for list view)
     items: List[DeliveryHistoryItem] = []
 
@@ -230,6 +233,7 @@ class DeliveryStatusResponse(BaseModel):
     delivery_method: Optional[str] = None
     transaction_date: Optional[date] = None
     total_amount: float
+    total_delivered_amount: float = 0.0
     note: Optional[str] = None
     status: Optional[str] = None
     created_at: datetime

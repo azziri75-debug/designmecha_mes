@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime, Enum as SqEnum, Text, JSON
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from app.db.base import Base
 import enum
@@ -50,25 +50,30 @@ class EstimateItem(Base):
     product = relationship("Product")
 
 class SalesOrder(Base):
-    """수주 (Header) - Renamed from Order to avoid keyword conflicts and clarity"""
+    """수주 (Header)"""
     __tablename__ = "sales_orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    order_no = Column(String, unique=True, index=True) # 수주번호 (자동생성 예정)
+    order_no = Column(String, unique=True, index=True)
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)
     order_date = Column(Date, default=func.now())
-    delivery_date = Column(Date, nullable=True) # 납기일 (Planned)
-    actual_delivery_date = Column(Date, nullable=True) # 실제 납품일
-    delivery_method = Column(String, nullable=True) # 납품 방법
-    transaction_date = Column(Date, nullable=True) # 거래명세서 일자
+    delivery_date = Column(Date, nullable=True)
+    actual_delivery_date = Column(Date, nullable=True)
+    delivery_method = Column(String, nullable=True)
+    transaction_date = Column(Date, nullable=True)
     total_amount = Column(Float, default=0.0)
     note = Column(Text, nullable=True)
     status = Column(SqEnum(OrderStatus), default=OrderStatus.PENDING)
-    attachment_file = Column(JSON, nullable=True) # 첨부파일 (JSON List of {name, url})
+    attachment_file = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=func.now())
 
     partner = relationship("Partner")
     items = relationship("SalesOrderItem", back_populates="order", cascade="all, delete-orphan")
+    delivery_histories = relationship("DeliveryHistory", back_populates="order", cascade="all, delete-orphan")
+
+    @property
+    def total_delivered_amount(self) -> float:
+        return sum(dh.delivery_amount for dh in self.delivery_histories)
 
 class SalesOrderItem(Base):
     """수주 품목 (Detail)"""
@@ -79,7 +84,7 @@ class SalesOrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     unit_price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
-    delivered_quantity = Column(Integer, default=0) # 납품 수량
+    delivered_quantity = Column(Integer, default=0)
     status = Column(SqEnum(OrderItemStatus), default=OrderItemStatus.PENDING)
     note = Column(Text, nullable=True)
 
@@ -93,19 +98,19 @@ class DeliveryHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=False)
     delivery_date = Column(Date, default=func.now())
-    delivery_no = Column(String, unique=True, index=True) # DH-YYYYMMDD-XXX
-    
+    delivery_no = Column(String, unique=True, index=True)
     note = Column(Text, nullable=True)
-    attachment_files = Column(JSON, nullable=True) # [{name, url}]
-    statement_json = Column(JSON, nullable=True) # 발행 시점의 거래명세서 데이터 스냅샷
-    
-    # 공급자 정보 (Editable용 스냅샷)
-    supplier_info = Column(JSON, nullable=True) 
-    
+    attachment_files = Column(JSON, nullable=True)
+    statement_json = Column(JSON, nullable=True)
+    supplier_info = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=func.now())
 
-    order = relationship("SalesOrder", backref="delivery_histories")
+    order = relationship("SalesOrder", back_populates="delivery_histories")
     items = relationship("DeliveryHistoryItem", back_populates="delivery_history", cascade="all, delete-orphan")
+
+    @property
+    def delivery_amount(self) -> float:
+        return sum(item.delivery_amount for item in self.items)
 
 class DeliveryHistoryItem(Base):
     """납품 내역 상세"""
@@ -118,3 +123,9 @@ class DeliveryHistoryItem(Base):
 
     delivery_history = relationship("DeliveryHistory", back_populates="items")
     order_item = relationship("SalesOrderItem")
+
+    @property
+    def delivery_amount(self) -> float:
+        if self.order_item:
+            return float(self.quantity * self.order_item.unit_price)
+        return 0.0
