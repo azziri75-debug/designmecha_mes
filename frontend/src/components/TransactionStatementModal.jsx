@@ -19,33 +19,30 @@ const injectPrintCSS = () => {
     style.id = PRINT_STYLE_ID;
     style.innerHTML = `
         @media print {
-            @page { size: A4 landscape; margin: 5mm !important; }
+            @page { size: A4 landscape; margin: 0; }
+            body { background: white !important; }
             
-            /* 핵심: visibility 대신 display: none 사용 (React Portal/Modal 백화 현상 방지) */
-            .tsm-no-print, .MuiBackdrop-root, .MuiModal-backdrop { display: none !important; }
+            /* 1. 메인 앱 화면과 모달 껍데기, 하단 버튼들 완전히 숨김 */
+            #root, .MuiBackdrop-root, .tsm-no-print { display: none !important; }
             
+            /* 2. 명세서 본체만 강제로 전체 화면(A4)으로 끌어올림 */
             .tsm-print-container {
-                display: flex !important;
-                position: fixed !important; 
+                position: fixed !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 297mm !important;
                 height: 210mm !important;
                 margin: 0 !important;
                 padding: 10mm !important;
-                box-sizing: border-box !important;
-                transform: none !important;
+                transform: none !important; /* 찌그러짐의 주범(scale) 강제 해제! */
                 background-color: white !important;
-                z-index: 9999 !important;
+                z-index: 999999 !important;
+                display: flex !important;
+                align-items: stretch !important;
             }
+            
             .tsm-print-container > div { flex: 1 !important; height: auto !important; }
-            
-            /* 테이블 및 텍스트 최적화 */
             .tsm-print-container table { width: 100% !important; table-layout: fixed !important; }
-            .tsm-print-container td, .tsm-print-container th { height: auto !important; }
-            .tsm-remarks-textarea { border: none !important; resize: none !important; overflow: hidden !important; background: transparent !important; }
-            
-            /* 컬러 강제 출력 */
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     `;
