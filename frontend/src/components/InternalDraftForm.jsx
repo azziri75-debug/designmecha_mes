@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
     Box, Button, TextField, Table, TableBody, TableCell, TableHead, TableRow,
-    Typography, Paper, Radio, RadioGroup, FormControlLabel, FormControl
+    Typography, Paper, Radio, RadioGroup, FormControlLabel, FormControl,
+    IconButton
 } from '@mui/material';
 import { Printer, FileDown, Plus, Trash2, FileText, Send } from 'lucide-react';
 import html2canvas from 'html2canvas';
