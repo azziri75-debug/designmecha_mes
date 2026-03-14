@@ -20,42 +20,53 @@ const injectPrintCSS = () => {
     style.innerHTML = `
         @media print {
             @page { size: A4 landscape; margin: 0; }
-            body, html { background: white !important; }
             
-            /* 1. 불필요한 요소 렌더링 제외 */
+            /* 1. body와 html의 여백을 완전히 없애고 넘치는 건 무조건 자름 */
+            html, body { 
+                width: 297mm !important; 
+                height: 210mm !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                overflow: hidden !important; 
+                background: white !important; 
+            }
+            
             body * { visibility: hidden !important; }
             .tsm-no-print { display: none !important; }
             
-            /* 2. 모달 껍데기의 제약 조건 강제 해제 (찌그러짐 원인 제거) */
             .MuiModal-root, .MuiBox-root {
                 position: static !important;
                 transform: none !important;
                 max-height: none !important;
                 height: auto !important;
                 overflow: visible !important;
+                background: transparent !important;
+                box-shadow: none !important; /* 껍데기 그림자 제거 */
             }
             
-            /* 3. 명세서 본체를 A4 사이즈로 절대 고정 */
+            /* 2. 컨테이너의 그림자 제거 및 페이지 넘김 방지 */
             .tsm-print-container {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 297mm !important;
                 height: 210mm !important;
-                max-height: 210mm !important;
                 margin: 0 !important;
                 padding: 10mm !important;
-                transform: none !important; /* 화면 축소 로직 완벽 무력화 */
+                box-sizing: border-box !important;
+                transform: none !important; 
                 visibility: visible !important;
                 background: white !important;
                 display: flex !important;
+                box-shadow: none !important; /* 2페이지를 만드는 주범(그림자) 완벽 제거! */
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
             }
             
             .tsm-print-container * { visibility: visible !important; }
             
-            /* 4. 내부 폼 높이가 꽉 차도록 보장 */
             .tsm-print-container > div {
-                height: 190mm !important; /* A4 높이 210mm - 상하 패딩 20mm */
+                height: 100% !important; 
                 display: flex !important;
                 flex-direction: column !important;
             }
