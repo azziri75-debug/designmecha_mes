@@ -175,6 +175,7 @@ class DeliveryHistoryUpdate(BaseModel):
     note: Optional[str] = None
     statement_json: Optional[dict] = None
     supplier_info: Optional[dict] = None
+    items: Optional[List[DeliveryHistoryItemCreate]] = None
 
 class DeliveryHistory(DeliveryHistoryBase):
     id: int

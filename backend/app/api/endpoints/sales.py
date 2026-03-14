@@ -1120,36 +1120,74 @@ async def attach_statement_to_delivery_history(
 # ─────────────────────────────────────────────────────────────
 # 납품 이력 수정 (PUT)
 # ─────────────────────────────────────────────────────────────
-@router.put("/delivery-histories/{history_id}")
+@router.put("/delivery-histories/{history_id}", response_model=schemas.DeliveryHistory)
 async def update_delivery_history(
     history_id: int,
-    payload: dict,
+    delivery_update: schemas.DeliveryHistoryUpdate,
     db: AsyncSession = Depends(deps.get_db),
     current_user=Depends(deps.get_current_user),
 ):
-    """납품 이력 메모/날짜 수정 API"""
+    """납품 이력 수정 API (수량 변경 시 수주 잔량 및 상태 동기화 포함)"""
     result = await db.execute(
         select(DeliveryHistory)
-        .options(selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item))
+        .options(
+            selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item),
+            selectinload(DeliveryHistory.order).selectinload(SalesOrder.items)
+        )
         .where(DeliveryHistory.id == history_id)
     )
     history = result.scalar_one_or_none()
     if not history:
         raise HTTPException(status_code=404, detail="DeliveryHistory not found")
 
-    # 변경 가능 필드: note, delivery_date
-    if "note" in payload:
-        history.note = payload["note"]
-    if "delivery_date" in payload:
-        from datetime import date as _date
-        try:
-            history.delivery_date = _date.fromisoformat(payload["delivery_date"])
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid delivery_date format (YYYY-MM-DD)")
+    # 1) 기본 정보 수정
+    if delivery_update.note is not None:
+        history.note = delivery_update.note
+    if delivery_update.delivery_date is not None:
+        history.delivery_date = delivery_update.delivery_date
+    if delivery_update.statement_json is not None:
+        history.statement_json = delivery_update.statement_json
+    if delivery_update.supplier_info is not None:
+        history.supplier_info = delivery_update.supplier_info
+
+    # 2) 품목 수량 수정 및 수주 데이터 동기화
+    if delivery_update.items is not None:
+        for item_in in delivery_update.items:
+            # 기존 납품 내역 아이템 찾기
+            dh_item = next((it for it in history.items if it.order_item_id == item_in.order_item_id), None)
+            if not dh_item:
+                continue # 혹은 새로 추가하는 로직이 필요할 수 있으나 여기선 수정만 처리
+            
+            old_qty = dh_item.quantity
+            new_qty = item_in.quantity
+            diff = new_qty - old_qty
+            
+            if diff != 0:
+                # 납품 이력 아이템 수량 업데이트
+                dh_item.quantity = new_qty
+                # 수주 품목의 누적 납품 수량 업데이트
+                if dh_item.order_item:
+                    dh_item.order_item.delivered_quantity = max(0, (dh_item.order_item.delivered_quantity or 0) + diff)
+
+        # 3) 수주 상태 재계산
+        order = history.order
+        if order:
+            total_qty = sum(it.quantity for it in order.items)
+            delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
+            
+            if delivered_qty >= total_qty:
+                order.status = OrderStatus.DELIVERED
+                order.actual_delivery_date = history.delivery_date
+            elif delivered_qty > 0:
+                order.status = OrderStatus.PARTIALLY_DELIVERED
+            else:
+                order.status = OrderStatus.CONFIRMED
 
     await db.commit()
     await db.refresh(history)
-    return {"status": "ok", "history_id": history_id}
+    
+    # 리턴 시 필요한 관계 로드된 상태 유지
+    return history
 
 
 # ─────────────────────────────────────────────────────────────

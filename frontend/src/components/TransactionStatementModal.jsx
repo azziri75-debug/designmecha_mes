@@ -21,8 +21,8 @@ const injectPrintCSS = () => {
         @media print {
             @page { size: A4 landscape; margin: 5mm !important; }
             
-            /* 핵심: visibility: hidden 대신 display: none 사용 (React Portal/Modal 백화 현상 방지) */
-            .tsm-no-print, .MuiBackdrop-root, .MuiModal-backdrop { display: none !important; }
+            /* 핵심: visibility 대신 display: none 사용 (React Portal/Modal 백화 현상 방지) */
+            .no-print, .MuiBackdrop-root, .MuiModal-backdrop { display: none !important; }
             
             .tsm-print-container {
                 display: flex !important;
@@ -38,7 +38,6 @@ const injectPrintCSS = () => {
                 background-color: white !important;
                 z-index: 9999 !important;
             }
-            .tsm-print-container * { visibility: visible !important; }
             .tsm-print-container > div { flex: 1 !important; height: auto !important; }
             
             /* 테이블 및 텍스트 최적화 */
@@ -382,7 +381,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                         {i < 6 && (
                                             <div
                                                 onMouseDown={(e) => onResizerMouseDown(h.key, e)}
-                                                className="tsm-no-print"
+                                                className="no-print"
                                                 style={{
                                                     position: 'absolute',
                                                     right: -3,
@@ -534,7 +533,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
             onClose={onClose}
             sx={{ '& .MuiBackdrop-root': { bgcolor: 'rgba(0,0,0,0.9)' } }}
             slotProps={{
-                backdrop: { className: 'tsm-no-print' }
+                backdrop: { className: 'no-print' }
             }}
         >
             <Box sx={{
@@ -545,7 +544,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 bgcolor: '#1e293b', boxShadow: 24, borderRadius: 2, overflow: 'hidden',
             }}>
                 {/* 헤더 */}
-                <Box className="tsm-no-print" sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <Box className="no-print" sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Printer size={16} /> 거래명세서 출력 및 관리
                     </span>
@@ -591,7 +590,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             pointerEvents: 'none',
                             zIndex: 1,
                             transform: 'translateX(-50%)'
-                        }} className="tsm-no-print" />
+                        }} className="no-print" />
 
                         <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="blue" /></div>
                         <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="red" /></div>
@@ -599,11 +598,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 </Box>
 
                 {/* 하단 버튼 */}
-                <Box className="tsm-no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #475569', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#1e293b', flexShrink: 0 }}>
+                <Box className="no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #475569', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#1e293b', flexShrink: 0 }}>
                     <Button variant="contained" size="large"
                         startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <Save />}
                         onClick={handleDownloadPDF} disabled={isSaving}
-                        sx={{ bgcolor: '#0f172a', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
+                        sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
                         PDF 다운로드
                     </Button>
                     <Button variant="contained" size="large" startIcon={<Printer />} onClick={handlePrint}

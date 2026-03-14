@@ -76,6 +76,10 @@ const DeliveryPage = () => {
             await api.put(`/sales/delivery-histories/${editHistoryModal.id}`, {
                 note: editHistoryModal.note,
                 delivery_date: editHistoryModal.delivery_date,
+                items: editHistoryModal.items.map(it => ({
+                    order_item_id: it.order_item_id,
+                    quantity: it.quantity
+                }))
             });
             setEditHistoryModal(null);
             fetchOrders();
@@ -305,7 +309,12 @@ const DeliveryPage = () => {
                                                                                     </button>
                                                                                     <button
                                                                                         className="text-[10px] bg-yellow-900/30 text-yellow-400 border border-yellow-900/50 px-2 py-1 rounded hover:bg-yellow-900/50 flex items-center gap-1"
-                                                                                        onClick={() => setEditHistoryModal({ id: dh.id, delivery_date: dh.delivery_date || '', note: dh.note || '' })}
+                                                                                        onClick={() => setEditHistoryModal({
+                                                                                            id: dh.id,
+                                                                                            delivery_date: dh.delivery_date || '',
+                                                                                            note: dh.note || '',
+                                                                                            items: dh.items.map(it => ({ ...it })) // clone items for editing
+                                                                                        })}
                                                                                     >
                                                                                         ✏️ 수정
                                                                                     </button>
@@ -401,10 +410,40 @@ const DeliveryPage = () => {
                                 <textarea
                                     value={editHistoryModal.note}
                                     onChange={e => setEditHistoryModal(p => ({ ...p, note: e.target.value }))}
-                                    rows={3}
+                                    rows={2}
                                     placeholder="비고 입력..."
                                     className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
                                 />
+                            </div>
+
+                            <Divider sx={{ bgcolor: '#333', my: 2 }} />
+
+                            <div className="space-y-3">
+                                <label className="text-xs text-blue-400 font-black uppercase tracking-widest block mb-2">납품 품목 수량 수정</label>
+                                {editHistoryModal.items?.map((item, idx) => (
+                                    <div key={item.id || idx} className="flex items-center justify-between gap-4 bg-gray-800/50 p-3 rounded-xl border border-gray-700">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-xs font-bold text-gray-200 truncate">
+                                                {item.order_item?.product?.name || '품목명 없음'}
+                                            </div>
+                                            <div className="text-[10px] text-gray-500 font-mono">
+                                                Order Item ID: {item.order_item_id}
+                                            </div>
+                                        </div>
+                                        <div className="w-24">
+                                            <input
+                                                type="number"
+                                                value={item.quantity}
+                                                onChange={e => {
+                                                    const newItems = [...editHistoryModal.items];
+                                                    newItems[idx].quantity = Number(e.target.value);
+                                                    setEditHistoryModal(p => ({ ...p, items: newItems }));
+                                                }}
+                                                className="w-full bg-gray-950 border border-gray-600 rounded-lg px-2 py-1.5 text-right text-white text-sm font-black focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                         <div className="flex gap-3 mt-6 justify-end">
