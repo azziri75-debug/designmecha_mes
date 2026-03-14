@@ -20,29 +20,46 @@ const injectPrintCSS = () => {
     style.innerHTML = `
         @media print {
             @page { size: A4 landscape; margin: 0; }
-            body { background: white !important; }
+            body, html { background: white !important; }
             
-            /* 1. 메인 앱 화면과 모달 껍데기, 하단 버튼들 완전히 숨김 */
-            #root, .MuiBackdrop-root, .tsm-no-print { display: none !important; }
+            /* 1. 불필요한 요소 렌더링 제외 */
+            body * { visibility: hidden !important; }
+            .tsm-no-print { display: none !important; }
             
-            /* 2. 명세서 본체만 강제로 전체 화면(A4)으로 끌어올림 */
+            /* 2. 모달 껍데기의 제약 조건 강제 해제 (찌그러짐 원인 제거) */
+            .MuiModal-root, .MuiBox-root {
+                position: static !important;
+                transform: none !important;
+                max-height: none !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            
+            /* 3. 명세서 본체를 A4 사이즈로 절대 고정 */
             .tsm-print-container {
-                position: fixed !important;
+                position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 297mm !important;
                 height: 210mm !important;
+                max-height: 210mm !important;
                 margin: 0 !important;
                 padding: 10mm !important;
-                transform: none !important; /* 찌그러짐의 주범(scale) 강제 해제! */
-                background-color: white !important;
-                z-index: 999999 !important;
+                transform: none !important; /* 화면 축소 로직 완벽 무력화 */
+                visibility: visible !important;
+                background: white !important;
                 display: flex !important;
-                align-items: stretch !important;
             }
             
-            .tsm-print-container > div { flex: 1 !important; height: auto !important; }
-            .tsm-print-container table { width: 100% !important; table-layout: fixed !important; }
+            .tsm-print-container * { visibility: visible !important; }
+            
+            /* 4. 내부 폼 높이가 꽉 차도록 보장 */
+            .tsm-print-container > div {
+                height: 190mm !important; /* A4 높이 210mm - 상하 패딩 20mm */
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     `;
