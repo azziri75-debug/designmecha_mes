@@ -74,11 +74,11 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
     const docIdFromUrl = searchParams.get('id');
 
     const [documentData, setDocumentData] = useState(initialData || null);
-    const [draftType, setDraftType] = useState('PAYMENT'); // PAYMENT, GENERAL
+    const [draftType, setDraftType] = useState(initialData?.content?.draft_type || 'PAYMENT'); // PAYMENT, GENERAL
     const [title, setTitle] = useState('');
     const [content, setContent] = useState(''); // Only used in GENERAL
-    const [introText, setIntroText] = useState('아래와 같이 납품을 위한 발주를 하고자 하오니 재가하여 주시기 바랍니다.');
-    const [companyName, setCompanyName] = useState('(주)디자인메카');
+    const [introText, setIntroText] = useState('');
+    const [companyName, setCompanyName] = useState('');
     const [docNo, setDocNo] = useState('');
     const [draftDate, setDraftDate] = useState(new Date().toISOString().split('T')[0]);
     const [items, setItems] = useState([{ date: '', name: '', spec: '', qty: 0, amount: 0 }]);
@@ -107,8 +107,8 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
             setDraftType(c.draft_type || 'PAYMENT');
             setTitle(documentData.title || '');
             setContent(c.reason || '');
-            setIntroText(c.intro_text || '아래와 같이 납품을 위한 발주를 하고자 하오니 재가하여 주시기 바랍니다.');
-            setCompanyName(c.company_name || '(주)디자인메카');
+            setIntroText(c.intro_text || '');
+            setCompanyName(c.company_name || '');
             setDocNo(c.doc_no || `DM${new Date().getFullYear()}-H${Math.floor(Math.random()*1000).toString().padStart(3, '0')}`);
             setDraftDate(documentData.created_at?.split('T')[0] || new Date().toISOString().split('T')[0]);
             setItems(c.items || []);
@@ -116,6 +116,13 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
             setAttachmentsText(c.attachments_text || (documentData.attachments?.length > 0 ? '' : '해당사항 없음'));
         } else {
             setDocNo(`DM${new Date().getFullYear()}-H${Math.floor(Math.random()*1000).toString().padStart(3, '0')}`);
+            setIntroText(draftType === 'PAYMENT' ? '아래와 같이 납품을 위한 발주를 하고자 하오니 재가하여 주시기 바랍니다.' : '');
+            setCompanyName(draftType === 'PAYMENT' ? '(주)디자인메카' : '');
+            // When user manually clears it, we should respect it, 
+            // but for new empty form of specific type, we might want defaults or completely empty as requested.
+            // USER requested: "지워버려. 화면이 떴을 때 완전히 빈칸이어야 해."
+            setIntroText('');
+            setCompanyName('');
         }
     }, [documentData]);
 
@@ -163,6 +170,89 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
         pdf.save(`내부기안_${title || '문서'}.pdf`);
     };
 
+    const handleProcessAction = async (status, comment = '') => {
+        setIsSaving(true);
+        try {
+            await api.post(`/approval/documents/${documentData.id}/process`, { status, comment });
+            fetchDocument(documentData.id);
+            alert(status === 'APPROVED' ? '승인되었습니다.' : '반려되었습니다.');
+        } catch (err) {
+            console.error(err);
+            alert('처리에 실패했습니다.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const isReadOnly = (documentData && documentData.status !== 'PENDING' && documentData.status !== 'REJECTED') || (documentData && documentData.author_id !== currentUser?.id);
+    const isCurrentApprover = documentData?.steps?.find(s => s.sequence === documentData.current_sequence && s.approver_id === currentUser?.id && s.status === 'PENDING');
+
+    const getStatusMarker = (stepSequence) => {
+        // Special case for drafter (sequence 1)
+        if (stepSequence === 1) {
+            const author = documentData?.author || currentUser;
+            return (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {author?.stamp_image ? (
+                        <img src={author.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                    ) : (
+                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{author?.name}</Typography>
+                    )}
+                </Box>
+            );
+        }
+
+        const step = documentData?.steps?.find(s => s.sequence === stepSequence);
+        if (step?.status === 'APPROVED') {
+            return (
+                <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {step.approver?.stamp_image ? (
+                        <img src={step.approver.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                    ) : (
+                        <>
+                            <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '10px' }}>승인</Typography>
+                            <Box sx={{ 
+                                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                width: '35px', height: '35px', border: '1.5px solid rgba(0,0,255,0.3)', borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5
+                            }}>
+                                <Typography sx={{ color: 'blue', fontSize: '10px', fontWeight: 'bold' }}>인</Typography>
+                            </Box>
+                        </>
+                    )}
+                </Box>
+            );
+        }
+
+        if (step?.status === 'REJECTED') {
+            return <Typography variant="caption" sx={{ color: 'red', fontWeight: 'bold' }}>반려</Typography>;
+        }
+
+        // Diagonal slash if step is skipped or not present
+        if (documentData?.id && !step) {
+            return (
+                <Box sx={{ 
+                    width: '100%', height: '100%', 
+                    background: 'linear-gradient(to top right, transparent calc(50% - 0.5px), #ccc, transparent calc(50% + 0.5px))' 
+                }} />
+            );
+        }
+        
+        return null;
+    };
+
+    const getApprovalDate = (stepSequence) => {
+        if (stepSequence === 1) {
+            const date = documentData?.created_at || new Date().toISOString();
+            return date.split('T')[0].replace(/-/g, '.');
+        }
+        const step = documentData?.steps?.find(s => s.sequence === stepSequence);
+        if (step?.status === 'APPROVED' && step.processed_at) {
+            return step.processed_at.split('T')[0].replace(/-/g, '.');
+        }
+        return '';
+    };
+
     const handleSubmit = async () => {
         if (!title) { alert('제목을 입력해주세요.'); return; }
         setIsSaving(true);
@@ -198,62 +288,6 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
         }
     };
 
-    const getStatusMarker = (stepSequence) => {
-        // Special case for drafter (sequence 1) if not submitted yet or if author is current user
-        if (stepSequence === 1 && !documentData?.id) {
-            return (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {currentUser?.stamp_image ? (
-                        <img src={currentUser.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-                    ) : (
-                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{currentUser?.name}</Typography>
-                    )}
-                </Box>
-            );
-        }
-
-        const step = documentData?.steps?.find(s => s.sequence === stepSequence);
-        if (step?.status === 'APPROVED') {
-            return (
-                <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {step.approver?.stamp_image ? (
-                        <img src={step.approver.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-                    ) : (
-                        <>
-                            <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '10px' }}>승인</Typography>
-                            <Typography variant="caption" sx={{ fontSize: '8px' }}>{step.processed_at?.split('T')[0]}</Typography>
-                            <Box sx={{ 
-                                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                                width: '35px', height: '35px', border: '1.5px solid rgba(0,0,255,0.3)', borderRadius: '50%',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5
-                            }}>
-                                <Typography sx={{ color: 'blue', fontSize: '10px', fontWeight: 'bold' }}>인</Typography>
-                            </Box>
-                        </>
-                    )}
-                </Box>
-            );
-        }
-        
-        // Show drafter's info even if not specifically in an approved step yet (for existing docs)
-        if (stepSequence === 1 && documentData?.author) {
-            return (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {documentData.author.stamp_image ? (
-                        <img src={documentData.author.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-                    ) : (
-                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{documentData.author.name}</Typography>
-                    )}
-                </Box>
-            );
-        }
-
-        if (step?.status === 'REJECTED') {
-            return <Typography variant="caption" sx={{ color: 'red', fontWeight: 'bold' }}>반려</Typography>;
-        }
-        return null;
-    };
-
     const totalAmount = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const totalQty = items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
 
@@ -263,22 +297,33 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
             <Paper className="idf-no-print" sx={{ p: 3, mb: 3, width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: 2, position: 'sticky', top: 10, zIndex: 10 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button variant="contained" startIcon={<Send />} onClick={handleSubmit} disabled={isSaving || (documentData && documentData.status !== 'PENDING' && documentData.status !== 'REJECTED')}>
-                            {documentData?.id ? '수정하기' : '기안하기'}
-                        </Button>
+                        {isCurrentApprover ? (
+                            <>
+                                <Button variant="contained" color="primary" onClick={() => handleProcessAction('APPROVED')}>승인</Button>
+                                <Button variant="contained" color="error" onClick={() => handleProcessAction('REJECTED')}>반려</Button>
+                            </>
+                        ) : (
+                            !isReadOnly && (
+                                <Button variant="contained" startIcon={<Send />} onClick={handleSubmit} disabled={isSaving}>
+                                    {documentData?.id ? '수정하기' : '기안하기'}
+                                </Button>
+                            )
+                        )}
                         <Button variant="outlined" startIcon={<Printer />} onClick={handlePrint}>인쇄</Button>
                         <Button variant="outlined" startIcon={<FileDown />} onClick={handleDownloadPDF}>PDF 다운로드</Button>
                     </Box>
                     <Button color="inherit" onClick={() => (onCancel ? onCancel() : navigate('/approval'))}>닫기</Button>
                 </Box>
                 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, pt: 1, borderTop: '1px solid #eee' }}>
-                    <Typography sx={{ fontWeight: 'bold', color: '#666' }}>기안 종류:</Typography>
-                    <RadioGroup row value={draftType} onChange={(e) => setDraftType(e.target.value)}>
-                        <FormControlLabel value="GENERAL" control={<Radio size="small" />} label="일반기안" />
-                        <FormControlLabel value="PAYMENT" control={<Radio size="small" />} label="대금지급기안" />
-                    </RadioGroup>
-                </Box>
+                {!isReadOnly && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, pt: 1, borderTop: '1px solid #eee' }}>
+                        <Typography sx={{ fontWeight: 'bold', color: '#666' }}>기안 종류:</Typography>
+                        <RadioGroup row value={draftType} onChange={(e) => setDraftType(e.target.value)}>
+                            <FormControlLabel value="GENERAL" control={<Radio size="small" />} label="일반기안" />
+                            <FormControlLabel value="PAYMENT" control={<Radio size="small" />} label="대금지급기안" />
+                        </RadioGroup>
+                    </Box>
+                )}
             </Paper>
 
             {/* A4 Form */}
@@ -355,6 +400,12 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                                 <td>{getStatusMarker(3)}</td>
                                 <td>{getStatusMarker(4)}</td>
                             </TableRow>
+                            <TableRow sx={{ height: '20px' }}>
+                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate(1)}</Box>
+                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate(2)}</Box>
+                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate(3)}</Box>
+                                <Box component="td" sx={{ fontSize: '9px !important' }}>{getApprovalDate(4)}</Box>
+                            </TableRow>
                         </TableBody>
                     </Table>
                 </Box>
@@ -369,6 +420,7 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                             placeholder="제목을 입력하세요"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
+                            readOnly={isReadOnly}
                             InputProps={{ disableUnderline: true, sx: { fontSize: '16px', fontWeight: 'bold' } }}
                             sx={{ '& input': { p: 0 } }}
                         />
@@ -383,6 +435,7 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
                                 placeholder="기안 내용을 입력하세요..."
+                                readOnly={isReadOnly}
                                 style={{
                                     width: '100%',
                                     height: '100%',
@@ -403,6 +456,7 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                                     value={introText}
                                     onChange={(e) => setIntroText(e.target.value)}
                                     rows={2}
+                                    readOnly={isReadOnly}
                                     style={{
                                         width: '100%',
                                         border: 'none',
@@ -424,11 +478,12 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                                         variant="standard" 
                                         value={companyName}
                                         onChange={(e) => setCompanyName(e.target.value)}
+                                        readOnly={isReadOnly}
                                         InputProps={{ disableUnderline: true, sx: { fontSize: '14px' } }}
                                         sx={{ flexGrow: 1, '& input': { p: 0 } }}
                                     />
                                 </Box>
-                                <Typography sx={{ fontSize: '14px', fontWeight: 'bold', mb: 1.5 }}>2. 발주내역 :</Typography>
+                                <Typography sx={{ fontSize: '14px', fontWeight: 'bold', mb: 1.5 }}>2. 내&nbsp;&nbsp;&nbsp;&nbsp;역 :</Typography>
                                 
                                 <Table size="small" sx={{ 
                                     borderCollapse: 'collapse', 
@@ -446,13 +501,13 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                                     <TableBody>
                                         {items.map((item, idx) => (
                                             <TableRow key={idx}>
-                                                <td><input type="text" value={item.date} onChange={(e) => handleItemChange(idx, 'date', e.target.value)} placeholder="00/00" style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
-                                                <td><input value={item.name} onChange={(e) => handleItemChange(idx, 'name', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
-                                                <td><input value={item.spec} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
-                                                <td><input type="number" value={item.qty} onChange={(e) => handleItemChange(idx, 'qty', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
-                                                <td><input type="number" value={item.amount} onChange={(e) => handleItemChange(idx, 'amount', e.target.value)} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'right', fontSize: '12px' }} /></td>
+                                                <td><input type="text" value={item.date} onChange={(e) => handleItemChange(idx, 'date', e.target.value)} placeholder="00/00" readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
+                                                <td><input value={item.name} onChange={(e) => handleItemChange(idx, 'name', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
+                                                <td><input value={item.spec} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
+                                                <td><input type="number" value={item.qty} onChange={(e) => handleItemChange(idx, 'qty', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '12px' }} /></td>
+                                                <td><input type="number" value={item.amount} onChange={(e) => handleItemChange(idx, 'amount', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'right', fontSize: '12px' }} /></td>
                                                 <td className="idf-no-print" style={{ border: 'none', width: '30px', padding: 0 }}>
-                                                    <IconButton size="small" color="error" onClick={() => handleRemoveItem(idx)}><Trash2 size={14} /></IconButton>
+                                                    {!isReadOnly && <IconButton size="small" color="error" onClick={() => handleRemoveItem(idx)}><Trash2 size={14} /></IconButton>}
                                                 </td>
                                             </TableRow>
                                         ))}
@@ -464,9 +519,11 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                                     </TableBody>
                                 </Table>
                                 
-                                <Box className="idf-no-print" sx={{ mt: 1, textAlign: 'left' }}>
-                                    <Button size="small" startIcon={<Plus size={14} />} onClick={handleAddItem} sx={{ color: '#777' }}>행 추가</Button>
-                                </Box>
+                                {!isReadOnly && (
+                                    <Box className="idf-no-print" sx={{ mt: 1, textAlign: 'left' }}>
+                                        <Button size="small" startIcon={<Plus size={14} />} onClick={handleAddItem} sx={{ color: '#777' }}>행 추가</Button>
+                                    </Box>
+                                )}
 
                                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 3 }}>
                                     <Typography sx={{ fontSize: '14px', fontWeight: 'bold', width: '100px' }}>3. 총 금액 :</Typography>
@@ -482,6 +539,7 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                             variant="standard" 
                             fullWidth 
                             multiline
+                            readOnly={isReadOnly}
                             value={attachmentsText}
                             onChange={(e) => setAttachmentsText(e.target.value)}
                             placeholder="파일 설명을 입력하세요 (예: 견적서 1부)"
