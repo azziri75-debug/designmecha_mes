@@ -21,7 +21,8 @@ import {
     Clock,
     Wrench,
     Blocks,
-    Cpu
+    Cpu,
+    Plus
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
