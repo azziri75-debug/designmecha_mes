@@ -8,6 +8,7 @@ class DocumentType(str, enum.Enum):
     EARLY_LEAVE = "EARLY_LEAVE"     # 조퇴.외출원
     SUPPLIES = "SUPPLIES"           # 소모품 신청서
     OVERTIME = "OVERTIME"           # 야근/특근신청서
+    INTERNAL_DRAFT = "INTERNAL_DRAFT" # 내부기안
 
 class ApprovalStatus(str, enum.Enum):
     PENDING = "PENDING"
@@ -21,7 +22,7 @@ class ApprovalLine(Base):
     __tablename__ = "approval_lines"
 
     id = Column(Integer, primary_key=True, index=True)
-    doc_type = Column(String, nullable=False) # VACATION, EARLY_LEAVE, SUPPLIES
+    doc_type = Column(String, nullable=False) # VACATION, EARLY_LEAVE, SUPPLIES, INTERNAL_DRAFT
     approver_id = Column(Integer, ForeignKey("staff.id"), nullable=False)
     sequence = Column(Integer, nullable=False) # 1, 2, 3...
 
@@ -33,7 +34,7 @@ class ApprovalDocument(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     author_id = Column(Integer, ForeignKey("staff.id"), nullable=False)
-    doc_type = Column(String, nullable=False) # VACATION, EARLY_LEAVE, SUPPLIES
+    doc_type = Column(String, nullable=False) # VACATION, EARLY_LEAVE, SUPPLIES, INTERNAL_DRAFT
     
     title = Column(String, nullable=False)
     # content stores doc-specific fields (dates, reason, supply items etc.)
@@ -43,7 +44,7 @@ class ApprovalDocument(Base):
     current_sequence = Column(Integer, default=1) # 현재 결재 대기 중인 순서
     
     rejection_reason = Column(Text, nullable=True)
-    attachment_file = Column(JSON, nullable=True) # List of {name, url}
+    attachment_file = Column(JSON, nullable=True) # [Legacy] List of {name, url}
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
@@ -51,6 +52,19 @@ class ApprovalDocument(Base):
 
     author = relationship("Staff", foreign_keys=[author_id], lazy="selectin")
     steps = relationship("ApprovalStep", back_populates="document", cascade="all, delete-orphan", lazy="selectin")
+    attachments = relationship("ApprovalAttachment", back_populates="document", cascade="all, delete-orphan", lazy="selectin")
+
+class ApprovalAttachment(Base):
+    """결재 문서 첨부파일"""
+    __tablename__ = "approval_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("approval_documents.id"), nullable=False)
+    filename = Column(String, nullable=False)
+    url = Column(String, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+
+    document = relationship("ApprovalDocument", back_populates="attachments")
 
 class ApprovalStep(Base):
     """문서별 실시간 결재 단계"""

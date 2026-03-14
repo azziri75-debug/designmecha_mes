@@ -30,11 +30,26 @@ class ApprovalStepResponse(ApprovalStepBase):
     class Config:
         from_attributes = True
 
+class ApprovalAttachmentBase(BaseModel):
+    filename: str
+    url: str
+
+class ApprovalAttachmentCreate(ApprovalAttachmentBase):
+    pass
+
+class ApprovalAttachmentResponse(ApprovalAttachmentBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
 class ApprovalDocumentBase(BaseModel):
     doc_type: str
     title: str
     content: dict # JSON for doc-specific fields
     attachment_file: Optional[List[dict]] = None
+    # Support for multi-file attachments in creation
+    attachments_to_add: Optional[List[ApprovalAttachmentBase]] = None
 
 class ApprovalDocumentCreate(ApprovalDocumentBase):
     # Optionally specify initial approval line if not using template
@@ -50,6 +65,7 @@ class ApprovalDocumentResponse(ApprovalDocumentBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     steps: List[ApprovalStepResponse] = []
+    attachments: List[ApprovalAttachmentResponse] = []
     
     class Config:
         from_attributes = True

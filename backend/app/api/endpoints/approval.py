@@ -7,13 +7,14 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.api import deps
-from app.models.approval import ApprovalDocument, ApprovalLine, ApprovalStep, ApprovalStatus
-from app.models.basics import Staff, EmployeeTimeRecord
+from app.models.approval import ApprovalDocument, ApprovalLine, ApprovalStep, ApprovalStatus, ApprovalAttachment
+from app.models.basics import Staff, EmployeeTimeRecord, Company
 from app.models.purchasing import ConsumablePurchaseWait, PurchaseOrder, PurchaseOrderItem, PurchaseStatus, MaterialRequirement
 from app.schemas.approval import (
     ApprovalDocumentCreate, ApprovalDocumentResponse,
     ApprovalLineCreate, ApprovalLineResponse,
-    ApprovalAction, ApprovalStats
+    ApprovalAction, ApprovalStats,
+    ApprovalAttachmentCreate, ApprovalAttachmentBase
 )
 
 router = APIRouter()
@@ -137,7 +138,7 @@ async def list_documents(
     if author_id:
         query = query.where(ApprovalDocument.author_id == author_id)
 
-    query = query.order_by(ApprovalDocument.created_at.desc())
+    query = query.options(selectinload(ApprovalDocument.attachments)).order_by(ApprovalDocument.created_at.desc())
     
     # 일반 사용자의 경우 본인이 작성자이거나 결재자인 문서만 조회 가능하도록 가시성 제한
     if current_user.user_type != "ADMIN":
@@ -236,7 +237,17 @@ async def create_document(
     db.add(db_doc)
     await db.flush()
     
-    # 2. 결재선 템플릿에서 결재 단계(Steps) 생성
+    # 3. 첨부파일 저장
+    if doc_in.attachments_to_add:
+        for att in doc_in.attachments_to_add:
+            db_att = ApprovalAttachment(
+                document_id=db_doc.id,
+                filename=att.filename,
+                url=att.url
+            )
+            db.add(db_att)
+    
+    # 4. 결재선 템플릿에서 결재 단계(Steps) 생성
     lines_res = await db.execute(
         select(ApprovalLine)
         .options(selectinload(ApprovalLine.approver))
@@ -293,7 +304,8 @@ async def create_document(
         select(ApprovalDocument)
         .options(
             selectinload(ApprovalDocument.author),
-            selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver)
+            selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver),
+            selectinload(ApprovalDocument.attachments)
         )
         .where(ApprovalDocument.id == db_doc.id)
     )
@@ -308,7 +320,8 @@ async def get_document(
         select(ApprovalDocument)
         .options(
             selectinload(ApprovalDocument.author),
-            selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver)
+            selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver),
+            selectinload(ApprovalDocument.attachments)
         )
         .where(ApprovalDocument.id == doc_id, ApprovalDocument.deleted_at.is_(None))
     )
@@ -711,6 +724,18 @@ async def update_document(
     doc.title = doc_in.title
     doc.content = doc_in.content
     doc.attachment_file = doc_in.attachment_file
+    
+    # Update attachments
+    if doc_in.attachments_to_add is not None:
+        # For simplicity, we replace attachments if provided
+        await db.execute(delete(ApprovalAttachment).where(ApprovalAttachment.document_id == doc_id))
+        for att in doc_in.attachments_to_add:
+            db_att = ApprovalAttachment(
+                document_id=doc_id,
+                filename=att.filename,
+                url=att.url
+            )
+            db.add(db_att)
     
     # 수정 시 상태가 반려였다면 대기로 변경하고 결재 단계 초기화 가능
     # ADMIN이 수정하는 경우 상태를 유지하거나 필요시 변경함
