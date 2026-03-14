@@ -10,6 +10,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../lib/api';
 import MultiFileUpload from './MultiFileUpload';
 import { formatNumber } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 
 // ────────────────────────────────────────────
 // A4 Portrait 전용 인쇄 CSS
@@ -66,6 +67,7 @@ const removePrintCSS = () => {
 };
 
 const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
+    const { user: currentUser } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const docIdFromUrl = searchParams.get('id');
@@ -196,22 +198,55 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
     };
 
     const getStatusMarker = (stepSequence) => {
+        // Special case for drafter (sequence 1) if not submitted yet or if author is current user
+        if (stepSequence === 1 && !documentData?.id) {
+            return (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {currentUser?.stamp_image ? (
+                        <img src={currentUser.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                    ) : (
+                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{currentUser?.name}</Typography>
+                    )}
+                </Box>
+            );
+        }
+
         const step = documentData?.steps?.find(s => s.sequence === stepSequence);
         if (step?.status === 'APPROVED') {
             return (
                 <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '10px' }}>승인</Typography>
-                    <Typography variant="caption" sx={{ fontSize: '8px' }}>{step.processed_at?.split('T')[0]}</Typography>
-                    <Box sx={{ 
-                        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                        width: '35px', height: '35px', border: '1.5px solid rgba(0,0,255,0.3)', borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5
-                    }}>
-                        <Typography sx={{ color: 'blue', fontSize: '10px', fontWeight: 'bold' }}>인</Typography>
-                    </Box>
+                    {step.approver?.stamp_image ? (
+                        <img src={step.approver.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                    ) : (
+                        <>
+                            <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '10px' }}>승인</Typography>
+                            <Typography variant="caption" sx={{ fontSize: '8px' }}>{step.processed_at?.split('T')[0]}</Typography>
+                            <Box sx={{ 
+                                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                width: '35px', height: '35px', border: '1.5px solid rgba(0,0,255,0.3)', borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5
+                            }}>
+                                <Typography sx={{ color: 'blue', fontSize: '10px', fontWeight: 'bold' }}>인</Typography>
+                            </Box>
+                        </>
+                    )}
                 </Box>
             );
         }
+        
+        // Show drafter's info even if not specifically in an approved step yet (for existing docs)
+        if (stepSequence === 1 && documentData?.author) {
+            return (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {documentData.author.stamp_image ? (
+                        <img src={documentData.author.stamp_image.url} alt="Stamp" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                    ) : (
+                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{documentData.author.name}</Typography>
+                    )}
+                </Box>
+            );
+        }
+
         if (step?.status === 'REJECTED') {
             return <Typography variant="caption" sx={{ color: 'red', fontWeight: 'bold' }}>반려</Typography>;
         }
@@ -291,6 +326,9 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
                         </Typography>
                         <Typography sx={{ fontSize: '13px', display: 'flex' }}>
                             <Box component="span" sx={{ width: '70px', fontWeight: 'bold' }}>시행일자 :</Box> {draftDate.replace(/-/g, '. ')}.
+                        </Typography>
+                        <Typography sx={{ fontSize: '13px', display: 'flex' }}>
+                            <Box component="span" sx={{ width: '70px', fontWeight: 'bold' }}>기&nbsp;&nbsp;안&nbsp;&nbsp;자 :</Box> {documentData?.author?.name || currentUser?.name}
                         </Typography>
                         <Typography sx={{ fontSize: '13px', display: 'flex' }}>
                             <Box component="span" sx={{ width: '70px', fontWeight: 'bold' }}>수&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;신 :</Box> 내부결재
