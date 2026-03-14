@@ -50,7 +50,7 @@ class ProcessQuickCreate(BaseModel):
 
 # Product Process (Routing) Schemas
 class ProductProcessBase(BaseModel):
-    process_id: int
+    process_id: Optional[int] = None
     sequence: int
     estimated_time: Optional[float] = None
     notes: Optional[str] = None
@@ -66,7 +66,7 @@ class ProductProcessCreate(ProductProcessBase):
 class ProductProcessResponse(ProductProcessBase):
     id: int
     product_id: int
-    process: ProcessResponse
+    process: Optional[ProcessResponse] = None
 
     class Config:
         from_attributes = True
