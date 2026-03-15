@@ -359,9 +359,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             // [Integration] Ask for approval submission
             if (window.confirm("발주서가 저장되었습니다. 이 내용으로 전자결재 [결재요청]을 즉시 진행하시겠습니까?")) {
                 try {
+                    // 결재선 데이터 미리 가져오기
+                    const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
+                    const customApprovers = lineRes.data.map(line => ({
+                        approver_id: line.approver_id,
+                        sequence: line.sequence
+                    }));
+
                     const partner = partners.find(p => p.id === formData.partner_id);
                     const approvalPayload = {
-                        title: `[${purchaseType === 'CONSUMABLE' ? '소모품' : '구매'}발주서] ${partner?.name || ''} - ${formData.order_date}`,
+                        title: `[${formData.purchase_type === 'CONSUMABLE' ? '소모품' : '구매'}발주서] ${partner?.name || ''} - ${formData.order_date}`,
                         doc_type: 'PURCHASE_ORDER',
                         content: {
                             order_no: savedOrder.order_no,
@@ -380,6 +387,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                 total: item.quantity * item.unit_price
                             }))
                         },
+                        custom_approvers: customApprovers,
                         reference_id: savedOrder.id,
                         reference_type: 'PURCHASE'
                     };
@@ -388,7 +396,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     navigate('/approval?mode=MY_WAITING');
                 } catch (appErr) {
                     console.error("Failed to submit approval", appErr);
-                    alert("발주서는 저장되었으나, 결재 요청 중 오류가 발생했습니다: " + (appErr.response?.data?.detail || appErr.message));
+                    const errorMsg = appErr.response?.data?.detail 
+                        ? (typeof appErr.response.data.detail === 'string' ? appErr.response.data.detail : JSON.stringify(appErr.response.data.detail))
+                        : appErr.message;
+                    alert("발주서는 저장되었으나, 결재 요청 중 오류가 발생했습니다: " + errorMsg);
                 }
             }
 

@@ -133,12 +133,28 @@ const OutsourcingPage = () => {
         };
 
         try {
-            await api.post('/approval/documents', approvalPayload);
+            // 결재선 데이터 미리 가져오기
+            const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
+            const customApprovers = lineRes.data.map(line => ({
+                approver_id: line.approver_id,
+                sequence: line.sequence
+            }));
+
+            // 페이로드에 결재선 정보 포함
+            const finalPayload = {
+                ...approvalPayload,
+                custom_approvers: customApprovers
+            };
+
+            await api.post('/approval/documents', finalPayload);
             alert("결재 요청이 완료되었습니다.");
             navigate('/approval?mode=MY_WAITING');
         } catch (error) {
             console.error("Failed to submit approval", error);
-            alert("결재 요청 실패: " + (error.response?.data?.detail || error.message));
+            const errorMsg = error.response?.data?.detail 
+                ? (typeof error.response.data.detail === 'string' ? error.response.data.detail : JSON.stringify(error.response.data.detail))
+                : error.message;
+            alert("결재 요청 실패: " + errorMsg);
         }
     };
     const fetchPendingItems = async () => {

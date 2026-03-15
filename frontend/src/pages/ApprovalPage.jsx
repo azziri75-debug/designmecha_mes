@@ -11,6 +11,13 @@ import { cn } from '../lib/utils';
 import Card from '../components/Card';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
+import InternalDraftForm from '../components/InternalDraftForm';
+import ExpenseReportForm from '../components/ExpenseReportForm';
+import ConsumablesPurchaseForm from '../components/ConsumablesPurchaseForm';
+import EarlyLeaveForm from '../components/EarlyLeaveForm';
+import LeaveRequestForm from '../components/LeaveRequestForm';
+import OvertimeWorkForm from '../components/OvertimeWorkForm';
+import PurchaseOrderForm from '../components/PurchaseOrderForm';
 
 const DOC_TYPES = {
     VACATION: { label: '휴가원', color: 'blue' },
@@ -134,7 +141,7 @@ const ApprovalPage = () => {
 
     const isEditable = (doc) => {
         if (!doc) return false;
-        if (doc.doc_type === 'PURCHASE_ORDER') return false; // 구매발주서는 수정 절대 금지 (보안 로직)
+        if (doc.doc_type === 'PURCHASE_ORDER') return false;
         if (currentUser?.user_type === 'ADMIN') return true;
         if (doc.author_id !== currentUser?.id) return false;
         if (doc.status === 'PENDING' || doc.status === 'REJECTED') return true;
@@ -142,6 +149,13 @@ const ApprovalPage = () => {
             return (doc.steps || []).every(s => s.status !== 'APPROVED' || s.comment === '기안자 직급에 따른 자동 승인');
         }
         return false;
+    };
+
+    const canApprove = (doc) => {
+        if (!doc || !currentUser) return false;
+        if (doc.status !== 'IN_PROGRESS' && doc.status !== 'PENDING') return false;
+        const currentStep = doc.steps.find(s => s.status === 'PENDING');
+        return currentStep && currentStep.approver_id === currentUser.id;
     };
 
     const handleSaveLines = async (type) => {
@@ -545,7 +559,7 @@ const ApprovalPage = () => {
                                                 ) : step.status === 'REJECTED' ? (
                                                     <span className="text-[11px] text-red-600 font-bold border-2 border-red-500 px-1 rounded -rotate-12 uppercase">Rejected</span>
                                                 ) : (
-                                                    <div className="text-[10px] text-gray-300">대기중</div>
+                                                    <div className="text-[10px] text-gray-400">대기중</div>
                                                 )}
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                     <div className="text-[9px] text-white font-medium text-center px-1">{step.approver?.name}</div>
@@ -557,143 +571,84 @@ const ApprovalPage = () => {
                                 </div>
                             </div>
 
-                            {/* Content Section */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-900/30 p-6 rounded-xl border border-gray-700">
-                                {selectedDoc.doc_type === 'VACATION' && (
-                                    <>
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">기간</p>
-                                            <p className="text-white font-medium">{selectedDoc.content.start_date} ~ {selectedDoc.content.end_date}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">구분</p>
-                                            <p className="text-white font-medium">{selectedDoc.content.vacation_type}</p>
-                                        </div>
-                                        <div className="md:col-span-2 space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">사유</p>
-                                            <p className="text-white bg-gray-900/50 p-4 rounded-lg border border-gray-700/50 min-h-[100px] whitespace-pre-wrap">{selectedDoc.content.reason}</p>
-                                        </div>
-                                    </>
-                                )}
-
-                                {selectedDoc.doc_type === 'EARLY_LEAVE' && (
-                                    <>
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">일시</p>
-                                            <p className="text-white font-medium">{selectedDoc.content.date} {selectedDoc.content.time}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">구분</p>
-                                            <p className="text-white font-medium">{selectedDoc.content.type}</p>
-                                        </div>
-                                        <div className="md:col-span-2 space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">사유</p>
-                                            <p className="text-white bg-gray-900/50 p-4 rounded-lg border border-gray-700/50 min-h-[100px] whitespace-pre-wrap">{selectedDoc.content.reason}</p>
-                                        </div>
-                                    </>
-                                )}
-
-                                {selectedDoc.doc_type === 'SUPPLIES' && (
-                                    <>
-                                        <div className="md:col-span-2 space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">신청 품목 및 수량</p>
-                                            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50 min-h-[100px] overflow-hidden">
-                                                {(() => {
-                                                    const items = Array.isArray(selectedDoc.content.items)
-                                                        ? selectedDoc.content.items
-                                                        : (selectedDoc.content.items ? [selectedDoc.content.items] : []);
-
-                                                    if (items.length === 0) return <p className="text-gray-500 text-center py-4">기입된 품목이 없습니다.</p>;
-
-                                                    return (
-                                                        <table className="w-full text-left text-sm">
-                                                            <thead>
-                                                                <tr className="border-b border-gray-700 text-gray-400">
-                                                                    <th className="pb-2">품목명</th>
-                                                                    <th className="pb-2 text-center w-20">수량</th>
-                                                                    <th className="pb-2">비고</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {items.map((item, idx) => (
-                                                                    <tr key={idx} className="border-b border-gray-800 last:border-0">
-                                                                        <td className="py-2 text-white font-medium">
-                                                                            {typeof item === 'object' ? (item.product_name || '-') : String(item)}
-                                                                        </td>
-                                                                        <td className="py-2 text-center text-blue-400 font-bold">
-                                                                            {typeof item === 'object' ? (item.quantity || '0') : '-'} EA
-                                                                        </td>
-                                                                        <td className="py-2 text-gray-400 truncate">
-                                                                            {typeof item === 'object' ? (item.remarks || '-') : '-'}
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    );
-                                                })()}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                {selectedDoc.doc_type === 'OVERTIME' && (
-                                    <>
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">근무 일자</p>
-                                            <p className="text-white font-medium">{selectedDoc.content?.date}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">근무 시간</p>
-                                            <p className="text-white font-medium">{selectedDoc.content?.start_time} ~ {selectedDoc.content?.end_time} ({selectedDoc.content?.work_type})</p>
-                                        </div>
-                                        <div className="space-y-1 md:col-span-2">
-                                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">근무 내용</p>
-                                            <p className="text-white font-medium whitespace-pre-wrap">{selectedDoc.content?.reason}</p>
-                                        </div>
-                                    </>
-                                )}
-
-                                {selectedDoc.doc_type === 'PURCHASE_ORDER' && (
-                                    <div className="md:col-span-2 space-y-4">
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
-                                            <div><span className="text-gray-500">발주번호:</span> <span className="text-white ml-2">{selectedDoc.content?.order_no || '-'}</span></div>
-                                            <div><span className="text-gray-500">공급처:</span> <span className="text-white ml-2">{selectedDoc.content?.partner_name || '-'}</span></div>
-                                            <div><span className="text-gray-500">발주일:</span> <span className="text-white ml-2">{selectedDoc.content?.order_date || '-'}</span></div>
-                                            <div><span className="text-gray-500">납기요청일:</span> <span className="text-white ml-2">{selectedDoc.content?.delivery_date || '-'}</span></div>
-                                        </div>
-                                        <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50">
-                                            <p className="text-xs text-gray-500 mb-2 font-bold uppercase">발주 품목 리스트</p>
-                                            <table className="w-full text-xs text-left">
-                                                <thead>
-                                                    <tr className="text-gray-500 border-b border-gray-800">
-                                                        <th className="pb-1">품목명</th>
-                                                        <th className="pb-1">규격</th>
-                                                        <th className="pb-1 text-right">수량</th>
-                                                        <th className="pb-1 text-right">금액</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {(selectedDoc.content?.items || []).filter(i => i.name).map((item, idx) => (
-                                                        <tr key={idx} className="border-b border-gray-800/50 last:border-0 text-gray-300">
-                                                            <td className="py-1">{item.name}</td>
-                                                            <td className="py-1 opacity-70">{item.spec}</td>
-                                                            <td className="py-1 text-right text-blue-400 font-medium">{item.qty?.toLocaleString()}</td>
-                                                            <td className="py-1 text-right">{item.total?.toLocaleString()}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {selectedDoc.content?.special_notes && (
-                                            <div className="p-3 bg-blue-900/10 border border-blue-900/30 rounded-lg">
-                                                <p className="text-[10px] text-blue-500 font-bold mb-1">비고(Note)</p>
-                                                <p className="text-xs text-gray-300 whitespace-pre-wrap">{selectedDoc.content.special_notes}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                            {/* Content Section - A4 Form Integration */}
+                            <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-inner overflow-x-auto">
+                                <Box sx={{ minWidth: '800px', display: 'flex', justifyContent: 'center' }}>
+                                    {selectedDoc.doc_type === 'INTERNAL_DRAFT' && (
+                                        <InternalDraftForm 
+                                            data={selectedDoc.content} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                    {selectedDoc.doc_type === 'EXPENSE_REPORT' && (
+                                        <ExpenseReportForm 
+                                            data={selectedDoc.content} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                    {selectedDoc.doc_type === 'LEAVE_REQUEST' && (
+                                        <LeaveRequestForm 
+                                            data={selectedDoc.content} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                    {selectedDoc.doc_type === 'VACATION' && (
+                                        <LeaveRequestForm 
+                                            data={{...selectedDoc.content, vacation_type: selectedDoc.content.vacation_type, start_date: selectedDoc.content.start_date, end_date: selectedDoc.content.end_date, vacation_reason: selectedDoc.content.reason}} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                    {selectedDoc.doc_type === 'EARLY_LEAVE' && (
+                                        <EarlyLeaveForm 
+                                            data={selectedDoc.content} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                    {selectedDoc.doc_type === 'CONSUMABLES_PURCHASE' && (
+                                        <ConsumablesPurchaseForm 
+                                            data={selectedDoc.content} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                    {selectedDoc.doc_type === 'SUPPLIES' && (
+                                        <ConsumablesPurchaseForm 
+                                            data={selectedDoc.content} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                    {selectedDoc.doc_type === 'OVERTIME' && (
+                                        <OvertimeWorkForm 
+                                            data={selectedDoc.content} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                    {selectedDoc.doc_type === 'PURCHASE_ORDER' && (
+                                        <PurchaseOrderForm 
+                                            data={selectedDoc.content} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                </Box>
                             </div>
+
 
                             {selectedDoc.rejection_reason && (
                                 <div className="bg-red-900/20 border border-red-900/50 p-4 rounded-xl flex gap-3">
@@ -706,7 +661,7 @@ const ApprovalPage = () => {
                             )}
 
                             {/* Processing Section (Only for Approvers if it's their turn) */}
-                            {selectedDoc.status !== 'COMPLETED' && selectedDoc.status !== 'REJECTED' && (
+                            {canApprove(selectedDoc) && (
                                 <div className="pt-8 border-t border-gray-700">
                                     <div className="space-y-4">
                                         <div className="flex flex-col gap-2">
