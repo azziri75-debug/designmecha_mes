@@ -189,9 +189,25 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
 
     const getStepByRole = (roleType) => {
         if (!documentData?.steps) return null;
-        if (roleType === '부장') return documentData.steps.find(s => s.approver?.role === '부장' || s.approver?.role?.includes('부장'));
-        if (roleType === '이사') return documentData.steps.find(s => s.approver?.role === '이사' || s.approver?.role?.includes('이사'));
-        if (roleType === '대표이사') return documentData.steps.find(s => s.approver?.role === '대표이사' || s.approver?.role?.includes('대표'));
+        // Strict mapping to prevent "Representative Director" (대표이사) from being caught by "Director" (이사)
+        if (roleType === '부장') {
+            return documentData.steps.find(s => 
+                s.approver?.role === '부장' || 
+                (s.approver?.role?.includes('부장') && !s.approver?.role?.includes('이사') && !s.approver?.role?.includes('대표'))
+            );
+        }
+        if (roleType === '이사') {
+            return documentData.steps.find(s => 
+                (s.approver?.role === '이사' || s.approver?.role?.includes('이사')) && 
+                !s.approver?.role?.includes('대표')
+            );
+        }
+        if (roleType === '대표이사') {
+            return documentData.steps.find(s => 
+                s.approver?.role === '대표이사' || 
+                s.approver?.role?.includes('대표')
+            );
+        }
         return null;
     };
 
@@ -200,9 +216,19 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
         if (roleType === '기안자') {
             const author = documentData?.author || currentUser;
             return (
-                <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
                     {author?.stamp_image ? (
-                        <img src={author.stamp_image.url} alt="Stamp" style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scale(1.3)' }} />
+                        <img 
+                            src={author.stamp_image.url} 
+                            alt="Stamp" 
+                            style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                objectFit: 'contain', 
+                                transform: 'scale(1.3)',
+                                mixBlendMode: 'multiply'
+                            }} 
+                        />
                     ) : (
                         <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '14px' }}>{author?.name}</Typography>
                     )}
@@ -215,9 +241,19 @@ const InternalDraftForm = ({ documentData: initialData, onSave, onCancel }) => {
         
         if (step?.status === 'APPROVED') {
             return (
-                <Box sx={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box sx={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     {step.approver?.stamp_image ? (
-                        <img src={step.approver.stamp_image.url} alt="Stamp" style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scale(1.3)' }} />
+                        <img 
+                            src={step.approver.stamp_image.url} 
+                            alt="Stamp" 
+                            style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                objectFit: 'contain', 
+                                transform: 'scale(1.3)',
+                                mixBlendMode: 'multiply'
+                            }} 
+                        />
                     ) : (
                         <>
                             <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '11px' }}>승인</Typography>
