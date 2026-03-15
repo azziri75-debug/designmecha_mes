@@ -30,7 +30,6 @@ const DOC_TYPES = [
     { value: 'EARLY_LEAVE', label: '조퇴.외출원' },
     { value: 'CONSUMABLES_PURCHASE', label: '소모품 구매신청서' },
     { value: 'OVERTIME', label: '야근/특근신청서' },
-    { value: 'PURCHASE_ORDER', label: '구매발주서' },
 ];
 
 const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
@@ -191,7 +190,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     <Box sx={{ display: 'flex', gap: 1 }}>
                         {!isReadOnly && (
                             <>
-                                <Button variant="contained" color="primary" startIcon={<Send />} onClick={handleSubmit} disabled={isSaving}>기안 상신하기</Button>
+                                <Button variant="contained" color="primary" startIcon={<Send />} onClick={handleSubmit} disabled={isSaving}>[기안 제출하기]</Button>
                                 <Button variant="outlined" color="secondary" startIcon={<UserCheck />} onClick={() => setShowApproverSelector(true)}>결재자 지정</Button>
                             </>
                         )}

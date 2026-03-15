@@ -17,7 +17,10 @@ const DOC_TYPES = {
     EARLY_LEAVE: { label: '조퇴/외출원', color: 'purple' },
     SUPPLIES: { label: '소모품 신청서', color: 'emerald' },
     OVERTIME: { label: '야근/특근신청서', color: 'orange' },
-    INTERNAL_DRAFT: { label: '내부기안', color: 'blue' }
+    INTERNAL_DRAFT: { label: '내부기안', color: 'blue' },
+    EXPENSE_REPORT: { label: '지출결의서', color: 'indigo' },
+    CONSUMABLES_PURCHASE: { label: '소모품 구매신청서', color: 'cyan' },
+    LEAVE_REQUEST: { label: '휴가원', color: 'teal' }
 };
 
 const STATUS_MAP = {
@@ -131,6 +134,7 @@ const ApprovalPage = () => {
 
     const isEditable = (doc) => {
         if (!doc) return false;
+        if (doc.doc_type === 'PURCHASE_ORDER') return false; // 구매발주서는 수정 절대 금지 (보안 로직)
         if (currentUser?.user_type === 'ADMIN') return true;
         if (doc.author_id !== currentUser?.id) return false;
         if (doc.status === 'PENDING' || doc.status === 'REJECTED') return true;
@@ -637,17 +641,57 @@ const ApprovalPage = () => {
                                     <>
                                         <div className="space-y-1">
                                             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">근무 일자</p>
-                                            <p className="text-white font-medium">{selectedDoc.content.date}</p>
+                                            <p className="text-white font-medium">{selectedDoc.content?.date}</p>
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">근무 시간</p>
-                                            <p className="text-white font-medium">{selectedDoc.content.start_time} ~ {selectedDoc.content.end_time} ({selectedDoc.content.work_type})</p>
+                                            <p className="text-white font-medium">{selectedDoc.content?.start_time} ~ {selectedDoc.content?.end_time} ({selectedDoc.content?.work_type})</p>
                                         </div>
                                         <div className="space-y-1 md:col-span-2">
                                             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">근무 내용</p>
-                                            <p className="text-white font-medium whitespace-pre-wrap">{selectedDoc.content.reason}</p>
+                                            <p className="text-white font-medium whitespace-pre-wrap">{selectedDoc.content?.reason}</p>
                                         </div>
                                     </>
+                                )}
+
+                                {selectedDoc.doc_type === 'PURCHASE_ORDER' && (
+                                    <div className="md:col-span-2 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                            <div><span className="text-gray-500">발주번호:</span> <span className="text-white ml-2">{selectedDoc.content?.order_no || '-'}</span></div>
+                                            <div><span className="text-gray-500">공급처:</span> <span className="text-white ml-2">{selectedDoc.content?.partner_name || '-'}</span></div>
+                                            <div><span className="text-gray-500">발주일:</span> <span className="text-white ml-2">{selectedDoc.content?.order_date || '-'}</span></div>
+                                            <div><span className="text-gray-500">납기요청일:</span> <span className="text-white ml-2">{selectedDoc.content?.delivery_date || '-'}</span></div>
+                                        </div>
+                                        <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50">
+                                            <p className="text-xs text-gray-500 mb-2 font-bold uppercase">발주 품목 리스트</p>
+                                            <table className="w-full text-xs text-left">
+                                                <thead>
+                                                    <tr className="text-gray-500 border-b border-gray-800">
+                                                        <th className="pb-1">품목명</th>
+                                                        <th className="pb-1">규격</th>
+                                                        <th className="pb-1 text-right">수량</th>
+                                                        <th className="pb-1 text-right">금액</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {(selectedDoc.content?.items || []).filter(i => i.name).map((item, idx) => (
+                                                        <tr key={idx} className="border-b border-gray-800/50 last:border-0 text-gray-300">
+                                                            <td className="py-1">{item.name}</td>
+                                                            <td className="py-1 opacity-70">{item.spec}</td>
+                                                            <td className="py-1 text-right text-blue-400 font-medium">{item.qty?.toLocaleString()}</td>
+                                                            <td className="py-1 text-right">{item.total?.toLocaleString()}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {selectedDoc.content?.special_notes && (
+                                            <div className="p-3 bg-blue-900/10 border border-blue-900/30 rounded-lg">
+                                                <p className="text-[10px] text-blue-500 font-bold mb-1">비고(Note)</p>
+                                                <p className="text-xs text-gray-300 whitespace-pre-wrap">{selectedDoc.content.special_notes}</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
 

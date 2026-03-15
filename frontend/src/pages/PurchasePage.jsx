@@ -122,35 +122,42 @@ const PurchasePage = ({ type }) => {
     };
 
 
-    const handleApprovalSubmit = (order) => {
-        const orderData = {
-            order_no: order.order_no,
-            partner_name: order.partner?.name,
-            partner_phone: order.partner?.phone,
-            partner_fax: order.partner?.fax,
-            order_date: order.order_date,
-            delivery_date: order.delivery_date,
-            items: (order.items || []).map((item, idx) => ({
-                idx: idx + 1,
-                name: item.product?.name,
-                spec: item.product?.specification || item.product?.code,
-                qty: item.quantity,
-                price: item.unit_price,
-                total: item.quantity * (item.unit_price || 0)
-            })),
-            colWidths: [40, 200, 120, 60, 80, 100],
-            special_notes: order.note
+    const handleApprovalSubmit = async (order) => {
+        if (!window.confirm("이 발주서로 결재 요청을 진행하시겠습니까?")) return;
+
+        const approvalPayload = {
+            title: `[${type === 'CONSUMABLE' ? '소모품' : '구매'}발주서] ${order.partner?.name || ''} - ${order.order_date}`,
+            doc_type: 'PURCHASE_ORDER',
+            content: {
+                order_no: order.order_no,
+                partner_name: order.partner?.name,
+                partner_phone: order.partner?.phone,
+                partner_fax: order.partner?.fax,
+                order_date: order.order_date,
+                delivery_date: order.delivery_date,
+                special_notes: order.note,
+                items: (order.items || []).map((item, idx) => ({
+                    idx: idx + 1,
+                    name: item.product?.name,
+                    spec: item.product?.specification || item.product?.code,
+                    qty: item.quantity,
+                    price: item.unit_price,
+                    total: item.quantity * (item.unit_price || 0)
+                })),
+                colWidths: [40, 200, 120, 60, 80, 100]
+            },
+            reference_id: order.id,
+            reference_type: 'PURCHASE'
         };
 
-        navigate('/approval/draft', {
-            state: {
-                autoFill: {
-                    type: 'PURCHASE_ORDER',
-                    ref_id: order.id,
-                    data: orderData
-                }
-            }
-        });
+        try {
+            await api.post('/approval/documents', approvalPayload);
+            alert("결재 요청이 완료되었습니다.");
+            navigate('/approval?mode=MY_WAITING');
+        } catch (error) {
+            console.error("Failed to submit approval", error);
+            alert("결재 요청 실패: " + (error.response?.data?.detail || error.message));
+        }
     };
     const fetchPendingItems = async () => {
         try {
@@ -745,7 +752,7 @@ const PurchasePage = ({ type }) => {
                                                         </IconButton>
                                                     </Tooltip>
                                                     {order.status === 'PENDING' && (
-                                                        <Tooltip title="결재 상신">
+                                                        <Tooltip title="결재요청">
                                                             <IconButton size="small" color="primary" onClick={() => handleApprovalSubmit(order)}>
                                                                 <SendIcon fontSize="small" />
                                                             </IconButton>
