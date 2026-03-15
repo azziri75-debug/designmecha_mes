@@ -51,12 +51,30 @@ const ApprovalLineSelector = ({ open, onClose, onSelect, currentLines = [] }) =>
     }
   };
 
-  const filteredStaff = staffList.filter(s =>
+  // Filter only pertinent roles for approval
+  const pertinentStaff = staffList.filter(s => 
+    ['부장', '이사', '대표이사'].includes(s.role) || (s.role && (s.role.includes('부장') || s.role.includes('이사') || s.role.includes('대표')))
+  );
+
+  const filteredStaff = pertinentStaff.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.role?.toLowerCase().includes(searchTerm.toLowerCase())
+    (s.role || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSelectStaff = (staff, slot) => {
+    // Role matching validation
+    if (staff) {
+        if (slot === '부장' && !(staff.role?.includes('부장') && !staff.role?.includes('이사') && !staff.role?.includes('대표'))) {
+            alert('부장 직급만 선택 가능합니다.'); return;
+        }
+        if (slot === '이사' && !(staff.role?.includes('이사') && !staff.role?.includes('대표'))) {
+            alert('이사 직급만 선택 가능합니다.'); return;
+        }
+        if (slot === '대표이사' && !staff.role?.includes('대표')) {
+            alert('대표이사 직급만 선택 가능합니다.'); return;
+        }
+    }
+    
     setSelectedLines(prev => ({
       ...prev,
       [slot]: staff
@@ -104,9 +122,27 @@ const ApprovalLineSelector = ({ open, onClose, onSelect, currentLines = [] }) =>
                     secondary={staff.role || '직급 없음'} 
                   />
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button size="small" variant="outlined" onClick={() => handleSelectStaff(staff, '부장')}>부장</Button>
-                    <Button size="small" variant="outlined" onClick={() => handleSelectStaff(staff, '이사')}>이사</Button>
-                    <Button size="small" variant="outlined" color="primary" onClick={() => handleSelectStaff(staff, '대표이사')}>대표</Button>
+                    <Button 
+                        size="small" variant="outlined" 
+                        onClick={() => handleSelectStaff(staff, '부장')}
+                        disabled={!(staff.role?.includes('부장') && !staff.role?.includes('이사') && !staff.role?.includes('대표'))}
+                    >
+                        부장
+                    </Button>
+                    <Button 
+                        size="small" variant="outlined" 
+                        onClick={() => handleSelectStaff(staff, '이사')}
+                        disabled={!(staff.role?.includes('이사') && !staff.role?.includes('대표'))}
+                    >
+                        이사
+                    </Button>
+                    <Button 
+                        size="small" variant="outlined" color="primary" 
+                        onClick={() => handleSelectStaff(staff, '대표이사')}
+                        disabled={!staff.role?.includes('대표')}
+                    >
+                        대표
+                    </Button>
                   </Box>
                 </ListItem>
               ))}

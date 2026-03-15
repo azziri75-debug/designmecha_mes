@@ -18,6 +18,7 @@ import ExpenseReportForm from './ExpenseReportForm';
 import ConsumablesPurchaseForm from './ConsumablesPurchaseForm';
 import EarlyLeaveForm from './EarlyLeaveForm';
 import LeaveRequestForm from './LeaveRequestForm';
+import OvertimeWorkForm from './OvertimeWorkForm';
 import ApprovalGrid from './ApprovalGrid';
 
 const DOC_TYPES = [
@@ -26,6 +27,7 @@ const DOC_TYPES = [
     { value: 'LEAVE_REQUEST', label: '휴가원' },
     { value: 'EARLY_LEAVE', label: '조퇴.외출원' },
     { value: 'CONSUMABLES_PURCHASE', label: '소모품 구매신청서' },
+    { value: 'OVERTIME', label: '야근/특근신청서' },
 ];
 
 const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
@@ -59,6 +61,15 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             setTitle(documentData.title || '');
             setFormContent(documentData.content || {});
             setAttachments(documentData.attachments || []);
+        } else {
+            // Set today's date as default for all forms
+            const today = new Date().toISOString().split('T')[0];
+            setFormContent({ 
+                request_date: today, 
+                draft_date: today, 
+                date: today,
+                items: docType === 'INTERNAL_DRAFT' ? [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }] : undefined
+            });
         }
     }, [documentData]);
 
@@ -86,15 +97,22 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
     };
 
     const handleSubmit = async () => {
-        if (!title) { alert('제목을 입력해주세요.'); return; }
+        let finalTitle = title;
+        if (docType !== 'INTERNAL_DRAFT') {
+            const label = DOC_TYPES.find(t => t.value === docType)?.label || '문서';
+            const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '');
+            finalTitle = `[${label}] ${currentUser?.name || ''} - ${todayStr}`;
+        }
+
+        if (!finalTitle) { alert('제목을 입력해주세요.'); return; }
         setIsSaving(true);
         try {
             const payload = {
-                title,
+                title: finalTitle,
                 doc_type: docType,
                 content: formContent,
                 attachments_to_add: attachments?.map(a => ({ filename: a.name || a.filename, url: a.url })) || [],
-                custom_approvers: customApprovers?.length > 0 ? customApprovers.map(a => ({ staff_id: a.id, sequence: a.sequence })) : null
+                custom_approvers: (customApprovers || []).length > 0 ? customApprovers.map(a => ({ staff_id: a.id, sequence: a.sequence })) : null
             };
 
             if (documentData?.id) {
@@ -133,26 +151,12 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             case 'CONSUMABLES_PURCHASE': return <ConsumablesPurchaseForm {...commonProps} />;
             case 'EARLY_LEAVE': return <EarlyLeaveForm {...commonProps} />;
             case 'LEAVE_REQUEST': return <LeaveRequestForm {...commonProps} />;
+            case 'OVERTIME': return <OvertimeWorkForm {...commonProps} />;
             case 'INTERNAL_DRAFT':
             default:
                 return (
                     <Box sx={{ px: 4, pt: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
-                            <Box sx={{ flex: 1, pt: 4 }}>
-                                <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '10px' }}>
-                                    내 부 기 안
-                                </Typography>
-                            </Box>
-                            <ApprovalGrid documentData={virtualDocData} currentUser={currentUser} />
-                        </Box>
-                        <TextField 
-                            fullWidth multiline rows={25}
-                            placeholder="내용을 입력하세요..."
-                            value={formContent.reason || ''}
-                            onChange={(e) => setFormContent({ ...formContent, reason: e.target.value })}
-                            InputProps={{ sx: { border: 'none', '& fieldset': { border: 'none' }, fontSize: '15px' } }}
-                            readOnly={isReadOnly}
-                        />
+                        <InternalDraftForm {...commonProps} />
                     </Box>
                 );
         }
@@ -190,7 +194,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     </Tabs>
                 )}
                 
-                {!isReadOnly && (
+                {!isReadOnly && docType === 'INTERNAL_DRAFT' && (
                     <Box sx={{ mt: 2 }}>
                         <TextField 
                             fullWidth size="small" label="문서 제목" placeholder="예: [비용] 사무용품 구매의 건"
@@ -203,6 +207,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             {/* A4 Paper */}
             <Paper
                 ref={printRef}
+                className="a4-paper-root"
                 sx={{
                     width: '210mm',
                     minHeight: '297mm',
@@ -211,10 +216,24 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                     bgcolor: 'white',
                     fontFamily: '"Malgun Gothic", "Dotum", sans-serif',
+                    position: 'relative'
                 }}
             >
                 {renderFormBody()}
             </Paper>
+
+            <style>{`
+                @media (max-width: 768px) {
+                    .a4-paper-root { 
+                        width: 100% !important; 
+                        min-width: auto !important; 
+                        padding: 20px !important; 
+                        margin: 0 !important;
+                        box-shadow: none !important;
+                        min-height: auto !important;
+                    }
+                }
+            `}</style>
 
             {/* Attachments UI */}
             <Paper sx={{ width: '100%', maxWidth: '1100px', p: 3, mb: 4 }}>

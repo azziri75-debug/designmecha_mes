@@ -43,7 +43,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                         <td style={{ width: '35%' }}>
                             <input 
                                 type="date" 
-                                value={data.request_date || ''} 
+                                value={data.request_date || new Date().toISOString().split('T')[0]} 
                                 onChange={(e) => handleChange({ request_date: e.target.value })}
                                 readOnly={isReadOnly}
                                 style={{ border: 'none', width: '100%', outline: 'none' }}
@@ -153,6 +153,20 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
             <Typography align="center" variant="subtitle1" sx={{ mt: 2, fontWeight: 'bold' }}>
                 (주)디자인메카
             </Typography>
+            <style>{`
+                @media (max-width: 768px) {
+                    .idf-header { flex-direction: column !important; align-items: center !important; gap: 20px; }
+                    .responsive-table, .responsive-table table, .responsive-table tbody, .responsive-table tr, .responsive-table td { 
+                        display: block !important; width: 100% !important; border: none !important; 
+                    }
+                    .responsive-table tr { margin-bottom: 20px; border-bottom: 2px solid #ddd !important; padding-bottom: 10px; }
+                    .responsive-table td { padding: 8px 0 !important; }
+                    .responsive-table td[component="td"] { background-color: transparent !important; text-align: left !important; color: #666; font-size: 12px; font-weight: bold; }
+                    input, textarea { font-size: 16px !important; border: 1px solid #eee !important; padding: 10px !important; border-radius: 4px; box-sizing: border-box; width: 100% !important; }
+                    .cons-flex-table thead { display: none !important; }
+                    .cons-flex-table tr { margin-bottom: 15px; border: 1px solid #eee !important; border-radius: 8px; padding: 10px !important; }
+                }
+            `}</style>
         </Box>
     );
 };

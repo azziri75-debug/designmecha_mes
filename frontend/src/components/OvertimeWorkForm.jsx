@@ -2,24 +2,24 @@ import React from 'react';
 import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, FormControlLabel, Radio } from '@mui/material';
 import ApprovalGrid from './ApprovalGrid';
 
-const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
+const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     const handleChange = (field, value) => {
         if (isReadOnly) return;
         onChange({ ...data, [field]: value });
     };
 
     return (
-        <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+        <Box className="a4-form-container" sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box className="idf-header" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box sx={{ flex: 1, pt: 4 }}>
                     <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '5px' }}>
-                        조퇴 · 외출원
+                        야근 · 특근 신청서
                     </Typography>
                 </Box>
                 <ApprovalGrid documentData={documentData} currentUser={currentUser} />
             </Box>
 
-            <Table size="small" sx={{ mb: 3, '& td': { border: '1px solid #000', p: 1.5, fontSize: '14px' } }}>
+            <Table size="small" className="responsive-table" sx={{ mb: 3, '& td': { border: '1px solid #000', p: 1.5, fontSize: '14px' } }}>
                 <TableBody>
                     <TableRow sx={{ height: '50px' }}>
                         <Box component="td" sx={{ width: '100px', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>소 속</Box>
@@ -29,6 +29,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                                 onChange={(e) => handleChange('dept', e.target.value)}
                                 readOnly={isReadOnly}
                                 style={{ border: 'none', width: '100%', outline: 'none' }}
+                                placeholder="소속 부서"
                             />
                         </td>
                         <Box component="td" sx={{ width: '100px', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>사원번호</Box>
@@ -59,14 +60,14 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                     <TableRow sx={{ height: '60px' }}>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>구 분</Box>
                         <td colSpan={4}>
-                            <RadioGroup row value={data.leave_type || '조퇴'} onChange={(e) => handleChange('leave_type', e.target.value)}>
-                                <FormControlLabel value="조퇴" control={<Radio size="small" />} label="조퇴" disabled={isReadOnly} />
-                                <FormControlLabel value="외출" control={<Radio size="small" />} label="외출" disabled={isReadOnly} />
+                            <RadioGroup row value={data.work_type || '야근'} onChange={(e) => handleChange('work_type', e.target.value)}>
+                                <FormControlLabel value="야근" control={<Radio size="small" />} label="야근" disabled={isReadOnly} />
+                                <FormControlLabel value="특근" control={<Radio size="small" />} label="특근(휴일)" disabled={isReadOnly} />
                             </RadioGroup>
                         </td>
                     </TableRow>
                     <TableRow sx={{ height: '60px' }}>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>시 기</Box>
+                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>근무일시</Box>
                         <td colSpan={4}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <input 
@@ -78,16 +79,16 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                                 />
                                 <input 
                                     type="time" 
-                                    value={data.leave_time || ''} 
-                                    onChange={(e) => handleChange('leave_time', e.target.value)}
+                                    value={data.start_time || '18:00'} 
+                                    onChange={(e) => handleChange('start_time', e.target.value)}
                                     readOnly={isReadOnly}
                                     style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
                                 />
                                 <Typography>~</Typography>
                                 <input 
                                     type="time" 
-                                    value={data.return_time || ''} 
-                                    onChange={(e) => handleChange('return_time', e.target.value)}
+                                    value={data.end_time || ''} 
+                                    onChange={(e) => handleChange('end_time', e.target.value)}
                                     readOnly={isReadOnly}
                                     style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
                                 />
@@ -95,13 +96,14 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                         </td>
                     </TableRow>
                     <TableRow>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>사 유</Box>
+                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>근무내용</Box>
                         <td colSpan={4} style={{ height: '200px', verticalAlign: 'top' }}>
                             <textarea 
-                                value={data.leave_reason || ''} 
-                                onChange={(e) => handleChange('leave_reason', e.target.value)}
+                                value={data.reason || ''} 
+                                onChange={(e) => handleChange('reason', e.target.value)}
                                 readOnly={isReadOnly}
                                 rows={8}
+                                placeholder="상세 근무 내용을 입력하세요."
                                 style={{ border: 'none', width: '100%', height: '100%', outline: 'none', resize: 'none', fontFamily: 'inherit', padding: '10px' }}
                             />
                         </td>
@@ -111,7 +113,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
 
             <Box sx={{ mt: 4, textAlign: 'center' }}>
                 <Typography sx={{ mb: 4, fontSize: '15px' }}>
-                    상기 사유와 같이 조퇴 · 외출원을 제출하오니 허가하여 주시기 바랍니다.
+                    상기 사유와 같이 야근 · 특근 신청서를 제출하오니 허가하여 주시기 바랍니다.
                 </Typography>
                 
                 <Typography sx={{ mb: 6 }}>
@@ -130,20 +132,21 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
             <Typography align="center" variant="h6" sx={{ mt: 'auto', mb: 2, fontWeight: 'bold' }}>
                 (주)디자인메카
             </Typography>
+
             <style>{`
                 @media (max-width: 768px) {
                     .idf-header { flex-direction: column !important; align-items: center !important; gap: 20px; }
                     .responsive-table, .responsive-table table, .responsive-table tbody, .responsive-table tr, .responsive-table td { 
                         display: block !important; width: 100% !important; border: none !important; 
                     }
-                    .responsive-table tr { margin-bottom: 20px; border-bottom: 2px solid #ddd !important; padding-bottom: 10px; }
+                    .responsive-table tr { margin-bottom: 20px; border-bottom: 1px solid #eee !important; padding-bottom: 10px; }
                     .responsive-table td { padding: 8px 0 !important; }
-                    .responsive-table td[component="td"] { background-color: transparent !important; text-align: left !important; color: #666; font-size: 12px; font-weight: bold; }
-                    input, textarea { font-size: 16px !important; border: 1px solid #eee !important; padding: 10px !important; border-radius: 4px; box-sizing: border-box; width: 100% !important; }
+                    .responsive-table td[component="td"] { background-color: transparent !important; text-align: left !important; color: #666; font-size: 12px; }
+                    textarea, input { font-size: 16px !important; border: 1px solid #eee !important; padding: 10px !important; border-radius: 4px; }
                 }
             `}</style>
         </Box>
     );
 };
 
-export default EarlyLeaveForm;
+export default OvertimeWorkForm;
