@@ -20,7 +20,7 @@ import DataManagementPage from './pages/DataManagementPage';
 import CustomerComplaintPage from './pages/CustomerComplaintPage';
 import MobileAttendancePage from './pages/MobileAttendancePage';
 import AttendancePage from './pages/AttendancePage';
-import InternalDraftForm from './components/InternalDraftForm';
+import ApprovalDraftPage from './components/ApprovalDraftPage';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -79,7 +79,7 @@ const App = () => {
         <Route path="delivery" element={<ProtectedRoute menuKey="delivery"><DeliveryPage /></ProtectedRoute>} />
         <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
         <Route path="approval" element={<ProtectedRoute menuKey="approval"><ApprovalPage /></ProtectedRoute>} />
-        <Route path="approval/internal-draft" element={<ProtectedRoute menuKey="approval"><InternalDraftForm /></ProtectedRoute>} />
+        <Route path="approval/draft" element={<ProtectedRoute menuKey="approval"><ApprovalDraftPage /></ProtectedRoute>} />
         <Route path="attendance" element={<ProtectedRoute menuKey="hr"><AttendancePage /></ProtectedRoute>} />
         <Route path="complaints" element={<ProtectedRoute menuKey="quality"><CustomerComplaintPage /></ProtectedRoute>} />
         <Route path="db-management" element={<ProtectedRoute menuKey="ADMIN"><DataManagementPage /></ProtectedRoute>} />

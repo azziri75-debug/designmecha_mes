@@ -247,51 +247,64 @@ async def create_document(
             )
             db.add(db_att)
     
-    # 4. 결재선 템플릿에서 결재 단계(Steps) 생성
-    lines_res = await db.execute(
-        select(ApprovalLine)
-        .options(selectinload(ApprovalLine.approver))
-        .where(ApprovalLine.doc_type == doc_in.doc_type)
-        .order_by(ApprovalLine.sequence)
-    )
-    lines = lines_res.scalars().all()
-    
-    if not lines:
-        raise HTTPException(status_code=400, detail="결재선이 설정되지 않은 문서 종류입니다.")
+    # 4. 결재 단계(Steps) 생성 (지정된 결재자 우선, 없으면 템플릿 사용)
+    lines_to_process = []
+    if doc_in.custom_approvers:
+        for ca in doc_in.custom_approvers:
+            s_res = await db.execute(select(Staff).where(Staff.id == ca.approver_id))
+            target_s = s_res.scalar_one_or_none()
+            if target_s:
+                lines_to_process.append({"approver_id": ca.approver_id, "sequence": ca.sequence, "role": target_s.role})
+    else:
+        lines_res = await db.execute(
+            select(ApprovalLine)
+            .options(selectinload(ApprovalLine.approver))
+            .where(ApprovalLine.doc_type == doc_in.doc_type)
+            .order_by(ApprovalLine.sequence)
+        )
+        lines = lines_res.scalars().all()
+        for line in lines:
+            lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
+
+    if not lines_to_process:
+        if doc_in.doc_type not in ["INTERNAL_DRAFT", "EXPENSE_REPORT", "CONSUMABLES_PURCHASE", "EARLY_LEAVE", "LEAVE_REQUEST"]:
+            raise HTTPException(status_code=400, detail="결재선이 설정되지 않은 문서 종류입니다.")
     
     author_rank = get_staff_rank(current_user.role)
     current_seq = 1
     all_auto_approved = True
     
-    for line in lines:
-        approver_rank = get_staff_rank(line.approver.role)
-        # 기안자 직급이 결재자와 동등하거나 높으면 자동 승인
-        is_auto = author_rank >= approver_rank
-        
-        step = ApprovalStep(
-            document_id=db_doc.id,
-            approver_id=line.approver_id,
-            sequence=line.sequence,
-            status="APPROVED" if is_auto else "PENDING",
-            processed_at=datetime.now() if is_auto else None,
-            comment="기안자 직급에 따른 자동 승인" if is_auto else None
-        )
-        db.add(step)
-        
-        if is_auto:
-            if current_seq == line.sequence:
-                current_seq += 1
-        else:
-            all_auto_approved = False
+    if lines_to_process:
+        for lp in lines_to_process:
+            approver_rank = get_staff_rank(lp["role"])
+            is_auto = author_rank >= approver_rank
+            
+            step = ApprovalStep(
+                document_id=db_doc.id,
+                approver_id=lp["approver_id"],
+                sequence=lp["sequence"],
+                status="APPROVED" if is_auto else "PENDING",
+                processed_at=datetime.now() if is_auto else None,
+                comment="기안자 직급에 따른 자동 승인" if is_auto else None
+            )
+            db.add(step)
+            
+            if is_auto:
+                if current_seq == lp["sequence"]:
+                    current_seq += 1
+            else:
+                all_auto_approved = False
+    else:
+        all_auto_approved = False
 
     db_doc.current_sequence = current_seq
     if all_auto_approved:
         db_doc.status = ApprovalStatus.COMPLETED
         print(f"[DEBUG] Document {db_doc.id} auto-completed. Type: {db_doc.doc_type}")
-        # 자동 승인 시 처리 (근태/소모품)
-        if db_doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+        # 자동 승인 시 처리 (근태/소모품 등)
+        if db_doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
             await create_attendance_record(db, db_doc)
-        elif db_doc.doc_type == "SUPPLIES":
+        elif db_doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
             print(f"[DEBUG] Triggering process_consumables for auto-approved doc {db_doc.id}")
             await process_consumables(db, db_doc)
     elif current_seq > 1:
@@ -367,6 +380,16 @@ async def process_approval(
     if action.status == "REJECTED":
         doc.status = ApprovalStatus.REJECTED
         doc.rejection_reason = action.comment
+        # [Rollback] 만약 COMPLETED 상태였다가 반려되는 경우라면 (예: 이관 후 취소) 근태 기록 등 파기
+        # 실무적으로는 COMPLETED 이후 반려 버튼이 노출되는 경우에만 해당
+        from sqlalchemy import delete as sa_delete
+        from app.models.basics import EmployeeTimeRecord
+        from app.models.purchasing import ConsumablePurchaseWait
+        await db.execute(sa_delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc.id))
+        await db.execute(sa_delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc.id))
+        # 연차 동기화 (차감된 것 복구)
+        from app.api.endpoints.hr import sync_annual_leave_usage
+        await sync_annual_leave_usage(db, doc.author_id, doc.created_at.year)
     else:
         # 다음 단계가 있는지 확인
         next_step_res = await db.execute(
@@ -381,10 +404,10 @@ async def process_approval(
         else:
             doc.status = ApprovalStatus.COMPLETED
             print(f"[DEBUG] Document {doc.id} completed via process_approval. Type: {doc.doc_type}")
-            # 최종 승인 시 처리
-            if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+            # 최종 승인 시 처리 (Attendance, Consumables 등)
+            if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
                 await create_attendance_record(db, doc)
-            elif doc.doc_type == "SUPPLIES":
+            elif doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
                 print(f"[DEBUG] Triggering process_consumables for approved doc {doc.id}")
                 await process_consumables(db, doc)
             
@@ -533,14 +556,14 @@ async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
 async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
     """결재 완료된 문서 기반 근태 기록 자동 생성 및 연차 차감"""
     try:
-        if doc.doc_type not in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+        if doc.doc_type not in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
             return
 
         from datetime import date
         from app.api.endpoints.hr import get_or_create_annual_leave, _business_days_between, sync_annual_leave_usage
         content = doc.content or {}
         
-        if doc.doc_type == "VACATION":
+        if doc.doc_type in ["VACATION", "LEAVE_REQUEST"]:
             start_date_str = content.get("start_date")
             end_date_str = content.get("end_date")
             if not start_date_str: return
@@ -552,29 +575,30 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             leave_record = await get_or_create_annual_leave(db, doc.author_id, start_date.year)
             
             # 사용 일수 계산
-            if v_type == "반차":
+            if v_type in ["반차", "반차(Half-day)"]:
                 applied_days = 0.5
             else:
                 applied_days = float(_business_days_between(start_date, end_date))
             
             # 연차 유형별 업데이트
-            if v_type == "병가":
+            if v_type in ["병가", "SICK"]:
                 leave_record.sick_leave_days += applied_days
-            elif v_type == "경조사":
+            elif v_type in ["경조사", "경조휴가", "EVENT"]:
                 leave_record.event_leave_days += applied_days
             else: # 연차, 반차 등
                 leave_record.used_leave_hours += applied_days * 8.0
             
             # 개별 근태 기록 생성
             from datetime import timedelta
+            from app.models.basics import EmployeeTimeRecord
             curr = start_date
             while curr <= end_date:
                 if curr.weekday() < 5:
                     record = EmployeeTimeRecord(
                         staff_id=doc.author_id,
                         record_date=curr,
-                        category="HALF_DAY" if v_type == "반차" else ("SICK" if v_type == "병가" else "ANNUAL"),
-                        content=f"{v_type} ({content.get('half_day_type', '')}) - {content.get('reason', '')}",
+                        category="HALF_DAY" if "반차" in v_type else ("SICK" if "병가" in v_type else ("EVENT_LEAVE" if "경조" in v_type else "ANNUAL")),
+                        content=f"{v_type} ({content.get('half_day_type', '')}) - {content.get('reason', '') or content.get('vacation_reason', '')}",
                         author_id=doc.author_id,
                         status="APPROVED",
                         approval_id=doc.id
@@ -586,7 +610,7 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             date_str = content.get("date")
             if not date_str: return
             record_date = date.fromisoformat(date_str)
-            e_type = content.get("type", "조퇴")
+            e_type = content.get("type", content.get("leave_type", "조퇴"))
             
             # 연차 레코드 조회/생성
             leave_record = await get_or_create_annual_leave(db, doc.author_id, record_date.year)
@@ -594,8 +618,8 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             # 시간 계산
             hours = 0.0
             try:
-                t1_str = content.get("time")
-                t2_str = content.get("end_time")
+                t1_str = content.get("leave_time") or content.get("time")
+                t2_str = content.get("return_time") or content.get("end_time")
                 
                 if t1_str:
                     def to_minutes(t_s):
@@ -633,11 +657,12 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             # 조퇴/외출은 연차(시간)에서 차감
             leave_record.used_leave_hours += float(hours)
             
+            from app.models.basics import EmployeeTimeRecord
             record = EmployeeTimeRecord(
                 staff_id=doc.author_id,
                 record_date=record_date,
-                category="EARLY_LEAVE" if e_type == "조퇴" else "OUTING",
-                content=f"{e_type}: {content.get('time', '')} ~ {content.get('end_time', '')} - {content.get('reason', '')}",
+                category="EARLY_LEAVE" if "조퇴" in e_type else "OUTING",
+                content=f"{e_type}: {t1_str} ~ {t2_str or ''} - {content.get('reason', '') or content.get('leave_reason', '')}",
                 author_id=doc.author_id,
                 status="APPROVED",
                 hours=hours,

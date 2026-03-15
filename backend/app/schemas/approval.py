@@ -51,9 +51,13 @@ class ApprovalDocumentBase(BaseModel):
     # Support for multi-file attachments in creation
     attachments_to_add: Optional[List[ApprovalAttachmentBase]] = None
 
+class CustomApprover(BaseModel):
+    approver_id: int
+    sequence: int
+
 class ApprovalDocumentCreate(ApprovalDocumentBase):
     # Optionally specify initial approval line if not using template
-    pass
+    custom_approvers: Optional[List[CustomApprover]] = None
 
 class ApprovalDocumentResponse(ApprovalDocumentBase):
     id: int

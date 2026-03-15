@@ -4,11 +4,14 @@ from app.db.base import Base
 import enum
 
 class DocumentType(str, enum.Enum):
-    VACATION = "VACATION"           # 휴가원
+    VACATION = "VACATION"           # 휴가원 (Legacy)
     EARLY_LEAVE = "EARLY_LEAVE"     # 조퇴.외출원
-    SUPPLIES = "SUPPLIES"           # 소모품 신청서
+    SUPPLIES = "SUPPLIES"           # 소모품 신청서 (Legacy)
     OVERTIME = "OVERTIME"           # 야근/특근신청서
     INTERNAL_DRAFT = "INTERNAL_DRAFT" # 내부기안
+    EXPENSE_REPORT = "EXPENSE_REPORT" # 지출결의서
+    CONSUMABLES_PURCHASE = "CONSUMABLES_PURCHASE" # 소모품 구매 신청서
+    LEAVE_REQUEST = "LEAVE_REQUEST" # 휴가원 (New version)
 
 class ApprovalStatus(str, enum.Enum):
     PENDING = "PENDING"

@@ -6,7 +6,6 @@ import {
     Calendar, User, Layers, Info, Settings, ClipboardList,
     ChevronRight, ArrowRight, Download, Eye, Upload
 } from 'lucide-react';
-import CreatableSelect from 'react-select/creatable';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 import Card from '../components/Card';
@@ -48,35 +47,12 @@ const ApprovalPage = () => {
     const [filterAuthorId, setFilterAuthorId] = useState('');
 
     // Modal states
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [isEditing, setIsEditing] = useState(false); // New: distinguish create vs edit
-    const [editDocId, setEditDocId] = useState(null); // New: track doc being edited
-    const [selectedDocType, setSelectedDocType] = useState('VACATION');
-    const [formData, setFormData] = useState({});
-    const [consumables, setConsumables] = useState([]); // Master datat for SUPPLIES
     const [showDocDetail, setShowDocDetail] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState(null);
-    const [userLeaveInfo, setUserLeaveInfo] = useState(null);
 
     // Settings states
     const [approvalLines, setApprovalLines] = useState({}); // { [doc_type]: lines[] }
 
-    useEffect(() => {
-        if (showCreateModal && selectedDocType === 'VACATION' && currentUser) {
-            fetchUserLeave();
-        }
-    }, [showCreateModal, selectedDocType, currentUser]);
-
-    const fetchUserLeave = async () => {
-        try {
-            const res = await api.get(`/hr/annual-leave/${currentUser.id}`);
-            const currentYear = new Date().getFullYear();
-            const info = res.data.history.find(h => h.year === currentYear);
-            setUserLeaveInfo(info);
-        } catch (error) {
-            console.error("Failed to fetch leave info", error);
-        }
-    };
 
     useEffect(() => {
         const modeFromUrl = searchParams.get('mode') || 'ALL';
@@ -122,73 +98,6 @@ const ApprovalPage = () => {
         setLoading(false);
     };
 
-    const handleCreateConsumable = async (inputValue, idx) => {
-        if (!window.confirm('등록되지 않은 품목입니다. 신규 등록하시겠습니까?')) {
-            return;
-        }
-
-        try {
-            const res = await api.post('/product/products/', {
-                name: inputValue,
-                item_type: 'CONSUMABLE',
-                unit: 'EA'
-            });
-            const newConsumable = res.data;
-
-            // 실시간 마스터 데이터 반영
-            setConsumables(prev => [...prev, newConsumable]);
-
-            // 폼 데이터 상태 동기화 (ID와 이름 즉시 반영)
-            const newItems = [...(formData.items || [])];
-            newItems[idx] = {
-                ...newItems[idx],
-                product_id: newConsumable.id,
-                product_name: newConsumable.name
-            };
-            setFormData({ ...formData, items: newItems });
-
-            alert('새로운 소모품이 마스터에 등록되었습니다.');
-        } catch (error) {
-            console.error('Failed to create consumable', error);
-            alert('등록 실패: ' + (error.response?.data?.detail || error.message));
-        }
-    };
-
-    // 문서 종류별로 사용자가 입력한 신청 날짜를 제목에 사용
-    const getTitleDate = (docType, data) => {
-        if (docType === 'VACATION') return data.start_date || format(new Date(), 'yyyy-MM-dd');
-        if (docType === 'EARLY_LEAVE' || docType === 'OVERTIME') return data.date || format(new Date(), 'yyyy-MM-dd');
-        return format(new Date(), 'yyyy-MM-dd');
-    };
-
-    const handleCreateDoc = async (e) => {
-        e.preventDefault();
-        try {
-            const titleDate = getTitleDate(selectedDocType, formData);
-            const payload = {
-                doc_type: selectedDocType,
-                title: `${DOC_TYPES[selectedDocType].label} - ${titleDate}`,
-                content: formData,
-                attachment_file: formData.attachment_file || []
-            };
-
-            if (isEditing) {
-                await api.put(`/approval/documents/${editDocId}`, payload);
-                alert('기안 문서가 수정되었습니다.');
-            } else {
-                await api.post('/approval/documents', payload);
-                alert('성공적으로 기안되었습니다.');
-            }
-
-            setShowCreateModal(false);
-            setIsEditing(false);
-            setEditDocId(null);
-            setFormData({});
-            fetchInitialData();
-        } catch (error) {
-            alert('요청 실패: ' + (error.response?.data?.detail || error.message));
-        }
-    };
 
     const handleDeleteDoc = async (docId) => {
         if (!window.confirm('정말 삭제하시겠습니까? 관련 결재 데이터가 모두 삭제됩니다.')) return;
@@ -207,15 +116,7 @@ const ApprovalPage = () => {
     };
 
     const handleEditDoc = (doc) => {
-        if (doc.doc_type === 'INTERNAL_DRAFT') {
-            navigate(`/approval/internal-draft?id=${doc.id}`);
-            return;
-        }
-        setIsEditing(true);
-        setEditDocId(doc.id);
-        setSelectedDocType(doc.doc_type);
-        setFormData(doc.content);
-        setShowCreateModal(true);
+        navigate(`/approval/draft?id=${doc.id}`);
         setShowDocDetail(false);
     };
 
@@ -300,15 +201,8 @@ const ApprovalPage = () => {
                 </div>
                 <div className="flex gap-2">
                     <button
-                        onClick={() => navigate('/approval/internal-draft')}
+                        onClick={() => navigate('/approval/draft')}
                         className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                    >
-                        <Plus className="w-4 h-4" />
-                        내부기안 작성
-                    </button>
-                    <button
-                        onClick={() => { setSelectedDocType('VACATION'); setShowCreateModal(true); }}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                     >
                         <Plus className="w-4 h-4" />
                         문서 기안
@@ -431,7 +325,7 @@ const ApprovalPage = () => {
                                                 className="hover:bg-gray-800/50 transition-colors group cursor-pointer"
                                                 onClick={() => { 
                                                     if (doc.doc_type === 'INTERNAL_DRAFT') {
-                                                        navigate(`/approval/internal-draft?id=${doc.id}`);
+                                                        navigate(`/approval/draft?id=${doc.id}`);
                                                     } else {
                                                         setSelectedDoc(doc); 
                                                         setShowDocDetail(true); 
@@ -568,302 +462,6 @@ const ApprovalPage = () => {
                 </div>
             )}
 
-            {/* Create Doc Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-2xl shadow-2xl animation-fade-in my-auto">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2 uppercase tracking-tight">
-                                <Plus className="w-5 h-5 text-blue-500" />
-                                {DOC_TYPES[selectedDocType].label} {isEditing ? '수정' : '기안'}
-                            </h3>
-                            <button onClick={() => { setShowCreateModal(false); setIsEditing(false); setEditDocId(null); setFormData({}); }} className="text-gray-400 hover:text-white transition-colors">
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
-
-                        <div className="p-6">
-                            {!isEditing && (
-                                <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 mb-6">
-                                    {Object.entries(DOC_TYPES).map(([type, info]) => (
-                                        <button
-                                            key={type}
-                                            onClick={() => setSelectedDocType(type)}
-                                            className={cn(
-                                                "flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all",
-                                                selectedDocType === type ? "bg-blue-600 text-white shadow" : "text-gray-400 hover:text-white"
-                                            )}
-                                        >
-                                            {info.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            <form onSubmit={handleCreateDoc} className="space-y-6">
-                                {selectedDocType === 'VACATION' && (
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-400">시작일</label>
-                                                <input type="date" value={formData.start_date || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} required />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-400">종료일</label>
-                                                <input type="date" value={formData.end_date || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} required />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">휴가 종류</label>
-                                            <select value={formData.vacation_type || '연차'} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, vacation_type: e.target.value })}>
-                                                <option value="연차">연차</option>
-                                                <option value="반차">반차</option>
-                                                <option value="경조휴가">경조휴가</option>
-                                                <option value="병가">병가</option>
-                                                <option value="기타">기타</option>
-                                            </select>
-                                        </div>
-                                        {userLeaveInfo && (
-                                            <div className={cn(
-                                                "p-3 rounded-lg border flex items-center justify-between",
-                                                userLeaveInfo.remaining_days <= 0
-                                                    ? "bg-red-900/20 border-red-800 text-red-400"
-                                                    : "bg-blue-900/20 border-blue-800 text-blue-400"
-                                            )}>
-                                                <div className="flex items-center gap-2">
-                                                    <Info className="w-4 h-4" />
-                                                    <span className="text-sm font-medium">잔여 연차 현황 ({userLeaveInfo.year}년)</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-lg font-bold">{userLeaveInfo.remaining_days}</span>
-                                                    <span className="text-xs">일 남음</span>
-                                                </div>
-                                                {userLeaveInfo.remaining_days <= 0 && (
-                                                    <div className="absolute -bottom-6 left-0 text-[11px] text-red-500 font-bold animate-pulse">
-                                                        ※ 잔여 연차가 부족합니다. 승인이 거절될 수 있습니다.
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                        {formData.vacation_type === '반차' && (
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-400">반차 구분</label>
-                                                <select value={formData.half_day_type || '오전'} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, half_day_type: e.target.value })}>
-                                                    <option value="오전">오전</option>
-                                                    <option value="오후">오후</option>
-                                                </select>
-                                            </div>
-                                        )}
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">사유</label>
-                                            <textarea value={formData.reason || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="구체적인 사유를 입력해주세요." onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {selectedDocType === 'EARLY_LEAVE' && (
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">일자</label>
-                                            <input type="date" value={formData.date || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-400">구분</label>
-                                                <select value={formData.type || '조퇴'} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
-                                                    <option value="조퇴">조퇴</option>
-                                                    <option value="외출">외출</option>
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-400">{formData.type === '외출' ? '시작 시간' : '퇴근(나가는) 시간'}</label>
-                                                <input type="time" value={formData.time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, time: e.target.value })} required />
-                                            </div>
-                                            {formData.type === '외출' && (
-                                                <div className="space-y-2 col-span-2">
-                                                    <label className="text-sm font-medium text-gray-400">종료(복귀) 시간</label>
-                                                    <input type="time" value={formData.end_time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} required />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">사유</label>
-                                            <textarea value={formData.reason || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="사유를 입력해주세요." onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {selectedDocType === 'SUPPLIES' && (
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-end mb-2">
-                                            <label className="text-sm font-medium text-gray-400">신청 품목 및 수량</label>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const items = formData.items || [];
-                                                    setFormData({ ...formData, items: [...items, { product_name: '', quantity: 1, remarks: '' }] });
-                                                }}
-                                                className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors"
-                                            >
-                                                <Plus className="w-3 h-3" />
-                                                품목 추가
-                                            </button>
-                                        </div>
-
-                                        {(formData.items || []).length === 0 ? (
-                                            <div className="text-center py-6 bg-gray-900 border border-gray-700 border-dashed rounded-lg text-gray-500 text-sm">
-                                                품목 추가 버튼을 눌러 신청할 소모품을 입력하세요.
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {formData.items.map((item, idx) => (
-                                                    <div key={idx} className="flex gap-2 items-start bg-gray-900 p-3 rounded-lg border border-gray-700">
-                                                        <div className="flex-1 space-y-3">
-                                                            <div className="relative text-black">
-                                                                <CreatableSelect
-                                                                    isClearable
-                                                                    placeholder="품명 검색 또는 직접 입력하여 등록"
-                                                                    options={consumables.map(c => ({ value: c.id, label: c.name }))}
-                                                                    value={item.product_name ? { value: item.product_id, label: item.product_name } : null}
-                                                                    onChange={(selected) => {
-                                                                        const newItems = [...formData.items];
-                                                                        newItems[idx].product_id = selected?.value || null;
-                                                                        newItems[idx].product_name = selected?.label || '';
-                                                                        setFormData({ ...formData, items: newItems });
-                                                                    }}
-                                                                    onCreateOption={(inputValue) => handleCreateConsumable(inputValue, idx)}
-                                                                    styles={{
-                                                                        control: (base) => ({
-                                                                            ...base,
-                                                                            backgroundColor: '#1f2937',
-                                                                            borderColor: '#4b5563',
-                                                                            color: 'white',
-                                                                            fontSize: '14px',
-                                                                            borderRadius: '0.5rem',
-                                                                            minHeight: '38px',
-                                                                        }),
-                                                                        menu: (base) => ({
-                                                                            ...base,
-                                                                            backgroundColor: '#1f2937',
-                                                                            zIndex: 9999
-                                                                        }),
-                                                                        option: (base, state) => ({
-                                                                            ...base,
-                                                                            backgroundColor: state.isFocused ? '#374151' : '#1f2937',
-                                                                            color: 'white',
-                                                                            '&:active': {
-                                                                                backgroundColor: '#4b5563',
-                                                                            }
-                                                                        }),
-                                                                        singleValue: (base) => ({
-                                                                            ...base,
-                                                                            color: 'white'
-                                                                        }),
-                                                                        input: (base) => ({
-                                                                            ...base,
-                                                                            color: 'white'
-                                                                        })
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                <div className="w-32 relative">
-                                                                    <input
-                                                                        type="number"
-                                                                        min="1"
-                                                                        value={item.quantity || 1}
-                                                                        onChange={(e) => {
-                                                                            const newItems = [...formData.items];
-                                                                            newItems[idx].quantity = e.target.value;
-                                                                            setFormData({ ...formData, items: newItems });
-                                                                        }}
-                                                                        className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg pl-3 pr-8 py-2 outline-none"
-                                                                        required
-                                                                    />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">EA</span>
-                                                                </div>
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="비고 (특이사항 등)"
-                                                                    value={item.remarks || ''}
-                                                                    onChange={(e) => {
-                                                                        const newItems = [...formData.items];
-                                                                        newItems[idx].remarks = e.target.value;
-                                                                        setFormData({ ...formData, items: newItems });
-                                                                    }}
-                                                                    className="flex-1 bg-gray-800 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 outline-none"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const newItems = formData.items.filter((_, i) => i !== idx);
-                                                                setFormData({ ...formData, items: newItems });
-                                                            }}
-                                                            className="p-2 text-gray-500 hover:text-red-400 hover:bg-gray-800 rounded bg-gray-800"
-                                                        >
-                                                            <X className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {selectedDocType === 'OVERTIME' && (
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">근무 일자</label>
-                                            <input type="date" value={formData.date || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-400">시작 시간</label>
-                                                <input type="time" value={formData.start_time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} required />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-400">종료 시간</label>
-                                                <input type="time" value={formData.end_time || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} required />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">근무 구분</label>
-                                            <select value={formData.work_type || '야근'} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2" onChange={(e) => setFormData({ ...formData, work_type: e.target.value })}>
-                                                <option value="야근">야근</option>
-                                                <option value="특근">특근</option>
-                                                <option value="휴일근무">휴일근무</option>
-                                            </select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-400">근무 내용</label>
-                                            <textarea value={formData.reason || ''} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 min-h-[100px]" placeholder="수행할 업무 내용을 상세히 입력해주세요." onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required />
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="pt-6 border-t border-gray-700 flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => { setShowCreateModal(false); setIsEditing(false); setEditDocId(null); setFormData({}); }}
-                                        className="flex-1 px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium"
-                                    >
-                                        취소
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="flex-2 flex-[2] px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-bold flex items-center justify-center gap-2"
-                                    >
-                                        {isEditing ? '수정완료' : '기안하기'}
-                                        <ArrowRight className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Doc Detail / Process Modal */}
             {showDocDetail && selectedDoc && (
