@@ -45,21 +45,18 @@ import traceback
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    error_msg = f"Global Error: {str(exc)}\n{traceback.format_exc()}"
-    print(error_msg)
-    with open("backend_global_error.log", "a", encoding="utf-8") as f:
-        f.write(error_msg + "\n")
-    return JSONResponse(
-        status_code=500,
-        content={"message": "Internal Server Error", "detail": str(exc)},
-    )
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
     import traceback
     error_details = traceback.format_exc()
-    print(f"Global Exception: {exc}\n{error_details}")
+    error_msg = f"Global Exception: {exc}\n{error_details}"
+    print(error_msg)
     
+    # Log to file
+    try:
+        with open("backend_global_error.log", "a", encoding="utf-8") as f:
+            f.write(error_msg + "\n")
+    except:
+        pass
+
     # Force CORS headers to ensure the frontend can read the error
     origin = request.headers.get("origin")
     headers = {
@@ -276,6 +273,199 @@ async def startup_event():
 
             # 4. Tables Expansion (Manual SQL for specific structures)
             new_tables = [
+                ("partners", """
+                    CREATE TABLE partners (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR NOT NULL,
+                        partner_type JSONB,
+                        registration_number VARCHAR,
+                        representative VARCHAR,
+                        address VARCHAR,
+                        phone VARCHAR,
+                        email VARCHAR,
+                        description VARCHAR,
+                        attachment_file JSONB,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
+                ("product_groups", """
+                    CREATE TABLE product_groups (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR NOT NULL,
+                        type VARCHAR NOT NULL,
+                        parent_id INTEGER REFERENCES product_groups(id),
+                        description TEXT
+                    )
+                """),
+                ("processes", """
+                    CREATE TABLE processes (
+                        id SERIAL PRIMARY KEY,
+                        group_id INTEGER REFERENCES product_groups(id),
+                        name VARCHAR NOT NULL,
+                        course_type VARCHAR DEFAULT 'INTERNAL',
+                        description TEXT
+                    )
+                """),
+                ("equipments", """
+                    CREATE TABLE equipments (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR NOT NULL,
+                        code VARCHAR UNIQUE,
+                        spec VARCHAR,
+                        process_id INTEGER REFERENCES processes(id),
+                        status VARCHAR DEFAULT 'IDLE',
+                        purchase_date DATE,
+                        location VARCHAR,
+                        is_active BOOLEAN DEFAULT TRUE
+                    )
+                """),
+                ("products", """
+                    CREATE TABLE products (
+                        id SERIAL PRIMARY KEY,
+                        group_id INTEGER REFERENCES product_groups(id),
+                        partner_id INTEGER REFERENCES partners(id),
+                        name VARCHAR NOT NULL,
+                        specification VARCHAR,
+                        material VARCHAR,
+                        unit VARCHAR DEFAULT 'EA',
+                        drawing_file VARCHAR,
+                        note TEXT,
+                        item_type VARCHAR DEFAULT 'PRODUCED',
+                        recent_price DOUBLE PRECISION DEFAULT 0.0,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
+                ("inventory", """
+                    CREATE TABLE inventory (
+                        id SERIAL PRIMARY KEY,
+                        product_id INTEGER UNIQUE REFERENCES products(id),
+                        quantity INTEGER DEFAULT 0,
+                        location VARCHAR
+                    )
+                """),
+                ("bom", """
+                    CREATE TABLE bom (
+                        id SERIAL PRIMARY KEY,
+                        parent_product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+                        child_product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+                        required_quantity DOUBLE PRECISION DEFAULT 1.0
+                    )
+                """),
+                ("sales_orders", """
+                    CREATE TABLE sales_orders (
+                        id SERIAL PRIMARY KEY,
+                        order_no VARCHAR UNIQUE,
+                        partner_id INTEGER REFERENCES partners(id),
+                        order_date DATE DEFAULT CURRENT_DATE,
+                        delivery_date DATE,
+                        actual_delivery_date DATE,
+                        delivery_method VARCHAR,
+                        transaction_date DATE,
+                        total_amount DOUBLE PRECISION DEFAULT 0.0,
+                        note TEXT,
+                        status VARCHAR DEFAULT 'PENDING',
+                        attachment_file JSONB,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
+                ("sales_order_items", """
+                    CREATE TABLE sales_order_items (
+                        id SERIAL PRIMARY KEY,
+                        order_id INTEGER NOT NULL REFERENCES sales_orders(id) ON DELETE CASCADE,
+                        product_id INTEGER NOT NULL REFERENCES products(id),
+                        unit_price DOUBLE PRECISION NOT NULL,
+                        quantity INTEGER NOT NULL,
+                        delivered_quantity INTEGER DEFAULT 0,
+                        status VARCHAR DEFAULT 'PENDING',
+                        note TEXT
+                    )
+                """),
+                ("stock_productions", """
+                    CREATE TABLE stock_productions (
+                        id SERIAL PRIMARY KEY,
+                        production_no VARCHAR UNIQUE,
+                        product_id INTEGER NOT NULL REFERENCES products(id),
+                        quantity INTEGER NOT NULL,
+                        request_date DATE DEFAULT CURRENT_DATE,
+                        target_date DATE,
+                        status VARCHAR DEFAULT 'PENDING',
+                        note TEXT,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
+                ("production_plans", """
+                    CREATE TABLE production_plans (
+                        id SERIAL PRIMARY KEY,
+                        order_id INTEGER REFERENCES sales_orders(id),
+                        stock_production_id INTEGER REFERENCES stock_productions(id) ON DELETE CASCADE,
+                        plan_date DATE NOT NULL,
+                        status VARCHAR DEFAULT 'PLANNED',
+                        attachment_file JSONB,
+                        sheet_metadata JSONB,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
+                ("production_plan_items", """
+                    CREATE TABLE production_plan_items (
+                        id SERIAL PRIMARY KEY,
+                        plan_id INTEGER NOT NULL REFERENCES production_plans(id) ON DELETE CASCADE,
+                        product_id INTEGER NOT NULL REFERENCES products(id),
+                        process_name VARCHAR NOT NULL,
+                        sequence INTEGER NOT NULL,
+                        course_type VARCHAR DEFAULT 'INTERNAL',
+                        quantity INTEGER DEFAULT 1,
+                        partner_name VARCHAR,
+                        work_center VARCHAR,
+                        estimated_time DOUBLE PRECISION,
+                        start_date DATE,
+                        end_date DATE,
+                        worker_id INTEGER REFERENCES staff(id),
+                        equipment_id INTEGER REFERENCES equipments(id),
+                        status VARCHAR DEFAULT 'PLANNED',
+                        cost DOUBLE PRECISION DEFAULT 0.0,
+                        attachment_file JSONB,
+                        note TEXT
+                    )
+                """),
+                ("work_orders", """
+                    CREATE TABLE work_orders (
+                        id SERIAL PRIMARY KEY,
+                        plan_item_id INTEGER REFERENCES production_plan_items(id) ON DELETE CASCADE,
+                        process_name VARCHAR NOT NULL,
+                        worker_id INTEGER REFERENCES staff(id),
+                        status VARCHAR DEFAULT 'PENDING',
+                        work_date DATE,
+                        good_quantity INTEGER DEFAULT 0,
+                        bad_quantity INTEGER DEFAULT 0,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
+                ("work_logs", """
+                    CREATE TABLE work_logs (
+                        id SERIAL PRIMARY KEY,
+                        work_date DATE NOT NULL,
+                        worker_id INTEGER REFERENCES staff(id),
+                        note TEXT,
+                        attachment_file JSONB,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
+                ("work_log_items", """
+                    CREATE TABLE work_log_items (
+                        id SERIAL PRIMARY KEY,
+                        work_log_id INTEGER NOT NULL REFERENCES work_logs(id) ON DELETE CASCADE,
+                        plan_item_id INTEGER NOT NULL REFERENCES production_plan_items(id) ON DELETE CASCADE,
+                        worker_id INTEGER REFERENCES staff(id),
+                        start_time TIMESTAMP WITH TIME ZONE,
+                        end_time TIMESTAMP WITH TIME ZONE,
+                        good_quantity INTEGER DEFAULT 0,
+                        bad_quantity INTEGER DEFAULT 0,
+                        unit_price DOUBLE PRECISION DEFAULT 0.0,
+                        note TEXT
+                    )
+                """),
                 ("quality_defects", """
                     CREATE TABLE quality_defects (
                         id SERIAL PRIMARY KEY,
@@ -292,7 +482,6 @@ async def startup_event():
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
                 """),
-                # ... [Rest of the table definitions remain the same, wrapped in try-except]
                 ("stocks", """
                     CREATE TABLE stocks (
                         id SERIAL PRIMARY KEY,
@@ -301,45 +490,6 @@ async def startup_event():
                         in_production_quantity INTEGER DEFAULT 0,
                         location VARCHAR,
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    )
-                """),
-                ("stock_productions", """
-                    CREATE TABLE stock_productions (
-                        id SERIAL PRIMARY KEY,
-                        production_no VARCHAR UNIQUE,
-                        product_id INTEGER NOT NULL REFERENCES products(id),
-                        quantity INTEGER NOT NULL,
-                        request_date DATE DEFAULT CURRENT_DATE,
-                        target_date DATE,
-                        status VARCHAR DEFAULT 'PENDING',
-                        note TEXT,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    )
-                """),
-                ("equipments", """
-                    CREATE TABLE equipments (
-                        id SERIAL PRIMARY KEY,
-                        name VARCHAR NOT NULL,
-                        code VARCHAR UNIQUE,
-                        spec VARCHAR,
-                        process_id INTEGER REFERENCES processes(id),
-                        status VARCHAR DEFAULT 'IDLE',
-                        purchase_date DATE,
-                        location VARCHAR,
-                        is_active BOOLEAN DEFAULT TRUE
-                    )
-                """),
-                ("equipment_histories", """
-                    CREATE TABLE equipment_histories (
-                        id SERIAL PRIMARY KEY,
-                        equipment_id INTEGER NOT NULL REFERENCES equipments(id),
-                        history_date DATE DEFAULT CURRENT_DATE,
-                        history_type VARCHAR NOT NULL,
-                        description TEXT NOT NULL,
-                        cost DOUBLE PRECISION DEFAULT 0.0,
-                        worker_name VARCHAR,
-                        attachment_file JSONB,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
                 """),
                 ("form_templates", """
@@ -449,38 +599,46 @@ async def startup_event():
                 """),
             ]
 
-            # Bug 3: Add reference columns and deleted_at column to approval_documents if missing
+            # [Safe Migration] Add reference columns and deleted_at column to approval_documents if missing
             try:
                 if is_sqlite:
                     r = await db.execute(text("PRAGMA table_info(approval_documents)"))
                     cols = [c[1] for c in r.fetchall()]
                     if "deleted_at" not in cols:
-                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN deleted_at TIMESTAMP"))
-                        print("Startup: Added deleted_at to approval_documents (SQLite)")
-                    if "reference_id" not in cols:
-                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_id INTEGER"))
-                        print("Startup: Added reference_id to approval_documents (SQLite)")
-                    if "reference_type" not in cols:
-                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_type VARCHAR"))
-                        print("Startup: Added reference_type to approval_documents (SQLite)")
-                else:
-                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='approval_documents' AND column_name='deleted_at'"))
-                    if not r.scalar():
-                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN deleted_at TIMESTAMP"))
-                        print("Startup: Added deleted_at to approval_documents (Postgres)")
+                        try:
+                            await db.execute(text("ALTER TABLE approval_documents ADD COLUMN deleted_at TIMESTAMP"))
+                            print("Startup: Added deleted_at to approval_documents (SQLite)")
+                        except Exception as inner_e:
+                            print(f"Startup: Could not add deleted_at (SQLite): {inner_e}")
                     
-                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='approval_documents' AND column_name='reference_id'"))
-                    if not r.scalar():
-                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_id INTEGER"))
-                        print("Startup: Added reference_id to approval_documents (Postgres)")
-                        
-                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='approval_documents' AND column_name='reference_type'"))
-                    if not r.scalar():
-                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_type VARCHAR"))
-                        print("Startup: Added reference_type to approval_documents (Postgres)")
+                    if "reference_id" not in cols:
+                        try:
+                            await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_id INTEGER"))
+                            print("Startup: Added reference_id to approval_documents (SQLite)")
+                        except Exception as inner_e:
+                            print(f"Startup: Could not add reference_id (SQLite): {inner_e}")
+                            
+                    if "reference_type" not in cols:
+                        try:
+                            await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_type VARCHAR"))
+                            print("Startup: Added reference_type to approval_documents (SQLite)")
+                        except Exception as inner_e:
+                            print(f"Startup: Could not add reference_type (SQLite): {inner_e}")
+                else:
+                    # Postgres safety checks
+                    check_cols = ["deleted_at", "reference_id", "reference_type"]
+                    for col_name in check_cols:
+                        r = await db.execute(text(f"SELECT column_name FROM information_schema.columns WHERE table_name='approval_documents' AND column_name='{col_name}'"))
+                        if not r.scalar():
+                            try:
+                                col_type = "TIMESTAMP" if col_name == "deleted_at" else ("INTEGER" if col_name == "reference_id" else "VARCHAR")
+                                await db.execute(text(f"ALTER TABLE approval_documents ADD COLUMN {col_name} {col_type}"))
+                                print(f"Startup: Added {col_name} to approval_documents (Postgres)")
+                            except Exception as inner_e:
+                                print(f"Startup: Could not add {col_name} (Postgres): {inner_e}")
                 await db.commit()
             except Exception as e:
-                print(f"Startup: approval_documents migration failed: {e}")
+                print(f"Startup: approval_documents safety patch failed: {e}")
                 await db.rollback()
 
             for t_name, create_sql in new_tables:
