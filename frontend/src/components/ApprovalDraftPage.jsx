@@ -39,7 +39,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
     const [title, setTitle] = useState('');
     const [formContent, setFormContent] = useState({});
     
-    const [customApprovers, setCustomApprovers] = useState(null);
+    const [customApprovers, setCustomApprovers] = useState([]);
     const [showApproverSelector, setShowApproverSelector] = useState(false);
 
     const [attachments, setAttachments] = useState([]);
@@ -93,8 +93,8 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 title,
                 doc_type: docType,
                 content: formContent,
-                attachments_to_add: attachments.map(a => ({ filename: a.name || a.filename, url: a.url })),
-                custom_approvers: customApprovers?.map(a => ({ staff_id: a.id, sequence: a.sequence })) || null
+                attachments_to_add: attachments?.map(a => ({ filename: a.name || a.filename, url: a.url })) || [],
+                custom_approvers: customApprovers?.length > 0 ? customApprovers.map(a => ({ staff_id: a.id, sequence: a.sequence })) : null
             };
 
             if (documentData?.id) {
@@ -116,7 +116,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
 
     const virtualDocData = documentData || {
         author: currentUser,
-        steps: customApprovers ? customApprovers.map(a => ({ approver: a, sequence: a.sequence, status: 'PENDING' })) : null
+        steps: (customApprovers || []).length > 0 ? customApprovers.map(a => ({ approver: a, sequence: a.sequence, status: 'PENDING' })) : []
     };
 
     const renderFormBody = () => {

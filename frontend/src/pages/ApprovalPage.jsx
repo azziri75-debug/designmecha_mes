@@ -74,14 +74,12 @@ const ApprovalPage = () => {
             if (filterEndDate) params.end_date = filterEndDate;
             if (filterAuthorId) params.author_id = filterAuthorId;
 
-            const [staffRes, docRes, consRes] = await Promise.all([
+            const [staffRes, docRes] = await Promise.all([
                 api.get('/basics/staff/'),
-                api.get('/approval/documents', { params }),
-                api.get('/product/products/', { params: { item_type: 'CONSUMABLE' } })
+                api.get('/approval/documents', { params })
             ]);
             setStaff(staffRes.data);
             setDocuments(docRes.data);
-            setConsumables(consRes.data);
 
             if (activeTab === 'settings') {
                 const types = Object.keys(DOC_TYPES);

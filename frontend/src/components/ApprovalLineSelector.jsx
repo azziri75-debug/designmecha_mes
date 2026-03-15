@@ -31,7 +31,7 @@ const ApprovalLineSelector = ({ open, onClose, onSelect, currentLines = [] }) =>
   useEffect(() => {
     fetchStaff();
     // Initialize with current lines if they exist
-    if (currentLines.length > 0) {
+    if ((currentLines || []).length > 0) {
       const initial = { 부장: null, 이사: null, 대표이사: null };
       currentLines.forEach(line => {
           if (line.role === '부장') initial.부장 = line;
