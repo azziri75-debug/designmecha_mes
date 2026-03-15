@@ -52,7 +52,7 @@ class ApprovalDocumentBase(BaseModel):
     attachments_to_add: Optional[List[ApprovalAttachmentBase]] = None
 
 class CustomApprover(BaseModel):
-    approver_id: int
+    staff_id: int
     sequence: int
 
 class ApprovalDocumentCreate(ApprovalDocumentBase):

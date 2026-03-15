@@ -251,10 +251,10 @@ async def create_document(
     lines_to_process = []
     if doc_in.custom_approvers:
         for ca in doc_in.custom_approvers:
-            s_res = await db.execute(select(Staff).where(Staff.id == ca.approver_id))
+            s_res = await db.execute(select(Staff).where(Staff.id == ca.staff_id))
             target_s = s_res.scalar_one_or_none()
             if target_s:
-                lines_to_process.append({"approver_id": ca.approver_id, "sequence": ca.sequence, "role": target_s.role})
+                lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
     else:
         lines_res = await db.execute(
             select(ApprovalLine)
@@ -380,16 +380,28 @@ async def process_approval(
     if action.status == "REJECTED":
         doc.status = ApprovalStatus.REJECTED
         doc.rejection_reason = action.comment
-        # [Rollback] 만약 COMPLETED 상태였다가 반려되는 경우라면 (예: 이관 후 취소) 근태 기록 등 파기
-        # 실무적으로는 COMPLETED 이후 반려 버튼이 노출되는 경우에만 해당
+        # [Rollback] 근태 기록 및 소모품 대기열 파기
         from sqlalchemy import delete as sa_delete
         from app.models.basics import EmployeeTimeRecord
         from app.models.purchasing import ConsumablePurchaseWait
         await db.execute(sa_delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc.id))
         await db.execute(sa_delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc.id))
+        
         # 연차 동기화 (차감된 것 복구)
-        from app.api.endpoints.hr import sync_annual_leave_usage
-        await sync_annual_leave_usage(db, doc.author_id, doc.created_at.year)
+        if doc.doc_type in ["VACATION", "EARLY_LEAVE", "LEAVE_REQUEST"]:
+            from app.api.endpoints.hr import sync_annual_leave_usage
+            # year can be extracted from doc.created_at or start_date
+            content = doc.content or {}
+            target_year = doc.created_at.year
+            if content.get("start_date"):
+                try: target_year = int(content.get("start_date")[:4])
+                except: pass
+            elif content.get("date"):
+                try: target_year = int(content.get("date")[:4])
+                except: pass
+            
+            await db.flush() # Ensure doc status is REJECTED in session
+            await sync_annual_leave_usage(db, doc.author_id, target_year)
     else:
         # 다음 단계가 있는지 확인
         next_step_res = await db.execute(
@@ -771,29 +783,35 @@ async def update_document(
         doc.current_sequence = 1
         doc.rejection_reason = None
         
-        # 기존 단계들 삭제 후 다시 생성 (결재선 변경 대응)
-        await db.execute(delete(ApprovalStep).where(ApprovalStep.document_id == doc_id))
-        
-        lines_res = await db.execute(
-            select(ApprovalLine)
-            .options(selectinload(ApprovalLine.approver))
-            .where(ApprovalLine.doc_type == doc.doc_type)
-            .order_by(ApprovalLine.sequence)
-        )
-        lines = lines_res.scalars().all()
+        if doc_in.custom_approvers:
+            for ca in doc_in.custom_approvers:
+                s_res = await db.execute(select(Staff).where(Staff.id == ca.staff_id))
+                target_s = s_res.scalar_one_or_none()
+                if target_s:
+                    lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
+        else:
+            lines_res = await db.execute(
+                select(ApprovalLine)
+                .options(selectinload(ApprovalLine.approver))
+                .where(ApprovalLine.doc_type == doc.doc_type)
+                .order_by(ApprovalLine.sequence)
+            )
+            lines = lines_res.scalars().all()
+            for line in lines:
+                lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
         
         author_rank = get_staff_rank(current_user.role)
         current_seq = 1
         all_auto_approved = True
         
-        for line in lines:
-            approver_rank = get_staff_rank(line.approver.role)
+        for lp in lines_to_process:
+            approver_rank = get_staff_rank(lp["role"])
             is_auto = author_rank >= approver_rank
             
             step = ApprovalStep(
                 document_id=doc.id,
-                approver_id=line.approver_id,
-                sequence=line.sequence,
+                approver_id=lp["approver_id"],
+                sequence=lp["sequence"],
                 status="APPROVED" if is_auto else "PENDING",
                 processed_at=datetime.now() if is_auto else None,
                 comment="기안자 직급에 따른 자동 승인" if is_auto else None
@@ -801,7 +819,7 @@ async def update_document(
             db.add(step)
             
             if is_auto:
-                if current_seq == line.sequence:
+                if current_seq == lp["sequence"]:
                     current_seq += 1
             else:
                 all_auto_approved = False

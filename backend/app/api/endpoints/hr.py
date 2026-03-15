@@ -749,7 +749,7 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
     docs_res = await db.execute(
         select(ApprovalDocument).where(
             ApprovalDocument.author_id == staff_id,
-            ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE"]),
+            ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE", "LEAVE_REQUEST"]),
             ApprovalDocument.status == ApprovalStatus.COMPLETED,
             ApprovalDocument.deleted_at == None,  # [Fix] Explicitly filter out soft-deleted documents
             ApprovalDocument.created_at >= year_start,
@@ -775,7 +775,7 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
     
     for doc in docs:
         content = doc.content or {}
-        if doc.doc_type == "VACATION":
+        if doc.doc_type in ["VACATION", "LEAVE_REQUEST"]:
             v_type = content.get("vacation_type", "연차")
             val = 0.0
             if "반차" in v_type:
