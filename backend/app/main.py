@@ -449,7 +449,7 @@ async def startup_event():
                 """),
             ]
 
-            # Bug 3: Add deleted_at column to approval_documents if missing
+            # Bug 3: Add reference columns and deleted_at column to approval_documents if missing
             try:
                 if is_sqlite:
                     r = await db.execute(text("PRAGMA table_info(approval_documents)"))
@@ -457,11 +457,27 @@ async def startup_event():
                     if "deleted_at" not in cols:
                         await db.execute(text("ALTER TABLE approval_documents ADD COLUMN deleted_at TIMESTAMP"))
                         print("Startup: Added deleted_at to approval_documents (SQLite)")
+                    if "reference_id" not in cols:
+                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_id INTEGER"))
+                        print("Startup: Added reference_id to approval_documents (SQLite)")
+                    if "reference_type" not in cols:
+                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_type VARCHAR"))
+                        print("Startup: Added reference_type to approval_documents (SQLite)")
                 else:
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='approval_documents' AND column_name='deleted_at'"))
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE approval_documents ADD COLUMN deleted_at TIMESTAMP"))
                         print("Startup: Added deleted_at to approval_documents (Postgres)")
+                    
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='approval_documents' AND column_name='reference_id'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_id INTEGER"))
+                        print("Startup: Added reference_id to approval_documents (Postgres)")
+                        
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='approval_documents' AND column_name='reference_type'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE approval_documents ADD COLUMN reference_type VARCHAR"))
+                        print("Startup: Added reference_type to approval_documents (Postgres)")
                 await db.commit()
             except Exception as e:
                 print(f"Startup: approval_documents migration failed: {e}")
