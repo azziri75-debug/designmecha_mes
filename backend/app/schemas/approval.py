@@ -50,6 +50,10 @@ class ApprovalDocumentBase(BaseModel):
     attachment_file: Optional[List[dict]] = None
     # Support for multi-file attachments in creation
     attachments_to_add: Optional[List[ApprovalAttachmentBase]] = None
+    
+    # Reference for integration
+    reference_id: Optional[int] = None
+    reference_type: Optional[str] = None
 
 class CustomApprover(BaseModel):
     staff_id: int
@@ -66,6 +70,9 @@ class ApprovalDocumentResponse(ApprovalDocumentBase):
     status: str
     current_sequence: int
     rejection_reason: Optional[str] = None
+    
+    reference_id: Optional[int] = None
+    reference_type: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     steps: List[ApprovalStepResponse] = []

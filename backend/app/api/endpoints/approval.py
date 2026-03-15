@@ -232,7 +232,9 @@ async def create_document(
         content=doc_in.content,
         attachment_file=doc_in.attachment_file,
         status=ApprovalStatus.PENDING,
-        current_sequence=1
+        current_sequence=1,
+        reference_id=doc_in.reference_id,
+        reference_type=doc_in.reference_type
     )
     db.add(db_doc)
     await db.flush()
@@ -307,6 +309,10 @@ async def create_document(
         elif db_doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
             print(f"[DEBUG] Triggering process_consumables for auto-approved doc {db_doc.id}")
             await process_consumables(db, db_doc)
+        
+        # 구매발주/외주발주 상태 동기화 (자동 승인 시)
+        if db_doc.doc_type == "PURCHASE_ORDER" or db_doc.reference_id:
+            await sync_reference_status(db, db_doc)
     elif current_seq > 1:
         db_doc.status = ApprovalStatus.IN_PROGRESS
 
@@ -402,6 +408,10 @@ async def process_approval(
             
             await db.flush() # Ensure doc status is REJECTED in session
             await sync_annual_leave_usage(db, doc.author_id, target_year)
+        
+        # 구매발주/외주발주 상태 동기화 (반려 시 롤백)
+        if doc.doc_type == "PURCHASE_ORDER" or doc.reference_id:
+            await sync_reference_status(db, doc)
     else:
         # 다음 단계가 있는지 확인
         next_step_res = await db.execute(
@@ -422,6 +432,10 @@ async def process_approval(
             elif doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
                 print(f"[DEBUG] Triggering process_consumables for approved doc {doc.id}")
                 await process_consumables(db, doc)
+            
+            # 구매발주/외주발주 상태 동기화 (최종 승인 시)
+            if doc.doc_type == "PURCHASE_ORDER" or doc.reference_id:
+                await sync_reference_status(db, doc)
             
     await db.commit()
     return {"message": "처리되었습니다.", "status": doc.status}
@@ -958,3 +972,44 @@ async def delete_document(
         await sync_annual_leave_usage(db, doc.author_id, doc.created_at.year)
         
     return {"message": "삭제되었습니다."}
+async def sync_reference_status(db: AsyncSession, doc: ApprovalDocument):
+    """
+    결재 문서의 상태 변화를 연동된 기존 업무 DB(구매/외주/소모품)에 동기화.
+    - COMPLETED: PENDING -> ORDERED
+    - REJECTED: ORDERED -> PENDING (또는 반려 상태 유지)
+    """
+    if not doc.reference_id or not doc.reference_type:
+        return
+    
+    print(f"[DEBUG] sync_reference_status called for Doc {doc.id}, Ref: {doc.reference_type} {doc.reference_id}, Status: {doc.status}")
+    
+    try:
+        if doc.reference_type == "PURCHASE":
+            from app.models.purchasing import PurchaseOrder, PurchaseStatus
+            stmt = select(PurchaseOrder).where(PurchaseOrder.id == doc.reference_id)
+            res = await db.execute(stmt)
+            order = res.scalar_one_or_none()
+            if order:
+                if doc.status == ApprovalStatus.COMPLETED:
+                    order.status = PurchaseStatus.ORDERED
+                    print(f"[DEBUG] PurchaseOrder {order.id} status updated to ORDERED")
+                elif doc.status == ApprovalStatus.REJECTED:
+                    order.status = PurchaseStatus.PENDING
+                    print(f"[DEBUG] PurchaseOrder {order.id} status rolled back to PENDING (Rejected)")
+        
+        elif doc.reference_type == "OUTSOURCING":
+            from app.models.purchasing import OutsourcingOrder, OutsourcingStatus
+            stmt = select(OutsourcingOrder).where(OutsourcingOrder.id == doc.reference_id)
+            res = await db.execute(stmt)
+            order = res.scalar_one_or_none()
+            if order:
+                if doc.status == ApprovalStatus.COMPLETED:
+                    order.status = OutsourcingStatus.ORDERED
+                    print(f"[DEBUG] OutsourcingOrder {order.id} status updated to ORDERED")
+                elif doc.status == ApprovalStatus.REJECTED:
+                    order.status = OutsourcingStatus.PENDING
+                    print(f"[DEBUG] OutsourcingOrder {order.id} status rolled back to PENDING (Rejected)")
+
+        await db.flush()
+    except Exception as e:
+        print(f"Error in sync_reference_status: {e}")

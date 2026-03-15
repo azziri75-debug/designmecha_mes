@@ -19,6 +19,7 @@ import ConsumablesPurchaseForm from './ConsumablesPurchaseForm';
 import EarlyLeaveForm from './EarlyLeaveForm';
 import LeaveRequestForm from './LeaveRequestForm';
 import OvertimeWorkForm from './OvertimeWorkForm';
+import PurchaseOrderForm from './PurchaseOrderForm';
 import ApprovalGrid from './ApprovalGrid';
 
 const DOC_TYPES = [
@@ -28,6 +29,7 @@ const DOC_TYPES = [
     { value: 'EARLY_LEAVE', label: '조퇴.외출원' },
     { value: 'CONSUMABLES_PURCHASE', label: '소모품 구매신청서' },
     { value: 'OVERTIME', label: '야근/특근신청서' },
+    { value: 'PURCHASE_ORDER', label: '구매발주서' },
 ];
 
 const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
@@ -40,6 +42,8 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
     const [docType, setDocType] = useState(initialData?.doc_type || 'INTERNAL_DRAFT');
     const [title, setTitle] = useState('');
     const [formContent, setFormContent] = useState({});
+    const [referenceId, setReferenceId] = useState(initialData?.reference_id || null);
+    const [referenceType, setReferenceType] = useState(initialData?.reference_type || null);
     
     const [customApprovers, setCustomApprovers] = useState([]);
     const [showApproverSelector, setShowApproverSelector] = useState(false);
@@ -61,17 +65,29 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             setTitle(documentData.title || '');
             setFormContent(documentData.content || {});
             setAttachments(documentData.attachments || []);
+            setReferenceId(documentData.reference_id);
+            setReferenceType(documentData.reference_type);
         } else {
-            // Set today's date as default for all forms
-            const today = new Date().toISOString().split('T')[0];
-            setFormContent({ 
-                request_date: today, 
-                draft_date: today, 
-                date: today,
-                items: docType === 'INTERNAL_DRAFT' ? [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }] : undefined
-            });
+            // Auto-fill from navigation state (Integration)
+            if (navigate.state?.autoFill) {
+                const { type, ref_id, data } = navigate.state.autoFill;
+                setDocType(type);
+                setReferenceId(ref_id);
+                setReferenceType(type === 'PURCHASE_ORDER' ? 'PURCHASE' : (type === 'OUTSOURCING' ? 'OUTSOURCING' : null));
+                setFormContent(data);
+                if (data.title) setTitle(data.title);
+            } else {
+                // Set today's date as default for all forms
+                const today = new Date().toISOString().split('T')[0];
+                setFormContent({ 
+                    request_date: today, 
+                    draft_date: today, 
+                    date: today,
+                    items: docType === 'INTERNAL_DRAFT' ? [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }] : undefined
+                });
+            }
         }
-    }, [documentData]);
+    }, [documentData, navigate.state]);
 
     const fetchDocument = async (id) => {
         setIsLoading(true);
@@ -112,7 +128,9 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 doc_type: docType,
                 content: formContent,
                 attachments_to_add: attachments?.map(a => ({ filename: a.name || a.filename, url: a.url })) || [],
-                custom_approvers: (customApprovers || []).length > 0 ? customApprovers.map(a => ({ staff_id: a.id, sequence: a.sequence })) : null
+                custom_approvers: (customApprovers || []).length > 0 ? customApprovers.map(a => ({ staff_id: a.id, sequence: a.sequence })) : null,
+                reference_id: referenceId,
+                reference_type: referenceType
             };
 
             if (documentData?.id) {
@@ -152,6 +170,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             case 'EARLY_LEAVE': return <EarlyLeaveForm {...commonProps} />;
             case 'LEAVE_REQUEST': return <LeaveRequestForm {...commonProps} />;
             case 'OVERTIME': return <OvertimeWorkForm {...commonProps} />;
+            case 'PURCHASE_ORDER': return <PurchaseOrderForm {...commonProps} />;
             case 'INTERNAL_DRAFT':
             default:
                 return (

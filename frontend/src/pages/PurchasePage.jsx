@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import PurchaseOrderModal from '../components/PurchaseOrderModal';
 import PurchaseSheetModal from '../components/PurchaseSheetModal';
@@ -12,6 +13,7 @@ import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 
 const PurchasePage = ({ type }) => {
+    const navigate = useNavigate();
     const [tabValue, setTabValue] = useState(0);
     const [orders, setOrders] = useState([]);
     const [pendingItems, setPendingItems] = useState([]);
@@ -120,6 +122,36 @@ const PurchasePage = ({ type }) => {
     };
 
 
+    const handleApprovalSubmit = (order) => {
+        const orderData = {
+            order_no: order.order_no,
+            partner_name: order.partner?.name,
+            partner_phone: order.partner?.phone,
+            partner_fax: order.partner?.fax,
+            order_date: order.order_date,
+            delivery_date: order.delivery_date,
+            items: (order.items || []).map((item, idx) => ({
+                idx: idx + 1,
+                name: item.product?.name,
+                spec: item.product?.specification || item.product?.code,
+                qty: item.quantity,
+                price: item.unit_price,
+                total: item.quantity * (item.unit_price || 0)
+            })),
+            colWidths: [40, 200, 120, 60, 80, 100],
+            special_notes: order.note
+        };
+
+        navigate('/approval/draft', {
+            state: {
+                autoFill: {
+                    type: 'PURCHASE_ORDER',
+                    ref_id: order.id,
+                    data: orderData
+                }
+            }
+        });
+    };
     const fetchPendingItems = async () => {
         try {
             if (type === 'CONSUMABLE') {
@@ -712,6 +744,13 @@ const PurchasePage = ({ type }) => {
                                                             <PrintIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
+                                                    {order.status === 'PENDING' && (
+                                                        <Tooltip title="결재 상신">
+                                                            <IconButton size="small" color="primary" onClick={() => handleApprovalSubmit(order)}>
+                                                                <SendIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     {(() => {
                                                         let files = [];
                                                         try { files = order.attachment_file ? (typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file) : []; } catch { files = []; }

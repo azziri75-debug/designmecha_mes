@@ -12,6 +12,7 @@ class DocumentType(str, enum.Enum):
     EXPENSE_REPORT = "EXPENSE_REPORT" # 지출결의서
     CONSUMABLES_PURCHASE = "CONSUMABLES_PURCHASE" # 소모품 구매 신청서
     LEAVE_REQUEST = "LEAVE_REQUEST" # 휴가원 (New version)
+    PURCHASE_ORDER = "PURCHASE_ORDER" # 구매발주서
 
 class ApprovalStatus(str, enum.Enum):
     PENDING = "PENDING"
@@ -42,6 +43,10 @@ class ApprovalDocument(Base):
     title = Column(String, nullable=False)
     # content stores doc-specific fields (dates, reason, supply items etc.)
     content = Column(JSON, nullable=False) 
+    
+    # 통합 연동 필드: 기존 업무 DB와 연결 (자재/외주/소모품 발주 등)
+    reference_id = Column(Integer, nullable=True)
+    reference_type = Column(String, nullable=True) # PURCHASE, OUTSOURCING 등
     
     status = Column(String, default=ApprovalStatus.PENDING)
     current_sequence = Column(Integer, default=1) # 현재 결재 대기 중인 순서
