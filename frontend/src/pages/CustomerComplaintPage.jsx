@@ -209,8 +209,8 @@ const CustomerComplaintPage = () => {
                                 ) : complaints.length === 0 ? (
                                     <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400">내역이 없습니다.</td></tr>
                                 ) : complaints.filter(c =>
-                                    c.partner?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                    c.content.toLowerCase().includes(searchQuery.toLowerCase())
+                                    (c.partner?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    (c.content || '').toLowerCase().includes(searchQuery.toLowerCase())
                                 ).map((item) => (
                                     <tr key={item.id} className="hover:bg-gray-700/30 transition-colors group">
                                         <td className="px-6 py-4 font-medium text-gray-300">{item.receipt_date}</td>

@@ -35,7 +35,7 @@ const TEXT_EXTS = ['txt', 'nc', 'gcode', 'tap', 'json', 'xml', 'js', 'py', 'md',
 const EXTERNAL_EXTS = ['xlsx', 'xls', 'docx', 'doc', 'pptx', 'ppt', 'hwp', 'zip', 'rar', '7z'];
 
 function getExtension(name = '') {
-    return (name.split('.').pop() || '').toLowerCase();
+    return (name?.split('.').pop() || '').toLowerCase();
 }
 
 function getFileIcon(ext) {
@@ -73,7 +73,7 @@ const FileViewerModal = ({ isOpen, onClose, files = [], title, onDeleteFile }) =
     // Normalize a file entry to { url, name }
     const normalizeFile = (file) => {
         if (typeof file === 'string') {
-            const name = decodeURIComponent(file.split('/').pop());
+            const name = decodeURIComponent(file?.split('/').pop() || '파일');
             return { url: file, name };
         }
         return { url: file.url || '', name: file.name || '파일' };

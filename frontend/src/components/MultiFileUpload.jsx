@@ -51,7 +51,7 @@ const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드" }) =
 
     const isImage = (name) => {
         if (!name || typeof name !== 'string') return false;
-        const parts = name.split('.');
+        const parts = name?.split('.') || [];
         if (parts.length < 2) return false;
         const ext = parts.pop().toLowerCase();
         return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
