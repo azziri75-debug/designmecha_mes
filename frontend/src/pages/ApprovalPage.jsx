@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
+import { Box, Typography } from '@mui/material';
 import Card from '../components/Card';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,14 +21,13 @@ import OvertimeWorkForm from '../components/OvertimeWorkForm';
 import PurchaseOrderForm from '../components/PurchaseOrderForm';
 
 const DOC_TYPES = {
-    VACATION: { label: '휴가원', color: 'blue' },
-    EARLY_LEAVE: { label: '조퇴/외출원', color: 'purple' },
-    SUPPLIES: { label: '소모품 신청서', color: 'emerald' },
-    OVERTIME: { label: '야근/특근신청서', color: 'orange' },
     INTERNAL_DRAFT: { label: '내부기안', color: 'blue' },
     EXPENSE_REPORT: { label: '지출결의서', color: 'indigo' },
+    LEAVE_REQUEST: { label: '휴가원', color: 'teal' },
+    EARLY_LEAVE: { label: '조퇴/외출원', color: 'purple' },
     CONSUMABLES_PURCHASE: { label: '소모품 구매신청서', color: 'cyan' },
-    LEAVE_REQUEST: { label: '휴가원', color: 'teal' }
+    OVERTIME: { label: '야근/특근신청서', color: 'orange' },
+    PURCHASE_ORDER: { label: '구매발주서', color: 'amber' }
 };
 
 const STATUS_MAP = {
@@ -152,10 +152,16 @@ const ApprovalPage = () => {
     };
 
     const canApprove = (doc) => {
-        if (!doc || !currentUser) return false;
+        if (!doc || !currentUser || !doc.steps) return false;
         if (doc.status !== 'IN_PROGRESS' && doc.status !== 'PENDING') return false;
-        const currentStep = doc.steps.find(s => s.status === 'PENDING');
-        return currentStep && currentStep.approver_id === currentUser.id;
+        
+        // Find the first unprocessed step (PENDING) sorted by sequence
+        const pendingSteps = [...doc.steps]
+            .filter(s => s.status === 'PENDING')
+            .sort((a, b) => a.sequence - b.sequence);
+            
+        const currentStep = pendingSteps[0];
+        return currentStep && parseInt(currentStep.approver_id) === parseInt(currentUser.id);
     };
 
     const handleSaveLines = async (type) => {
@@ -590,17 +596,9 @@ const ApprovalPage = () => {
                                             currentUser={currentUser}
                                         />
                                     )}
-                                    {selectedDoc.doc_type === 'LEAVE_REQUEST' && (
+                                    {(selectedDoc.doc_type === 'LEAVE_REQUEST' || selectedDoc.doc_type === 'VACATION') && (
                                         <LeaveRequestForm 
-                                            data={selectedDoc.content} 
-                                            isReadOnly={true} 
-                                            documentData={selectedDoc}
-                                            currentUser={currentUser}
-                                        />
-                                    )}
-                                    {selectedDoc.doc_type === 'VACATION' && (
-                                        <LeaveRequestForm 
-                                            data={{...selectedDoc.content, vacation_type: selectedDoc.content.vacation_type, start_date: selectedDoc.content.start_date, end_date: selectedDoc.content.end_date, vacation_reason: selectedDoc.content.reason}} 
+                                            data={selectedDoc.doc_type === 'VACATION' ? {...selectedDoc.content, vacation_type: selectedDoc.content.vacation_type, start_date: selectedDoc.content.start_date, end_date: selectedDoc.content.end_date, vacation_reason: selectedDoc.content.reason} : selectedDoc.content} 
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
@@ -614,15 +612,7 @@ const ApprovalPage = () => {
                                             currentUser={currentUser}
                                         />
                                     )}
-                                    {selectedDoc.doc_type === 'CONSUMABLES_PURCHASE' && (
-                                        <ConsumablesPurchaseForm 
-                                            data={selectedDoc.content} 
-                                            isReadOnly={true} 
-                                            documentData={selectedDoc}
-                                            currentUser={currentUser}
-                                        />
-                                    )}
-                                    {selectedDoc.doc_type === 'SUPPLIES' && (
+                                    {(selectedDoc.doc_type === 'CONSUMABLES_PURCHASE' || selectedDoc.doc_type === 'SUPPLIES') && (
                                         <ConsumablesPurchaseForm 
                                             data={selectedDoc.content} 
                                             isReadOnly={true} 

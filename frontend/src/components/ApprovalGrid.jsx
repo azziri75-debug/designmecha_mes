@@ -90,12 +90,16 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
             );
         }
 
-        if (documentData?.id && !step) {
+        if (documentData?.id && !step && roleType !== '기안자') {
             return (
                 <Box sx={{ 
-                    width: '100%', height: '100%', 
-                    background: 'linear-gradient(to top right, transparent calc(50% - 0.5px), #bbb, transparent calc(50% + 0.5px))' 
-                }} />
+                    width: '100%', height: '100%', position: 'relative',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute' }}>
+                        <line x1="0" y1="100" x2="100" y2="0" stroke="#bbb" strokeWidth="1" />
+                    </svg>
+                </Box>
             );
         }
         

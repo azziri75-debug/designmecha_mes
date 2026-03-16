@@ -361,6 +361,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 try {
                     // 결재선 데이터 미리 가져오기
                     const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
+                    if (!lineRes.data || lineRes.data.length === 0) {
+                        alert("구매발주서에 대한 기본 결재선이 설정되어 있지 않습니다. [전자결재 관리 > 결재선 설정]에서 구매발주서의 결재선을 먼저 설정해 주세요.");
+                        return;
+                    }
                     const customApprovers = lineRes.data.map(line => ({
                         approver_id: line.approver_id,
                         sequence: line.sequence

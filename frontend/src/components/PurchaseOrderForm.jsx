@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
+import ApprovalGrid from './ApprovalGrid';
 
-const PurchaseOrderForm = ({ data, onChange }) => {
+const PurchaseOrderForm = ({ data, onChange, isReadOnly, currentUser, documentData }) => {
     const [company, setCompany] = useState(null);
 
     useEffect(() => {
@@ -86,16 +87,19 @@ const PurchaseOrderForm = ({ data, onChange }) => {
     return (
         <div className="bg-white text-black w-full min-h-[297mm] p-[10mm] relative flex flex-col shadow-sm border border-gray-200" style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
-            <div className="flex justify-between items-center mb-8 h-12">
-                <div className="w-[160px] text-[10px] space-y-0.5 self-end">
+            <div className="flex justify-between items-start mb-8">
+                <div className="w-[160px] text-[10px] space-y-0.5 pt-8">
                     <p className="flex items-center gap-1">NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} className="flex-1 border-b border-gray-100 min-h-0" /></p>
                 </div>
-                <div className="flex-1 flex justify-center px-4">
-                    <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold tracking-[0.3em] indent-[0.3em] text-center leading-none">
+                <div className="flex-1 flex flex-col items-center">
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px' }}>주식회사 디자인메카</Typography>
+                    <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold tracking-[0.5em] indent-[0.5em] text-center leading-none">
                         구 매 발 주 서
                     </div>
                 </div>
-                <div className="w-[160px]"></div> {/* Spacer to balance */}
+                <div className="w-[320px]">
+                    <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                </div>
             </div>
 
             {/* Info Section */}

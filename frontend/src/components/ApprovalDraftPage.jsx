@@ -27,7 +27,7 @@ const DOC_TYPES = [
     { value: 'INTERNAL_DRAFT', label: '내부기안' },
     { value: 'EXPENSE_REPORT', label: '지출결의서' },
     { value: 'LEAVE_REQUEST', label: '휴가원' },
-    { value: 'EARLY_LEAVE', label: '조퇴.외출원' },
+    { value: 'EARLY_LEAVE', label: '조퇴/외출원' },
     { value: 'CONSUMABLES_PURCHASE', label: '소모품 구매신청서' },
     { value: 'OVERTIME', label: '야근/특근신청서' },
 ];
@@ -114,7 +114,9 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
 
     const handleSubmit = async () => {
         let finalTitle = title;
-        if (docType !== 'INTERNAL_DRAFT') {
+        if (docType === 'INTERNAL_DRAFT' && formContent?.title) {
+            finalTitle = formContent.title;
+        } else if (docType !== 'INTERNAL_DRAFT') {
             const label = DOC_TYPES.find(t => t.value === docType)?.label || '문서';
             const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '');
             finalTitle = `[${label}] ${currentUser?.name || ''} - ${todayStr}`;
@@ -213,14 +215,6 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     </Tabs>
                 )}
                 
-                {!isReadOnly && docType === 'INTERNAL_DRAFT' && (
-                    <Box sx={{ mt: 2 }}>
-                        <TextField 
-                            fullWidth size="small" label="문서 제목" placeholder="예: [비용] 사무용품 구매의 건"
-                            value={title} onChange={(e) => setTitle(e.target.value)}
-                        />
-                    </Box>
-                )}
             </Paper>
 
             {/* A4 Paper */}

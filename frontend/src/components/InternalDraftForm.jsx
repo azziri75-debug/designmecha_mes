@@ -56,6 +56,18 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             <Table size="small" className="responsive-table" sx={{ mb: 3, '& td, & th': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>
                 <TableBody>
                     <TableRow>
+                        <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>문서제목</Box>
+                        <td colSpan={3}>
+                            <input 
+                                value={data.title || ''} 
+                                onChange={(e) => handleChange({ title: e.target.value })}
+                                readOnly={isReadOnly}
+                                style={{ border: 'none', width: '100%', outline: 'none', fontWeight: 'bold', fontSize: '15px' }}
+                                placeholder="기안 제목을 입력하세요"
+                            />
+                        </td>
+                    </TableRow>
+                    <TableRow>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>기안부서</Box>
                         <td style={{ width: '35%' }}>
                             <input 
