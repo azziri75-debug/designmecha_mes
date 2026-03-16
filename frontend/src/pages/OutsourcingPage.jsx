@@ -455,6 +455,7 @@ const OutsourcingPage = () => {
                                 )}
                             </TableBody>
                         </Table>
+                    </TableContainer>
                 </>
             )}
 
