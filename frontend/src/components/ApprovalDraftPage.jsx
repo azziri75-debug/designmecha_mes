@@ -137,8 +137,10 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
 
             if (documentData?.id) {
                 await api.put(`/approval/documents/${documentData.id}`, payload);
+                alert('문서가 수정되어 다시 제출되었습니다.');
             } else {
                 await api.post('/approval/documents', payload);
+                alert('결재 요청이 상신되었습니다.');
             }
             if (onSave) onSave();
             else navigate('/approval');
@@ -150,7 +152,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         }
     };
 
-    const isReadOnly = (documentData && documentData.status !== 'PENDING' && documentData.status !== 'REJECTED') || (documentData && documentData.author_id !== currentUser?.id);
+    const isReadOnly = (documentData && documentData.status !== 'PENDING' && documentData.status !== 'REJECTED') || (documentData && parseInt(documentData.author_id) !== parseInt(currentUser?.id));
 
     const virtualDocData = documentData || {
         author: currentUser,
@@ -247,6 +249,18 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             </Paper>
 
             <style>{`
+                @media print {
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { background: white !important; }
+                    .no-print, button, .MuiPaper-elevation3, .MuiPaper-root:not(.a4-paper-root) { display: none !important; }
+                    .a4-paper-root { 
+                        margin: 0 !important; 
+                        padding: 0 !important; 
+                        box-shadow: none !important; 
+                        width: 100% !important;
+                    }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                }
                 @media (max-width: 768px) {
                     .a4-paper-root { 
                         width: 100% !important; 
@@ -256,6 +270,13 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                         box-shadow: none !important;
                         min-height: auto !important;
                     }
+                }
+                /* Global A4 Styles for overflow prevention */
+                .a4-paper-root td, .a4-paper-root th, .a4-paper-root div, .a4-paper-root input, .a4-paper-root textarea {
+                    word-break: break-all !important;
+                    word-wrap: break-word !important;
+                    white-space: pre-wrap !important;
+                    overflow: visible !important;
                 }
             `}</style>
 

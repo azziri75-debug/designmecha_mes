@@ -142,7 +142,7 @@ const ApprovalPage = () => {
     const isEditable = (doc) => {
         if (!doc) return false;
         if (doc.doc_type === 'PURCHASE_ORDER') return false; // 구매발주서 수정 불가
-        if (doc.author_id !== currentUser?.id) return false; // 기안자 본인만 가능
+        if (parseInt(doc.author_id) !== parseInt(currentUser?.id)) return false; // 기안자 본인만 가능
         return doc.status === 'PENDING' || doc.status === 'REJECTED';
     };
 
@@ -574,13 +574,19 @@ const ApprovalPage = () => {
                             </div>
 
                             {/* Content Section - A4 Form Integration */}
-                            <div className="bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container">
+                            <div className="bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container no-print">
                                 <Box sx={{ 
                                     minWidth: '850px', 
                                     display: 'flex', 
                                     justifyContent: 'center',
                                     color: '#000000',
-                                    '& *': { color: '#000000 !important', borderColor: '#000000 !important' } 
+                                    '& *': { color: '#000000 !important', borderColor: '#000000 !important' },
+                                    '& td, & th, & div, & span': { 
+                                        wordBreak: 'break-all !important',
+                                        wordWrap: 'break-word !important',
+                                        whiteSpace: 'pre-wrap !important',
+                                        overflow: 'visible !important'
+                                    }
                                 }}>
                                     {selectedDoc.doc_type === 'INTERNAL_DRAFT' && (
                                         <InternalDraftForm 
@@ -697,6 +703,22 @@ const ApprovalPage = () => {
                     </div>
                 </div>
             )}
+
+            <style>{`
+                @media print {
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { background: white !important; }
+                    .no-print, button, nav, .bg-gray-800, header { display: none !important; }
+                    .a4-paper-container { 
+                        padding: 0 !important; 
+                        margin: 0 !important; 
+                        border: none !important;
+                        overflow: visible !important;
+                        width: 100% !important;
+                    }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: black !important; border-color: black !important; }
+                }
+            `}</style>
         </div>
     );
 };

@@ -53,7 +53,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                 <ApprovalGrid documentData={documentData} currentUser={currentUser} />
             </Box>
 
-            <Table size="small" className="responsive-table" sx={{ mb: 3, '& td, & th': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>
+            <Table size="small" className="responsive-table" sx={{ mb: 3, '& td, & th': { border: '1px solid #000', p: 1, fontSize: '13px', height: 'auto !important' } }}>
                 <TableBody>
                     <TableRow>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>문서제목</Box>
@@ -110,13 +110,13 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                         readOnly={isReadOnly}
                         rows={25}
                         placeholder="상세 내용을 입력하세요..."
-                        style={{ border: '1px solid #eee', width: '100%', outline: 'none', padding: '15px', resize: 'none', fontSize: '14px', lineHeight: '1.6', fontFamily: 'inherit' }}
+                        style={{ border: '1px solid #eee', width: '100%', outline: 'none', padding: '15px', resize: 'none', fontSize: '14px', lineHeight: '1.6', fontFamily: 'inherit', height: 'auto', minHeight: '400px', overflow: 'visible' }}
                     />
                 </Box>
             ) : (
                 <Box sx={{ flex: 1 }}>
                     <Typography sx={{ mb: 1, fontWeight: 'bold', fontSize: '14px' }}>[지급 내역]</Typography>
-                    <Table size="small" className="responsive-table flex-table" sx={{ mb: 1, borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center' } }}>
+                    <Table size="small" className="responsive-table flex-table" sx={{ mb: 1, borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center', height: 'auto !important' } }}>
                         <thead>
                             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                                 <th style={{ width: '40px' }}>순번</th>
@@ -168,12 +168,12 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                         readOnly={isReadOnly}
                         rows={10}
                         placeholder="지급 사유를 입력하세요..."
-                        style={{ border: '1px solid #eee', width: '100%', outline: 'none', padding: '15px', resize: 'none', fontSize: '14px', lineHeight: '1.6', fontFamily: 'inherit' }}
+                        style={{ border: '1px solid #eee', width: '100%', outline: 'none', padding: '15px', resize: 'none', fontSize: '14px', lineHeight: '1.6', fontFamily: 'inherit', height: 'auto', minHeight: '200px', overflow: 'visible' }}
                     />
                 </Box>
             )}
 
-            <Typography align="center" variant="subtitle1" sx={{ mt: 'auto', pt: 4, fontWeight: 'bold' }}>
+            <Typography align="center" sx={{ mt: 'auto', pt: 6, fontWeight: 'bold', fontSize: '24px', letterSpacing: '5px' }}>
                 (주)디자인메카
             </Typography>
 

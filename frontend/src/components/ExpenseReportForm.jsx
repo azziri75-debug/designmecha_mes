@@ -1,163 +1,195 @@
-import React from 'react';
-import { Box, Typography, Table, TableBody, TableRow, TableCell, TextField } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Table, TableBody, TableRow, TableCell, IconButton, Button } from '@mui/material';
+import { Plus, Trash2 } from 'lucide-react';
 import ApprovalGrid from './ApprovalGrid';
 
 const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
-    const today = new Date().toISOString().split('T')[0];
-    const draftDate = data.draft_date || today;
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '년 ').replace(/(\d{2})년 (\d{2})일/, '$1월 $2일');
+    // Actual formatted date for underlying data should stay YYYY-MM-DD
+    const rawToday = new Date().toISOString().split('T')[0];
+
+    // Initialize items if they don't exist
+    useEffect(() => {
+        if (!data.items || data.items.length === 0) {
+            onChange({
+                ...data,
+                items: [{ acc_category: '', description: '', amount: '' }],
+                draft_date: data.draft_date || rawToday,
+                dept: data.dept || currentUser?.dept || '',
+                name: data.name || currentUser?.name || ''
+            });
+        }
+    }, []);
 
     const handleChange = (field, value) => {
         if (isReadOnly) return;
         onChange({ ...data, [field]: value });
     };
 
-    return (
-        <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-            {/* Header: Title & Approval Grid */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-                <Box sx={{ flex: 1, pt: 4 }}>
-                    <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '15px', textDecoration: 'underline', textUnderlineOffset: '8px' }}>
-                        지 출 결 의 서
-                    </Typography>
-                </Box>
-                <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+    const handleItemChange = (index, field, value) => {
+        if (isReadOnly) return;
+        const newItems = [...(data.items || [])];
+        newItems[index] = { ...newItems[index], [field]: value };
+        
+        // Calculate total
+        const total = newItems.reduce((acc, curr) => acc + (parseInt(curr.amount) || 0), 0);
+        onChange({ ...data, items: newItems, total_amount: total });
+    };
+
+    const addItem = () => {
+        if (isReadOnly) return;
+        const newItems = [...(data.items || []), { acc_category: '', description: '', amount: '' }];
+        onChange({ ...data, items: newItems });
+    };
+
+    const removeItem = (index) => {
+        if (isReadOnly) return;
+        const newItems = (data.items || []).filter((_, i) => i !== index);
+        const total = newItems.reduce((acc, curr) => acc + (parseInt(curr.amount) || 0), 0);
+        onChange({ ...data, items: newItems, total_amount: total });
+    };
+
+    const formatAmount = (val) => {
+        if (!val) return '';
+        return parseInt(val).toLocaleString();
+    };
+
+    // Helper to render the digit-split amount grid
+    const AmountGrid = ({ value }) => {
+        const strVal = value?.toString() || '';
+        const paddedVal = strVal.padStart(11, ' '); // 11 slots as per common analog forms
+        return (
+            <Box sx={{ display: 'flex', border: '1px solid #000', height: '100%', width: 'fit-content', ml: 'auto' }}>
+                {paddedVal.split('').map((char, i) => (
+                    <Box key={i} sx={{ 
+                        width: '12px', 
+                        height: '100%', 
+                        borderRight: i === 10 ? 'none' : '1px solid #000',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        bgcolor: i >= 11 - strVal.length ? 'transparent' : '#fcfcfc'
+                    }}>
+                        {char}
+                    </Box>
+                ))}
             </Box>
+        );
+    };
 
-            {/* Basic Info Table */}
-            <Table size="small" sx={{ mb: 3, '& td': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>
-                <TableBody>
-                    <TableRow>
-                        <Box component="td" sx={{ width: '100px', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>작 성 일</Box>
-                        <td>
-                            <input 
-                                type="date" 
-                                value={draftDate} 
-                                onChange={(e) => handleChange('draft_date', e.target.value)}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
-                            />
-                        </td>
-                        <Box component="td" sx={{ width: '100px', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>작성부서</Box>
-                        <td>
-                            <input 
-                                type="text" 
-                                value={data.dept || ''} 
-                                onChange={(e) => handleChange('dept', e.target.value)}
-                                readOnly={isReadOnly}
-                                placeholder="생산부 / 관리부 등"
-                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
-                            />
-                        </td>
-                        <Box component="td" sx={{ width: '100px', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>작 성 자</Box>
-                        <td style={{ textAlign: 'center' }}>{documentData?.author?.name || currentUser?.name}</td>
-                    </TableRow>
-                </TableBody>
-            </Table>
+    const totalAmount = data.total_amount || 0;
 
-            {/* Main Content Table */}
-            <Table size="small" sx={{ mb: 3, '& td': { border: '1px solid #000', p: 1.2, fontSize: '13px' } }}>
-                <TableBody>
-                    <TableRow>
-                        <Box component="td" sx={{ width: '120px', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>사 업 명</Box>
-                        <td colSpan={3}>
-                            <input 
-                                type="text" 
-                                value={data.project_name || ''} 
-                                onChange={(e) => handleChange('project_name', e.target.value)}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
-                            />
-                        </td>
-                        <Box component="td" sx={{ width: '100px', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>과제번호</Box>
-                        <td>
-                            <input 
-                                type="text" 
-                                value={data.project_no || ''} 
-                                onChange={(e) => handleChange('project_no', e.target.value)}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
-                            />
-                        </td>
-                    </TableRow>
-                    <TableRow>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>과 제 명</Box>
-                        <td colSpan={5}>
-                            <textarea 
-                                value={data.project_title || ''} 
-                                onChange={(e) => handleChange('project_title', e.target.value)}
-                                readOnly={isReadOnly}
-                                rows={2}
-                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent', resize: 'none', fontFamily: 'inherit' }}
-                            />
-                        </td>
-                    </TableRow>
-                    <TableRow>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>비 목</Box>
-                        <td colSpan={5}>
-                            <input 
-                                type="text" 
-                                value={data.category1 || ''} 
-                                onChange={(e) => handleChange('category1', e.target.value)}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
-                            />
-                        </td>
-                    </TableRow>
-                    <TableRow>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>세 목</Box>
-                        <td colSpan={5}>
-                            <input 
-                                type="text" 
-                                value={data.category2 || ''} 
-                                onChange={(e) => handleChange('category2', e.target.value)}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
-                            />
-                        </td>
-                    </TableRow>
-                    <TableRow>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>세 세 목</Box>
-                        <td colSpan={5}>
-                            <input 
-                                type="text" 
-                                value={data.category3 || ''} 
-                                onChange={(e) => handleChange('category3', e.target.value)}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
-                            />
-                        </td>
-                    </TableRow>
-                    <TableRow>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>내 역</Box>
-                        <td colSpan={5}>
-                            <textarea 
-                                value={data.details || ''} 
-                                onChange={(e) => handleChange('details', e.target.value)}
-                                readOnly={isReadOnly}
-                                rows={3}
-                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent', resize: 'none', fontFamily: 'inherit' }}
-                            />
-                        </td>
-                    </TableRow>
-                    <TableRow>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>금 액</Box>
-                        <td colSpan={5}>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+    return (
+        <Box sx={{ width: '100%', p: 0, color: '#000', position: 'relative' }}>
+            {/* Title */}
+            <Typography variant="h3" align="center" sx={{ fontWeight: 'bold', mb: 4, letterSpacing: '10px' }}>
+                지 출 결 의 서
+            </Typography>
+
+            {/* Top Table Section */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                {/* Left Info Table */}
+                <Table size="small" sx={{ width: '300px', border: '2px solid #000', borderCollapse: 'collapse', '& td': { border: '1px solid #000', height: '28px', fontSize: '12px' } }}>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '80px' }}>작 성 일</TableCell>
+                            <TableCell sx={{ p: '0 8px !important' }}>
+                                <input 
+                                    type="date" 
+                                    value={data.draft_date || rawToday} 
+                                    onChange={(e) => handleChange('draft_date', e.target.value)}
+                                    readOnly={isReadOnly}
+                                    style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent', cursor: isReadOnly ? 'default' : 'pointer' }}
+                                />
+                            </TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>작성부서</TableCell>
+                            <TableCell sx={{ p: '0 8px !important' }}>
                                 <input 
                                     type="text" 
-                                    value={data.amount || ''} 
-                                    onChange={(e) => handleChange('amount', e.target.value)}
+                                    value={data.dept || ''} 
+                                    onChange={(e) => handleChange('dept', e.target.value)}
                                     readOnly={isReadOnly}
-                                    style={{ border: 'none', width: '200px', outline: 'none', background: 'transparent', textAlign: 'right', fontWeight: 'bold', fontSize: '15px' }}
+                                    style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
                                 />
-                                <Typography sx={{ ml: 1, fontWeight: 'bold' }}>원</Typography>
-                                <Typography sx={{ ml: 4, color: '#666', fontSize: '12px' }}>(카드결제, 부가세포함 여부 등 기재)</Typography>
-                            </Box>
-                        </td>
+                            </TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>작 성 자</TableCell>
+                            <TableCell sx={{ p: '0 8px !important' }}>
+                                <input 
+                                    type="text" 
+                                    value={data.name || ''} 
+                                    onChange={(e) => handleChange('name', e.target.value)}
+                                    readOnly={isReadOnly}
+                                    style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
+                                />
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+
+                {/* Right Approval Grid */}
+                <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                    <Box sx={{ 
+                        border: '2px solid #000', 
+                        borderRight: 'none',
+                        width: '25px', 
+                        height: '100%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        bgcolor: '#f5f5f5',
+                        fontWeight: 'bold',
+                        fontSize: '11px',
+                        textAlign: 'center'
+                    }}>
+                        결<br/>재
+                    </Box>
+                    <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                </Box>
+            </Box>
+
+            {/* Middle Main Info */}
+            <Table size="small" sx={{ mb: 2, border: '2px solid #000', borderCollapse: 'collapse', '& td': { border: '1px solid #000', height: '35px', fontSize: '13px' } }}>
+                <TableBody>
+                    <TableRow>
+                        <TableCell align="center" sx={{ width: '80px', bgcolor: '#f5f5f5', fontWeight: 'bold' }}>내 역</TableCell>
+                        <TableCell sx={{ p: '0 10px !important' }}>
+                            <input 
+                                type="text" 
+                                value={data.summary || ''} 
+                                onChange={(e) => handleChange('summary', e.target.value)}
+                                readOnly={isReadOnly}
+                                placeholder="지출 총괄 내역을 입력하세요"
+                                style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent', fontWeight: 'bold' }}
+                            />
+                        </TableCell>
                     </TableRow>
                     <TableRow>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>지급기한</Box>
-                        <td colSpan={5}>
+                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>금 액</TableCell>
+                        <TableCell sx={{ p: '0 10px !important' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <span style={{ marginRight: '10px' }}>￦</span>
+                                    <input 
+                                        type="text" 
+                                        value={formatAmount(totalAmount)} 
+                                        readOnly
+                                        style={{ border: 'none', width: '150px', outline: 'none', background: 'transparent', fontStyle: 'italic', fontWeight: 'bold' }}
+                                    />
+                                    <span style={{ marginLeft: '5px' }}>원정</span>
+                                </Box>
+                                <Typography sx={{ fontSize: '10px', color: '#666' }}>(위 금액을 결제하여 주시기 바랍니다.)</Typography>
+                            </Box>
+                        </TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>지급기한</TableCell>
+                        <TableCell sx={{ p: '0 10px !important' }}>
                             <input 
                                 type="text" 
                                 value={data.due_date || ''} 
@@ -165,44 +197,100 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                 readOnly={isReadOnly}
                                 style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent' }}
                             />
-                        </td>
+                        </TableCell>
                     </TableRow>
                 </TableBody>
             </Table>
 
-            {/* Attachments text section */}
-            <Table size="small" sx={{ mb: 3, '& td': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>
+            {/* Bottom Dynamic Items Table */}
+            <Table size="small" sx={{ border: '2px solid #000', borderCollapse: 'collapse', '& th': { border: '1px solid #000', bgcolor: '#f5f5f5', fontWeight: 'bold', fontSize: '12px', height: '30px' }, '& td': { border: '1px solid #000', fontSize: '11px', p: 0, height: '32px' } }}>
+                <thead>
+                    <tr>
+                        <th style={{ width: '100px' }}>회 계</th>
+                        <th style={{ minWidth: '300px' }}>적 요</th>
+                        <th style={{ width: '180px' }}>금 액</th>
+                        {!isReadOnly && <th style={{ width: '40px' }} className="no-print"></th>}
+                    </tr>
+                </thead>
                 <TableBody>
-                    <TableRow sx={{ height: '30px' }}>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>첨 부 서 류</Box>
-                    </TableRow>
+                    {(data.items || []).map((item, idx) => (
+                        <TableRow key={idx}>
+                            <td>
+                                <input 
+                                    type="text" 
+                                    value={item.acc_category || ''} 
+                                    onChange={(e) => handleItemChange(idx, 'acc_category', e.target.value)}
+                                    readOnly={isReadOnly}
+                                    style={{ border: 'none', width: '100%', height: '100%', outline: 'none', textAlign: 'center', padding: '0 5px' }}
+                                />
+                            </td>
+                            <td>
+                                <input 
+                                    type="text" 
+                                    value={item.description || ''} 
+                                    onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
+                                    readOnly={isReadOnly}
+                                    style={{ border: 'none', width: '100%', height: '100%', outline: 'none', padding: '0 10px' }}
+                                />
+                            </td>
+                            <td>
+                                <Box sx={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center' }}>
+                                    {!isReadOnly ? (
+                                        <input 
+                                            type="number" 
+                                            value={item.amount || ''} 
+                                            onChange={(e) => handleItemChange(idx, 'amount', e.target.value)}
+                                            style={{ border: 'none', width: '100%', height: '100%', outline: 'none', textAlign: 'right', padding: '0 8px', fontSize: '12px' }}
+                                        />
+                                    ) : (
+                                        <AmountGrid value={item.amount} />
+                                    )}
+                                </Box>
+                            </td>
+                            {!isReadOnly && (
+                                <TableCell align="center" className="no-print">
+                                    <IconButton size="small" onClick={() => removeItem(idx)} color="error">
+                                        <Trash2 size={14} />
+                                    </IconButton>
+                                </TableCell>
+                            )}
+                        </TableRow>
+                    ))}
+                    {/* Sum Row */}
                     <TableRow>
-                        <td style={{ minHeight: '150px', verticalAlign: 'top', padding: '15px' }}>
-                            <textarea 
-                                value={data.attachment_notes || ''} 
-                                onChange={(e) => handleChange('attachment_notes', e.target.value)}
-                                readOnly={isReadOnly}
-                                placeholder="1. 카드 매출전표 1부&#10;2. 거래명세표 1부&#10;3. 견적서 1부"
-                                style={{ border: 'none', width: '100%', minHeight: '120px', outline: 'none', background: 'transparent', resize: 'none', fontFamily: 'inherit', lineHeight: 2 }}
-                            />
-                        </td>
+                        <TableCell colSpan={2} align="center" sx={{ bgcolor: '#fcfcfc', fontWeight: 'bold', letterSpacing: '20px' }}>합 계</TableCell>
+                        <TableCell>
+                            <AmountGrid value={totalAmount} />
+                        </TableCell>
+                        {!isReadOnly && <TableCell className="no-print"></TableCell>}
                     </TableRow>
                 </TableBody>
             </Table>
 
-            <Typography align="right" sx={{ mt: 2, fontSize: '18px', fontWeight: 'bold', letterSpacing: '2px' }}>
-                (주)디자인메카
-            </Typography>
+            {!isReadOnly && (
+                <Button 
+                    startIcon={<Plus size={16} />} 
+                    onClick={addItem} 
+                    sx={{ mt: 1, color: '#666', fontSize: '11px' }}
+                    className="no-print"
+                >
+                    내역 추가
+                </Button>
+            )}
+
+            {/* Bottom Signature */}
+            <Box sx={{ mt: 10, textAlign: 'center' }}>
+                <Typography sx={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '5px' }}>
+                    (주)디자인메카
+                </Typography>
+            </Box>
+
             <style>{`
-                @media (max-width: 768px) {
-                    .idf-header { flex-direction: column !important; align-items: center !important; gap: 20px; }
-                    .responsive-table, .responsive-table table, .responsive-table tbody, .responsive-table tr, .responsive-table td { 
-                        display: block !important; width: 100% !important; border: none !important; 
-                    }
-                    .responsive-table tr { margin-bottom: 20px; border-bottom: 2px solid #ddd !important; padding-bottom: 10px; }
-                    .responsive-table td { padding: 8px 0 !important; }
-                    .responsive-table td[component="td"] { background-color: transparent !important; text-align: left !important; color: #666; font-size: 12px; font-weight: bold; }
-                    input, textarea { font-size: 16px !important; border: 1px solid #eee !important; padding: 10px !important; border-radius: 4px; box-sizing: border-box; }
+                input::placeholder { color: #ccc; font-weight: normal; }
+                @media print {
+                    .no-print { display: none !important; }
+                    input { border: none !important; }
+                    textarea { border: none !important; }
                 }
             `}</style>
         </Box>
