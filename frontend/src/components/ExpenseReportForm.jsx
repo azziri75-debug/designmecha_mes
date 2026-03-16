@@ -4,7 +4,8 @@ import { Plus, Trash2 } from 'lucide-react';
 import ApprovalGrid from './ApprovalGrid';
 
 const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '년 ').replace(/(\d{2})년 (\d{2})일/, '$1월 $2일');
+    const now = new Date();
+    const today = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일`;
     // Actual formatted date for underlying data should stay YYYY-MM-DD
     const rawToday = new Date().toISOString().split('T')[0];
 

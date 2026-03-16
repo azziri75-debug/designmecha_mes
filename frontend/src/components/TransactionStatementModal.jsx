@@ -188,14 +188,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         api.get('/basics/company').then(res => {
             const stamp = res.data?.stamp_image;
             if (stamp?.url) {
-                // stamp.url이 상대경로(/uploads/...)면 backend 기본 주소를 붙여준다
-                const apiBase = import.meta.env.VITE_API_URL || '';
-                // '/api/v1' 접미사를 제거해서 backend origin만 추출
-                const backendOrigin = apiBase.replace(/\/api\/v1\/?$/, '');
-                const fullUrl = stamp.url.startsWith('http')
-                    ? stamp.url
-                    : `${backendOrigin}${stamp.url}`;
-                setCompanyStampUrl(fullUrl);
+                // utils.js의 getImageUrl을 사용하여 안전한 URL 생성
+                setCompanyStampUrl(getImageUrl(stamp.url));
             }
         }).catch(() => {/* 실패해도 SVG fallback 사용 */ });
         return () => removePrintCSS();

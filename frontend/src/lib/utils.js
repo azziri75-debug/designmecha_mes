@@ -7,19 +7,34 @@ export function cn(...inputs) {
 
 export function getImageUrl(path) {
     if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    if (path.startsWith('data:')) return path;
+    // 이미 완전한 URL이거나 data URI인 경우 그대로 반환
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+        // http:// 도메인이 포함된 경우 현재 접속 프로토콜에 맞게 변환 (Mixed Content 방지)
+        if (path.startsWith('http://') && window.location.protocol === 'https:') {
+            return path.replace('http://', 'https://');
+        }
+        return path;
+    }
 
+    // NAS 환경(역방향 프록시)에서는 상대 경로(/uploads/...)만으로도 이미지 접근이 가능함
+    // VITE_API_URL이 설정되어 있다면 사용하되, Mixed Content 에러 방지를 위해 프로토콜 보정
     const apiUrl = import.meta.env.VITE_API_URL;
     if (apiUrl) {
         try {
             const urlObj = new URL(apiUrl, window.location.origin);
-            return `${urlObj.origin}${path.startsWith('/') ? path : '/' + path}`;
+            // 만약 API URL이 http인데 현재 페이지가 https라면 https로 강제 변환
+            let baseOrigin = urlObj.origin;
+            if (baseOrigin.startsWith('http://') && window.location.protocol === 'https:') {
+                baseOrigin = baseOrigin.replace('http://', 'https://');
+            }
+            return `${baseOrigin}${path.startsWith('/') ? path : '/' + path}`;
         } catch (e) {
             return path;
         }
     }
-    return path;
+
+    // 기본적으로 상대 경로 반환 (동일 도메인 프록시 환경 대응)
+    return path.startsWith('/') ? path : '/' + path;
 }
 
 export function formatNumber(num) {

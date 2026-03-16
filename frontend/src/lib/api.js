@@ -7,6 +7,12 @@ const api = axios.create({
     },
 });
 
+// 어떤 환경변수가 들어오든 강제로 찌꺼기를 잘라내고 상대경로/HTTPS로 맞추는 절대 방어막
+if (api.defaults.baseURL && api.defaults.baseURL.includes('http://')) {
+    api.defaults.baseURL = api.defaults.baseURL.replace('http://dmmes.synology.me', '');
+    api.defaults.baseURL = api.defaults.baseURL.replace('http://', 'https://');
+}
+
 // Request interceptor to add user identification header
 api.interceptors.request.use(
     (config) => {

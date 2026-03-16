@@ -171,11 +171,12 @@ const MobileAttendancePage = () => {
                             const dateStr = record.record_date;
                             // Find matching approvals for this date
                             const dayApprovals = approvalRecords.filter(ap => {
-                                if (ap.date && typeof ap.date === 'string' && ap.date.includes('~')) {
-                                    const [s, e] = ap.date.split('~').map(d => d.trim());
+                                const dateVal = ap?.date;
+                                if (dateVal && typeof dateVal === 'string' && dateVal.includes('~')) {
+                                    const [s, e] = dateVal.split('~').map(d => d.trim());
                                     return dateStr >= s && dateStr <= e;
                                 }
-                                return ap.date === dateStr;
+                                return dateVal === dateStr;
                             });
 
                             return (
