@@ -247,9 +247,13 @@ const BasicsPageContent = () => {
         setModalType('edit');
         setSelectedPartner(partner);
         // Ensure partner_type is an array
-        const types = Array.isArray(partner.partner_type) ? partner.partner_type :
-            (typeof partner.partner_type === 'string' ? JSON.parse(partner.partner_type) : []);
-        setFormData({ ...partner, partner_type: types });
+        let types = [];
+        if (Array.isArray(partner.partner_type)) {
+            types = partner.partner_type;
+        } else if (typeof partner.partner_type === 'string') {
+            try { types = JSON.parse(partner.partner_type); } catch (e) { types = []; }
+        }
+        setFormData({ ...partner, partner_type: Array.isArray(types) ? types : [] });
         setShowModal(true);
     };
 
@@ -758,7 +762,12 @@ const BasicsPageContent = () => {
                                                 <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
                                                     <img
                                                         crossOrigin="anonymous"
-                                                        src={getImageUrl(typeof formData.logo_image === 'string' ? JSON.parse(formData.logo_image).url : formData.logo_image.url)}
+                                                        src={getImageUrl((() => {
+                                                            if (typeof formData.logo_image === 'string') {
+                                                                try { return JSON.parse(formData.logo_image).url; } catch (e) { return formData.logo_image; }
+                                                            }
+                                                            return formData.logo_image?.url || '';
+                                                        })())}
                                                         alt="Logo"
                                                         className="max-w-full max-h-full object-contain"
                                                     />
@@ -801,7 +810,12 @@ const BasicsPageContent = () => {
                                                 <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center border border-gray-600 relative group">
                                                     <img
                                                         crossOrigin="anonymous"
-                                                        src={getImageUrl(typeof formData.stamp_image === 'string' ? JSON.parse(formData.stamp_image).url : formData.stamp_image.url)}
+                                                        src={getImageUrl((() => {
+                                                            if (typeof formData.stamp_image === 'string') {
+                                                                try { return JSON.parse(formData.stamp_image).url; } catch (e) { return formData.stamp_image; }
+                                                            }
+                                                            return formData.stamp_image?.url || '';
+                                                        })())}
                                                         alt="Stamp"
                                                         className="max-w-full max-h-full object-contain"
                                                     />

@@ -1215,7 +1215,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                 } catch {
                                                                     localFiles = item.attachment_file ? [{ name: 'file', url: item.attachment_file }] : [];
                                                                 }
-                                                                localFiles = localFiles.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== ''))).map(f => typeof f === 'string' ? { name: f.split('/').pop() || '파일', url: f } : f);
+                                                                localFiles = localFiles.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== ''))).map(f => typeof f === 'string' ? { name: f.split?.('/')?.pop() || '파일', url: f } : f);
 
                                                                 // 2. Parse external order's files (Read-only)
                                                                 let externalFiles = [];
@@ -1224,14 +1224,14 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                                                         let poFiles = item.purchase_items[0].purchase_order.attachment_file;
                                                                         poFiles = typeof poFiles === 'string' ? JSON.parse(poFiles) : poFiles;
                                                                         if (!Array.isArray(poFiles)) poFiles = [poFiles];
-                                                                        externalFiles = poFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split('/').pop() || '파일' } : f), name: `[구매] ${(typeof f === 'string' ? f.split('/').pop() || '파일' : f.name)}`, isExternal: true }));
+                                                                        externalFiles = poFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[구매] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
                                                                     } catch (e) { }
                                                                 } else if (item.course_type === 'OUTSOURCING' && item.outsourcing_items?.length > 0 && item.outsourcing_items[0].outsourcing_order?.attachment_file) {
                                                                     try {
                                                                         let outFiles = item.outsourcing_items[0].outsourcing_order.attachment_file;
                                                                         outFiles = typeof outFiles === 'string' ? JSON.parse(outFiles) : outFiles;
                                                                         if (!Array.isArray(outFiles)) outFiles = [outFiles];
-                                                                        externalFiles = outFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split('/').pop() || '파일' } : f), name: `[외주] ${(typeof f === 'string' ? f.split('/').pop() || '파일' : f.name)}`, isExternal: true }));
+                                                                        externalFiles = outFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[외주] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
                                                                     } catch (e) { }
                                                                 }
 
