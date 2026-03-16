@@ -9,9 +9,14 @@ const api = axios.create({
 
 // 어떤 환경변수가 들어오든 강제로 찌꺼기를 잘라내고 상대경로/HTTPS로 맞추는 절대 방어막
 // 모든 하드코딩된 주소를 제거하고 상대 경로를 강제하는 전역 필터
+// Forcefully remove any absolute domain if accidentally set via environment variables or elsewhere
 if (api.defaults.baseURL) {
     // 특정 도메인 및 프로토콜 완전 제거
     api.defaults.baseURL = api.defaults.baseURL.replace(/^https?:\/\/dmmes\.synology\.me/, '');
+    
+    // Log the base URL for final verification in the browser console
+    console.log('[API Settings] Current BaseURL:', api.defaults.baseURL);
+
     api.defaults.baseURL = api.defaults.baseURL.replace(/^https?:\/\/[^\/]+/, '');
     
     // 만약 여전히 절대 경로라면 강제로 /api/v1으로 설정 (NAS 환경 최적화)

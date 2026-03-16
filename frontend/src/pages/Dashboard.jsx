@@ -152,11 +152,11 @@ const Dashboard = () => {
             try {
                 const results = await Promise.allSettled([
                     api.get('/sales/orders/'),
-                    api.get('/production/plans'),
-                    api.get('/purchasing/purchase/orders'),
-                    api.get('/purchasing/outsourcing/orders'),
-                    api.get('/purchasing/purchase/pending-items'),
-                    api.get('/purchasing/outsourcing/pending-items'),
+                    api.get('/production/plans/'),
+                    api.get('/purchasing/purchase/orders/'),
+                    api.get('/purchasing/outsourcing/orders/'),
+                    api.get('/purchasing/purchase/pending-items/'),
+                    api.get('/purchasing/outsourcing/pending-items/'),
                     api.get('/basics/partners/'),
                     api.get('/product/products'),
                     api.get('/basics/staff/'),

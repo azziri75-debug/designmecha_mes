@@ -96,7 +96,7 @@ const OutsourcingPage = () => {
             if (startDate) params.start_date = startDate;
             if (endDate) params.end_date = endDate;
 
-            const response = await api.get('/purchasing/outsourcing/orders', { params });
+            const response = await api.get('/purchasing/outsourcing/orders/', { params });
             setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
         } catch (error) {
             console.error("Failed to fetch outsourcing orders", error);
@@ -111,7 +111,7 @@ const OutsourcingPage = () => {
             if (startDate) params.start_date = startDate;
             if (endDate) params.end_date = endDate;
 
-            const response = await api.get('/purchasing/outsourcing/orders', { params });
+            const response = await api.get('/purchasing/outsourcing/orders/', { params });
             setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch completed outsourcing orders", error);
@@ -174,7 +174,7 @@ const OutsourcingPage = () => {
     };
     const fetchPendingItems = async () => {
         try {
-            const response = await api.get('/purchasing/outsourcing/pending-items');
+            const response = await api.get('/purchasing/outsourcing/pending-items/');
             setPendingItems(response.data);
             setSelectedPendingItems([]);
         } catch (error) {

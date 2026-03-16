@@ -70,7 +70,7 @@ const ProductionPage = () => {
 
     const fetchOrders = async () => {
         try {
-            const response = await api.get('/sales/orders'); // Fetch all to include PENDING
+            const response = await api.get('/sales/orders/'); // Fetch all to include PENDING
             setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch orders", error);
@@ -95,7 +95,7 @@ const ProductionPage = () => {
             }
             if (searchQuery) params.product_name = searchQuery;
 
-            const response = await api.get('/production/plans', { params });
+            const response = await api.get('/production/plans/', { params });
             setPlans(response.data);
         } catch (error) {
             console.error("Failed to fetch plans", error);
@@ -105,7 +105,7 @@ const ProductionPage = () => {
 
     const fetchStockProductions = async () => {
         try {
-            const response = await api.get('/inventory/productions?status=PENDING');
+            const response = await api.get('/inventory/productions/?status=PENDING');
             setStockProductions(response.data);
         } catch (error) {
             console.error("Failed to fetch stock productions", error);
