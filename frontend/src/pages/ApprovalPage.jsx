@@ -141,26 +141,22 @@ const ApprovalPage = () => {
 
     const isEditable = (doc) => {
         if (!doc) return false;
-        if (doc.doc_type === 'PURCHASE_ORDER') return false;
-        if (currentUser?.user_type === 'ADMIN') return true;
-        if (doc.author_id !== currentUser?.id) return false;
-        if (doc.status === 'PENDING' || doc.status === 'REJECTED') return true;
-        if (doc.status === 'IN_PROGRESS') {
-            return (doc.steps || []).every(s => s.status !== 'APPROVED' || s.comment === '기안자 직급에 따른 자동 승인');
-        }
-        return false;
+        if (doc.doc_type === 'PURCHASE_ORDER') return false; // 구매발주서 수정 불가
+        if (doc.author_id !== currentUser?.id) return false; // 기안자 본인만 가능
+        return doc.status === 'PENDING' || doc.status === 'REJECTED';
     };
 
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;
+        // IN_PROGRESS 또는 PENDING(기안 직후) 상태일 때만 승인 가능
         if (doc.status !== 'IN_PROGRESS' && doc.status !== 'PENDING') return false;
         
-        // Find the first unprocessed step (PENDING) sorted by sequence
-        const pendingSteps = [...doc.steps]
+        // 진행 중인 단계(PENDING) 중 가장 순서가 빠른 것
+        const currentStep = [...doc.steps]
             .filter(s => s.status === 'PENDING')
-            .sort((a, b) => a.sequence - b.sequence);
+            .sort((a, b) => a.sequence - b.sequence)[0];
             
-        const currentStep = pendingSteps[0];
+        // 현재 로그인 사용자 ID와 현재 단계 결재자 ID 비교 (내부기안 포함 모든 문서 공통)
         return currentStep && parseInt(currentStep.approver_id) === parseInt(currentUser.id);
     };
 
@@ -488,7 +484,7 @@ const ApprovalPage = () => {
             {/* Doc Detail / Process Modal */}
             {showDocDetail && selectedDoc && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-3xl shadow-2xl animation-fade-in my-auto overflow-hidden">
+                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl shadow-2xl animation-fade-in my-auto overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -578,8 +574,14 @@ const ApprovalPage = () => {
                             </div>
 
                             {/* Content Section - A4 Form Integration */}
-                            <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-inner overflow-x-auto">
-                                <Box sx={{ minWidth: '800px', display: 'flex', justifyContent: 'center' }}>
+                            <div className="bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container">
+                                <Box sx={{ 
+                                    minWidth: '850px', 
+                                    display: 'flex', 
+                                    justifyContent: 'center',
+                                    color: '#000000',
+                                    '& *': { color: '#000000 !important', borderColor: '#000000 !important' } 
+                                }}>
                                     {selectedDoc.doc_type === 'INTERNAL_DRAFT' && (
                                         <InternalDraftForm 
                                             data={selectedDoc.content} 

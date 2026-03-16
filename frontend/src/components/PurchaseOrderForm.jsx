@@ -171,25 +171,15 @@ const PurchaseOrderForm = ({ data, onChange, isReadOnly, currentUser, documentDa
                             <span className="font-bold">◆ 납기기한 :</span>
                             <EditableText value={data.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} className="flex-1 border-b border-gray-50 min-h-0" />
                         </div>
-                        <div className="border-b border-black p-2 row-span-4 flex flex-col items-center justify-center relative bg-blue-50/20">
-                            <p className="text-[10px] font-bold mb-2 opacity-60">위와 같이 발주함.</p>
-                            <div className="flex items-center gap-1 font-bold text-lg relative">
-                                <span>{company?.name || '디자인메카'}</span>
-                                <span className="text-red-500 relative ml-1 text-sm font-normal">
-                                    (인)
-                                    {stampUrl && <StampOverlay url={stampUrl} className="w-16 h-16 -top-4 -left-4" />}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="border-b border-r border-black p-2 flex items-center gap-2">
+                        <div className="border-b border-black p-2 flex items-center gap-2">
                             <span className="font-bold">◆ 납품장소 :</span>
                             <EditableText value={data.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} className="flex-1 border-b border-gray-50 min-h-0" />
                         </div>
-                        <div className="border-b border-r border-black p-2 flex items-center gap-2">
+                        <div className="border-r border-black p-2 flex items-center gap-2">
                             <span className="font-bold">◆ 유효기간 :</span>
                             <EditableText value={data.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} className="flex-1 border-b border-gray-50 min-h-0" />
                         </div>
-                        <div className="border-r border-black p-2 flex items-center gap-2">
+                        <div className="p-2 flex items-center gap-2">
                             <span className="font-bold">◆ 결제조건 :</span>
                             <EditableText value={data.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} className="flex-1 border-b border-gray-50 min-h-0" />
                         </div>

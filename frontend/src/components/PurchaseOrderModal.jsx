@@ -366,7 +366,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         return;
                     }
                     const customApprovers = lineRes.data.map(line => ({
-                        approver_id: line.approver_id,
+                        staff_id: line.approver_id,
                         sequence: line.sequence
                     }));
 

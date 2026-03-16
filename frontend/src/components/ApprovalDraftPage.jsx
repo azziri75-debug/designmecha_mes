@@ -192,7 +192,16 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     <Box sx={{ display: 'flex', gap: 1 }}>
                         {!isReadOnly && (
                             <>
-                                <Button variant="contained" color="primary" startIcon={<Send />} onClick={handleSubmit} disabled={isSaving}>[기안 제출하기]</Button>
+                                <Button 
+                                    variant="contained" 
+                                    color="primary" 
+                                    startIcon={<Send />} 
+                                    onClick={handleSubmit} 
+                                    disabled={isSaving}
+                                    sx={{ fontWeight: 'bold' }}
+                                >
+                                    {documentData?.id ? '[다시 제출하기]' : '[기안 제출하기]'}
+                                </Button>
                                 <Button variant="outlined" color="secondary" startIcon={<UserCheck />} onClick={() => setShowApproverSelector(true)}>결재자 지정</Button>
                             </>
                         )}
@@ -229,7 +238,9 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                     bgcolor: 'white',
                     fontFamily: '"Malgun Gothic", "Dotum", sans-serif',
-                    position: 'relative'
+                    position: 'relative',
+                    color: '#000000',
+                    '& *': { color: '#000000 !important', borderColor: '#000000 !important' } 
                 }}
             >
                 {renderFormBody()}
