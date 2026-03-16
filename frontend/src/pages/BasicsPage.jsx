@@ -1505,7 +1505,7 @@ const BasicsPageContent = () => {
                                                                 {fileList.map((fileItem, fIndex) => {
                                                                     const isString = typeof fileItem === 'string';
                                                                     const url = isString ? fileItem : fileItem.url;
-                                                                    const name = isString ? decodeURIComponent(url?.split('/').pop() || '미확인파일') : fileItem.name;
+                                                                    const name = isString ? decodeURIComponent(url?.toString().split('/').pop() || '미확인파일') : fileItem.name;
 
                                                                     return (
                                                                         <div key={fIndex} className="flex items-center justify-between bg-gray-800 px-3 py-2 rounded-lg border border-gray-700">

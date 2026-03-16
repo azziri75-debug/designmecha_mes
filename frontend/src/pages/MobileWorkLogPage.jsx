@@ -1036,7 +1036,7 @@ const MobileWorkLogPage = () => {
                                                         </Typography>
                                                         <Typography variant="caption" color="textSecondary">•</Typography>
                                                         <Typography variant="caption" color="textSecondary">
-                                                            {doc.created_at?.split('T')[0]}
+                                                            {doc.created_at?.includes('T') ? doc.created_at.split('T')[0] : (doc.created_at || '')}
                                                         </Typography>
                                                     </Stack>
                                                     <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.5 }}>

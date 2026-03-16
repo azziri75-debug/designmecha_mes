@@ -109,11 +109,11 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
     const getApprovalDate = (roleType) => {
         if (roleType === '기안자') {
             const date = documentData?.created_at || new Date().toISOString();
-            return (date?.split('T')?.[0] || '').replace(/-/g, '.');
+            return (date?.toString().split('T')?.[0] || '').replace(/-/g, '.');
         }
         const step = getStepByRole(roleType);
         if (step?.status === 'APPROVED' && step.processed_at) {
-            return (step.processed_at?.split('T')?.[0] || '').replace(/-/g, '.');
+            return (step.processed_at?.toString().split('T')?.[0] || '').replace(/-/g, '.');
         }
         return '';
     };

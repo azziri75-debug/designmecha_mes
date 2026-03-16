@@ -8,9 +8,18 @@ const api = axios.create({
 });
 
 // 어떤 환경변수가 들어오든 강제로 찌꺼기를 잘라내고 상대경로/HTTPS로 맞추는 절대 방어막
-if (api.defaults.baseURL && api.defaults.baseURL.includes('http://')) {
-    api.defaults.baseURL = api.defaults.baseURL.replace('http://dmmes.synology.me', '');
-    api.defaults.baseURL = api.defaults.baseURL.replace('http://', 'https://');
+// 모든 하드코딩된 주소를 제거하고 상대 경로를 강제하는 전역 필터
+if (api.defaults.baseURL) {
+    // 특정 도메인 및 프로토콜 완전 제거
+    api.defaults.baseURL = api.defaults.baseURL.replace(/^https?:\/\/dmmes\.synology\.me/, '');
+    api.defaults.baseURL = api.defaults.baseURL.replace(/^https?:\/\/[^\/]+/, '');
+    
+    // 만약 여전히 절대 경로라면 강제로 /api/v1으로 설정 (NAS 환경 최적화)
+    if (api.defaults.baseURL.startsWith('http')) {
+        api.defaults.baseURL = '/api/v1';
+    }
+} else {
+    api.defaults.baseURL = '/api/v1';
 }
 
 // Request interceptor to add user identification header

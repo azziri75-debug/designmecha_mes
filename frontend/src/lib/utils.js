@@ -16,25 +16,31 @@ export function getImageUrl(path) {
         return path;
     }
 
-    // NAS 환경(역방향 프록시)에서는 상대 경로(/uploads/...)만으로도 이미지 접근이 가능함
-    // VITE_API_URL이 설정되어 있다면 사용하되, Mixed Content 에러 방지를 위해 프로토콜 보정
-    const apiUrl = import.meta.env.VITE_API_URL;
-    if (apiUrl) {
+    // VITE_API_URL이 설정되어 있다면 사용하되, Mixed Content 에러 방지를 위해 상대 경로 최우선
+    let apiUrl = import.meta.env.VITE_API_URL || '/api/v1';
+    
+    // apiUrl에서 도메인을 제거하여 상대 경로로 강제 변환
+    if (apiUrl.startsWith('http')) {
         try {
             const urlObj = new URL(apiUrl, window.location.origin);
-            // 만약 API URL이 http인데 현재 페이지가 https라면 https로 강제 변환
-            let baseOrigin = urlObj.origin;
-            if (baseOrigin.startsWith('http://') && window.location.protocol === 'https:') {
-                baseOrigin = baseOrigin.replace('http://', 'https://');
-            }
-            return `${baseOrigin}${path.startsWith('/') ? path : '/' + path}`;
+            apiUrl = urlObj.pathname;
         } catch (e) {
-            return path;
+            apiUrl = '/api/v1';
         }
     }
 
-    // 기본적으로 상대 경로 반환 (동일 도메인 프록시 환경 대응)
-    return path.startsWith('/') ? path : '/' + path;
+    // path가 이미 /api/v1으로 시작하거나 API 경로인 경우 중복 방지
+    let cleanPath = path;
+    if (path.startsWith('/api/v1')) {
+        cleanPath = path.replace('/api/v1', '');
+    } else if (path.startsWith('api/v1')) {
+        cleanPath = path.replace('api/v1', '');
+    }
+
+    const normalizedApiUrl = (apiUrl === '/' || apiUrl === '') ? '/api/v1' : (apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl);
+    const normalizedPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+
+    return `${normalizedApiUrl}${normalizedPath}`;
 }
 
 export function formatNumber(num) {

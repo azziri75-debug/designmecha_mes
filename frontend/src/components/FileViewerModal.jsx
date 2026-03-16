@@ -2,29 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Download, ExternalLink, FileText, ArrowLeft, Loader2, FileCode, FileSpreadsheet, Image as ImageIcon, File } from 'lucide-react';
 import { cn } from '../lib/utils';
+import api from '../lib/api';
 
-// ─── URL helpers ──────────────────────────────────────────────────────────────
-// Build an absolute URL to the FastAPI backend.
-// VITE_API_URL is something like "https://backend.onrender.com/api/v1"
-// We need the origin (https://backend.onrender.com) to prepend to /api/v1/... paths.
-function getBackendOrigin() {
-    const configured = import.meta.env.VITE_API_URL;
-    if (configured) {
-        try {
-            return new URL(configured, window.location.origin).origin;
-        } catch {
-            // fall-through
-        }
-    }
-    return ''; // same origin → works in local dev via Vite proxy
-}
-
+// Build an relative URL to the FastAPI backend.
 function buildPreviewUrl(fileUrl) {
-    return `${getBackendOrigin()}/api/v1/preview?path=${encodeURIComponent(fileUrl)}`;
+    return `/api/v1/preview?path=${encodeURIComponent(fileUrl)}`;
 }
 
 function buildDownloadUrl(fileUrl, fileName) {
-    return `${getBackendOrigin()}/api/v1/download?path=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(fileName)}`;
+    return `/api/v1/download?path=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(fileName)}`;
 }
 
 // ─── File type helpers ────────────────────────────────────────────────────────
@@ -93,9 +79,8 @@ const FileViewerModal = ({ isOpen, onClose, files = [], title, onDeleteFile }) =
             setIsLoading(true);
             setError(null);
             try {
-                const res = await fetch(previewUrl);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                setPreviewContent(await res.text());
+                const res = await api.get(previewUrl);
+                setPreviewContent(typeof res.data === 'string' ? res.data : JSON.stringify(res.data, null, 2));
             } catch (err) {
                 setError('파일 내용을 불러올 수 없습니다.');
                 console.error('Preview fetch error:', err);

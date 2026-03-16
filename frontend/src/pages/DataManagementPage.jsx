@@ -14,11 +14,11 @@ import {
     UserPlus,
     Check
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../lib/api';
 import Card from '../components/Card';
 import { cn } from '../lib/utils';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+// API_URL 제거 (api 인스턴스의 baseURL 사용)
 
 const DB_TABLES = [
     { id: 'orders', name: '수주 정보 (Orders)', icon: Database, isInteractive: true },
@@ -73,30 +73,7 @@ const MappingModal = ({ isOpen, onClose, verifyData, type, onConfirm }) => {
     const handleFinalSubmit = async () => {
         setIsSubmitting(true);
         try {
-            let endpoint = `${API_URL}/db-manager/confirm/${type}`;
-            let payload;
-
-            if (type === 'products') {
-                payload = mappings.map(m => ({
-                    row_index: m.row_index,
-                    data: m.data,
-                    mapping_type: m.mapping_type,
-                    partner_id: m.mapping_type === 'EXISTING' ? m.partner_id : null,
-                    new_partner_name: m.mapping_type === 'NEW' ? m.new_partner_name : null
-                }));
-            } else {
-                payload = mappings.map(m => ({
-                    row_index: m.row_index,
-                    data: m.data,
-                    partner_mapping_type: m.partner_mapping_type,
-                    partner_id: m.partner_mapping_type === 'EXISTING' ? m.partner_id : null,
-                    new_partner_name: m.partner_mapping_type === 'NEW' ? m.new_partner_name : null,
-                    product_mapping_type: m.product_mapping_type,
-                    product_id: m.product_id
-                }));
-            }
-
-            const response = await axios.post(endpoint, payload);
+            const response = await api.post(`/db-manager/confirm/${type}`, payload);
             onConfirm(response.data.message);
             onClose();
         } catch (error) {
@@ -252,7 +229,7 @@ const DataManagementPage = () => {
 
     const handleDownloadTemplate = async () => {
         try {
-            const response = await axios.get(`${API_URL}/db-manager/template/${selectedTable}`, {
+            const response = await api.get(`/db-manager/template/${selectedTable}`, {
                 responseType: 'blob'
             });
             const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -285,10 +262,8 @@ const DataManagementPage = () => {
         if (currentConfig.isInteractive) {
             setLoading(true);
             setResult(null);
-            const formData = new FormData();
-            formData.append('file', file);
             try {
-                const response = await axios.post(`${API_URL}/db-manager/verify/${selectedTable}`, formData);
+                const response = await api.post(`/db-manager/verify/${selectedTable}`, formData);
                 setVerifyData(response.data);
                 setIsModalOpen(true);
             } catch (error) {
@@ -299,10 +274,8 @@ const DataManagementPage = () => {
         } else {
             setLoading(true);
             setResult(null);
-            const formData = new FormData();
-            formData.append('file', file);
             try {
-                const response = await axios.post(`${API_URL}/db-manager/upload/${selectedTable}`, formData);
+                const response = await api.post(`/db-manager/upload/${selectedTable}`, formData);
                 setResult({
                     success: true,
                     message: response.data.message

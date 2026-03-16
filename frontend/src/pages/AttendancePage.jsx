@@ -66,7 +66,7 @@ const AttendancePage = () => {
             // Map records by day
             const mappedRecords = {};
             res.data.records.forEach(record => {
-                const day = parseInt((record.record_date?.split('-')?.[2]) || '0');
+                const day = parseInt((record.record_date?.toString().split('-')?.[2]) || '0');
                 mappedRecords[day] = record;
             });
             setAttendanceData(mappedRecords);
@@ -76,7 +76,7 @@ const AttendancePage = () => {
             res.data.approval_items.forEach(doc => {
                 // date can be "YYYY-MM-DD" or "YYYY-MM-DD ~ YYYY-MM-DD"
                 if (!doc?.date || typeof doc.date !== 'string') return;
-                const parts = doc.date.split('~');
+                const parts = (doc.date || '').toString().split('~');
                 const startStr = parts[0].trim();
                 const endStr = (parts[1] || parts[0]).trim();
 
