@@ -9,64 +9,7 @@ import ProductionSheetModal from '../components/ProductionSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
-
-// Resizable Table Cell Component
-const ResizableTableCell = ({ width, minWidth = 50, onResize, children, ...props }) => {
-    const [isResizing, setIsResizing] = useState(false);
-    const cellRef = React.useRef(null);
-
-    const handleMouseDown = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsResizing(true);
-
-        const startX = e.pageX;
-        const startWidth = cellRef.current.offsetWidth;
-
-        const handleMouseMove = (mouseMoveEvent) => {
-            const newWidth = Math.max(minWidth, startWidth + (mouseMoveEvent.pageX - startX));
-            if (onResize) onResize(newWidth);
-        };
-
-        const handleMouseUp = () => {
-            setIsResizing(false);
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    }, [minWidth, onResize]);
-
-    return (
-        <TableCell
-            ref={cellRef}
-            {...props}
-            style={{ ...props.style, width, position: 'relative' }}
-        >
-            {children}
-            <div
-                onMouseDown={handleMouseDown}
-                style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '5px',
-                    cursor: 'col-resize',
-                    backgroundColor: isResizing ? '#2196f3' : 'transparent',
-                    zIndex: 1,
-                }}
-                onMouseEnter={(e) => {
-                    if (!isResizing) e.target.style.backgroundColor = 'rgba(33, 150, 243, 0.2)';
-                }}
-                onMouseLeave={(e) => {
-                    if (!isResizing) e.target.style.backgroundColor = 'transparent';
-                }}
-            />
-        </TableCell>
-    );
-};
+import ResizableTableCell from '../components/ResizableTableCell';
 
 const ProductionPage = () => {
     const [tabIndex, setTabIndex] = useState(0);
@@ -877,21 +820,21 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
 
 const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, onRefresh }) => {
     return (
-        <TableContainer>
-            <Table>
-                <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold' } }}>
+        <TableContainer sx={{ boxShadow: 'none' }}>
+            <Table sx={{ tableLayout: 'fixed' }}>
+                <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold', bgcolor: '#f8f9fa' } }}>
                     <TableRow>
-                        <TableCell />
-                        <TableCell>수주/재고번호</TableCell>
-                        <TableCell>거래처</TableCell>
-                        <TableCell>납기일</TableCell>
-                        <TableCell>금액</TableCell>
-                        <TableCell>상태</TableCell>
-                        <TableCell>불량</TableCell>
-                        <TableCell>공정 수</TableCell>
-                        <TableCell>총 공정 비용</TableCell>
-                        <TableCell>첨부파일</TableCell>
-                        <TableCell>관리</TableCell>
+                        <TableCell style={{ width: '40px' }} />
+                        <TableCell style={{ width: '150px' }}>수주/재고번호</TableCell>
+                        <TableCell style={{ width: '150px' }}>거래처</TableCell>
+                        <TableCell style={{ width: '100px' }}>납기일</TableCell>
+                        <TableCell style={{ width: '100px' }}>금액</TableCell>
+                        <TableCell style={{ width: '100px' }}>상태</TableCell>
+                        <TableCell style={{ width: '50px' }}>불량</TableCell>
+                        <TableCell style={{ width: '70px' }}>공정수</TableCell>
+                        <TableCell style={{ width: '120px' }}>총 공정 비용</TableCell>
+                        <TableCell style={{ width: '80px' }}>첨부파일</TableCell>
+                        <TableCell style={{ width: '120px' }}>관리</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1002,7 +945,9 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                         </Box>
                     ) : '-'}
                 </TableCell>
-                <TableCell>{plan.order?.partner?.name || '사내 생산(재고)'}</TableCell>
+                <TableCell>
+                    {plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내 생산(재고)'}
+                </TableCell>
                 <TableCell>{order?.delivery_date || '-'}</TableCell>
                 <TableCell>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
                 <TableCell>

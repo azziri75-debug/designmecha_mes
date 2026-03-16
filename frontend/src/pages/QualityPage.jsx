@@ -5,11 +5,26 @@ import { cn } from '../lib/utils';
 import { Card } from '../components/ui/card';
 import DefectRegistrationModal from '../components/DefectRegistrationModal';
 import DefectDetailModal from '../components/DefectDetailModal';
+import ResizableTableCell from '../components/ResizableTableCell';
 
 const QualityPage = () => {
     const [activeTab, setActiveTab] = useState('occurred'); // occurred, resolved
     const [defects, setDefects] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [columnWidths, setColumnWidths] = useState({
+        date: 150,
+        order: 120,
+        product: 200,
+        reason: 200,
+        qty: 80,
+        amount: 120,
+        resolved_date: 150,
+        actions: 100
+    });
+
+    const handleResize = (column, newWidth) => {
+        setColumnWidths(prev => ({ ...prev, [column]: newWidth }));
+    };
 
     // Modals
     const [showRegModal, setShowRegModal] = useState(false);
@@ -129,14 +144,16 @@ const QualityPage = () => {
                     <table className="w-full text-sm text-left text-gray-400">
                         <thead className="bg-gray-800 text-xs uppercase text-gray-400 border-b border-gray-700">
                             <tr>
-                                <th className="px-6 py-3">발생일시</th>
-                                <th className="px-6 py-3">수주번호</th>
-                                <th className="px-6 py-3">품목 / 공정</th>
-                                <th className="px-6 py-3">불량내용</th>
-                                <th className="px-6 py-3 text-right">수량</th>
-                                <th className="px-6 py-3 text-right">금액</th>
-                                {activeTab === 'resolved' && <th className="px-6 py-3">처리일시</th>}
-                                <th className="px-6 py-3">관리</th>
+                                <ResizableTableCell width={columnWidths.date} onResize={(w) => handleResize('date', w)} className="px-6 py-3">발생일시</ResizableTableCell>
+                                <ResizableTableCell width={columnWidths.order} onResize={(w) => handleResize('order', w)} className="px-6 py-3">수주번호</ResizableTableCell>
+                                <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-3">품목 / 공정</ResizableTableCell>
+                                <ResizableTableCell width={columnWidths.reason} onResize={(w) => handleResize('reason', w)} className="px-6 py-3">불량내용</ResizableTableCell>
+                                <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)} className="px-6 py-3 text-right">수량</ResizableTableCell>
+                                <ResizableTableCell width={columnWidths.amount} onResize={(w) => handleResize('amount', w)} className="px-6 py-3 text-right">금액</ResizableTableCell>
+                                {activeTab === 'resolved' && (
+                                    <ResizableTableCell width={columnWidths.resolved_date} onResize={(w) => handleResize('resolved_date', w)} className="px-6 py-3">처리일시</ResizableTableCell>
+                                )}
+                                <ResizableTableCell width={columnWidths.actions} onResize={(w) => handleResize('actions', w)} className="px-6 py-3">관리</ResizableTableCell>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800">

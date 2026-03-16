@@ -207,6 +207,12 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                     </div>
                     <div className="flex items-center gap-2">
                         <button
+                            onClick={() => window.print()}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"
+                        >
+                            <Printer className="w-4 h-4" /> 인쇄
+                        </button>
+                        <button
                             onClick={() => generatePDF('save')}
                             disabled={saving}
                             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg"

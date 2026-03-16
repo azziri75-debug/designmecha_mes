@@ -50,7 +50,10 @@ const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드" }) =
     };
 
     const isImage = (name) => {
-        const ext = name.split('.').pop().toLowerCase();
+        if (!name || typeof name !== 'string') return false;
+        const parts = name.split('.');
+        if (parts.length < 2) return false;
+        const ext = parts.pop().toLowerCase();
         return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
     };
 
@@ -100,7 +103,7 @@ const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드" }) =
                                     rel="noopener noreferrer"
                                     className="text-sm text-gray-300 hover:text-blue-400 truncate"
                                 >
-                                    {file.name}
+                                    {file?.name || 'Unknown File'}
                                 </a>
                             </div>
                             <button

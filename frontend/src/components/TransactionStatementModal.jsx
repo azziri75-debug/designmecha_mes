@@ -602,9 +602,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             display: 'flex',
                             flexDirection: 'row',
                             gap: '12mm', // 여백 확대
-                            padding: '10mm', // 여백 확대
-                            backgroundColor: '#fff',
                             boxShadow: '0 12px 60px rgba(0,0,0,0.5)',
+                            padding: '12mm 10mm', // Slightly more top padding for balance
                         }}
                     >
                         {/* 중앙 절취선 */}

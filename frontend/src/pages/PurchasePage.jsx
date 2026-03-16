@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon } from '@mui/icons-material';
 import api from '../lib/api';
+import ResizableTableCell from '../components/ResizableTableCell';
 import PurchaseOrderModal from '../components/PurchaseOrderModal';
 import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
@@ -44,6 +45,23 @@ const PurchasePage = ({ type }) => {
 
     // Filter states
     const [searchQuery, setSearchQuery] = useState('');
+    const [columnWidths, setColumnWidths] = useState({
+        doc: 150,
+        author: 100,
+        product: 200,
+        spec: 150,
+        qty: 100,
+        remarks: 200,
+        date: 120,
+        order_no: 150,
+        process: 100,
+        unit: 80,
+        partner: 120
+    });
+
+    const handleResize = (column, newWidth) => {
+        setColumnWidths(prev => ({ ...prev, [column]: newWidth }));
+    };
     const [selectedPartnerId, setSelectedPartnerId] = useState(null);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -507,25 +525,25 @@ const PurchasePage = ({ type }) => {
                                     </TableCell>
                                     {type === 'CONSUMABLE' ? (
                                         <>
-                                            <TableCell>연관 결재문서</TableCell>
-                                            <TableCell>기안자</TableCell>
-                                            <TableCell>품목명</TableCell>
-                                            <TableCell>규격</TableCell>
-                                            <TableCell>신청 수량</TableCell>
-                                            <TableCell>사유/비고</TableCell>
-                                            <TableCell>신청일자</TableCell>
+                                            <ResizableTableCell width={columnWidths.doc} onResize={(w) => handleResize('doc', w)}>연관 결재문서</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.author} onResize={(w) => handleResize('author', w)}>기안자</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)}>품목명</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.spec} onResize={(w) => handleResize('spec', w)}>규격</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)}>신청 수량</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.remarks} onResize={(w) => handleResize('remarks', w)}>사유/비고</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.date} onResize={(w) => handleResize('date', w)}>신청일자</ResizableTableCell>
                                         </>
                                     ) : (
                                         <>
-                                            <TableCell>수주/재고번호</TableCell>
-                                            <TableCell>공정명</TableCell>
-                                            <TableCell>품목명</TableCell>
-                                            <TableCell>규격</TableCell>
-                                            <TableCell>수량</TableCell>
-                                            <TableCell>단위</TableCell>
-                                            <TableCell>계획일자</TableCell>
-                                            <TableCell>구매처(계획)</TableCell>
-                                            <TableCell>비고</TableCell>
+                                            <ResizableTableCell width={columnWidths.order_no} onResize={(w) => handleResize('order_no', w)}>수주/재고번호</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.process} onResize={(w) => handleResize('process', w)}>공정명</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)}>품목명</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.spec} onResize={(w) => handleResize('spec', w)}>규격</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)}>수량</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.unit} onResize={(w) => handleResize('unit', w)}>단위</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.date} onResize={(w) => handleResize('date', w)}>계획일자</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.partner} onResize={(w) => handleResize('partner', w)}>구매처(계획)</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.remarks} onResize={(w) => handleResize('remarks', w)}>비고</ResizableTableCell>
                                         </>
                                     )}
                                 </TableRow>

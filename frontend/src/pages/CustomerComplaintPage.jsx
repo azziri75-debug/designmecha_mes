@@ -8,12 +8,25 @@ import api from '../lib/api';
 import { formatNumber, cn } from '../lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import MultiFileUpload from '../components/MultiFileUpload';
+import ResizableTableCell from '../components/ResizableTableCell';
 
 const CustomerComplaintPage = () => {
     const [complaints, setComplaints] = useState([]);
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState('RECEIVED'); // RECEIVED, COMPLETED
     const [searchQuery, setSearchQuery] = useState('');
+    const [columnWidths, setColumnWidths] = useState({
+        date: 120,
+        partner: 150,
+        content: 400,
+        status: 100,
+        file: 80,
+        actions: 120
+    });
+
+    const handleResize = (column, newWidth) => {
+        setColumnWidths(prev => ({ ...prev, [column]: newWidth }));
+    };
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedComplaint, setSelectedComplaint] = useState(null);
@@ -182,12 +195,12 @@ const CustomerComplaintPage = () => {
                         <table className="w-full text-sm text-left">
                             <thead className="text-xs uppercase bg-gray-700/50 text-gray-400">
                                 <tr>
-                                    <th className="px-6 py-4">접수일</th>
-                                    <th className="px-6 py-4">고객사</th>
-                                    <th className="px-6 py-4">불만 내용</th>
-                                    <th className="px-6 py-4">상태</th>
-                                    <th className="px-6 py-4">파일</th>
-                                    <th className="px-6 py-4 text-center">작업</th>
+                                    <ResizableTableCell width={columnWidths.date} onResize={(w) => handleResize('date', w)} className="px-6 py-4">접수일</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.partner} onResize={(w) => handleResize('partner', w)} className="px-6 py-4">고객사</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.content} onResize={(w) => handleResize('content', w)} className="px-6 py-4">불만 내용</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.status} onResize={(w) => handleResize('status', w)} className="px-6 py-4">상태</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.file} onResize={(w) => handleResize('file', w)} className="px-6 py-4">파일</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.actions} onResize={(w) => handleResize('actions', w)} className="px-6 py-4 text-center">작업</ResizableTableCell>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">

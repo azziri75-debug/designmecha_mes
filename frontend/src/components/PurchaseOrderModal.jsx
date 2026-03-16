@@ -58,6 +58,7 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelect, products }) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
+                <Button onClick={() => window.print()} color="info">인쇄</Button>
             </DialogActions>
         </Dialog>
     );
@@ -610,6 +611,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
+                <Button onClick={() => window.print()} color="info">인쇄</Button>
                 <Button onClick={handleSubmit} variant="contained">저장</Button>
             </DialogActions>
 

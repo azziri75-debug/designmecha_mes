@@ -142,21 +142,30 @@ const ApprovalPage = () => {
     const isEditable = (doc) => {
         if (!doc) return false;
         if (doc.doc_type === 'PURCHASE_ORDER') return false; // 구매발주서 수정 불가
-        if (parseInt(doc.author_id) !== parseInt(currentUser?.id)) return false; // 기안자 본인만 가능
+        
+        // 기안자 본인 확인
+        const isAuthor = parseInt(doc.author_id) === parseInt(currentUser?.id);
+        if (!isAuthor) return false;
+
+        // 내부기안(INTERNAL_DRAFT)은 PENDING, REJECTED 상태에서 수정 가능
+        // 다른 문서들도 동일한 규칙 적용
         return doc.status === 'PENDING' || doc.status === 'REJECTED';
     };
 
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;
-        // IN_PROGRESS 또는 PENDING(기안 직후) 상태일 때만 승인 가능
-        if (doc.status !== 'IN_PROGRESS' && doc.status !== 'PENDING') return false;
+        
+        // 내부기안(INTERNAL_DRAFT)의 경우 status가 PENDING일 때도 첫 번째 결재자가 승인할 수 있어야 함
+        // 일반 문서들은 IN_PROGRESS 상태에서 결재 진행
+        const validStatuses = ['IN_PROGRESS', 'PENDING'];
+        if (!validStatuses.includes(doc.status)) return false;
         
         // 진행 중인 단계(PENDING) 중 가장 순서가 빠른 것
         const currentStep = [...doc.steps]
             .filter(s => s.status === 'PENDING')
             .sort((a, b) => a.sequence - b.sequence)[0];
             
-        // 현재 로그인 사용자 ID와 현재 단계 결재자 ID 비교 (내부기안 포함 모든 문서 공통)
+        // 현재 로그인 사용자 ID와 현재 단계 결재자 ID 비교
         return currentStep && parseInt(currentStep.approver_id) === parseInt(currentUser.id);
     };
 
@@ -494,6 +503,14 @@ const ApprovalPage = () => {
                                 <p className="text-xs text-gray-500 mt-1">ID: {selectedDoc.id} | 기안일: {format(new Date(selectedDoc.created_at), 'yyyy-MM-dd HH:mm')}</p>
                             </div>
                             <div className="flex items-center gap-3">
+                                {selectedDoc.status === 'APPROVED' && (
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+                                    >
+                                        <Printer className="w-4 h-4" /> 인쇄
+                                    </button>
+                                )}
                                 {isEditable(selectedDoc) && (
                                     <>
                                         <button
@@ -550,7 +567,7 @@ const ApprovalPage = () => {
                                 <div className="flex gap-3">
                                     {selectedDoc.steps.map((step, idx) => (
                                         <div key={idx} className="flex flex-col items-center gap-1.5 w-20">
-                                            <div className="text-[10px] font-bold text-gray-500 uppercase">{step.sequence === 1 ? '검토' : step.sequence === 2 ? '결재' : '최종'}</div>
+                                            <div className="text-[10px] font-bold text-gray-500 uppercase">{step.sequence === 1 ? '부장' : step.sequence === 2 ? '이사' : '대표이사'}</div>
                                             <div className="w-16 h-16 bg-white rounded border border-gray-600 flex items-center justify-center relative overflow-hidden group">
                                                 {step.status === 'APPROVED' ? (
                                                     step.approver?.stamp_image ? (
@@ -574,11 +591,16 @@ const ApprovalPage = () => {
                             </div>
 
                             {/* Content Section - A4 Form Integration */}
-                            <div className="bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container no-print">
+                            <div className="bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container no-print" style={{ backgroundColor: '#f3f4f6' }}>
                                 <Box sx={{ 
-                                    minWidth: '850px', 
+                                    width: '850px',
+                                    minHeight: '1100px',
+                                    margin: '0 auto',
                                     display: 'flex', 
-                                    justifyContent: 'center',
+                                    flexDirection: 'column',
+                                    bgcolor: '#ffffff',
+                                    p: '40px',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                                     color: '#000000',
                                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' },
                                     '& td, & th, & div, & span': { 

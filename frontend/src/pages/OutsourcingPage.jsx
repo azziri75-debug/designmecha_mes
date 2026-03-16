@@ -11,6 +11,7 @@ import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
+import ResizableTableCell from '../components/ResizableTableCell';
 
 const OutsourcingPage = () => {
     const navigate = useNavigate();
@@ -19,6 +20,20 @@ const OutsourcingPage = () => {
     const [pendingItems, setPendingItems] = useState([]);
     const [selectedPendingItems, setSelectedPendingItems] = useState([]);
     const [expandedOrderId, setExpandedOrderId] = useState(null);
+    const [columnWidths, setColumnWidths] = useState({
+        order_no: 150,
+        partner: 150,
+        order_date: 120,
+        amount: 120,
+        status: 100,
+        files: 80,
+        history: 100,
+        actions: 120
+    });
+
+    const handleResize = (column, newWidth) => {
+        setColumnWidths(prev => ({ ...prev, [column]: newWidth }));
+    };
 
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -440,7 +455,6 @@ const OutsourcingPage = () => {
                                 )}
                             </TableBody>
                         </Table>
-                    </TableContainer>
                 </>
             )}
 
@@ -456,9 +470,7 @@ const OutsourcingPage = () => {
                     <TableContainer component={Paper}>
                         <Table>
                             <TableHead>
-                                <TableRow>
-                                    <TableCell>발주번호</TableCell>
-                                    <TableCell>수주번호 (고객사)</TableCell>
+                                <TableRow sx={{ bgcolor: '#f8f9fa' }}>
                                     <TableCell>발주일자</TableCell>
                                     <TableCell>외주처</TableCell>
                                     <TableCell>품목 수</TableCell>

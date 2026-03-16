@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Button, Typography, TextField, Grid, Divider, CircularProgress, IconButton, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import { Search, Plus, Printer, FileText, CheckCircle2, Clock, AlertCircle, TrendingUp, Package, Truck, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
 import api from '../lib/api';
+import ResizableTableCell from '../components/ResizableTableCell';
 import DeliveryModal from '../components/DeliveryModal';
 import FileViewerModal from '../components/FileViewerModal';
 import TransactionStatementModal from '../components/TransactionStatementModal';
@@ -9,6 +10,21 @@ import TransactionStatementModal from '../components/TransactionStatementModal';
 const DeliveryPage = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [columnWidths, setColumnWidths] = useState({
+        customer: 150,
+        order_date: 120,
+        due_date: 120,
+        total_items: 100,
+        order_amount: 150,
+        deliv_amount: 150,
+        status: 100,
+        actions: 100,
+        details: 80
+    });
+
+    const handleResize = (column, newWidth) => {
+        setColumnWidths(prev => ({ ...prev, [column]: newWidth }));
+    };
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [expandedOrder, setExpandedOrder] = useState(null);
@@ -184,15 +200,15 @@ const DeliveryPage = () => {
                             <table className="w-full text-left">
                                 <thead>
                                     <tr className="bg-gray-900/50 border-b border-gray-800">
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Customer</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Date</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Due Date</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Total Items</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Amount</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-blue-400">Deliv. Amount</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Status</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-center">Actions</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-right">Details</th>
+                                        <ResizableTableCell width={columnWidths.customer} onResize={(w) => handleResize('customer', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Customer</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.order_date} onResize={(w) => handleResize('order_date', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Date</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.due_date} onResize={(w) => handleResize('due_date', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Due Date</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.total_items} onResize={(w) => handleResize('total_items', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Total Items</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.order_amount} onResize={(w) => handleResize('order_amount', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Amount</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.deliv_amount} onResize={(w) => handleResize('deliv_amount', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-blue-400">Deliv. Amount</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.status} onResize={(w) => handleResize('status', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Status</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.actions} onResize={(w) => handleResize('actions', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-center">Actions</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.details} onResize={(w) => handleResize('details', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-right">Details</ResizableTableCell>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800/50">

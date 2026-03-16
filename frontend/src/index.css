@@ -64,3 +64,50 @@ body.resizing {
   --color-orange-500: #f97316 !important;
   --color-orange-600: #ea580c !important;
 }
+
+/* Print Styles */
+@media print {
+  /* Hide UI elements */
+  body * { visibility: hidden; }
+  .a4-container, .a4-container *, 
+  .a4-paper-container, .a4-paper-container *,
+  [ref="sheetRef"], [ref="sheetRef"] * { 
+    visibility: visible !important; 
+  }
+  
+  .a4-container, .a4-paper-container { 
+    position: absolute !important; 
+    left: 0 !important; 
+    top: 0 !important; 
+    width: 210mm !important; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    box-shadow: none !important;
+    background-color: white !important;
+  }
+
+  /* Completely hide problematic elements */
+  aside, nav, header, .sidebar, .modal-backdrop, .action-buttons, 
+  button, .no-print, [role="dialog"] > div:not(.a4-container):not(.a4-paper-container) { 
+    display: none !important; 
+  }
+
+  /* Fix for text clipping in input/textarea/select */
+  input, textarea, select {
+    border: none !important;
+    background: transparent !important;
+    height: auto !important;
+    min-height: 1.5em !important;
+    padding: 0 !important;
+    line-height: normal !important;
+    overflow: visible !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page { 
+    size: A4 portrait; 
+    margin: 10mm; 
+  }
+}

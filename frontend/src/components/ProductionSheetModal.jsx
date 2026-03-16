@@ -263,6 +263,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                         * 표 선을 드래그하여 간격을 조절할 수 있습니다.
                     </div>
                     <div className="flex items-center gap-2">
+                        <button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Printer className="w-4 h-4" /> 인쇄</button>
                         <button onClick={() => generatePDF('save')} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Save className="w-4 h-4" /> {saving ? '처리 중...' : 'PDF 저장 및 첨부'}</button>
                         <button onClick={onClose} className="text-gray-400 hover:text-white p-2 flex items-center justify-center"><X className="w-6 h-6" /></button>
                     </div>

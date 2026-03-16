@@ -22,12 +22,34 @@ import api from '../lib/api';
 import StockProductionModal from '../components/StockProductionModal';
 import StockEditModal from '../components/StockEditModal';
 import StockInitModal from '../components/StockInitModal';
+import ResizableTableCell from '../components/ResizableTableCell';
 
 const InventoryPage = () => {
     const [activeTab, setActiveTab] = useState('status'); // 'status', 'productions'
     const [stocks, setStocks] = useState([]);
     const [productions, setProductions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [columnWidths, setColumnWidths] = useState({
+        type: 100,
+        product: 200,
+        spec: 150,
+        loc: 120,
+        qty: 100,
+        producing: 120,
+        updated: 120,
+        actions: 100,
+        // Production history
+        no: 150,
+        partner: 150,
+        req_qty: 100,
+        req_date: 180,
+        status: 100,
+        note: 150
+    });
+
+    const handleResize = (column, newWidth) => {
+        setColumnWidths(prev => ({ ...prev, [column]: newWidth }));
+    };
     const [searchTerm, setSearchTerm] = useState('');
     const [itemType, setItemType] = useState(''); // For stocks
     const [selectedPartnerId, setSelectedPartnerId] = useState('');
@@ -267,14 +289,14 @@ const InventoryPage = () => {
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-gray-800/50 text-gray-400 uppercase text-xs">
                                     <tr>
-                                        <th className="px-6 py-4 font-medium">구분</th>
-                                        <th className="px-6 py-4 font-medium">품목명</th>
-                                        <th className="px-6 py-4 font-medium">코드 / 규격</th>
-                                        <th className="px-6 py-4 font-medium">보관 위치</th>
-                                        <th className="px-6 py-4 font-medium text-right">현재고</th>
-                                        <th className="px-6 py-4 font-medium text-right">생산중</th>
-                                        <th className="px-6 py-4 font-medium">최근 업데이트</th>
-                                        <th className="px-6 py-4 font-medium text-right">관리</th>
+                                        <ResizableTableCell width={columnWidths.type} onResize={(w) => handleResize('type', w)} className="px-6 py-4 font-medium">구분</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-4 font-medium">품목명</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.spec} onResize={(w) => handleResize('spec', w)} className="px-6 py-4 font-medium">코드 / 규격</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.loc} onResize={(w) => handleResize('loc', w)} className="px-6 py-4 font-medium">보관 위치</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)} className="px-6 py-4 font-medium text-right">현재고</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.producing} onResize={(w) => handleResize('producing', w)} className="px-6 py-4 font-medium text-right">생산중</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.updated} onResize={(w) => handleResize('updated', w)} className="px-6 py-4 font-medium">최근 업데이트</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.actions} onResize={(w) => handleResize('actions', w)} className="px-6 py-4 font-medium text-right">관리</ResizableTableCell>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
@@ -346,14 +368,14 @@ const InventoryPage = () => {
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-gray-800/50 text-gray-400 uppercase text-xs">
                                     <tr>
-                                        <th className="px-6 py-4 font-medium">관리번호</th>
-                                        <th className="px-6 py-4 font-medium">품목명 / 규격</th>
-                                        <th className="px-6 py-4 font-medium">거래처</th>
-                                        <th className="px-6 py-4 font-medium">요청수량</th>
-                                        <th className="px-6 py-4 font-medium">요청일 / 완료예정일</th>
-                                        <th className="px-6 py-4 font-medium">상태</th>
-                                        <th className="px-6 py-4 font-medium">비고</th>
-                                        <th className="px-6 py-4 font-medium text-right">관리</th>
+                                        <ResizableTableCell width={columnWidths.no} onResize={(w) => handleResize('no', w)} className="px-6 py-4 font-medium">관리번호</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-4 font-medium">품목명 / 규격</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.partner} onResize={(w) => handleResize('partner', w)} className="px-6 py-4 font-medium">거래처</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.req_qty} onResize={(w) => handleResize('req_qty', w)} className="px-6 py-4 font-medium">요청수량</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.req_date} onResize={(w) => handleResize('req_date', w)} className="px-6 py-4 font-medium">요청일 / 완료예정일</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.status} onResize={(w) => handleResize('status', w)} className="px-6 py-4 font-medium">상태</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.note} onResize={(w) => handleResize('note', w)} className="px-6 py-4 font-medium">비고</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.actions} onResize={(w) => handleResize('actions', w)} className="px-6 py-4 font-medium text-right">관리</ResizableTableCell>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
