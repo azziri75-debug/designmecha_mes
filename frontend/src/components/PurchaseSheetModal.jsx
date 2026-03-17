@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Download, Save } from 'lucide-react';
+import { X, Download, Save, Printer } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import api from '../lib/api';

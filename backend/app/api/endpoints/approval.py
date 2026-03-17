@@ -269,7 +269,7 @@ async def create_document(
             lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
 
     if not lines_to_process:
-        if doc_in.doc_type not in ["INTERNAL_DRAFT", "EXPENSE_REPORT", "CONSUMABLES_PURCHASE", "EARLY_LEAVE", "LEAVE_REQUEST"]:
+        if doc_in.doc_type not in ["INTERNAL_DRAFT", "EXPENSE_REPORT", "CONSUMABLES_PURCHASE", "EARLY_LEAVE", "LEAVE_REQUEST", "PURCHASE_ORDER", "OVERTIME"]:
             raise HTTPException(status_code=400, detail="결재선이 설정되지 않은 문서 종류입니다.")
     
     author_rank = get_staff_rank(current_user.role)

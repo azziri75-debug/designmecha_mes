@@ -387,7 +387,7 @@ const ApprovalPage = () => {
                                                         {STATUS_MAP[doc.status]?.label}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-right">
+                                                <td className="px-6 py-4 text-right min-w-[120px] relative z-10">
                                                     <div className="flex justify-end gap-2 items-center">
                                                         {isEditable(doc) && (
                                                             <>

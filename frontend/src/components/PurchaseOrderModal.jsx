@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
 import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Printer, Pencil, Trash, ChevronRight } from 'lucide-react';
 import api from '../lib/api';
 
 const ProductSelectionModal = ({ isOpen, onClose, onSelect, products }) => {
@@ -612,7 +612,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
-                <Button onClick={() => window.print()} color="info">인쇄</Button>
+                <Button onClick={() => window.print()} color="info" startIcon={<Printer />}>인쇄</Button>
                 <Button onClick={handleSubmit} variant="contained">저장</Button>
             </DialogActions>
 
