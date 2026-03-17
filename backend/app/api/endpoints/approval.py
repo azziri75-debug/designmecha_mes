@@ -278,8 +278,8 @@ async def create_document(
     
     if lines_to_process:
         for lp in lines_to_process:
-            approver_rank = get_staff_rank(lp["role"])
-            is_auto = author_rank >= approver_rank
+            # Auto-approve if author is the approver or has higher rank
+            is_auto = (lp["approver_id"] == current_user.id) or (author_rank >= approver_rank)
             
             step = ApprovalStep(
                 document_id=db_doc.id,

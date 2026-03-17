@@ -153,18 +153,18 @@ const ApprovalPage = () => {
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;
         
-        // 내부기안(INTERNAL_DRAFT)의 경우 status가 PENDING일 때도 첫 번째 결재자가 승인할 수 있어야 함
-        // 일반 문서들은 IN_PROGRESS 상태에서 결재 진행
+        // Documents must be in PENDING or IN_PROGRESS to be approved/rejected
         const validStatuses = ['IN_PROGRESS', 'PENDING'];
         if (!validStatuses.includes(doc.status)) return false;
         
-        // 진행 중인 단계(PENDING) 중 가장 순서가 빠른 것
-        const currentStep = [...doc.steps]
-            .filter(s => s.status === 'PENDING')
-            .sort((a, b) => a.sequence - b.sequence)[0];
+        // Find the current active step (PENDING and matching doc.current_sequence)
+        const currentStep = doc.steps.find(s => 
+            s.status === 'PENDING' && 
+            s.sequence === doc.current_sequence
+        );
             
-        // 현재 로그인 사용자 ID와 현재 단계 결재자 ID 비교
-        return currentStep && parseInt(currentStep.approver_id) === parseInt(currentUser.id);
+        // Must be the assigned approver for the current step
+        return currentStep && Number(currentStep.approver_id) === Number(currentUser.id);
     };
 
     const handleSaveLines = async (type) => {

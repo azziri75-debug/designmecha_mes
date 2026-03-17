@@ -9,6 +9,8 @@ import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Printer, Pencil, Trash, ChevronRight } from 'lucide-react';
 import api from '../lib/api';
+import PurchaseOrderTemplate from './PurchaseOrderTemplate';
+import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 
 const ProductSelectionModal = ({ isOpen, onClose, onSelect, products }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -421,195 +423,58 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>{order ? "발주서 수정" : "발주서 등록"}</DialogTitle>
-            <DialogContent>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 1 }}>
-                    <TextField
-                        select
-                        label="거래처 (공급사)"
-                        value={formData.partner_id}
-                        onChange={(e) => setFormData({ ...formData, partner_id: e.target.value })}
-                        fullWidth
-                    >
-                        {partners.map((partner) => (
-                            <MenuItem key={partner.id} value={partner.id}>
-                                {partner.name}
-                            </MenuItem>
-                        ))}
-                    </TextField>
-                    {(initialItems && initialItems.length > 0) ? (
-                        <TextField
-                            label="연결 데이터 소스"
-                            value={formData.display_order_no ? `연결 수주번호: [${formData.display_order_no}]` : '연결 수주번호: [없음/재고용]'}
-                            fullWidth
-                            disabled
-                            InputProps={{
-                                style: { fontWeight: 'bold', color: '#1976d2' }
-                            }}
-                        />
-                    ) : (
-                        <TextField
-                            select
-                            label="연결 수주번호"
-                            value={formData.order_id}
-                            onChange={(e) => setFormData({ ...formData, order_id: e.target.value })}
-                            fullWidth
-                        >
-                            <MenuItem value=""><em>없음 (재고용)</em></MenuItem>
-                            {salesOrders.map((so) => (
-                                <MenuItem key={so.id} value={so.id}>
-                                    {so.order_no} ({so.partner?.name})
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    )}
-                    <TextField
-                        label="발주일자"
-                        type="date"
-                        value={formData.order_date}
-                        onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                        fullWidth
-                    />
-                    <TextField
-                        label="납품요청일"
-                        type="date"
-                        value={formData.delivery_date}
-                        onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                        fullWidth
-                    />
-                    <TextField
-                        label="비고"
-                        value={formData.note}
-                        onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                        fullWidth
-                    />
-                    {order && (
-                        <TextField
-                            select
-                            label="상태"
-                            value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                            fullWidth
-                        >
-                            <MenuItem value="PENDING">대기 (PENDING)</MenuItem>
-                            <MenuItem value="ORDERED">발주 (ORDERED)</MenuItem>
-                            <MenuItem value="COMPLETED">입고 완료 (COMPLETED)</MenuItem>
-                        </TextField>
-                    )}
-                </Box>
-
-                <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>발주 품목</Typography>
-                <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>품목</TableCell>
-                                <TableCell width="15%">규격</TableCell>
-                                {initialItems?.some(i => i.type === 'MRP') && (
-                                    <>
-                                        <TableCell width="10%">현재고</TableCell>
-                                        <TableCell width="10%">총 소요량</TableCell>
-                                    </>
-                                )}
-                                <TableCell width="10%">수량</TableCell>
-                                <TableCell width="15%">단가</TableCell>
-                                <TableCell width="15%">비고</TableCell>
-                                <TableCell width="5%"></TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {formData.items.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Typography variant="body2" sx={{ flexGrow: 1, minWidth: 100 }}>
-                                                {products.find(p => p.id === item.product_id)?.name || '품목 선택'}
-                                            </Typography>
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                onClick={() => {
-                                                    setActiveRowIndex(index);
-                                                    setIsProductModalOpen(true);
-                                                }}
-                                            >
-                                                찾기
-                                            </Button>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="caption">
-                                            {products.find(p => p.id === item.product_id)?.specification || '-'}
-                                        </Typography>
-                                    </TableCell>
-                                    {initialItems?.some(i => i.type === 'MRP') && (
-                                        <>
-                                            <TableCell>
-                                                <Typography variant="body2" sx={{ textAlign: 'right', pr: 2 }}>
-                                                    {item.current_stock?.toLocaleString() || '-'}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Typography variant="body2" sx={{ textAlign: 'right', pr: 2 }}>
-                                                    {item.required_quantity?.toLocaleString() || '-'}
-                                                </Typography>
-                                            </TableCell>
-                                        </>
-                                    )}
-                                    <TableCell>
-                                        <TextField
-                                            type="number"
-                                            value={item.quantity}
-                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                            fullWidth
-                                            size="small"
-                                            variant="standard"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <TextField
-                                                type="number"
-                                                value={item.unit_price}
-                                                onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
-                                                fullWidth
-                                                size="small"
-                                                variant="standard"
-                                            />
-                                            <Tooltip title="과거 단가 이력 조회">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={(e) => handleLookupHistory(e, index, item.product_id)}
-                                                    disabled={!item.product_id}
-                                                >
-                                                    <HistoryIcon sx={{ fontSize: 18 }} />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            value={item.note}
-                                            onChange={(e) => handleItemChange(index, 'note', e.target.value)}
-                                            fullWidth
-                                            size="small"
-                                            variant="standard"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <IconButton size="small" onClick={() => handleRemoveItem(index)}>
-                                            <DeleteIcon fontSize="small" />
-                                        </IconButton>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-                <Button startIcon={<AddIcon />} onClick={handleAddItem} sx={{ mt: 1 }}>
-                    품목 추가
-                </Button>
+            <DialogContent sx={{ p: 0, bgcolor: '#f4f4f5' }}>
+                <PurchaseOrderTemplate 
+                    data={{
+                        order_no: formData.display_order_no || '자동 생성',
+                        partner_name: partners.find(p => p.id === formData.partner_id)?.name || '',
+                        partner_phone: partners.find(p => p.id === formData.partner_id)?.phone || '',
+                        partner_fax: partners.find(p => p.id === formData.partner_id)?.fax || '',
+                        order_date: formData.order_date,
+                        items: formData.items.map(item => {
+                            const p = products.find(prod => prod.id === item.product_id);
+                            return {
+                                ...item,
+                                name: p?.name || '',
+                                spec: p?.specification || '',
+                                qty: item.quantity,
+                                price: item.unit_price,
+                                total: (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)
+                            };
+                        }),
+                        special_notes: formData.note,
+                        delivery_date: formData.delivery_date,
+                        delivery_place: '당사 공장',
+                        valid_until: '발주일로부터 30일',
+                        payment_terms: '마감 후 30일',
+                        colWidths: [40, 200, 120, 60, 80, 100]
+                    }}
+                    onChange={(field, val) => {
+                        if (field === 'items') {
+                            const newItems = val.map(v => ({
+                                ...v,
+                                quantity: v.qty,
+                                unit_price: v.price
+                            }));
+                            setFormData(prev => ({ ...prev, items: newItems }));
+                        } else if (field === 'special_notes') {
+                            setFormData(prev => ({ ...prev, note: val }));
+                        } else if (field === 'partner_id') {
+                             setFormData(prev => ({ ...prev, partner_id: val }));
+                        } else {
+                            setFormData(prev => ({ ...prev, [field]: val }));
+                        }
+                    }}
+                    onAddItem={handleAddItem}
+                    onSearchProduct={(idx) => {
+                        setActiveRowIndex(idx);
+                        setIsProductModalOpen(true);
+                    }}
+                    isReadOnly={false}
+                    currentUser={null}
+                    hideApprovalGrid={true}
+                    className="p-[10mm] shadow-none border-none mx-auto my-4 max-w-[210mm]"
+                />
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>

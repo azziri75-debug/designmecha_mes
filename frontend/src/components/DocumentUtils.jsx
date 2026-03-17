@@ -45,12 +45,12 @@ export const EditableText = ({
     isHeader = false,
     autoFit = false,
     maxWidth = 0,
-    forceWrap = false
+    forceWrap = false,
+    isReadOnly = false
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [text, setText] = useState(value || "");
     const baseSize = isHeader ? 24 : 14;
-    // We intentionally disable useAutoFit's shrinking property to satisfy the new requirement: "크기는 조정하지 말고 줄을 바꾸고 줄높이를 조정하는 방식으로 변경"
     const fittedSize = baseSize;
 
     useEffect(() => { setText(value || ""); }, [value]);
@@ -59,6 +59,21 @@ export const EditableText = ({
         setIsEditing(false);
         if (text !== value && onChange) onChange(text);
     };
+
+    if (isReadOnly) {
+        return (
+            <div
+                className={cn(
+                    "min-h-[1.5em] flex items-center w-full",
+                    autoFit ? "whitespace-pre-wrap break-all" : "whitespace-nowrap overflow-hidden",
+                    className
+                )}
+                style={{ fontSize: fittedSize }}
+            >
+                {value || ""}
+            </div>
+        );
+    }
 
     if (isEditing) {
         return (
@@ -136,7 +151,7 @@ export const StampOverlay = ({ url, className }) => {
 /**
  * Resizable Table for Modals
  */
-export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, colWidths: initialWidths, className }) => {
+export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, onSearchProduct, colWidths: initialWidths, className, isReadOnly = false }) => {
     const [widths, setWidths] = useState(initialWidths || columns.map(() => 120));
     const resizing = useRef(null);
     const widthsRef = useRef(widths);
@@ -237,14 +252,23 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, co
                 {data.map((row, rIdx) => (
                     <tr key={rIdx} className="min-h-[2rem] h-auto border-b border-gray-100 last:border-0 hover:bg-[#f9fafb]">
                         {columns.map((col, cIdx) => (
-                            <td key={cIdx} className="border-r border-black last:border-0 p-0 text-center h-full">
+                            <td key={cIdx} className="border-r border-black last:border-0 p-0 text-center h-full relative group">
                                 <EditableText
                                     value={row[col.key]}
                                     onChange={(v) => onUpdateData(rIdx, col.key, v)}
                                     autoFit
                                     maxWidth={widths[cIdx]}
                                     className={cn("text-xs justify-center h-full", col.align === 'left' && "justify-start px-2", col.align === 'right' && "justify-end px-2")}
+                                    isReadOnly={isReadOnly}
                                 />
+                                {!isReadOnly && col.key === 'name' && onSearchProduct && (
+                                    <button 
+                                        onClick={() => onSearchProduct(rIdx)}
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-gray-100 hover:bg-gray-200 p-0.5 rounded text-[10px] transition-opacity"
+                                    >
+                                        찾기
+                                    </button>
+                                )}
                             </td>
                         ))}
                     </tr>
