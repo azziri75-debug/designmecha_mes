@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Typography } from '@mui/material';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import { cn } from '../lib/utils';
 import api from '../lib/api';

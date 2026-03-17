@@ -509,15 +509,17 @@ const ApprovalPage = () => {
                                         <Printer className="w-4 h-4" /> 인쇄
                                     </button>
                                 )}
-                                {isEditable(selectedDoc) && (
+                                {currentUser?.id === selectedDoc.author?.id && (
                                     <>
-                                        <button
-                                            onClick={() => handleEditDoc(selectedDoc)}
-                                            className="p-2 hover:bg-gray-700 rounded-lg text-blue-400 transition-colors"
-                                            title="수정"
-                                        >
-                                            <Pencil className="w-5 h-5" />
-                                        </button>
+                                        {selectedDoc.status !== 'APPROVED' && (
+                                            <button
+                                                onClick={() => handleEditDoc(selectedDoc)}
+                                                className="p-2 hover:bg-gray-700 rounded-lg text-blue-400 transition-colors"
+                                                title="수정"
+                                            >
+                                                <Pencil className="w-5 h-5" />
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => handleDeleteDoc(selectedDoc.id)}
                                             className="p-2 hover:bg-gray-700 rounded-lg text-red-400 transition-colors"
@@ -569,7 +571,12 @@ const ApprovalPage = () => {
                                             <div className="w-16 h-16 bg-white rounded border border-gray-600 flex items-center justify-center relative overflow-hidden group">
                                                 {step.status === 'APPROVED' ? (
                                                     step.approver?.stamp_image ? (
-                                                        <img src={step.approver?.stamp_image.url} alt="Sign" className="w-full h-full object-contain p-1" />
+                                                        <img 
+                                                            src={step.approver?.stamp_image.url} 
+                                                            alt="Sign" 
+                                                            className="w-full h-full object-contain p-1" 
+                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                        />
                                                     ) : (
                                                         <span className="text-[11px] text-emerald-600 font-bold border-2 border-emerald-500 px-1 rounded -rotate-12 uppercase">Approved</span>
                                                     )
