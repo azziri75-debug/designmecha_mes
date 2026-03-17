@@ -140,16 +140,14 @@ const ApprovalPage = () => {
     };
 
     const isEditable = (doc) => {
-        if (!doc) return false;
-        if (doc.doc_type === 'PURCHASE_ORDER') return false; // 구매발주서 수정 불가
+        if (!doc || !currentUser) return false;
         
-        // 기안자 본인 확인
-        const isAuthor = parseInt(doc.author_id) === parseInt(currentUser?.id);
+        // 기안자 본인 확인 (문자열/숫자 혼용 대비 Number로 통일)
+        const isAuthor = Number(doc.author_id) === Number(currentUser.id);
         if (!isAuthor) return false;
 
-        // 내부기안(INTERNAL_DRAFT)은 PENDING, REJECTED 상태에서 수정 가능
-        // 다른 문서들도 동일한 규칙 적용
-        return doc.status === 'PENDING' || doc.status === 'REJECTED';
+        // 임시저장(PENDING/DRAFT) 또는 반려(REJECTED) 상태에서만 수정/삭제 가능
+        return ['PENDING', 'DRAFT', 'REJECTED'].includes(doc.status);
     };
 
     const canApprove = (doc) => {

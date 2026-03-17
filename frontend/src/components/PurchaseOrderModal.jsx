@@ -367,7 +367,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         return;
                     }
                     const customApprovers = lineRes.data.map(line => ({
-                        staff_id: line.approver_id,
+                        staff_id: line.approver_id || line.approver?.id, // staff_id 필수 필드 확보
                         sequence: line.sequence
                     }));
 

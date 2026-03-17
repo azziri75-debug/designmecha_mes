@@ -235,7 +235,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         return;
                     }
                     const customApprovers = lineRes.data.map(line => ({
-                        staff_id: line.approver_id,
+                        staff_id: line.approver_id || line.approver?.id,
                         sequence: line.sequence
                     }));
 
