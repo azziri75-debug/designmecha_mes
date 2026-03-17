@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    IconButton, MenuItem, Box, Typography, Tooltip
+    IconButton, MenuItem, Box, Typography, Tooltip, Autocomplete
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
 import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
@@ -11,6 +11,61 @@ import { Printer, Plus, Search } from 'lucide-react';
 import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import PurchaseOrderTemplate from './PurchaseOrderTemplate';
+import { ChevronRight, Printer, Plus, Search, Trash } from 'lucide-react';
+
+const ProductSelectionModal = ({ isOpen, onClose, onSelect, products }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const filteredProducts = products.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.specification && p.specification.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    return (
+        <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>제품 선택</DialogTitle>
+            <DialogContent>
+                <TextField
+                    fullWidth
+                    label="검색 (품명 또는 규격)"
+                    variant="outlined"
+                    size="small"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    sx={{ mb: 2, mt: 1 }}
+                />
+                <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
+                    <Table stickyHeader size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 'bold' }}>품목명</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>규격</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>현재고</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>주거래처</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>선택</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {filteredProducts.map((p) => (
+                                <TableRow key={p.id}>
+                                    <TableCell>{p.name}</TableCell>
+                                    <TableCell>{p.specification || '-'}</TableCell>
+                                    <TableCell align="right">{p.current_inventory || 0}</TableCell>
+                                    <TableCell>{p.partner_name || '-'}</TableCell>
+                                    <TableCell align="center">
+                                        <Button size="small" variant="contained" onClick={() => onSelect(p)}>선택</Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>취소</Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
 
 const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems }) => {
     const navigate = useNavigate();
@@ -29,6 +84,9 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         items: [],
         display_order_no: '' // For UI display of linked SO/SP
     });
+
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [activeRowIndex, setActiveRowIndex] = useState(null);
 
     const [approvalDoc, setApprovalDoc] = useState(null);
     const [defaultSteps, setDefaultSteps] = useState([]);
@@ -177,26 +235,45 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         setFormData({ ...formData, items: newItems });
     };
 
-    const handleItemChange = (index, field, value) => {
+    const handleItemChange = async (index, field, value) => {
         const newItems = [...formData.items];
         newItems[index][field] = value;
 
         // Auto-fill price if product selected
-        if (field === 'product_id') {
+        if (field === 'product_id' && value) {
             const product = products.find(p => p.id === value);
-            if (product && product.standard_processes) {
-                // Find OUTSOURCING process
-                const outsourcingProc = product.standard_processes.find(sp =>
-                    sp.course_type?.includes('OUTSOURCING') ||
-                    sp.process?.course_type?.includes('OUTSOURCING')
-                );
-                if (outsourcingProc) {
-                    newItems[index].unit_price = outsourcingProc.cost || 0;
+            
+            try {
+                // 1. Try to fetch LATEST purchase price from history
+                const res = await api.get('/purchasing/price-history', {
+                    params: { product_id: value, limit: 1 }
+                });
+                if (res.data && res.data.length > 0) {
+                    newItems[index].unit_price = res.data[0].unit_price;
+                } else if (product && product.standard_processes) {
+                    // 2. Fallback to standard process cost
+                    const outsourcingProc = product.standard_processes.find(sp =>
+                        sp.course_type?.includes('OUTSOURCING') ||
+                        sp.process?.course_type?.includes('OUTSOURCING')
+                    );
+                    if (outsourcingProc) {
+                        newItems[index].unit_price = outsourcingProc.cost || 0;
+                    }
                 }
+            } catch (err) {
+                console.error("Failed to fetch price history for price pre-fill", err);
             }
         }
 
         setFormData({ ...formData, items: newItems });
+    };
+
+    const handleSelectProduct = (product) => {
+        if (activeRowIndex !== null) {
+            handleItemChange(activeRowIndex, 'product_id', product.id);
+        }
+        setIsProductModalOpen(false);
+        setActiveRowIndex(null);
     };
 
     const handleLookupHistory = async (event, index, productId) => {
@@ -398,6 +475,16 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                 <Button onClick={() => window.print()} color="info" startIcon={<Printer />}>인쇄</Button>
                 <Button onClick={handleSubmit} variant="contained" color="primary">저장</Button>
             </DialogActions>
+
+            <ProductSelectionModal
+                isOpen={isProductModalOpen}
+                onClose={() => {
+                    setIsProductModalOpen(false);
+                    setActiveRowIndex(null);
+                }}
+                onSelect={handleSelectProduct}
+                products={products}
+            />
 
             <Popover
                 open={Boolean(anchorEl)}

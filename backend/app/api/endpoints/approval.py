@@ -274,17 +274,22 @@ async def create_document(
             if target_s:
                 lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
     else:
-        # Get default approval lines from template
+        # Get default approval lines from template (Case-insensitive)
         lines_res = await db.execute(
             select(ApprovalLine)
             .options(selectinload(ApprovalLine.approver))
-            .where(ApprovalLine.doc_type == doc_in.doc_type)
+            .where(func.upper(ApprovalLine.doc_type) == doc_in.doc_type.upper())
             .order_by(ApprovalLine.sequence)
         )
         lines = lines_res.scalars().all()
+        if not lines:
+             print(f"[WARNING] No default approval lines found for {doc_in.doc_type}")
         for line in lines:
             if line.approver:
                 lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
+            else:
+                # If approver is NULL but role is specified (generic placeholder) - Not currently supported in model, but for safety:
+                print(f"[WARNING] ApprovalLine ID {line.id} has no approver_id")
 
     # Validate approval lines for non-draft documents
     if not lines_to_process:

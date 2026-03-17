@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    IconButton, MenuItem, Box, Typography, Tooltip
+    IconButton, MenuItem, Box, Typography, Tooltip, Autocomplete
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
 import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
@@ -465,21 +465,31 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>{order ? "발주서 수정" : "발주서 등록"}</DialogTitle>
-            <DialogContent sx={{ p: 2, bgcolor: '#f4f4f5' }}>
-                <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+            <DialogContent sx={{ p: 2, bgcolor: '#f8f9fa' }}>
+                {/* Header Section: Partner & Order Info */}
+                <Paper variant="outlined" sx={{ p: 2, mb: 2, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+                    <Autocomplete
+                        options={partners}
+                        getOptionLabel={(option) => option.name || ''}
+                        value={partners.find(p => p.id === formData.partner_id) || null}
+                        onChange={(_, newValue) => {
+                            setFormData({ ...formData, partner_id: newValue ? newValue.id : '' });
+                        }}
+                        renderInput={(params) => (
+                            <TextField {...params} label="거래처 검색/선택" size="small" sx={{ minWidth: 250 }} required />
+                        )}
+                        sx={{ flexGrow: 1 }}
+                    />
+                    
                     <TextField
-                        select
-                        label="거래처 선택"
-                        value={formData.partner_id}
-                        onChange={(e) => setFormData({ ...formData, partner_id: e.target.value })}
+                        label="발주일자"
+                        type="date"
+                        value={formData.order_date}
+                        onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
                         size="small"
-                        sx={{ minWidth: 200 }}
-                        required
-                    >
-                        {partners.map((p) => (
-                            <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-                        ))}
-                    </TextField>
+                        InputLabelProps={{ shrink: true }}
+                    />
+
                     <TextField
                         label="납기일자"
                         type="date"
@@ -489,64 +499,173 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         InputLabelProps={{ shrink: true }}
                         required
                     />
+
+                    <TextField
+                        label="비고"
+                        value={formData.note}
+                        onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                        size="small"
+                        placeholder="특이사항 입력"
+                        sx={{ flexGrow: 2 }}
+                    />
+                    
                     {formData.display_order_no && (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
                             연결 번호: {formData.display_order_no}
                         </Typography>
                     )}
                 </Paper>
-                <PurchaseOrderTemplate 
-                    data={{
-                        order_no: formData.display_order_no || '자동 생성',
-                        partner_name: partners.find(p => p.id === formData.partner_id)?.name || '',
-                        partner_phone: partners.find(p => p.id === formData.partner_id)?.phone || '',
-                        partner_fax: partners.find(p => p.id === formData.partner_id)?.fax || '',
-                        order_date: formData.order_date,
-                        items: formData.items.map(item => {
-                            const p = products.find(prod => prod.id === item.product_id);
-                            return {
-                                ...item,
-                                name: p?.name || '',
-                                spec: p?.specification || '',
-                                qty: item.quantity,
-                                price: item.unit_price,
-                                total: (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)
-                            };
-                        }),
-                        special_notes: formData.note,
-                        delivery_date: formData.delivery_date,
-                        delivery_place: '당사 공장',
-                        valid_until: '발주일로부터 30일',
-                        payment_terms: '마감 후 30일',
-                        colWidths: [40, 200, 120, 60, 80, 100]
-                    }}
-                    onChange={(field, val) => {
-                        if (field === 'items') {
-                            const newItems = val.map(v => ({
-                                ...v,
-                                quantity: v.qty,
-                                unit_price: v.price
-                            }));
-                            setFormData(prev => ({ ...prev, items: newItems }));
-                        } else if (field === 'special_notes') {
-                            setFormData(prev => ({ ...prev, note: val }));
-                        } else if (field === 'partner_id') {
-                             setFormData(prev => ({ ...prev, partner_id: val }));
-                        } else {
-                            setFormData(prev => ({ ...prev, [field]: val }));
-                        }
-                    }}
-                    onAddItem={handleAddItem}
-                    onSearchProduct={(idx) => {
-                        setActiveRowIndex(idx);
-                        setIsProductModalOpen(true);
-                    }}
-                    isReadOnly={false}
-                    documentData={approvalDoc || { author: currentUser, steps: defaultSteps }}
-                    currentUser={currentUser}
-                    hideApprovalGrid={false}
-                    className="p-[10mm] shadow-none border-none mx-auto my-4 max-w-[210mm]"
-                />
+
+                {/* Items Section: Proper Interactive Table */}
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ChevronRight size={18} /> 발주 품목 상세
+                </Typography>
+                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                    <Table size="small">
+                        <TableHead sx={{ bgcolor: '#f4f4f5' }}>
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 'bold', width: 50 }}>No</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>품목명 / 규격</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 100 }}>수량</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 140 }}>단가</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 140 }}>금액</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>비고</TableCell>
+                                <TableCell align="center" sx={{ width: 80 }}>삭제</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {formData.items.map((item, index) => {
+                                const prod = products.find(p => p.id === item.product_id);
+                                return (
+                                    <TableRow key={index}>
+                                        <TableCell>{index + 1}</TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    size="small"
+                                                    value={prod ? `${prod.name} (${prod.specification || '-'})` : '제품 선택'}
+                                                    onClick={() => {
+                                                        setActiveRowIndex(index);
+                                                        setIsProductModalOpen(true);
+                                                    }}
+                                                    InputProps={{
+                                                        readOnly: true,
+                                                        endAdornment: (
+                                                            <IconButton size="small" onClick={() => {
+                                                                setActiveRowIndex(index);
+                                                                setIsProductModalOpen(true);
+                                                            }}>
+                                                                <ChevronRight size={16} />
+                                                            </IconButton>
+                                                        )
+                                                    }}
+                                                    placeholder="제품 선택"
+                                                />
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField
+                                                type="number"
+                                                size="small"
+                                                value={item.quantity}
+                                                onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                                inputProps={{ min: 1 }}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                <TextField
+                                                    type="number"
+                                                    size="small"
+                                                    value={item.unit_price}
+                                                    onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
+                                                />
+                                                <Tooltip title="단가 이력 조회">
+                                                    <IconButton size="small" onClick={(e) => handleLookupHistory(e, index, item.product_id)}>
+                                                        <HistoryIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                ₩{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString()}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField
+                                                fullWidth
+                                                size="small"
+                                                value={item.note || ''}
+                                                onChange={(e) => handleItemChange(index, 'note', e.target.value)}
+                                                placeholder="항목별 참고사항"
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <IconButton size="small" color="error" onClick={() => handleRemoveItem(index)}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                            {formData.items.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                        등록된 품목이 없습니다. 아래의 [품목 추가] 버튼을 눌러주세요.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                    <Button
+                        variant="outlined"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddItem}
+                        size="small"
+                    >
+                        품목 추가
+                    </Button>
+                </Box>
+
+                {/* Optional Viewer for Preview (Always Read-only here) */}
+                <Box sx={{ mt: 4, display: 'none' }}> {/* Hidden for now, maybe toggleable? */}
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>미리보기 양식</Typography>
+                    <PurchaseOrderTemplate 
+                        data={{
+                            order_no: formData.display_order_no || '자동 생성',
+                            partner_name: partners.find(p => p.id === formData.partner_id)?.name || '',
+                            partner_phone: partners.find(p => p.id === formData.partner_id)?.phone || '',
+                            partner_fax: partners.find(p => p.id === formData.partner_id)?.fax || '',
+                            order_date: formData.order_date,
+                            items: formData.items.map(item => {
+                                const p = products.find(prod => prod.id === item.product_id);
+                                return {
+                                    ...item,
+                                    name: p?.name || '',
+                                    spec: p?.specification || '',
+                                    qty: item.quantity,
+                                    price: item.unit_price,
+                                    total: (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)
+                                };
+                            }),
+                            special_notes: formData.note,
+                            delivery_date: formData.delivery_date,
+                            delivery_place: '당사 공장',
+                            valid_until: '발주일로부터 30일',
+                            payment_terms: '마감 후 30일',
+                            colWidths: [40, 200, 120, 60, 80, 100]
+                        }}
+                        isReadOnly={true}
+                        documentData={approvalDoc || { author: currentUser, steps: defaultSteps }}
+                        currentUser={currentUser}
+                        hideApprovalGrid={false}
+                    />
+                </Box>
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
