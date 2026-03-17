@@ -104,7 +104,7 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
                     <Box component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold' }}>기안자</Box>
                     {steps.map((step, i) => (
                         <Box key={i} component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold' }}>
-                            {step.approver?.role || '결재자'}
+                            {step.approver?.role || step.role || ''}
                         </Box>
                     ))}
                 </TableRow>

@@ -67,7 +67,7 @@ const PurchaseOrderTemplate = ({
         const paddingCount = 10 - formattedItems.length;
         const paddingRows = Array(paddingCount).fill(null).map((_, i) => ({
             idx: formattedItems.length + i + 1,
-            name: "...",
+            name: "",
             spec: "",
             qty: "",
             price: "",

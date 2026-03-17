@@ -180,28 +180,26 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     product_id: item.product.id
                 }))
             });
-        } else if (isOpen && initialItems && initialItems.length > 0 && products.length > 0) {
-            // Pre-fill from pending items
+        }
+    }, [order]);
+
+    // Pre-fill logic moved to its own effect depending on dependencies
+    useEffect(() => {
+        if (isOpen && !order && initialItems && initialItems.length > 0 && products.length > 0 && partners.length > 0) {
             const firstPartnerName = initialItems[0].partner_name;
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
-            // Extract SO or SP code for display
             const displayCode = initialItems[0]?.sales_order_number ||
                 initialItems[0]?.plan?.order?.order_no ||
                 initialItems[0]?.plan?.stock_production?.production_no || '';
 
-            setFormData({
+            setFormData(prev => ({
+                ...prev,
                 partner_id: foundPartner ? foundPartner.id : '',
                 order_id: initialItems[0]?.plan?.order_id || '',
-                order_date: new Date().toISOString().split('T')[0],
-                delivery_date: '',
-                note: '',
-                status: 'PENDING',
-                purchase_type: purchaseType || 'PART',
                 display_order_no: displayCode,
                 items: initialItems.map(item => {
                     if (item.type === 'PENDING') {
-                        // Original Pending Item (ProductionPlanItem)
                         const product = products.find(p => p.id === item.product_id);
                         let unitPrice = 0;
                         if (product && product.standard_processes) {
@@ -212,7 +210,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             );
                             if (standardProc) unitPrice = standardProc.cost || 0;
                         }
-
                         return {
                             product_id: item.product_id,
                             quantity: item.quantity,
@@ -221,7 +218,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             production_plan_item_id: item.id
                         };
                     } else if (item.type === 'MRP') {
-                        // MRP Item
                         const product = products.find(p => p.id === item.product_id);
                         let unitPrice = 0;
                         if (product && product.standard_processes) {
@@ -231,7 +227,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             );
                             if (standardProc) unitPrice = standardProc.cost || 0;
                         }
-
                         return {
                             product_id: item.product_id,
                             quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : (item.required_purchase_qty || 0),
@@ -244,7 +239,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             shortage_quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : item.required_purchase_qty
                         };
                     } else if (item.type === 'CONSUMABLE_WAIT') {
-                        // Consumable Purchase Wait Item
                         return {
                             product_id: item.product_id,
                             quantity: item.quantity,
@@ -255,19 +249,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     }
                     return item;
                 })
-            });
-        } else if (isOpen) {
-            setFormData({
+            }));
+        } else if (isOpen && !order && (!initialItems || initialItems.length === 0)) {
+            setFormData(prev => ({
+                ...prev,
                 partner_id: '',
                 order_id: '',
-                order_date: new Date().toISOString().split('T')[0],
-                delivery_date: '',
-                note: '',
-                status: 'PENDING',
                 items: []
-            });
+            }));
         }
-    }, [order, isOpen, initialItems, partners, products]);
+    }, [isOpen, order, initialItems, partners, products]);
 
     const fetchPartners = async () => {
         try {
@@ -474,7 +465,36 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>{order ? "발주서 수정" : "발주서 등록"}</DialogTitle>
-            <DialogContent sx={{ p: 0, bgcolor: '#f4f4f5' }}>
+            <DialogContent sx={{ p: 2, bgcolor: '#f4f4f5' }}>
+                <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <TextField
+                        select
+                        label="거래처 선택"
+                        value={formData.partner_id}
+                        onChange={(e) => setFormData({ ...formData, partner_id: e.target.value })}
+                        size="small"
+                        sx={{ minWidth: 200 }}
+                        required
+                    >
+                        {partners.map((p) => (
+                            <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                        ))}
+                    </TextField>
+                    <TextField
+                        label="납기일자"
+                        type="date"
+                        value={formData.delivery_date}
+                        onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                        required
+                    />
+                    {formData.display_order_no && (
+                        <Typography variant="body2" color="text.secondary">
+                            연결 번호: {formData.display_order_no}
+                        </Typography>
+                    )}
+                </Paper>
                 <PurchaseOrderTemplate 
                     data={{
                         order_no: formData.display_order_no || '자동 생성',
