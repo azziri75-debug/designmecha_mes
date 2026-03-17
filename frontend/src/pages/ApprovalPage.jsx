@@ -143,7 +143,7 @@ const ApprovalPage = () => {
         if (!doc || !currentUser) return false;
         
         // 기안자 본인 확인 (문자열/숫자 혼용 대비 Number로 통일)
-        const isAuthor = Number(doc.author_id) === Number(currentUser.id);
+        const isAuthor = Number(doc.author_id) === Number(currentUser?.id);
         if (!isAuthor) return false;
 
         // 임시저장(PENDING/DRAFT) 또는 반려(REJECTED) 상태에서만 수정/삭제 가능
@@ -154,8 +154,8 @@ const ApprovalPage = () => {
         if (!doc || !currentUser || !doc.steps) return false;
         
         // 현재 로그인한 사람의 ID (사용자 요청에 따라 staff_id 사용)
-        const myStaffId = currentUser.staff_id || currentUser.id;
-        
+        const myStaffId = currentUser?.staff_id || currentUser?.id;
+
         // 결재선 중 아직 결재 안 한(PENDING) 사람들을 순서대로 찾음
         const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
         

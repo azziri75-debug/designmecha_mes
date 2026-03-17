@@ -9,6 +9,7 @@ import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Printer, Pencil, Trash, ChevronRight } from 'lucide-react';
 import api from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 import PurchaseOrderTemplate from './PurchaseOrderTemplate';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 
@@ -69,6 +70,7 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelect, products }) => {
 
 const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, purchaseType }) => {
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth();
     const [partners, setPartners] = useState([]);
     const [products, setProducts] = useState([]);
     const [salesOrders, setSalesOrders] = useState([]);
@@ -99,7 +101,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;
-        const myStaffId = currentUser.staff_id || currentUser.id;
+        const myStaffId = currentUser?.staff_id || currentUser?.id;
         const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
         const currentApproverToSign = pendingApprovers.length > 0 ? pendingApprovers[0] : null;
         return currentApproverToSign && (Number(currentApproverToSign.approver_id) === Number(myStaffId) || Number(currentApproverToSign.staff_id) === Number(myStaffId));
