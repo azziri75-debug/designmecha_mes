@@ -936,7 +936,7 @@ async def attach_delivery_statement(
     # Ensure uploads directory exists
     upload_dir = os.path.join("uploads", "statements")
     if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
+        os.makedirs(upload_dir, exist_ok=True)
 
     # Save File
     file_ext = os.path.splitext(file.filename)[1]

@@ -224,6 +224,22 @@ async def create_document(
                     if ec.get("date") in target_dates:
                         raise HTTPException(status_code=400, detail="해당 일자에 이미 등록된 근태 내역이 있습니다. 다른 날짜를 선택해 주세요.")
 
+    # 1.5 Duplicate Check for Linked Documents (Purchase Order, etc.)
+    if doc_in.reference_id and doc_in.reference_type:
+        from app.models.approval import ApprovalStatus
+        stmt = select(ApprovalDocument).where(
+            ApprovalDocument.reference_id == doc_in.reference_id,
+            ApprovalDocument.reference_type == doc_in.reference_type,
+            ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS, ApprovalStatus.COMPLETED]),
+            ApprovalDocument.deleted_at.is_(None)
+        )
+        existing_res = await db.execute(stmt)
+        if existing_res.scalars().first():
+            raise HTTPException(
+                status_code=400, 
+                detail="이미 해당 건에 대해 진행 중이거나 완료된 결재 문서가 존재합니다."
+            )
+
     # 2. 문서 저장
     db_doc = ApprovalDocument(
         author_id=current_user.id,
@@ -278,7 +294,11 @@ async def create_document(
     
     if lines_to_process:
         for lp in lines_to_process:
+            # 4-1. Calculate rank for the specific approver in the loop
+            approver_rank = get_staff_rank(lp["role"])
+            
             # Auto-approve if author is the approver or has higher rank
+            # [Logic] Author is approver OR Author's rank is high enough
             is_auto = (lp["approver_id"] == current_user.id) or (author_rank >= approver_rank)
             
             step = ApprovalStep(
@@ -287,7 +307,7 @@ async def create_document(
                 sequence=lp["sequence"],
                 status="APPROVED" if is_auto else "PENDING",
                 processed_at=datetime.now() if is_auto else None,
-                comment="기안자 직급에 따른 자동 승인" if is_auto else None
+                comment="기안자 자동 승인" if (lp["approver_id"] == current_user.id) else ("기안자 직급에 따른 자동 승인" if is_auto else None)
             )
             db.add(step)
             

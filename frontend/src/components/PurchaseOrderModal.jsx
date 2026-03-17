@@ -97,6 +97,32 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     const [approvalDoc, setApprovalDoc] = useState(null);
 
+    const canApprove = (doc) => {
+        if (!doc || !currentUser || !doc.steps) return false;
+        const myStaffId = currentUser.staff_id || currentUser.id;
+        const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
+        const currentApproverToSign = pendingApprovers.length > 0 ? pendingApprovers[0] : null;
+        return currentApproverToSign && (Number(currentApproverToSign.approver_id) === Number(myStaffId) || Number(currentApproverToSign.staff_id) === Number(myStaffId));
+    };
+
+    const handleProcessApproval = async (status) => {
+        const comment = window.prompt(status === 'APPROVED' ? "승인 하시겠습니까? (의견 입력 가능)" : "반려 사유를 입력하세요.");
+        if (status === 'REJECTED' && comment === null) return;
+        
+        try {
+            await api.post(`/approval/documents/${approvalDoc.id}/process`, {
+                status: status,
+                comment: comment || ''
+            });
+            alert(status === 'APPROVED' ? "승인되었습니다." : "반려되었습니다.");
+            fetchApprovalDoc();
+            if (onSuccess) onSuccess();
+        } catch (error) {
+            console.error("Approval process failed", error);
+            alert("처리 실패: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
     useEffect(() => {
         if (isOpen) {
             fetchPartners();
@@ -377,7 +403,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             }
 
             // [Integration] Ask for approval submission
-            if (window.confirm("발주서가 저장되었습니다. 이 내용으로 전자결재 [결재요청]을 즉시 진행하시겠습니까?")) {
+            const hasActiveApproval = approvalDoc && ['PENDING', 'IN_PROGRESS', 'COMPLETED'].includes(approvalDoc.status);
+            
+            if (!hasActiveApproval && window.confirm("발주서가 저장되었습니다. 이 내용으로 전자결재 [결재요청]을 즉시 진행하시겠습니까?")) {
                 try {
                     // 결재선 데이터 미리 가져오기
                     const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
@@ -496,7 +524,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
                 <Button onClick={() => window.print()} color="info" startIcon={<Printer />}>인쇄</Button>
-                <Button onClick={handleSubmit} variant="contained">저장</Button>
+                {canApprove(approvalDoc) && (
+                    <>
+                        <Button onClick={() => handleProcessApproval('REJECTED')} color="error" variant="outlined">반려</Button>
+                        <Button onClick={() => handleProcessApproval('APPROVED')} color="success" variant="contained">승인</Button>
+                    </>
+                )}
+                <Button onClick={handleSubmit} variant="contained" color="primary">저장</Button>
             </DialogActions>
 
             <ProductSelectionModal

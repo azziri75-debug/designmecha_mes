@@ -15,7 +15,7 @@ _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.p
 UPLOAD_DIR = os.path.join(_BASE_DIR, "uploads")
 print(f"[UPLOAD INIT] _BASE_DIR={_BASE_DIR}, UPLOAD_DIR={UPLOAD_DIR}")
 if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/upload", response_model=dict)
 async def upload_file(file: UploadFile = File(...)):
@@ -28,7 +28,7 @@ async def upload_file(file: UploadFile = File(...)):
         # Create date-based subdirectory
         save_dir = os.path.join(UPLOAD_DIR, current_date)
         if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+            os.makedirs(save_dir, exist_ok=True)
             
         file_path = os.path.join(save_dir, unique_filename)
         

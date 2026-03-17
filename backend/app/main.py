@@ -25,7 +25,7 @@ class CORSStaticFiles(StaticFiles):
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/
 UPLOAD_DIR = os.path.join(_BASE_DIR, "uploads")
 if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app.mount("/api/v1/static", CORSStaticFiles(directory=UPLOAD_DIR), name="static")
 

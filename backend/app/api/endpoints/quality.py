@@ -19,7 +19,7 @@ router = APIRouter()
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 UPLOAD_DIR = os.path.join(_BASE_DIR, "uploads", "quality")
 if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # --- Quality Defect Endpoints ---
 
@@ -113,7 +113,7 @@ async def upload_quality_file(file: UploadFile = File(...)):
         # Create date-based subdirectory
         save_dir = os.path.join(UPLOAD_DIR, current_date)
         if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+            os.makedirs(save_dir, exist_ok=True)
             
         file_path = os.path.join(save_dir, unique_filename)
         
