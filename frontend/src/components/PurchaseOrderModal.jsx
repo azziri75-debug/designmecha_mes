@@ -95,13 +95,29 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [activeRowIndex, setActiveRowIndex] = useState(null);
 
+    const [approvalDoc, setApprovalDoc] = useState(null);
+
     useEffect(() => {
         if (isOpen) {
             fetchPartners();
             fetchProducts();
             fetchSalesOrders();
+            if (order) fetchApprovalDoc();
+        } else {
+            setApprovalDoc(null);
         }
-    }, [isOpen, purchaseType]);
+    }, [isOpen, purchaseType, order]);
+
+    const fetchApprovalDoc = async () => {
+        try {
+            // Find document that contains this PO ID in its content
+            const res = await api.get('/approval/documents');
+            const found = res.data.find(d => d.doc_type === 'PURCHASE_ORDER' && d.content?.order_id === order.id);
+            if (found) setApprovalDoc(found);
+        } catch (err) {
+            console.error("Failed to fetch approval doc", err);
+        }
+    };
 
     useEffect(() => {
         if (order) {
@@ -471,8 +487,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         setIsProductModalOpen(true);
                     }}
                     isReadOnly={false}
-                    currentUser={null}
-                    hideApprovalGrid={true}
+                    documentData={approvalDoc}
+                    currentUser={currentUser}
+                    hideApprovalGrid={false}
                     className="p-[10mm] shadow-none border-none mx-auto my-4 max-w-[210mm]"
                 />
             </DialogContent>

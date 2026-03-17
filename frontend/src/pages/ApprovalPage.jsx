@@ -4,7 +4,7 @@ import {
     FileText, UserPlus, Clock, CheckCircle2, AlertCircle,
     Plus, Search, Filter, Pencil, Trash, X, Check,
     Calendar, User, Layers, Info, Settings, ClipboardList,
-    ChevronRight, ArrowRight, Download, Eye, Upload
+    ChevronRight, ArrowRight, Download, Upload, Printer
 } from 'lucide-react';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
@@ -153,18 +153,17 @@ const ApprovalPage = () => {
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;
         
-        // Documents must be in PENDING or IN_PROGRESS to be approved/rejected
-        const validStatuses = ['IN_PROGRESS', 'PENDING'];
-        if (!validStatuses.includes(doc.status)) return false;
+        // 현재 로그인한 사람의 ID (사용자 요청에 따라 staff_id 사용)
+        const myStaffId = currentUser.staff_id || currentUser.id;
         
-        // Find the current active step (PENDING and matching doc.current_sequence)
-        const currentStep = doc.steps.find(s => 
-            s.status === 'PENDING' && 
-            s.sequence === doc.current_sequence
-        );
-            
-        // Must be the assigned approver for the current step
-        return currentStep && Number(currentStep.approver_id) === Number(currentUser.id);
+        // 결재선 중 아직 결재 안 한(PENDING) 사람들을 순서대로 찾음
+        const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
+        
+        // PENDING인 사람 중 '첫 번째' 사람이 바로 '지금 결재할 차례'인 사람임
+        const currentApproverToSign = pendingApprovers.length > 0 ? pendingApprovers[0] : null;
+        
+        // '지금 결재할 차례인 사람'이 '나'일 때만 승인/반려 버튼을 보여줌
+        return currentApproverToSign && (Number(currentApproverToSign.approver_id) === Number(myStaffId) || Number(currentApproverToSign.staff_id) === Number(myStaffId));
     };
 
     const handleSaveLines = async (type) => {
@@ -537,68 +536,73 @@ const ApprovalPage = () => {
                             </div>
                         </div>
 
-                        <div className="p-6 md:p-8 space-y-8 overflow-y-auto max-h-[80vh]">
-                            {/* Header Section (Stamp/Signature images) */}
-                            <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-700 pb-8">
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <span className={cn(
-                                            "px-2 py-1 rounded text-[10px] font-bold uppercase",
-                                            `bg-${DOC_TYPES[selectedDoc.doc_type]?.color}-900/40 text-${DOC_TYPES[selectedDoc.doc_type]?.color}-400`
-                                        )}>
-                                            {DOC_TYPES[selectedDoc.doc_type]?.label}
-                                        </span>
-                                        <span className={cn(
-                                            "px-2 py-1 rounded-full text-[10px] font-bold",
-                                            STATUS_MAP[selectedDoc.status]?.bg,
-                                            STATUS_MAP[selectedDoc.status]?.text
-                                        )}>
-                                            {STATUS_MAP[selectedDoc.status]?.label}
-                                        </span>
-                                    </div>
-                                    <h2 className="text-2xl font-bold text-white">{selectedDoc.title}</h2>
-                                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                                        <div className="flex items-center gap-1.5 bg-gray-900 px-3 py-1 rounded-full border border-gray-700">
-                                            <User className="w-3.5 h-3.5" />
-                                            {selectedDoc.author?.name} {selectedDoc.author?.role}
+                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto max-h-[80vh]", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
+                            {/* Header Section (Stamp/Signature images) - Hidden for Purchase Order as it's built into the template */}
+                            {selectedDoc.doc_type !== 'PURCHASE_ORDER' && (
+                                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-700 pb-8">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn(
+                                                "px-2 py-1 rounded text-[10px] font-bold uppercase",
+                                                `bg-${DOC_TYPES[selectedDoc.doc_type]?.color}-900/40 text-${DOC_TYPES[selectedDoc.doc_type]?.color}-400`
+                                            )}>
+                                                {DOC_TYPES[selectedDoc.doc_type]?.label}
+                                            </span>
+                                            <span className={cn(
+                                                "px-2 py-1 rounded-full text-[10px] font-bold",
+                                                STATUS_MAP[selectedDoc.status]?.bg,
+                                                STATUS_MAP[selectedDoc.status]?.text
+                                            )}>
+                                                {STATUS_MAP[selectedDoc.status]?.label}
+                                            </span>
                                         </div>
-                                    </div>
-                                </div>
-
-                                {/* Approval Steps (Horizontal) */}
-                                <div className="flex gap-3">
-                                    {selectedDoc.steps.map((step, idx) => (
-                                        <div key={idx} className="flex flex-col items-center gap-1.5 w-20">
-                                            <div className="text-[10px] font-bold text-gray-500 uppercase">{step.sequence === 1 ? '부장' : step.sequence === 2 ? '이사' : '대표이사'}</div>
-                                            <div className="w-16 h-16 bg-white rounded border border-gray-600 flex items-center justify-center relative overflow-hidden group">
-                                                {step.status === 'APPROVED' ? (
-                                                    step.approver?.stamp_image ? (
-                                                        <img 
-                                                            src={step.approver?.stamp_image.url} 
-                                                            alt="Sign" 
-                                                            className="w-full h-full object-contain p-1" 
-                                                            onError={(e) => { e.target.style.display = 'none'; }}
-                                                        />
-                                                    ) : (
-                                                        <span className="text-[11px] text-emerald-600 font-bold border-2 border-emerald-500 px-1 rounded -rotate-12 uppercase">Approved</span>
-                                                    )
-                                                ) : step.status === 'REJECTED' ? (
-                                                    <span className="text-[11px] text-red-600 font-bold border-2 border-red-500 px-1 rounded -rotate-12 uppercase">Rejected</span>
-                                                ) : (
-                                                    <div className="text-[10px] text-gray-400">대기중</div>
-                                                )}
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                    <div className="text-[9px] text-white font-medium text-center px-1">{step.approver?.name}</div>
-                                                </div>
+                                        <h2 className="text-2xl font-bold text-white">{selectedDoc.title}</h2>
+                                        <div className="flex items-center gap-4 text-sm text-gray-400">
+                                            <div className="flex items-center gap-1.5 bg-gray-900 px-3 py-1 rounded-full border border-gray-700">
+                                                <User className="w-3.5 h-3.5" />
+                                                {selectedDoc.author?.name} {selectedDoc.author?.role}
                                             </div>
-                                            <div className="text-[9px] text-gray-500">{step.processed_at ? format(new Date(step.processed_at), 'MM-dd') : '---'}</div>
                                         </div>
-                                    ))}
+                                    </div>
+
+                                    {/* Approval Steps (Horizontal) */}
+                                    <div className="flex gap-3">
+                                        {selectedDoc.steps.map((step, idx) => (
+                                            <div key={idx} className="flex flex-col items-center gap-1.5 w-20">
+                                                <div className="text-[10px] font-bold text-gray-500 uppercase">{step.sequence === 1 ? '부장' : step.sequence === 2 ? '이사' : '대표이사'}</div>
+                                                <div className="w-16 h-16 bg-white rounded border border-gray-600 flex items-center justify-center relative overflow-hidden group">
+                                                    {step.status === 'APPROVED' ? (
+                                                        step.approver?.stamp_image ? (
+                                                            <img 
+                                                                src={step.approver?.stamp_image.url} 
+                                                                alt="Sign" 
+                                                                className="w-full h-full object-contain p-1" 
+                                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-[11px] text-emerald-600 font-bold border-2 border-emerald-500 px-1 rounded -rotate-12 uppercase">Approved</span>
+                                                        )
+                                                    ) : step.status === 'REJECTED' ? (
+                                                        <span className="text-[11px] text-red-600 font-bold border-2 border-red-500 px-1 rounded -rotate-12 uppercase">Rejected</span>
+                                                    ) : (
+                                                        <div className="text-[10px] text-gray-400">대기중</div>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                        <div className="text-[9px] text-white font-medium text-center px-1">{step.approver?.name}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-[9px] text-gray-500">{step.processed_at ? format(new Date(step.processed_at), 'MM-dd') : '---'}</div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Content Section - A4 Form Integration */}
-                            <div className="bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container no-print" style={{ backgroundColor: '#f3f4f6' }}>
+                            <div className={cn(
+                                "bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container no-print",
+                                selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 rounded-none border-0 shadow-none"
+                            )} style={{ backgroundColor: selectedDoc.doc_type === 'PURCHASE_ORDER' ? '#ffffff' : '#f3f4f6' }}>
                                 <Box sx={{ 
                                     width: '850px',
                                     minHeight: '1100px',
@@ -606,7 +610,7 @@ const ApprovalPage = () => {
                                     display: 'flex', 
                                     flexDirection: 'column',
                                     bgcolor: '#ffffff',
-                                    p: '40px',
+                                    p: selectedDoc.doc_type === 'PURCHASE_ORDER' ? '0' : '40px',
                                     boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                                     color: '#000000',
                                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' },

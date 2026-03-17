@@ -129,9 +129,9 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
             <TableBody>
                 <TableRow sx={{ height: '24px' }}>
                     <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>기안자</Box>
-                    <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>부 장</Box>
-                    <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>이 사</Box>
-                    <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>대표이사</Box>
+                    <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>{getStepByRole('부장')?.approver?.name || '부 장'}</Box>
+                    <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>{getStepByRole('이사')?.approver?.name || '이 사'}</Box>
+                    <Box component="td" sx={{ width: '25%', bgcolor: '#f7f7f7' }}>{getStepByRole('대표이사')?.approver?.name || '대표이사'}</Box>
                 </TableRow>
                 <TableRow sx={{ height: '80px' }}>
                     <Box component="td" sx={{ p: '0 !important' }}>{getStatusMarker('기안자')}</Box>

@@ -54,13 +54,27 @@ const PurchaseOrderTemplate = ({
         { key: 'total', label: '금액', subLabel: 'Total Amount', align: 'right' }
     ];
 
-    const formattedItems = (data.items || []).map((item, idx) => ({
+    let formattedItems = (data.items || []).map((item, idx) => ({
         ...item,
         idx: item.idx || idx + 1,
         qty: fmt(item.qty),
         price: fmt(item.price),
         total: fmt(item.total)
     }));
+
+    // Pad to 10 rows for A4 aesthetic as requested by user
+    if (formattedItems.length < 10) {
+        const paddingCount = 10 - formattedItems.length;
+        const paddingRows = Array(paddingCount).fill(null).map((_, i) => ({
+            idx: formattedItems.length + i + 1,
+            name: "...",
+            spec: "",
+            qty: "",
+            price: "",
+            total: ""
+        }));
+        formattedItems = [...formattedItems, ...paddingRows];
+    }
 
     const updateItem = (rIdx, key, val) => {
         if (isReadOnly) return;
