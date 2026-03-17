@@ -258,12 +258,14 @@ const DataManagementPage = () => {
         }
 
         const currentConfig = DB_TABLES.find(t => t.id === selectedTable);
+        const formData = new FormData();
+        formData.append('file', file);
 
         if (currentConfig.isInteractive) {
             setLoading(true);
             setResult(null);
             try {
-                const response = await api.post(`/db-manager/verify/${selectedTable}`, formData);
+                const response = await api.post(`/db-manager/verify/${selectedTable}/`, formData);
                 setVerifyData(response.data);
                 setIsModalOpen(true);
             } catch (error) {
@@ -275,7 +277,7 @@ const DataManagementPage = () => {
             setLoading(true);
             setResult(null);
             try {
-                const response = await api.post(`/db-manager/upload/${selectedTable}`, formData);
+                const response = await api.post(`/db-manager/upload/${selectedTable}/`, formData);
                 setResult({
                     success: true,
                     message: response.data.message

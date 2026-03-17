@@ -30,6 +30,15 @@ if (api.defaults.baseURL) {
 // Request interceptor to add user identification header
 api.interceptors.request.use(
     (config) => {
+        // [강제 HTTPS 변환 결계]
+        // 어떤 컴포넌트에서든 http://dmmes.synology.me 로 통신을 시도하면 강제로 https:// 로 낚아챕니다.
+        if (config.url && config.url.includes('http://dmmes.synology.me')) {
+            config.url = config.url.replace('http://', 'https://');
+        }
+        if (config.baseURL && config.baseURL.includes('http://dmmes.synology.me')) {
+            config.baseURL = config.baseURL.replace('http://', 'https://');
+        }
+
         const savedUser = localStorage.getItem('mes_user');
         if (savedUser) {
             try {

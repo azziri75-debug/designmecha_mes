@@ -429,7 +429,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Monthly Revenue */}
                 <ChartCard title="월별 매출 추이 (최근 6개월)" icon={TrendingUp} className="lg:col-span-2">
-                    <div className="h-72">
+                    <div className="h-72" style={{ minHeight: '300px' }}>
                         {mounted && (
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={stats.monthlyRevenue}>
@@ -453,7 +453,7 @@ const Dashboard = () => {
 
                 {/* Order Status Pie */}
                 <ChartCard title="수주 상태 현황" icon={ShoppingCart}>
-                    <div className="h-72 flex items-center justify-center">
+                    <div className="h-72 flex items-center justify-center" style={{ minHeight: '300px' }}>
                         {mounted && stats.orderStatusData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -576,7 +576,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* Production Status */}
                 <ChartCard title="생산 현황 분포" icon={Factory}>
-                    <div className="h-56 flex items-center justify-center">
+                    <div className="h-56 flex items-center justify-center" style={{ minHeight: '300px' }}>
                         {stats.planStatusData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={stats.planStatusData} layout="vertical" margin={{ left: 10 }}>
@@ -641,7 +641,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Quality Defect Status */}
                 <ChartCard title="품질 결함 현황" icon={AlertTriangle}>
-                    <div className="h-56 flex items-center justify-center">
+                    <div className="h-56 flex items-center justify-center" style={{ minHeight: '300px' }}>
                         {stats.defectStatusData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
