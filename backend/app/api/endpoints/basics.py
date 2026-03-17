@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -36,6 +36,7 @@ class LoginRequest(BaseModel):
 @router.post("/login")
 async def login(
     req: LoginRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Staff).where(Staff.name == req.username))
@@ -47,6 +48,38 @@ async def login(
         raise HTTPException(status_code=401, detail="비활성화된 계정입니다.")
     if staff.password != req.password:
         raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다.")
+    
+    # --- [보안 검문소] 작업자 외부망 로그인 차단 로직 ---
+    # 실제 IP 추출 (프록시 헤더 우선)
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        client_ip = request.headers.get("X-Real-IP") or request.client.host
+    
+    # 내부망 대역 체크 함수
+    def is_internal(ip: str) -> bool:
+        if not ip: return False
+        return (
+            ip.startswith("192.168.") or 
+            ip.startswith("127.0.0.1") or 
+            ip.startswith("172.")  # 도커 브릿지 포함
+        )
+    
+    # 차단 조건: 외부망 접속 + (작업자 권한 OR 일반 생산직)
+    # * ADMIN이나 MANAGER 등 관리자/결재권자는 통과
+    is_external = not is_internal(client_ip)
+    is_worker = staff.role in ["현장 작업자", "WORKER", "생산직"] or staff.user_type == "USER"
+    
+    # 관리자 예외 처리 (ADMIN이거나 '대표' 등 관리 직책일 경우 무조건 통과)
+    is_admin_privileged = staff.user_type == "ADMIN" or (staff.role and staff.role in ["대표", "대표이사", "MANAGER", "관리자"])
+    
+    if is_external and is_worker and not is_admin_privileged:
+        raise HTTPException(
+            status_code=403, 
+            detail="현장 작업자는 사내 네트워크(와이파이)에서만 접속할 수 있습니다."
+        )
+    # -----------------------------------------------
     
     # Return staff info (no JWT for simplicity)
     return {
