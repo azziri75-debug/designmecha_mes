@@ -367,9 +367,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         return;
                     }
                     const customApprovers = lineRes.data.map(line => ({
-                        staff_id: line.approver_id || line.approver?.id, // staff_id 필수 필드 확보
+                        staff_id: line.staff_id || line.user_id || line.id || line.approver_id || line.approver?.id || line.value,
                         sequence: line.sequence
                     }));
+                    console.log("현재 결재자 배열 상태:", customApprovers);
 
                     const partner = partners.find(p => p.id === formData.partner_id);
                     const approvalPayload = {

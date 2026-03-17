@@ -130,10 +130,17 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 doc_type: docType,
                 content: formContent,
                 attachments_to_add: attachments?.map(a => ({ filename: a.name || a.filename, url: a.url })) || [],
-                custom_approvers: (customApprovers || []).length > 0 ? customApprovers.map(a => ({ staff_id: a.id, sequence: a.sequence })) : null,
+                custom_approvers: (customApprovers || []).length > 0 ? customApprovers.map(a => ({ 
+                    staff_id: a.staff_id || a.user_id || a.id || a.value,
+                    sequence: a.sequence 
+                })) : null,
                 reference_id: referenceId,
                 reference_type: referenceType
             };
+
+            if (payload.custom_approvers) {
+                console.log("현재 결재자 배열 상태:", payload.custom_approvers);
+            }
 
             if (documentData?.id) {
                 await api.put(`/approval/documents/${documentData.id}`, payload);

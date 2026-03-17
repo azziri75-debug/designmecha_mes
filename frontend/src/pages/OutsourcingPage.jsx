@@ -151,9 +151,10 @@ const OutsourcingPage = () => {
             // 결재선 데이터 미리 가져오기
             const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
             const customApprovers = lineRes.data.map(line => ({
-                approver_id: line.approver_id,
+                staff_id: line.staff_id || line.user_id || line.id || line.approver_id || line.approver?.id || line.value,
                 sequence: line.sequence
             }));
+            console.log("현재 결재자 배열 상태:", customApprovers);
 
             // 페이로드에 결재선 정보 포함
             const finalPayload = {

@@ -235,9 +235,10 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         return;
                     }
                     const customApprovers = lineRes.data.map(line => ({
-                        staff_id: line.approver_id || line.approver?.id,
+                        staff_id: line.staff_id || line.user_id || line.id || line.approver_id || line.approver?.id || line.value,
                         sequence: line.sequence
                     }));
+                    console.log("현재 결재자 배열 상태:", customApprovers);
 
                     const partner = partners.find(p => p.id === formData.partner_id);
                     const approvalPayload = {

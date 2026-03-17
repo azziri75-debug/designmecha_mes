@@ -393,14 +393,14 @@ const ApprovalPage = () => {
                                                             <>
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); handleEditDoc(doc); }}
-                                                                    className="p-1 hover:bg-gray-700 rounded text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    className="p-1 hover:bg-gray-700 rounded text-blue-400 transition-colors"
                                                                     title="수정"
                                                                 >
                                                                     <Pencil className="w-4 h-4" />
                                                                 </button>
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc.id); }}
-                                                                    className="p-1 hover:bg-gray-700 rounded text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    className="p-1 hover:bg-gray-700 rounded text-red-400 transition-colors"
                                                                     title="삭제"
                                                                 >
                                                                     <Trash className="w-4 h-4" />
