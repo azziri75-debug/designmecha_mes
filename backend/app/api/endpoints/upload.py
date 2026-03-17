@@ -47,7 +47,7 @@ async def download_file(path: str, filename: str = None):
     try:
         # Strip common prefixes to get the relative path within uploads/
         clean_path = path
-        for prefix in ["/static/", "static/", "/uploads/", "uploads/"]:
+        for prefix in ["/api/v1/static/", "api/v1/static/", "/static/", "static/", "/uploads/", "uploads/"]:
             if clean_path.startswith(prefix):
                 clean_path = clean_path[len(prefix):]
                 break
@@ -95,7 +95,7 @@ async def preview_file(path: str):
     try:
         # Strip common prefixes to get the relative path within uploads/
         clean_path = path
-        for prefix in ["/static/", "static/", "/uploads/", "uploads/"]:
+        for prefix in ["/api/v1/static/", "api/v1/static/", "/static/", "static/", "/uploads/", "uploads/"]:
             if clean_path.startswith(prefix):
                 clean_path = clean_path[len(prefix):]
                 break

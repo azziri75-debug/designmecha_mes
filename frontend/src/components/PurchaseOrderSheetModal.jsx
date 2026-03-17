@@ -4,11 +4,15 @@ import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 import { getImageUrl } from '../lib/utils';
+import ApprovalGrid from './ApprovalGrid';
+import { useAuth } from '../contexts/AuthContext';
 
 const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
     const [company, setCompany] = useState(null);
     const [template, setTemplate] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [approvalDoc, setApprovalDoc] = useState(null);
+    const { currentUser } = useAuth();
 
     // Editable State (Metadata)
     const [metadata, setMetadata] = useState({
@@ -28,8 +32,24 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
             fetchCompany();
             fetchTemplate();
             initializeData();
+            fetchApprovalDoc();
         }
     }, [isOpen, order]);
+
+    const fetchApprovalDoc = async () => {
+        try {
+            const res = await api.get('/approval/documents', { 
+                params: { reference_id: order.id, reference_type: 'PURCHASE' } 
+            });
+            if (res.data && res.data.length > 0) {
+                setApprovalDoc(res.data[0]);
+            } else {
+                setApprovalDoc(null);
+            }
+        } catch (err) {
+            console.error('Failed to fetch approval doc', err);
+        }
+    };
 
     const fetchCompany = async () => {
         try {
@@ -150,16 +170,11 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                         <div className="border-2 border-black px-12 py-2 text-2xl font-bold tracking-[0.5em] indent-[0.5em] mx-auto">
                             {config.title || metadata.title}
                         </div>
-                        <div className="flex border border-black text-[10px] ml-auto">
-                            <div className="w-8 border-r border-black flex flex-col items-center justify-center font-bold py-1" style={{ backgroundColor: '#f9fafb' }}>
-                                <div>신청</div><div>부서</div><div>결제</div>
-                            </div>
-                            {["신청", "담당", "대표"].map((step, i) => (
-                                <div key={i} className={`w-14 flex flex-col ${i !== 2 ? 'border-r border-black' : ''}`}>
-                                    <div className="border-b border-black py-0.5 text-center font-bold h-5 flex items-center justify-center" style={{ backgroundColor: '#f9fafb' }}>{step}</div>
-                                    <div className="h-10"></div>
-                                </div>
-                            ))}
+                        <div className="w-[320px] ml-auto">
+                            <ApprovalGrid 
+                                documentData={approvalDoc || { author: order.author || currentUser, steps: [] }} 
+                                currentUser={currentUser} 
+                            />
                         </div>
                     </div>
                 );

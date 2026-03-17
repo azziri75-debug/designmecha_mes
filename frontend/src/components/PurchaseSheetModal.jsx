@@ -5,11 +5,15 @@ import jsPDF from 'jspdf';
 import api from '../lib/api';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import { cn } from '../lib/utils';
+import ApprovalGrid from './ApprovalGrid';
+import { useAuth } from '../contexts/AuthContext';
 
 const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_order', orderType = 'purchase', onSave }) => {
     const [company, setCompany] = useState(null);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState(sheetType);
+    const [approvalDoc, setApprovalDoc] = useState(null);
+    const { currentUser } = useAuth();
 
     const [metadata, setMetadata] = useState({
         title: activeTab === 'purchase_order' ? "구 매 발 주 서" : "견 적 의 뢰 서",
@@ -29,8 +33,27 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         if (isOpen && order) {
             fetchCompany();
             initializeMetadata();
+            fetchApprovalDoc();
         }
     }, [isOpen, order, activeTab]);
+
+    const fetchApprovalDoc = async () => {
+        try {
+            const res = await api.get('/approval/documents', { 
+                params: { 
+                    reference_id: order.id, 
+                    reference_type: orderType === 'outsourcing' ? 'OUTSOURCING' : 'PURCHASE' 
+                } 
+            });
+            if (res.data && res.data.length > 0) {
+                setApprovalDoc(res.data[0]);
+            } else {
+                setApprovalDoc(null);
+            }
+        } catch (err) {
+            console.error('Failed to fetch approval doc', err);
+        }
+    };
 
     const fetchCompany = async () => {
         try {
@@ -243,16 +266,11 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                                 </div>
                             </div>
 
-                            <div className="flex border border-black text-[9px] h-full shadow-sm">
-                                <div className="w-8 border-r border-black flex flex-col items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>
-                                    <div className="leading-tight">결</div><div className="leading-tight">제</div>
-                                </div>
-                                {["담당", "검토", "대표"].map((step, i) => (
-                                    <div key={i} className={cn("w-12 flex flex-col", i !== 2 && "border-r border-black")}>
-                                        <div className="border-b border-black h-5 flex items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>{step}</div>
-                                        <div className="flex-1"></div>
-                                    </div>
-                                ))}
+                            <div className="w-[320px]">
+                                <ApprovalGrid 
+                                    documentData={approvalDoc || { author: order.author || currentUser, steps: [] }} 
+                                    currentUser={currentUser} 
+                                />
                             </div>
                         </div>
 

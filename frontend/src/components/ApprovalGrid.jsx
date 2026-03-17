@@ -8,6 +8,7 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
     
     // 2. Approver steps (dynamic)
     const steps = documentData?.steps || [];
+    console.log("렌더링되는 결재선 데이터:", steps);
 
     const getStatusMarker = (step, isAuthor = false) => {
         if (isAuthor) {
@@ -21,7 +22,8 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
                                 width: '100%', 
                                 height: '100%', 
                                 objectFit: 'contain', 
-                                transform: 'scale(1.3)',
+                                maxWidth: '55px',
+                                maxHeight: '55px',
                                 mixBlendMode: 'multiply'
                             }} 
                             onError={(e) => { e.target.style.display = 'none'; }}
@@ -44,7 +46,8 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
                                 width: '100%', 
                                 height: '100%', 
                                 objectFit: 'contain', 
-                                transform: 'scale(1.3)',
+                                maxWidth: '55px',
+                                maxHeight: '55px',
                                 mixBlendMode: 'multiply'
                             }} 
                             onError={(e) => { e.target.style.display = 'none'; }}

@@ -98,6 +98,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [activeRowIndex, setActiveRowIndex] = useState(null);
 
     const [approvalDoc, setApprovalDoc] = useState(null);
+    const [defaultSteps, setDefaultSteps] = useState([]);
 
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;
@@ -131,10 +132,27 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             fetchProducts();
             fetchSalesOrders();
             if (order) fetchApprovalDoc();
+            else fetchDefaultLines();
         } else {
             setApprovalDoc(null);
+            setDefaultSteps([]);
         }
     }, [isOpen, purchaseType, order]);
+
+    const fetchDefaultLines = async () => {
+        try {
+            const res = await api.get('/approval/lines', { params: { doc_type: 'PURCHASE_ORDER' } });
+            // Map lines to dummy steps for preview
+            const dummySteps = res.data.map(line => ({
+                sequence: line.sequence,
+                approver: line.approver,
+                status: 'PENDING'
+            }));
+            setDefaultSteps(dummySteps);
+        } catch (err) {
+            console.error("Failed to fetch default lines", err);
+        }
+    };
 
     const fetchApprovalDoc = async () => {
         try {
@@ -517,7 +535,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         setIsProductModalOpen(true);
                     }}
                     isReadOnly={false}
-                    documentData={approvalDoc}
+                    documentData={approvalDoc || { author: currentUser, steps: defaultSteps }}
                     currentUser={currentUser}
                     hideApprovalGrid={false}
                     className="p-[10mm] shadow-none border-none mx-auto my-4 max-w-[210mm]"
