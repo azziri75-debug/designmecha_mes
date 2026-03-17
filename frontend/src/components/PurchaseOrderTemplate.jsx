@@ -189,25 +189,38 @@ const PurchaseOrderTemplate = ({
                 </div>
 
                 <div className="flex border-2 border-black">
-                    <div className="w-20 border-r-2 border-black flex flex-col items-center justify-center font-bold bg-gray-50">
+                    <div className="w-20 border-r-2 border-black flex flex-col items-center justify-center font-bold bg-gray-50 text-[11px]">
                         <div>발주</div><div>조건</div>
                     </div>
-                    <div className="flex-1 grid grid-cols-2 text-[9px]">
-                        <div className="border-b border-r border-black p-2 flex items-center gap-2">
-                            <span className="font-bold">◆ 납기기한 :</span>
-                            <EditableText value={data.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0" />
+                    <div className="flex-1 text-[11px] flex flex-col">
+                        <div className="border-b border-black p-2.5 flex items-center gap-2">
+                            <span className="font-bold w-20">◆ 납기기한 :</span>
+                            <EditableText value={data.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
                         </div>
-                        <div className="border-b border-black p-2 flex items-center gap-2">
-                            <span className="font-bold">◆ 납품장소 :</span>
-                            <EditableText value={data.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0" />
+                        <div className="border-b border-black p-2.5 flex items-center gap-2">
+                            <span className="font-bold w-20">◆ 납품장소 :</span>
+                            <EditableText value={data.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
                         </div>
-                        <div className="border-r border-black p-2 flex items-center gap-2">
-                            <span className="font-bold">◆ 유효기간 :</span>
-                            <EditableText value={data.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0" />
+                        <div className="border-b border-black p-2.5 flex items-center gap-2">
+                            <span className="font-bold w-20">◆ 유효기간 :</span>
+                            <EditableText value={data.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
                         </div>
-                        <div className="p-2 flex items-center gap-2">
-                            <span className="font-bold">◆ 결제조건 :</span>
-                            <EditableText value={data.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0" />
+                        <div className="p-2.5 flex items-center gap-2">
+                            <span className="font-bold w-20">◆ 결제조건 :</span>
+                            <EditableText value={data.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
+                        </div>
+                    </div>
+                    {/* Stamp / Seal Area */}
+                    <div className="w-[200px] border-l-2 border-black p-4 flex flex-col items-center justify-center relative">
+                        <p className="text-[11px] font-bold mb-3">위와 같이 발주함.</p>
+                        <div className="flex items-center gap-1 font-bold text-lg relative">
+                            <span>{company?.name || '주식회사 디자인메카'}</span>
+                            <span className="text-red-500 relative ml-1 text-sm font-normal">
+                                (인)
+                                {company?.stamp_image?.url && (
+                                    <StampOverlay url={company.stamp_image.url} className="w-20 h-20 -top-6 -left-6" />
+                                )}
+                            </span>
                         </div>
                     </div>
                 </div>

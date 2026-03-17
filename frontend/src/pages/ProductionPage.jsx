@@ -12,6 +12,27 @@ import StockProductionModal from '../components/StockProductionModal';
 import ResizableTableCell from '../components/ResizableTableCell';
 
 const ProductionPage = () => {
+    // Add Print Styles
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @media print {
+                body, html, #root, .MuiBox-root, .MuiPaper-root {
+                    height: auto !important;
+                    overflow: visible !important;
+                    position: static !important;
+                }
+                .no-print {
+                    display: none !important;
+                }
+                .print-visible {
+                    display: block !important;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        return () => document.head.removeChild(style);
+    }, []);
     const [tabIndex, setTabIndex] = useState(0);
     const [orders, setOrders] = useState([]);
     const [stockProductions, setStockProductions] = useState([]);
@@ -355,7 +376,7 @@ const ProductionPage = () => {
 
     return (
         <Box sx={{ width: '100%' }}>
-            <Typography variant="h4" gutterBottom component="div" sx={{ mb: 4, fontWeight: 'bold', color: '#1a237e' }}>
+            <Typography variant="h4" gutterBottom component="div" sx={{ mb: 4, fontWeight: 'bold', color: '#1a237e' }} className="no-print">
                 생산 관리
             </Typography>
 
