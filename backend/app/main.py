@@ -27,7 +27,7 @@ UPLOAD_DIR = os.path.join(_BASE_DIR, "uploads")
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
-app.mount("/static", CORSStaticFiles(directory=UPLOAD_DIR), name="static")
+app.mount("/api/v1/static", CORSStaticFiles(directory=UPLOAD_DIR), name="static")
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:

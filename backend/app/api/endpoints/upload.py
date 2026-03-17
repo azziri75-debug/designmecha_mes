@@ -37,7 +37,7 @@ async def upload_file(file: UploadFile = File(...)):
             
         # Return the relative path (normalized for URL)
         relative_path = os.path.join(current_date, unique_filename).replace("\\", "/")
-        return {"filename": file.filename, "url": f"/static/{relative_path}"}
+        return {"filename": file.filename, "url": f"/api/v1/static/{relative_path}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
