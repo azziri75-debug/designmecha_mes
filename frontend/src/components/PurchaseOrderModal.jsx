@@ -427,18 +427,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             
             if (!hasActiveApproval && window.confirm("발주서가 저장되었습니다. 이 내용으로 전자결재 [결재요청]을 즉시 진행하시겠습니까?")) {
                 try {
-                    // 결재선 데이터 미리 가져오기
-                    const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
-                    if (!lineRes.data || lineRes.data.length === 0) {
-                        alert("구매발주서에 대한 기본 결재선이 설정되어 있지 않습니다. [전자결재 관리 > 결재선 설정]에서 구매발주서의 결재선을 먼저 설정해 주세요.");
-                        return;
-                    }
-                    const customApprovers = lineRes.data.map(line => ({
-                        staff_id: line.staff_id || line.user_id || line.id || line.approver_id || line.approver?.id || line.value,
-                        sequence: line.sequence
-                    }));
-                    console.log("현재 결재자 배열 상태:", customApprovers);
-
                     const partner = partners.find(p => p.id === formData.partner_id);
                     const approvalPayload = {
                         title: `[${formData.purchase_type === 'CONSUMABLE' ? '소모품' : '구매'}발주서] ${partner?.name || ''} - ${formData.order_date}`,
@@ -460,7 +448,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                 total: item.quantity * item.unit_price
                             }))
                         },
-                        custom_approvers: customApprovers,
                         reference_id: savedOrder.id,
                         reference_type: 'PURCHASE'
                     };

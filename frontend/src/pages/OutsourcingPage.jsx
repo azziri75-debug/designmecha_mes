@@ -148,21 +148,7 @@ const OutsourcingPage = () => {
         };
 
         try {
-            // 결재선 데이터 미리 가져오기
-            const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
-            const customApprovers = lineRes.data.map(line => ({
-                staff_id: line.staff_id || line.user_id || line.id || line.approver_id || line.approver?.id || line.value,
-                sequence: line.sequence
-            }));
-            console.log("현재 결재자 배열 상태:", customApprovers);
-
-            // 페이로드에 결재선 정보 포함
-            const finalPayload = {
-                ...approvalPayload,
-                custom_approvers: customApprovers
-            };
-
-            await api.post('/approval/documents', finalPayload);
+            await api.post('/approval/documents', approvalPayload);
             alert("결재 요청이 완료되었습니다.");
             navigate('/approval?mode=MY_WAITING');
         } catch (error) {

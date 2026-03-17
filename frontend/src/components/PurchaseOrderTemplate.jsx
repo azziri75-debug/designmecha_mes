@@ -107,7 +107,7 @@ const PurchaseOrderTemplate = ({
                 </div>
                 <div className="flex-1 flex flex-col items-center">
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px' }}>주식회사 디자인메카</Typography>
-                    <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold tracking-[0.5em] indent-[0.5em] text-center leading-none" style={{ whiteSpace: 'nowrap' }}>
+                    <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold text-center leading-none" style={{ whiteSpace: 'nowrap', letterSpacing: '10px', textIndent: '10px' }}>
                         구 매 발 주 서
                     </div>
                 </div>

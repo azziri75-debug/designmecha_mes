@@ -7,8 +7,10 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
 import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Printer } from 'lucide-react';
+import { Printer, Plus, Search } from 'lucide-react';
 import api from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
+import PurchaseOrderTemplate from './PurchaseOrderTemplate';
 
 const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems }) => {
     const navigate = useNavigate();
@@ -16,6 +18,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     const [products, setProducts] = useState([]);
     const [salesOrders, setSalesOrders] = useState([]);
 
+    const { user: currentUser } = useAuth();
     const [formData, setFormData] = useState({
         partner_id: '',
         order_id: '',
@@ -26,6 +29,13 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         items: [],
         display_order_no: '' // For UI display of linked SO/SP
     });
+
+    const [approvalDoc, setApprovalDoc] = useState(null);
+    const defaultSteps = [
+        { sequence: 1, role: '기안', approver: currentUser, status: 'APPROVED' },
+        { sequence: 2, role: '검토', approver: null, status: 'PENDING' },
+        { sequence: 3, role: '승인', approver: null, status: 'PENDING' }
+    ];
 
     // History Popover State
     const [anchorEl, setAnchorEl] = useState(null);
@@ -226,25 +236,12 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                 savedOrder = res.data;
             }
 
-            // [Integration] Ask for approval submission
             if (window.confirm("외주 발주서가 저장되었습니다. 이 내용으로 전자결재 [결재요청]을 즉시 진행하시겠습니까?")) {
                 try {
-                    // 결재선 데이터 미리 가져오기
-                    const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
-                    if (!lineRes.data || lineRes.data.length === 0) {
-                        alert("구매발주서(외주포함)에 대한 기본 결재선이 설정되어 있지 않습니다. [전자결재 관리 > 결재선 설정]에서 구매발주서의 결재선을 먼저 설정해 주세요.");
-                        return;
-                    }
-                    const customApprovers = lineRes.data.map(line => ({
-                        staff_id: line.staff_id || line.user_id || line.id || line.approver_id || line.approver?.id || line.value,
-                        sequence: line.sequence
-                    }));
-                    console.log("현재 결재자 배열 상태:", customApprovers);
-
                     const partner = partners.find(p => p.id === formData.partner_id);
                     const approvalPayload = {
                         title: `[외주발주서] ${partner?.name || ''} - ${formData.order_date}`,
-                        doc_type: 'PURCHASE_ORDER', // Use same PO form layout
+                        doc_type: 'PURCHASE_ORDER',
                         content: {
                             order_no: savedOrder.order_no,
                             partner_name: partner?.name,
@@ -253,16 +250,18 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                             order_date: formData.order_date,
                             delivery_date: formData.delivery_date,
                             special_notes: formData.note,
-                            items: formData.items.map((item, idx) => ({
-                                idx: idx + 1,
-                                name: products.find(p => p.id === item.product_id)?.name,
-                                spec: products.find(p => p.id === item.product_id)?.specification || products.find(p => p.id === item.product_id)?.code,
-                                qty: item.quantity,
-                                price: item.unit_price,
-                                total: item.quantity * item.unit_price
-                            }))
+                            items: formData.items.map((item, idx) => {
+                                const prod = products.find(p => p.id === item.product_id);
+                                return {
+                                    idx: idx + 1,
+                                    name: prod?.name,
+                                    spec: prod?.specification || prod?.code,
+                                    qty: item.quantity,
+                                    price: item.unit_price,
+                                    total: item.quantity * item.unit_price
+                                };
+                            })
                         },
-                        custom_approvers: customApprovers,
                         reference_id: savedOrder.id,
                         reference_type: 'OUTSOURCING'
                     };
@@ -289,168 +288,63 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>{order ? "외주 발주 수정" : "외주 발주 등록"}</DialogTitle>
-            <DialogContent>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 1 }}>
-                    <TextField
-                        select
-                        label="외주처"
-                        value={formData.partner_id}
-                        onChange={(e) => setFormData({ ...formData, partner_id: e.target.value })}
-                        fullWidth
-                    >
-                        {partners.map((partner) => (
-                            <MenuItem key={partner.id} value={partner.id}>
-                                {partner.name}
-                            </MenuItem>
-                        ))}
-                    </TextField>
-                    {(initialItems && initialItems.length > 0) ? (
-                        <TextField
-                            label="연결 수주/재고번호"
-                            value={formData.display_order_no || '재고용'}
-                            fullWidth
-                            disabled
-                        />
-                    ) : (
-                        <TextField
-                            select
-                            label="연결 수주번호"
-                            value={formData.order_id}
-                            onChange={(e) => setFormData({ ...formData, order_id: e.target.value })}
-                            fullWidth
-                        >
-                            <MenuItem value=""><em>없음 (재고용)</em></MenuItem>
-                            {salesOrders.map((so) => (
-                                <MenuItem key={so.id} value={so.id}>
-                                    {so.order_no} ({so.partner?.name})
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    )}
-                    <TextField
-                        label="발주일자"
-                        type="date"
-                        value={formData.order_date}
-                        onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                        fullWidth
-                    />
-                    <TextField
-                        label="납기일자"
-                        type="date"
-                        value={formData.delivery_date}
-                        onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                        fullWidth
-                    />
-                    <TextField
-                        label="비고"
-                        value={formData.note}
-                        onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                        fullWidth
-                    />
-                    {order && (
-                        <TextField
-                            select
-                            label="상태"
-                            value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                            fullWidth
-                        >
-                            <MenuItem value="PENDING">대기 (PENDING)</MenuItem>
-                            <MenuItem value="ORDERED">발주 (ORDERED)</MenuItem>
-                            <MenuItem value="COMPLETED">완료 (COMPLETED)</MenuItem>
-                        </TextField>
-                    )}
-                </Box>
-
-                <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>발주 품목</Typography>
-                <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>품목 (공정/제품)</TableCell>
-                                <TableCell width="15%">수량</TableCell>
-                                <TableCell width="20%">단가</TableCell>
-                                <TableCell width="20%">비고</TableCell>
-                                <TableCell width="5%"></TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {formData.items.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>
-                                        <TextField
-                                            select
-                                            value={item.product_id}
-                                            onChange={(e) => handleItemChange(index, 'product_id', e.target.value)}
-                                            fullWidth
-                                            size="small"
-                                            variant="standard"
-                                        >
-                                            {products.map((p) => (
-                                                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-                                            ))}
-                                        </TextField>
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            type="number"
-                                            value={item.quantity}
-                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                            fullWidth
-                                            size="small"
-                                            variant="standard"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <TextField
-                                                type="number"
-                                                value={item.unit_price}
-                                                onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
-                                                fullWidth
-                                                size="small"
-                                                variant="standard"
-                                            />
-                                            <Tooltip title="과거 단가 이력 조회">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={(e) => handleLookupHistory(e, index, item.product_id)}
-                                                    disabled={!item.product_id}
-                                                >
-                                                    <HistoryIcon sx={{ fontSize: 18 }} />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            value={item.note}
-                                            onChange={(e) => handleItemChange(index, 'note', e.target.value)}
-                                            fullWidth
-                                            size="small"
-                                            variant="standard"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <IconButton size="small" onClick={() => handleRemoveItem(index)}>
-                                            <DeleteIcon fontSize="small" />
-                                        </IconButton>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-                <Button startIcon={<AddIcon />} onClick={handleAddItem} sx={{ mt: 1 }}>
-                    품목 추가
-                </Button>
+            <DialogContent sx={{ p: 0, bgcolor: '#f4f4f5' }}>
+                <PurchaseOrderTemplate 
+                    data={{
+                        order_no: formData.display_order_no || (order ? order.order_no : '자동 생성'),
+                        partner_name: partners.find(p => p.id === formData.partner_id)?.name || '',
+                        partner_phone: partners.find(p => p.id === formData.partner_id)?.phone || '',
+                        partner_fax: partners.find(p => p.id === formData.partner_id)?.fax || '',
+                        order_date: formData.order_date,
+                        items: formData.items.map(item => {
+                            const p = products.find(prod => prod.id === item.product_id);
+                            return {
+                                ...item,
+                                name: p?.name || '',
+                                spec: p?.specification || '',
+                                qty: item.quantity,
+                                price: item.unit_price,
+                                total: (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)
+                            };
+                        }),
+                        special_notes: formData.note,
+                        delivery_date: formData.delivery_date,
+                        delivery_place: '당사 공장',
+                        valid_until: '발주일로부터 30일',
+                        payment_terms: '마감 후 30일',
+                        colWidths: [40, 200, 120, 60, 80, 100]
+                    }}
+                    onChange={(field, val) => {
+                        if (field === 'items') {
+                            const newItems = val.map(v => ({
+                                ...v,
+                                quantity: v.qty,
+                                unit_price: v.price
+                            }));
+                            setFormData(prev => ({ ...prev, items: newItems }));
+                        } else if (field === 'special_notes') {
+                            setFormData(prev => ({ ...prev, note: val }));
+                        } else if (field === 'partner_id') {
+                             setFormData(prev => ({ ...prev, partner_id: val }));
+                        } else {
+                            setFormData(prev => ({ ...prev, [field]: val }));
+                        }
+                    }}
+                    onAddItem={handleAddItem}
+                    onSearchProduct={(idx) => {
+                        // For outsourcing we use a simplified product select in-template
+                    }}
+                    isReadOnly={false}
+                    documentData={approvalDoc || { author: currentUser, steps: defaultSteps }}
+                    currentUser={currentUser}
+                    hideApprovalGrid={false}
+                    className="p-[10mm] shadow-none border-none mx-auto my-4 max-w-[210mm]"
+                />
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
                 <Button onClick={() => window.print()} color="info" startIcon={<Printer />}>인쇄</Button>
-                <Button onClick={handleSubmit} variant="contained">저장</Button>
+                <Button onClick={handleSubmit} variant="contained" color="primary">저장</Button>
             </DialogActions>
 
             <Popover

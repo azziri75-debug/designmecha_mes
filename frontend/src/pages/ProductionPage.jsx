@@ -17,6 +17,10 @@ const ProductionPage = () => {
         const style = document.createElement('style');
         style.innerHTML = `
             @media print {
+                @page {
+                    size: A4;
+                    margin: 0;
+                }
                 body, html, #root, .MuiBox-root, .MuiPaper-root {
                     height: auto !important;
                     overflow: visible !important;
@@ -27,6 +31,12 @@ const ProductionPage = () => {
                 }
                 .print-visible {
                     display: block !important;
+                    width: 210mm !important;
+                    min-height: 297mm !important;
+                    margin: 0 auto !important;
+                    padding: 10mm !important;
+                    background: white !important;
+                    box-sizing: border-box !important;
                 }
             }
         `;

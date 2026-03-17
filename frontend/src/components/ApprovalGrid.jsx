@@ -22,8 +22,8 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
                                 width: '100%', 
                                 height: '100%', 
                                 objectFit: 'contain', 
-                                maxWidth: '55px',
-                                maxHeight: '55px',
+                                maxWidth: '60px',
+                                maxHeight: '60px',
                                 mixBlendMode: 'multiply'
                             }} 
                             onError={(e) => { e.target.style.display = 'none'; }}
@@ -46,8 +46,8 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
                                 width: '100%', 
                                 height: '100%', 
                                 objectFit: 'contain', 
-                                maxWidth: '55px',
-                                maxHeight: '55px',
+                                maxWidth: '60px',
+                                maxHeight: '60px',
                                 mixBlendMode: 'multiply'
                             }} 
                             onError={(e) => { e.target.style.display = 'none'; }}
