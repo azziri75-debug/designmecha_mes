@@ -389,15 +389,17 @@ const ApprovalPage = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-right min-w-[120px] relative z-10">
                                                     <div className="flex justify-end gap-2 items-center">
-                                                        {isEditable(doc) && (
+                                                        {currentUser?.id === doc.author?.id && (
                                                             <>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); handleEditDoc(doc); }}
-                                                                    className="p-1 hover:bg-gray-700 rounded text-blue-400 transition-colors"
-                                                                    title="수정"
-                                                                >
-                                                                    <Pencil className="w-4 h-4" />
-                                                                </button>
+                                                                {doc.status !== 'APPROVED' && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleEditDoc(doc); }}
+                                                                        className="p-1 hover:bg-gray-700 rounded text-blue-400 transition-colors"
+                                                                        title="수정"
+                                                                    >
+                                                                        <Pencil className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc.id); }}
                                                                     className="p-1 hover:bg-gray-700 rounded text-red-400 transition-colors"
