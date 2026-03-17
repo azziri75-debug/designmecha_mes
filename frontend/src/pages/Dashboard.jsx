@@ -429,9 +429,9 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Monthly Revenue */}
                 <ChartCard title="월별 매출 추이 (최근 6개월)" icon={TrendingUp} className="lg:col-span-2">
-                    <div className="h-72" style={{ minHeight: '300px' }}>
+                    <div className="h-72">
                         {mounted && (
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={300}>
                                 <AreaChart data={stats.monthlyRevenue}>
                                     <defs>
                                         <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
@@ -453,9 +453,9 @@ const Dashboard = () => {
 
                 {/* Order Status Pie */}
                 <ChartCard title="수주 상태 현황" icon={ShoppingCart}>
-                    <div className="h-72 flex items-center justify-center" style={{ minHeight: '300px' }}>
+                    <div className="h-72 flex items-center justify-center">
                         {mounted && stats.orderStatusData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={300}>
                                 <PieChart>
                                     <Pie
                                         data={stats.orderStatusData} cx="50%" cy="50%"
@@ -576,9 +576,9 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* Production Status */}
                 <ChartCard title="생산 현황 분포" icon={Factory}>
-                    <div className="h-56 flex items-center justify-center" style={{ minHeight: '300px' }}>
+                    <div className="h-56 flex items-center justify-center">
                         {stats.planStatusData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={300}>
                                 <BarChart data={stats.planStatusData} layout="vertical" margin={{ left: 10 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
                                     <XAxis type="number" stroke="#6B7280" tick={{ fontSize: 11 }} />
@@ -641,9 +641,9 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Quality Defect Status */}
                 <ChartCard title="품질 결함 현황" icon={AlertTriangle}>
-                    <div className="h-56 flex items-center justify-center" style={{ minHeight: '300px' }}>
+                    <div className="h-56 flex items-center justify-center">
                         {stats.defectStatusData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={300}>
                                 <PieChart>
                                     <Pie
                                         data={stats.defectStatusData} cx="50%" cy="50%"

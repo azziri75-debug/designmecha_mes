@@ -119,9 +119,9 @@ const ReportsPage = () => {
                     <h3 className="text-lg font-bold text-white">월별 생산 및 매출 추이</h3>
                     <button className="text-gray-400 hover:text-white"><RefreshCw className="w-4 h-4" /></button>
                 </div>
-                <div className="h-96 w-full" style={{ minHeight: '300px' }}>
+                <div className="h-96 w-full">
                     {mounted && (
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                                 <XAxis dataKey="month" stroke="#9CA3AF" />
