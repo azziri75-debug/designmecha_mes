@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
 import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { Printer, Pencil, Trash, ChevronRight } from 'lucide-react';
 import api from '../lib/api';
 
