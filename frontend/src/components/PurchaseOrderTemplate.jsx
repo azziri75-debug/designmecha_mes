@@ -1,5 +1,7 @@
 import React from 'react';
-import { Typography } from '@mui/material';
+import { Typography, Button, Box } from '@mui/material';
+import { Printer, Send } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
@@ -15,9 +17,14 @@ const PurchaseOrderTemplate = ({
     hideApprovalGrid = false,
     className,
     onAddItem,
-    onSearchProduct
+    onSearchProduct,
+    onSubmitApproval,
+    orderId,
+    purchaseType = 'PURCHASE' // 'PURCHASE' or 'OUTSOURCING'
 }) => {
+    const navigate = useNavigate();
     const [company, setCompany] = React.useState(initialCompany);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     React.useEffect(() => {
         if (!initialCompany) {
@@ -98,8 +105,89 @@ const PurchaseOrderTemplate = ({
         onChange(key, val);
     };
 
+    const handleSubmitApproval = async () => {
+        if (!orderId) return;
+        if (!window.confirm("이 내용으로 전자결재 [결재요청]을 진행하시겠습니까?")) return;
+
+        setIsSubmitting(true);
+        try {
+            const approvalPayload = {
+                title: `[${purchaseType === 'OUTSOURCING' ? '외주' : (data.purchase_type === 'CONSUMABLE' ? '소모품' : '구매')}발주서] ${data.partner_name || ''} - ${data.order_date}`,
+                doc_type: 'PURCHASE_ORDER',
+                content: {
+                    order_no: data.order_no,
+                    partner_name: data.partner_name,
+                    partner_phone: data.partner_phone,
+                    partner_fax: data.partner_fax,
+                    order_date: data.order_date,
+                    delivery_date: data.delivery_date,
+                    special_notes: data.special_notes,
+                    items: data.items.map((item, idx) => ({
+                        idx: idx + 1,
+                        name: item.name,
+                        spec: item.spec,
+                        qty: item.qty,
+                        price: item.price,
+                        total: (parseFloat(item.qty) || 0) * (parseFloat(item.price) || 0)
+                    }))
+                },
+                reference_id: orderId,
+                reference_type: purchaseType === 'OUTSOURCING' ? 'OUTSOURCING' : 'PURCHASE'
+            };
+            
+            await api.post('/approval/documents', approvalPayload);
+            alert("결재 요청이 상신되었습니다.");
+            if (onSubmitApproval) onSubmitApproval();
+            navigate('/approval?mode=MY_WAITING');
+        } catch (err) {
+            console.error("Failed to submit approval", err);
+            const errorMsg = err.response?.data?.detail 
+                ? (typeof err.response.data.detail === 'string' ? err.response.data.detail : JSON.stringify(err.response.data.detail))
+                : err.message;
+            alert("결재 요청 중 오류가 발생했습니다: " + errorMsg);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return (
-        <div className={cn("bg-white text-black w-full relative flex flex-col shadow-sm border border-gray-200", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+        <div className="flex flex-col w-full h-full">
+            {/* Toolbar - Only visible in View mode and not during print */}
+            {isReadOnly && (
+                <Box className="idf-no-print" sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'flex-end', 
+                    gap: 1, 
+                    mb: 2, 
+                    p: 1, 
+                    bgcolor: '#f1f5f9', 
+                    borderRadius: 1,
+                    border: '1px solid #e2e8f0'
+                }}>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<Printer size={16} />}
+                        onClick={() => window.print()}
+                    >
+                        인쇄하기
+                    </Button>
+                    {(!documentData || documentData.status === 'REJECTED' || !documentData.id) && orderId && (
+                        <Button
+                            variant="contained"
+                            size="small"
+                            color="primary"
+                            startIcon={<Send size={16} />}
+                            onClick={handleSubmitApproval}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? "상신 중..." : "결재요청"}
+                        </Button>
+                    )}
+                </Box>
+            )}
+
+            <div className={cn("bg-white text-black w-full relative flex flex-col shadow-sm border border-gray-200", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
             <div className="flex justify-between items-start mb-8">
                 <div className="w-[160px] text-[10px] space-y-0.5 pt-8">
@@ -108,11 +196,15 @@ const PurchaseOrderTemplate = ({
                 <div className="flex-1 flex flex-col items-center">
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px' }}>주식회사 디자인메카</Typography>
                     <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold text-center leading-none" style={{ whiteSpace: 'nowrap', letterSpacing: '10px', textIndent: '10px' }}>
-                        구 매 발 주 서
+                        {data.title || '구 매 발 주 서'}
                     </div>
                 </div>
-                <div className="w-[320px]">
+                <div className="w-[320px] idf-no-print">
                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} />}
+                </div>
+                {/* Print-only approval grid placeholder or simplified view if needed */}
+                <div className="hidden print:block w-[320px]">
+                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} />}
                 </div>
             </div>
 
@@ -159,7 +251,7 @@ const PurchaseOrderTemplate = ({
                         {!isReadOnly && onAddItem && (
                             <button 
                                 onClick={onAddItem}
-                                className="bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center hover:bg-blue-500 transition-colors"
+                                className="bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center hover:bg-blue-500 transition-colors idf-no-print"
                                 title="품목 추가"
                             >
                                 +
@@ -224,6 +316,17 @@ const PurchaseOrderTemplate = ({
                         </div>
                     </div>
                 </div>
+            </div>
+            <style>{`
+                @media print {
+                    @page { size: A4; margin: 15mm; }
+                    body { -webkit-print-color-adjust: exact; }
+                    .idf-no-print { display: none !important; }
+                    div { box-shadow: none !important; border-color: black !important; }
+                    .border-gray-200 { border-color: black !important; }
+                    .bg-gray-50 { background-color: #f9fafb !important; }
+                }
+            `}</style>
             </div>
         </div>
     );

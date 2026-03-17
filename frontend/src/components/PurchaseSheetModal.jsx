@@ -7,6 +7,7 @@ import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import { cn } from '../lib/utils';
 import ApprovalGrid from './ApprovalGrid';
 import { useAuth } from '../contexts/AuthContext';
+import PurchaseOrderTemplate from './PurchaseOrderTemplate';
 
 const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_order', orderType = 'purchase', onSave }) => {
     const [company, setCompany] = useState(null);
@@ -252,126 +253,18 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] h-[297mm] p-[10mm] shadow-none relative flex flex-col" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
-
-                        {/* Header Box - Tighten width */}
-                        <div className="flex justify-between items-center mb-8 h-16">
-                            <div className="w-[160px] text-[10px] space-y-0.5 self-end pb-2">
-                                <p className="flex items-center gap-1 leading-none">NO : <EditableText value={metadata.order_no} onChange={(v) => handleMetaChange('order_no', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f3f4f6' }} /></p>
-                            </div>
-
-                            <div className="flex-1 flex justify-center px-4">
-                                <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold tracking-[0.3em] indent-[0.3em] max-w-[400px] w-full text-center leading-none">
-                                    <EditableText value={metadata.title} onChange={(v) => handleMetaChange('title', v)} isHeader className="justify-center" />
-                                </div>
-                            </div>
-
-                            <div className="w-[320px]">
-                                <ApprovalGrid 
-                                    documentData={approvalDoc || { author: order.author || currentUser, steps: [] }} 
-                                    currentUser={currentUser} 
-                                />
-                            </div>
-                        </div>
-
-                        {/* Partner & Company Info */}
-                        <div className="flex justify-between mb-6 text-xs items-start px-2">
-                            <div className="space-y-4 flex-1">
-                                <div className="flex items-end gap-2 text-xl font-bold border-b-2 border-black pb-1 mb-2 max-w-[260px]">
-                                    <EditableText value={order.partner?.name || '공급처'} className="flex-1" />
-                                    <span className="text-sm pb-1 font-normal">귀하</span>
-                                </div>
-                                <div className="space-y-1" style={{ fontSize: '10px', color: '#6b7280' }}>
-                                    <p>TEL : <span className="text-black">{order.partner?.phone || '-'}</span></p>
-                                    <p>FAX : <span className="text-black">{order.partner?.fax || '-'}</span></p>
-                                    <p className="pt-2">발주일 : <span className="text-black font-bold">{order.order_date || '-'}</span></p>
-                                </div>
-                            </div>
-                            <div className="text-right w-[220px]">
-                                <h2 className="text-xl font-bold font-serif">{company?.name || '디자인메카'}</h2>
-                                <p className="tracking-widest uppercase" style={{ fontSize: '9px', color: '#9ca3af' }}>Designmecha Enterprise</p>
-                                <div className="mt-4 space-y-0.5 text-gray-800" style={{ fontSize: '9px' }}>
-                                    <p>{company?.address || '충남 아산시 음봉면 월암로 336-39'}</p>
-                                    <p>T. {company?.phone || '041-544-6220'} / F. {company?.fax || '-'}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Items Table */}
-                        <div className="px-2">
-                            <ResizableTable
-                                columns={columns}
-                                data={formattedItems}
-                                colWidths={metadata.colWidths}
-                                onUpdateWidths={(w) => handleMetaChange('colWidths', w)}
-                                onUpdateData={updateItem}
-                                className="text-[10px]"
-                            />
-                        </div>
-
-                        {/* Summary Row */}
-                        <div className="mx-2 flex border-2 border-black border-t-0 font-bold text-[10px] h-10 items-center" style={{ backgroundColor: '#f9fafb' }}>
-                            <div className="border-r border-black flex-1 text-center uppercase tracking-widest text-[#555]">
-                                {activeTab === 'purchase_order' ? '합계 (VAT 별도)' : '수량 합계'}
-                            </div>
-                            <div className="w-[80px] border-r border-black text-center text-[11px] text-[#333]">
-                                {fmt(metadata.items.reduce((s, i) => s + (parseFloat(i.qty) || 0), 0))}
-                            </div>
-                            {activeTab === 'purchase_order' && (
-                                <>
-                                    <div className="w-[80px] border-r border-black"></div>
-                                    <div className="w-[100px] text-right px-2 text-xs text-[#000]">{fmt(totalAmount)} 원</div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Footer Notes */}
-                        <div className="mt-auto text-[10px] px-2">
-                            <div className="border border-black p-4 mb-4 min-h-[120px] bg-gray-50/10">
-                                <h4 className="font-bold border-b border-black w-20 mb-3 pb-1 italic">Note.</h4>
-                                <EditableText
-                                    value={metadata.special_notes}
-                                    onChange={(v) => handleMetaChange('special_notes', v)}
-                                    className="leading-relaxed items-start min-h-[80px] whitespace-pre-wrap"
-                                    placeholder="상세 내용을 입력하세요..."
-                                />
-                            </div>
-
-                            <div className="flex border-2 border-black">
-                                <div className="w-20 border-r-2 border-black flex flex-col items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>
-                                    <div>발주</div><div>조건</div>
-                                </div>
-                                <div className="flex-1 grid grid-cols-2 text-[9px]">
-                                    <div className="border-b border-r border-black p-2 flex items-center gap-2">
-                                        <span className="font-bold">◆ 납기기한 :</span>
-                                        <EditableText value={metadata.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f9fafb' }} />
-                                    </div>
-                                    <div className="border-b border-black p-2 row-span-4 flex flex-col items-center justify-center relative" style={{ backgroundColor: 'rgba(239, 246, 255, 0.2)' }}>
-                                        <p className="text-[11px] font-bold mb-2 opacity-60">위와 같이 발주함.</p>
-                                        <div className="flex items-center gap-1 font-bold text-lg relative">
-                                            <span>{company?.name || '디자인메카'}</span>
-                                            <span className="text-red-500 relative ml-1 text-sm font-normal">
-                                                (인)
-                                                {stampUrl && <StampOverlay url={stampUrl} className="w-16 h-16 -top-4 -left-4" />}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="border-b border-r border-black p-2 flex items-center gap-2">
-                                        <span className="font-bold">◆ 납품장소 :</span>
-                                        <EditableText value={metadata.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f9fafb' }} />
-                                    </div>
-                                    <div className="border-b border-r border-black p-2 flex items-center gap-2">
-                                        <span className="font-bold">◆ 유효기간 :</span>
-                                        <EditableText value={metadata.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f9fafb' }} />
-                                    </div>
-                                    <div className="border-r border-black p-2 flex items-center gap-2">
-                                        <span className="font-bold">◆ 결제조건 :</span>
-                                        <EditableText value={metadata.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} className="flex-1 border-b min-h-0" style={{ borderColor: '#f9fafb' }} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
+                    <div ref={sheetRef} className="bg-white shadow-2xl">
+                        <PurchaseOrderTemplate
+                            data={metadata}
+                            onChange={handleMetaChange}
+                            isReadOnly={true}
+                            documentData={approvalDoc}
+                            currentUser={currentUser}
+                            company={company}
+                            orderId={order.id}
+                            purchaseType={orderType === 'outsourcing' ? 'OUTSOURCING' : 'PURCHASE'}
+                            onSubmitApproval={fetchApprovalDoc}
+                        />
                     </div>
                 </div>
             </div>

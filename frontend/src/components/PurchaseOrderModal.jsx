@@ -413,47 +413,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 savedOrder = res.data;
             }
 
-            // [Integration] Ask for approval submission
-            const hasActiveApproval = approvalDoc && ['PENDING', 'IN_PROGRESS', 'COMPLETED'].includes(approvalDoc.status);
-            
-            if (!hasActiveApproval && window.confirm("발주서가 저장되었습니다. 이 내용으로 전자결재 [결재요청]을 즉시 진행하시겠습니까?")) {
-                try {
-                    const partner = partners.find(p => p.id === formData.partner_id);
-                    const approvalPayload = {
-                        title: `[${formData.purchase_type === 'CONSUMABLE' ? '소모품' : '구매'}발주서] ${partner?.name || ''} - ${formData.order_date}`,
-                        doc_type: 'PURCHASE_ORDER',
-                        content: {
-                            order_no: savedOrder.order_no,
-                            partner_name: partner?.name,
-                            partner_phone: partner?.phone,
-                            partner_fax: partner?.fax,
-                            order_date: formData.order_date,
-                            delivery_date: formData.delivery_date,
-                            special_notes: formData.note,
-                            items: formData.items.map((item, idx) => ({
-                                idx: idx + 1,
-                                name: products.find(p => p.id === item.product_id)?.name,
-                                spec: products.find(p => p.id === item.product_id)?.specification,
-                                qty: item.quantity,
-                                price: item.unit_price,
-                                total: item.quantity * item.unit_price
-                            }))
-                        },
-                        reference_id: savedOrder.id,
-                        reference_type: 'PURCHASE'
-                    };
-                    await api.post('/approval/documents', approvalPayload);
-                    alert("결재 요청이 완료되었습니다.");
-                    navigate('/approval?mode=MY_WAITING');
-                } catch (appErr) {
-                    console.error("Failed to submit approval", appErr);
-                    const errorMsg = appErr.response?.data?.detail 
-                        ? (typeof appErr.response.data.detail === 'string' ? appErr.response.data.detail : JSON.stringify(appErr.response.data.detail))
-                        : appErr.message;
-                    alert("발주서는 저장되었으나, 결재 요청 중 오류가 발생했습니다: " + errorMsg);
-                }
-            }
-
             onSuccess();
             onClose();
         } catch (error) {
@@ -632,40 +591,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     </Button>
                 </Box>
 
-                {/* Optional Viewer for Preview (Always Read-only here) */}
-                <Box sx={{ mt: 4, display: 'none' }}> {/* Hidden for now, maybe toggleable? */}
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>미리보기 양식</Typography>
-                    <PurchaseOrderTemplate 
-                        data={{
-                            order_no: formData.display_order_no || '자동 생성',
-                            partner_name: partners.find(p => p.id === formData.partner_id)?.name || '',
-                            partner_phone: partners.find(p => p.id === formData.partner_id)?.phone || '',
-                            partner_fax: partners.find(p => p.id === formData.partner_id)?.fax || '',
-                            order_date: formData.order_date,
-                            items: formData.items.map(item => {
-                                const p = products.find(prod => prod.id === item.product_id);
-                                return {
-                                    ...item,
-                                    name: p?.name || '',
-                                    spec: p?.specification || '',
-                                    qty: item.quantity,
-                                    price: item.unit_price,
-                                    total: (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)
-                                };
-                            }),
-                            special_notes: formData.note,
-                            delivery_date: formData.delivery_date,
-                            delivery_place: '당사 공장',
-                            valid_until: '발주일로부터 30일',
-                            payment_terms: '마감 후 30일',
-                            colWidths: [40, 200, 120, 60, 80, 100]
-                        }}
-                        isReadOnly={true}
-                        documentData={approvalDoc || { author: currentUser, steps: defaultSteps }}
-                        currentUser={currentUser}
-                        hideApprovalGrid={false}
-                    />
-                </Box>
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
