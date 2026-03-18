@@ -19,28 +19,24 @@ const injectPrintCSS = () => {
     style.id = PRINT_STYLE_ID;
     style.innerHTML = `
         @media print {
-            body, html, #root, .MuiDialog-root {
+            @page { size: A4 landscape !important; margin: 0 !important; }
+            
+            body, html, #root, .MuiDialog-root, .MuiModal-root, .MuiModal-container, .MuiBox-root {
                 display: block !important;
                 position: static !important;
                 height: auto !important;
                 min-height: 100% !important;
+                width: auto !important;
                 overflow: visible !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                transform: none !important;
             }
-            
-            @page { size: A4 landscape; margin: 0; }
             
             /* Hide everything by default except the print container and its parents */
             body * { visibility: hidden !important; }
             .tsm-no-print, .MuiBackdrop-root { display: none !important; }
-            
-            /* Ensure the modal container itself doesn't show background/shadow */
-            .MuiModal-root {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                background: transparent !important;
-                box-shadow: none !important;
-            }
             
             .tsm-print-container {
                 position: absolute !important;
