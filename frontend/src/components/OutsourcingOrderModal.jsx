@@ -157,22 +157,30 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
     useEffect(() => {
         if (isOpen && !order && initialItems && initialItems.length > 0) {
-            const firstPartnerName = initialItems[0].partner_name;
+            // [Defense] Try various field names for partner identification
+            const firstItem = initialItems[0];
+            const firstPartnerName = firstItem.partner_name || 
+                                     (firstItem.partner && (typeof firstItem.partner === 'string' ? firstItem.partner : firstItem.partner.name)) ||
+                                     firstItem.outsourcing_company || '';
+                                     
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
-            const displayCode = initialItems[0]?.sales_order_number ||
-                initialItems[0]?.plan?.order?.order_no ||
-                initialItems[0]?.plan?.stock_production?.production_no || '';
+            const displayCode = firstItem.sales_order_number ||
+                firstItem.plan?.order?.order_no ||
+                firstItem.plan?.stock_production?.production_no || '';
 
             setFormData(prev => ({
                 ...prev,
                 partner_id: foundPartner ? foundPartner.id : (prev.partner_id || ''),
-                order_id: initialItems[0]?.plan?.order_id || '',
+                order_id: firstItem.plan?.order_id || '',
                 display_order_no: displayCode,
                 items: initialItems.map(item => {
-                    const productObj = item.product || {};
-                    const productId = item.product_id || productObj.id;
-                    const product = productObj.id ? productObj : products.find(p => p.id === productId);
+                    // [Defense] Try various field names for product/item
+                    const productObj = item.product || item.item || item.material || {};
+                    const productId = item.product_id || productObj.id || item.item_id;
+                    
+                    // Prioritize product detail from mapping if available
+                    const product = productObj.id ? productObj : (products.find(p => p.id === productId) || {});
                     
                     let unitPrice = item.unit_price || 0;
                     if (product && product.standard_processes) {
@@ -185,8 +193,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     }
 
                     return {
-                        product_id: productId,
-                        quantity: item.quantity,
+                        product_id: productId || '',
+                        quantity: item.quantity || 1,
                         unit_price: unitPrice,
                         note: item.note || item.process_name || '',
                         production_plan_item_id: item.id
@@ -349,6 +357,15 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         }
     };
 
+    // [Defense] Safe product label formatter
+    const getProductLabel = (p) => {
+        if (!p) return '';
+        const code = p.code || p.product_code || '';
+        const name = p.name || p.product_name || '';
+        const spec = p.specification || p.spec || '';
+        return `[${code || 'N/A'}] ${name}${spec ? ` (${spec})` : ''}`;
+    };
+
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>{order ? "외주 발주 수정" : "외주 발주 등록"}</DialogTitle>
@@ -389,19 +406,35 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                     <TableRow key={index}>
                                         <TableCell>{index + 1}</TableCell>
                                         <TableCell>
-                                            <TextField
-                                                fullWidth
+                                            <Autocomplete
                                                 size="small"
-                                                value={prod ? `${prod.name} (${prod.specification || '-'})` : '제품 선택'}
-                                                onClick={() => { setActiveRowIndex(index); setIsProductModalOpen(true); }}
-                                                InputProps={{ readOnly: true, endAdornment: <IconButton size="small"><Search size={16} /></IconButton> }}
+                                                options={products}
+                                                getOptionLabel={getProductLabel}
+                                                value={prod || null}
+                                                onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
+                                                renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}
+                                                renderOption={(props, option) => (
+                                                    <li {...props}>
+                                                        <Box>
+                                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                                [{option.code || option.product_code}] {option.name}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="textSecondary">
+                                                                규격: {option.specification || '-'} | 현재고: {option.current_inventory || 0}
+                                                            </Typography>
+                                                        </Box>
+                                                    </li>
+                                                )}
+                                                sx={{ minWidth: 250 }}
                                             />
                                         </TableCell>
                                         <TableCell><TextField type="number" size="small" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} /></TableCell>
                                         <TableCell>
                                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                 <TextField type="number" size="small" value={item.unit_price} onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)} />
-                                                <IconButton size="small" onClick={(e) => handleLookupHistory(e, index, item.product_id)}><HistoryIcon fontSize="small" /></IconButton>
+                                                <Tooltip title="단가 이력">
+                                                    <IconButton size="small" onClick={(e) => handleLookupHistory(e, index, item.product_id)}><HistoryIcon fontSize="small" /></IconButton>
+                                                </Tooltip>
                                             </Box>
                                         </TableCell>
                                         <TableCell><Typography variant="body2">₩{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString()}</Typography></TableCell>
@@ -412,14 +445,14 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         </TableBody>
                     </Table>
                 </TableContainer>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddItem} size="small">품목 추가</Button>
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddItem} size="small">항목 추가</Button>
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
                 <Button onClick={handleSubmit} variant="contained" color="primary">저장</Button>
             </DialogActions>
 
-            <ProductSelectionModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSelect={handleSelectProduct} products={products} />
+
             <Popover
                 open={Boolean(anchorEl)}
                 anchorEl={anchorEl}

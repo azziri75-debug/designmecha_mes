@@ -192,26 +192,31 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     // Pre-fill logic: Only run once when modal opens and initialItems are provided
     useEffect(() => {
         if (isOpen && !order && initialItems && initialItems.length > 0) {
-            const firstPartnerName = initialItems[0].partner_name;
+            // [Defense] Try various field names for partner identification
+            const firstItem = initialItems[0];
+            const firstPartnerName = firstItem.partner_name || 
+                                     (firstItem.partner && (typeof firstItem.partner === 'string' ? firstItem.partner : firstItem.partner.name)) ||
+                                     firstItem.supplier_name || '';
+                                     
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
-            const displayCode = initialItems[0]?.sales_order_number ||
-                initialItems[0]?.plan?.order?.order_no ||
-                initialItems[0]?.plan?.stock_production?.production_no || '';
+            const displayCode = firstItem.sales_order_number ||
+                firstItem.plan?.order?.order_no ||
+                firstItem.plan?.stock_production?.production_no || '';
 
             setFormData(prev => ({
                 ...prev,
                 partner_id: foundPartner ? foundPartner.id : (prev.partner_id || ''),
-                order_id: initialItems[0]?.plan?.order_id || '',
+                order_id: firstItem.plan?.order_id || '',
                 display_order_no: displayCode,
                 items: initialItems.map(item => {
-                    // FALLBACK: Use provided product object if product_id is not directly on item
-                    const productObj = item.product || {};
-                    const productId = item.product_id || productObj.id;
+                    // [Defense] Try various field names for product/item/material
+                    const productObj = item.product || item.material || item.item || {};
+                    const productId = item.product_id || productObj.id || item.material_id || item.item_id;
                     
                     if (item.type === 'PENDING') {
                         // Priority: 1. standard_processes of provided product, 2. products list, 3. item.unit_price
-                        const product = productObj.id ? productObj : products.find(p => p.id === productId);
+                        const product = productObj.id ? productObj : (products.find(p => p.id === productId) || {});
                         let unitPrice = item.unit_price || 0;
                         
                         if (product && product.standard_processes) {
@@ -223,14 +228,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             if (standardProc) unitPrice = standardProc.cost || unitPrice;
                         }
                         return {
-                            product_id: productId,
-                            quantity: item.quantity,
+                            product_id: productId || '',
+                            quantity: item.quantity || 1,
                             unit_price: unitPrice,
                             note: item.note || item.process_name || '',
                             production_plan_item_id: item.id
                         };
                     } else if (item.type === 'MRP') {
-                        const product = productObj.id ? productObj : products.find(p => p.id === productId);
+                        const product = productObj.id ? productObj : (products.find(p => p.id === productId) || {});
                         let unitPrice = 0;
                         if (product && product.standard_processes) {
                             const standardProc = product.standard_processes.find(sp =>
@@ -240,26 +245,31 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             if (standardProc) unitPrice = standardProc.cost || 0;
                         }
                         return {
-                            product_id: productId,
+                            product_id: productId || '',
                             quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : (item.required_purchase_qty || 0),
                             unit_price: unitPrice || 0,
                             note: 'MRP 소요량 기반 발주',
                             production_plan_item_id: null,
                             material_requirement_id: item.id,
                             current_stock: item.current_stock,
-                            required_quantity: item.required_quantity !== undefined ? item.required_quantity : item.total_demand,
-                            shortage_quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : item.required_purchase_qty
+                            required_quantity: item.required_quantity !== undefined ? item.required_quantity : (item.total_demand || 0),
+                            shortage_quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : (item.required_purchase_qty || 0)
                         };
                     } else if (item.type === 'CONSUMABLE_WAIT') {
                         return {
-                            product_id: productId,
-                            quantity: item.quantity,
+                            product_id: productId || '',
+                            quantity: item.quantity || 1,
                             unit_price: item.unit_price || 0,
                             note: item.remarks || '',
                             consumable_purchase_wait_id: item.id
                         };
                     }
-                    return item;
+                    return {
+                        product_id: productId || '',
+                        quantity: item.quantity || 1,
+                        unit_price: item.unit_price || 0,
+                        note: item.note || ''
+                    };
                 })
             }));
         } else if (isOpen && !order && (!initialItems || initialItems.length === 0)) {
@@ -449,6 +459,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         }
     };
 
+    // [Defense] Safe product label formatter
+    const getProductLabel = (p) => {
+        if (!p) return '';
+        const code = p.code || p.product_code || '';
+        const name = p.name || p.product_name || '';
+        const spec = p.specification || p.spec || '';
+        return `[${code || 'N/A'}] ${name}${spec ? ` (${spec})` : ''}`;
+    };
+
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>{order ? "발주서 수정" : "발주서 등록"}</DialogTitle>
@@ -527,29 +546,27 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                     <TableRow key={index}>
                                         <TableCell>{index + 1}</TableCell>
                                         <TableCell>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <TextField
-                                                    fullWidth
-                                                    size="small"
-                                                    value={prod ? `${prod.name} (${prod.specification || '-'})` : '제품 선택'}
-                                                    onClick={() => {
-                                                        setActiveRowIndex(index);
-                                                        setIsProductModalOpen(true);
-                                                    }}
-                                                    InputProps={{
-                                                        readOnly: true,
-                                                        endAdornment: (
-                                                            <IconButton size="small" onClick={() => {
-                                                                setActiveRowIndex(index);
-                                                                setIsProductModalOpen(true);
-                                                            }}>
-                                                                <ChevronRight size={16} />
-                                                            </IconButton>
-                                                        )
-                                                    }}
-                                                    placeholder="제품 선택"
-                                                />
-                                            </Box>
+                                            <Autocomplete
+                                                size="small"
+                                                options={products}
+                                                getOptionLabel={getProductLabel}
+                                                value={prod || null}
+                                                onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
+                                                renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}
+                                                renderOption={(props, option) => (
+                                                    <li {...props}>
+                                                        <Box>
+                                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                                [{option.code || option.product_code}] {option.name}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="textSecondary">
+                                                                규격: {option.specification || '-'} | 현재고: {option.current_inventory || 0}
+                                                            </Typography>
+                                                        </Box>
+                                                    </li>
+                                                )}
+                                                sx={{ minWidth: 250 }}
+                                            />
                                         </TableCell>
                                         <TableCell>
                                             <TextField
@@ -632,15 +649,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 <Button onClick={handleSubmit} variant="contained" color="primary">저장</Button>
             </DialogActions>
 
-            <ProductSelectionModal
-                isOpen={isProductModalOpen}
-                onClose={() => {
-                    setIsProductModalOpen(false);
-                    setActiveRowIndex(null);
-                }}
-                onSelect={handleSelectProduct}
-                products={products}
-            />
+
 
             <Popover
                 open={Boolean(anchorEl)}
