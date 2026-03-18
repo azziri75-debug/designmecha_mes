@@ -274,11 +274,12 @@ async def create_document(
             if target_s:
                 lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
     else:
-        # Get default approval lines from template (Case-insensitive)
+        # Get default approval lines from template (Case-insensitive & Trimmed)
+        doc_type_clean = doc_in.doc_type.strip().upper()
         lines_res = await db.execute(
             select(ApprovalLine)
             .options(selectinload(ApprovalLine.approver))
-            .where(func.upper(ApprovalLine.doc_type) == doc_in.doc_type.upper())
+            .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
             .order_by(ApprovalLine.sequence)
         )
         lines = lines_res.scalars().all()

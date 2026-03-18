@@ -10,13 +10,31 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
     const steps = documentData?.steps || [];
     console.log("렌더링되는 결재선 데이터:", steps);
 
+    const getImgUrl = (img) => {
+        if (!img) return null;
+        let url = "";
+        if (typeof img === 'string') {
+            try { url = JSON.parse(img).url; } catch { url = img; }
+        } else if (img.url) {
+            url = img.url;
+        } else if (Array.isArray(img) && img.length > 0) {
+            url = img[0].url;
+        }
+
+        if (!url) return null;
+        if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('/')) return url;
+        // Fix for relative paths: ensure static prefix
+        return `/api/v1/static/${url.replace(/^\//, '')}`;
+    };
+
     const getStatusMarker = (step, isAuthor = false) => {
         if (isAuthor) {
+            const stampUrl = getImgUrl(author?.stamp_image);
             return (
                 <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-                    {author?.stamp_image?.url ? (
+                    {stampUrl ? (
                         <img 
-                            src={author.stamp_image.url} 
+                            src={stampUrl} 
                             alt="Stamp" 
                             style={{ 
                                 width: '100%', 
@@ -36,11 +54,12 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
         }
 
         if (step?.status === 'APPROVED') {
+            const stampUrl = getImgUrl(step.approver?.stamp_image);
             return (
                 <Box sx={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    {step.approver?.stamp_image?.url ? (
+                    {stampUrl ? (
                         <img 
-                            src={step.approver.stamp_image.url} 
+                            src={stampUrl} 
                             alt="Stamp" 
                             style={{ 
                                 width: '100%', 
