@@ -76,7 +76,7 @@ async def sync_plan_item_cost(db: AsyncSession, plan_item: ProductionPlanItem):
             )
         )
         result = await db.execute(stmt)
-        std_unit_cost = result.scalar_one_or_none()
+        std_unit_cost = result.scalars().first()
         if std_unit_cost is not None:
             plan_item.cost = std_unit_cost * (plan_item.quantity or 1)
             db.add(plan_item)
@@ -166,200 +166,135 @@ async def create_production_plan(
     Create a production plan from a Sales Order or Stock Production.
     Auto-generates plan items based on Product Processes.
     """
-    # 1. Check if Order or StockProduction exists
-    if plan_in.order_id:
-        result = await db.execute(select(SalesOrder).where(SalesOrder.id == plan_in.order_id))
-        order = result.scalar_one_or_none()
-        if not order:
-            raise HTTPException(status_code=404, detail="Sales Order not found")
+    try:
+        # 1. Check if Order or StockProduction exists
+        if plan_in.order_id:
+            result = await db.execute(select(SalesOrder).where(SalesOrder.id == plan_in.order_id))
+            order = result.scalars().first()
+            if not order:
+                raise HTTPException(status_code=404, detail="Sales Order not found")
+                
+            # Check if ACTIVE Plan already exists for this order
+            result = await db.execute(select(ProductionPlan).where(
+                ProductionPlan.order_id == plan_in.order_id,
+                cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
+            ).limit(1))
+            if result.scalars().first():
+                # Return existing active plan instead of error (Idempotency)
+                result = await db.execute(
+                    select(ProductionPlan)
+                    .options(
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
+                            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                            selectinload(Product.bom_items).selectinload(BOM.child_product)
+                        ),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
+                        selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                        selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+                    )
+                    .where(ProductionPlan.order_id == plan_in.order_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+                    .limit(1)
+                )
+                return result.scalars().first()
+        elif plan_in.stock_production_id:
+            result = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
+            sp = result.scalars().first()
+            if not sp:
+                raise HTTPException(status_code=404, detail="Stock Production request not found")
             
-        # Check if ACTIVE Plan already exists for this order
-        result = await db.execute(select(ProductionPlan).where(
-            ProductionPlan.order_id == plan_in.order_id,
-            cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
-        ).limit(1))
-        if result.scalar_one_or_none():
-            # Return existing active plan instead of error (Idempotency)
-            result = await db.execute(
-                select(ProductionPlan)
-                .options(
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
-                        selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-                        selectinload(Product.bom_items).selectinload(BOM.child_product)
-                    ),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
-                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+            # Check if ACTIVE Plan already exists for this stock production
+            result = await db.execute(select(ProductionPlan).where(
+                ProductionPlan.stock_production_id == plan_in.stock_production_id,
+                cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
+            ).limit(1))
+            if result.scalars().first():
+                # Return existing active plan instead of error (Idempotency)
+                result = await db.execute(
+                    select(ProductionPlan)
+                    .options(
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
+                            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                            selectinload(Product.bom_items).selectinload(BOM.child_product)
+                        ),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
+                        selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                        selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+                    )
+                    .where(ProductionPlan.stock_production_id == plan_in.stock_production_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+                    .limit(1)
                 )
-                .where(ProductionPlan.order_id == plan_in.order_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
-                .limit(1)
-            )
-            return result.scalar_one_or_none()
-    elif plan_in.stock_production_id:
-        result = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
-        sp = result.scalar_one_or_none()
-        if not sp:
-            raise HTTPException(status_code=404, detail="Stock Production request not found")
-        
-        # Check if ACTIVE Plan already exists for this stock production
-        result = await db.execute(select(ProductionPlan).where(
-            ProductionPlan.stock_production_id == plan_in.stock_production_id,
-            cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
-        ).limit(1))
-        if result.scalar_one_or_none():
-            # Return existing active plan instead of error (Idempotency)
-            result = await db.execute(
-                select(ProductionPlan)
-                .options(
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
-                        selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-                        selectinload(Product.bom_items).selectinload(BOM.child_product)
-                    ),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
-                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
-                )
-                .where(ProductionPlan.stock_production_id == plan_in.stock_production_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
-                .limit(1)
-            )
-            return result.scalar_one_or_none()
-    else:
-        raise HTTPException(status_code=400, detail="Either order_id or stock_production_id is required")
+                return result.scalars().first()
+        else:
+            raise HTTPException(status_code=400, detail="Either order_id or stock_production_id is required")
 
-    # 3. Create Plan Header
-    plan = ProductionPlan(
-        order_id=plan_in.order_id,
-        stock_production_id=plan_in.stock_production_id,
-        plan_date=plan_in.plan_date,
-        status=ProductionStatus.IN_PROGRESS
-    )
-    db.add(plan)
-    await db.flush()
-    
-    # 4. Generate Items
-    if plan_in.items:
-        for item_in in plan_in.items:
-            plan_item = ProductionPlanItem(
-                plan_id=plan.id,
-                product_id=item_in.product_id,
-                process_name=item_in.process_name,
-                sequence=item_in.sequence,
-                course_type=item_in.course_type,
-                partner_name=item_in.partner_name,
-                work_center=item_in.work_center,
-                estimated_time=item_in.estimated_time,
-                start_date=item_in.start_date,
-                end_date=item_in.end_date,
-                worker_id=item_in.worker_id,
-                equipment_id=item_in.equipment_id,
-                note=item_in.note,
-                status=item_in.status,
-                attachment_file=item_in.attachment_file,
-                quantity=item_in.quantity,
-                cost=item_in.cost
-            )
-            db.add(plan_item)
-            await sync_plan_item_cost(db, plan_item)
-        
+        # 3. Create Plan Header
+        plan = ProductionPlan(
+            order_id=plan_in.order_id,
+            stock_production_id=plan_in.stock_production_id,
+            plan_date=plan_in.plan_date,
+            status=ProductionStatus.IN_PROGRESS
+        )
+        db.add(plan)
         await db.flush()
         
-        # 5. Trigger MRP if status is CONFIRMED
-        if plan.status == ProductionStatus.CONFIRMED:
-            from app.api.utils.mrp import calculate_and_record_mrp
-            await calculate_and_record_mrp(db, plan_id=plan.id)
-    else:
-        # Default logic for Sales Order (already exists) or Stock Production
-        # If stock production, it's usually just one product.
-        if plan_in.stock_production_id:
-            # Fetch StockProduction to get product_id and quantity
-            res = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
-            sp = res.scalar_one()
-            
-            # Fetch processes and Product
-            stmt = (
-                select(ProductProcess, Process.name, Process.course_type, Product.drawing_file)
-                .join(Process, ProductProcess.process_id == Process.id)
-                .join(Product, ProductProcess.product_id == Product.id)
-                .where(ProductProcess.product_id == sp.product_id)
-                .order_by(ProductProcess.sequence)
-            )
-            result = await db.execute(stmt)
-            processes = result.all()
-            
-            import json
-            for proc, proc_name, proc_course_type, prod_drawing in processes:
-                # Merge attachments: process attachment + product drawing
-                final_attachments = []
-                
-                # Add product drawing files
-                if prod_drawing:
-                    try:
-                        parsed = json.loads(prod_drawing) if isinstance(prod_drawing, str) else prod_drawing
-                        if isinstance(parsed, list): final_attachments.extend(parsed)
-                        else: final_attachments.append(parsed)
-                    except: final_attachments.append(prod_drawing)
-                
-                # Add process attachment files
-                if proc.attachment_file:
-                    try:
-                        parsed = json.loads(proc.attachment_file) if isinstance(proc.attachment_file, str) else proc.attachment_file
-                        if isinstance(parsed, list): final_attachments.extend(parsed)
-                        else: final_attachments.append(parsed)
-                    except: final_attachments.append(proc.attachment_file)
-                
-                # Deduplicate and format
-                unique_attachments = []
-                seen_urls = set()
-                for att in final_attachments:
-                    if isinstance(att, dict) and att.get('url'):
-                        if att['url'] not in seen_urls:
-                            unique_attachments.append(att)
-                            seen_urls.add(att['url'])
-                    elif isinstance(att, str):
-                        if att not in seen_urls:
-                            unique_attachments.append(att)
-                            seen_urls.add(att)
-
-                final_attachment_json = json.dumps(unique_attachments, ensure_ascii=False) if unique_attachments else None
-
-                final_course_type = proc.course_type or proc_course_type or "INTERNAL"
+        # 4. Generate Items
+        if plan_in.items:
+            for item_in in plan_in.items:
                 plan_item = ProductionPlanItem(
                     plan_id=plan.id,
-                    product_id=sp.product_id,
-                    process_name=proc_name,
-                    sequence=proc.sequence,
-                    course_type=final_course_type,
-                    partner_name=proc.partner_name,
-                    work_center=proc.equipment_name,
-                    estimated_time=proc.estimated_time,
-                    attachment_file=final_attachment_json,
-                    quantity=sp.quantity,
-                    status=ProductionStatus.PLANNED,
-                    cost=(getattr(proc, 'cost', 0) or 0) * sp.quantity
+                    product_id=item_in.product_id,
+                    process_name=item_in.process_name,
+                    sequence=item_in.sequence,
+                    course_type=item_in.course_type,
+                    partner_name=item_in.partner_name,
+                    work_center=item_in.work_center,
+                    estimated_time=item_in.estimated_time,
+                    start_date=item_in.start_date,
+                    end_date=item_in.end_date,
+                    worker_id=item_in.worker_id,
+                    equipment_id=item_in.equipment_id,
+                    note=item_in.note,
+                    status=item_in.status,
+                    attachment_file=item_in.attachment_file,
+                    quantity=item_in.quantity,
+                    cost=item_in.cost
                 )
                 db.add(plan_item)
+                await sync_plan_item_cost(db, plan_item)
+            
+            await db.flush()
+            
+            # 5. Trigger MRP if status is CONFIRMED
+            if plan.status == ProductionStatus.CONFIRMED:
+                from app.api.utils.mrp import calculate_and_record_mrp
+                await calculate_and_record_mrp(db, plan_id=plan.id)
         else:
-            # Sales Order logic (restored)
-            result = await db.execute(select(SalesOrderItem).where(SalesOrderItem.order_id == plan_in.order_id))
-            order_items = result.scalars().all()
-            for item in order_items:
+            # Default logic for Sales Order (already exists) or Stock Production
+            # If stock production, it's usually just one product.
+            if plan_in.stock_production_id:
+                # Fetch StockProduction to get product_id and quantity
+                res = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
+                sp = res.scalars().first()
+                
+                # Fetch processes and Product
                 stmt = (
                     select(ProductProcess, Process.name, Process.course_type, Product.drawing_file)
                     .join(Process, ProductProcess.process_id == Process.id)
                     .join(Product, ProductProcess.product_id == Product.id)
-                    .where(ProductProcess.product_id == item.product_id)
+                    .where(ProductProcess.product_id == sp.product_id)
                     .order_by(ProductProcess.sequence)
                 )
                 result = await db.execute(stmt)
                 processes = result.all()
+                
                 import json
                 for proc, proc_name, proc_course_type, prod_drawing in processes:
                     # Merge attachments: process attachment + product drawing
@@ -381,7 +316,7 @@ async def create_production_plan(
                             else: final_attachments.append(parsed)
                         except: final_attachments.append(proc.attachment_file)
                     
-                    # Deduplicate
+                    # Deduplicate and format
                     unique_attachments = []
                     seen_urls = set()
                     for att in final_attachments:
@@ -399,7 +334,7 @@ async def create_production_plan(
                     final_course_type = proc.course_type or proc_course_type or "INTERNAL"
                     plan_item = ProductionPlanItem(
                         plan_id=plan.id,
-                        product_id=item.product_id,
+                        product_id=sp.product_id,
                         process_name=proc_name,
                         sequence=proc.sequence,
                         course_type=final_course_type,
@@ -407,44 +342,112 @@ async def create_production_plan(
                         work_center=proc.equipment_name,
                         estimated_time=proc.estimated_time,
                         attachment_file=final_attachment_json,
-                        quantity=item.quantity,
+                        quantity=sp.quantity,
                         status=ProductionStatus.PLANNED,
-                        cost=(getattr(proc, 'cost', 0) or 0) * item.quantity
+                        cost=(getattr(proc, 'cost', 0) or 0) * sp.quantity
                     )
                     db.add(plan_item)
+            else:
+                # Sales Order logic (restored)
+                result = await db.execute(select(SalesOrderItem).where(SalesOrderItem.order_id == plan_in.order_id))
+                order_items = result.scalars().all()
+                for item in order_items:
+                    stmt = (
+                        select(ProductProcess, Process.name, Process.course_type, Product.drawing_file)
+                        .join(Process, ProductProcess.process_id == Process.id)
+                        .join(Product, ProductProcess.product_id == Product.id)
+                        .where(ProductProcess.product_id == item.product_id)
+                        .order_by(ProductProcess.sequence)
+                    )
+                    result = await db.execute(stmt)
+                    processes = result.all()
+                    import json
+                    for proc, proc_name, proc_course_type, prod_drawing in processes:
+                        # Merge attachments: process attachment + product drawing
+                        final_attachments = []
+                        
+                        # Add product drawing files
+                        if prod_drawing:
+                            try:
+                                parsed = json.loads(prod_drawing) if isinstance(prod_drawing, str) else prod_drawing
+                                if isinstance(parsed, list): final_attachments.extend(parsed)
+                                else: final_attachments.append(parsed)
+                            except: final_attachments.append(prod_drawing)
+                        
+                        # Add process attachment files
+                        if proc.attachment_file:
+                            try:
+                                parsed = json.loads(proc.attachment_file) if isinstance(proc.attachment_file, str) else proc.attachment_file
+                                if isinstance(parsed, list): final_attachments.extend(parsed)
+                                else: final_attachments.append(parsed)
+                            except: final_attachments.append(proc.attachment_file)
+                        
+                        # Deduplicate
+                        unique_attachments = []
+                        seen_urls = set()
+                        for att in final_attachments:
+                            if isinstance(att, dict) and att.get('url'):
+                                if att['url'] not in seen_urls:
+                                    unique_attachments.append(att)
+                                    seen_urls.add(att['url'])
+                            elif isinstance(att, str):
+                                if att not in seen_urls:
+                                    unique_attachments.append(att)
+                                    seen_urls.add(att)
 
-    await db.commit()
-    await db.refresh(plan)
-    
-    # Reload logic (Update options to include stock_production)
-    result = await db.execute(
-        select(ProductionPlan)
-        .options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
-                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-                selectinload(Product.bom_items).selectinload(BOM.child_product)
-            ),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).options(
-                selectinload(StockProduction.product),
-                selectinload(StockProduction.partner)
-            ),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).options(
+                        final_attachment_json = json.dumps(unique_attachments, ensure_ascii=False) if unique_attachments else None
+
+                        final_course_type = proc.course_type or proc_course_type or "INTERNAL"
+                        plan_item = ProductionPlanItem(
+                            plan_id=plan.id,
+                            product_id=item.product_id,
+                            process_name=proc_name,
+                            sequence=proc.sequence,
+                            course_type=final_course_type,
+                            partner_name=proc.partner_name,
+                            work_center=proc.equipment_name,
+                            estimated_time=proc.estimated_time,
+                            attachment_file=final_attachment_json,
+                            quantity=item.quantity,
+                            status=ProductionStatus.PLANNED,
+                            cost=(getattr(proc, 'cost', 0) or 0) * item.quantity
+                        )
+                        db.add(plan_item)
+
+        await db.commit()
+        await db.refresh(plan)
+        
+        # Reload logic (Update options to include stock_production)
+        result = await db.execute(
+            select(ProductionPlan)
+            .options(
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
+                    selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                    selectinload(Product.bom_items).selectinload(BOM.child_product)
+                ),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
-            ),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
+                selectinload(ProductionPlan.stock_production).options(
+                    selectinload(StockProduction.product),
+                    selectinload(StockProduction.partner)
+                ),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).options(
+                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                ),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
+            )
+            .where(ProductionPlan.id == plan.id)
         )
-        .where(ProductionPlan.id == plan.id)
-    )
-    plan = result.scalar_one()
-    for item in plan.items:
-        item.completed_quantity = calculate_completed_quantity(item)
-    return plan
+        plan = result.scalars().first()
+        for item in plan.items:
+            item.completed_quantity = calculate_completed_quantity(item)
+        return plan
+    except MultipleResultsFound:
+        raise HTTPException(status_code=400, detail="데이터 중복 오류: 동일 품목에 대해 여러 개의 수주 또는 마스터 데이터가 발견되었습니다. 관리자에게 문의하세요.")
 
 def calculate_completed_quantity(item: ProductionPlanItem) -> int:
     """
@@ -481,7 +484,7 @@ async def update_production_plan(
         .options(selectinload(ProductionPlan.items))
         .where(ProductionPlan.id == plan_id)
     )
-    plan = result.scalar_one_or_none()
+    plan = result.scalars().first()
     
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
@@ -574,7 +577,7 @@ async def update_production_plan(
         )
         .where(ProductionPlan.id == plan_id)
     )
-    plan = result.scalar_one()
+    plan = result.scalars().first()
     for item in plan.items:
         item.completed_quantity = calculate_completed_quantity(item)
     return plan
@@ -598,7 +601,7 @@ async def export_production_plan_excel(
         )
         .where(ProductionPlan.id == plan_id)
     )
-    plan = result.scalar_one_or_none()
+    plan = result.scalars().first()
     
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
@@ -818,7 +821,7 @@ async def export_production_plan_excel(
         )
         .where(ProductionPlan.id == plan.id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
     """
@@ -828,7 +831,7 @@ async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
     result = await db.execute(
         select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id)
     )
-    plan = result.scalar_one_or_none()
+    plan = result.scalars().first()
     if not plan or not plan.items:
         return
 
@@ -850,7 +853,7 @@ async def delete_production_plan(
     """
     # 1. Fetch Plan with all relevant info for safeguard check
     result = await db.execute(select(ProductionPlan).where(ProductionPlan.id == plan_id))
-    plan = result.scalar_one_or_none()
+    plan = result.scalars().first()
     
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
@@ -981,232 +984,235 @@ async def update_production_plan_status(
     Update production plan status.
     If COMPLETED, update SalesOrder status to PRODUCTION_COMPLETED.
     """
-    # Eager load items and linked orders
-    result = await db.execute(
-        select(ProductionPlan)
-        .options(
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).options(
-                selectinload(PurchaseOrderItem.purchase_order).selectinload(PurchaseOrder.items)
-            ),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).options(
-                selectinload(OutsourcingOrderItem.outsourcing_order).selectinload(OutsourcingOrder.items)
-            ),
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
+    try:
+        # Eager load items and linked orders
+        result = await db.execute(
+            select(ProductionPlan)
+            .options(
+                selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).options(
+                    selectinload(PurchaseOrderItem.purchase_order).selectinload(PurchaseOrder.items)
+                ),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).options(
+                    selectinload(OutsourcingOrderItem.outsourcing_order).selectinload(OutsourcingOrder.items)
+                ),
+                selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
+            )
+            .where(ProductionPlan.id == plan_id)
         )
-        .where(ProductionPlan.id == plan_id)
-    )
-    plan = result.scalar_one_or_none()
-    
-    if not plan:
-        raise HTTPException(status_code=404, detail="Production Plan not found")
+        plan = result.scalars().first()
         
-    old_status = plan.status
-    plan.status = status
-    
-    # 0. CONFIRMED Trigger: Calculate MRP directly inline
-    if status == ProductionStatus.CONFIRMED and old_status != ProductionStatus.CONFIRMED:
-        print(f"MRP Generation Started for Plan {plan_id}")
-        from app.api.utils.mrp import calculate_and_record_mrp
-        await calculate_and_record_mrp(db, plan_id=plan_id)
-        print(f"MRP Generation Completed for Plan {plan_id}")
-    
-    # Auto-Complete Logic
-    if status == ProductionStatus.COMPLETED:
-        affected_po_ids = set()
-        affected_oo_ids = set()
+        if not plan:
+            raise HTTPException(status_code=404, detail="Production Plan not found")
+            
+        old_status = plan.status
+        plan.status = status
         
-        for item in plan.items:
-            # 1. Update Purchase Items
-            for po_item in item.purchase_items:
-                # Set received quantity to full
-                if po_item.quantity > po_item.received_quantity:
-                    po_item.received_quantity = po_item.quantity
-                    db.add(po_item)
-                affected_po_ids.add(po_item.purchase_order_id)
+        # 0. CONFIRMED Trigger: Calculate MRP directly inline
+        if status == ProductionStatus.CONFIRMED and old_status != ProductionStatus.CONFIRMED:
+            print(f"MRP Generation Started for Plan {plan_id}")
+            from app.api.utils.mrp import calculate_and_record_mrp
+            await calculate_and_record_mrp(db, plan_id=plan_id)
+            print(f"MRP Generation Completed for Plan {plan_id}")
+        
+        # Auto-Complete Logic
+        if status == ProductionStatus.COMPLETED:
+            affected_po_ids = set()
+            affected_oo_ids = set()
+            
+            for item in plan.items:
+                # 1. Update Purchase Items
+                for po_item in item.purchase_items:
+                    # Set received quantity to full
+                    if po_item.quantity > po_item.received_quantity:
+                        po_item.received_quantity = po_item.quantity
+                        db.add(po_item)
+                    affected_po_ids.add(po_item.purchase_order_id)
+                    
+                # 2. Update Outsourcing Items
+                for oo_item in item.outsourcing_items:
+                    if oo_item.status != OutsourcingStatus.COMPLETED:
+                        oo_item.status = OutsourcingStatus.COMPLETED
+                        db.add(oo_item)
+                    affected_oo_ids.add(oo_item.outsourcing_order_id)
+            
+            await db.flush()
+            
+            # 3. Check and Complete Purchase Orders
+            for po_id in affected_po_ids:
+                po_query = select(PurchaseOrder).options(selectinload(PurchaseOrder.items)).where(PurchaseOrder.id == po_id)
+                po_result = await db.execute(po_query)
+                po = po_result.scalars().first()
                 
-            # 2. Update Outsourcing Items
-            for oo_item in item.outsourcing_items:
-                if oo_item.status != OutsourcingStatus.COMPLETED:
-                    oo_item.status = OutsourcingStatus.COMPLETED
-                    db.add(oo_item)
-                affected_oo_ids.add(oo_item.outsourcing_order_id)
-        
-        await db.flush()
-        
-        # 3. Check and Complete Purchase Orders
-        for po_id in affected_po_ids:
-            po_query = select(PurchaseOrder).options(selectinload(PurchaseOrder.items)).where(PurchaseOrder.id == po_id)
-            po_result = await db.execute(po_query)
-            po = po_result.scalar_one_or_none()
-            
-            if po:
-                # Check if all items are fully received
-                all_received = all(i.received_quantity >= i.quantity for i in po.items)
-                if all_received:
-                    po.status = PurchaseStatus.COMPLETED
-                    po.delivery_date = datetime.now().date() # Set actual delivery date?
-                    db.add(po)
+                if po:
+                    # Check if all items are fully received
+                    all_received = all(i.received_quantity >= i.quantity for i in po.items)
+                    if all_received:
+                        po.status = PurchaseStatus.COMPLETED
+                        po.delivery_date = datetime.now().date() # Set actual delivery date?
+                        db.add(po)
 
-        # 4. Check and Complete Outsourcing Orders
-        for oo_id in affected_oo_ids:
-            oo_query = select(OutsourcingOrder).options(selectinload(OutsourcingOrder.items)).where(OutsourcingOrder.id == oo_id)
-            oo_result = await db.execute(oo_query)
-            oo = oo_result.scalar_one_or_none()
-            
-            if oo:
-                # Check if all items are completed
-                all_completed = all(i.status == OutsourcingStatus.COMPLETED for i in oo.items)
-                if all_completed:
-                    oo.status = OutsourcingStatus.COMPLETED
-                    oo.delivery_date = datetime.now().date()
-                    db.add(oo)
+            # 4. Check and Complete Outsourcing Orders
+            for oo_id in affected_oo_ids:
+                oo_query = select(OutsourcingOrder).options(selectinload(OutsourcingOrder.items)).where(OutsourcingOrder.id == oo_id)
+                oo_result = await db.execute(oo_query)
+                oo = oo_result.scalars().first()
+                
+                if oo:
+                    # Check if all items are completed
+                    all_completed = all(i.status == OutsourcingStatus.COMPLETED for i in oo.items)
+                    if all_completed:
+                        oo.status = OutsourcingStatus.COMPLETED
+                        oo.delivery_date = datetime.now().date()
+                        db.add(oo)
 
-    # Sync with Sales Order or Stock Production
-    if status == ProductionStatus.COMPLETED and old_status != ProductionStatus.COMPLETED:
-        # --- Stock Movement & Backflush Hook ---
-        if plan.stock_production:
-            sp = plan.stock_production
-            # 1. 완제품 입고 처리
-            await handle_stock_movement(
-                db=db,
-                product_id=sp.product_id,
-                quantity=sp.quantity,
-                transaction_type=TransactionType.IN,
-                reference=sp.production_no
-            )
-            # 2. 하위 부품 Backflush (출고) 처리
-            await handle_backflush(
-                db=db,
-                parent_product_id=sp.product_id,
-                produced_quantity=sp.quantity,
-                reference=sp.production_no
-            )
-
-            # 3. 생산 중 수량 차감
-            stock_query = select(Stock).where(Stock.product_id == sp.product_id)
-            s_res = await db.execute(stock_query)
-            stock = s_res.scalar_one_or_none()
-            if stock and stock.in_production_quantity >= sp.quantity:
-                stock.in_production_quantity -= sp.quantity
-            
-            # Sync StockProduction status
-            sp.status = StockProductionStatus.COMPLETED
-            db.add(sp)
-            
-        elif plan.order:
-            for item in plan.order.items:
+        # Sync with Sales Order or Stock Production
+        if status == ProductionStatus.COMPLETED and old_status != ProductionStatus.COMPLETED:
+            # --- Stock Movement & Backflush Hook ---
+            if plan.stock_production:
+                sp = plan.stock_production
                 # 1. 완제품 입고 처리
                 await handle_stock_movement(
                     db=db,
-                    product_id=item.product_id,
-                    quantity=item.quantity,
+                    product_id=sp.product_id,
+                    quantity=sp.quantity,
                     transaction_type=TransactionType.IN,
-                    reference=plan.order.order_no
+                    reference=sp.production_no
                 )
                 # 2. 하위 부품 Backflush (출고) 처리
                 await handle_backflush(
                     db=db,
-                    parent_product_id=item.product_id,
-                    produced_quantity=item.quantity,
-                    reference=plan.order.order_no
+                    parent_product_id=sp.product_id,
+                    produced_quantity=sp.quantity,
+                    reference=sp.production_no
                 )
 
                 # 3. 생산 중 수량 차감
-                stock_query = select(Stock).where(Stock.product_id == item.product_id)
+                stock_query = select(Stock).where(Stock.product_id == sp.product_id)
                 s_res = await db.execute(stock_query)
-                stock = s_res.scalar_one_or_none()
-                if stock and stock.in_production_quantity >= item.quantity:
-                    stock.in_production_quantity -= item.quantity
-            
-            # Sync Sales Order status
-            plan.order.status = OrderStatus.PRODUCTION_COMPLETED
-            db.add(plan.order)
-            
-    # Rollback Logic (COMPLETED -> IN_PROGRESS)
-    elif old_status == ProductionStatus.COMPLETED and status == ProductionStatus.IN_PROGRESS:
-        # 1. Rollback Stocks
-        if plan.stock_production:
-            sp = plan.stock_production
-            stock_query = select(Stock).where(Stock.product_id == sp.product_id)
-            s_res = await db.execute(stock_query)
-            stock = s_res.scalar_one_or_none()
-            if stock:
-                # Subtract from current, add back to in_production
-                stock.current_quantity = max(0, stock.current_quantity - sp.quantity)
-                stock.in_production_quantity += sp.quantity
-            sp.status = StockProductionStatus.IN_PROGRESS
-            db.add(sp)
-        elif plan.order:
-            for item in plan.order.items:
-                stock_query = select(Stock).where(Stock.product_id == item.product_id)
+                stock = s_res.scalars().first()
+                if stock and stock.in_production_quantity >= sp.quantity:
+                    stock.in_production_quantity -= sp.quantity
+                
+                # Sync StockProduction status
+                sp.status = StockProductionStatus.COMPLETED
+                db.add(sp)
+                
+            elif plan.order:
+                for item in plan.order.items:
+                    # 1. 완제품 입고 처리
+                    await handle_stock_movement(
+                        db=db,
+                        product_id=item.product_id,
+                        quantity=item.quantity,
+                        transaction_type=TransactionType.IN,
+                        reference=plan.order.order_no
+                    )
+                    # 2. 하위 부품 Backflush (출고) 처리
+                    await handle_backflush(
+                        db=db,
+                        parent_product_id=item.product_id,
+                        produced_quantity=item.quantity,
+                        reference=plan.order.order_no
+                    )
+
+                    # 3. 생산 중 수량 차감
+                    stock_query = select(Stock).where(Stock.product_id == item.product_id)
+                    s_res = await db.execute(stock_query)
+                    stock = s_res.scalars().first()
+                    if stock and stock.in_production_quantity >= item.quantity:
+                        stock.in_production_quantity -= item.quantity
+                
+                # Sync Sales Order status
+                plan.order.status = OrderStatus.PRODUCTION_COMPLETED
+                db.add(plan.order)
+                
+        # Rollback Logic (COMPLETED -> IN_PROGRESS)
+        elif old_status == ProductionStatus.COMPLETED and status == ProductionStatus.IN_PROGRESS:
+            # 1. Rollback Stocks
+            if plan.stock_production:
+                sp = plan.stock_production
+                stock_query = select(Stock).where(Stock.product_id == sp.product_id)
                 s_res = await db.execute(stock_query)
-                stock = s_res.scalar_one_or_none()
+                stock = s_res.scalars().first()
                 if stock:
-                    stock.current_quantity = max(0, stock.current_quantity - item.quantity)
-                    stock.in_production_quantity += item.quantity
-            plan.order.status = OrderStatus.CONFIRMED
-            db.add(plan.order)
+                    # Subtract from current, add back to in_production
+                    stock.current_quantity = max(0, stock.current_quantity - sp.quantity)
+                    stock.in_production_quantity += sp.quantity
+                sp.status = StockProductionStatus.IN_PROGRESS
+                db.add(sp)
+            elif plan.order:
+                for item in plan.order.items:
+                    stock_query = select(Stock).where(Stock.product_id == item.product_id)
+                    s_res = await db.execute(stock_query)
+                    stock = s_res.scalars().first()
+                    if stock:
+                        stock.current_quantity = max(0, stock.current_quantity - item.quantity)
+                        stock.in_production_quantity += item.quantity
+                plan.order.status = OrderStatus.CONFIRMED
+                db.add(plan.order)
 
-        # 2. Rollback Linked Orders (Back to PENDING)
-        affected_po_ids = set()
-        affected_oo_ids = set()
-        for item in plan.items:
-            for po_item in item.purchase_items:
-                # Revert received quantity? 
-                # (User said "대기 상태로 변경", which usually means received_quantity = 0 or status = PENDING)
-                po_item.received_quantity = 0
-                db.add(po_item)
-                affected_po_ids.add(po_item.purchase_order_id)
+            # 2. Rollback Linked Orders (Back to PENDING)
+            affected_po_ids = set()
+            affected_oo_ids = set()
+            for item in plan.items:
+                for po_item in item.purchase_items:
+                    # Revert received quantity? 
+                    # (User said "대기 상태로 변경", which usually means received_quantity = 0 or status = PENDING)
+                    po_item.received_quantity = 0
+                    db.add(po_item)
+                    affected_po_ids.add(po_item.purchase_order_id)
+                
+                for oo_item in item.outsourcing_items:
+                    oo_item.status = OutsourcingStatus.PENDING
+                    db.add(oo_item)
+                    affected_oo_ids.add(oo_item.outsourcing_order_id)
             
-            for oo_item in item.outsourcing_items:
-                oo_item.status = OutsourcingStatus.PENDING
-                db.add(oo_item)
-                affected_oo_ids.add(oo_item.outsourcing_order_id)
-        
-        await db.flush()
+            await db.flush()
 
-        # Update PurchaseOrder statuses
-        for po_id in affected_po_ids:
-            po = await db.get(PurchaseOrder, po_id)
-            if po:
-                po.status = PurchaseStatus.PENDING
-                db.add(po)
-        
-        # Update OutsourcingOrder statuses
-        for oo_id in affected_oo_ids:
-            oo = await db.get(OutsourcingOrder, oo_id)
-            if oo:
-                oo.status = OutsourcingStatus.PENDING
-                db.add(oo)
+            # Update PurchaseOrder statuses
+            for po_id in affected_po_ids:
+                po = await db.get(PurchaseOrder, po_id)
+                if po:
+                    po.status = PurchaseStatus.PENDING
+                    db.add(po)
+            
+            # Update OutsourcingOrder statuses
+            for oo_id in affected_oo_ids:
+                oo = await db.get(OutsourcingOrder, oo_id)
+                if oo:
+                    oo.status = OutsourcingStatus.PENDING
+                    db.add(oo)
 
-    elif status == ProductionStatus.IN_PROGRESS:
-        if plan.order:
-            plan.order.status = OrderStatus.CONFIRMED 
-            db.add(plan.order)
-        elif plan.stock_production:
-            plan.stock_production.status = StockProductionStatus.IN_PROGRESS
-            db.add(plan.stock_production)
+        elif status == ProductionStatus.IN_PROGRESS:
+            if plan.order:
+                plan.order.status = OrderStatus.CONFIRMED 
+                db.add(plan.order)
+            elif plan.stock_production:
+                plan.stock_production.status = StockProductionStatus.IN_PROGRESS
+                db.add(plan.stock_production)
+            
+        await db.commit()
         
-    await db.commit()
-    
-    # Re-fetch with full options for response
-    result = await db.execute(
-        select(ProductionPlan)
-        .options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+        # Re-fetch with full options for response
+        result = await db.execute(
+            select(ProductionPlan)
+            .options(
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+            )
+            .where(ProductionPlan.id == plan_id)
         )
-        .where(ProductionPlan.id == plan_id)
-    )
-    return result.scalar_one()
+        return result.scalars().first()
+    except MultipleResultsFound:
+        raise HTTPException(status_code=400, detail="데이터 중복 오류: 동일 품목에 대해 여러 개의 재고 레코드가 발견되었습니다. 관리자에게 문의하세요.")
 
 @router.patch("/plan-items/{item_id}", response_model=schemas.ProductionPlanItem)
 async def update_production_plan_item(
@@ -1225,7 +1231,7 @@ async def update_production_plan_item(
         )
         .where(ProductionPlanItem.id == item_id)
     )
-    item = result.scalar_one_or_none()
+    item = result.scalars().first()
     if not item:
         raise HTTPException(status_code=404, detail="Plan Item not found")
 
@@ -1287,7 +1293,7 @@ async def update_production_plan_item(
         )
         .where(ProductionPlanItem.id == item_id)
     )
-    item = result.scalar_one()
+    item = result.scalars().first()
     item.completed_quantity = calculate_completed_quantity(item)
     return item
 
@@ -1454,7 +1460,7 @@ async def create_work_log(
         )
         .where(WorkLog.id == log.id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.put("/work-logs/{log_id}", response_model=schemas.WorkLog)
 async def update_work_log(
@@ -1468,7 +1474,7 @@ async def update_work_log(
     result = await db.execute(
         select(WorkLog).options(selectinload(WorkLog.items)).where(WorkLog.id == log_id)
     )
-    log = result.scalar_one_or_none()
+    log = result.scalars().first()
     if not log:
         raise HTTPException(status_code=404, detail="Work Log not found")
 
@@ -1567,7 +1573,7 @@ async def update_work_log(
         )
         .where(WorkLog.id == log.id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.delete("/work-logs/{log_id}")
 async def delete_work_log(
@@ -1578,7 +1584,7 @@ async def delete_work_log(
     Delete a work log.
     """
     result = await db.execute(select(WorkLog).where(WorkLog.id == log_id))
-    log = result.scalar_one_or_none()
+    log = result.scalars().first()
     if not log:
         raise HTTPException(status_code=404, detail="Work Log not found")
 
@@ -1763,7 +1769,7 @@ async def update_work_log_item(
         .options(selectinload(WorkLogItem.work_log))
         .where(WorkLogItem.id == item_id)
     )
-    item = result.scalar_one_or_none()
+    item = result.scalars().first()
     if not item:
         raise HTTPException(status_code=404, detail="Work Log Item not found")
 
@@ -1818,4 +1824,4 @@ async def update_work_log_item(
         )
         .where(WorkLogItem.id == item_id)
     )
-    return result.scalar_one()
+    return result.scalars().first()

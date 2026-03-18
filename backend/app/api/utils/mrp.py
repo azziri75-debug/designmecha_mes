@@ -46,7 +46,7 @@ async def calculate_and_record_mrp(
             .where(ProductionPlan.status != ProductionStatus.CANCELED)
             .options(selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product))
         )
-        plan = result.scalar_one_or_none()
+        plan = result.scalars().first()
         if not plan:
             print(f"[MRP] Plan {plan_id} not found or is CANCELED.")
             # Clear existing requirements if plan was canceled
@@ -86,7 +86,7 @@ async def calculate_and_record_mrp(
             .where(SalesOrder.status != OrderStatus.CANCELLED)
             .options(selectinload(SalesOrder.items).selectinload(SalesOrderItem.product))
         )
-        order = result.scalar_one_or_none()
+        order = result.scalars().first()
         if not order:
             # Clear existing requirements if order was canceled
             existing_stmt = select(MaterialRequirement).where(MaterialRequirement.order_id == order_id, MaterialRequirement.plan_id == None)
@@ -126,7 +126,7 @@ async def calculate_and_record_mrp(
         # Check stock
         stock_stmt = select(Stock).where(Stock.product_id == product_id)
         stock_res = await db.execute(stock_stmt)
-        stock = stock_res.scalar_one_or_none()
+        stock = stock_res.scalars().first()
         current_stock = stock.current_quantity if stock else 0
 
         # Check open POs

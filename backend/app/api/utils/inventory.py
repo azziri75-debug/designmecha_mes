@@ -29,7 +29,7 @@ async def handle_stock_movement(
     # 2. Stock 레코드 조회 또는 생성
     query = select(Stock).where(Stock.product_id == product_id)
     result = await db.execute(query)
-    stock = result.scalar_one_or_none()
+    stock = result.scalars().first()
 
     if not stock:
         # 재고 레코드가 없으면 생성 (0에서 시작)

@@ -40,7 +40,7 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Staff).where(Staff.name == req.username))
-    staff = result.scalar_one_or_none()
+    staff = result.scalars().first()
     
     if not staff:
         raise HTTPException(status_code=401, detail="사원 이름이 존재하지 않습니다.")
@@ -113,7 +113,7 @@ async def create_partner(
             .options(selectinload(Partner.contacts))
             .where(Partner.id == new_partner.id)
         )
-        created_partner = result.scalar_one()
+        created_partner = result.scalars().first()
         return created_partner
     except Exception as e:
         import traceback
@@ -148,7 +148,7 @@ async def update_partner(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Partner).where(Partner.id == partner_id))
-    partner = result.scalar_one_or_none()
+    partner = result.scalars().first()
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
     
@@ -167,7 +167,7 @@ async def delete_partner(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Partner).where(Partner.id == partner_id))
-    partner = result.scalar_one_or_none()
+    partner = result.scalars().first()
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
     
@@ -445,7 +445,7 @@ async def update_staff(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
-    staff = result.scalar_one_or_none()
+    staff = result.scalars().first()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
     
@@ -462,7 +462,7 @@ async def delete_staff(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
-    staff = result.scalar_one_or_none()
+    staff = result.scalars().first()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
     
@@ -497,7 +497,7 @@ async def update_contact(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Contact).where(Contact.id == contact_id))
-    contact = result.scalar_one_or_none()
+    contact = result.scalars().first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
     
@@ -514,7 +514,7 @@ async def delete_contact(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Contact).where(Contact.id == contact_id))
-    contact = result.scalar_one_or_none()
+    contact = result.scalars().first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
     
@@ -529,7 +529,7 @@ async def read_company(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Company).limit(1))
-    company = result.scalar_one_or_none()
+    company = result.scalars().first()
     if company:
         # Manually convert time objects to strings as requested
         return {
@@ -555,7 +555,7 @@ async def create_or_update_company(
 ):
     # Check if company exists
     result = await db.execute(select(Company).limit(1))
-    existing_company = result.scalar_one_or_none()
+    existing_company = result.scalars().first()
 
     if existing_company:
         # Update
@@ -591,12 +591,12 @@ async def create_equipment(eq_in: EquipmentCreate, db: AsyncSession = Depends(ge
         .options(selectinload(Equipment.history))
         .where(Equipment.id == new_eq.id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.put("/equipments/{eq_id}", response_model=EquipmentResponse)
 async def update_equipment(eq_id: int, eq_in: EquipmentUpdate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Equipment).where(Equipment.id == eq_id))
-    eq = result.scalar_one_or_none()
+    eq = result.scalars().first()
     if not eq: raise HTTPException(status_code=404)
     for k, v in eq_in.model_dump(exclude_unset=True).items():
         setattr(eq, k, v)
@@ -608,12 +608,12 @@ async def update_equipment(eq_id: int, eq_in: EquipmentUpdate, db: AsyncSession 
         .options(selectinload(Equipment.history))
         .where(Equipment.id == eq_id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.delete("/equipments/{eq_id}")
 async def delete_equipment(eq_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Equipment).where(Equipment.id == eq_id))
-    eq = result.scalar_one_or_none()
+    eq = result.scalars().first()
     if not eq: raise HTTPException(status_code=404)
     await db.delete(eq)
     await db.commit()
@@ -630,7 +630,7 @@ async def create_equipment_history(eq_id: int, h_in: EquipmentHistoryCreate, db:
 @router.put("/equipments/{eq_id}/history/{h_id}", response_model=EquipmentHistoryResponse)
 async def update_equipment_history(eq_id: int, h_id: int, h_in: EquipmentHistoryCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(EquipmentHistory).where(EquipmentHistory.id == h_id, EquipmentHistory.equipment_id == eq_id))
-    h = result.scalar_one_or_none()
+    h = result.scalars().first()
     if not h: raise HTTPException(status_code=404, detail="History not found")
     
     for k, v in h_in.model_dump(exclude_unset=True).items():
@@ -645,7 +645,7 @@ async def update_equipment_history(eq_id: int, h_id: int, h_in: EquipmentHistory
 @router.delete("/equipments/{eq_id}/history/{h_id}")
 async def delete_equipment_history(eq_id: int, h_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(EquipmentHistory).where(EquipmentHistory.id == h_id, EquipmentHistory.equipment_id == eq_id))
-    h = result.scalar_one_or_none()
+    h = result.scalars().first()
     if not h: raise HTTPException(status_code=404, detail="History not found")
     
     await db.delete(h)
@@ -662,14 +662,14 @@ async def read_form_templates(db: AsyncSession = Depends(get_db)):
 @router.get("/form-templates/{form_type}", response_model=FormTemplateResponse)
 async def read_form_template(form_type: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(FormTemplate).where(FormTemplate.form_type == form_type))
-    template = result.scalar_one_or_none()
+    template = result.scalars().first()
     if not template: raise HTTPException(status_code=404)
     return template
 
 @router.post("/form-templates/", response_model=FormTemplateResponse)
 async def create_or_update_form_template(tm_in: FormTemplateCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(FormTemplate).where(FormTemplate.form_type == tm_in.form_type))
-    existing = result.scalar_one_or_none()
+    existing = result.scalars().first()
     if existing:
         for k, v in tm_in.model_dump(exclude_unset=True).items():
             setattr(existing, k, v)
@@ -693,10 +693,10 @@ async def update_next_calibration_date(instrument_id: int, db: AsyncSession):
         .order_by(MeasurementHistory.history_date.desc())
         .limit(1)
     )
-    latest_cal = result.scalar_one_or_none()
+    latest_cal = result.scalars().first()
     
     inst_result = await db.execute(select(MeasuringInstrument).where(MeasuringInstrument.id == instrument_id))
-    inst = inst_result.scalar_one_or_none()
+    inst = inst_result.scalars().first()
     
     if inst and latest_cal and inst.calibration_cycle_months:
         inst.next_calibration_date = latest_cal.history_date + relativedelta(months=inst.calibration_cycle_months)
@@ -718,12 +718,12 @@ async def create_instrument(inst_in: MeasuringInstrumentCreate, db: AsyncSession
         .options(selectinload(MeasuringInstrument.history))
         .where(MeasuringInstrument.id == new_inst.id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.put("/instruments/{inst_id}", response_model=MeasuringInstrumentResponse)
 async def update_instrument(inst_id: int, inst_in: MeasuringInstrumentUpdate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MeasuringInstrument).where(MeasuringInstrument.id == inst_id))
-    inst = result.scalar_one_or_none()
+    inst = result.scalars().first()
     if not inst: raise HTTPException(status_code=404, detail="Instrument not found")
     
     for k, v in inst_in.model_dump(exclude_unset=True).items():
@@ -736,12 +736,12 @@ async def update_instrument(inst_id: int, inst_in: MeasuringInstrumentUpdate, db
         .options(selectinload(MeasuringInstrument.history))
         .where(MeasuringInstrument.id == inst_id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.delete("/instruments/{inst_id}")
 async def delete_instrument(inst_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MeasuringInstrument).where(MeasuringInstrument.id == inst_id))
-    inst = result.scalar_one_or_none()
+    inst = result.scalars().first()
     if not inst: raise HTTPException(status_code=404, detail="Instrument not found")
     
     await db.delete(inst)
@@ -765,7 +765,7 @@ async def create_instrument_history(inst_id: int, h_in: MeasurementHistoryCreate
 @router.put("/instruments/{inst_id}/history/{h_id}", response_model=MeasurementHistoryResponse)
 async def update_instrument_history(inst_id: int, h_id: int, h_in: MeasurementHistoryCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MeasurementHistory).where(MeasurementHistory.id == h_id, MeasurementHistory.instrument_id == inst_id))
-    h = result.scalar_one_or_none()
+    h = result.scalars().first()
     if not h: raise HTTPException(status_code=404, detail="History not found")
     
     for k, v in h_in.model_dump(exclude_unset=True).items():
@@ -784,7 +784,7 @@ async def update_instrument_history(inst_id: int, h_id: int, h_in: MeasurementHi
 @router.delete("/instruments/{inst_id}/history/{h_id}")
 async def delete_instrument_history(inst_id: int, h_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MeasurementHistory).where(MeasurementHistory.id == h_id, MeasurementHistory.instrument_id == inst_id))
-    h = result.scalar_one_or_none()
+    h = result.scalars().first()
     if not h: raise HTTPException(status_code=404, detail="History not found")
     
     was_calibration = h.history_type == 'CALIBRATION'

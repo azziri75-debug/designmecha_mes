@@ -70,7 +70,7 @@ async def create_estimate(
         selectinload(Estimate.partner)
     ).where(Estimate.id == db_estimate.id)
     result = await db.execute(query)
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.get("/estimates/", response_model=List[schemas.Estimate])
 async def read_estimates(
@@ -121,7 +121,7 @@ async def read_estimate(
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
     result = await db.execute(query)
-    estimate = result.scalar_one_or_none()
+    estimate = result.scalars().first()
     
     if not estimate:
         raise HTTPException(status_code=404, detail="Estimate not found")
@@ -140,7 +140,7 @@ async def export_estimate_excel(
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
     result = await db.execute(query)
-    estimate = result.scalar_one_or_none()
+    estimate = result.scalars().first()
 
     if not estimate:
         raise HTTPException(status_code=404, detail="Estimate not found")
@@ -308,7 +308,7 @@ async def export_estimate_excel(
             selectinload(Estimate.partner)
         ).where(Estimate.id == estimate_id)
         result = await db.execute(query)
-        return result.scalar_one()
+        return result.scalars().first()
 
     except Exception as e:
         print(f"Excel Export Error: {e}")
@@ -326,7 +326,7 @@ async def update_estimate(
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
     result = await db.execute(query)
-    db_estimate = result.scalar_one_or_none()
+    db_estimate = result.scalars().first()
     
     if not db_estimate:
         raise HTTPException(status_code=404, detail="Estimate not found")
@@ -369,7 +369,7 @@ async def update_estimate(
         selectinload(Estimate.partner)
     ).where(Estimate.id == estimate_id)
     result = await db.execute(query)
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.delete("/estimates/{estimate_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_estimate(
@@ -378,7 +378,7 @@ async def delete_estimate(
 ):
     query = select(Estimate).options(selectinload(Estimate.items)).where(Estimate.id == estimate_id)
     result = await db.execute(query)
-    db_estimate = result.scalar_one_or_none()
+    db_estimate = result.scalars().first()
     
     if not db_estimate:
         raise HTTPException(status_code=404, detail="Estimate not found")
@@ -464,7 +464,7 @@ async def create_order(
     ).where(SalesOrder.id == db_order.id)
     result = await db.execute(query)
     
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.get("/orders/", response_model=List[schemas.SalesOrder])
 async def read_orders(
@@ -526,7 +526,7 @@ async def update_order(
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
     ).where(SalesOrder.id == order_id)
     result = await db.execute(query)
-    db_order = result.scalar_one_or_none()
+    db_order = result.scalars().first()
     
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -620,7 +620,7 @@ async def update_order(
     ).where(SalesOrder.id == order_id)
     
     result = await db.execute(query)
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_order(
@@ -629,7 +629,7 @@ async def delete_order(
 ):
     query = select(SalesOrder).options(selectinload(SalesOrder.items)).where(SalesOrder.id == order_id)
     result = await db.execute(query)
-    db_order = result.scalar_one_or_none()
+    db_order = result.scalars().first()
     
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -754,7 +754,7 @@ async def get_recent_price(
         .limit(1)
         
     result = await db.execute(query)
-    last_order_item = result.scalar_one_or_none()
+    last_order_item = result.scalars().first()
     
     if last_order_item:
         return {"price": last_order_item.unit_price, "source": "order", "date": last_order_item.order.order_date}
@@ -768,7 +768,7 @@ async def get_recent_price(
         .limit(1)
         
     result = await db.execute(query)
-    last_estimate_item = result.scalar_one_or_none()
+    last_estimate_item = result.scalars().first()
         
     if last_estimate_item:
         return {"price": last_estimate_item.unit_price, "source": "estimate", "date": last_estimate_item.estimate.estimate_date}
@@ -836,7 +836,7 @@ async def create_delivery(
     """
     order_query = select(SalesOrder).options(selectinload(SalesOrder.items)).where(SalesOrder.id == order_id)
     order_res = await db.execute(order_query)
-    db_order = order_res.scalar_one_or_none()
+    db_order = order_res.scalars().first()
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -907,7 +907,7 @@ async def create_delivery(
         selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product)
     ).where(DeliveryHistory.id == db_delivery.id)
     res = await db.execute(query)
-    return res.scalar_one()
+    return res.scalars().first()
 
 @router.get("/orders/{order_id}/delivery", response_model=List[schemas.DeliveryHistory])
 async def get_delivery_histories(
@@ -932,7 +932,7 @@ async def update_delivery_history(
         DeliveryHistory.order_id == order_id
     )
     res = await db.execute(query)
-    db_delivery = res.scalar_one_or_none()
+    db_delivery = res.scalars().first()
     if not db_delivery:
         raise HTTPException(status_code=404, detail="Delivery history not found")
 
@@ -956,7 +956,7 @@ async def attach_delivery_statement(
     """
     query = select(DeliveryHistory).where(DeliveryHistory.id == delivery_id)
     res = await db.execute(query)
-    db_delivery = res.scalar_one_or_none()
+    db_delivery = res.scalars().first()
     
     if not db_delivery:
         raise HTTPException(status_code=404, detail="Delivery history not found")
@@ -1109,7 +1109,7 @@ async def attach_statement_to_delivery_history(
     """거래명세서 PDF를 저장하고 해당 DeliveryHistory에 링크를 저장합니다."""
     # 1. Fetch delivery history
     result = await db.execute(select(DeliveryHistory).where(DeliveryHistory.id == history_id))
-    history = result.scalar_one_or_none()
+    history = result.scalars().first()
     if not history:
         raise HTTPException(status_code=404, detail="DeliveryHistory not found")
 
@@ -1164,7 +1164,7 @@ async def update_delivery_history(
         )
         .where(DeliveryHistory.id == history_id)
     )
-    history = result.scalar_one_or_none()
+    history = result.scalars().first()
     if not history:
         raise HTTPException(status_code=404, detail="DeliveryHistory not found")
 
@@ -1224,7 +1224,7 @@ async def update_delivery_history(
         )
         .where(DeliveryHistory.id == history_id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1242,7 +1242,7 @@ async def delete_delivery_history(
         .options(selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item))
         .where(DeliveryHistory.id == history_id)
     )
-    history = result.scalar_one_or_none()
+    history = result.scalars().first()
     if not history:
         raise HTTPException(status_code=404, detail="DeliveryHistory not found")
 
@@ -1264,7 +1264,7 @@ async def delete_delivery_history(
         .options(selectinload(SalesOrder.items))
         .where(SalesOrder.id == order_id)
     )
-    order = order_result.scalar_one_or_none()
+    order = order_result.scalars().first()
     if order:
         remaining_histories = await db.execute(
             select(DeliveryHistory).where(DeliveryHistory.order_id == order_id)

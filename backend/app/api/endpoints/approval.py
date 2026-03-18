@@ -198,7 +198,7 @@ async def get_document_by_reference(
     ).order_by(ApprovalDocument.created_at.desc()).limit(1)
 
     result = await db.execute(query)
-    return result.scalar_one_or_none()
+    return result.scalars().first()
 
 @router.post("/documents", response_model=ApprovalDocumentResponse)
 async def create_document(
@@ -291,7 +291,7 @@ async def create_document(
     if doc_in.custom_approvers:
         for ca in doc_in.custom_approvers:
             s_res = await db.execute(select(Staff).where(Staff.id == ca.staff_id))
-            target_s = s_res.scalar_one_or_none()
+            target_s = s_res.scalars().first()
             if target_s:
                 lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
     else:
@@ -399,7 +399,7 @@ async def create_document(
         )
         .where(ApprovalDocument.id == db_doc.id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.get("/documents/{doc_id}", response_model=ApprovalDocumentResponse)
 async def get_document(
@@ -415,7 +415,7 @@ async def get_document(
         )
         .where(ApprovalDocument.id == doc_id, ApprovalDocument.deleted_at.is_(None))
     )
-    doc = result.scalar_one_or_none()
+    doc = result.scalars().first()
     if not doc:
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
     return doc
@@ -430,7 +430,7 @@ async def process_approval(
     """승인 또는 반려 처리"""
     # 1. 문서 및 내 단계 찾기
     result = await db.execute(select(ApprovalDocument).where(ApprovalDocument.id == doc_id))
-    doc = result.scalar_one_or_none()
+    doc = result.scalars().first()
     if not doc:
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
     
@@ -444,7 +444,7 @@ async def process_approval(
             ApprovalStep.status == "PENDING"
         )
     )
-    my_step = step_res.scalar_one_or_none()
+    my_step = step_res.scalars().first()
     
     if not my_step:
         raise HTTPException(status_code=403, detail="결재 권한이 없거나 현재 결재 순서가 아닙니다.")
@@ -489,7 +489,7 @@ async def process_approval(
             select(ApprovalStep)
             .where(ApprovalStep.document_id == doc_id, ApprovalStep.sequence == doc.current_sequence + 1)
         )
-        next_step = next_step_res.scalar_one_or_none()
+        next_step = next_step_res.scalars().first()
         
         if next_step:
             doc.current_sequence += 1
@@ -616,7 +616,7 @@ async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
             # 마스터 조회 및 생성
             stmt = select(Product).where(Product.name == name)
             res = await db.execute(stmt)
-            product = res.scalar_one_or_none()
+            product = res.scalars().first()
             
             if not product:
                 # generate placeholder code
@@ -825,7 +825,7 @@ async def update_document(
 ):
     """문서 수정 (작성자이며 대기/반려 상태일 때만 가능)"""
     result = await db.execute(select(ApprovalDocument).where(ApprovalDocument.id == doc_id))
-    doc = result.scalar_one_or_none()
+    doc = result.scalars().first()
     if not doc:
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
     
@@ -838,7 +838,7 @@ async def update_document(
         .options(selectinload(ApprovalDocument.steps))
         .where(ApprovalDocument.id == doc_id)
     )
-    doc = result.scalar_one()
+    doc = result.scalars().first()
     
     if not await is_editable(doc, current_user):
         raise HTTPException(status_code=400, detail="결재가 이미 진행되어 수정할 수 없습니다.")
@@ -872,7 +872,7 @@ async def update_document(
         if doc_in.custom_approvers:
             for ca in doc_in.custom_approvers:
                 s_res = await db.execute(select(Staff).where(Staff.id == ca.staff_id))
-                target_s = s_res.scalar_one_or_none()
+                target_s = s_res.scalars().first()
                 if target_s:
                     lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
         else:
@@ -951,7 +951,7 @@ async def update_document(
         )
         .where(ApprovalDocument.id == doc_id)
     )
-    return result.scalar_one()
+    return result.scalars().first()
 
 @router.delete("/documents/{doc_id}")
 async def delete_document(
@@ -961,7 +961,7 @@ async def delete_document(
 ):
     """문서 삭제 (작성자이며 대기/반려 상태일 때만 가능)"""
     result = await db.execute(select(ApprovalDocument).where(ApprovalDocument.id == doc_id))
-    doc = result.scalar_one_or_none()
+    doc = result.scalars().first()
     if not doc:
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
     
@@ -974,7 +974,7 @@ async def delete_document(
         .options(selectinload(ApprovalDocument.steps))
         .where(ApprovalDocument.id == doc_id)
     )
-    doc = result.scalar_one()
+    doc = result.scalars().first()
     
     if not await is_editable(doc, current_user):
         raise HTTPException(status_code=400, detail="결재가 이미 진행되어 삭제할 수 없습니다.")
@@ -1062,7 +1062,7 @@ async def sync_reference_status(db: AsyncSession, doc: ApprovalDocument):
             from app.models.purchasing import PurchaseOrder, PurchaseStatus
             stmt = select(PurchaseOrder).where(PurchaseOrder.id == doc.reference_id)
             res = await db.execute(stmt)
-            order = res.scalar_one_or_none()
+            order = res.scalars().first()
             if order:
                 if doc.status == ApprovalStatus.COMPLETED:
                     order.status = PurchaseStatus.ORDERED
@@ -1075,7 +1075,7 @@ async def sync_reference_status(db: AsyncSession, doc: ApprovalDocument):
             from app.models.purchasing import OutsourcingOrder, OutsourcingStatus
             stmt = select(OutsourcingOrder).where(OutsourcingOrder.id == doc.reference_id)
             res = await db.execute(stmt)
-            order = res.scalar_one_or_none()
+            order = res.scalars().first()
             if order:
                 if doc.status == ApprovalStatus.COMPLETED:
                     order.status = OutsourcingStatus.ORDERED
