@@ -459,6 +459,8 @@ const OutsourcingPage = () => {
                         <Table>
                             <TableHead>
                                 <TableRow sx={{ bgcolor: '#f8f9fa' }}>
+                                    <TableCell>발주번호</TableCell>
+                                    <TableCell>수주정보</TableCell>
                                     <TableCell>발주일자</TableCell>
                                     <TableCell>외주처</TableCell>
                                     <TableCell>품목 수</TableCell>
@@ -607,7 +609,7 @@ const OutsourcingPage = () => {
                                             </TableRow>
                                             {expandedOrderId === order.id && (
                                                 <TableRow>
-                                                    <TableCell colSpan={7} sx={{ py: 0, bgcolor: '#f5f5f5' }}>
+                                                    <TableCell colSpan={8} sx={{ py: 0, bgcolor: '#f5f5f5' }}>
                                                         <Box sx={{ margin: 2 }}>
                                                             <Typography variant="subtitle2" gutterBottom component="div" color="primary">
                                                                 * 외주 발주 상세 내역

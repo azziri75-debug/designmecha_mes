@@ -91,8 +91,16 @@ body.resizing {
     overflow: visible !important;
   }
 
+  body, html, #root {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    overflow: visible !important;
+    background-color: white !important;
+  }
+
   /* Global no-print utility */
-  .no-print, .idf-no-print, button, nav, aside, header, .sidebar, .modal-backdrop {
+  .no-print, .idf-no-print, button, nav, aside, header, .sidebar, .MuiBackdrop-root {
     display: none !important;
   }
 

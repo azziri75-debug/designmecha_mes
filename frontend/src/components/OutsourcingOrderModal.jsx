@@ -201,7 +201,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
     const fetchPartners = async () => {
         try {
-            const response = await api.get('/basics/partners/', { params: { type: 'SUBCONTRACTOR' } });
+            const response = await api.get('/basics/partners/');
             setPartners(response.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);

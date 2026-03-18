@@ -4,7 +4,7 @@ import {
     CircularProgress, Alert
 } from '@mui/material';
 import { X, Printer, FileDown, CheckCircle2 } from 'lucide-react';
-import { formatNumber, toKoreanCurrency } from '../lib/utils';
+import { formatNumber, toKoreanCurrency, getImageUrl } from '../lib/utils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
@@ -30,9 +30,9 @@ const injectPrintCSS = () => {
                 background: white !important; 
             }
             
-            /* Hide everything by default */
+            /* Hide everything by default except the print container and its parents */
             body * { visibility: hidden !important; }
-            .tsm-no-print, .MuiBackdrop-root, .MuiModal-root { display: none !important; }
+            .tsm-no-print, .MuiBackdrop-root { display: none !important; }
             
             /* Ensure the modal container itself doesn't show background/shadow */
             .MuiModal-root {
@@ -103,9 +103,10 @@ const td = (c, extra = {}) => ({
     border: `0.7px solid ${c}`,
     padding: '2px 3px',
     fontSize: '11px',
-    color: c,
+    color: `${c} !important`,
     verticalAlign: 'middle',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'normal',
+    wordBreak: 'break-all',
     overflow: 'hidden',
     ...extra,
 });
@@ -270,13 +271,18 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 <style>{`
                     .tsm-form-paper, .tsm-form-paper * {
                         background-color: white !important;
-                        color: black;
+                        color: black !important;
                     }
                     .tsm-form-paper td, .tsm-form-paper th {
                         border-color: var(--statement-color) !important;
                         color: var(--statement-color) !important;
+                        background-color: white !important;
                     }
                     .tsm-form-paper .colored-text {
+                        color: var(--statement-color) !important;
+                    }
+                    .tsm-form-paper input, .tsm-form-paper textarea {
+                        background-color: transparent !important;
                         color: var(--statement-color) !important;
                     }
                 `}</style>
