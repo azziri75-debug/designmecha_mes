@@ -54,7 +54,9 @@ const injectPrintCSS = () => {
                 transform: none !important; 
                 visibility: visible !important;
                 background: white !important;
-                display: block !important;
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 12mm !important;
                 box-shadow: none !important;
                 page-break-after: avoid !important;
                 page-break-inside: avoid !important;
@@ -107,8 +109,10 @@ const td = (c, extra = {}) => ({
     verticalAlign: 'middle',
     wordBreak: 'keep-all',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    lineHeight: '1.2',
+    textOverflow: 'clip', // Changed from ellipsis to clip to fit better in tight tables
+    lineHeight: '1.1',
+    padding: '3px !important', // Even tighter padding
+    fontSize: '10.5px !important', // Slightly smaller
     ...extra,
 });
 
@@ -137,13 +141,13 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
 
     // ── Resizable Columns State & Logic ───────────────────────
     const [colWidths, setColWidths] = useState({
-        date: 45,
-        name: 240, // Increased for '내역'
-        spec: 110,
-        qty: 45,
-        price: 85,
-        supply: 100,
-        tax: 80
+        date: 35,
+        name: 160,
+        spec: 75,
+        qty: 35,
+        price: 60,
+        supply: 65,
+        tax: 50
     });
     const resizingCol = useRef(null);
     const startX = useRef(0);
@@ -566,8 +570,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         const calc = () => {
             if (!wrapRef.current) return;
             // 297mm ≈ 1122px @ 96dpi, 두 폼 + 패딩
-            const availW = wrapRef.current.clientWidth - 32;
-            const formNaturalW = 1122; // 297mm at 96dpi
+            const availW = wrapRef.current.clientWidth - 48;
+            const formNaturalW = 1122.5; // 297mm at 96dpi
             setScale(Math.min(1, availW / formNaturalW));
         };
         calc();
