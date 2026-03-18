@@ -453,13 +453,14 @@ async def create_order(
     await db.commit()
     await db.refresh(db_order)
     
-    # Eager load for response
+    # Re-fetch with full eager loading for response
     query = select(SalesOrder).options(
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
-        selectinload(SalesOrder.partner)
+        selectinload(SalesOrder.partner),
+        selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items)
     ).where(SalesOrder.id == db_order.id)
     result = await db.execute(query)
     
@@ -583,14 +584,16 @@ async def update_order(
     await db.commit()
     await db.refresh(db_order)
     
-    # Re-fetch
+    # Re-fetch with full eager loading (including delivery_histories)
     query = select(SalesOrder).options(
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items).selectinload(BOM.child_product)
         ),
-        selectinload(SalesOrder.partner)
+        selectinload(SalesOrder.partner),
+        selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items)
     ).where(SalesOrder.id == order_id)
+    
     result = await db.execute(query)
     return result.scalar_one()
 
@@ -1186,8 +1189,17 @@ async def update_delivery_history(
     await db.commit()
     await db.refresh(history)
     
-    # 리턴 시 필요한 관계 로드된 상태 유지
-    return history
+    # Re-fetch with options after refresh to avoid MissingGreenlet
+    result = await db.execute(
+        select(DeliveryHistory)
+        .options(
+            selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product),
+            selectinload(DeliveryHistory.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+            selectinload(DeliveryHistory.order).selectinload(SalesOrder.partner)
+        )
+        .where(DeliveryHistory.id == history_id)
+    )
+    return result.scalar_one()
 
 
 # ─────────────────────────────────────────────────────────────

@@ -255,11 +255,11 @@ async def update_product(
         setattr(product, key, value)
         
     await db.commit()
+    await db.refresh(product)
     
-    # Re-fetch with eager load
+    # Re-fetch with eager load to avoid MissingGreenlet
     result = await db.execute(
         select(Product)
-        .select_from(Product)
         .options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items).selectinload(BOM.child_product),
@@ -267,8 +267,12 @@ async def update_product(
         )
         .where(Product.id == product_id)
     )
-    updated_product = result.scalar_one()
-    updated_product.partner_name = updated_product.partner.name if updated_product.partner else None
+    updated_product = result.unique().scalar_one()
+    
+    # Recalculate partner_name for response
+    if updated_product.partner:
+        updated_product.partner_name = updated_product.partner.name
+    
     return updated_product
 
 @router.delete("/products/{product_id}")
