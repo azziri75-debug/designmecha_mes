@@ -12,7 +12,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }];
 
     const handleChange = (newData) => {
-        if (isReadOnly) return;
+        if (isReadOnly || typeof onChange !== 'function') return;
         onChange({ ...data, ...newData });
     };
 

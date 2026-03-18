@@ -7,7 +7,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
     const items = data.items || [{ product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, remarks: '' }];
     
     const handleChange = (newData) => {
-        if (isReadOnly) return;
+        if (isReadOnly || typeof onChange !== 'function') return;
         onChange({ ...data, ...newData });
     };
 

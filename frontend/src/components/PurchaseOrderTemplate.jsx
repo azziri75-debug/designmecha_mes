@@ -325,12 +325,25 @@ const PurchaseOrderTemplate = ({
             </div>
             <style>{`
                 @media print {
-                    @page { size: A4; margin: 15mm; }
-                    body { -webkit-print-color-adjust: exact; }
-                    .idf-no-print { display: none !important; }
-                    div { box-shadow: none !important; border-color: black !important; }
-                    .border-gray-200 { border-color: black !important; }
-                    .bg-gray-50 { background-color: #f9fafb !important; }
+                    @page { size: A4; margin: 10mm; }
+                    body * { visibility: hidden !important; }
+                    .a4-print-safe, .a4-print-safe * { 
+                        visibility: visible !important; 
+                        color: black !important;
+                    }
+                    .a4-print-safe {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                    }
+                    .idf-no-print, .no-print, button { display: none !important; }
+                    div { box-shadow: none !important; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 }
             `}</style>
             </div>

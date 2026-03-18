@@ -643,7 +643,8 @@ const ApprovalPage = () => {
                                 }}>
                                     {selectedDoc.doc_type === 'INTERNAL_DRAFT' && (
                                         <InternalDraftForm 
-                                            data={selectedDoc.content} 
+                                            data={selectedDoc.content || {}} 
+                                            onChange={() => {}} // Defensive no-op
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
@@ -651,7 +652,8 @@ const ApprovalPage = () => {
                                     )}
                                     {selectedDoc.doc_type === 'EXPENSE_REPORT' && (
                                         <ExpenseReportForm 
-                                            data={selectedDoc.content} 
+                                            data={selectedDoc.content || {}} 
+                                            onChange={() => {}} // Defensive no-op
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
@@ -659,7 +661,8 @@ const ApprovalPage = () => {
                                     )}
                                     {(selectedDoc.doc_type === 'LEAVE_REQUEST' || selectedDoc.doc_type === 'VACATION') && (
                                         <LeaveRequestForm 
-                                            data={selectedDoc.doc_type === 'VACATION' ? {...selectedDoc.content, vacation_type: selectedDoc.content.vacation_type, start_date: selectedDoc.content.start_date, end_date: selectedDoc.content.end_date, vacation_reason: selectedDoc.content.reason} : selectedDoc.content} 
+                                            data={selectedDoc.doc_type === 'VACATION' ? {...(selectedDoc.content || {}), vacation_type: selectedDoc.content?.vacation_type, start_date: selectedDoc.content?.start_date, end_date: selectedDoc.content?.end_date, vacation_reason: selectedDoc.content?.reason} : (selectedDoc.content || {})} 
+                                            onChange={() => {}} // Defensive no-op
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
@@ -667,7 +670,8 @@ const ApprovalPage = () => {
                                     )}
                                     {selectedDoc.doc_type === 'EARLY_LEAVE' && (
                                         <EarlyLeaveForm 
-                                            data={selectedDoc.content} 
+                                            data={selectedDoc.content || {}} 
+                                            onChange={() => {}} // Defensive no-op
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
@@ -675,7 +679,8 @@ const ApprovalPage = () => {
                                     )}
                                     {(selectedDoc.doc_type === 'CONSUMABLES_PURCHASE' || selectedDoc.doc_type === 'SUPPLIES') && (
                                         <ConsumablesPurchaseForm 
-                                            data={selectedDoc.content} 
+                                            data={selectedDoc.content || {}} 
+                                            onChange={() => {}} // Defensive no-op
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
@@ -683,7 +688,8 @@ const ApprovalPage = () => {
                                     )}
                                     {selectedDoc.doc_type === 'OVERTIME' && (
                                         <OvertimeWorkForm 
-                                            data={selectedDoc.content} 
+                                            data={selectedDoc.content || {}} 
+                                            onChange={() => {}} // Defensive no-op
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
@@ -691,7 +697,8 @@ const ApprovalPage = () => {
                                     )}
                                     {selectedDoc.doc_type === 'PURCHASE_ORDER' && (
                                         <PurchaseOrderForm 
-                                            data={selectedDoc.content} 
+                                            data={selectedDoc.content || {}} 
+                                            onChange={() => {}} // Defensive no-op
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
@@ -759,9 +766,34 @@ const ApprovalPage = () => {
 
             <style>{`
                 @media print {
-                    .a4-print-mode .modal-content { display: none !important; } /* Hide the outer modal UI */
-                    .a4-print-mode .a4-print-safe { 
-                        display: block !important;
+                    /* Hide everything by default */
+                    body * { visibility: hidden !important; }
+                    /* Hide modal UI elements */
+                    .bg-gray-800, .bg-gray-900, .fixed, .no-print, button { display: none !important; }
+                    
+                    /* Show only the A4 container and its children */
+                    .a4-print-safe, .a4-print-safe * { 
+                        visibility: visible !important; 
+                        color: black !important;
+                        -webkit-print-color-adjust: exact !important;
+                    }
+                    
+                    .a4-print-safe {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        background-color: white !important;
+                    }
+
+                    /* Specific overrides for tables and text inside A4 */
+                    .a4-print-safe td, .a4-print-safe th, .a4-print-safe div {
+                        border-color: black !important;
+                        background-color: transparent !important;
                     }
                 }
             `}</style>

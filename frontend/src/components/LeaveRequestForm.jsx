@@ -4,7 +4,7 @@ import ApprovalGrid from './ApprovalGrid';
 
 const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     const handleChange = (field, value) => {
-        if (isReadOnly) return;
+        if (isReadOnly || typeof onChange !== 'function') return;
         onChange({ ...data, [field]: value });
     };
 

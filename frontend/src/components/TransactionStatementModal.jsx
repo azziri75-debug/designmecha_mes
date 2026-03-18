@@ -21,7 +21,6 @@ const injectPrintCSS = () => {
         @media print {
             @page { size: A4 landscape; margin: 0; }
             
-            /* 1. body와 html의 여백을 완전히 없애고 넘치는 건 무조건 자름 */
             html, body { 
                 width: 297mm !important; 
                 height: 210mm !important; 
@@ -31,20 +30,19 @@ const injectPrintCSS = () => {
                 background: white !important; 
             }
             
+            /* Hide everything by default */
             body * { visibility: hidden !important; }
-            .tsm-no-print { display: none !important; }
+            .tsm-no-print, .MuiBackdrop-root, .MuiModal-root { display: none !important; }
             
-            .MuiModal-root, .MuiBox-root {
-                position: static !important;
-                transform: none !important;
-                max-height: none !important;
-                height: auto !important;
-                overflow: visible !important;
+            /* Ensure the modal container itself doesn't show background/shadow */
+            .MuiModal-root {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
                 background: transparent !important;
-                box-shadow: none !important; /* 껍데기 그림자 제거 */
+                box-shadow: none !important;
             }
             
-            /* 2. 컨테이너의 그림자 제거 및 페이지 넘김 방지 */
             .tsm-print-container {
                 position: absolute !important;
                 left: 0 !important;
@@ -58,17 +56,15 @@ const injectPrintCSS = () => {
                 visibility: visible !important;
                 background: white !important;
                 display: flex !important;
-                box-shadow: none !important; /* 2페이지를 만드는 주범(그림자) 완벽 제거! */
+                box-shadow: none !important;
                 page-break-after: avoid !important;
                 page-break-inside: avoid !important;
             }
             
-            .tsm-print-container * { visibility: visible !important; }
-            
-            .tsm-print-container > div {
-                height: 100% !important; 
-                display: flex !important;
-                flex-direction: column !important;
+            .tsm-print-container * { 
+                visibility: visible !important; 
+                color: black !important;
+                border-color: inherit !important;
             }
             
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -256,15 +252,34 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         const ROW_H = '24px';
 
         return (
-            <div style={{
+            <div 
+                className="tsm-form-paper"
+                style={{
                 border: `1.8px solid ${C}`,
                 width: '100%', height: '100%',
-                backgroundColor: 'white !important', // Enforce white background
+                backgroundColor: 'white',
+                background: 'white',
+                color: 'black',
                 display: 'flex', flexDirection: 'column',
                 fontFamily: '"Malgun Gothic","맑은 고딕",sans-serif',
                 boxSizing: 'border-box',
                 overflow: 'hidden',
+                 // Force white background and black text regardless of theme
+                '--statement-color': C
             }}>
+                <style>{`
+                    .tsm-form-paper, .tsm-form-paper * {
+                        background-color: white !important;
+                        color: black;
+                    }
+                    .tsm-form-paper td, .tsm-form-paper th {
+                        border-color: var(--statement-color) !important;
+                        color: var(--statement-color) !important;
+                    }
+                    .tsm-form-paper .colored-text {
+                        color: var(--statement-color) !important;
+                    }
+                `}</style>
                 {/* ── 상단: No/일자 + 거래명세표 타이틀 + 공급자 테이블 ── */}
                 <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: `1.2px solid ${C}` }}>
 

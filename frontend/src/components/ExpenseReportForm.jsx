@@ -11,6 +11,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
 
     // Initialize items if they don't exist
     useEffect(() => {
+        if (typeof onChange !== 'function') return;
         if (!data.items || data.items.length === 0) {
             onChange({
                 ...data,
@@ -20,15 +21,15 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                 name: data.name || currentUser?.name || ''
             });
         }
-    }, []);
+    }, [onChange]);
 
     const handleChange = (field, value) => {
-        if (isReadOnly) return;
+        if (isReadOnly || typeof onChange !== 'function') return;
         onChange({ ...data, [field]: value });
     };
 
     const handleItemChange = (index, field, value) => {
-        if (isReadOnly) return;
+        if (isReadOnly || typeof onChange !== 'function') return;
         const newItems = [...(data.items || [])];
         newItems[index] = { ...newItems[index], [field]: value };
         

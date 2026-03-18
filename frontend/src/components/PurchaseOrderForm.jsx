@@ -20,6 +20,7 @@ const PurchaseOrderForm = ({ data, onChange, isReadOnly, currentUser, documentDa
 
     // Initialize items if empty
     useEffect(() => {
+        if (typeof onChange !== 'function') return;
         if (!data.items || data.items.length === 0) {
             const defaultItems = Array(10).fill({ idx: "", name: "", spec: "", qty: "", price: "", total: "" });
             onChange('items', defaultItems);
@@ -27,7 +28,7 @@ const PurchaseOrderForm = ({ data, onChange, isReadOnly, currentUser, documentDa
         if (!data.colWidths) {
             onChange('colWidths', [40, 200, 120, 60, 80, 100]);
         }
-    }, []);
+    }, [onChange]);
 
     return (
         <PurchaseOrderTemplate 
