@@ -197,7 +197,9 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         quantity: item?.quantity || 1,
                         unit_price: unitPrice,
                         note: item?.note || item?.process_name || '',
-                        production_plan_item_id: item?.id
+                        production_plan_item_id: item?.id,
+                        display_product_name: productObj?.name || item?.product_name_of_plan || '',
+                        display_client_name: item?.client_name || ''
                     };
                 })
             }));
@@ -224,8 +226,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         try {
             // Outsourcing should only show PRODUCT or HALF_PRODUCT
             // CEO instructed to remove the partner_id filter to allow searching all items
-            const params = { item_type: 'PRODUCT,HALF_PRODUCT' };
-            const response = await api.get('/product/products', { params });
+            const response = await api.get('/product/products');
             setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
@@ -407,6 +408,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                 size="small"
                                                 options={products}
                                                 getOptionLabel={getProductLabel}
+                                                isOptionEqualToValue={(option, value) => option.id === value?.id}
                                                 value={prod || null}
                                                 onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
                                                 renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}

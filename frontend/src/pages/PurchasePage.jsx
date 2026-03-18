@@ -590,6 +590,14 @@ const PurchasePage = ({ type }) => {
                                                             </Typography>
                                                         </Box>
                                                     </TableCell>
+                                                    <TableCell>{item?.client_name || '-'}</TableCell>
+                                                    <TableCell>{item?.product_name_of_plan || '-'}</TableCell>
+                                                    <TableCell>{item?.process_name || '-'}</TableCell>
+                                                    <TableCell>{item?.product?.name || '-'}</TableCell>
+                                                    <TableCell>{item?.product?.specification || '-'}</TableCell>
+                                                    <TableCell>{item?.quantity || 0}</TableCell>
+                                                    <TableCell>{item?.product?.unit || 'EA'}</TableCell>
+                                                    <TableCell>{item?.plan?.plan_date || '-'}</TableCell>
                                                     <TableCell>{item.partner_name || '-'}</TableCell>
                                                     <TableCell>{item.note}</TableCell>
                                                 </>

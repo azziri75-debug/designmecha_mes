@@ -232,7 +232,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             quantity: item?.quantity || 1,
                             unit_price: unitPrice,
                             note: item?.note || item?.process_name || '',
-                            production_plan_item_id: item?.id
+                            production_plan_item_id: item?.id,
+                            display_product_name: productObj?.name || item?.product_name_of_plan || '',
+                            display_client_name: item?.client_name || ''
                         };
                     } else if (item?.type === 'MRP') {
                         const product = productObj?.id ? productObj : (products.find(p => p?.id === productId) || {});
@@ -306,12 +308,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         try {
             // Material purchase (PART) should include RAW_MATERIAL
             // Consumable purchase should only include CONSUMABLE
-            let typeParam = 'PART,RAW_MATERIAL';
-            if (purchaseType === 'CONSUMABLE') {
-                typeParam = 'CONSUMABLE';
-            }
-            const params = { item_type: typeParam };
-            const response = await api.get('/product/products', { params });
+            const response = await api.get('/product/products');
             setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
@@ -547,6 +544,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                 size="small"
                                                 options={products}
                                                 getOptionLabel={getProductLabel}
+                                                isOptionEqualToValue={(option, value) => option.id === value?.id}
                                                 value={prod || null}
                                                 onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
                                                 renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}
