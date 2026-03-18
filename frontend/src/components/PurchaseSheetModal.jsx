@@ -71,7 +71,9 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
             spec: item.product?.specification || item.product?.code || "",
             qty: item.quantity,
             price: item.unit_price || 0,
-            total: item.quantity * (item.unit_price || 0)
+            total: item.quantity * (item.unit_price || 0),
+            material: item.material || "",
+            order_size: item.order_size || ""
         }));
 
         while (items.length < 12) {

@@ -64,12 +64,13 @@ const PurchaseOrderTemplate = ({
     let formattedItems = (data.items || []).map((item, idx) => {
         // [NEW] Blend material and order_size into spec for clear printing
         let specDisplay = item.spec || '';
-        if (item.material || item.order_size) {
-            const parts = [];
-            if (item.material) parts.push(item.material);
-            if (item.order_size) parts.push(item.order_size);
-            const extra = parts.join(' / ');
-            specDisplay = specDisplay ? `${specDisplay} (${extra})` : extra;
+        const extraParts = [];
+        if (item.material) extraParts.push(`재질: ${item.material}`);
+        if (item.order_size) extraParts.push(`사이즈: ${item.order_size}`);
+        
+        if (extraParts.length > 0) {
+            const extraStr = extraParts.join(' / ');
+            specDisplay = specDisplay ? `${specDisplay} / ${extraStr}` : extraStr;
         }
 
         return {
