@@ -101,12 +101,12 @@ const tblStyle = (c) => ({
 });
 const td = (c, extra = {}) => ({
     border: `0.7px solid ${c}`,
-    padding: '4px 8px', // Increased padding
+    padding: '4px 8px',
     fontSize: '11px',
     color: `${c} !important`,
     verticalAlign: 'middle',
-    whiteSpace: 'normal',
-    wordBreak: 'break-all',
+    whiteSpace: 'nowrap', // Metadata default: no-wrap
+    wordBreak: 'keep-all',
     overflow: 'hidden',
     ...extra,
 });
@@ -137,12 +137,12 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     // ── Resizable Columns State & Logic ───────────────────────
     const [colWidths, setColWidths] = useState({
         date: 45,
-        name: 180,
-        spec: 90,
-        qty: 40,
-        price: 75,
-        supply: 85,
-        tax: 70
+        name: 240, // Increased for '내역'
+        spec: 110,
+        qty: 45,
+        price: 85,
+        supply: 100,
+        tax: 80
     });
     const resizingCol = useRef(null);
     const startX = useRef(0);
@@ -268,7 +268,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 display: 'flex', flexDirection: 'column',
                 fontFamily: '"Malgun Gothic","맑은 고딕",sans-serif',
                 boxSizing: 'border-box',
-                padding: '10px',
+                padding: '15px !important', // Increased padding
                 overflow: 'hidden',
                 // Force white background and black text regardless of theme
                 '--statement-color': C
@@ -346,7 +346,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             alt="직인"
                                             style={{
                                                 position: 'absolute',
-                                                right: '10px',
+                                                right: '-15px', // Overlap the border
                                                 top: '50%',
                                                 transform: 'translateY(-50%)',
                                                 width: '50px',
@@ -356,16 +356,16 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                                 mixBlendMode: 'multiply',
                                                 pointerEvents: 'none',
                                                 zIndex: 10,
-                                                border: 'none', // Explicitly remove border
-                                                borderRadius: 0 // Explicitly remove border-radius
+                                                border: 'none',
+                                                borderRadius: 0
                                             }}
                                         />
                                     </td>
                                 </tr>
                                 {/* 사업장주소 행 */}
                                 <tr style={{ height: '28px' }}>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '10.5px', lineHeight: '1.2' }}>사업장주소</td>
-                                    <td colSpan={3} style={{ ...td(C), fontSize: '11px', whiteSpace: 'normal', lineHeight: '1.2' }}>{supplierInfo.address}</td>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '10.5px' }}>사업장주소</td>
+                                    <td colSpan={3} style={{ ...td(C), fontSize: '11px', whiteSpace: 'nowrap' }}>{supplierInfo.address}</td>
                                 </tr>
                                 {/* 업태 + 종목 행 */}
                                 <tr style={{ height: '30px' }}>
@@ -448,7 +448,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             {items.map((item, idx) => (
                                 <tr key={idx} style={{ height: ROW_H }}>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{(item.date || '').slice(5)}</td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), fontWeight: 'bold', fontSize: '11.5px' }}>{item.product?.name || item.item_name || ''}</td>
+                                    <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all', textOverflow: 'clip' }), fontWeight: 'bold', fontSize: '11.5px' }}>{item.product?.name || item.item_name || ''}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{item.product?.spec || ''}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11.5px' }}>{formatNumber(item.quantity)}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '11.5px' }}>{formatNumber(item.unit_price)}</td>
@@ -605,7 +605,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 </Box>
 
                 {/* 본문 */}
-                <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#ffffff !important', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     {pdfStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
                     {pdfStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
 
