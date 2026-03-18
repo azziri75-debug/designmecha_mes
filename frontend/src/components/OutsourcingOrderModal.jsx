@@ -402,13 +402,10 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         <TableHead sx={{ bgcolor: '#f4f4f5' }}>
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 'bold', width: 50, textAlign: 'center' }}>No</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', minWidth: 220 }}>품목명 / 규격</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 120 }}>재질</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 120 }}>주문사이즈</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 90, textAlign: 'center' }}>수량</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>단가</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>금액</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>비고</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>품목명 / 규격</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 100, textAlign: 'center' }}>수량</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 150, textAlign: 'right' }}>단가</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 150, textAlign: 'right' }}>금액</TableCell>
                                 <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
                             </TableRow>
                         </TableHead>
@@ -416,101 +413,108 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                             {formData.items.map((item, index) => {
                                 const prod = products.find(p => p.id === item.product_id);
                                 return (
-                                    <TableRow key={index}>
-                                        <TableCell sx={{ textAlign: 'center' }}>{index + 1}</TableCell>
-                                        <TableCell sx={{ minWidth: 220 }}>
-                                            <Autocomplete
-                                                size="small"
-                                                options={products}
-                                                getOptionLabel={getProductLabel}
-                                                isOptionEqualToValue={(option, value) => option.id === value?.id}
-                                                value={prod || null}
-                                                onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
-                                                renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}
-                                                renderOption={(props, option) => (
-                                                    <li {...props}>
-                                                        <Box>
-                                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                                [{option.code || option.product_code}] {option.name}
-                                                            </Typography>
-                                                            <Typography variant="caption" color="textSecondary">
-                                                                규격: {option.specification || '-'} | 현재고: {option.current_inventory || 0}
-                                                            </Typography>
-                                                        </Box>
-                                                    </li>
-                                                )}
-                                                sx={{ width: '100%' }}
-                                                readOnly={!!item.production_plan_item_id}
-                                            />
-                                        </TableCell>
-                                        <TableCell sx={{ width: 120 }}>
-                                            <TextField
-                                                size="small"
-                                                fullWidth
-                                                value={item.material || ''}
-                                                onChange={(e) => handleItemChange(index, 'material', e.target.value)}
-                                                placeholder="재질"
-                                            />
-                                        </TableCell>
-                                        <TableCell sx={{ width: 120 }}>
-                                            <TextField
-                                                size="small"
-                                                fullWidth
-                                                value={item.order_size || ''}
-                                                onChange={(e) => handleItemChange(index, 'order_size', e.target.value)}
-                                                placeholder="사이즈"
-                                            />
-                                        </TableCell>
-                                        <TableCell sx={{ width: 90 }}>
-                                            <TextField 
-                                                type="number" 
-                                                size="small" 
-                                                fullWidth
-                                                value={item.quantity} 
-                                                onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
-                                                inputProps={{ style: { textAlign: 'center' } }}
-                                            />
-                                        </TableCell>
-                                        <TableCell sx={{ width: 130 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <React.Fragment key={index}>
+                                        {/* Row 1: Primary Fields */}
+                                        <TableRow sx={{ '& > td': { borderBottom: 'none' } }}>
+                                            <TableCell rowSpan={2} sx={{ textAlign: 'center', borderRight: '1px solid #eee' }}>{index + 1}</TableCell>
+                                            <TableCell>
+                                                <Autocomplete
+                                                    size="small"
+                                                    options={products}
+                                                    getOptionLabel={getProductLabel}
+                                                    isOptionEqualToValue={(option, value) => option.id === value?.id}
+                                                    value={prod || null}
+                                                    onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
+                                                    renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}
+                                                    renderOption={(props, option) => (
+                                                        <li {...props}>
+                                                            <Box>
+                                                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                                    [{option.code || option.product_code}] {option.name}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="textSecondary">
+                                                                    규격: {option.specification || '-'} | 현재고: {option.current_inventory || 0}
+                                                                </Typography>
+                                                            </Box>
+                                                        </li>
+                                                    )}
+                                                    sx={{ width: '100%' }}
+                                                    readOnly={!!item.production_plan_item_id}
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={{ width: 100 }}>
                                                 <TextField 
                                                     type="number" 
                                                     size="small" 
                                                     fullWidth
-                                                    value={item.unit_price} 
-                                                    onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)} 
-                                                    inputProps={{ style: { textAlign: 'right' } }}
+                                                    value={item.quantity} 
+                                                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
+                                                    inputProps={{ style: { textAlign: 'center' } }}
                                                 />
-                                                <Tooltip title="단가 이력">
-                                                    <IconButton size="small" onClick={(e) => handleLookupHistory(e, index, item.product_id)}><HistoryIcon fontSize="small" /></IconButton>
-                                                </Tooltip>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell sx={{ width: 130, textAlign: 'right' }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                ₩{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString()}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ minWidth: 150 }}>
-                                            <TextField
-                                                fullWidth
-                                                size="small"
-                                                value={item.note || ''}
-                                                onChange={(e) => handleItemChange(index, 'note', e.target.value)}
-                                                placeholder="비고"
-                                            />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <IconButton 
-                                                size="small" 
-                                                color="error" 
-                                                onClick={() => handleRemoveItem(index)}
-                                                disabled={!!item.production_plan_item_id}
-                                            >
-                                                <Trash size={16} />
-                                            </IconButton>
-                                        </TableCell>
-                                    </TableRow>
+                                            </TableCell>
+                                            <TableCell sx={{ width: 150 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                    <TextField 
+                                                        type="number" 
+                                                        size="small" 
+                                                        fullWidth
+                                                        value={item.unit_price} 
+                                                        onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)} 
+                                                        inputProps={{ style: { textAlign: 'right' } }}
+                                                    />
+                                                    <Tooltip title="단가 이력">
+                                                        <IconButton size="small" onClick={(e) => handleLookupHistory(e, index, item.product_id)}><HistoryIcon fontSize="small" /></IconButton>
+                                                    </Tooltip>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell sx={{ width: 150, textAlign: 'right' }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                    ₩{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString()}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell rowSpan={2} align="center" sx={{ borderLeft: '1px solid #eee' }}>
+                                                <IconButton 
+                                                    size="small" 
+                                                    color="error" 
+                                                    onClick={() => handleRemoveItem(index)}
+                                                    disabled={!!item.production_plan_item_id}
+                                                >
+                                                    <Trash size={16} />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+
+                                        {/* Row 2: Secondary Fields */}
+                                        <TableRow sx={{ bgcolor: '#fafafa' }}>
+                                            <TableCell colSpan={4} sx={{ pt: 0, pb: 1 }}>
+                                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                                    <TextField
+                                                        size="small"
+                                                        label="재질"
+                                                        value={item.material || ''}
+                                                        onChange={(e) => handleItemChange(index, 'material', e.target.value)}
+                                                        sx={{ width: 180, bgcolor: 'white' }}
+                                                    />
+                                                    <TextField
+                                                        size="small"
+                                                        label="주문사이즈"
+                                                        value={item.order_size || ''}
+                                                        onChange={(e) => handleItemChange(index, 'order_size', e.target.value)}
+                                                        sx={{ width: 180, bgcolor: 'white' }}
+                                                    />
+                                                    <TextField
+                                                        size="small"
+                                                        label="비고"
+                                                        placeholder="비고"
+                                                        fullWidth
+                                                        value={item.note || ''}
+                                                        onChange={(e) => handleItemChange(index, 'note', e.target.value)}
+                                                        sx={{ bgcolor: 'white' }}
+                                                    />
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
+                                    </React.Fragment>
                                 );
                             })}
                         </TableBody>
