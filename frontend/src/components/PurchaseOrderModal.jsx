@@ -238,7 +238,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             display_product_name: productObj?.name || item?.product_name_of_plan || '',
                             display_client_name: item?.client_name || '',
                             order_size: '',
-                            material: ''
+                            material: productObj?.material || ''
                         };
                     } else if (item?.type === 'MRP') {
                         const product = productObj?.id ? productObj : (products.find(p => p?.id === productId) || {});
@@ -344,9 +344,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         const newItems = [...formData.items];
         newItems[index][field] = value;
 
-        // Auto-fill price if product selected
+        // Auto-fill price AND material if product selected
         if (field === 'product_id' && value) {
             const product = products.find(p => p.id === value);
+            
+            // Auto-fill material if available
+            if (product && product.material) {
+                newItems[index].material = product.material;
+            }
 
             // 1. Try to fetch LATEST purchase price from history
             try {
@@ -469,7 +474,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     };
 
     return (
-        <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
+        <Dialog open={isOpen} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>{order ? "발주서 수정" : "발주서 등록"}</DialogTitle>
             <DialogContent sx={{ p: 2, bgcolor: '#f8f9fa' }}>
                 {/* Header Section: Partner & Order Info */}
@@ -530,14 +535,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     <Table size="small">
                         <TableHead sx={{ bgcolor: '#f4f4f5' }}>
                             <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold', width: 50 }}>No</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>품목명 / 규격</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 100 }}>재질</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 100 }}>주문사이즈</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 100 }}>수량</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 140 }}>단가</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 140 }}>금액</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>비고</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 50, textAlign: 'center' }}>No</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', minWidth: 220 }}>품목명 / 규격</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 120 }}>재질</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 120 }}>주문사이즈</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 90, textAlign: 'center' }}>수량</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>단가</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>금액</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>비고</TableCell>
                                 <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
                             </TableRow>
                         </TableHead>
@@ -546,8 +551,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                 const prod = products.find(p => p.id === item.product_id);
                                 return (
                                     <TableRow key={index}>
-                                        <TableCell>{index + 1}</TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ textAlign: 'center' }}>{index + 1}</TableCell>
+                                        <TableCell sx={{ minWidth: 220 }}>
                                             <Autocomplete
                                                 size="small"
                                                 options={products}
@@ -568,42 +573,47 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                         </Box>
                                                     </li>
                                                 )}
-                                                sx={{ minWidth: 250 }}
+                                                sx={{ width: '100%' }}
                                                 readOnly={!!item.production_plan_item_id || !!item.material_requirement_id || !!item.consumable_purchase_wait_id}
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ width: 120 }}>
                                             <TextField
                                                 size="small"
+                                                fullWidth
                                                 value={item.material || ''}
                                                 onChange={(e) => handleItemChange(index, 'material', e.target.value)}
                                                 placeholder="재질"
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ width: 120 }}>
                                             <TextField
                                                 size="small"
+                                                fullWidth
                                                 value={item.order_size || ''}
                                                 onChange={(e) => handleItemChange(index, 'order_size', e.target.value)}
                                                 placeholder="사이즈"
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ width: 90 }}>
                                             <TextField
                                                 type="number"
                                                 size="small"
+                                                fullWidth
                                                 value={item.quantity}
                                                 onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                                inputProps={{ min: 1 }}
+                                                inputProps={{ min: 1, style: { textAlign: 'center' } }}
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ width: 130 }}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                 <TextField
                                                     type="number"
                                                     size="small"
+                                                    fullWidth
                                                     value={item.unit_price}
                                                     onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
+                                                    inputProps={{ style: { textAlign: 'right' } }}
                                                 />
                                                 <Tooltip title="단가 이력 조회">
                                                     <IconButton size="small" onClick={(e) => handleLookupHistory(e, index, item.product_id)}>
@@ -612,12 +622,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                 </Tooltip>
                                             </Box>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ width: 130, textAlign: 'right' }}>
                                             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                                                 ₩{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString()}
                                             </Typography>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ minWidth: 150 }}>
                                             <TextField
                                                 fullWidth
                                                 size="small"
