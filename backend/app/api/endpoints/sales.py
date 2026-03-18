@@ -522,7 +522,9 @@ async def update_order(
     order_in: schemas.SalesOrderUpdate, # Use Update schema
     db: AsyncSession = Depends(deps.get_db)
 ):
-    query = select(SalesOrder).options(selectinload(SalesOrder.items)).where(SalesOrder.id == order_id)
+    query = select(SalesOrder).options(
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
+    ).where(SalesOrder.id == order_id)
     result = await db.execute(query)
     db_order = result.scalar_one_or_none()
     
@@ -543,43 +545,66 @@ async def update_order(
     
     # Update Items
     if order_in.items is not None:
-        # Delete all and recreate (Simple Strategy)
-        # Verify if we need to preserve IDs? 
-        # For delivery update, we might be sending delivered_quantity.
-        # If we recreate, we lose previous delivered_quantity if not passed back.
-        # But Create schema doesn't have delivered_quantity?
-        # Check SalesOrderItemCreate: No delivered_quantity.
-        # SalesOrderItemSimple has it.
-        # If we use SalesOrderItemCreate, we reset delivered_quantity to 0 (default in model).
-        # THIS IS A PROBLEM for Partial Delivery.
-        # But user said "Double click... record... Delivery Complete".
-        # This implies a one-time event or they enter the full amount.
-        # If they enter full amount, we need to save it. 
-        # But logic below recreates items using `SalesOrderItem` (model default 0).
-        # I need to handle `delivered_quantity` if passed.
-        # Schema `SalesOrderItemCreate` does NOT have `delivered_quantity`.
-        # I should add it to schema or handle it.
-        # Given simpler scope, let's assume they update full status.
-        # But "actual delivery quantity" was requested.
-        # So I MUST update `SalesOrderItemCreate` schema or handle it here.
-        # Modifying schema is better.
-        pass
-    
-    # Update Items
-    # Delete all and recreate
-    for item in db_order.items:
-        await db.delete(item)
+        from app.models.production import ProductionPlan, ProductionPlanItem, WorkLogItem
+        from sqlalchemy import func
         
-    for item in order_in.items:
-        db_item = SalesOrderItem(
-            order_id=db_order.id,
-            product_id=item.product_id,
-            unit_price=item.unit_price,
-            quantity=item.quantity,
-            note=item.note,
-            delivered_quantity=item.delivered_quantity
-        )
-        db.add(db_item)
+        existing_items = {item.id: item for item in db_order.items}
+        incoming_items = order_in.items
+        kept_item_ids = set()
+        
+        for item_in in incoming_items:
+            if item_in.id and item_in.id in existing_items:
+                # 1. Update existing item
+                db_item = existing_items[item_in.id]
+                db_item.product_id = item_in.product_id
+                db_item.unit_price = item_in.unit_price
+                db_item.quantity = item_in.quantity
+                db_item.note = item_in.note
+                db_item.delivered_quantity = item_in.delivered_quantity or 0
+                kept_item_ids.add(db_item.id)
+            else:
+                # 2. Add new item
+                new_db_item = SalesOrderItem(
+                    order_id=db_order.id,
+                    product_id=item_in.product_id,
+                    unit_price=item_in.unit_price,
+                    quantity=item_in.quantity,
+                    note=item_in.note,
+                    delivered_quantity=item_in.delivered_quantity or 0
+                )
+                db.add(new_db_item)
+        
+        # 3. Handle deletions for items not in the request
+        for item_id, item in existing_items.items():
+            if item_id not in kept_item_ids:
+                # 🚨 ERP Safeguard: Block deletion if delivery history or work logs exist
+                
+                # Check Delivery History
+                hist_check = await db.execute(
+                    select(func.count(DeliveryHistoryItem.id))
+                    .where(DeliveryHistoryItem.order_item_id == item_id)
+                )
+                if hist_check.scalar() > 0:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"품목({item.product.name if item.product else item_id})은(는) 이미 납품 이력이 존재하여 삭제할 수 없습니다. 납품 내역을 먼저 취소해 주세요."
+                    )
+                
+                # Check Work Logs via Production Plan
+                work_check = await db.execute(
+                    select(func.count(WorkLogItem.id))
+                    .join(ProductionPlanItem, WorkLogItem.plan_item_id == ProductionPlanItem.id)
+                    .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+                    .where(ProductionPlan.order_id == db_order.id)
+                    .where(ProductionPlanItem.product_id == item.product_id)
+                )
+                if work_check.scalar() > 0:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"품목({item.product.name if item.product else item_id})은(는) 이미 진행 중인 생산 실적이 존재하여 삭제할 수 없습니다. 관련 생산 실적을 먼저 취소해 주세요."
+                    )
+                
+                await db.delete(item)
         
     await db.commit()
     await db.refresh(db_order)

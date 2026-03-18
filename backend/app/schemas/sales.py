@@ -67,6 +67,14 @@ class SalesOrderItemBase(BaseModel):
 class SalesOrderItemCreate(SalesOrderItemBase):
     pass
 
+class SalesOrderItemUpdate(BaseModel):
+    id: Optional[int] = None # existing item ID
+    product_id: Optional[int] = None
+    unit_price: Optional[float] = None
+    quantity: Optional[int] = None
+    delivered_quantity: Optional[int] = 0
+    note: Optional[str] = None
+
 class SalesOrderItemSimple(SalesOrderItemBase):
     id: int
     order_id: int
@@ -115,7 +123,7 @@ class SalesOrderUpdate(BaseModel):
     note: Optional[str] = None
     status: Optional[str] = None
     attachment_file: Optional[Union[List[Any], str]] = None
-    items: Optional[List[SalesOrderItemCreate]] = None
+    items: Optional[List[SalesOrderItemUpdate]] = None
 
 from app.schemas.basics import PartnerResponse as Partner, PartnerSimple
 
