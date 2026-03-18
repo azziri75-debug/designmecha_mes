@@ -28,7 +28,14 @@ const OutsourcingPage = () => {
         status: 100,
         files: 80,
         history: 100,
-        actions: 120
+        actions: 120,
+        client: 120,
+        target_product: 200,
+        process: 150,
+        qty: 80,
+        unit: 80,
+        date: 120,
+        remarks: 150
     });
 
     const handleResize = (column, newWidth) => {
@@ -339,7 +346,7 @@ const OutsourcingPage = () => {
                                     style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', fontSize: '14px' }}
                                 >
                                     <option value="">전체 외주처</option>
-                                    {partners.filter(p => p.type === 'SUPPLIER').map(p => (
+                                    {partners.filter(p => (p.partner_type && p.partner_type.includes('SUBCONTRACTOR')) || p.type === 'SUBCONTRACTOR').map(p => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
@@ -396,21 +403,21 @@ const OutsourcingPage = () => {
                                             onChange={handleSelectAllPending}
                                         />
                                     </TableCell>
-                                    <TableCell>수주번호</TableCell>
-                                    <TableCell>공정명/품목</TableCell>
-                                    <TableCell>규격</TableCell>
-                                    <TableCell>수량</TableCell>
-                                    <TableCell>단위</TableCell>
-                                    <TableCell>계획일자</TableCell>
-                                    <TableCell>외주처(계획)</TableCell>
-                                    <TableCell>비고</TableCell>
+                                    <ResizableTableCell width={columnWidths.order_no} onResize={(w) => handleResize('order_no', w)}>수주/재고번호</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.client} onResize={(w) => handleResize('client', w)}>고객사</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.target_product} onResize={(w) => handleResize('target_product', w)}>생산제품명</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.process} onResize={(w) => handleResize('process', w)}>외주공정명</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.partner} onResize={(w) => handleResize('partner', w)}>외주처(계획)</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)}>수량</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.unit} onResize={(w) => handleResize('unit', w)}>단위</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.date} onResize={(w) => handleResize('date', w)}>계획일자</ResizableTableCell>
+                                    <ResizableTableCell width={columnWidths.remarks} onResize={(w) => handleResize('remarks', w)}>비고</ResizableTableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {pendingItems.length === 0 ? (
                                     <TableRow><TableCell colSpan={9} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
                                 ) : (
-                                    pendingItems.map((item) => (
                                         <TableRow key={item.id} hover onClick={() => handleSelectPendingItem(item.id)} sx={{ cursor: 'pointer' }}>
                                             <TableCell padding="checkbox">
                                                 <Checkbox checked={selectedPendingItems.includes(item.id)} />
@@ -425,20 +432,20 @@ const OutsourcingPage = () => {
                                                         ) : null}
                                                         {item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}
                                                     </Typography>
-                                                    <Typography variant="caption" color="textSecondary">
-                                                        {item.plan?.order?.partner?.name || (item.plan?.stock_production ? '사내 생산(재고)' : '-')}
-                                                    </Typography>
                                                 </Box>
                                             </TableCell>
-                                            <TableCell>{item.process_name || item.product?.name}</TableCell>
-                                            <TableCell>{item.product?.specification}</TableCell>
+                                            <TableCell>{item.client_name || '-'}</TableCell>
+                                            <TableCell>{item.product_name_of_plan || '-'}</TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2">{item.process_name || '-'}</Typography>
+                                                <Typography variant="caption" color="textSecondary">{item.product?.name} ({item.product?.specification || '-'})</Typography>
+                                            </TableCell>
+                                            <TableCell>{item.partner_name || '-'}</TableCell>
                                             <TableCell>{item.quantity}</TableCell>
                                             <TableCell>{item.product?.unit}</TableCell>
                                             <TableCell>{item.start_date || item.plan?.plan_date || '-'}</TableCell>
-                                            <TableCell>{item.partner_name || '-'}</TableCell>
                                             <TableCell>{item.note}</TableCell>
                                         </TableRow>
-                                    ))
                                 )}
                             </TableBody>
                         </Table>

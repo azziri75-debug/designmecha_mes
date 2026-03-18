@@ -213,7 +213,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
     const fetchPartners = async () => {
         try {
-            const response = await api.get('/basics/partners/', { params: { type: 'SUPPLIER' } });
+            const response = await api.get('/basics/partners/', { params: { type: 'SUBCONTRACTOR' } });
             setPartners(response.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);
@@ -223,11 +223,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     const fetchProducts = async () => {
         try {
             // Outsourcing should only show PRODUCT or HALF_PRODUCT
-            // And ideally filter by partner_id if available to show relevant items for that vendor
+            // CEO instructed to remove the partner_id filter to allow searching all items
             const params = { item_type: 'PRODUCT,HALF_PRODUCT' };
-            if (formData.partner_id) {
-                params.partner_id = formData.partner_id;
-            }
             const response = await api.get('/product/products', { params });
             setProducts(response.data);
         } catch (error) {

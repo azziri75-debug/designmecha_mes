@@ -95,6 +95,10 @@ class ProductionPlanItem(ProductionPlanItemBase):
     purchase_items: List[PurchaseOrderItemSimple] = []
     outsourcing_items: List[OutsourcingOrderItemSimple] = []
     completed_quantity: int = 0
+    
+    # [NEW] Fields for list display
+    client_name: Optional[str] = None
+    product_name_of_plan: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

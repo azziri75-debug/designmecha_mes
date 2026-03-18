@@ -311,9 +311,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 typeParam = 'CONSUMABLE';
             }
             const params = { item_type: typeParam };
-            if (formData.partner_id) {
-                params.partner_id = formData.partner_id;
-            }
             const response = await api.get('/product/products', { params });
             setProducts(response.data);
         } catch (error) {

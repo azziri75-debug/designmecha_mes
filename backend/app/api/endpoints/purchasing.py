@@ -284,9 +284,19 @@ async def read_pending_purchase_items(
         
     result = await db.execute(query)
     items = result.scalars().all()
-    print(f"[DEBUG] Pending Purchase Items: Found {len(items)} items.")
+    
+    # [NEW] Populate metadata for UI
     for i in items:
-        print(f"  - Item {i.id}: {i.process_name} ({i.course_type}) PlanID: {i.plan_id}")
+        if i.plan:
+            if i.plan.order:
+                i.client_name = i.plan.order.partner.name if i.plan.order.partner else "-"
+                if i.plan.order.items:
+                    i.product_name_of_plan = i.plan.order.items[0].product.name if i.plan.order.items[0].product else "-"
+            elif i.plan.stock_production:
+                i.client_name = i.plan.stock_production.partner.name if i.plan.stock_production.partner else "-"
+                i.product_name_of_plan = i.plan.stock_production.product.name if i.plan.stock_production.product else "-"
+
+    print(f"[DEBUG] Pending Purchase Items: Found {len(items)} items.")
     return items
 
 @router.get("/outsourcing/pending-items", response_model=List[prod_schemas.ProductionPlanItem])
@@ -326,9 +336,19 @@ async def read_pending_outsourcing_items(
         
     result = await db.execute(query)
     items = result.scalars().all()
-    print(f"[DEBUG] Pending Outsourcing Items: Found {len(items)} items.")
+
+    # [NEW] Populate metadata for UI
     for i in items:
-        print(f"  - Item {i.id}: {i.process_name} ({i.course_type}) PlanID: {i.plan_id}")
+        if i.plan:
+            if i.plan.order:
+                i.client_name = i.plan.order.partner.name if i.plan.order.partner else "-"
+                if i.plan.order.items:
+                    i.product_name_of_plan = i.plan.order.items[0].product.name if i.plan.order.items[0].product else "-"
+            elif i.plan.stock_production:
+                i.client_name = i.plan.stock_production.partner.name if i.plan.stock_production.partner else "-"
+                i.product_name_of_plan = i.plan.stock_production.product.name if i.plan.stock_production.product else "-"
+
+    print(f"[DEBUG] Pending Outsourcing Items: Found {len(items)} items.")
     return items
 
 # --- Purchase Orders ---

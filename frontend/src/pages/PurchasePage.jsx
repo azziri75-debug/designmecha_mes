@@ -56,7 +56,9 @@ const PurchasePage = ({ type }) => {
         order_no: 150,
         process: 100,
         unit: 80,
-        partner: 120
+        partner: 120,
+        client: 120,
+        target_product: 200
     });
 
     const handleResize = (column, newWidth) => {
@@ -537,8 +539,10 @@ const PurchasePage = ({ type }) => {
                                     ) : (
                                         <>
                                             <ResizableTableCell width={columnWidths.order_no} onResize={(w) => handleResize('order_no', w)}>수주/재고번호</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.client} onResize={(w) => handleResize('client', w)}>고객사</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.target_product} onResize={(w) => handleResize('target_product', w)}>생산제품명</ResizableTableCell>
                                             <ResizableTableCell width={columnWidths.process} onResize={(w) => handleResize('process', w)}>공정명</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)}>품목명</ResizableTableCell>
+                                            <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)}>구매품목명</ResizableTableCell>
                                             <ResizableTableCell width={columnWidths.spec} onResize={(w) => handleResize('spec', w)}>규격</ResizableTableCell>
                                             <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)}>수량</ResizableTableCell>
                                             <ResizableTableCell width={columnWidths.unit} onResize={(w) => handleResize('unit', w)}>단위</ResizableTableCell>
@@ -584,11 +588,10 @@ const PurchasePage = ({ type }) => {
                                                                 ) : null}
                                                                 {item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}
                                                             </Typography>
-                                                            <Typography variant="caption" color="textSecondary">
-                                                                {item.plan?.order?.partner?.name || (item.plan?.stock_production ? '사내 생산(재고)' : '-')}
-                                                            </Typography>
                                                         </Box>
                                                     </TableCell>
+                                                    <TableCell>{item.client_name || '-'}</TableCell>
+                                                    <TableCell>{item.product_name_of_plan || '-'}</TableCell>
                                                     <TableCell>{item.process_name || '-'}</TableCell>
                                                     <TableCell>{item.product?.name}</TableCell>
                                                     <TableCell>{item.product?.specification}</TableCell>
