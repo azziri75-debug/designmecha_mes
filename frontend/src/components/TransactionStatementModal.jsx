@@ -105,9 +105,10 @@ const td = (c, extra = {}) => ({
     fontSize: '11px !important',
     color: `${c} !important`,
     verticalAlign: 'middle',
-    whiteSpace: 'nowrap', // Metadata default: no-wrap
     wordBreak: 'keep-all',
-    overflow: 'visible !important',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    lineHeight: '1.2',
     ...extra,
 });
 
@@ -337,7 +338,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                 {/* 상호 + 성명 행 */}
                                 <tr style={{ height: '30px', overflow: 'visible !important' }}>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>상호</td>
-                                    <td style={{ ...td(C), fontWeight: 'bold', fontSize: '13px' }}>{supplierInfo.company_name}</td>
+                                    <td style={{ ...td(C), fontWeight: 'bold', fontSize: '13px', overflow: 'hidden' }}>{supplierInfo.company_name}</td>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>성명</td>
                                     <td style={{ ...td(C), fontSize: '13px', fontWeight: 'bold', position: 'relative', overflow: 'visible !important' }}>
                                         {supplierInfo.owner_name}
