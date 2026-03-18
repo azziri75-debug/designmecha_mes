@@ -203,11 +203,11 @@ const PurchaseOrderTemplate = ({
 
             <div className={cn("bg-white text-black relative flex flex-col a4-wrapper a4-print-safe", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
-            <div className="flex justify-between items-start mb-8">
-                <div className="w-[240px] text-[10px] space-y-0.5 pt-8">
+            <div className="flex justify-between items-start mb-8 px-2">
+                <div className="w-[200px] text-[10px] space-y-0.5 pt-8">
                     <p className="flex items-center gap-1">NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-100 min-h-0" /></p>
                 </div>
-                <div className="flex-1 flex flex-col items-center">
+                <div className="flex-1 flex flex-col items-center px-6">
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px' }}>주식회사 디자인메카</Typography>
                     <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold text-center leading-none" style={{ 
                         whiteSpace: 'nowrap', 
