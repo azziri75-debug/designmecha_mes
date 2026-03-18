@@ -11,6 +11,8 @@ class PurchaseOrderItemBase(BaseModel):
     quantity: int
     unit_price: float
     note: Optional[str] = None
+    order_size: Optional[str] = None
+    material: Optional[str] = None
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
     consumable_purchase_wait_id: Optional[int] = None
@@ -25,6 +27,8 @@ class PurchaseOrderItemUpdate(BaseModel):
     unit_price: Optional[float] = None
     received_quantity: Optional[int] = None
     note: Optional[str] = None
+    order_size: Optional[str] = None
+    material: Optional[str] = None
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
 
@@ -35,6 +39,8 @@ class PurchaseOrderItem(PurchaseOrderItemBase):
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
     consumable_purchase_wait_id: Optional[int] = None
+    order_size: Optional[str] = None
+    material: Optional[str] = None
     product: Optional[Product] = None
     process_name: Optional[str] = None
 

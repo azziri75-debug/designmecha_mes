@@ -410,6 +410,8 @@ async def create_purchase_order(
                 quantity=item.quantity,
                 unit_price=item.unit_price,
                 note=item.note,
+                order_size=item.order_size,
+                material=item.material,
                 material_requirement_id=item.material_requirement_id,
                 consumable_purchase_wait_id=item.consumable_purchase_wait_id
             )

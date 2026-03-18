@@ -425,6 +425,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     </li>
                                                 )}
                                                 sx={{ minWidth: 250 }}
+                                                readOnly={!!item.production_plan_item_id}
                                             />
                                         </TableCell>
                                         <TableCell><TextField type="number" size="small" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} /></TableCell>
@@ -437,14 +438,25 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                             </Box>
                                         </TableCell>
                                         <TableCell><Typography variant="body2">₩{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString()}</Typography></TableCell>
-                                        <TableCell align="center"><IconButton size="small" color="error" onClick={() => handleRemoveItem(index)}><Trash size={16} /></IconButton></TableCell>
+                                        <TableCell align="center">
+                                            <IconButton 
+                                                size="small" 
+                                                color="error" 
+                                                onClick={() => handleRemoveItem(index)}
+                                                disabled={!!item.production_plan_item_id}
+                                            >
+                                                <Trash size={16} />
+                                            </IconButton>
+                                        </TableCell>
                                     </TableRow>
                                 );
                             })}
                         </TableBody>
                     </Table>
                 </TableContainer>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddItem} size="small">항목 추가</Button>
+                {(!initialItems || initialItems.length === 0) && (
+                    <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddItem} size="small">항목 추가</Button>
+                )}
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>

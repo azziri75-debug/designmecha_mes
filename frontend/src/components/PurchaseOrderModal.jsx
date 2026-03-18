@@ -183,7 +183,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 purchase_type: order.purchase_type || purchaseType || 'PART',
                 items: order.items.map(item => ({
                     ...item,
-                    product_id: item.product.id
+                    product_id: item.product.id,
+                    order_size: item.order_size || '',
+                    material: item.material || ''
                 }))
             });
         }
@@ -234,7 +236,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             note: item?.note || item?.process_name || '',
                             production_plan_item_id: item?.id,
                             display_product_name: productObj?.name || item?.product_name_of_plan || '',
-                            display_client_name: item?.client_name || ''
+                            display_client_name: item?.client_name || '',
+                            order_size: '',
+                            material: ''
                         };
                     } else if (item?.type === 'MRP') {
                         const product = productObj?.id ? productObj : (products.find(p => p?.id === productId) || {});
@@ -430,6 +434,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     quantity: parseInt(item.quantity) || 0,
                     unit_price: parseFloat(item.unit_price) || 0,
                     note: item.note || '',
+                    order_size: item.order_size || '',
+                    material: item.material || '',
                     production_plan_item_id: item.production_plan_item_id || null,
                     material_requirement_id: item.material_requirement_id || null,
                     consumable_purchase_wait_id: item.consumable_purchase_wait_id || null
@@ -526,11 +532,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 'bold', width: 50 }}>No</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>품목명 / 규격</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 100 }}>재질</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 100 }}>주문사이즈</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold', width: 100 }}>수량</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold', width: 140 }}>단가</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold', width: 140 }}>금액</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>비고</TableCell>
-                                <TableCell align="center" sx={{ width: 80 }}>삭제</TableCell>
+                                <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -561,6 +569,23 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     </li>
                                                 )}
                                                 sx={{ minWidth: 250 }}
+                                                readOnly={!!item.production_plan_item_id || !!item.material_requirement_id || !!item.consumable_purchase_wait_id}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField
+                                                size="small"
+                                                value={item.material || ''}
+                                                onChange={(e) => handleItemChange(index, 'material', e.target.value)}
+                                                placeholder="재질"
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField
+                                                size="small"
+                                                value={item.order_size || ''}
+                                                onChange={(e) => handleItemChange(index, 'order_size', e.target.value)}
+                                                placeholder="사이즈"
                                             />
                                         </TableCell>
                                         <TableCell>
@@ -602,7 +627,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                             />
                                         </TableCell>
                                         <TableCell align="center">
-                                            <IconButton size="small" color="error" onClick={() => handleRemoveItem(index)}>
+                                            <IconButton 
+                                                size="small" 
+                                                color="error" 
+                                                onClick={() => handleRemoveItem(index)}
+                                                disabled={!!item.production_plan_item_id || !!item.material_requirement_id || !!item.consumable_purchase_wait_id}
+                                            >
                                                 <DeleteIcon fontSize="small" />
                                             </IconButton>
                                         </TableCell>
@@ -621,14 +651,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 </TableContainer>
                 
                 <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-                    <Button
-                        variant="outlined"
-                        startIcon={<AddIcon />}
-                        onClick={handleAddItem}
-                        size="small"
-                    >
-                        품목 추가
-                    </Button>
+                    {(!initialItems || initialItems.length === 0) && (
+                        <Button
+                            variant="outlined"
+                            startIcon={<AddIcon />}
+                            onClick={handleAddItem}
+                            size="small"
+                        >
+                            품목 추가
+                        </Button>
+                    )}
                 </Box>
 
             </DialogContent>

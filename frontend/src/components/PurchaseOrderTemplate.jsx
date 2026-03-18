@@ -61,13 +61,26 @@ const PurchaseOrderTemplate = ({
         { key: 'total', label: '금액', subLabel: 'Total Amount', align: 'right' }
     ];
 
-    let formattedItems = (data.items || []).map((item, idx) => ({
-        ...item,
-        idx: item.idx || idx + 1,
-        qty: fmt(item.qty),
-        price: fmt(item.price),
-        total: fmt(item.total)
-    }));
+    let formattedItems = (data.items || []).map((item, idx) => {
+        // [NEW] Blend material and order_size into spec for clear printing
+        let specDisplay = item.spec || '';
+        if (item.material || item.order_size) {
+            const parts = [];
+            if (item.material) parts.push(item.material);
+            if (item.order_size) parts.push(item.order_size);
+            const extra = parts.join(' / ');
+            specDisplay = specDisplay ? `${specDisplay} (${extra})` : extra;
+        }
+
+        return {
+            ...item,
+            idx: item.idx || idx + 1,
+            spec: specDisplay,
+            qty: fmt(item.qty),
+            price: fmt(item.price),
+            total: fmt(item.total)
+        };
+    });
 
     // Pad to 10 rows for A4 aesthetic as requested by user
     if (formattedItems.length < 10) {
