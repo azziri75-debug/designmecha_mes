@@ -7,8 +7,19 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
     const author = documentData?.author || currentUser;
     const createdAt = documentData?.created_at || new Date().toISOString();
     
-    // 2. Approver steps (dynamic)
-    const steps = documentData?.steps || [];
+    // 2. Approver steps (dynamic or forced minimum)
+    const baseSteps = documentData?.steps || [];
+    const minSteps = 3; // + 1 author = 4 cols total
+    const defaultRoles = ['부장', '이사', '대표이사'];
+    
+    let steps = [...baseSteps];
+    while (steps.length < minSteps) {
+        steps.push({ 
+            role: defaultRoles[steps.length] || '검토', 
+            isPlaceholder: true 
+        });
+    }
+    
     console.log("렌더링되는 결재선 데이터:", steps);
 
     const getImgUrl = (img) => {
