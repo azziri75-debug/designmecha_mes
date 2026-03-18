@@ -37,6 +37,13 @@ export function getImageUrl(path) {
         cleanPath = path.replace('api/v1', '');
     }
 
+    // 만약 uploads/ 로 시작하고 이미 static/이 없다면 static/을 붙여줌
+    // (백엔드 StaticFiles 마운트 경로가 /api/v1/static 이기 때문)
+    if (cleanPath.includes('uploads/') && !cleanPath.includes('static/')) {
+        const parts = cleanPath.split('uploads/');
+        cleanPath = `/static/uploads/${parts[1]}`;
+    }
+
     const normalizedApiUrl = (apiUrl === '/' || apiUrl === '') ? '/api/v1' : (apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl);
     const normalizedPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
 

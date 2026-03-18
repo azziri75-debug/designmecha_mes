@@ -7,7 +7,7 @@ import {
     ChevronRight, ArrowRight, Download, Upload, Printer
 } from 'lucide-react';
 import api from '../lib/api';
-import { cn } from '../lib/utils';
+import { cn, getImageUrl } from '../lib/utils';
 import { Box, Typography } from '@mui/material';
 import Card from '../components/Card';
 import { format } from 'date-fns';
@@ -537,8 +537,8 @@ const ApprovalPage = () => {
                         </div>
 
                         <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto max-h-[80vh]", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
-                            {/* Header Section (Stamp/Signature images) - Hidden for Purchase Order as it's built into the template */}
-                            {selectedDoc.doc_type !== 'PURCHASE_ORDER' && (
+                            {/* Header Section (Stamp/Signature images) - Hidden for Purchase Order & Expense Report as it's built into the template */}
+                            {!['PURCHASE_ORDER', 'EXPENSE_REPORT'].includes(selectedDoc.doc_type) && (
                                 <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-700 pb-8">
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2">
@@ -574,7 +574,7 @@ const ApprovalPage = () => {
                                                     {step.status === 'APPROVED' ? (
                                                         step.approver?.stamp_image ? (
                                                             <img 
-                                                                src={step.approver?.stamp_image.url} 
+                                                                src={getImageUrl(step.approver?.stamp_image.url || step.approver?.stamp_image)} 
                                                                 alt="Sign" 
                                                                 className="w-full h-full object-contain p-1" 
                                                                 onError={(e) => { e.target.style.display = 'none'; }}

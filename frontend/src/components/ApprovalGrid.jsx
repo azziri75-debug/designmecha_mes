@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Table, TableBody, TableRow, Typography } from '@mui/material';
+import { getImageUrl } from '../lib/utils';
 
 const ApprovalGrid = ({ documentData, currentUser }) => {
     // 1. Author (기안자) info
@@ -22,9 +23,7 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
         }
 
         if (!url) return null;
-        if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('/')) return url;
-        // Fix for relative paths: ensure static prefix
-        return `/api/v1/static/${url.replace(/^\//, '')}`;
+        return getImageUrl(url);
     };
 
     const getStatusMarker = (step, isAuthor = false) => {

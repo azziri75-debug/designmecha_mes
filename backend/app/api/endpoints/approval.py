@@ -276,6 +276,7 @@ async def create_document(
     else:
         # Get default approval lines from template (Case-insensitive & Trimmed)
         doc_type_clean = doc_in.doc_type.strip().upper()
+        print(f"[DEBUG] Fetching approval lines for: '{doc_type_clean}' (Original: '{doc_in.doc_type}')")
         lines_res = await db.execute(
             select(ApprovalLine)
             .options(selectinload(ApprovalLine.approver))
@@ -283,8 +284,9 @@ async def create_document(
             .order_by(ApprovalLine.sequence)
         )
         lines = lines_res.scalars().all()
+        print(f"[DEBUG] Found {len(lines)} default lines for {doc_type_clean}")
         if not lines:
-             print(f"[WARNING] No default approval lines found for {doc_in.doc_type}")
+             print(f"[WARNING] No default approval lines found for {doc_type_clean}")
         for line in lines:
             if line.approver:
                 lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
@@ -837,10 +839,11 @@ async def update_document(
                 if target_s:
                     lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
         else:
+            doc_type_clean = doc.doc_type.strip().upper()
             lines_res = await db.execute(
                 select(ApprovalLine)
                 .options(selectinload(ApprovalLine.approver))
-                .where(ApprovalLine.doc_type == doc.doc_type)
+                .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
                 .order_by(ApprovalLine.sequence)
             )
             lines = lines_res.scalars().all()

@@ -133,27 +133,26 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     </TableBody>
                 </Table>
 
-                {/* Right Approval Grid - Only show in Draft/Edit mode to avoid duplication in Detail view */}
-                {!isReadOnly && (
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                        <Box sx={{ 
-                            border: '2px solid #000', 
-                            borderRight: 'none',
-                            width: '25px', 
-                            height: '100%', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            bgcolor: '#f5f5f5',
-                            fontWeight: 'bold',
-                            fontSize: '11px',
-                            textAlign: 'center'
-                        }}>
-                            결<br/>재
-                        </Box>
-                        <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                {/* Right Approval Grid */}
+                <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                    <Box sx={{ 
+                        border: '2px solid #000', 
+                        borderRight: 'none',
+                        width: '25px', 
+                        height: '100%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        bgcolor: '#f5f5f5',
+                        fontWeight: 'bold',
+                        fontSize: '11px',
+                        textAlign: 'center',
+                        minHeight: '128px'
+                    }}>
+                        결<br/>재
                     </Box>
-                )}
+                    <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                </Box>
             </Box>
 
             {/* Middle Main Info */}
