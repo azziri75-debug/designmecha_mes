@@ -204,7 +204,7 @@ const PurchaseOrderTemplate = ({
             <div className={cn("bg-white text-black relative flex flex-col a4-wrapper a4-print-safe", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
             <div className="flex justify-between items-start mb-8">
-                <div className="w-[160px] text-[10px] space-y-0.5 pt-8">
+                <div className="w-[240px] text-[10px] space-y-0.5 pt-8">
                     <p className="flex items-center gap-1">NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-100 min-h-0" /></p>
                 </div>
                 <div className="flex-1 flex flex-col items-center">
@@ -219,11 +219,11 @@ const PurchaseOrderTemplate = ({
                         {data.title || '구 매 발 주 서'}
                     </div>
                 </div>
-                <div className="w-[320px] idf-no-print">
+                <div className="w-[200px] idf-no-print">
                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} />}
                 </div>
                 {/* Print-only approval grid placeholder or simplified view if needed */}
-                <div className="hidden print:block w-[320px]">
+                <div className="hidden print:block w-[200px]">
                      {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} />}
                 </div>
             </div>
