@@ -40,14 +40,14 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
 
     const fetchApprovalDoc = async () => {
         try {
-            const res = await api.get('/approval/documents', { 
+            const res = await api.get('/approval/documents/by-reference', { 
                 params: { 
                     reference_id: order.id, 
                     reference_type: orderType === 'outsourcing' ? 'OUTSOURCING' : 'PURCHASE' 
                 } 
             });
-            if (res.data && res.data.length > 0) {
-                setApprovalDoc(res.data[0]);
+            if (res.data) {
+                setApprovalDoc(res.data);
             } else {
                 setApprovalDoc(null);
             }

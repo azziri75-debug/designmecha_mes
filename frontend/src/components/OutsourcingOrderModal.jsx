@@ -111,9 +111,15 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
     const fetchApprovalDoc = async () => {
         try {
-            const res = await api.get('/approval/documents');
-            const found = res.data.find(d => d.doc_type === 'PURCHASE_ORDER' && d.content?.order_no === order?.order_no);
-            if (found) setApprovalDoc(found);
+            const res = await api.get('/approval/documents/by-reference', {
+                params: {
+                    reference_id: order?.id,
+                    reference_type: 'OUTSOURCING'
+                }
+            });
+            if (res.data) {
+                setApprovalDoc(res.data);
+            }
         } catch (err) {
             console.error("Failed to fetch approval doc", err);
         }

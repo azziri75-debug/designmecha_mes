@@ -87,8 +87,6 @@ const removePrintCSS = () => {
 const makeSealURI = (companyName = '(주)디자인메카') =>
     `data:image/svg+xml;utf8,${encodeURIComponent(
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
-        `<circle cx="50" cy="50" r="46" fill="none" stroke="#c00" stroke-width="6"/>` +
-        `<circle cx="50" cy="50" r="37" fill="none" stroke="#c00" stroke-width="1.5"/>` +
         `<text x="50" y="35" text-anchor="middle" font-size="10" fill="#c00" font-family="Malgun Gothic,serif" font-weight="bold">${companyName}</text>` +
         `<text x="50" y="54" text-anchor="middle" font-size="22" fill="#c00" font-family="Malgun Gothic,serif" font-weight="900">인</text>` +
         `<text x="50" y="70" text-anchor="middle" font-size="8.5" fill="#c00" font-family="Malgun Gothic,serif">대표이사</text>` +
@@ -261,7 +259,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
             <div style={{
                 border: `1.8px solid ${C}`,
                 width: '100%', height: '100%',
-                backgroundColor: '#fff',
+                backgroundColor: 'white !important', // Enforce white background
                 display: 'flex', flexDirection: 'column',
                 fontFamily: '"Malgun Gothic","맑은 고딕",sans-serif',
                 boxSizing: 'border-box',
@@ -331,7 +329,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                                 objectFit: 'contain',
                                                 mixBlendMode: 'multiply',
                                                 pointerEvents: 'none',
-                                                zIndex: 10
+                                                zIndex: 10,
+                                                border: 'none', // Explicitly remove border
+                                                borderRadius: 0 // Explicitly remove border-radius
                                             }}
                                         />
                                     </td>
@@ -392,7 +392,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             fontWeight: '900',
                                             fontSize: '12px',
                                             borderRight: i === 6 ? 'none' : `0.8px solid ${C}`,
-                                            position: 'relative'
+                                            position: 'relative',
+                                            overflow: 'hidden', // Extra safety for headers
+                                            textOverflow: 'ellipsis'
                                         }}
                                     >
                                         {h.label}

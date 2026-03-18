@@ -156,10 +156,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     const fetchApprovalDoc = async () => {
         try {
-            // Find document that contains this PO ID in its content
-            const res = await api.get('/approval/documents');
-            const found = res.data.find(d => d.doc_type === 'PURCHASE_ORDER' && d.content?.order_id === order.id);
-            if (found) setApprovalDoc(found);
+            // Use the dedicated by-reference endpoint for efficiency and reliability
+            const res = await api.get('/approval/documents/by-reference', {
+                params: {
+                    reference_id: order.id,
+                    reference_type: 'PURCHASE'
+                }
+            });
+            if (res.data) {
+                setApprovalDoc(res.data);
+            }
         } catch (err) {
             console.error("Failed to fetch approval doc", err);
         }

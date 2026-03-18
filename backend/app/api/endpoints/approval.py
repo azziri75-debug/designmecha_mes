@@ -180,6 +180,26 @@ async def list_documents(
     result = await db.execute(query)
     return result.scalars().all()
 
+@router.get("/documents/by-reference", response_model=Optional[ApprovalDocumentResponse])
+async def get_document_by_reference(
+    reference_id: int,
+    reference_type: str,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    """레퍼런스(PO ID 등)로 연결된 결재 문서 조회"""
+    query = select(ApprovalDocument).options(
+        selectinload(ApprovalDocument.author),
+        selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver),
+        selectinload(ApprovalDocument.attachments)
+    ).where(
+        ApprovalDocument.reference_id == reference_id,
+        ApprovalDocument.reference_type == reference_type,
+        ApprovalDocument.deleted_at.is_(None)
+    ).order_by(ApprovalDocument.created_at.desc()).limit(1)
+
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
 @router.post("/documents", response_model=ApprovalDocumentResponse)
 async def create_document(
     doc_in: ApprovalDocumentCreate,
@@ -312,7 +332,8 @@ async def create_document(
         if lines_to_process:
             for lp in lines_to_process:
                 # 4-1. Calculate rank for the specific approver in the loop
-                approver_rank = get_staff_rank(lp["role"])
+                approver_role = lp.get("role", "")
+                approver_rank = get_staff_rank(approver_role)
                 
                 # Auto-approve if author is the approver or has higher rank
                 is_auto = (lp["approver_id"] == current_user.id) or (author_rank >= approver_rank)
@@ -333,6 +354,8 @@ async def create_document(
                 else:
                     all_auto_approved = False
         else:
+            # If no lines to process, it's either an internal draft or a missing configuration
+            # For draft types, we might allow it, but we set all_auto_approved to False to keep it in PENDING
             all_auto_approved = False
 
         db_doc.current_sequence = current_seq
@@ -355,10 +378,16 @@ async def create_document(
         await db.commit()
     except Exception as e:
         import traceback
-        print(f"[CRITICAL ERROR] Failed to create document: {str(e)}")
-        print(traceback.format_exc())
+        import logging
+        logger = logging.getLogger(__name__)
+        error_msg = traceback.format_exc()
+        logger.error(f"Failed to create document: {error_msg}")
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Internal Server Error during document creation: {str(e)}")
+        # Provide more specific error if possible
+        detail_msg = f"결재 문서 생성 중 서버 오류 발생: {str(e)}"
+        if "id" in str(e).lower() and "null" in str(e).lower():
+            detail_msg = "결재선 데이터(결재자 ID)가 올바르지 않습니다."
+        raise HTTPException(status_code=500, detail=detail_msg)
     
     # 다시 조회 (500 오류 방지 - 관계형 객체 로드)
     result = await db.execute(
