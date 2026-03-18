@@ -136,7 +136,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
             setApprovalDoc(null);
             setDefaultSteps([]);
         }
-    }, [isOpen, order]);
+    }, [isOpen, order, formData.partner_id]);
 
     useEffect(() => {
         if (order) {
@@ -156,35 +156,39 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     }, [order]);
 
     useEffect(() => {
-        if (isOpen && !order && initialItems && initialItems.length > 0 && products.length > 0 && partners.length > 0) {
+        if (isOpen && !order && initialItems && initialItems.length > 0) {
             const firstPartnerName = initialItems[0].partner_name;
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
-            const displayCode = initialItems[0]?.plan?.order?.order_no ||
+            const displayCode = initialItems[0]?.sales_order_number ||
+                initialItems[0]?.plan?.order?.order_no ||
                 initialItems[0]?.plan?.stock_production?.production_no || '';
 
             setFormData(prev => ({
                 ...prev,
-                partner_id: foundPartner ? foundPartner.id : '',
+                partner_id: foundPartner ? foundPartner.id : (prev.partner_id || ''),
                 order_id: initialItems[0]?.plan?.order_id || '',
                 display_order_no: displayCode,
                 items: initialItems.map(item => {
-                    const product = products.find(p => p.id === item.product_id);
-                    let unitPrice = 0;
+                    const productObj = item.product || {};
+                    const productId = item.product_id || productObj.id;
+                    const product = productObj.id ? productObj : products.find(p => p.id === productId);
+                    
+                    let unitPrice = item.unit_price || 0;
                     if (product && product.standard_processes) {
                         const standardProc = product.standard_processes.find(sp =>
                             sp.process?.name === item.process_name ||
                             sp.course_type?.includes('OUTSOURCING') ||
                             sp.process?.course_type?.includes('OUTSOURCING')
                         );
-                        if (standardProc) unitPrice = standardProc.cost || 0;
+                        if (standardProc) unitPrice = standardProc.cost || unitPrice;
                     }
 
                     return {
-                        product_id: item.product_id,
+                        product_id: productId,
                         quantity: item.quantity,
                         unit_price: unitPrice,
-                        note: item.note,
+                        note: item.note || item.process_name || '',
                         production_plan_item_id: item.id
                     };
                 })
@@ -201,7 +205,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
     const fetchPartners = async () => {
         try {
-            const response = await api.get('/basics/partners/');
+            const response = await api.get('/basics/partners/', { params: { type: 'SUPPLIER' } });
             setPartners(response.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);
@@ -210,7 +214,13 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
     const fetchProducts = async () => {
         try {
-            const response = await api.get('/product/products');
+            // Outsourcing should only show PRODUCT or HALF_PRODUCT
+            // And ideally filter by partner_id if available to show relevant items for that vendor
+            const params = { item_type: 'PRODUCT,HALF_PRODUCT' };
+            if (formData.partner_id) {
+                params.partner_id = formData.partner_id;
+            }
+            const response = await api.get('/product/products', { params });
             setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);

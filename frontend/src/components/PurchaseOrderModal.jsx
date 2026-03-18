@@ -137,7 +137,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             setApprovalDoc(null);
             setDefaultSteps([]);
         }
-    }, [isOpen, purchaseType, order]);
+    }, [isOpen, purchaseType, order, formData.partner_id]);
 
     const fetchDefaultLines = async () => {
         try {
@@ -189,9 +189,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         }
     }, [order]);
 
-    // Pre-fill logic moved to its own effect depending on dependencies
+    // Pre-fill logic: Only run once when modal opens and initialItems are provided
     useEffect(() => {
-        if (isOpen && !order && initialItems && initialItems.length > 0 && products.length > 0 && partners.length > 0) {
+        if (isOpen && !order && initialItems && initialItems.length > 0) {
             const firstPartnerName = initialItems[0].partner_name;
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
@@ -201,30 +201,36 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
             setFormData(prev => ({
                 ...prev,
-                partner_id: foundPartner ? foundPartner.id : '',
+                partner_id: foundPartner ? foundPartner.id : (prev.partner_id || ''),
                 order_id: initialItems[0]?.plan?.order_id || '',
                 display_order_no: displayCode,
                 items: initialItems.map(item => {
+                    // FALLBACK: Use provided product object if product_id is not directly on item
+                    const productObj = item.product || {};
+                    const productId = item.product_id || productObj.id;
+                    
                     if (item.type === 'PENDING') {
-                        const product = products.find(p => p.id === item.product_id);
-                        let unitPrice = 0;
+                        // Priority: 1. standard_processes of provided product, 2. products list, 3. item.unit_price
+                        const product = productObj.id ? productObj : products.find(p => p.id === productId);
+                        let unitPrice = item.unit_price || 0;
+                        
                         if (product && product.standard_processes) {
                             const standardProc = product.standard_processes.find(sp =>
                                 sp.process?.name === item.process_name ||
                                 sp.course_type?.includes('PURCHASE') ||
                                 sp.process?.course_type?.includes('PURCHASE')
                             );
-                            if (standardProc) unitPrice = standardProc.cost || 0;
+                            if (standardProc) unitPrice = standardProc.cost || unitPrice;
                         }
                         return {
-                            product_id: item.product_id,
+                            product_id: productId,
                             quantity: item.quantity,
                             unit_price: unitPrice,
-                            note: item.note,
+                            note: item.note || item.process_name || '',
                             production_plan_item_id: item.id
                         };
                     } else if (item.type === 'MRP') {
-                        const product = products.find(p => p.id === item.product_id);
+                        const product = productObj.id ? productObj : products.find(p => p.id === productId);
                         let unitPrice = 0;
                         if (product && product.standard_processes) {
                             const standardProc = product.standard_processes.find(sp =>
@@ -234,9 +240,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             if (standardProc) unitPrice = standardProc.cost || 0;
                         }
                         return {
-                            product_id: item.product_id,
+                            product_id: productId,
                             quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : (item.required_purchase_qty || 0),
-                            unit_price: unitPrice,
+                            unit_price: unitPrice || 0,
                             note: 'MRP 소요량 기반 발주',
                             production_plan_item_id: null,
                             material_requirement_id: item.id,
@@ -246,9 +252,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         };
                     } else if (item.type === 'CONSUMABLE_WAIT') {
                         return {
-                            product_id: item.product_id,
+                            product_id: productId,
                             quantity: item.quantity,
-                            unit_price: 0,
+                            unit_price: item.unit_price || 0,
                             note: item.remarks || '',
                             consumable_purchase_wait_id: item.id
                         };
@@ -264,7 +270,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 items: []
             }));
         }
-    }, [isOpen, order, initialItems, partners, products]);
+    }, [isOpen, order, initialItems, products, partners]); // Added products/partners back to deps to ensure mapping completes when they load
+
+    // Sync partner_id when partners are loaded
+    useEffect(() => {
+        if (isOpen && !order && initialItems && initialItems.length > 0 && partners.length > 0 && !formData.partner_id) {
+            const firstPartnerName = initialItems[0].partner_name;
+            const foundPartner = partners.find(p => p.name === firstPartnerName);
+            if (foundPartner) {
+                setFormData(prev => ({ ...prev, partner_id: foundPartner.id }));
+            }
+        }
+    }, [partners, isOpen, initialItems]);
 
     const fetchPartners = async () => {
         try {
@@ -277,12 +294,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     const fetchProducts = async () => {
         try {
-            // Filter by purchaseType
+            // Material purchase (PART) should include RAW_MATERIAL
+            // Consumable purchase should only include CONSUMABLE
             let typeParam = 'PART,RAW_MATERIAL';
             if (purchaseType === 'CONSUMABLE') {
                 typeParam = 'CONSUMABLE';
             }
-            const response = await api.get('/product/products', { params: { item_type: typeParam } });
+            const params = { item_type: typeParam };
+            if (formData.partner_id) {
+                params.partner_id = formData.partner_id;
+            }
+            const response = await api.get('/product/products', { params });
             setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
