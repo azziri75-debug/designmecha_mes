@@ -101,7 +101,7 @@ const tblStyle = (c) => ({
 });
 const td = (c, extra = {}) => ({
     border: `0.7px solid ${c}`,
-    padding: '2px 3px',
+    padding: '4px 8px', // Increased padding
     fontSize: '11px',
     color: `${c} !important`,
     verticalAlign: 'middle',
@@ -161,10 +161,14 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const onResizerMouseMove = useCallback((e) => {
         if (!resizingCol.current) return;
         const diff = e.pageX - startX.current;
-        const MAX_W = 500;
+        const newWidth = Math.max(30, startWidth.current + diff);
+        
+        // Prevent table from expanding too much (optional boundary check)
+        // For simplicity, we just cap individual columns, but the table-layout: fixed + width: 100%
+        // on the table itself will help keep it constrained if we handle the CSS correctly.
         setColWidths(prev => ({
             ...prev,
-            [resizingCol.current]: Math.min(MAX_W, Math.max(30, startWidth.current + diff))
+            [resizingCol.current]: newWidth
         }));
     }, []);
 
@@ -264,8 +268,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 display: 'flex', flexDirection: 'column',
                 fontFamily: '"Malgun Gothic","맑은 고딕",sans-serif',
                 boxSizing: 'border-box',
+                padding: '10px',
                 overflow: 'hidden',
-                 // Force white background and black text regardless of theme
+                // Force white background and black text regardless of theme
                 '--statement-color': C
             }}>
                 <style>{`
@@ -583,18 +588,24 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 transform: 'translate(-50%, -50%)',
                 width: '96vw', maxWidth: '1200px',
                 maxHeight: '98vh', display: 'flex', flexDirection: 'column',
-                bgcolor: '#1e293b', boxShadow: 24, borderRadius: 2, overflow: 'hidden',
+                bgcolor: '#ffffff', // Forced white
+                boxShadow: 24, borderRadius: 2, overflow: 'hidden',
             }}>
-                {/* 헤더 */}
-                <Box className="tsm-no-print" sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                    <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Box className="tsm-no-print" sx={{ 
+                    px: 2, py: 1, 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                    flexShrink: 0,
+                    borderBottom: '1px solid #e2e8f0',
+                    bgcolor: '#f8fafc'
+                }}>
+                    <span style={{ color: '#1e293b', fontWeight: 800, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Printer size={16} /> 거래명세서 출력 및 관리
                     </span>
-                    <IconButton onClick={onClose} sx={{ color: '#fff' }}><X size={20} /></IconButton>
+                    <IconButton onClick={onClose} sx={{ color: '#64748b' }}><X size={20} /></IconButton>
                 </Box>
 
                 {/* 본문 */}
-                <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#334155', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     {pdfStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
                     {pdfStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
 
@@ -639,7 +650,13 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 </Box>
 
                 {/* 하단 버튼 */}
-                <Box className="tsm-no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #475569', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#1e293b', flexShrink: 0 }}>
+                <Box className="tsm-no-print" sx={{ 
+                    px: 2, py: 1.5, 
+                    borderTop: '1px solid #e2e8f0', 
+                    display: 'flex', justifyContent: 'center', gap: 2, 
+                    bgcolor: '#f8fafc', 
+                    flexShrink: 0 
+                }}>
                     <Button variant="contained" size="large"
                         startIcon={isGeneratingPdf ? <CircularProgress size={16} color="inherit" /> : <FileDown />}
                         onClick={handleDownloadPDF} disabled={isGeneratingPdf}
@@ -651,7 +668,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         인쇄
                     </Button>
                     <Button variant="outlined" size="large" onClick={onClose}
-                        sx={{ borderColor: '#475569', color: '#94a3b8', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
+                        sx={{ borderColor: '#cbd5e1', color: '#64748b', fontWeight: 'bold', px: 4, borderRadius: 2 }}>
                         닫기
                     </Button>
                 </Box>
