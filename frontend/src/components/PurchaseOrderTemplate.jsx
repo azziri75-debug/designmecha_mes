@@ -187,7 +187,7 @@ const PurchaseOrderTemplate = ({
                 </Box>
             )}
 
-            <div className={cn("bg-white text-black w-full relative flex flex-col shadow-sm border border-gray-200", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+            <div className={cn("bg-white text-black relative flex flex-col a4-wrapper a4-print-safe", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
             <div className="flex justify-between items-start mb-8">
                 <div className="w-[160px] text-[10px] space-y-0.5 pt-8">
@@ -195,7 +195,13 @@ const PurchaseOrderTemplate = ({
                 </div>
                 <div className="flex-1 flex flex-col items-center">
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px' }}>주식회사 디자인메카</Typography>
-                    <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold text-center leading-none" style={{ whiteSpace: 'nowrap', letterSpacing: '10px', textIndent: '10px' }}>
+                    <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold text-center leading-none" style={{ 
+                        whiteSpace: 'nowrap', 
+                        letterSpacing: '10px', 
+                        textIndent: '10px',
+                        display: 'inline-block',
+                        minWidth: 'max-content'
+                    }}>
                         {data.title || '구 매 발 주 서'}
                     </div>
                 </div>

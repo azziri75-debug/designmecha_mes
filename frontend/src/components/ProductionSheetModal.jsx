@@ -36,7 +36,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
     return (
         <div 
             ref={ref} 
-            className="bg-white text-black flex flex-col shadow-none origin-top relative mb-8 last:mb-0" 
+            className="bg-white text-black flex flex-col shadow-none origin-top relative mb-8 last:mb-0 a4-print-safe" 
             style={{ 
                 fontFamily: '"Malgun Gothic", sans-serif', 
                 border: '1px solid #e5e7eb',
@@ -125,6 +125,18 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
             initializeData();
         }
     }, [isOpen, plan]);
+
+    useEffect(() => {
+        const handleBefore = () => { if (isOpen) document.body.classList.add('a4-print-mode'); };
+        const handleAfter = () => { document.body.classList.remove('a4-print-mode'); };
+        window.addEventListener('beforeprint', handleBefore);
+        window.addEventListener('afterprint', handleAfter);
+        return () => {
+            window.removeEventListener('beforeprint', handleBefore);
+            window.removeEventListener('afterprint', handleAfter);
+            document.body.classList.remove('a4-print-mode');
+        };
+    }, [isOpen]);
 
     const fetchCompany = async () => {
         try {

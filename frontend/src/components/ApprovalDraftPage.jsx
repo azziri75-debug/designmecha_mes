@@ -30,6 +30,7 @@ const DOC_TYPES = [
     { value: 'EARLY_LEAVE', label: '조퇴/외출원' },
     { value: 'CONSUMABLES_PURCHASE', label: '소모품 구매신청서' },
     { value: 'OVERTIME', label: '야근/특근신청서' },
+    { value: 'PURCHASE_ORDER', label: '구매발주서' },
 ];
 
 const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
@@ -89,6 +90,31 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         }
     }, [documentData, navigate.state]);
 
+    // [Issue 2 Fix] Fetch default approval lines when docType changes
+    useEffect(() => {
+        if (!initialData && docType) {
+            fetchDefaultLines(docType);
+        }
+    }, [docType, initialData]);
+
+    const fetchDefaultLines = async (type) => {
+        try {
+            const res = await api.get(`/approval/lines?doc_type=${type}`);
+            if (res.data && res.data.length > 0) {
+                const lines = res.data.map(line => ({
+                    ...line.approver,
+                    staff_id: line.approver_id,
+                    sequence: line.sequence
+                }));
+                setCustomApprovers(lines);
+            } else {
+                setCustomApprovers([]);
+            }
+        } catch (err) {
+            console.error("Failed to fetch default lines", err);
+        }
+    };
+
     const fetchDocument = async (id) => {
         setIsLoading(true);
         try {
@@ -103,7 +129,14 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         }
     };
 
-    const handlePrint = () => { window.print(); };
+    const handlePrint = () => { 
+        document.body.classList.add('a4-print-mode');
+        window.print(); 
+        // We use a small timeout to ensure class is removed AFTER print dialog is closed
+        setTimeout(() => {
+            document.body.classList.remove('a4-print-mode');
+        }, 1000);
+    };
 
     const handleDownloadPDF = async () => {
         const cvs = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
@@ -238,7 +271,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             {/* A4 Paper */}
             <Paper
                 ref={printRef}
-                className="a4-paper-root"
+                className="a4-paper-root a4-print-safe"
                 sx={{
                     width: '210mm',
                     minHeight: '297mm',

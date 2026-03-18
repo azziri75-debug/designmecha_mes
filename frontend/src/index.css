@@ -65,31 +65,41 @@ body.resizing {
   --color-orange-600: #ea580c !important;
 }
 
-/* Print Styles */
+/* Print Styles - Scoped to avoid polluting non-A4 pages */
 @media print {
-  /* Hide UI elements */
-  body * { visibility: hidden; }
-  .a4-container, .a4-container *, 
-  .a4-paper-container, .a4-paper-container *,
-  [ref="sheetRef"], [ref="sheetRef"] * { 
-    visibility: visible !important; 
+  /* Only apply radical "hide everything else" logic if .a4-print-mode class is present on body */
+  body.a4-print-mode * { 
+    visibility: hidden; 
   }
   
-  .a4-container, .a4-paper-container { 
-    position: absolute !important; 
-    left: 0 !important; 
-    top: 0 !important; 
-    width: 210mm !important; 
-    margin: 0 !important; 
-    padding: 0 !important; 
-    box-shadow: none !important;
-    background-color: white !important;
+  body.a4-print-mode .a4-print-safe,
+  body.a4-print-mode .a4-print-safe * { 
+    visibility: visible !important; 
   }
 
-  /* Completely hide problematic elements */
-  aside, nav, header, .sidebar, .modal-backdrop, .action-buttons, 
-  button, .no-print, [role="dialog"] > div:not(.a4-container):not(.a4-paper-container) { 
-    display: none !important; 
+  body.a4-print-mode .a4-print-safe {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background-color: white !important;
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Global no-print utility */
+  .no-print, .idf-no-print, button, nav, aside, header, .sidebar, .modal-backdrop {
+    display: none !important;
+  }
+
+  /* Ensure background colors are printed */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Fix for text clipping in input/textarea/select */
@@ -102,12 +112,25 @@ body.resizing {
     line-height: normal !important;
     overflow: visible !important;
     color: black !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
 
   @page { 
     size: A4 portrait; 
-    margin: 10mm; 
+    margin: 0mm; 
   }
+}
+
+/* User-requested A4 Wrapper for Screen View */
+.a4-wrapper {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 20px auto !important; /* 화면 가운데 정렬 및 상하 여백 */
+    padding: 10mm;
+    background-color: white !important;
+    box-shadow: 0px 0px 15px rgba(0,0,0,0.2) !important; /* 진짜 종이처럼 보이게 그림자 추가 */
+    box-sizing: border-box;
+    flex-shrink: 0;
+    position: relative;
+    color: black;
 }

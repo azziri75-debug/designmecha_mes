@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import api from '../lib/api';
 import { cn, getImageUrl } from '../lib/utils';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Modal } from '@mui/material';
 import Card from '../components/Card';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
@@ -61,6 +61,26 @@ const ApprovalPage = () => {
     const [selectedDoc, setSelectedDoc] = useState(null);
 
     // Settings states
+    const [isPrinting, setIsPrinting] = React.useState(false);
+
+    React.useEffect(() => {
+        const handleBeforePrint = () => {
+            if (showDocDetail) {
+                document.body.classList.add('a4-print-mode');
+            }
+        };
+        const handleAfterPrint = () => {
+            document.body.classList.remove('a4-print-mode');
+        };
+
+        window.addEventListener('beforeprint', handleBeforePrint);
+        window.addEventListener('afterprint', handleAfterPrint);
+        return () => {
+            window.removeEventListener('beforeprint', handleBeforePrint);
+            window.removeEventListener('afterprint', handleAfterPrint);
+            document.body.classList.remove('a4-print-mode');
+        };
+    }, [showDocDetail]);
     const [approvalLines, setApprovalLines] = useState({}); // { [doc_type]: lines[] }
 
 
@@ -600,9 +620,9 @@ const ApprovalPage = () => {
 
                             {/* Content Section - A4 Form Integration */}
                             <div className={cn(
-                                "bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container no-print",
+                                "bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container a4-print-safe",
                                 selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 rounded-none border-0 shadow-none"
-                            )} style={{ backgroundColor: selectedDoc.doc_type === 'PURCHASE_ORDER' ? '#ffffff' : '#f3f4f6' }}>
+                            )}>
                                 <Box sx={{ 
                                     width: '850px',
                                     minHeight: '1100px',
@@ -739,17 +759,10 @@ const ApprovalPage = () => {
 
             <style>{`
                 @media print {
-                    @page { size: A4 portrait; margin: 15mm; }
-                    body { background: white !important; }
-                    .no-print, button, nav, .bg-gray-800, header { display: none !important; }
-                    .a4-paper-container { 
-                        padding: 0 !important; 
-                        margin: 0 !important; 
-                        border: none !important;
-                        overflow: visible !important;
-                        width: 100% !important;
+                    .a4-print-mode .modal-content { display: none !important; } /* Hide the outer modal UI */
+                    .a4-print-mode .a4-print-safe { 
+                        display: block !important;
                     }
-                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: black !important; border-color: black !important; }
                 }
             `}</style>
         </div>

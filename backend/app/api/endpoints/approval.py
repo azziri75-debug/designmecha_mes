@@ -79,11 +79,12 @@ async def get_approval_lines(
     doc_type: str = Query(...),
     db: AsyncSession = Depends(deps.get_db)
 ):
-    """문서 종류별 결재선 템플릿 조회"""
+    """문서 종류별 결재선 템플릿 조회 (대소문자 구분 없음)"""
+    doc_type_clean = doc_type.strip().upper()
     result = await db.execute(
         select(ApprovalLine)
         .options(selectinload(ApprovalLine.approver))
-        .where(ApprovalLine.doc_type == doc_type)
+        .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
         .order_by(ApprovalLine.sequence)
     )
     return result.scalars().all()
@@ -303,55 +304,61 @@ async def create_document(
             pass 
         # The earlier check was too restrictive. Let's ensure we at least log or handle missing lines.
     
-    author_rank = get_staff_rank(current_user.role)
-    current_seq = 1
-    all_auto_approved = True
-    
-    if lines_to_process:
-        for lp in lines_to_process:
-            # 4-1. Calculate rank for the specific approver in the loop
-            approver_rank = get_staff_rank(lp["role"])
-            
-            # Auto-approve if author is the approver or has higher rank
-            # [Logic] Author is approver OR Author's rank is high enough
-            is_auto = (lp["approver_id"] == current_user.id) or (author_rank >= approver_rank)
-            
-            step = ApprovalStep(
-                document_id=db_doc.id,
-                approver_id=lp["approver_id"],
-                sequence=lp["sequence"],
-                status="APPROVED" if is_auto else "PENDING",
-                processed_at=datetime.now() if is_auto else None,
-                comment="기안자 자동 승인" if (lp["approver_id"] == current_user.id) else ("기안자 직급에 따른 자동 승인" if is_auto else None)
-            )
-            db.add(step)
-            
-            if is_auto:
-                if current_seq == lp["sequence"]:
-                    current_seq += 1
-            else:
-                all_auto_approved = False
-    else:
-        all_auto_approved = False
-
-    db_doc.current_sequence = current_seq
-    if all_auto_approved:
-        db_doc.status = ApprovalStatus.COMPLETED
-        print(f"[DEBUG] Document {db_doc.id} auto-completed. Type: {db_doc.doc_type}")
-        # 자동 승인 시 처리 (근태/소모품 등)
-        if db_doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
-            await create_attendance_record(db, db_doc)
-        elif db_doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
-            print(f"[DEBUG] Triggering process_consumables for auto-approved doc {db_doc.id}")
-            await process_consumables(db, db_doc)
+    try:
+        author_rank = get_staff_rank(current_user.role)
+        current_seq = 1
+        all_auto_approved = True
         
-        # 구매발주/외주발주 상태 동기화 (자동 승인 시)
-        if db_doc.doc_type == "PURCHASE_ORDER" or db_doc.reference_id:
-            await sync_reference_status(db, db_doc)
-    elif current_seq > 1:
-        db_doc.status = ApprovalStatus.IN_PROGRESS
+        if lines_to_process:
+            for lp in lines_to_process:
+                # 4-1. Calculate rank for the specific approver in the loop
+                approver_rank = get_staff_rank(lp["role"])
+                
+                # Auto-approve if author is the approver or has higher rank
+                is_auto = (lp["approver_id"] == current_user.id) or (author_rank >= approver_rank)
+                
+                step = ApprovalStep(
+                    document_id=db_doc.id,
+                    approver_id=lp["approver_id"],
+                    sequence=lp["sequence"],
+                    status="APPROVED" if is_auto else "PENDING",
+                    processed_at=datetime.now() if is_auto else None,
+                    comment="기안자 자동 승인" if (lp["approver_id"] == current_user.id) else ("기안자 직급에 따른 자동 승인" if is_auto else None)
+                )
+                db.add(step)
+                
+                if is_auto:
+                    if current_seq == lp["sequence"]:
+                        current_seq += 1
+                else:
+                    all_auto_approved = False
+        else:
+            all_auto_approved = False
 
-    await db.commit()
+        db_doc.current_sequence = current_seq
+        if all_auto_approved:
+            db_doc.status = ApprovalStatus.COMPLETED
+            print(f"[DEBUG] Document {db_doc.id} auto-completed. Type: {db_doc.doc_type}")
+            # 자동 승인 시 처리 (근태/소모품 등)
+            if db_doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
+                await create_attendance_record(db, db_doc)
+            elif db_doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
+                print(f"[DEBUG] Triggering process_consumables for auto-approved doc {db_doc.id}")
+                await process_consumables(db, db_doc)
+            
+            # 구매발주/외주발주 상태 동기화 (자동 승인 시)
+            if db_doc.doc_type == "PURCHASE_ORDER" or db_doc.reference_id:
+                await sync_reference_status(db, db_doc)
+        elif current_seq > 1:
+            db_doc.status = ApprovalStatus.IN_PROGRESS
+
+        await db.commit()
+    except Exception as e:
+        import traceback
+        print(f"[CRITICAL ERROR] Failed to create document: {str(e)}")
+        print(traceback.format_exc())
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Internal Server Error during document creation: {str(e)}")
     
     # 다시 조회 (500 오류 방지 - 관계형 객체 로드)
     result = await db.execute(
@@ -832,6 +839,7 @@ async def update_document(
         doc.current_sequence = 1
         doc.rejection_reason = None
         
+        lines_to_process = []
         if doc_in.custom_approvers:
             for ca in doc_in.custom_approvers:
                 s_res = await db.execute(select(Staff).where(Staff.id == ca.staff_id))
@@ -848,7 +856,8 @@ async def update_document(
             )
             lines = lines_res.scalars().all()
             for line in lines:
-                lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
+                if line.approver:
+                    lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
         
         author_rank = get_staff_rank(current_user.role)
         current_seq = 1
