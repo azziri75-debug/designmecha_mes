@@ -9,8 +9,8 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
     
     // 2. Approver steps (dynamic or forced minimum)
     const baseSteps = documentData?.steps || [];
-    const minSteps = 3; // + 1 author = 4 cols total
-    const defaultRoles = ['부장', '이사', '대표이사'];
+    const minSteps = 2; // + 1 author = 3 cols total
+    const defaultRoles = ['부장', '대표이사'];
     
     let steps = [...baseSteps];
     while (steps.length < minSteps) {
@@ -114,9 +114,9 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
     };
 
     // Calculate columns: 1 (Author) + N (Steps)
-    const totalCols = 1 + steps.length;
-    // Limit width to 320px or expand if many steps, but keep it professional
-    const gridWidth = Math.max(80 * totalCols, 240); 
+    const totalCols = steps.length + 1;
+    // Shrink width to fit margins (e.g., 65px per column)
+    const gridWidth = 65 * totalCols; 
 
     return (
         <Table size="small" sx={{ 
