@@ -165,43 +165,43 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                      
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
-            const displayCode = firstItem.sales_order_number ||
-                firstItem.plan?.order?.order_no ||
-                firstItem.plan?.stock_production?.production_no || '';
+            const displayCode = firstItem?.sales_order_number ||
+                firstItem?.plan?.order?.order_no ||
+                firstItem?.plan?.stock_production?.production_no || '';
 
             setFormData(prev => ({
                 ...prev,
                 partner_id: foundPartner ? foundPartner.id : (prev.partner_id || ''),
-                order_id: firstItem.plan?.order_id || '',
+                order_id: firstItem?.plan?.order_id || '',
                 display_order_no: displayCode,
-                items: initialItems.map(item => {
+                items: (initialItems || []).map(item => {
                     // [Defense] Try various field names for product/item
-                    const productObj = item.product || item.item || item.material || {};
-                    const productId = item.product_id || productObj.id || item.item_id;
+                    const productObj = item?.product || item?.item || item?.material || {};
+                    const productId = item?.product_id || productObj?.id || item?.item_id;
                     
                     // Prioritize product detail from mapping if available
-                    const product = productObj.id ? productObj : (products.find(p => p.id === productId) || {});
+                    const product = productObj?.id ? productObj : (products.find(p => p?.id === productId) || {});
                     
-                    let unitPrice = item.unit_price || 0;
-                    if (product && product.standard_processes) {
-                        const standardProc = product.standard_processes.find(sp =>
-                            sp.process?.name === item.process_name ||
-                            sp.course_type?.includes('OUTSOURCING') ||
-                            sp.process?.course_type?.includes('OUTSOURCING')
+                    let unitPrice = item?.unit_price || 0;
+                    if (product && product?.standard_processes) {
+                        const standardProc = product?.standard_processes?.find(sp =>
+                            sp?.process?.name === item?.process_name ||
+                            sp?.course_type?.includes('OUTSOURCING') ||
+                            sp?.process?.course_type?.includes('OUTSOURCING')
                         );
-                        if (standardProc) unitPrice = standardProc.cost || unitPrice;
+                        if (standardProc) unitPrice = standardProc?.cost || unitPrice;
                     }
 
                     return {
                         product_id: productId || '',
-                        quantity: item.quantity || 1,
+                        quantity: item?.quantity || 1,
                         unit_price: unitPrice,
-                        note: item.note || item.process_name || '',
-                        production_plan_item_id: item.id
+                        note: item?.note || item?.process_name || '',
+                        production_plan_item_id: item?.id
                     };
                 })
             }));
-        } else if (isOpen && !order && (!initialItems || initialItems.length === 0)) {
+        } else if (isOpen && !order && (!initialItems || initialItems?.length === 0)) {
             setFormData(prev => ({
                 ...prev,
                 partner_id: '',

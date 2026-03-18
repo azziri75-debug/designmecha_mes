@@ -200,79 +200,79 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                      
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
-            const displayCode = firstItem.sales_order_number ||
-                firstItem.plan?.order?.order_no ||
-                firstItem.plan?.stock_production?.production_no || '';
+            const displayCode = firstItem?.sales_order_number ||
+                firstItem?.plan?.order?.order_no ||
+                firstItem?.plan?.stock_production?.production_no || '';
 
             setFormData(prev => ({
                 ...prev,
                 partner_id: foundPartner ? foundPartner.id : (prev.partner_id || ''),
-                order_id: firstItem.plan?.order_id || '',
+                order_id: firstItem?.plan?.order_id || '',
                 display_order_no: displayCode,
-                items: initialItems.map(item => {
+                items: (initialItems || []).map(item => {
                     // [Defense] Try various field names for product/item/material
-                    const productObj = item.product || item.material || item.item || {};
-                    const productId = item.product_id || productObj.id || item.material_id || item.item_id;
+                    const productObj = item?.product || item?.material || item?.item || {};
+                    const productId = item?.product_id || productObj?.id || item?.material_id || item?.item_id;
                     
-                    if (item.type === 'PENDING') {
+                    if (item?.type === 'PENDING') {
                         // Priority: 1. standard_processes of provided product, 2. products list, 3. item.unit_price
-                        const product = productObj.id ? productObj : (products.find(p => p.id === productId) || {});
-                        let unitPrice = item.unit_price || 0;
+                        const product = productObj?.id ? productObj : (products.find(p => p?.id === productId) || {});
+                        let unitPrice = item?.unit_price || 0;
                         
-                        if (product && product.standard_processes) {
-                            const standardProc = product.standard_processes.find(sp =>
-                                sp.process?.name === item.process_name ||
-                                sp.course_type?.includes('PURCHASE') ||
-                                sp.process?.course_type?.includes('PURCHASE')
+                        if (product && product?.standard_processes) {
+                            const standardProc = product?.standard_processes?.find(sp =>
+                                sp?.process?.name === item?.process_name ||
+                                sp?.course_type?.includes('PURCHASE') ||
+                                sp?.process?.course_type?.includes('PURCHASE')
                             );
-                            if (standardProc) unitPrice = standardProc.cost || unitPrice;
+                            if (standardProc) unitPrice = standardProc?.cost || unitPrice;
                         }
                         return {
                             product_id: productId || '',
-                            quantity: item.quantity || 1,
+                            quantity: item?.quantity || 1,
                             unit_price: unitPrice,
-                            note: item.note || item.process_name || '',
-                            production_plan_item_id: item.id
+                            note: item?.note || item?.process_name || '',
+                            production_plan_item_id: item?.id
                         };
-                    } else if (item.type === 'MRP') {
-                        const product = productObj.id ? productObj : (products.find(p => p.id === productId) || {});
+                    } else if (item?.type === 'MRP') {
+                        const product = productObj?.id ? productObj : (products.find(p => p?.id === productId) || {});
                         let unitPrice = 0;
-                        if (product && product.standard_processes) {
-                            const standardProc = product.standard_processes.find(sp =>
-                                sp.course_type?.includes('PURCHASE') ||
-                                sp.process?.course_type?.includes('PURCHASE')
+                        if (product && product?.standard_processes) {
+                            const standardProc = product?.standard_processes?.find(sp =>
+                                sp?.course_type?.includes('PURCHASE') ||
+                                sp?.process?.course_type?.includes('PURCHASE')
                             );
-                            if (standardProc) unitPrice = standardProc.cost || 0;
+                            if (standardProc) unitPrice = standardProc?.cost || 0;
                         }
                         return {
                             product_id: productId || '',
-                            quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : (item.required_purchase_qty || 0),
+                            quantity: item?.shortage_quantity !== undefined ? item?.shortage_quantity : (item?.required_purchase_qty || 0),
                             unit_price: unitPrice || 0,
                             note: 'MRP 소요량 기반 발주',
                             production_plan_item_id: null,
-                            material_requirement_id: item.id,
-                            current_stock: item.current_stock,
-                            required_quantity: item.required_quantity !== undefined ? item.required_quantity : (item.total_demand || 0),
-                            shortage_quantity: item.shortage_quantity !== undefined ? item.shortage_quantity : (item.required_purchase_qty || 0)
+                            material_requirement_id: item?.id,
+                            current_stock: item?.current_stock,
+                            required_quantity: item?.required_quantity !== undefined ? item?.required_quantity : (item?.total_demand || 0),
+                            shortage_quantity: item?.shortage_quantity !== undefined ? item?.shortage_quantity : (item?.required_purchase_qty || 0)
                         };
-                    } else if (item.type === 'CONSUMABLE_WAIT') {
+                    } else if (item?.type === 'CONSUMABLE_WAIT') {
                         return {
                             product_id: productId || '',
-                            quantity: item.quantity || 1,
-                            unit_price: item.unit_price || 0,
-                            note: item.remarks || '',
-                            consumable_purchase_wait_id: item.id
+                            quantity: item?.quantity || 1,
+                            unit_price: item?.unit_price || 0,
+                            note: item?.remarks || '',
+                            consumable_purchase_wait_id: item?.id
                         };
                     }
                     return {
                         product_id: productId || '',
-                        quantity: item.quantity || 1,
-                        unit_price: item.unit_price || 0,
-                        note: item.note || ''
+                        quantity: item?.quantity || 1,
+                        unit_price: item?.unit_price || 0,
+                        note: item?.note || ''
                     };
                 })
             }));
-        } else if (isOpen && !order && (!initialItems || initialItems.length === 0)) {
+        } else if (isOpen && !order && (!initialItems || initialItems?.length === 0)) {
             setFormData(prev => ({
                 ...prev,
                 partner_id: '',

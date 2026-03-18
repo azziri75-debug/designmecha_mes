@@ -415,9 +415,10 @@ const OutsourcingPage = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {pendingItems.length === 0 ? (
-                                    <TableRow><TableCell colSpan={9} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
+                                {pendingItems?.length === 0 ? (
+                                    <TableRow><TableCell colSpan={10} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
                                 ) : (
+                                    pendingItems.map((item) => (
                                         <TableRow key={item.id} hover onClick={() => handleSelectPendingItem(item.id)} sx={{ cursor: 'pointer' }}>
                                             <TableCell padding="checkbox">
                                                 <Checkbox checked={selectedPendingItems.includes(item.id)} />
@@ -446,6 +447,7 @@ const OutsourcingPage = () => {
                                             <TableCell>{item.start_date || item.plan?.plan_date || '-'}</TableCell>
                                             <TableCell>{item.note}</TableCell>
                                         </TableRow>
+                                    ))
                                 )}
                             </TableBody>
                         </Table>

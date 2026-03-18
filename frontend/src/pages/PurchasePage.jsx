@@ -555,49 +555,41 @@ const PurchasePage = ({ type }) => {
                             </TableHead>
                             <TableBody>
                                 {pendingItems.length === 0 ? (
-                                    <TableRow><TableCell colSpan={10} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={12} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
                                 ) : (
-                                    pendingItems.map((item) => (
-                                        <TableRow key={item.id} hover onClick={() => handleSelectPendingItem(item.id)} sx={{ cursor: 'pointer' }}>
+                                    pendingItems?.map((item) => (
+                                        <TableRow key={item?.id} hover onClick={() => handleSelectPendingItem(item?.id)} sx={{ cursor: 'pointer' }}>
                                             <TableCell padding="checkbox">
-                                                <Checkbox checked={selectedPendingItems.includes(item.id)} />
+                                                <Checkbox checked={selectedPendingItems.includes(item?.id)} />
                                             </TableCell>
                                             {type === 'CONSUMABLE' ? (
                                                 <>
                                                     <TableCell>
                                                         <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                                            {item.approval_title || '-'}
+                                                            {item?.approval_title || '-'}
                                                         </Typography>
                                                     </TableCell>
-                                                    <TableCell>{item.author_name || '-'}</TableCell>
-                                                    <TableCell>{item.product?.name}</TableCell>
-                                                    <TableCell>{item.product?.specification}</TableCell>
-                                                    <TableCell>{item.quantity} {item.product?.unit || 'EA'}</TableCell>
-                                                    <TableCell>{item.remarks}</TableCell>
-                                                    <TableCell>{new Date(item.created_at).toLocaleDateString()}</TableCell>
+                                                    <TableCell>{item?.author_name || '-'}</TableCell>
+                                                    <TableCell>{item?.product?.name}</TableCell>
+                                                    <TableCell>{item?.product?.specification}</TableCell>
+                                                    <TableCell>{item?.quantity} {item?.product?.unit || 'EA'}</TableCell>
+                                                    <TableCell>{item?.remarks}</TableCell>
+                                                    <TableCell>{item?.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</TableCell>
                                                 </>
                                             ) : (
                                                 <>
                                                     <TableCell>
                                                         <Box>
                                                             <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                                                {item.plan?.order ? (
+                                                                {item?.plan?.order ? (
                                                                     <Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem', color: 'primary.main' }} />
-                                                                ) : item.plan?.stock_production ? (
+                                                                ) : item?.plan?.stock_production ? (
                                                                     <Chip label="재고" size="small" variant="outlined" color="success" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }} />
                                                                 ) : null}
-                                                                {item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}
+                                                                {item?.plan?.order?.order_no || item?.plan?.stock_production?.production_no || '-'}
                                                             </Typography>
                                                         </Box>
                                                     </TableCell>
-                                                    <TableCell>{item.client_name || '-'}</TableCell>
-                                                    <TableCell>{item.product_name_of_plan || '-'}</TableCell>
-                                                    <TableCell>{item.process_name || '-'}</TableCell>
-                                                    <TableCell>{item.product?.name}</TableCell>
-                                                    <TableCell>{item.product?.specification}</TableCell>
-                                                    <TableCell>{item.quantity}</TableCell>
-                                                    <TableCell>{item.product?.unit}</TableCell>
-                                                    <TableCell>{item.start_date || item.plan?.plan_date || '-'}</TableCell>
                                                     <TableCell>{item.partner_name || '-'}</TableCell>
                                                     <TableCell>{item.note}</TableCell>
                                                 </>
