@@ -346,7 +346,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             alt="직인"
                                             style={{
                                                 position: 'absolute',
-                                                right: '-15px', // Overlap the border
+                                                right: '5px', // Moved inside to prevent clipping
                                                 top: '50%',
                                                 transform: 'translateY(-50%)',
                                                 width: '45px',
