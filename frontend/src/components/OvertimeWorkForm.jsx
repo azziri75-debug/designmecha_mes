@@ -144,12 +144,6 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                     .responsive-table td[component="td"] { background-color: transparent !important; text-align: left !important; color: #666; font-size: 12px; }
                     textarea, input { font-size: 16px !important; border: 1px solid #eee !important; padding: 10px !important; border-radius: 4px; }
                 }
-                @media print {
-                    .a4-print-safe { padding: 0 !important; margin: 0 !important; width: 100% !important; font-size: 11px !important; transform: scale(0.93) !important; transform-origin: top center !important; }
-                    .no-print, .idf-no-print { display: none !important; }
-                    table { font-size: 11px !important; border-collapse: collapse !important; }
-                    td, th { padding: 6px !important; border: 1px solid black !important; }
-                }
             `}</style>
         </Box>
     );
