@@ -203,23 +203,23 @@ const PurchaseOrderTemplate = ({
 
             <div className={cn("bg-white text-black relative flex flex-col a4-wrapper a4-print-safe", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
-            <div className="flex justify-between items-start mb-8 px-2">
-                <div className="w-[200px] text-[9px] space-y-0.5 pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-start mb-8 px-2 gap-4">
+                <div className="w-full md:w-[200px] text-[9px] space-y-0.5 pt-0 md:pt-8 order-2 md:order-1">
                     <p className="flex items-center gap-1 whitespace-nowrap">NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-100 min-h-0" /></p>
                 </div>
-                <div className="flex-1 flex flex-col items-center px-6">
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px' }}>주식회사 디자인메카</Typography>
-                    <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold text-center leading-none" style={{ 
+                <div className="flex-1 flex flex-col items-center px-0 md:px-6 order-1 md:order-2 w-full">
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '12px', md: '14px' } }}>주식회사 디자인메카</Typography>
+                    <div className="border-[3px] border-black px-4 md:px-8 py-2 text-xl md:text-2xl font-bold text-center leading-none w-full md:w-auto" style={{ 
                         whiteSpace: 'nowrap', 
-                        letterSpacing: '10px', 
-                        textIndent: '10px',
+                        letterSpacing: { xs: '2px', md: '10px' }, 
+                        textIndent: { xs: '2px', md: '10px' },
                         display: 'inline-block',
                         minWidth: 'max-content'
                     }}>
                         {data.title || '구 매 발 주 서'}
                     </div>
                 </div>
-                <div className="w-[200px] idf-no-print">
+                <div className="w-full md:w-[200px] idf-no-print order-3">
                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} />}
                 </div>
                 {/* Print-only approval grid placeholder or simplified view if needed */}
@@ -229,9 +229,9 @@ const PurchaseOrderTemplate = ({
             </div>
 
             {/* Info Section */}
-            <div className="flex justify-between mb-6 text-xs items-start">
-                <div className="space-y-4 flex-1">
-                    <div className="flex items-end gap-2 text-xl font-bold border-b-2 border-black pb-1 mb-2 max-w-[260px]">
+            <div className="flex flex-col md:flex-row justify-between mb-6 text-xs items-start gap-4">
+                <div className="space-y-4 flex-1 w-full">
+                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 max-w-full md:max-w-[260px]">
                         <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="flex-1" />
                         <span className="text-sm pb-1 font-normal">귀하</span>
                     </div>
@@ -241,7 +241,7 @@ const PurchaseOrderTemplate = ({
                         <p className="pt-2">발주일 : <span className="text-black font-bold">{data.order_date || '-'}</span></p>
                     </div>
                 </div>
-                <div className="text-right w-[220px]">
+                <div className="text-left md:text-right w-full md:w-[220px]">
                     <h2 className="text-xl font-bold">{company?.name || '디자인메카'}</h2>
                     <p className="tracking-widest uppercase text-[9px] text-gray-400">Designmecha Enterprise</p>
                     <div className="mt-4 space-y-0.5 text-gray-800 text-[9px]">
@@ -300,9 +300,9 @@ const PurchaseOrderTemplate = ({
                     />
                 </div>
 
-                <div className="flex border-2 border-black">
-                    <div className="w-20 border-r-2 border-black flex flex-col items-center justify-center font-bold bg-gray-50 text-[11px]">
-                        <div>발주</div><div>조건</div>
+                <div className="flex flex-col md:flex-row border-2 border-black">
+                    <div className="w-full md:w-20 border-b-2 md:border-b-0 md:border-r-2 border-black flex flex-row md:flex-col items-center justify-center font-bold bg-gray-50 text-[11px] p-2 md:p-0">
+                        <div className="md:block mr-2 md:mr-0">발주</div><div>조건</div>
                     </div>
                     <div className="flex-1 text-[11px] flex flex-col">
                         <div className="border-b border-black p-2.5 flex items-center gap-2">
@@ -323,7 +323,7 @@ const PurchaseOrderTemplate = ({
                         </div>
                     </div>
                     {/* Stamp / Seal Area */}
-                    <div className="w-[200px] border-l-2 border-black p-4 flex flex-col items-center justify-center relative">
+                    <div className="w-full md:w-[200px] border-t-2 md:border-t-0 md:border-l-2 border-black p-4 flex flex-col items-center justify-center relative">
                         <p className="text-[11px] font-bold mb-3">위와 같이 발주함.</p>
                         <div className="flex items-center gap-1 font-bold text-lg relative">
                             <span>{company?.name || '주식회사 디자인메카'}</span>

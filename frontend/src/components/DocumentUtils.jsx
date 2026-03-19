@@ -227,13 +227,16 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, on
     };
 
     return (
-        <table className={cn("w-full border-collapse table-fixed border-t-2 border-b-2 border-black", className)}>
+        <table className={cn("w-full border-collapse table-fixed md:table-fixed border-t-2 border-b-2 border-black idf-resizable-table", className)}>
             <thead>
                 <tr className="font-bold border-b border-black" style={{ backgroundColor: '#f9fafb' }}>
                     {columns.map((col, idx) => (
                         <th
                             key={idx}
-                            className="border-r border-black last:border-0 relative p-1 text-xs"
+                            className={cn(
+                                "border-r border-black last:border-0 relative p-1 text-xs",
+                                col.key === 'idx' && "w-[40px] md:w-auto"
+                            )}
                             style={{ width: widths[idx] }}
                         >
                             <div className="flex flex-col items-center justify-center leading-tight">
@@ -241,7 +244,7 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, on
                                 {col.subLabel && <span className="text-[8px] font-normal uppercase">{col.subLabel}</span>}
                             </div>
                             <div
-                                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-10"
+                                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-10 hidden md:block"
                                 onMouseDown={(e) => startResizing(idx, e)}
                             />
                         </th>
@@ -250,9 +253,9 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, on
             </thead>
             <tbody>
                 {data.map((row, rIdx) => (
-                    <tr key={rIdx} className="min-h-[2rem] h-auto border-b border-gray-100 last:border-0 hover:bg-[#f9fafb]">
+                    <tr key={rIdx} className="min-h-[2rem] h-auto border-b border-gray-100 last:border-0 hover:bg-[#f9fafb] idf-stack-row">
                         {columns.map((col, cIdx) => (
-                            <td key={cIdx} className="border-r border-black last:border-0 p-0 text-center h-full relative group">
+                            <td key={cIdx} data-label={col.label} className="border-r border-black last:border-0 p-0 text-center h-full relative group">
                                 <EditableText
                                     value={row[col.key]}
                                     onChange={(v) => onUpdateData(rIdx, col.key, v)}
@@ -264,7 +267,7 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, on
                                 {!isReadOnly && col.key === 'name' && onSearchProduct && (
                                     <button 
                                         onClick={() => onSearchProduct(rIdx)}
-                                        className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-gray-100 hover:bg-gray-200 p-0.5 rounded text-[10px] transition-opacity"
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-gray-100 hover:bg-gray-200 p-0.5 rounded text-[10px] transition-opacity idf-no-print"
                                     >
                                         찾기
                                     </button>

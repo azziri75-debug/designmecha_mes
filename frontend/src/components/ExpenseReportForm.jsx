@@ -86,14 +86,30 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     return (
         <Box sx={{ width: '100%', p: 0, color: '#000', position: 'relative' }}>
             {/* Title */}
-            <Typography variant="h3" align="center" sx={{ fontWeight: 'bold', mb: 4, letterSpacing: '10px' }}>
+            <Typography variant="h3" align="center" sx={{ 
+                fontWeight: 'bold', 
+                mb: 4, 
+                letterSpacing: { xs: '2px', md: '10px' },
+                fontSize: { xs: '24px', md: '48px' } 
+            }}>
                 지 출 결 의 서
             </Typography>
 
             {/* Top Table Section */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', md: 'row' },
+                justifyContent: 'space-between', 
+                gap: 2,
+                mb: 2 
+            }}>
                 {/* Left Info Table */}
-                <Table size="small" sx={{ width: '300px', border: '2px solid #000', borderCollapse: 'collapse', '& td': { border: '1px solid #000', height: '28px', fontSize: '12px' } }}>
+                <Table size="small" sx={{ 
+                    width: { xs: '100%', md: '300px' }, 
+                    border: '2px solid #000', 
+                    borderCollapse: 'collapse', 
+                    '& td': { border: '1px solid #000', height: '28px', fontSize: '12px' } 
+                }}>
                     <TableBody>
                         <TableRow>
                             <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '80px' }}>작 성 일</TableCell>
@@ -135,7 +151,11 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                 </Table>
 
                 {/* Right Approval Grid */}
-                <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start',
+                    justifyContent: { xs: 'center', md: 'flex-end' } 
+                }}>
                     <Box sx={{ 
                         border: '2px solid #000', 
                         borderRight: 'none',
@@ -148,7 +168,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                         fontWeight: 'bold',
                         fontSize: '11px',
                         textAlign: 'center',
-                        minHeight: '128px'
+                        minHeight: { xs: '60px', md: '128px' }
                     }}>
                         결<br/>재
                     </Box>
@@ -217,8 +237,8 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                 </thead>
                 <TableBody>
                     {(data.items || []).map((item, idx) => (
-                        <TableRow key={idx}>
-                            <td>
+                        <TableRow key={idx} className="stack-row">
+                            <td data-label="회계">
                                 <input 
                                     type="text" 
                                     value={item.acc_category || ''} 
@@ -227,7 +247,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                     style={{ border: 'none', width: '100%', height: '100%', outline: 'none', textAlign: 'center', padding: '0 5px' }}
                                 />
                             </td>
-                            <td>
+                            <td data-label="적요">
                                 <input 
                                     type="text" 
                                     value={item.description || ''} 
@@ -236,7 +256,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                     style={{ border: 'none', width: '100%', height: '100%', outline: 'none', padding: '0 10px' }}
                                 />
                             </td>
-                            <td>
+                            <td data-label="금액">
                                 <Box sx={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center' }}>
                                     {!isReadOnly ? (
                                         <input 
@@ -251,7 +271,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                 </Box>
                             </td>
                             {!isReadOnly && (
-                                <TableCell align="center" className="no-print">
+                                <TableCell align="center" className="no-print" data-label="관리">
                                     <IconButton size="small" onClick={() => removeItem(idx)} color="error">
                                         <Trash2 size={14} />
                                     </IconButton>
@@ -294,6 +314,12 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     .no-print { display: none !important; }
                     input { border: none !important; }
                     textarea { border: none !important; }
+                }
+                @media (max-width: 768px) {
+                    .stack-row { display: flex !important; flex-direction: column !important; border: 1px solid #ddd !important; border-radius: 8px !important; margin-bottom: 15px !important; padding: 10px !important; }
+                    .stack-row td { display: flex !important; justify-content: space-between !important; align-items: center !important; border: none !important; width: 100% !important; padding: 5px 0 !important; }
+                    .stack-row td::before { content: attr(data-label); font-weight: bold; margin-right: 10px; color: #666; font-size: 11px; }
+                    thead { display: none !important; }
                 }
             `}</style>
         </Box>

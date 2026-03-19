@@ -46,7 +46,12 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             <Box className="idf-header" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box sx={{ flex: 1, pt: 2 }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#333', mb: 1 }}>주식회사 디자인메카</Typography>
-                    <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '10px', mt: 2 }}>
+                    <Typography variant="h4" align="center" sx={{ 
+                        fontWeight: 'bold', 
+                        letterSpacing: { xs: '2px', md: '10px' }, 
+                        mt: 2,
+                        fontSize: { xs: '24px', md: '34px' } // Prominent Title
+                    }}>
                         내 부 기 안
                     </Typography>
                 </Box>
@@ -133,14 +138,14 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                         <TableBody>
                             {items.map((item, idx) => (
                                 <TableRow key={idx}>
-                                    <td>{idx + 1}</td>
-                                    <td><input value={item.name} onChange={(e) => handleItemChange(idx, 'name', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                    <td><input value={item.spec} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                    <td><input value={item.unit} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                    <td><input type="number" value={item.quantity} onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                    <td><input type="number" value={item.unit_price} onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                    <td style={{ textAlign: 'right', paddingRight: '10px' }}>{ (item.amount || 0).toLocaleString() }</td>
-                                    <td><input value={item.remarks} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                    <td data-label="순번">{idx + 1}</td>
+                                    <td data-label="품명/항목"><input value={item.name} onChange={(e) => handleItemChange(idx, 'name', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                    <td data-label="규격"><input value={item.spec} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                    <td data-label="단위"><input value={item.unit} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                    <td data-label="수량"><input type="number" value={item.quantity} onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                    <td data-label="단가"><input type="number" value={item.unit_price} onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                    <td data-label="금액" style={{ textAlign: 'right', paddingRight: '10px' }}>{ (item.amount || 0).toLocaleString() }</td>
+                                    <td data-label="비고"><input value={item.remarks} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
                                     {!isReadOnly && (
                                         <td className="idf-no-print">
                                             <IconButton size="small" color="error" onClick={() => removeItem(idx)}><Trash2 size={14} /></IconButton>

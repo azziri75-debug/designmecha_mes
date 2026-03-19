@@ -576,7 +576,15 @@ const ApprovalPage = () => {
                                                 {STATUS_MAP[selectedDoc.status]?.label}
                                             </span>
                                         </div>
-                                        <h2 className="text-2xl font-bold text-white">{selectedDoc.title}</h2>
+                                        <h2 className="text-2xl font-bold text-white hidden md:block">{selectedDoc.title}</h2>
+                                        {/* Mobile-only prominent title */}
+                                        <div className="md:hidden w-full bg-blue-600/20 p-4 rounded-xl border border-blue-500/30 mb-2">
+                                            <p className="text-xs text-blue-400 font-bold mb-1">문서 제목</p>
+                                            <h2 className="text-xl font-black text-white leading-tight break-all">
+                                                {selectedDoc.title}
+                                            </h2>
+                                        </div>
+
                                         <div className="flex items-center gap-4 text-sm text-gray-400">
                                             <div className="flex items-center gap-1.5 bg-gray-900 px-3 py-1 rounded-full border border-gray-700">
                                                 <User className="w-3.5 h-3.5" />
@@ -624,13 +632,14 @@ const ApprovalPage = () => {
                                 selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 rounded-none border-0 shadow-none"
                             )}>
                                 <Box sx={{ 
-                                    width: '850px',
-                                    minHeight: '1100px',
+                                    width: '100%',
+                                    maxWidth: '850px',
+                                    minHeight: { xs: 'auto', md: '1100px' },
                                     margin: '0 auto',
                                     display: 'flex', 
                                     flexDirection: 'column',
                                     bgcolor: '#ffffff',
-                                    p: selectedDoc.doc_type === 'PURCHASE_ORDER' ? '0' : '40px',
+                                    p: selectedDoc.doc_type === 'PURCHASE_ORDER' ? '0' : { xs: '20px', md: '40px' },
                                     boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                                     color: '#000000',
                                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' },
