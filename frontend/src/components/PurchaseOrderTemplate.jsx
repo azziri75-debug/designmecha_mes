@@ -207,7 +207,7 @@ const PurchaseOrderTemplate = ({
 
             <div className={cn("bg-white text-black relative flex flex-col a4-wrapper a4-print-safe", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start mb-8 px-2 gap-4">
+            <div className="flex flex-col md:flex-row idf-print-flex-row justify-between items-start mb-8 px-2 gap-4">
                 <div className="w-full md:w-[200px] text-[9px] space-y-0.5 pt-0 md:pt-8 order-2 md:order-1">
                     <p className="flex items-center gap-1 whitespace-nowrap">NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-100 min-h-0" /></p>
                 </div>
@@ -233,7 +233,7 @@ const PurchaseOrderTemplate = ({
             </div>
 
             {/* Info Section */}
-            <div className="flex flex-col md:flex-row justify-between mb-6 text-xs items-start gap-4">
+            <div className="flex flex-col md:flex-row idf-print-flex-row justify-between mb-6 text-xs items-start gap-4">
                 <div className="space-y-4 flex-1 w-full">
                     <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 max-w-full md:max-w-[260px]">
                         <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="flex-1" />
@@ -361,8 +361,10 @@ const PurchaseOrderTemplate = ({
                     }
                     .idf-no-print, .no-print, button { display: none !important; }
                     div { box-shadow: none !important; }
-                    td, th, td *, th * { white-space: nowrap !important; }
-                    td:nth-child(2), th:nth-child(2), td:nth-child(2) *, th:nth-child(2) * { white-space: normal !important; } /* Only Allow Desc to wrap if needed */
+                    .idf-print-flex-row { flex-direction: row !important; }
+                    .idf-print-flex-row > div { width: auto !important; }
+                    .a4-print-safe td, .a4-print-safe th, .a4-print-safe td *, .a4-print-safe th * { white-space: nowrap !important; }
+                    .a4-print-safe td:nth-child(2), .a4-print-safe th:nth-child(2), .a4-print-safe td:nth-child(2) *, .a4-print-safe th:nth-child(2) * { white-space: normal !important; }
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 }
             `}</style>

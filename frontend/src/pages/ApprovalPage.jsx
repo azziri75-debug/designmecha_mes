@@ -511,7 +511,7 @@ const ApprovalPage = () => {
 
             {/* Doc Detail / Process Modal */}
             {showDocDetail && selectedDoc && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto approval-modal-overlay">
                     <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl shadow-2xl animation-fade-in my-auto overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
                             <div>
@@ -774,19 +774,25 @@ const ApprovalPage = () => {
             )}
 
             <style>{`
-                @media print {
-                    /* Hide everything by default */
+                    /* Hide everything by default but let the modal pathway stay visible */
                     body * { visibility: hidden !important; }
-                    /* Hide modal UI elements but NOT the fixed container if it's the modal we're printing */
-                    .bg-gray-800, .bg-gray-900, .no-print, button { display: none !important; }
-                    .fixed:not(:has(.a4-print-safe)) { display: none !important; }
+                    .approval-modal-overlay, .approval-modal-overlay * { visibility: visible !important; }
+                    
+                    /* Hide modal UI elements */
+                    .bg-gray-800, .bg-gray-900, .bg-black\\/70, .backdrop-blur-sm, .no-print, button { display: none !important; }
                     
                     /* Show only the A4 container and its children */
                     .a4-print-safe, .a4-print-safe * { 
                         visibility: visible !important; 
+                        display: block !important;
                         color: black !important;
                         -webkit-print-color-adjust: exact !important;
                     }
+
+                    /* Specific layout fixes for table cells inside A4 on print */
+                    .a4-print-safe td, .a4-print-safe th { display: table-cell !important; visibility: visible !important; }
+                    .a4-print-safe tr { display: table-row !important; visibility: visible !important; }
+                    .a4-print-safe table { display: table !important; visibility: visible !important; }
                     
                     .a4-print-safe {
                         position: absolute !important;
