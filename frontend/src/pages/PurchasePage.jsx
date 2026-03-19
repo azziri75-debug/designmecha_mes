@@ -145,8 +145,12 @@ const PurchasePage = ({ type }) => {
     const handleApprovalSubmit = async (order) => {
         if (!window.confirm("이 발주서로 결재 요청을 진행하시겠습니까?")) return;
 
+        const firstItemProcess = order.items?.[0]?.process_name || (type === 'CONSUMABLE' ? '소모품' : '구매자재');
+        const customerName = order.related_customer_names || '재고용';
+        const partnerName = order.partner?.name || '공급사미지정';
+
         const approvalPayload = {
-            title: `[${type === 'CONSUMABLE' ? '소모품' : '구매'}발주서] ${order.partner?.name || ''} - ${order.order_date}`,
+            title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
             doc_type: 'PURCHASE_ORDER',
             content: {
                 order_no: order.order_no,
