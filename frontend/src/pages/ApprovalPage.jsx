@@ -774,6 +774,7 @@ const ApprovalPage = () => {
             )}
 
             <style>{`
+                @media print {
                     /* Hide everything by default but let the modal pathway stay visible */
                     body * { visibility: hidden !important; }
                     .approval-modal-overlay, .approval-modal-overlay * { visibility: visible !important; }

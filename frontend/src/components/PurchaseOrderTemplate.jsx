@@ -208,10 +208,10 @@ const PurchaseOrderTemplate = ({
             <div className={cn("bg-white text-black relative flex flex-col a4-wrapper a4-print-safe", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
             <div className="flex flex-col md:flex-row idf-print-flex-row justify-between items-start mb-8 px-2 gap-4">
-                <div className="w-full md:w-[200px] text-[9px] space-y-0.5 pt-0 md:pt-8 order-2 md:order-1">
+                <div className="w-full md:w-[200px] text-[9px] space-y-0.5 pt-0 md:pt-8 order-2 md:order-1 idf-header-no">
                     <p className="flex items-center gap-1 whitespace-nowrap">NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-100 min-h-0" /></p>
                 </div>
-                <div className="flex-1 flex flex-col items-center px-0 md:px-6 order-1 md:order-2 w-full">
+                <div className="flex-1 flex flex-col items-center px-0 md:px-6 order-1 md:order-2 w-full idf-header-title text-center">
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '12px', md: '14px' } }}>주식회사 디자인메카</Typography>
                     <div className="border-[3px] border-black px-4 md:px-8 py-2 text-xl md:text-2xl font-bold text-center leading-none w-full md:w-auto" style={{ 
                         whiteSpace: 'nowrap', 
@@ -227,7 +227,7 @@ const PurchaseOrderTemplate = ({
                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} />}
                 </div>
                 {/* Print-only approval grid placeholder or simplified view if needed */}
-                <div className="hidden print:block w-[200px]">
+                <div className="hidden print:block w-[200px] idf-header-approval">
                      {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} />}
                 </div>
             </div>
@@ -363,6 +363,9 @@ const PurchaseOrderTemplate = ({
                     div { box-shadow: none !important; }
                     .idf-print-flex-row { flex-direction: row !important; }
                     .idf-print-flex-row > div { width: auto !important; }
+                    .idf-header-no { order: 1 !important; }
+                    .idf-header-title { order: 2 !important; flex: 1 !important; }
+                    .idf-header-approval { order: 3 !important; }
                     .a4-print-safe td, .a4-print-safe th, .a4-print-safe td *, .a4-print-safe th * { white-space: nowrap !important; }
                     .a4-print-safe td:nth-child(2), .a4-print-safe th:nth-child(2), .a4-print-safe td:nth-child(2) *, .a4-print-safe th:nth-child(2) * { white-space: normal !important; }
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
