@@ -341,48 +341,6 @@ const PurchaseOrderTemplate = ({
                     </div>
                 </div>
             </div>
-            <style>{`
-                @media print {
-                    @page {
-                        size: A4 portrait;
-                        margin: 0 !important;
-                    }
-                    body { margin: 0 !important; padding: 0 !important; background: white !important; }
-                    .a4-wrapper { 
-                        margin: 0 !important; 
-                        margin-top: 0 !important;
-                        padding: 1mm 10mm 5mm 10mm !important; 
-                        width: 210mm !important; 
-                        height: 297mm !important;
-                        max-height: 297mm !important;
-                        overflow: hidden !important;
-                        box-shadow: none !important;
-                        position: relative !important;
-                        background: white !important;
-                        transform: scale(0.93) !important;
-                        transform-origin: top center !important;
-                    }
-                    .idf-no-print, .no-print, button { display: none !important; }
-                    div { box-shadow: none !important; }
-                    .idf-print-flex-row { flex-direction: row !important; }
-                    .idf-print-flex-row > div { width: auto !important; }
-                    .idf-header-no { order: 1 !important; }
-                    .idf-header-title { order: 2 !important; flex: 1 !important; text-align: center !important; }
-                    .idf-header-approval { order: 3 !important; }
-                    
-                    /* Tighten table and text for A4 fit */
-                    table { font-size: 10px !important; }
-                    td, th { padding: 4px !important; }
-                    .a4-print-safe td, .a4-print-safe th, .a4-print-safe td *, .a4-print-safe th * { white-space: nowrap !important; }
-                    .a4-print-safe td:nth-child(2), .a4-print-safe th:nth-child(2), .a4-print-safe td:nth-child(2) *, .a4-print-safe th:nth-child(2) * { white-space: normal !important; }
-                    
-                    * { 
-                        visibility: visible !important;
-                        -webkit-print-color-adjust: exact !important; 
-                        print-color-adjust: exact !important; 
-                    }
-                }
-            `}</style>
             </div>
         </div>
     );

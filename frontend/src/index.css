@@ -68,35 +68,38 @@ body.resizing {
 /* Print Styles - Scoped to avoid polluting non-A4 pages */
 @media print {
   /* Only apply radical "hide everything else" logic if .a4-print-mode class is present on body */
-  body.a4-print-mode * { 
-    visibility: hidden; 
+  body.a4-print-mode #root { 
+    display: none !important; 
   }
   
-  body.a4-print-mode .a4-print-safe,
-  body.a4-print-mode .a4-print-safe * { 
-    visibility: visible !important; 
-  }
-
-  body.a4-print-mode .a4-print-safe {
+  /* Ensure the portal container is visible and clean */
+  body.a4-print-mode .approval-modal-overlay {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
     width: 210mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    background-color: white !important;
-    display: block !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  body, html, #root {
+    background: white !important;
     display: block !important;
     visibility: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.a4-print-mode .approval-modal-overlay > div {
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
     height: auto !important;
-    overflow: visible !important;
-    background-color: white !important;
+    transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Make sure the document content is visible */
+  .a4-print-safe, .a4-print-safe * { 
+    visibility: visible !important; 
+    color: black !important;
   }
 
   /* Global no-print utility */
@@ -120,10 +123,6 @@ body.resizing {
     line-height: normal !important;
     overflow: visible !important;
     color: black !important;
-  }
-
-  @page { 
-    margin: 0mm; 
   }
 }
 

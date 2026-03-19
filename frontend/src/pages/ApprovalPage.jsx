@@ -514,7 +514,7 @@ const ApprovalPage = () => {
 
             {showDocDetail && selectedDoc && createPortal(
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto approval-modal-overlay">
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl shadow-2xl animation-fade-in my-auto overflow-hidden">
+                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl shadow-2xl animation-fade-in my-auto overflow-hidden a4-print-safe">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -526,7 +526,22 @@ const ApprovalPage = () => {
                             <div className="flex items-center gap-3">
                                 {selectedDoc.status === 'APPROVED' && (
                                     <button
-                                        onClick={() => window.print()}
+                                        onClick={() => {
+                                            document.body.classList.add('a4-print-mode');
+                                            const style = document.createElement('style');
+                                            style.id = 'print-page-style';
+                                            style.innerHTML = '@page { margin: 0 !important; size: auto; }';
+                                            document.head.appendChild(style);
+                                            
+                                            window.print();
+                                            
+                                            // Cleanup after a delay to ensure print dialog finished
+                                            setTimeout(() => {
+                                                document.body.classList.remove('a4-print-mode');
+                                                const s = document.getElementById('print-page-style');
+                                                if (s) s.remove();
+                                            }, 1000);
+                                        }}
                                         className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
                                     >
                                         <Printer className="w-4 h-4" /> 인쇄
@@ -776,68 +791,6 @@ const ApprovalPage = () => {
                 document.body
             )}
 
-            <style>{`
-                @page {
-                    size: A4 portrait;
-                    margin: 0 !important;
-                }
-                @media print {
-                    /* Nuclear Option: Hide everything except the portal-rendered modal */
-                    #root {
-                        display: none !important;
-                    }
-                    
-                    body > *:not(.approval-modal-overlay) {
-                        display: none !important;
-                    }
-
-                    /* Ensure modal is visible and covers the page */
-                    .approval-modal-overlay {
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 210mm !important;
-                        min-height: 297mm !important;
-                        background: white !important;
-                        z-index: 999999 !important;
-                        visibility: visible !important;
-                        display: block !important;
-                        overflow: visible !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                    }
-                    
-                    .approval-modal-overlay > div {
-                        border: none !important;
-                        box-shadow: none !important;
-                        width: 100% !important;
-                        background: white !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        height: auto !important;
-                        transform: none !important;
-                    }
-
-                    .approval-modal-overlay .max-h-[80vh] {
-                        max-height: none !important;
-                        overflow: visible !important;
-                    }
-
-                    /* Hide specific elements within modal */
-                    .approval-modal-overlay .bg-gray-900\\/50,
-                    .approval-modal-overlay button,
-                    .approval-modal-overlay .border-gray-700 {
-                        display: none !important;
-                    }
-
-                    /* Force colors */
-                    * {
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                        color: black !important;
-                    }
-                }
-            `}</style>
         </>
     );
 };
