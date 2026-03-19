@@ -159,7 +159,10 @@ const MobileWorkLogPage = () => {
         VACATION: { label: '휴가원', color: '#3b82f6' },
         EARLY_LEAVE: { label: '조퇴/외출원', color: '#a855f7' },
         SUPPLIES: { label: '소모품 신청서', color: '#10b981' },
-        OVERTIME: { label: '야근/특근신청서', color: '#f97316' }
+        OVERTIME: { label: '야근/특근신청서', color: '#f97316' },
+        INTERNAL_DRAFT: { label: '내부기안', color: '#3b82f6' },
+        EXPENSE_REPORT: { label: '지출결의서', color: '#6366f1' },
+        PURCHASE_ORDER: { label: '구매발주서', color: '#f59e0b' }
     };
 
     const STATUS_MAP = {
@@ -1039,7 +1042,7 @@ const MobileWorkLogPage = () => {
                                                             {doc.created_at?.includes('T') ? doc.created_at.split('T')[0] : (doc.created_at || '')}
                                                         </Typography>
                                                     </Stack>
-                                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.5 }}>
+                                                    <Typography variant="body1" sx={{ mb: 0.5, fontWeight: 900, color: '#1a202c', lineHeight: 1.2 }}>
                                                         {doc.title}
                                                     </Typography>
                                                     <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
@@ -1337,7 +1340,9 @@ const MobileWorkLogPage = () => {
                                 <Typography variant="caption" sx={{ color: DOC_TYPES[selectedDoc.doc_type]?.color, fontWeight: 'bold' }}>
                                     {DOC_TYPES[selectedDoc.doc_type]?.label}
                                 </Typography>
-                                <Typography variant="h6" fontWeight="bold" gutterBottom>{selectedDoc.title}</Typography>
+                                <Typography variant="h5" sx={{ fontWeight: 900, color: '#1a202c', mb: 1, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+                                    {selectedDoc.title}
+                                </Typography>
                                 <Divider sx={{ my: 1 }} />
                                 <Box sx={{ mt: 1 }}>
                                     {selectedDoc.doc_type === 'VACATION' && (
@@ -1385,6 +1390,61 @@ const MobileWorkLogPage = () => {
                                             <Typography variant="body2"><b>일자:</b> {selectedDoc.content.date}</Typography>
                                             <Typography variant="body2"><b>시간:</b> {selectedDoc.content.start_time} ~ {selectedDoc.content.end_time}</Typography>
                                             <Typography variant="body2"><b>내용:</b> {selectedDoc.content.reason}</Typography>
+                                        </Stack>
+                                    )}
+                                    {selectedDoc.doc_type === 'INTERNAL_DRAFT' && (
+                                        <Stack spacing={1}>
+                                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                                {selectedDoc.content.reason || selectedDoc.content.content}
+                                            </Typography>
+                                            {selectedDoc.content.items?.length > 0 && (
+                                                <Box sx={{ mt: 2 }}>
+                                                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>품목 내역</Typography>
+                                                    {selectedDoc.content.items.map((item, idx) => (
+                                                        <Box key={idx} sx={{ mb: 1, pl: 1, borderLeft: '2px solid #e2e8f0' }}>
+                                                            <Typography variant="body2">{item.name}</Typography>
+                                                            <Typography variant="caption" color="textSecondary">
+                                                                {item.spec} • {item.quantity}{item.unit} • {parseInt(item.amount || 0).toLocaleString()}원
+                                                            </Typography>
+                                                        </Box>
+                                                    ))}
+                                                </Box>
+                                            )}
+                                        </Stack>
+                                    )}
+                                    {selectedDoc.doc_type === 'EXPENSE_REPORT' && (
+                                        <Stack spacing={1}>
+                                            <Box sx={{ p: 1, bgcolor: '#f1f5f9', borderRadius: 1, mb: 1 }}>
+                                                <Typography variant="caption" color="textSecondary">총 지출 금액</Typography>
+                                                <Typography variant="h6" color="primary" fontWeight="bold">
+                                                    {(selectedDoc.content.total_amount || 0).toLocaleString()}원
+                                                </Typography>
+                                            </Box>
+                                            <Typography variant="subtitle2" fontWeight="bold">지출 내역</Typography>
+                                            {selectedDoc.content.items?.map((item, idx) => (
+                                                <Box key={idx} sx={{ pl: 1, borderLeft: '2px solid #e2e8f0', mb: 1 }}>
+                                                    <Typography variant="body2">{item.description}</Typography>
+                                                    <Typography variant="caption" color="textSecondary">{item.date} • {parseInt(item.amount || 0).toLocaleString()}원</Typography>
+                                                </Box>
+                                            ))}
+                                            {selectedDoc.content.summary && <Typography variant="body2"><b>요약:</b> {selectedDoc.content.summary}</Typography>}
+                                        </Stack>
+                                    )}
+                                    {selectedDoc.doc_type === 'PURCHASE_ORDER' && (
+                                        <Stack spacing={1}>
+                                            <Box sx={{ p: 1, bgcolor: '#fff7ed', borderRadius: 1, mb: 1 }}>
+                                                <Typography variant="caption" color="textSecondary">공급처</Typography>
+                                                <Typography variant="subtitle2" fontWeight="bold">{selectedDoc.content.partner_name || '-'}</Typography>
+                                                <Typography variant="caption" color="textSecondary">발주일: {selectedDoc.content.order_date || '-'}</Typography>
+                                            </Box>
+                                            <Typography variant="subtitle2" fontWeight="bold">발주 품목</Typography>
+                                            {selectedDoc.content.items?.map((item, idx) => (
+                                                <Box key={idx} sx={{ pl: 1, borderLeft: '2px solid #fdba74', mb: 1 }}>
+                                                    <Typography variant="body2">{item.name}</Typography>
+                                                    <Typography variant="caption" color="textSecondary">{item.spec} • {item.qty} {item.unit || 'EA'}</Typography>
+                                                    {item.total && <Typography variant="caption" sx={{ ml: 1, fontWeight: 'bold' }}>{parseInt(item.total).toLocaleString()}원</Typography>}
+                                                </Box>
+                                            ))}
                                         </Stack>
                                     )}
                                 </Box>
