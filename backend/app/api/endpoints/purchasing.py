@@ -412,6 +412,7 @@ async def create_purchase_order(
                 note=item.note,
                 order_size=item.order_size,
                 material=item.material,
+                production_plan_item_id=item.production_plan_item_id,
                 material_requirement_id=item.material_requirement_id,
                 consumable_purchase_wait_id=item.consumable_purchase_wait_id
             )
@@ -841,46 +842,53 @@ async def read_outsourcing_orders(
     # Local import
     from app.models.production import ProductionPlanItem, ProductionPlan
 
-    query = select(OutsourcingOrder).outerjoin(SalesOrder).options(
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).options(
-            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items)
-        ),
-        selectinload(OutsourcingOrder.partner),
-        selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
-        # Load related SO/SP info
-        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
-            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+    try:
+        query = select(OutsourcingOrder).outerjoin(OutsourcingOrder.order).options(
+            selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product).options(
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(Product.bom_items)
+            ),
+            selectinload(OutsourcingOrder.partner),
+            selectinload(OutsourcingOrder.order).selectinload(SalesOrder.partner),
+            # Load related SO/SP info
+            selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
+                selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            )
         )
-    )
-    if status:
-        query = query.where(OutsourcingOrder.status == status)
-    if partner_id:
-        query = query.where(OutsourcingOrder.partner_id == partner_id)
-    if start_date:
-        query = query.where(OutsourcingOrder.order_date >= start_date)
-    if end_date:
-        query = query.where(OutsourcingOrder.order_date <= end_date)
-    if customer_id:
-        query = query.where(SalesOrder.partner_id == customer_id)
+        if status:
+            query = query.where(OutsourcingOrder.status == status)
+        if partner_id:
+            query = query.where(OutsourcingOrder.partner_id == partner_id)
+        if start_date:
+            query = query.where(OutsourcingOrder.order_date >= start_date)
+        if end_date:
+            query = query.where(OutsourcingOrder.order_date <= end_date)
+        if customer_id:
+            query = query.where(SalesOrder.partner_id == customer_id)
 
-    query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit)
+        query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit)
 
-    result = await db.execute(query)
-    oos = result.scalars().all()
-    
-    for oo in oos:
-        # Manually extract string to avoid Pydantic serialization of SalesOrder object
-        oo.related_sales_order_info = str(oo.related_so_info_attr) if oo.related_so_info_attr else None
-        oo.related_customer_names = str(oo.related_cust_names_attr) if oo.related_cust_names_attr else None
+        result = await db.execute(query)
+        oos = result.scalars().all()
         
-        for item in oo.items:
-            if item.production_plan_item:
-                plan_item = item.production_plan_item
-                item.process_name = plan_item.process_name
-    
-    return oos
+        for oo in oos:
+            # Manually extract string to avoid Pydantic serialization of SalesOrder object
+            oo.related_sales_order_info = str(oo.related_so_info_attr) if oo.related_so_info_attr else None
+            oo.related_customer_names = str(oo.related_cust_names_attr) if oo.related_cust_names_attr else None
+            
+            for item in oo.items:
+                if item.production_plan_item:
+                    plan_item = item.production_plan_item
+                    item.process_name = plan_item.process_name
+        
+        return oos
+    except Exception as e:
+        import traceback
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to read outsourcing orders: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"외주발주 조회 중 오류 발생: {str(e)}")
 
 @router.put("/outsourcing/orders/{order_id}", response_model=schemas.OutsourcingOrder)
 async def update_outsourcing_order(

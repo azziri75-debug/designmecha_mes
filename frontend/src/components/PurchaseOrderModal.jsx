@@ -291,7 +291,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     // Sync partner_id when partners are loaded
     useEffect(() => {
         if (isOpen && !order && initialItems && initialItems.length > 0 && partners.length > 0 && !formData.partner_id) {
-            const firstPartnerName = initialItems[0].partner_name;
+            const firstItem = initialItems[0];
+            const firstPartnerName = firstItem.partner_name || 
+                                     (firstItem.partner && (typeof firstItem.partner === 'string' ? firstItem.partner : firstItem.partner.name)) ||
+                                     firstItem.supplier_name || '';
+                                     
             const foundPartner = partners.find(p => p.name === firstPartnerName);
             if (foundPartner) {
                 setFormData(prev => ({ ...prev, partner_id: foundPartner.id }));
