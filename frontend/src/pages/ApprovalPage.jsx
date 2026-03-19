@@ -234,7 +234,8 @@ const ApprovalPage = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <>
+            <div className={cn("space-y-6 approval-page-content", showDocDetail && "print:hidden")}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -507,6 +508,7 @@ const ApprovalPage = () => {
                     ))}
                 </div>
             )}
+            </div>
 
 
             {/* Doc Detail / Process Modal */}
@@ -779,25 +781,17 @@ const ApprovalPage = () => {
                     margin: 0 !important;
                 }
                 @media print {
-                    /* If we are in A4 print mode, hide everything except the modal */
-                    body.a4-print-mode {
-                        background: white !important;
+                    /* Hide Sidebar and Header from Layout */
+                    aside, header, nav, .no-print, .idf-no-print {
+                        display: none !important;
                     }
                     
-                    /* Hide main UI pieces */
-                    body.a4-print-mode aside, 
-                    body.a4-print-mode nav, 
-                    body.a4-print-mode header,
-                    body.a4-print-mode .no-print,
-                    body.a4-print-mode .idf-no-print {
+                    /* Hide background content in ApprovalPage */
+                    .approval-page-content {
                         display: none !important;
                     }
 
-                    /* Hide the background list underneath the modal */
-                    body.a4-print-mode main > div > div > div:not(.approval-modal-overlay) {
-                        display: none !important;
-                    }
-
+                    /* Ensure modal is visible and covers the page */
                     .approval-modal-overlay {
                         position: fixed !important;
                         left: 0 !important;
@@ -817,38 +811,29 @@ const ApprovalPage = () => {
                         border: none !important;
                         box-shadow: none !important;
                         width: 100% !important;
-                        max-width: none !important;
                         background: white !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         height: 100% !important;
+                        transform: none !important;
                     }
 
-                    /* Hide modal's own header and buttons */
+                    /* Hide specific elements within modal */
                     .approval-modal-overlay .bg-gray-900\\/50,
                     .approval-modal-overlay button,
                     .approval-modal-overlay .border-gray-700 {
                         display: none !important;
                     }
 
-                    /* Ensure the form content itself fits */
-                    .a4-print-safe {
-                        height: 100% !important;
-                        width: 100% !important;
-                        padding: 10mm !important;
-                        overflow: hidden !important;
-                    }
-
-                    /* Force colors and borders */
+                    /* Force colors */
                     * {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                         color: black !important;
-                        border-color: black !important;
                     }
                 }
             `}</style>
-        </div>
+        </>
     );
 };
 

@@ -357,7 +357,7 @@ const PurchaseOrderTemplate = ({
                     body { margin: 0 !important; padding: 0 !important; background: white !important; }
                     .a4-wrapper { 
                         margin: 0 !important; 
-                        padding: 10mm !important; 
+                        padding: 5mm 10mm !important; 
                         width: 210mm !important; 
                         height: 297mm !important;
                         max-height: 297mm !important;
@@ -365,6 +365,8 @@ const PurchaseOrderTemplate = ({
                         box-shadow: none !important;
                         position: relative !important;
                         background: white !important;
+                        transform: scale(0.93) !important;
+                        transform-origin: top center !important;
                     }
                     .idf-no-print, .no-print, button { display: none !important; }
                     div { box-shadow: none !important; }

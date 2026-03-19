@@ -167,12 +167,11 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                     .cons-flex-table tr { margin-bottom: 15px; border: 1px solid #eee !important; border-radius: 8px; padding: 10px !important; }
                 }
                 @media print {
-                    .idf-no-print, .no-print { display: none !important; }
-                    table { border-collapse: collapse !important; width: 100% !important; font-size: 11px !important; }
-                    td, th { border: 1px solid black !important; padding: 2px 4px !important; }
-                    .responsive-table tr { display: table-row !important; }
-                    .responsive-table td { display: table-cell !important; border: 1px solid black !important; }
-                    .cons-flex-table thead { display: table-header-group !important; }
+                    .a4-print-safe { padding: 0 !important; margin: 0 !important; width: 100% !important; font-size: 10px !important; transform: scale(0.93) !important; transform-origin: top center !important; }
+                    .no-print, .idf-no-print { display: none !important; }
+                    table { font-size: 10px !important; border-collapse: collapse !important; }
+                    td, th { padding: 4px !important; border: 1px solid black !important; }
+                    thead { display: table-header-group !important; }
                 }
             `}</style>
         </Box>

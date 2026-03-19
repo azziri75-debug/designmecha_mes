@@ -170,11 +170,10 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                     input, textarea { font-size: 16px !important; border: 1px solid #eee !important; padding: 10px !important; border-radius: 4px; box-sizing: border-box; width: 100% !important; }
                 }
                 @media print {
-                    .idf-no-print, .no-print { display: none !important; }
-                    table { border-collapse: collapse !important; width: 100% !important; font-size: 11px !important; }
-                    td, th { border: 1px solid black !important; padding: 6px !important; }
-                    .responsive-table tr { display: table-row !important; }
-                    .responsive-table td { display: table-cell !important; border: 1px solid black !important; }
+                    .a4-print-safe { padding: 0 !important; margin: 0 !important; width: 100% !important; font-size: 11px !important; transform: scale(0.93) !important; transform-origin: top center !important; }
+                    .no-print, .idf-no-print { display: none !important; }
+                    table { font-size: 11px !important; border-collapse: collapse !important; }
+                    td, th { padding: 6px !important; border: 1px solid black !important; }
                 }
             `}</style>
         </Box>

@@ -196,7 +196,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     textarea, input { font-size: 16px !important; } 
                 }
                 @media print {
-                    .a4-form-container { padding: 0 !important; margin: 0 !important; width: 100% !important; font-size: 11px !important; }
+                    .a4-form-container { padding: 0 !important; margin: 0 !important; width: 100% !important; font-size: 11px !important; transform: scale(0.93) !important; transform-origin: top center !important; }
                     .responsive-table, .responsive-table table { display: table !important; width: 100% !important; border-collapse: collapse !important; }
                     .responsive-table tr { display: table-row !important; }
                     .responsive-table td, .responsive-table th { display: table-cell !important; border: 1px solid black !important; padding: 4px !important; line-height: 1.2 !important; }

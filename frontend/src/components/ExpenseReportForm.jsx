@@ -326,6 +326,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     thead th { font-size: 10px !important; padding: 4px !important; }
                     table { border-collapse: collapse !important; }
                     td, th { border: 1px solid black !important; }
+                    .a4-print-safe { transform: scale(0.93) !important; transform-origin: top center !important; }
                 }
             `}</style>
         </Box>
