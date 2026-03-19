@@ -1397,14 +1397,14 @@ const MobileWorkLogPage = () => {
                                             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                                                 {selectedDoc.content.reason || selectedDoc.content.content}
                                             </Typography>
-                                            {selectedDoc.content.items?.length > 0 && (
+                                            {selectedDoc.content.items?.filter(item => item.name || item.description)?.length > 0 && (
                                                 <Box sx={{ mt: 2 }}>
                                                     <Typography variant="subtitle2" fontWeight="bold" gutterBottom>품목 내역</Typography>
-                                                    {selectedDoc.content.items.map((item, idx) => (
+                                                    {selectedDoc.content.items.filter(item => item.name || item.description).map((item, idx) => (
                                                         <Box key={idx} sx={{ mb: 1, pl: 1, borderLeft: '2px solid #e2e8f0' }}>
-                                                            <Typography variant="body2">{item.name}</Typography>
+                                                            <Typography variant="body2">{item.name || item.description}</Typography>
                                                             <Typography variant="caption" color="textSecondary">
-                                                                {item.spec} • {item.quantity}{item.unit} • {parseInt(item.amount || 0).toLocaleString()}원
+                                                                {item.spec} • {item.quantity || item.qty}{item.unit} • {parseInt(item.amount || item.total || 0).toLocaleString()}원
                                                             </Typography>
                                                         </Box>
                                                     ))}
@@ -1421,7 +1421,7 @@ const MobileWorkLogPage = () => {
                                                 </Typography>
                                             </Box>
                                             <Typography variant="subtitle2" fontWeight="bold">지출 내역</Typography>
-                                            {selectedDoc.content.items?.map((item, idx) => (
+                                            {selectedDoc.content.items?.filter(item => item.description || item.amount)?.map((item, idx) => (
                                                 <Box key={idx} sx={{ pl: 1, borderLeft: '2px solid #e2e8f0', mb: 1 }}>
                                                     <Typography variant="body2">{item.description}</Typography>
                                                     <Typography variant="caption" color="textSecondary">{item.date} • {parseInt(item.amount || 0).toLocaleString()}원</Typography>
@@ -1438,7 +1438,7 @@ const MobileWorkLogPage = () => {
                                                 <Typography variant="caption" color="textSecondary">발주일: {selectedDoc.content.order_date || '-'}</Typography>
                                             </Box>
                                             <Typography variant="subtitle2" fontWeight="bold">발주 품목</Typography>
-                                            {selectedDoc.content.items?.map((item, idx) => (
+                                            {selectedDoc.content.items?.filter(item => item.name || item.qty)?.map((item, idx) => (
                                                 <Box key={idx} sx={{ pl: 1, borderLeft: '2px solid #fdba74', mb: 1 }}>
                                                     <Typography variant="body2">{item.name}</Typography>
                                                     <Typography variant="caption" color="textSecondary">{item.spec} • {item.qty} {item.unit || 'EA'}</Typography>
