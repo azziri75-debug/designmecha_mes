@@ -9,7 +9,7 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
     };
 
     return (
-        <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box className="a4-form-container a4-print-safe" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box sx={{ flex: 1, pt: 4 }}>
                     <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '15px' }}>
@@ -159,7 +159,7 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                 (주)디자인메카
             </Typography>
             <style>{`
-                @media (max-width: 768px) {
+                @media screen and (max-width: 768px) {
                     .idf-header { flex-direction: column !important; align-items: center !important; gap: 20px; }
                     .responsive-table, .responsive-table table, .responsive-table tbody, .responsive-table tr, .responsive-table td { 
                         display: block !important; width: 100% !important; border: none !important; 
@@ -168,6 +168,13 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                     .responsive-table td { padding: 8px 0 !important; }
                     .responsive-table td[component="td"] { background-color: transparent !important; text-align: left !important; color: #666; font-size: 12px; font-weight: bold; }
                     input, textarea { font-size: 16px !important; border: 1px solid #eee !important; padding: 10px !important; border-radius: 4px; box-sizing: border-box; width: 100% !important; }
+                }
+                @media print {
+                    .idf-no-print, .no-print { display: none !important; }
+                    table { border-collapse: collapse !important; width: 100% !important; }
+                    td, th { border: 1px solid black !important; padding: 10px !important; }
+                    .responsive-table tr { display: table-row !important; }
+                    .responsive-table td { display: table-cell !important; border: 1px solid black !important; }
                 }
             `}</style>
         </Box>

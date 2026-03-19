@@ -774,43 +774,64 @@ const ApprovalPage = () => {
             )}
 
             <style>{`
+                @page {
+                    size: auto;
+                    margin: 0 !important;
+                }
                 @media print {
-                    /* Hide everything by default but let the modal pathway stay visible */
-                    body * { visibility: hidden !important; }
-                    .approval-modal-overlay, .approval-modal-overlay * { visibility: visible !important; }
+                    /* Hide everything except modal content */
+                    body { 
+                        visibility: hidden !important; 
+                        background: white !important; 
+                        margin: 0 !important; 
+                        padding: 0 !important;
+                    }
+                    #root > * { display: none !important; }
                     
-                    /* Hide modal UI elements */
-                    .bg-gray-800, .bg-gray-900, .bg-black\\/70, .backdrop-blur-sm, .no-print, button { display: none !important; }
+                    /* The Modal Pathway */
+                    .approval-modal-overlay {
+                        visibility: visible !important;
+                        display: block !important;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        height: auto !important;
+                        background: white !important;
+                        z-index: 9999 !important;
+                        padding: 15mm !important; /* Internal page margin */
+                        overflow: visible !important;
+                    }
+                    .approval-modal-overlay > div {
+                        visibility: visible !important;
+                        display: block !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        width: 100% !important;
+                        max-width: none !important;
+                        background: white !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
                     
-                    /* Show only the A4 container and its children */
+                    /* Show A4 content */
                     .a4-print-safe, .a4-print-safe * { 
                         visibility: visible !important; 
                         display: block !important;
                         color: black !important;
                         -webkit-print-color-adjust: exact !important;
                     }
+                    .a4-print-safe td, .a4-print-safe th { display: table-cell !important; }
+                    .a4-print-safe tr { display: table-row !important; }
+                    .a4-print-safe table { display: table !important; }
 
-                    /* Specific layout fixes for table cells inside A4 on print */
-                    .a4-print-safe td, .a4-print-safe th { display: table-cell !important; visibility: visible !important; }
-                    .a4-print-safe tr { display: table-row !important; visibility: visible !important; }
-                    .a4-print-safe table { display: table !important; visibility: visible !important; }
-                    
-                    .a4-print-safe {
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 100% !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        box-shadow: none !important;
-                        border: none !important;
-                        background-color: white !important;
-                    }
-
-                    /* Specific overrides for tables and text inside A4 */
-                    .a4-print-safe td, .a4-print-safe th, .a4-print-safe div {
-                        border-color: black !important;
-                        background-color: transparent !important;
+                    /* Hide specific UI inside modal */
+                    .approval-modal-overlay button, 
+                    .approval-modal-overlay .bg-gray-900\\/50, 
+                    .approval-modal-overlay .border-b,
+                    .approval-modal-overlay .idf-no-print,
+                    .no-print { 
+                        display: none !important; 
                     }
                 }
             `}</style>

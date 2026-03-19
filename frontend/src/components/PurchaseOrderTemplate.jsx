@@ -236,7 +236,7 @@ const PurchaseOrderTemplate = ({
             <div className="flex flex-col md:flex-row idf-print-flex-row justify-between mb-6 text-xs items-start gap-4">
                 <div className="space-y-4 flex-1 w-full">
                     <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 max-w-full md:max-w-[260px]">
-                        <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="flex-1" />
+                        <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="w-auto" />
                         <span className="text-sm pb-1 font-normal">귀하</span>
                     </div>
                     <div className="space-y-1 text-[10px] text-gray-500">
@@ -349,22 +349,25 @@ const PurchaseOrderTemplate = ({
                         visibility: visible !important; 
                         color: black !important;
                     }
-                    .a4-print-safe {
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 100% !important;
-                        border: none !important;
+                @page {
+                    size: auto;
+                    margin: 0 !important;
+                }
+                @media print {
+                    body { margin: 0 !important; padding: 0 !important; }
+                    .a4-wrapper { 
+                        margin: 0 !important; 
+                        padding: 15mm !important; 
+                        width: 100% !important; 
                         box-shadow: none !important;
-                        padding: 0 !important;
-                        margin: 0 !important;
+                        position: relative !important;
                     }
                     .idf-no-print, .no-print, button { display: none !important; }
                     div { box-shadow: none !important; }
                     .idf-print-flex-row { flex-direction: row !important; }
                     .idf-print-flex-row > div { width: auto !important; }
                     .idf-header-no { order: 1 !important; }
-                    .idf-header-title { order: 2 !important; flex: 1 !important; }
+                    .idf-header-title { order: 2 !important; flex: 1 !important; text-align: center !important; }
                     .idf-header-approval { order: 3 !important; }
                     .a4-print-safe td, .a4-print-safe th, .a4-print-safe td *, .a4-print-safe th * { white-space: nowrap !important; }
                     .a4-print-safe td:nth-child(2), .a4-print-safe th:nth-child(2), .a4-print-safe td:nth-child(2) *, .a4-print-safe th:nth-child(2) * { white-space: normal !important; }

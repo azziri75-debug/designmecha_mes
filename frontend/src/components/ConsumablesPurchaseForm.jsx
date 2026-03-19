@@ -26,7 +26,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
     };
 
     return (
-        <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box className="a4-form-container a4-print-safe" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box sx={{ flex: 1, pt: 4 }}>
                     <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '5px' }}>
@@ -154,7 +154,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                 (주)디자인메카
             </Typography>
             <style>{`
-                @media (max-width: 768px) {
+                @media screen and (max-width: 768px) {
                     .idf-header { flex-direction: column !important; align-items: center !important; gap: 20px; }
                     .responsive-table, .responsive-table table, .responsive-table tbody, .responsive-table tr, .responsive-table td { 
                         display: block !important; width: 100% !important; border: none !important; 
@@ -165,6 +165,14 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                     input, textarea { font-size: 16px !important; border: 1px solid #eee !important; padding: 10px !important; border-radius: 4px; box-sizing: border-box; width: 100% !important; }
                     .cons-flex-table thead { display: none !important; }
                     .cons-flex-table tr { margin-bottom: 15px; border: 1px solid #eee !important; border-radius: 8px; padding: 10px !important; }
+                }
+                @media print {
+                    .idf-no-print, .no-print { display: none !important; }
+                    table { border-collapse: collapse !important; width: 100% !important; }
+                    td, th { border: 1px solid black !important; padding: 4px !important; }
+                    .responsive-table tr { display: table-row !important; }
+                    .responsive-table td { display: table-cell !important; border: 1px solid black !important; }
+                    .cons-flex-table thead { display: table-header-group !important; }
                 }
             `}</style>
         </Box>

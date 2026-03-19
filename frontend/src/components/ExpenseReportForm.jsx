@@ -84,7 +84,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const totalAmount = data.total_amount || 0;
 
     return (
-        <Box sx={{ width: '100%', p: 0, color: '#000', position: 'relative' }}>
+        <Box className="a4-form-container a4-print-safe" sx={{ width: '100%', p: 0, color: '#000', position: 'relative', bgcolor: 'white' }}>
             {/* Title */}
             <Typography variant="h3" align="center" sx={{ 
                 fontWeight: 'bold', 
@@ -310,16 +310,21 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
 
             <style>{`
                 input::placeholder { color: #ccc; font-weight: normal; }
-                @media print {
-                    .no-print { display: none !important; }
-                    input { border: none !important; }
-                    textarea { border: none !important; }
-                }
-                @media (max-width: 768px) {
+                @media screen and (max-width: 768px) {
                     .stack-row { display: flex !important; flex-direction: column !important; border: 1px solid #ddd !important; border-radius: 8px !important; margin-bottom: 15px !important; padding: 10px !important; }
                     .stack-row td { display: flex !important; justify-content: space-between !important; align-items: center !important; border: none !important; width: 100% !important; padding: 5px 0 !important; }
                     .stack-row td::before { content: attr(data-label); font-weight: bold; margin-right: 10px; color: #666; font-size: 11px; }
                     thead { display: none !important; }
+                }
+                @media print {
+                    .no-print, .idf-no-print { display: none !important; }
+                    input, textarea { border: none !important; background: transparent !important; }
+                    .stack-row { display: table-row !important; }
+                    .stack-row td { display: table-cell !important; border: 1px solid black !important; }
+                    .stack-row td::before { display: none !important; }
+                    thead { display: table-header-group !important; }
+                    table { border-collapse: collapse !important; }
+                    td, th { border: 1px solid black !important; }
                 }
             `}</style>
         </Box>
