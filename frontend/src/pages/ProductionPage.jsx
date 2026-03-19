@@ -14,34 +14,7 @@ import ResizableTableCell from '../components/ResizableTableCell';
 const ProductionPage = () => {
     // Add Print Styles
     useEffect(() => {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            @media print {
-                @page {
-                    size: A4;
-                    margin: 0;
-                }
-                body, html, #root, .MuiBox-root, .MuiPaper-root {
-                    height: auto !important;
-                    overflow: visible !important;
-                    position: static !important;
-                }
-                .no-print {
-                    display: none !important;
-                }
-                .print-visible {
-                    display: block !important;
-                    width: 210mm !important;
-                    min-height: 297mm !important;
-                    margin: 0 auto !important;
-                    padding: 10mm !important;
-                    background: white !important;
-                    box-sizing: border-box !important;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-        return () => document.head.removeChild(style);
+        // Redundant - now handled globally in index.css
     }, []);
     const [tabIndex, setTabIndex] = useState(0);
     const [orders, setOrders] = useState([]);
@@ -390,7 +363,7 @@ const ProductionPage = () => {
                 생산 관리
             </Typography>
 
-            <Paper sx={{ width: '100%', mb: 2 }}>
+            <Paper sx={{ width: '100%', mb: 2 }} className="print-safe-area">
                 <Tabs
                     value={tabIndex}
                     onChange={handleTabChange}

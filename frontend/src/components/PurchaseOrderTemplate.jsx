@@ -205,7 +205,7 @@ const PurchaseOrderTemplate = ({
                 </Box>
             )}
 
-            <div className={cn("bg-white text-black relative flex flex-col a4-wrapper a4-print-safe", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+            <div className={cn("bg-white text-black relative flex flex-col a4-wrapper print-safe-area", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
             <div className="flex flex-col md:flex-row idf-print-flex-row justify-between items-start mb-4 md:mb-8 px-2 gap-4">
                 <div className="w-full md:w-[200px] text-[9px] space-y-0.5 pt-0 md:pt-8 order-2 md:order-1 idf-header-no">
@@ -235,7 +235,7 @@ const PurchaseOrderTemplate = ({
             {/* Info Section */}
             <div className="flex flex-col md:flex-row idf-print-flex-row justify-between mb-4 md:mb-6 text-xs items-start gap-4">
                 <div className="space-y-4 flex-1 w-full">
-                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 w-fit min-w-[200px] max-w-full">
+                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 w-fit max-w-full">
                         <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="w-auto" />
                         <span className="text-sm pb-1 font-normal">귀하</span>
                     </div>

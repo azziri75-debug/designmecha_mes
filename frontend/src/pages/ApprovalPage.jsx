@@ -514,7 +514,7 @@ const ApprovalPage = () => {
 
             {showDocDetail && selectedDoc && createPortal(
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto approval-modal-overlay">
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl shadow-2xl animation-fade-in my-auto overflow-hidden a4-print-safe">
+                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl shadow-2xl animation-fade-in my-auto overflow-hidden print-safe-area">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -527,20 +527,7 @@ const ApprovalPage = () => {
                                 {selectedDoc.status === 'APPROVED' && (
                                     <button
                                         onClick={() => {
-                                            document.body.classList.add('a4-print-mode');
-                                            const style = document.createElement('style');
-                                            style.id = 'print-page-style';
-                                            style.innerHTML = '@page { margin: 0 !important; size: auto; }';
-                                            document.head.appendChild(style);
-                                            
                                             window.print();
-                                            
-                                            // Cleanup after a delay to ensure print dialog finished
-                                            setTimeout(() => {
-                                                document.body.classList.remove('a4-print-mode');
-                                                const s = document.getElementById('print-page-style');
-                                                if (s) s.remove();
-                                            }, 1000);
                                         }}
                                         className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
                                     >
@@ -645,7 +632,7 @@ const ApprovalPage = () => {
 
                             {/* Content Section - A4 Form Integration */}
                             <div className={cn(
-                                "bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container a4-print-safe",
+                                "bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container print-safe-area",
                                 selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 rounded-none border-0 shadow-none"
                             )}>
                                 <Box sx={{ 

@@ -14,61 +14,7 @@ import api from '../lib/api';
 // ────────────────────────────────────────────
 const PRINT_STYLE_ID = 'tsm-print-style';
 const injectPrintCSS = () => {
-    if (document.getElementById(PRINT_STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = PRINT_STYLE_ID;
-    style.innerHTML = `
-        @media print {
-            @page { size: A4 landscape !important; margin: 0 !important; }
-            
-            body, html, #root, .MuiDialog-root, .MuiModal-root, .MuiModal-container, .MuiBox-root {
-                display: block !important;
-                position: static !important;
-                height: auto !important;
-                min-height: 100% !important;
-                width: auto !important;
-                overflow: visible !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                transform: none !important;
-            }
-            
-            /* Hide everything by default except the print container and its parents */
-            body * { visibility: hidden !important; }
-            .tsm-no-print, .MuiBackdrop-root { display: none !important; }
-            
-            .tsm-print-container {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 297mm !important;
-                height: 210mm !important;
-                margin: 0 !important;
-                padding: 10mm !important;
-                box-sizing: border-box !important;
-                transform: none !important; 
-                visibility: visible !important;
-                background: white !important;
-                display: flex !important;
-                flex-direction: row !important;
-                gap: 12mm !important;
-                box-shadow: none !important;
-                page-break-after: avoid !important;
-                page-break-inside: avoid !important;
-                overflow: visible !important;
-            }
-            
-            .tsm-print-container * { 
-                visibility: visible !important; 
-                color: black !important;
-                border-color: inherit !important;
-            }
-            
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-    `;
-    document.head.appendChild(style);
+    // Redundant - now handled globally in index.css
 };
 const removePrintCSS = () => {
     const el = document.getElementById(PRINT_STYLE_ID);
@@ -259,7 +205,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
 
         return (
             <div 
-                className="tsm-form-paper"
+                className="tsm-form-paper print-safe-area"
                 style={{
                 border: `1.8px solid ${C}`,
                 width: '100%', height: '100%',
@@ -613,7 +559,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     {/* ── A4 고정 블록: 297mm × 210mm, 화면에서는 scale로 축소 ── */}
                     <div
                         ref={printRef}
-                        className="tsm-print-container"
+                        className="tsm-print-container print-safe-area"
                         style={{
                             /* 절대 297×210mm 고수 */
                             width: '297mm',

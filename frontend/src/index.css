@@ -67,76 +67,42 @@ body.resizing {
 
 /* Print Styles - Scoped to avoid polluting non-A4 pages */
 @media print {
-  /* GLOBAL RESET: Crucial for long lists (Production, etc.) and allowing height to expand */
-  html, body, #root, #root > div {
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-    display: block !important;
-    background: white !important;
-  }
-
-  /* When printing an A4 document specifically from a modal */
-  body.a4-print-mode #root { 
-    display: none !important; 
-  }
-  
-  /* Ensure the portal container is visible and clean */
-  body.a4-print-mode .approval-modal-overlay {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 210mm !important;
-    background: white !important;
-    display: block !important;
-    visibility: visible !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    height: auto !important;
-    min-height: 297mm !important;
-  }
-
-  /* Force ALL modal internals to be visible and un-constrained */
-  body.a4-print-mode .approval-modal-overlay *,
-  body.a4-print-mode .approval-modal-overlay div,
-  body.a4-print-mode .approval-modal-overlay section {
-    max-height: none !important;
-    height: auto !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    background: transparent !important;
-  }
-
-  /* Specifically target the document content wrapper */
-  .a4-print-safe, .a4-print-safe * { 
-    visibility: visible !important; 
-    color: black !important;
-    background: white !important;
-  }
-
-  /* Global no-print utility */
-  .no-print, .idf-no-print, button, nav, aside, header, .sidebar, .MuiBackdrop-root {
-    display: none !important;
-  }
-
-  /* Ensure background colors are printed */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Fix for text clipping in input/textarea/select */
-  input, textarea, select {
-    border: none !important;
-    background: transparent !important;
-    height: auto !important;
-    min-height: 1.5em !important;
-    padding: 0 !important;
-    line-height: normal !important;
-    overflow: visible !important;
-    color: black !important;
-  }
+    /* 1. 모든 UI 요소(사이드바, 헤더, 버튼 등) 숨김 */
+    body * {
+        visibility: hidden;
+    }
+    /* 2. 오직 인쇄 영역만 강제로 노출 (위치 초기화) */
+    .print-safe-area, .print-safe-area * {
+        visibility: visible !important;
+    }
+    .print-safe-area {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+    }
+    /* 3. 유령 빈 페이지(Blank Pages) 생성 원천 차단 */
+    html, body, #root, .MuiDialog-root, .MuiModal-root {
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        background-color: white !important;
+    }
+    /* 페이지 잘림 방지 */
+    table, tr, td, th {
+        page-break-inside: avoid !important;
+    }
+    
+    /* Ensure background colors and images are printed */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
 }
 
 /* User-requested A4 Wrapper for Screen View */

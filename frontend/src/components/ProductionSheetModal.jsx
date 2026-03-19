@@ -36,7 +36,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
     return (
         <div 
             ref={ref} 
-            className="bg-white text-black flex flex-col shadow-none origin-top relative mb-8 last:mb-0 a4-print-safe" 
+            className="bg-white text-black flex flex-col shadow-none origin-top relative mb-8 last:mb-0 print-safe-area" 
             style={{ 
                 fontFamily: '"Malgun Gothic", sans-serif', 
                 border: '1px solid #e5e7eb',
