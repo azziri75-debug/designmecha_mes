@@ -168,8 +168,8 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                 }
                 @media print {
                     .idf-no-print, .no-print { display: none !important; }
-                    table { border-collapse: collapse !important; width: 100% !important; }
-                    td, th { border: 1px solid black !important; padding: 4px !important; }
+                    table { border-collapse: collapse !important; width: 100% !important; font-size: 11px !important; }
+                    td, th { border: 1px solid black !important; padding: 2px 4px !important; }
                     .responsive-table tr { display: table-row !important; }
                     .responsive-table td { display: table-cell !important; border: 1px solid black !important; }
                     .cons-flex-table thead { display: table-header-group !important; }

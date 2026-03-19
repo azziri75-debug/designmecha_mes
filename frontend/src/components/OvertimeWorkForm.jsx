@@ -146,8 +146,8 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                 }
                 @media print {
                     .idf-no-print, .no-print { display: none !important; }
-                    table { border-collapse: collapse !important; width: 100% !important; }
-                    td, th { border: 1px solid black !important; padding: 10px !important; }
+                    table { border-collapse: collapse !important; width: 100% !important; font-size: 11px !important; }
+                    td, th { border: 1px solid black !important; padding: 6px !important; }
                     .responsive-table tr { display: table-row !important; }
                     .responsive-table td { display: table-cell !important; border: 1px solid black !important; }
                 }

@@ -302,7 +302,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             )}
 
             {/* Bottom Signature */}
-            <Box sx={{ mt: 10, textAlign: 'center' }}>
+            <Box sx={{ mt: 4, textAlign: 'center' }}>
                 <Typography sx={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '5px' }}>
                     (주)디자인메카
                 </Typography>
@@ -320,9 +320,10 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     .no-print, .idf-no-print { display: none !important; }
                     input, textarea { border: none !important; background: transparent !important; }
                     .stack-row { display: table-row !important; }
-                    .stack-row td { display: table-cell !important; border: 1px solid black !important; }
+                    .stack-row td { display: table-cell !important; border: 1px solid black !important; font-size: 10px !important; padding: 2px 4px !important; }
                     .stack-row td::before { display: none !important; }
                     thead { display: table-header-group !important; }
+                    thead th { font-size: 10px !important; padding: 4px !important; }
                     table { border-collapse: collapse !important; }
                     td, th { border: 1px solid black !important; }
                 }

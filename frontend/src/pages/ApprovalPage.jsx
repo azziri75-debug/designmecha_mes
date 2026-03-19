@@ -775,36 +775,45 @@ const ApprovalPage = () => {
 
             <style>{`
                 @page {
-                    size: auto;
+                    size: A4 portrait;
                     margin: 0 !important;
                 }
                 @media print {
-                    /* Hide everything except modal content */
-                    body { 
-                        visibility: hidden !important; 
-                        background: white !important; 
-                        margin: 0 !important; 
-                        padding: 0 !important;
+                    /* If we are in A4 print mode, hide everything except the modal */
+                    body.a4-print-mode {
+                        background: white !important;
                     }
-                    #root > * { display: none !important; }
                     
-                    /* The Modal Pathway */
+                    /* Hide main UI pieces */
+                    body.a4-print-mode aside, 
+                    body.a4-print-mode nav, 
+                    body.a4-print-mode header,
+                    body.a4-print-mode .no-print,
+                    body.a4-print-mode .idf-no-print {
+                        display: none !important;
+                    }
+
+                    /* Hide the background list underneath the modal */
+                    body.a4-print-mode main > div > div > div:not(.approval-modal-overlay) {
+                        display: none !important;
+                    }
+
                     .approval-modal-overlay {
-                        visibility: visible !important;
-                        display: block !important;
-                        position: absolute !important;
+                        position: fixed !important;
                         left: 0 !important;
                         top: 0 !important;
-                        width: 100% !important;
-                        height: auto !important;
+                        width: 210mm !important;
+                        height: 297mm !important;
                         background: white !important;
-                        z-index: 9999 !important;
-                        padding: 15mm !important; /* Internal page margin */
-                        overflow: visible !important;
-                    }
-                    .approval-modal-overlay > div {
+                        z-index: 999999 !important;
                         visibility: visible !important;
                         display: block !important;
+                        overflow: hidden !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    
+                    .approval-modal-overlay > div {
                         border: none !important;
                         box-shadow: none !important;
                         width: 100% !important;
@@ -812,26 +821,30 @@ const ApprovalPage = () => {
                         background: white !important;
                         margin: 0 !important;
                         padding: 0 !important;
+                        height: 100% !important;
                     }
-                    
-                    /* Show A4 content */
-                    .a4-print-safe, .a4-print-safe * { 
-                        visibility: visible !important; 
-                        display: block !important;
-                        color: black !important;
-                        -webkit-print-color-adjust: exact !important;
-                    }
-                    .a4-print-safe td, .a4-print-safe th { display: table-cell !important; }
-                    .a4-print-safe tr { display: table-row !important; }
-                    .a4-print-safe table { display: table !important; }
 
-                    /* Hide specific UI inside modal */
-                    .approval-modal-overlay button, 
-                    .approval-modal-overlay .bg-gray-900\\/50, 
-                    .approval-modal-overlay .border-b,
-                    .approval-modal-overlay .idf-no-print,
-                    .no-print { 
-                        display: none !important; 
+                    /* Hide modal's own header and buttons */
+                    .approval-modal-overlay .bg-gray-900\\/50,
+                    .approval-modal-overlay button,
+                    .approval-modal-overlay .border-gray-700 {
+                        display: none !important;
+                    }
+
+                    /* Ensure the form content itself fits */
+                    .a4-print-safe {
+                        height: 100% !important;
+                        width: 100% !important;
+                        padding: 10mm !important;
+                        overflow: hidden !important;
+                    }
+
+                    /* Force colors and borders */
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        color: black !important;
+                        border-color: black !important;
                     }
                 }
             `}</style>

@@ -207,7 +207,7 @@ const PurchaseOrderTemplate = ({
 
             <div className={cn("bg-white text-black relative flex flex-col a4-wrapper a4-print-safe", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
-            <div className="flex flex-col md:flex-row idf-print-flex-row justify-between items-start mb-8 px-2 gap-4">
+            <div className="flex flex-col md:flex-row idf-print-flex-row justify-between items-start mb-4 md:mb-8 px-2 gap-4">
                 <div className="w-full md:w-[200px] text-[9px] space-y-0.5 pt-0 md:pt-8 order-2 md:order-1 idf-header-no">
                     <p className="flex items-center gap-1 whitespace-nowrap">NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-100 min-h-0" /></p>
                 </div>
@@ -233,9 +233,9 @@ const PurchaseOrderTemplate = ({
             </div>
 
             {/* Info Section */}
-            <div className="flex flex-col md:flex-row idf-print-flex-row justify-between mb-6 text-xs items-start gap-4">
+            <div className="flex flex-col md:flex-row idf-print-flex-row justify-between mb-4 md:mb-6 text-xs items-start gap-4">
                 <div className="space-y-4 flex-1 w-full">
-                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 max-w-full md:max-w-[260px]">
+                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 w-fit min-w-[200px] max-w-full">
                         <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="w-auto" />
                         <span className="text-sm pb-1 font-normal">귀하</span>
                     </div>
@@ -309,19 +309,19 @@ const PurchaseOrderTemplate = ({
                         <div className="md:block mr-2 md:mr-0">발주</div><div>조건</div>
                     </div>
                     <div className="flex-1 text-[11px] flex flex-col">
-                        <div className="border-b border-black p-2.5 flex items-center gap-2">
+                        <div className="border-b border-black p-1.5 flex items-center gap-2">
                             <span className="font-bold w-20">◆ 납기기한 :</span>
                             <EditableText value={data.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
                         </div>
-                        <div className="border-b border-black p-2.5 flex items-center gap-2">
+                        <div className="border-b border-black p-1.5 flex items-center gap-2">
                             <span className="font-bold w-20">◆ 납품장소 :</span>
                             <EditableText value={data.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
                         </div>
-                        <div className="border-b border-black p-2.5 flex items-center gap-2">
+                        <div className="border-b border-black p-1.5 flex items-center gap-2">
                             <span className="font-bold w-20">◆ 유효기간 :</span>
                             <EditableText value={data.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
                         </div>
-                        <div className="p-2.5 flex items-center gap-2">
+                        <div className="p-1.5 flex items-center gap-2">
                             <span className="font-bold w-20">◆ 결제조건 :</span>
                             <EditableText value={data.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
                         </div>
@@ -350,17 +350,21 @@ const PurchaseOrderTemplate = ({
                         color: black !important;
                     }
                 @page {
-                    size: auto;
+                    size: A4 portrait;
                     margin: 0 !important;
                 }
                 @media print {
-                    body { margin: 0 !important; padding: 0 !important; }
+                    body { margin: 0 !important; padding: 0 !important; background: white !important; }
                     .a4-wrapper { 
                         margin: 0 !important; 
-                        padding: 15mm !important; 
-                        width: 100% !important; 
+                        padding: 10mm !important; 
+                        width: 210mm !important; 
+                        height: 297mm !important;
+                        max-height: 297mm !important;
+                        overflow: hidden !important;
                         box-shadow: none !important;
                         position: relative !important;
+                        background: white !important;
                     }
                     .idf-no-print, .no-print, button { display: none !important; }
                     div { box-shadow: none !important; }
@@ -369,8 +373,13 @@ const PurchaseOrderTemplate = ({
                     .idf-header-no { order: 1 !important; }
                     .idf-header-title { order: 2 !important; flex: 1 !important; text-align: center !important; }
                     .idf-header-approval { order: 3 !important; }
+                    
+                    /* Tighten table and text for A4 fit */
+                    table { font-size: 10px !important; }
+                    td, th { padding: 4px !important; }
                     .a4-print-safe td, .a4-print-safe th, .a4-print-safe td *, .a4-print-safe th * { white-space: nowrap !important; }
                     .a4-print-safe td:nth-child(2), .a4-print-safe th:nth-child(2), .a4-print-safe td:nth-child(2) *, .a4-print-safe th:nth-child(2) * { white-space: normal !important; }
+                    
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 }
             `}</style>
