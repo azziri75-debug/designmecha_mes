@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     FileText, UserPlus, Clock, CheckCircle2, AlertCircle,
@@ -511,8 +512,7 @@ const ApprovalPage = () => {
             </div>
 
 
-            {/* Doc Detail / Process Modal */}
-            {showDocDetail && selectedDoc && (
+            {showDocDetail && selectedDoc && createPortal(
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto approval-modal-overlay">
                     <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl shadow-2xl animation-fade-in my-auto overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
@@ -772,7 +772,8 @@ const ApprovalPage = () => {
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             <style>{`
@@ -781,28 +782,27 @@ const ApprovalPage = () => {
                     margin: 0 !important;
                 }
                 @media print {
-                    /* Hide Sidebar and Header from Layout */
-                    aside, header, nav, .no-print, .idf-no-print {
+                    /* Nuclear Option: Hide everything except the portal-rendered modal */
+                    #root {
                         display: none !important;
                     }
                     
-                    /* Hide background content in ApprovalPage */
-                    .approval-page-content {
+                    body > *:not(.approval-modal-overlay) {
                         display: none !important;
                     }
 
                     /* Ensure modal is visible and covers the page */
                     .approval-modal-overlay {
-                        position: fixed !important;
+                        position: absolute !important;
                         left: 0 !important;
                         top: 0 !important;
                         width: 210mm !important;
-                        height: 297mm !important;
+                        min-height: 297mm !important;
                         background: white !important;
                         z-index: 999999 !important;
                         visibility: visible !important;
                         display: block !important;
-                        overflow: hidden !important;
+                        overflow: visible !important;
                         margin: 0 !important;
                         padding: 0 !important;
                     }
@@ -814,8 +814,13 @@ const ApprovalPage = () => {
                         background: white !important;
                         margin: 0 !important;
                         padding: 0 !important;
-                        height: 100% !important;
+                        height: auto !important;
                         transform: none !important;
+                    }
+
+                    .approval-modal-overlay .max-h-[80vh] {
+                        max-height: none !important;
+                        overflow: visible !important;
                     }
 
                     /* Hide specific elements within modal */

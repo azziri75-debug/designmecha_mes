@@ -343,21 +343,15 @@ const PurchaseOrderTemplate = ({
             </div>
             <style>{`
                 @media print {
-                    @page { size: A4; margin: 10mm; }
-                    body * { visibility: hidden !important; }
-                    .a4-print-safe, .a4-print-safe * { 
-                        visibility: visible !important; 
-                        color: black !important;
+                    @page {
+                        size: A4 portrait;
+                        margin: 0 !important;
                     }
-                @page {
-                    size: A4 portrait;
-                    margin: 0 !important;
-                }
-                @media print {
                     body { margin: 0 !important; padding: 0 !important; background: white !important; }
                     .a4-wrapper { 
                         margin: 0 !important; 
-                        padding: 5mm 10mm !important; 
+                        margin-top: 0 !important;
+                        padding: 1mm 10mm 5mm 10mm !important; 
                         width: 210mm !important; 
                         height: 297mm !important;
                         max-height: 297mm !important;
@@ -382,7 +376,11 @@ const PurchaseOrderTemplate = ({
                     .a4-print-safe td, .a4-print-safe th, .a4-print-safe td *, .a4-print-safe th * { white-space: nowrap !important; }
                     .a4-print-safe td:nth-child(2), .a4-print-safe th:nth-child(2), .a4-print-safe td:nth-child(2) *, .a4-print-safe th:nth-child(2) * { white-space: normal !important; }
                     
-                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    * { 
+                        visibility: visible !important;
+                        -webkit-print-color-adjust: exact !important; 
+                        print-color-adjust: exact !important; 
+                    }
                 }
             `}</style>
             </div>
