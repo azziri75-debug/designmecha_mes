@@ -26,7 +26,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
     };
 
     return (
-        <Box className="a4-form-container a4-print-safe" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box sx={{ flex: 1, pt: 4 }}>
                     <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '5px' }}>
@@ -165,13 +165,6 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                     input, textarea { font-size: 16px !important; border: 1px solid #eee !important; padding: 10px !important; border-radius: 4px; box-sizing: border-box; width: 100% !important; }
                     .cons-flex-table thead { display: none !important; }
                     .cons-flex-table tr { margin-bottom: 15px; border: 1px solid #eee !important; border-radius: 8px; padding: 10px !important; }
-                }
-                @media print {
-                    .a4-print-safe { padding: 0 !important; margin: 0 !important; width: 100% !important; font-size: 10px !important; transform: scale(0.93) !important; transform-origin: top center !important; }
-                    .no-print, .idf-no-print { display: none !important; }
-                    table { font-size: 10px !important; border-collapse: collapse !important; }
-                    td, th { padding: 4px !important; border: 1px solid black !important; }
-                    thead { display: table-header-group !important; }
                 }
             `}</style>
         </Box>

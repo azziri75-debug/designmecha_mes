@@ -130,12 +130,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
     };
 
     const handlePrint = () => { 
-        document.body.classList.add('a4-print-mode');
         window.print(); 
-        // We use a small timeout to ensure class is removed AFTER print dialog is closed
-        setTimeout(() => {
-            document.body.classList.remove('a4-print-mode');
-        }, 1000);
     };
 
     const handleDownloadPDF = async () => {
@@ -271,7 +266,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             {/* A4 Paper */}
             <Paper
                 ref={printRef}
-                className="a4-paper-root a4-print-safe"
+                className="a4-paper-root print-safe-area"
                 sx={{
                     width: '210mm',
                     minHeight: '297mm',
@@ -289,18 +284,6 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             </Paper>
 
             <style>{`
-                @media print {
-                    @page { size: A4 portrait; margin: 15mm; }
-                    body { background: white !important; }
-                    .no-print, button, .MuiPaper-elevation3, .MuiPaper-root:not(.a4-paper-root) { display: none !important; }
-                    .a4-paper-root { 
-                        margin: 0 !important; 
-                        padding: 0 !important; 
-                        box-shadow: none !important; 
-                        width: 100% !important;
-                    }
-                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                }
                 @media (max-width: 768px) {
                     .a4-paper-root { 
                         width: 100% !important; 

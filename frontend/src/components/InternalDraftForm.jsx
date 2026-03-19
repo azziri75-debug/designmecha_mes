@@ -42,7 +42,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
 
     return (
-        <Box className="a4-form-container a4-print-safe" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             <Box className="idf-header" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box sx={{ flex: 1, pt: 2 }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#333', mb: 1 }}>주식회사 디자인메카</Typography>
@@ -194,16 +194,6 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     .flex-table td { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 5px 0 !important; }
                     .flex-table td::before { content: attr(data-label); font-weight: bold; margin-right: 10px; }
                     textarea, input { font-size: 16px !important; } 
-                }
-                @media print {
-                    .a4-form-container { padding: 0 !important; margin: 0 !important; width: 100% !important; font-size: 11px !important; transform: scale(0.93) !important; transform-origin: top center !important; }
-                    .responsive-table, .responsive-table table { display: table !important; width: 100% !important; border-collapse: collapse !important; }
-                    .responsive-table tr { display: table-row !important; }
-                    .responsive-table td, .responsive-table th { display: table-cell !important; border: 1px solid black !important; padding: 4px !important; line-height: 1.2 !important; }
-                    .flex-table thead { display: table-header-group !important; }
-                    .flex-table td::before { display: none !important; }
-                    .idf-no-print { display: none !important; }
-                    .pt-6 { pt: 2 !important; }
                 }
             `}</style>
         </Box>

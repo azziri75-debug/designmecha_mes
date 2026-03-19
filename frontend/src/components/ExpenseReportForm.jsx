@@ -84,7 +84,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const totalAmount = data.total_amount || 0;
 
     return (
-        <Box className="a4-form-container a4-print-safe" sx={{ width: '100%', p: 0, color: '#000', position: 'relative', bgcolor: 'white' }}>
+        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', p: 0, color: '#000', position: 'relative', bgcolor: 'white' }}>
             {/* Title */}
             <Typography variant="h3" align="center" sx={{ 
                 fontWeight: 'bold', 
@@ -315,18 +315,6 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     .stack-row td { display: flex !important; justify-content: space-between !important; align-items: center !important; border: none !important; width: 100% !important; padding: 5px 0 !important; }
                     .stack-row td::before { content: attr(data-label); font-weight: bold; margin-right: 10px; color: #666; font-size: 11px; }
                     thead { display: none !important; }
-                }
-                @media print {
-                    .no-print, .idf-no-print { display: none !important; }
-                    input, textarea { border: none !important; background: transparent !important; }
-                    .stack-row { display: table-row !important; }
-                    .stack-row td { display: table-cell !important; border: 1px solid black !important; font-size: 10px !important; padding: 2px 4px !important; }
-                    .stack-row td::before { display: none !important; }
-                    thead { display: table-header-group !important; }
-                    thead th { font-size: 10px !important; padding: 4px !important; }
-                    table { border-collapse: collapse !important; }
-                    td, th { border: 1px solid black !important; }
-                    .a4-print-safe { transform: scale(0.93) !important; transform-origin: top center !important; }
                 }
             `}</style>
         </Box>

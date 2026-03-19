@@ -14,7 +14,15 @@ import api from '../lib/api';
 // ────────────────────────────────────────────
 const PRINT_STYLE_ID = 'tsm-print-style';
 const injectPrintCSS = () => {
-    // Redundant - now handled globally in index.css
+    if (document.getElementById(PRINT_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = PRINT_STYLE_ID;
+    style.innerHTML = `
+        @media print {
+            @page { size: A4 landscape !important; margin: 0 !important; }
+        }
+    `;
+    document.head.appendChild(style);
 };
 const removePrintCSS = () => {
     const el = document.getElementById(PRINT_STYLE_ID);

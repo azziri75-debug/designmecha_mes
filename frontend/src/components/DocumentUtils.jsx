@@ -308,16 +308,6 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, on
                     }
                     .idf-stack-row td > div { justify-content: flex-end !important; text-align: right !important; }
                 }
-                @media print {
-                    .idf-resizable-table { display: table !important; table-layout: fixed !important; border-collapse: collapse !important; border: 2px solid black !important; width: 100% !important; }
-                    .idf-resizable-table thead { display: table-header-group !important; visibility: visible !important; }
-                    .idf-resizable-table thead tr { display: table-row !important; }
-                    .idf-resizable-table thead th { display: table-cell !important; border: 1px solid black !important; background-color: #f9fafb !important; -webkit-print-color-adjust: exact !important; }
-                    .idf-stack-row { display: table-row !important; border: none !important; margin: 0 !important; padding: 0 !important; }
-                    .idf-stack-row td { display: table-cell !important; border: 1px solid black !important; width: auto !important; padding: 4px !important; text-align: center !important; }
-                    .idf-stack-row td::before { display: none !important; }
-                    .idf-stack-row td > div { display: flex !important; justify-content: center !important; text-align: center !important; width: 100% !important; }
-                }
             `}</style>
         </table>
     );
