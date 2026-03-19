@@ -277,6 +277,38 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, on
                     </tr>
                 ))}
             </tbody>
+            <style>{`
+                @media (max-width: 768px) {
+                    .idf-resizable-table { table-layout: auto !important; }
+                    .idf-resizable-table thead { display: none !important; }
+                    .idf-stack-row { 
+                        display: flex !important; 
+                        flex-direction: column !important; 
+                        border: 1px solid #ddd !important; 
+                        margin-bottom: 10px !important; 
+                        padding: 10px !important;
+                        border-radius: 8px !important;
+                    }
+                    .idf-stack-row td { 
+                        display: flex !important; 
+                        justify-content: space-between !important; 
+                        align-items: center !important; 
+                        border: none !important; 
+                        width: 100% !important; 
+                        padding: 6px 0 !important;
+                        text-align: left !important;
+                    }
+                    .idf-stack-row td::before { 
+                        content: attr(data-label); 
+                        font-weight: bold; 
+                        margin-right: 15px; 
+                        color: #666;
+                        font-size: 11px;
+                        min-width: 80px;
+                    }
+                    .idf-stack-row td > div { justify-content: flex-end !important; text-align: right !important; }
+                }
+            `}</style>
         </table>
     );
 };
