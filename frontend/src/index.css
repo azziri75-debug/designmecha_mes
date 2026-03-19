@@ -67,7 +67,16 @@ body.resizing {
 
 /* Print Styles - Scoped to avoid polluting non-A4 pages */
 @media print {
-  /* Only apply radical "hide everything else" logic if .a4-print-mode class is present on body */
+  /* GLOBAL RESET: Crucial for long lists (Production, etc.) and allowing height to expand */
+  html, body, #root, #root > div {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    background: white !important;
+  }
+
+  /* When printing an A4 document specifically from a modal */
   body.a4-print-mode #root { 
     display: none !important; 
   }
@@ -83,23 +92,27 @@ body.resizing {
     visibility: visible !important;
     padding: 0 !important;
     margin: 0 !important;
-  }
-
-  body.a4-print-mode .approval-modal-overlay > div {
-    background: white !important;
-    border: none !important;
-    box-shadow: none !important;
-    width: 100% !important;
+    overflow: visible !important;
     height: auto !important;
-    transform: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    min-height: 297mm !important;
   }
 
-  /* Make sure the document content is visible */
+  /* Force ALL modal internals to be visible and un-constrained */
+  body.a4-print-mode .approval-modal-overlay *,
+  body.a4-print-mode .approval-modal-overlay div,
+  body.a4-print-mode .approval-modal-overlay section {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Specifically target the document content wrapper */
   .a4-print-safe, .a4-print-safe * { 
     visibility: visible !important; 
     color: black !important;
+    background: white !important;
   }
 
   /* Global no-print utility */
