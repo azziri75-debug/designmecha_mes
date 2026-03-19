@@ -125,8 +125,12 @@ const PurchaseOrderTemplate = ({
 
         setIsSubmitting(true);
         try {
+            const firstItemProcess = data.items?.[0]?.name || (purchaseType === 'OUTSOURCING' ? '외주공정' : (data.purchase_type === 'CONSUMABLE' ? '소모품' : '구매자재'));
+            const customerName = data.related_customer_names || '재고용';
+            const partnerName = data.partner_name || '공급사미지정';
+
             const approvalPayload = {
-                title: `[${purchaseType === 'OUTSOURCING' ? '외주' : (data.purchase_type === 'CONSUMABLE' ? '소모품' : '구매')}발주서] ${data.partner_name || ''} - ${data.order_date}`,
+                title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
                 doc_type: 'PURCHASE_ORDER',
                 content: {
                     order_no: data.order_no,
@@ -357,6 +361,8 @@ const PurchaseOrderTemplate = ({
                     }
                     .idf-no-print, .no-print, button { display: none !important; }
                     div { box-shadow: none !important; }
+                    td, th, td *, th * { white-space: nowrap !important; }
+                    td:nth-child(2), th:nth-child(2), td:nth-child(2) *, th:nth-child(2) * { white-space: normal !important; } /* Only Allow Desc to wrap if needed */
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 }
             `}</style>

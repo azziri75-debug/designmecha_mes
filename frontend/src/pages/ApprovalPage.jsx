@@ -777,8 +777,9 @@ const ApprovalPage = () => {
                 @media print {
                     /* Hide everything by default */
                     body * { visibility: hidden !important; }
-                    /* Hide modal UI elements */
-                    .bg-gray-800, .bg-gray-900, .fixed, .no-print, button { display: none !important; }
+                    /* Hide modal UI elements but NOT the fixed container if it's the modal we're printing */
+                    .bg-gray-800, .bg-gray-900, .no-print, button { display: none !important; }
+                    .fixed:not(:has(.a4-print-safe)) { display: none !important; }
                     
                     /* Show only the A4 container and its children */
                     .a4-print-safe, .a4-print-safe * { 
