@@ -151,7 +151,9 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     ...item,
                     product_id: item.product.id,
                     order_size: item.order_size || '',
-                    material: item.material || ''
+                    material: item.material || '',
+                    pricing_type: item.pricing_type || 'UNIT',
+                    total_weight: item.total_weight || 0
                 }))
             });
         }
@@ -203,7 +205,9 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         display_product_name: productObj?.name || item?.product_name_of_plan || '',
                         display_client_name: item?.client_name || '',
                         order_size: '',
-                        material: productObj?.material || ''
+                        material: productObj?.material || '',
+                        pricing_type: 'UNIT',
+                        total_weight: 0
                     };
                 })
             }));
@@ -249,7 +253,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     const handleAddItem = () => {
         setFormData({
             ...formData,
-            items: [...formData.items, { product_id: '', quantity: 0, unit_price: 0, note: '', material: '', order_size: '' }]
+            items: [...formData.items, { product_id: '', quantity: 0, unit_price: 0, note: '', material: '', order_size: '', pricing_type: 'UNIT', total_weight: 0 }]
         });
     };
 
@@ -347,6 +351,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     note: item.note || '',
                     order_size: item.order_size || '',
                     material: item.material || '',
+                    pricing_type: item.pricing_type || 'UNIT',
+                    total_weight: parseFloat(item.total_weight) || 0,
                     production_plan_item_id: item.production_plan_item_id || null
                 }))
             };
@@ -404,6 +410,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                 <TableCell sx={{ fontWeight: 'bold', width: 50, textAlign: 'center' }}>No</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>품목명 / 규격</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold', width: 100, textAlign: 'center' }}>수량</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 100, textAlign: 'center' }}>단가기준</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 100, textAlign: 'center' }}>총중량(kg)</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold', width: 150, textAlign: 'right' }}>단가</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold', width: 150, textAlign: 'right' }}>금액</TableCell>
                                 <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
@@ -452,6 +460,31 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     inputProps={{ style: { textAlign: 'center' } }}
                                                 />
                                             </TableCell>
+                                            <TableCell sx={{ width: 100 }}>
+                                                <TextField 
+                                                    select
+                                                    size="small" 
+                                                    fullWidth
+                                                    value={item.pricing_type || 'UNIT'} 
+                                                    onChange={(e) => handleItemChange(index, 'pricing_type', e.target.value)} 
+                                                    inputProps={{ style: { textAlign: 'center' } }}
+                                                >
+                                                    <MenuItem value="UNIT">수량</MenuItem>
+                                                    <MenuItem value="WEIGHT">중량</MenuItem>
+                                                </TextField>
+                                            </TableCell>
+                                            <TableCell sx={{ width: 100 }}>
+                                                <TextField 
+                                                    type="number" 
+                                                    size="small" 
+                                                    fullWidth
+                                                    disabled={item.pricing_type !== 'WEIGHT'}
+                                                    value={item.total_weight || ''} 
+                                                    onChange={(e) => handleItemChange(index, 'total_weight', e.target.value)} 
+                                                    inputProps={{ style: { textAlign: 'center' } }}
+                                                    placeholder={item.pricing_type === 'WEIGHT' ? 'kg' : '-'}
+                                                />
+                                            </TableCell>
                                             <TableCell sx={{ width: 150 }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                     <TextField 
@@ -469,7 +502,12 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                             </TableCell>
                                             <TableCell sx={{ width: 150, textAlign: 'right' }}>
                                                 <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                    ₩{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString()}
+                                                    ₩{(
+                                                        (item.pricing_type === 'WEIGHT' 
+                                                            ? (parseFloat(item.total_weight) || 0) 
+                                                            : (parseFloat(item.quantity) || 0)
+                                                        ) * (parseFloat(item.unit_price) || 0)
+                                                    ).toLocaleString()}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell rowSpan={2} align="center" sx={{ borderLeft: '1px solid #eee' }}>

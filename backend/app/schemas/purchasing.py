@@ -1,7 +1,7 @@
 from typing import Any, List, Optional
 from datetime import date, datetime
 from pydantic import BaseModel
-from app.models.purchasing import PurchaseStatus, OutsourcingStatus
+from app.models.purchasing import PurchaseStatus, OutsourcingStatus, PricingType
 from app.schemas.basics import PartnerResponse as Partner
 from app.schemas.product import ProductResponse as Product
 
@@ -16,6 +16,8 @@ class PurchaseOrderItemBase(BaseModel):
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
     consumable_purchase_wait_id: Optional[int] = None
+    pricing_type: PricingType = PricingType.UNIT
+    total_weight: Optional[float] = None
 
 class PurchaseOrderItemCreate(PurchaseOrderItemBase):
     pass
@@ -31,6 +33,8 @@ class PurchaseOrderItemUpdate(BaseModel):
     material: Optional[str] = None
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
+    pricing_type: Optional[PricingType] = None
+    total_weight: Optional[float] = None
 
 class PurchaseOrderItem(PurchaseOrderItemBase):
     id: int
@@ -41,6 +45,8 @@ class PurchaseOrderItem(PurchaseOrderItemBase):
     consumable_purchase_wait_id: Optional[int] = None
     order_size: Optional[str] = None
     material: Optional[str] = None
+    pricing_type: PricingType = PricingType.UNIT
+    total_weight: Optional[float] = None
     product: Optional[Product] = None
     process_name: Optional[str] = None
 
@@ -95,6 +101,8 @@ class OutsourcingOrderItemBase(BaseModel):
     quantity: int
     unit_price: float = 0
     note: Optional[str] = None
+    pricing_type: PricingType = PricingType.UNIT
+    total_weight: Optional[float] = None
 
 class OutsourcingOrderItemCreate(OutsourcingOrderItemBase):
     pass
@@ -107,11 +115,15 @@ class OutsourcingOrderItemUpdate(BaseModel):
     unit_price: Optional[float] = None
     note: Optional[str] = None
     status: Optional[OutsourcingStatus] = None
+    pricing_type: Optional[PricingType] = None
+    total_weight: Optional[float] = None
 
 class OutsourcingOrderItem(OutsourcingOrderItemBase):
     id: int
     outsourcing_order_id: int
     status: Optional[OutsourcingStatus] = None
+    pricing_type: PricingType = PricingType.UNIT
+    total_weight: Optional[float] = None
     # We might want resolved product name etc.
     product: Optional[Product] = None
     process_name: Optional[str] = None
@@ -244,4 +256,3 @@ class ConsumablePurchaseWaitResponse(ConsumablePurchaseWaitBase):
 
     class Config:
         from_attributes = True
-

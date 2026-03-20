@@ -49,7 +49,13 @@ const PurchaseOrderTemplate = ({
         return isNaN(parsed) ? n : parsed.toLocaleString();
     };
 
-    const totalAmount = (data.items || []).reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+    const totalAmount = (data.items || []).reduce((s, i) => {
+        const itemTotal = (i.pricing_type === 'WEIGHT' 
+            ? (parseFloat(i.total_weight) || 0) 
+            : (parseFloat(i.qty) || 0)
+        ) * (parseFloat(i.price) || 0);
+        return s + itemTotal;
+    }, 0);
     const totalQty = (data.items || []).reduce((s, i) => s + (parseFloat(i.qty) || 0), 0);
 
     const columns = [
@@ -67,6 +73,9 @@ const PurchaseOrderTemplate = ({
         const extraParts = [];
         if (item.material) extraParts.push(`재질: ${item.material}`);
         if (item.order_size) extraParts.push(`사이즈: ${item.order_size}`);
+        if (item.pricing_type === 'WEIGHT' && item.total_weight) {
+            extraParts.push(`총 중량: ${fmt(item.total_weight)}kg`);
+        }
         
         if (extraParts.length > 0) {
             const extraStr = extraParts.join(' / ');
@@ -78,8 +87,13 @@ const PurchaseOrderTemplate = ({
             idx: item.idx || idx + 1,
             spec: specDisplay,
             qty: fmt(item.qty),
-            price: fmt(item.price),
-            total: fmt(item.total)
+            price: item.pricing_type === 'WEIGHT' ? `${fmt(item.price)} (kg당)` : fmt(item.price),
+            total: fmt(
+                (item.pricing_type === 'WEIGHT' 
+                    ? (parseFloat(item.total_weight) || 0) 
+                    : (parseFloat(item.qty) || 0)
+                ) * (parseFloat(item.price) || 0)
+            )
         };
     });
 
@@ -106,10 +120,12 @@ const PurchaseOrderTemplate = ({
         }
         newItems[rIdx] = { ...newItems[rIdx], [key]: cleanVal };
 
-        if (key === 'qty' || key === 'price') {
+        if (key === 'qty' || key === 'price' || key === 'total_weight') {
             const q = parseFloat(newItems[rIdx].qty) || 0;
             const p = parseFloat(newItems[rIdx].price) || 0;
-            newItems[rIdx].total = q * p;
+            const w = parseFloat(newItems[rIdx].total_weight) || 0;
+            const isWeight = newItems[rIdx].pricing_type === 'WEIGHT';
+            newItems[rIdx].total = (isWeight ? w : q) * p;
         }
         onChange('items', newItems);
     };
@@ -140,14 +156,20 @@ const PurchaseOrderTemplate = ({
                     order_date: data.order_date,
                     delivery_date: data.delivery_date,
                     special_notes: data.special_notes,
-                    items: data.items.map((item, idx) => ({
-                        idx: idx + 1,
-                        name: item.name,
-                        spec: item.spec,
-                        qty: item.qty,
-                        price: item.price,
-                        total: (parseFloat(item.qty) || 0) * (parseFloat(item.price) || 0)
-                    }))
+                    items: data.items.map((item, idx) => {
+                        const isWeight = item.pricing_type === 'WEIGHT';
+                        const multiplier = isWeight ? (parseFloat(item.total_weight) || 0) : (parseFloat(item.qty) || 0);
+                        return {
+                            idx: idx + 1,
+                            name: item.name,
+                            spec: item.spec,
+                            qty: item.qty,
+                            price: item.price,
+                            pricing_type: item.pricing_type || 'UNIT',
+                            total_weight: item.total_weight || 0,
+                            total: multiplier * (parseFloat(item.price) || 0)
+                        };
+                    })
                 },
                 reference_id: orderId,
                 reference_type: purchaseType === 'OUTSOURCING' ? 'OUTSOURCING' : 'PURCHASE'

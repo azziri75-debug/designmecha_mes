@@ -17,6 +17,10 @@ class OutsourcingStatus(str, enum.Enum):
     COMPLETED = "COMPLETED" # 작업 완료 (입고)
     CANCELED = "CANCELED"   # 취소됨
 
+class PricingType(str, enum.Enum):
+    UNIT = "UNIT"
+    WEIGHT = "WEIGHT"
+
 class PurchaseOrder(Base):
     __tablename__ = "purchase_orders"
 
@@ -96,6 +100,8 @@ class PurchaseOrderItem(Base):
     note = Column(String, nullable=True)
     order_size = Column(String, nullable=True)
     material = Column(String, nullable=True)
+    pricing_type = Column(SqlEnum(PricingType), default=PricingType.UNIT)
+    total_weight = Column(Float, nullable=True)
     
     production_plan_item_id = Column(Integer, ForeignKey("production_plan_items.id"), nullable=True)
     material_requirement_id = Column(Integer, ForeignKey("material_requirements.id"), nullable=True)
@@ -167,6 +173,8 @@ class OutsourcingOrderItem(Base):
     unit_price = Column(Float, default=0.0)
     note = Column(String, nullable=True)
     status = Column(SqlEnum(OutsourcingStatus), default=OutsourcingStatus.PENDING)
+    pricing_type = Column(SqlEnum(PricingType), default=PricingType.UNIT)
+    total_weight = Column(Float, nullable=True)
 
     # Relationships
     outsourcing_order = relationship("OutsourcingOrder", back_populates="items")

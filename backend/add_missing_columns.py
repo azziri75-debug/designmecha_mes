@@ -1,3 +1,4 @@
+# 2026-03-20: Updated for weight-based pricing (pricing_type, total_weight)
 import asyncio
 from sqlalchemy import text, inspect
 from app.db.base import Base
