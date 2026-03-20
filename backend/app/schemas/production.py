@@ -84,7 +84,7 @@ class ProductionPlanSimple(ProductionPlanBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-class ProductionPlanItem(ProductionPlanItemBase):
+class ProductionPlanItemSimple(ProductionPlanItemBase):
     id: int
     plan_id: int
     product: Optional[ProductResponse] = None
@@ -95,13 +95,15 @@ class ProductionPlanItem(ProductionPlanItemBase):
     purchase_items: List[PurchaseOrderItemSimple] = []
     outsourcing_items: List[OutsourcingOrderItemSimple] = []
     completed_quantity: int = 0
-    work_log_items: List["WorkLogItem"] = []
     
     # [NEW] Fields for list display
     client_name: Optional[str] = None
     product_name_of_plan: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class ProductionPlanItem(ProductionPlanItemSimple):
+    work_log_items: List["WorkLogItemSimple"] = []
 
 # --- Plan Schemas ---
 
@@ -153,14 +155,16 @@ class WorkLogSimple(BaseModel):
     work_date: date
     model_config = ConfigDict(from_attributes=True)
 
-class WorkLogItem(WorkLogItemBase):
+class WorkLogItemSimple(WorkLogItemBase):
     id: int
     work_log_id: int
     work_log: Optional[WorkLogSimple] = None
-    plan_item: Optional[ProductionPlanItem] = None
     worker: Optional[StaffSimple] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class WorkLogItem(WorkLogItemSimple):
+    plan_item: Optional[ProductionPlanItemSimple] = None
 
 class WorkLogBase(BaseModel):
     work_date: date

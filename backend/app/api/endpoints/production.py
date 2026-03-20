@@ -1328,18 +1328,21 @@ async def read_work_logs(
         stmt
         .options(
             selectinload(WorkLog.worker),
-            selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
-            selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-                selectinload(ProductionPlanItem.equipment),
-                selectinload(ProductionPlanItem.worker),
-                selectinload(ProductionPlanItem.purchase_items),
-                selectinload(ProductionPlanItem.outsourcing_items),
-                selectinload(ProductionPlanItem.plan).options(
-                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                    selectinload(ProductionPlan.stock_production).options(
-                        selectinload(StockProduction.product),
-                        selectinload(StockProduction.partner)
+            selectinload(WorkLog.items).options(
+                selectinload(WorkLogItem.worker),
+                selectinload(WorkLogItem.work_log),
+                selectinload(WorkLogItem.plan_item).options(
+                    selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                    selectinload(ProductionPlanItem.equipment),
+                    selectinload(ProductionPlanItem.worker),
+                    selectinload(ProductionPlanItem.purchase_items),
+                    selectinload(ProductionPlanItem.outsourcing_items),
+                    selectinload(ProductionPlanItem.plan).options(
+                        selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                        selectinload(ProductionPlan.stock_production).options(
+                            selectinload(StockProduction.product),
+                            selectinload(StockProduction.partner)
+                        )
                     )
                 )
             )
@@ -1456,15 +1459,18 @@ async def create_work_log(
         select(WorkLog)
         .options(
             selectinload(WorkLog.worker),
-            selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
-            selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-                selectinload(ProductionPlanItem.equipment),
-                selectinload(ProductionPlanItem.worker),
-                selectinload(ProductionPlanItem.purchase_items),
-                selectinload(ProductionPlanItem.outsourcing_items),
-                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            selectinload(WorkLog.items).options(
+                selectinload(WorkLogItem.worker),
+                selectinload(WorkLogItem.work_log),
+                selectinload(WorkLogItem.plan_item).options(
+                    selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                    selectinload(ProductionPlanItem.equipment),
+                    selectinload(ProductionPlanItem.worker),
+                    selectinload(ProductionPlanItem.purchase_items),
+                    selectinload(ProductionPlanItem.outsourcing_items),
+                    selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                )
             )
         )
         .where(WorkLog.id == log.id)
@@ -1569,15 +1575,18 @@ async def update_work_log(
         select(WorkLog)
         .options(
             selectinload(WorkLog.worker),
-            selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
-            selectinload(WorkLog.items).selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-                selectinload(ProductionPlanItem.equipment),
-                selectinload(ProductionPlanItem.worker),
-                selectinload(ProductionPlanItem.purchase_items),
-                selectinload(ProductionPlanItem.outsourcing_items),
-                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            selectinload(WorkLog.items).options(
+                selectinload(WorkLogItem.worker),
+                selectinload(WorkLogItem.work_log),
+                selectinload(WorkLogItem.plan_item).options(
+                    selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                    selectinload(ProductionPlanItem.equipment),
+                    selectinload(ProductionPlanItem.worker),
+                    selectinload(ProductionPlanItem.purchase_items),
+                    selectinload(ProductionPlanItem.outsourcing_items),
+                    selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                )
             )
         )
         .where(WorkLog.id == log.id)
