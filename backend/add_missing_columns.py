@@ -24,6 +24,19 @@ async def add_missing_columns():
                         print(f"Missing column found: {table_name}.{column.name}")
                         try:
                             # Use sqlalchemy's compiler to get the column definition
+                            # Special handling for PostgreSQL Enum types
+                            if "postgresql" in engine.dialect.name and "ENUM" in str(column.type).upper():
+                                enum_name = str(column.type.name).lower() if hasattr(column.type, 'name') else "pricingtype"
+                                # Use a separate connection for DDL to avoid issues with the main transaction
+                                # This is a workaround for asyncpg's transaction model not allowing DDL mid-transaction easily
+                                with engine.connect() as ddl_conn:
+                                    try:
+                                        # Create Enum type if not exists
+                                        ddl_conn.execute(text(f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '{enum_name}') THEN CREATE TYPE {enum_name} AS ENUM ('UNIT', 'WEIGHT'); END IF; END $$;"))
+                                        ddl_conn.commit()
+                                    except Exception as e:
+                                        print(f"Enum type check/create error: {e}")
+
                             col_type = column.type.compile(engine.dialect)
                             # Let's try to just add the column name and type. SQLite doesn't easily support full constraints in ALTER ADD.
                             sql = f"ALTER TABLE {table_name} ADD COLUMN {column.name} {col_type}"
