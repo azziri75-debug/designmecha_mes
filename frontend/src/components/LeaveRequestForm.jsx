@@ -86,7 +86,10 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                                     onChange={(e) => handleChange('vacation_type', e.target.value)}
                                     disabled={isReadOnly}
                                     displayEmpty
-                                    MenuProps={{ disableScrollLock: true }} // 모바일 터치/스크롤 버그 방지 (Bug #2 대응)
+                                    MenuProps={{ 
+                                        disableScrollLock: true, 
+                                        style: { zIndex: 9999 } // 모바일 터치/스크롤 버그 방지 강화 (Bug #2 대응)
+                                    }} 
                                     sx={{ fontSize: '13px', bgcolor: 'white' }}
                                 >
                                     <MenuItem value="연차">연차</MenuItem>

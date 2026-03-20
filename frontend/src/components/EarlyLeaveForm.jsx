@@ -1,11 +1,19 @@
 import React from 'react';
-import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, FormControlLabel, Radio } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, FormControlLabel, Radio, Select, MenuItem, FormControl } from '@mui/material';
 import ApprovalGrid from './ApprovalGrid';
 
 const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
-        onChange({ ...data, [field]: value });
+        
+        const newData = { ...data, [field]: value };
+        
+        // 조퇴 선택 시 종료 시간 null 처리 (Bug #3 대응)
+        if (field === 'leave_type' && value === '조퇴') {
+            newData.return_time = null;
+        }
+        
+        onChange(newData);
     };
 
     return (
@@ -59,10 +67,21 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                     <TableRow sx={{ height: '60px' }}>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>구 분</Box>
                         <td colSpan={4}>
-                            <RadioGroup row value={data.leave_type || '조퇴'} onChange={(e) => handleChange('leave_type', e.target.value)}>
-                                <FormControlLabel value="조퇴" control={<Radio size="small" />} label="조퇴" disabled={isReadOnly} />
-                                <FormControlLabel value="외출" control={<Radio size="small" />} label="외출" disabled={isReadOnly} />
-                            </RadioGroup>
+                            <FormControl fullWidth size="small" variant="outlined" sx={{ maxWidth: 200 }}>
+                                <Select
+                                    value={data.leave_type || '조퇴'}
+                                    onChange={(e) => handleChange('leave_type', e.target.value)}
+                                    disabled={isReadOnly}
+                                    MenuProps={{ 
+                                        disableScrollLock: true, 
+                                        style: { zIndex: 9999 } // 모바일 터치 버그 방지 (Bug #1 대응)
+                                    }}
+                                    sx={{ fontSize: '13px', bgcolor: 'white' }}
+                                >
+                                    <MenuItem value="조퇴">조퇴</MenuItem>
+                                    <MenuItem value="외출">외출</MenuItem>
+                                </Select>
+                            </FormControl>
                         </td>
                     </TableRow>
                     <TableRow sx={{ height: '60px' }}>
@@ -83,14 +102,18 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                                     readOnly={isReadOnly}
                                     style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
                                 />
-                                <Typography>~</Typography>
-                                <input 
-                                    type="time" 
-                                    value={data.return_time || ''} 
-                                    onChange={(e) => handleChange('return_time', e.target.value)}
-                                    readOnly={isReadOnly}
-                                    style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                />
+                                {data.leave_type !== '조퇴' && (
+                                    <>
+                                        <Typography>~</Typography>
+                                        <input 
+                                            type="time" 
+                                            value={data.return_time || ''} 
+                                            onChange={(e) => handleChange('return_time', e.target.value)}
+                                            readOnly={isReadOnly}
+                                            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
+                                        />
+                                    </>
+                                )}
                             </Box>
                         </td>
                     </TableRow>
