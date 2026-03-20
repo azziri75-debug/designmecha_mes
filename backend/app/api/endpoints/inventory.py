@@ -345,3 +345,106 @@ async def delete_stock_production(prod_id: int, db: AsyncSession = Depends(get_d
     await db.delete(db_prod)
     await db.commit()
     return {"status": "success"}
+@router.post("/recalculate")
+async def recalculate_inventory(db: AsyncSession = Depends(get_db)):
+    """
+    모든 품목의 재고를 생산 실적, 납품 이력, BOM 소요량을 기반으로 전수 재계산합니다.
+    """
+    from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
+    from app.models.sales import DeliveryHistoryItem, SalesOrder, SalesOrderItem
+    from app.models.inventory import Stock, StockProduction
+    from app.models.product import BOM, Product
+    from sqlalchemy import func
+
+    # 1. 모든 재고 데이터를 0으로 초기화 (소모품 제외)
+    await db.execute(update(Stock).values(current_quantity=0, in_production_quantity=0))
+    await db.flush()
+
+    # 2. 모든 제품 리스트 가져오기
+    products_res = await db.execute(select(Product.id).where(Product.item_type != 'CONSUMABLE'))
+    product_ids = [p.id for p in products_res.scalars().all()]
+    
+    # 임시 저장소
+    stock_map = {pid: {"current": 0, "producing": 0} for pid in product_ids}
+
+    # 3. 생산 계획 기반 입고(+) 및 생산 중(+) 계산
+    # 중복 계산 방지를 위해 계획(plan_id)별 대표 품목 수량 사용
+    plans_query = select(
+        ProductionPlan.id,
+        ProductionPlan.status,
+        ProductionPlan.order_id,
+        ProductionPlan.stock_production_id
+    ).options(
+        selectinload(ProductionPlan.items),
+        selectinload(ProductionPlan.order).selectinload(SalesOrder.items),
+        selectinload(ProductionPlan.stock_production)
+    )
+    plans_res = await db.execute(plans_query)
+    plans = plans_res.scalars().all()
+
+    for plan in plans:
+        # 계획의 수량 결정 (재고생산 우선, 수주 차선)
+        qty = 0
+        product_id = None
+        
+        if plan.stock_production:
+            qty = plan.stock_production.quantity
+            product_id = plan.stock_production.product_id
+        elif plan.order:
+            # 수주의 경우 보통 1개 품목이나 여러 개일 수 있음. 첫 번째 품목 기준 (전형적인 MES 구조)
+            if plan.order.items:
+                item = plan.order.items[0]
+                qty = item.quantity
+                product_id = item.product_id
+        
+        if not product_id or qty <= 0:
+            continue
+
+        if plan.status == ProductionStatus.COMPLETED:
+            # 완제품 입고 (+)
+            if product_id in stock_map:
+                stock_map[product_id]["current"] += qty
+            
+            # BOM 기반 원자재 차감 (-)
+            bom_query = select(BOM).where(BOM.parent_product_id == product_id)
+            bom_res = await db.execute(bom_query)
+            for bom in bom_res.scalars().all():
+                if bom.child_product_id in stock_map:
+                    stock_map[bom.child_product_id]["current"] -= int(bom.required_quantity * qty)
+        
+        elif plan.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
+            # 생산 중 (+)
+            if product_id in stock_map:
+                stock_map[product_id]["producing"] += qty
+
+    # 4. 납품 이력 기반 출고(-) 계산
+    del_query = select(DeliveryHistoryItem).options(selectinload(DeliveryHistoryItem.order_item))
+    del_res = await db.execute(del_query)
+    for delivery in del_res.scalars().all():
+        if delivery.order_item and delivery.order_item.product_id in stock_map:
+            stock_map[delivery.order_item.product_id]["current"] -= delivery.quantity
+
+    # 5. DB 반영
+    updated_count = 0
+    for pid, vals in stock_map.items():
+        # Stock 레코드 존재 확인
+        s_query = select(Stock).where(Stock.product_id == pid)
+        s_res = await db.execute(s_query)
+        stock = s_res.scalar_one_or_none()
+        
+        if not stock:
+            if vals["current"] != 0 or vals["producing"] != 0:
+                stock = Stock(
+                    product_id=pid,
+                    current_quantity=vals["current"],
+                    in_production_quantity=vals["producing"]
+                )
+                db.add(stock)
+                updated_count += 1
+        else:
+            stock.current_quantity = vals["current"]
+            stock.in_production_quantity = vals["producing"]
+            updated_count += 1
+
+    await db.commit()
+    return {"status": "success", "message": f"{updated_count} products recalculated and synchronized."}

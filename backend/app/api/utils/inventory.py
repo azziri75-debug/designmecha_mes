@@ -62,7 +62,7 @@ async def handle_backflush(
     완제품 생산 시 BOM을 조회하여 하위 부품의 재고를 자동으로 차감(Backflush)합니다.
     produced_quantity: 생산된 완제품 수량
     """
-    if produced_quantity <= 0:
+    if produced_quantity == 0:
         return
 
     # 1. BOM 조회

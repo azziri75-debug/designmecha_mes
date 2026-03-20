@@ -882,6 +882,17 @@ async def create_delivery(
         # Update delivered_quantity
         order_item.delivered_quantity += item_in.quantity
         
+        # Update Inventory (Deduct stock)
+        from app.api.utils.inventory import handle_stock_movement
+        from app.models.inventory import TransactionType
+        await handle_stock_movement(
+            db=db,
+            product_id=order_item.product_id,
+            quantity=-item_in.quantity,
+            transaction_type=TransactionType.OUT,
+            reference=delivery_no
+        )
+        
         # Check if this item is fulfilled
         if order_item.delivered_quantity < order_item.quantity:
             all_completed = False
@@ -1196,6 +1207,17 @@ async def update_delivery_history(
                 # 수주 품목의 누적 납품 수량 업데이트
                 if dh_item.order_item:
                     dh_item.order_item.delivered_quantity = max(0, (dh_item.order_item.delivered_quantity or 0) + diff)
+                    
+                    # Update Inventory (Deduct stock by diff)
+                    from app.api.utils.inventory import handle_stock_movement
+                    from app.models.inventory import TransactionType
+                    await handle_stock_movement(
+                        db=db,
+                        product_id=dh_item.order_item.product_id,
+                        quantity=-diff,
+                        transaction_type=TransactionType.OUT if diff > 0 else TransactionType.ADJUSTMENT,
+                        reference=history.delivery_no
+                    )
 
         # 3) 수주 상태 재계산
         order = history.order
@@ -1253,6 +1275,17 @@ async def delete_delivery_history(
         order_item = dh_item.order_item
         if order_item:
             order_item.delivered_quantity = max(0, (order_item.delivered_quantity or 0) - dh_item.quantity)
+            
+            # Update Inventory (Revert stock: Add back)
+            from app.api.utils.inventory import handle_stock_movement
+            from app.models.inventory import TransactionType
+            await handle_stock_movement(
+                db=db,
+                product_id=order_item.product_id,
+                quantity=dh_item.quantity,
+                transaction_type=TransactionType.IN,
+                reference=f"Delete DH ({history.delivery_no})"
+            )
 
     # 2) 납품 이력 삭제
     await db.delete(history)
