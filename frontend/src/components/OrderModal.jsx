@@ -4,6 +4,8 @@ import api from '../lib/api';
 import { cn } from '../lib/utils';
 
 import Select from 'react-select';
+import OrderHistoryModal from './OrderHistoryModal';
+import QuotationHistoryModal from './QuotationHistoryModal';
 
 const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }) => {
     // Select styling
@@ -607,79 +609,21 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                 </div>
             )}
 
-            {/* Estimate Selection Sub-Modal */}
-            {showEstimateSelect && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60]">
-                    <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
-                        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-white">견적서 불러오기</h3>
-                            <button onClick={() => setShowEstimateSelect(false)} className="text-gray-400 hover:text-white">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {partnerEstimates.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">등록된 견적이 없습니다.</div>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-2">
-                                    {partnerEstimates.map(est => (
-                                        <button
-                                            key={est.id}
-                                            onClick={() => handleEstimateSelect(est)}
-                                            className="flex flex-col gap-1 p-3 rounded bg-gray-700 hover:bg-gray-600 text-left transition-colors border-l-4 border-blue-500"
-                                        >
-                                            <div className="flex justify-between w-full">
-                                                <span className="font-bold text-white">{est.estimate_date}</span>
-                                                <span className="text-blue-300 font-medium">{est.total_amount?.toLocaleString()}원</span>
-                                            </div>
-                                            <div className="text-sm text-gray-400">
-                                                품목 {est.items.length}건 | {est.note || '비고 없음'}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Order Selection Modal (History) */}
+            <OrderHistoryModal 
+                isOpen={showOrderSelect}
+                onClose={() => setShowOrderSelect(false)}
+                onSelect={handleOrderSelect}
+                partnerId={formData.partner_id}
+            />
 
-            {/* Order Selection Sub-Modal */}
-            {showOrderSelect && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60]">
-                    <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
-                        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-white">이전 수주내역 불러오기</h3>
-                            <button onClick={() => setShowOrderSelect(false)} className="text-gray-400 hover:text-white">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {partnerOrders.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">등록된 수주 이력이 없습니다.</div>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-2">
-                                    {partnerOrders.map(ord => (
-                                        <button
-                                            key={ord.id}
-                                            onClick={() => handleOrderSelect(ord)}
-                                            className="flex flex-col gap-1 p-3 rounded bg-gray-700 hover:bg-gray-600 text-left transition-colors border-l-4 border-green-500"
-                                        >
-                                            <div className="flex justify-between w-full">
-                                                <span className="font-bold text-white">{ord.order_date} | {ord.order_no || '번호 없음'}</span>
-                                                <span className="text-blue-300 font-medium">{ord.total_amount?.toLocaleString()}원</span>
-                                            </div>
-                                            <div className="text-sm text-gray-400">
-                                                품목 {ord.items?.length || 0}건 | {ord.note || '비고 없음'}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Estimate Selection Modal (History) */}
+            <QuotationHistoryModal 
+                isOpen={showEstimateSelect}
+                onClose={() => setShowEstimateSelect(false)}
+                onSelect={handleEstimateSelect}
+                partnerId={formData.partner_id}
+            />
 
             {/* Price History Sub-Modal */}
             {showPriceHistory && (

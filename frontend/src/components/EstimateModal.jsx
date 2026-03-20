@@ -3,6 +3,8 @@ import { X, Plus, Trash2, Search, FileText, Upload, History } from 'lucide-react
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 import Select from 'react-select';
+import OrderHistoryModal from './OrderHistoryModal';
+import QuotationHistoryModal from './QuotationHistoryModal';
 
 const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = null }) => {
     // Select styling
@@ -63,6 +65,10 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
 
     // Product Selection Modal State
     const [showProductSelect, setShowProductSelect] = useState(false);
+
+    // History Selection Modal States
+    const [showOrderSelect, setShowOrderSelect] = useState(false);
+    const [showEstimateSelect, setShowEstimateSelect] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -215,6 +221,38 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
         }));
     };
 
+    const handleOrderSelect = (ord) => {
+        setFormData(prev => ({
+            ...prev,
+            items: ord.items.map(item => ({
+                product_id: item.product_id,
+                product_name: item.product?.name || 'Unknown',
+                product_spec: item.product?.specification || '',
+                unit: item.product?.unit || 'EA',
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                note: item.note || ''
+            }))
+        }));
+        setShowOrderSelect(false);
+    };
+
+    const handleEstimateSelect = (est) => {
+        setFormData(prev => ({
+            ...prev,
+            items: est.items.map(item => ({
+                product_id: item.product_id,
+                product_name: item.product?.name || 'Unknown',
+                product_spec: item.product?.specification || '',
+                unit: item.product?.unit || 'EA',
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                note: item.note || ''
+            }))
+        }));
+        setShowEstimateSelect(false);
+    };
+
     const handleSubmit = async () => {
         if (!formData.partner_id) return alert("거래처를 선택해주세요.");
         if (formData.items.length === 0) return alert("품목을 최소 1개 이상 추가해주세요.");
@@ -251,7 +289,25 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div className="p-6 border-b border-gray-700 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white">{estimateToEdit ? '견적 수정' : '신규 견적 등록'}</h2>
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-xl font-bold text-white">{estimateToEdit ? '견적 수정' : '신규 견적 등록'}</h2>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowEstimateSelect(true)}
+                                disabled={!formData.partner_id}
+                                className="text-xs bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded disabled:bg-gray-600 transition-colors flex items-center gap-1"
+                            >
+                                <History className="w-3 h-3" /> 견적 불러오기
+                            </button>
+                            <button
+                                onClick={() => setShowOrderSelect(true)}
+                                disabled={!formData.partner_id}
+                                className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded disabled:bg-gray-600 transition-colors flex items-center gap-1"
+                            >
+                                <History className="w-3 h-3" /> 수주 불러오기
+                            </button>
+                        </div>
+                    </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
                     </button>
@@ -470,6 +526,22 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                     </div>
                 </div>
             )}
+
+            {/* Order Selection Modal (History) */}
+            <OrderHistoryModal 
+                isOpen={showOrderSelect}
+                onClose={() => setShowOrderSelect(false)}
+                onSelect={handleOrderSelect}
+                partnerId={formData.partner_id}
+            />
+
+            {/* Estimate Selection Modal (History) */}
+            <QuotationHistoryModal 
+                isOpen={showEstimateSelect}
+                onClose={() => setShowEstimateSelect(false)}
+                onSelect={handleEstimateSelect}
+                partnerId={formData.partner_id}
+            />
 
             {/* Price History Sub-Modal */}
             {showPriceHistory && (
