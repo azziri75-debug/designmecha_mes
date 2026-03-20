@@ -3,7 +3,7 @@ import {
     Box, Button, TextField, Typography, Paper, Tabs, Tab,
     IconButton, Select, MenuItem, InputLabel, FormControl
 } from '@mui/material';
-import { Printer, FileDown, Plus, Trash2, FileText, Send, UserCheck, X } from 'lucide-react';
+import { Printer, FileDown, Plus, Trash2, FileText, Send, UserCheck, X, CheckCircle2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -138,6 +138,40 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         const pdf = new jsPDF('p', 'mm', 'a4');
         pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
         pdf.save(`${docType}_${title || '문서'}.pdf`);
+    };
+
+    const canApprove = (doc) => {
+        if (!doc || !currentUser || !doc.steps) return false;
+        
+        // 타입 불일치를 방지하기 위해 모두 String으로 변환
+        const myStaffId = String(currentUser?.staff_id || currentUser?.id || "");
+        const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
+        const currentApproverToSign = pendingApprovers.length > 0 ? pendingApprovers[0] : null;
+
+        if (!currentApproverToSign) return false;
+
+        const approverId = String(currentApproverToSign.approver_id || "");
+        const stepStaffId = String(currentApproverToSign.staff_id || "");
+
+        return (approverId === myStaffId || stepStaffId === myStaffId);
+    };
+
+    const handleProcess = async (status) => {
+        if (!documentData) return;
+        const comment = window.prompt(status === 'APPROVED' ? "승인 하시겠습니까?" : "반려 사유를 입력해주세요.");
+        if (status === 'REJECTED' && !comment) return alert("반려 사유를 입력해야 합니다.");
+
+        setIsSaving(true);
+        try {
+            await api.post(`/approval/documents/${documentData.id}/process`, { status, comment });
+            alert(status === 'APPROVED' ? '승인되었습니다.' : '반려되었습니다.');
+            navigate('/approval');
+        } catch (err) {
+            console.error(err);
+            alert('처리 중 오류가 발생했습니다.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleSubmit = async () => {
@@ -317,6 +351,46 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 onSelect={setCustomApprovers}
                 currentLines={customApprovers}
             />
+            {/* Processing Section (Only for Approvers if it's their turn) */}
+            {canApprove(documentData) && (
+                <Box 
+                    sx={{ 
+                        width: '100%', 
+                        position: 'sticky', 
+                        bottom: 0, 
+                        zIndex: 200, 
+                        bgcolor: '#1f2937', 
+                        borderTop: '2px solid #374151', 
+                        p: 3,
+                        boxShadow: '0 -10px 20px rgba(0,0,0,0.5)',
+                        display: 'flex',
+                        justifyContent: 'center'
+                    }}
+                >
+                    <Box sx={{ width: '100%', maxWidth: '800px', display: 'flex', gap: 2 }}>
+                        <Button 
+                            fullWidth 
+                            variant="outlined" 
+                            color="error" 
+                            startIcon={<X />} 
+                            onClick={() => handleProcess('REJECTED')}
+                            sx={{ py: 1.5, fontWeight: 'bold', fontSize: '1rem', borderRadius: 2 }}
+                        >
+                            반려하기
+                        </Button>
+                        <Button 
+                            fullWidth 
+                            variant="contained" 
+                            color="success" 
+                            startIcon={<CheckCircle2 />} 
+                            onClick={() => handleProcess('APPROVED')}
+                            sx={{ py: 1.5, fontWeight: 'bold', fontSize: '1rem', borderRadius: 2 }}
+                        >
+                            승인 / 서명하기
+                        </Button>
+                    </Box>
+                </Box>
+            )}
         </Box>
     );
 };
