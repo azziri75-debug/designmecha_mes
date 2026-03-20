@@ -95,6 +95,7 @@ class ProductionPlanItem(ProductionPlanItemBase):
     purchase_items: List[PurchaseOrderItemSimple] = []
     outsourcing_items: List[OutsourcingOrderItemSimple] = []
     completed_quantity: int = 0
+    work_log_items: List["WorkLogItem"] = []
     
     # [NEW] Fields for list display
     client_name: Optional[str] = None

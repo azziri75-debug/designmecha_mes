@@ -162,7 +162,10 @@ async def read_production_plans(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
             ),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items).options(
+                selectinload(WorkLogItem.work_log).selectinload(WorkLog.worker),
+                selectinload(WorkLogItem.worker)
+            )
         )
         .offset(skip)
         .limit(limit)

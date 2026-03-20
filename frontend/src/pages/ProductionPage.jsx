@@ -822,7 +822,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onPrint, onDeleteAttachment, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, onRefresh }) => {
+const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onDeleteAttachment, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, onRefresh }) => {
     return (
         <TableContainer sx={{ boxShadow: 'none' }}>
             <Table sx={{ tableLayout: 'fixed' }}>
@@ -861,6 +861,7 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
                                 onShowOrder={onShowOrder}
                                 onShowStock={onShowStock}
                                 onRefresh={onRefresh}
+                                onConfirm={onConfirm}
                             />
                         ))
                     )}
@@ -870,7 +871,303 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
     );
 };
 
-const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, readonly, onRefresh }) => {
+const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefresh, onOpenProcessFiles, handleDeleteItemAttachment }) => {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <React.Fragment>
+            <TableRow
+                sx={{
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: '#f0f7ff' },
+                    backgroundColor: open ? '#f8fbff' : 'inherit',
+                    transition: 'background-color 0.2s'
+                }}
+                onClick={() => setOpen(!open)}
+            >
+                <TableCell>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
+                        {open ? <KeyboardArrowUp sx={{ fontSize: 18 }} /> : <KeyboardArrowDown sx={{ fontSize: 18 }} />}
+                    </IconButton>
+                    {item.sequence}
+                </TableCell>
+                <TableCell sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {item.process_name}
+                    {defects?.some(d => d.plan_item_id === item.id) && (
+                        <IconButton
+                            size="small"
+                            color="error"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onShowDefects(defects.filter(d => d.plan_item_id === item.id));
+                            }}
+                        >
+                            <AlertCircle className="w-4 h-4" />
+                        </IconButton>
+                    )}
+                </TableCell>
+                <TableCell>
+                    <Chip
+                        label={typeMap[item.course_type] || item.course_type}
+                        size="small"
+                        color={item.course_type === 'INTERNAL' ? 'default' : 'info'}
+                        variant={item.course_type === 'INTERNAL' ? 'outlined' : 'filled'}
+                    />
+                </TableCell>
+                <TableCell>
+                    {item.course_type === 'INTERNAL' ? (
+                        item.worker?.name || <span className="text-gray-400 italic">미배정</span>
+                    ) : (
+                        item.partner_name || '-'
+                    )
+                    }
+                </TableCell>
+                <TableCell>
+                    {item.course_type === 'INTERNAL' ? (
+                        item.equipment?.name || <span className="text-gray-400 italic">미배정</span>
+                    ) : (
+                        <span className="text-gray-500 font-light">사외</span>
+                    )}
+                </TableCell>
+                <TableCell>{item.note}</TableCell>
+                <TableCell sx={{ fontSize: '0.75rem' }}>
+                    {item.start_date || '-'} ~ {item.end_date || '-'}
+                </TableCell>
+                <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
+                            {item.completed_quantity || 0}
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'textSecondary' }}>
+                            / {item.quantity}
+                        </Typography>
+                        <Box sx={{ ml: 1, flex: 1, height: 4, bgcolor: '#eee', borderRadius: 2, overflow: 'hidden' }}>
+                            <Box sx={{
+                                width: `${Math.min(100, ((item.completed_quantity || 0) / item.quantity) * 100)}%`,
+                                height: '100%',
+                                bgcolor: item.status === 'COMPLETED' ? '#4caf50' : '#2196f3'
+                            }} />
+                        </Box>
+                    </Box>
+                </TableCell>
+                <TableCell align="right">
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                        {(item.cost || 0).toLocaleString()}
+                    </Typography>
+                </TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                    <select
+                        value={item.status}
+                        onChange={async (e) => {
+                            const newStatus = e.target.value;
+                            if (newStatus === 'COMPLETED' && (item.course_type === 'PURCHASE' || item.course_type === 'OUTSOURCING')) {
+                                if (!window.confirm(`'${item.process_name}' 공정을 완료 처리하시겠습니까?\n이 작업과 연결된 발주/외주 발주가 함께 '처리완료' 상태로 변경될 수 있습니다.`)) {
+                                    return;
+                                }
+                            }
+                            try {
+                                await api.patch(`/production/plan-items/${item.id}`, { status: newStatus });
+                                if (onRefresh) onRefresh();
+                            } catch (err) {
+                                console.error("Status update error", err);
+                                alert("상태 변경 중 오류가 발생했습니다.");
+                            }
+                        }}
+                        style={{
+                            padding: '2px 4px',
+                            borderRadius: '4px',
+                            fontSize: '0.75rem',
+                            border: '1px solid ' + (item.status === 'COMPLETED' ? '#4caf50' : '#ccc'),
+                            backgroundColor: item.status === 'COMPLETED' ? '#e8f5e9' : 'white',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <option value="PLANNED">계획</option>
+                        <option value="IN_PROGRESS">진행중</option>
+                        <option value="COMPLETED">완료</option>
+                    </select>
+                </TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        {(() => {
+                            let localFiles = [];
+                            try {
+                                if (item.attachment_file) {
+                                    const parsed = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
+                                    localFiles = Array.isArray(parsed) ? parsed : [parsed];
+                                }
+                            } catch {
+                                localFiles = item.attachment_file ? [{ name: 'file', url: item.attachment_file }] : [];
+                            }
+                            localFiles = localFiles.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== ''))).map(f => typeof f === 'string' ? { name: f.split?.('/')?.pop() || '파일', url: f } : f);
+
+                            let externalFiles = [];
+                            if (item.course_type === 'PURCHASE' && item.purchase_items?.length > 0 && item.purchase_items[0].purchase_order?.attachment_file) {
+                                try {
+                                    let poFiles = item.purchase_items[0].purchase_order.attachment_file;
+                                    poFiles = typeof poFiles === 'string' ? JSON.parse(poFiles) : poFiles;
+                                    if (!Array.isArray(poFiles)) poFiles = [poFiles];
+                                    externalFiles = poFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[구매] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
+                                } catch (e) { }
+                            } else if (item.course_type === 'OUTSOURCING' && item.outsourcing_items?.length > 0 && item.outsourcing_items[0].outsourcing_order?.attachment_file) {
+                                try {
+                                    let outFiles = item.outsourcing_items[0].outsourcing_order.attachment_file;
+                                    outFiles = typeof outFiles === 'string' ? JSON.parse(outFiles) : outFiles;
+                                    if (!Array.isArray(outFiles)) outFiles = [outFiles];
+                                    externalFiles = outFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[외주] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
+                                } catch (e) { }
+                            }
+
+                            const allFiles = [...externalFiles, ...localFiles];
+
+                            return (
+                                <>
+                                    {allFiles.length > 0 && (
+                                        <IconButton
+                                            size="small"
+                                            color="primary"
+                                            onClick={() => {
+                                                const onDelete = (idx) => {
+                                                    const targetFile = allFiles[idx];
+                                                    if (targetFile.isExternal) {
+                                                        alert("외부(발주/외주) 문서에 첨부된 파일은 해당 문서에서만 삭제 가능합니다.");
+                                                        return;
+                                                    }
+                                                    const targetIdxInLocal = localFiles.findIndex(f => f.url === targetFile.url && f.name === targetFile.name);
+                                                    if (targetIdxInLocal !== -1) {
+                                                        handleDeleteItemAttachment(item, targetIdxInLocal);
+                                                    }
+                                                };
+                                                if (onOpenProcessFiles) {
+                                                    onOpenProcessFiles(allFiles, `${item.process_name} 첨부 파일`, onDelete);
+                                                }
+                                            }}
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                        </IconButton>
+                                    )}
+                                    <input
+                                        type="file"
+                                        id={`file-item-${item.id}`}
+                                        style={{ display: 'none' }}
+                                        onChange={async (e) => {
+                                            const file = e.target.files[0];
+                                            if (!file) return;
+                                            const formData = new FormData();
+                                            formData.append('file', file);
+                                            try {
+                                                const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                                                const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
+                                                const updatedLocalFiles = [...localFiles, newFile];
+                                                await api.patch(`/production/plan-items/${item.id}`, { attachment_file: updatedLocalFiles });
+                                                if (onRefresh) onRefresh();
+                                            } catch (err) {
+                                                console.error("Upload failed", err);
+                                                alert("파일 업로드 실패");
+                                            } finally {
+                                                e.target.value = null;
+                                            }
+                                        }}
+                                    />
+                                    <IconButton size="small" onClick={() => document.getElementById(`file-item-${item.id}`).click()}>
+                                        <AddIcon sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                </>
+                            );
+                        })()}
+                    </Box>
+                </TableCell>
+            </TableRow>
+            <TableRow>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0, border: 'none' }} colSpan={11}>
+                    <Collapse in={open} timeout="auto" unmountOnExit>
+                        <Box sx={{ margin: 1.5, p: 2, bgcolor: '#ffffff', borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '1px solid #e3f2fd' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1976d2', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <DescIcon fontSize="small" /> 작업 실적 및 상세 로그
+                                </Typography>
+                            </Box>
+
+                            {!item.work_log_items || item.work_log_items.length === 0 ? (
+                                <Typography variant="body2" color="textSecondary" sx={{ py: 2, textAlign: 'center', fontStyle: 'italic' }}>
+                                    등록된 작업 실적이 없습니다.
+                                </Typography>
+                            ) : (
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow sx={{ bgcolor: '#f1f8ff' }}>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>작업자</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '20%' }}>작업 일시</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '15%' }} align="right">수량 (양품/불량)</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '35%' }}>작업 내용</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>첨부파일</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {item.work_log_items.map((logItem) => {
+                                            let logFiles = [];
+                                            try {
+                                                if (logItem.work_log?.attachment_file) {
+                                                    const parsed = typeof logItem.work_log.attachment_file === 'string' ? JSON.parse(logItem.work_log.attachment_file) : logItem.work_log.attachment_file;
+                                                    logFiles = Array.isArray(parsed) ? parsed : [parsed];
+                                                }
+                                            } catch { }
+
+                                            return (
+                                                <TableRow key={logItem.id} hover>
+                                                    <TableCell>{logItem.worker?.name || logItem.work_log?.worker?.name || '-'}</TableCell>
+                                                    <TableCell sx={{ fontSize: '0.75rem' }}>
+                                                        {logItem.work_log?.work_date}<br />
+                                                        <span style={{ color: '#666' }}>
+                                                            {logItem.start_time ? new Date(logItem.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                            {logItem.end_time ? ` ~ ${new Date(logItem.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell align="right">
+                                                        <span style={{ fontWeight: 'bold', color: '#2e7d32' }}>{logItem.good_quantity}</span>
+                                                        <span style={{ color: '#ccc', margin: '0 4px' }}>/</span>
+                                                        <span style={{ color: '#d32f2f' }}>{logItem.bad_quantity}</span>
+                                                    </TableCell>
+                                                    <TableCell sx={{ whiteSpace: 'pre-wrap' }}>{logItem.note || '-'}</TableCell>
+                                                    <TableCell>
+                                                        {logFiles.length > 0 && (
+                                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                {logFiles.map((file, fIdx) => (
+                                                                    <Chip
+                                                                        key={fIdx}
+                                                                        label={typeof file === 'string' ? file.split('/').pop() : file.name}
+                                                                        size="small"
+                                                                        variant="outlined"
+                                                                        clickable
+                                                                        component="a"
+                                                                        href={typeof file === 'string' ? file : file.url}
+                                                                        target="_blank"
+                                                                        sx={{
+                                                                            fontSize: '0.65rem',
+                                                                            maxWidth: 100,
+                                                                            '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' }
+                                                                        }}
+                                                                        icon={<FileText className="w-3 h-3" />}
+                                                                    />
+                                                                ))}
+                                                            </Box>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </Box>
+                    </Collapse>
+                </TableCell>
+            </TableRow>
+        </React.Fragment>
+    );
+};
+
+const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, readonly, onRefresh }) => {
     const [open, setOpen] = useState(false);
     const [colWidths, setColWidths] = useState({
         seq: 50,
@@ -976,12 +1273,8 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                 <TableCell>
                     {(() => {
                         const totalCost = plan.items?.reduce((sum, item) => {
-                            // If external, count sum of PO/OO items? Or wait for backend field.
-                            // For now, let's use the field 'cost' if it exists.
                             return sum + (item.cost || 0);
                         }, 0) || 0;
-
-                        const defectCost = defects?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
 
                         return (
                             <Box>
@@ -1054,10 +1347,10 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={11}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
-                            <Typography variant="h6" gutterBottom component="div">
+                            <Typography variant="h6" gutterBottom component="div" sx={{ color: '#1a237e', fontWeight: 'bold' }}>
                                 생산 공정 상세
                             </Typography>
 
@@ -1076,18 +1369,6 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                         <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#c62828', bgcolor: '#ffebee', px: 1, py: 0.5, borderRadius: 1, display: 'inline-block', mr: 2 }}>
                                             총 공정 비용: {group.items.reduce((sum, item) => sum + (item.cost || 0), 0).toLocaleString()} 원
                                         </Typography>
-                                        {(() => {
-                                            const groupItemIds = group.items.map(i => i.id);
-                                            const groupDefectCost = defects?.filter(d => groupItemIds.includes(d.plan_item_id)).reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
-                                            if (groupDefectCost > 0) {
-                                                return (
-                                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#d32f2f', display: 'inline-block' }}>
-                                                        - {groupDefectCost.toLocaleString()} 원 (불량)
-                                                    </Typography>
-                                                );
-                                            }
-                                            return null;
-                                        })()}
                                     </Box>
 
                                     <Table size="small" aria-label="process-list" sx={{ tableLayout: 'fixed' }}>
@@ -1108,199 +1389,17 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onPrint, onOpenFiles
                                         </TableHead>
                                         <TableBody>
                                             {group.items.sort((a, b) => a.sequence - b.sequence).map((item) => (
-                                                <TableRow key={item.id}>
-                                                    <TableCell>{item.sequence}</TableCell>
-                                                    <TableCell sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                        {item.process_name}
-                                                        {defects?.some(d => d.plan_item_id === item.id) && (
-                                                            <IconButton
-                                                                size="small"
-                                                                color="error"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    onShowDefects(defects.filter(d => d.plan_item_id === item.id));
-                                                                }}
-                                                            >
-                                                                <AlertCircle className="w-4 h-4" />
-                                                            </IconButton>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Chip
-                                                            label={typeMap[item.course_type] || item.course_type}
-                                                            size="small"
-                                                            color={item.course_type === 'INTERNAL' ? 'default' : 'info'}
-                                                            variant={item.course_type === 'INTERNAL' ? 'outlined' : 'filled'}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {item.course_type === 'INTERNAL' ? (
-                                                            item.worker?.name || <span className="text-gray-400 italic">미배정</span>
-                                                        ) : (
-                                                            item.partner_name || '-'
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {item.course_type === 'INTERNAL' ? (
-                                                            item.equipment?.name || <span className="text-gray-400 italic">미배정</span>
-                                                        ) : (
-                                                            <span className="text-gray-500 font-light">사외</span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>{item.note}</TableCell>
-                                                    <TableCell sx={{ fontSize: '0.75rem' }}>
-                                                        {item.start_date || '-'} ~ {item.end_date || '-'}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                                                {item.completed_quantity || 0}
-                                                            </Typography>
-                                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'textSecondary' }}>
-                                                                / {item.quantity}
-                                                            </Typography>
-                                                            <Box sx={{ ml: 1, flex: 1, height: 4, bgcolor: '#eee', borderRadius: 2, overflow: 'hidden' }}>
-                                                                <Box sx={{
-                                                                    width: `${Math.min(100, ((item.completed_quantity || 0) / item.quantity) * 100)}%`,
-                                                                    height: '100%',
-                                                                    bgcolor: item.status === 'COMPLETED' ? '#4caf50' : '#2196f3'
-                                                                }} />
-                                                            </Box>
-                                                        </Box>
-                                                    </TableCell>
-                                                    <TableCell align="right">
-                                                        <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                                                            {(item.cost || 0).toLocaleString()}
-                                                        </Typography>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <select
-                                                            value={item.status}
-                                                            onChange={async (e) => {
-                                                                const newStatus = e.target.value;
-                                                                if (newStatus === 'COMPLETED' && (item.course_type === 'PURCHASE' || item.course_type === 'OUTSOURCING')) {
-                                                                    if (!window.confirm(`'${item.process_name}' 공정을 완료 처리하시겠습니까?\n이 작업과 연결된 발주/외주 발주가 함께 '처리완료' 상태로 변경될 수 있습니다.`)) {
-                                                                        return;
-                                                                    }
-                                                                }
-                                                                try {
-                                                                    await api.patch(`/production/plan-items/${item.id}`, { status: newStatus });
-                                                                    if (onRefresh) onRefresh();
-                                                                } catch (err) {
-                                                                    console.error("Status update error", err);
-                                                                    // Only alert if it's truly an error (axios throws on non-2xx)
-                                                                    alert("상태 변경 중 오류가 발생했습니다.");
-                                                                }
-                                                            }}
-                                                            style={{
-                                                                padding: '2px 4px',
-                                                                borderRadius: '4px',
-                                                                fontSize: '0.75rem',
-                                                                border: '1px solid ' + (item.status === 'COMPLETED' ? '#4caf50' : '#ccc'),
-                                                                backgroundColor: item.status === 'COMPLETED' ? '#e8f5e9' : 'white',
-                                                                cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            <option value="PLANNED">계획</option>
-                                                            <option value="IN_PROGRESS">진행중</option>
-                                                            <option value="COMPLETED">완료</option>
-                                                        </select>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                            {(() => {
-                                                                // 1. Parse item's own locally attached files
-                                                                let localFiles = [];
-                                                                try {
-                                                                    if (item.attachment_file) {
-                                                                        const parsed = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
-                                                                        localFiles = Array.isArray(parsed) ? parsed : [parsed];
-                                                                    }
-                                                                } catch {
-                                                                    localFiles = item.attachment_file ? [{ name: 'file', url: item.attachment_file }] : [];
-                                                                }
-                                                                localFiles = localFiles.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== ''))).map(f => typeof f === 'string' ? { name: f.split?.('/')?.pop() || '파일', url: f } : f);
-
-                                                                // 2. Parse external order's files (Read-only)
-                                                                let externalFiles = [];
-                                                                if (item.course_type === 'PURCHASE' && item.purchase_items?.length > 0 && item.purchase_items[0].purchase_order?.attachment_file) {
-                                                                    try {
-                                                                        let poFiles = item.purchase_items[0].purchase_order.attachment_file;
-                                                                        poFiles = typeof poFiles === 'string' ? JSON.parse(poFiles) : poFiles;
-                                                                        if (!Array.isArray(poFiles)) poFiles = [poFiles];
-                                                                        externalFiles = poFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[구매] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
-                                                                    } catch (e) { }
-                                                                } else if (item.course_type === 'OUTSOURCING' && item.outsourcing_items?.length > 0 && item.outsourcing_items[0].outsourcing_order?.attachment_file) {
-                                                                    try {
-                                                                        let outFiles = item.outsourcing_items[0].outsourcing_order.attachment_file;
-                                                                        outFiles = typeof outFiles === 'string' ? JSON.parse(outFiles) : outFiles;
-                                                                        if (!Array.isArray(outFiles)) outFiles = [outFiles];
-                                                                        externalFiles = outFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[외주] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
-                                                                    } catch (e) { }
-                                                                }
-
-                                                                const allFiles = [...externalFiles, ...localFiles];
-
-                                                                return (
-                                                                    <>
-                                                                        {allFiles.length > 0 && (
-                                                                            <IconButton
-                                                                                size="small"
-                                                                                color="primary"
-                                                                                onClick={() => {
-                                                                                    const onDelete = (idx) => {
-                                                                                        const targetFile = allFiles[idx];
-                                                                                        if (targetFile.isExternal) {
-                                                                                            alert("외부(발주/외주) 문서에 첨부된 파일은 해당 문서에서만 삭제 가능합니다.");
-                                                                                            return;
-                                                                                        }
-                                                                                        const targetIdxInLocal = localFiles.findIndex(f => f.url === targetFile.url && f.name === targetFile.name);
-                                                                                        if (targetIdxInLocal !== -1) {
-                                                                                            handleDeleteItemAttachment(item, targetIdxInLocal);
-                                                                                        }
-                                                                                    };
-                                                                                    if (onOpenProcessFiles) {
-                                                                                        onOpenProcessFiles(allFiles, `${item.process_name} 첨부 파일`, onDelete);
-                                                                                    }
-                                                                                }}
-                                                                            >
-                                                                                <FileText className="w-4 h-4" />
-                                                                            </IconButton>
-                                                                        )}
-                                                                        <input
-                                                                            type="file"
-                                                                            id={`file-item-${item.id}`}
-                                                                            style={{ display: 'none' }}
-                                                                            onChange={async (e) => {
-                                                                                const file = e.target.files[0];
-                                                                                if (!file) return;
-                                                                                const formData = new FormData();
-                                                                                formData.append('file', file);
-                                                                                try {
-                                                                                    const uploadRes = await api.post('/upload', formData, {
-                                                                                        headers: { 'Content-Type': 'multipart/form-data' }
-                                                                                    });
-                                                                                    const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
-                                                                                    const updatedLocalFiles = [...localFiles, newFile]; // Only save locally added files
-                                                                                    await api.patch(`/production/plan-items/${item.id}`, { attachment_file: updatedLocalFiles });
-                                                                                    if (onRefresh) onRefresh();
-                                                                                } catch (err) {
-                                                                                    console.error("Upload failed", err);
-                                                                                    alert("파일 업로드 실패");
-                                                                                } finally {
-                                                                                    e.target.value = null;
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                        <IconButton size="small" onClick={() => document.getElementById(`file-item-${item.id}`).click()}>
-                                                                            <AddIcon sx={{ fontSize: 18 }} />
-                                                                        </IconButton>
-                                                                    </>
-                                                                );
-                                                            })()}
-                                                        </Box>
-                                                    </TableCell>
-                                                </TableRow>
+                                                <ProcessRow
+                                                    key={item.id}
+                                                    item={item}
+                                                    colWidths={colWidths}
+                                                    defects={defects}
+                                                    typeMap={typeMap}
+                                                    onShowDefects={onShowDefects}
+                                                    onRefresh={onRefresh}
+                                                    onOpenProcessFiles={onOpenProcessFiles}
+                                                    handleDeleteItemAttachment={handleDeleteItemAttachment}
+                                                />
                                             ))}
                                         </TableBody>
                                     </Table>
