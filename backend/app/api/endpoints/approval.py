@@ -4,18 +4,28 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func, update, delete
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date, timedelta, time
+
+import traceback
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.api import deps
 from app.models.approval import ApprovalDocument, ApprovalLine, ApprovalStep, ApprovalStatus, ApprovalAttachment
 from app.models.basics import Staff, EmployeeTimeRecord, Company
-from app.models.purchasing import ConsumablePurchaseWait, PurchaseOrder, PurchaseOrderItem, PurchaseStatus, MaterialRequirement
+from app.models.purchasing import (
+    ConsumablePurchaseWait, PurchaseOrder, PurchaseOrderItem, PurchaseStatus, 
+    MaterialRequirement, OutsourcingOrder, OutsourcingStatus
+)
+from app.models.product import Product
 from app.schemas.approval import (
     ApprovalDocumentCreate, ApprovalDocumentResponse,
     ApprovalLineCreate, ApprovalLineResponse,
     ApprovalAction, ApprovalStats,
     ApprovalAttachmentCreate, ApprovalAttachmentBase
 )
+from app.api.endpoints.hr import get_or_create_annual_leave, _business_days_between, sync_annual_leave_usage
 
 router = APIRouter()
 
@@ -207,135 +217,130 @@ async def create_document(
     current_user: Staff = Depends(deps.get_current_user)
 ):
     """새 결재 문서 생성 (기안)"""
-    # 1. Duplicate Check for Attendance
-    if doc_in.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
-        content = doc_in.content or {}
-        target_dates = []
-        if doc_in.doc_type == "VACATION":
-            s_date = content.get("start_date")
-            e_date = content.get("end_date") or s_date
-            if s_date:
-                # Basic range check (could be more sophisticated with daily overlaps)
-                target_dates = [s_date] 
-        else:
-            t_date = content.get("date")
-            if t_date: target_dates = [t_date]
-        
-        if target_dates:
-            # Check for existing non-rejected documents of the same type or other attendance types on the same date
-            # To keep it simple and DB agnostic, we fetch recent docs for the user and filter in Python
-            # Usually only a handful of docs per user per month
-            from datetime import timedelta
-            recent_limit = datetime.now() - timedelta(days=60)
-            stmt = select(ApprovalDocument).where(
-                ApprovalDocument.author_id == current_user.id,
-                ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE", "OVERTIME"]),
-                ApprovalDocument.status != ApprovalStatus.REJECTED,
-                ApprovalDocument.created_at >= recent_limit
-            )
-            result = await db.execute(stmt)
-            existing_docs = result.scalars().all()
-            
-            for edoc in existing_docs:
-                ec = edoc.content or {}
-                if edoc.doc_type == "VACATION":
-                    if ec.get("start_date") in target_dates or ec.get("end_date") in target_dates:
-                        raise HTTPException(status_code=400, detail="해당 일자 인근에 이미 등록된 근태 내역이 있습니다. 다른 날짜를 선택해 주세요.")
-                else:
-                    if ec.get("date") in target_dates:
-                        raise HTTPException(status_code=400, detail="해당 일자에 이미 등록된 근태 내역이 있습니다. 다른 날짜를 선택해 주세요.")
-
-    # 1.5 Duplicate Check for Linked Documents (Purchase Order, etc.)
-    if doc_in.reference_id and doc_in.reference_type:
-        from app.models.approval import ApprovalStatus
-        stmt = select(ApprovalDocument).where(
-            ApprovalDocument.reference_id == doc_in.reference_id,
-            ApprovalDocument.reference_type == doc_in.reference_type,
-            ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS, ApprovalStatus.COMPLETED]),
-            ApprovalDocument.deleted_at.is_(None)
-        )
-        existing_res = await db.execute(stmt)
-        if existing_res.scalars().first():
-            raise HTTPException(
-                status_code=400, 
-                detail="이미 해당 건에 대해 진행 중이거나 완료된 결재 문서가 존재합니다."
-            )
-
-    # 2. 문서 저장
-    db_doc = ApprovalDocument(
-        author_id=current_user.id,
-        doc_type=doc_in.doc_type,
-        title=doc_in.title,
-        content=doc_in.content,
-        attachment_file=doc_in.attachment_file,
-        status=ApprovalStatus.PENDING,
-        current_sequence=1,
-        reference_id=doc_in.reference_id,
-        reference_type=doc_in.reference_type
-    )
-    db.add(db_doc)
-    await db.flush()
-    
-    # 3. 첨부파일 저장
-    if doc_in.attachments_to_add:
-        for att in doc_in.attachments_to_add:
-            db_att = ApprovalAttachment(
-                document_id=db_doc.id,
-                filename=att.filename,
-                url=att.url
-            )
-            db.add(db_att)
-    
-    # 4. 결재 단계(Steps) 생성 (지정된 결재자 우선, 없으면 템플릿 사용)
-    lines_to_process = []
-    if doc_in.custom_approvers:
-        for ca in doc_in.custom_approvers:
-            s_res = await db.execute(select(Staff).where(Staff.id == ca.staff_id))
-            target_s = s_res.scalars().first()
-            if target_s:
-                lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
-    else:
-        # Get default approval lines from template (Case-insensitive & Trimmed)
-        doc_type_clean = doc_in.doc_type.strip().upper()
-        print(f"[DEBUG] Fetching approval lines for: '{doc_type_clean}' (Original: '{doc_in.doc_type}')")
-        lines_res = await db.execute(
-            select(ApprovalLine)
-            .options(selectinload(ApprovalLine.approver))
-            .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
-            .order_by(ApprovalLine.sequence)
-        )
-        lines = lines_res.scalars().all()
-        print(f"[DEBUG] Found {len(lines)} default lines for {doc_type_clean}")
-        if not lines:
-             print(f"[WARNING] No default approval lines found for {doc_type_clean}")
-        for line in lines:
-            if line.approver:
-                lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
-            else:
-                # If approver is NULL but role is specified (generic placeholder) - Not currently supported in model, but for safety:
-                print(f"[WARNING] ApprovalLine ID {line.id} has no approver_id")
-
-    # Validate approval lines for non-draft documents
-    if not lines_to_process:
-        # Check if this document type is one that *must* have a predefined line
-        # PURCHASE_ORDER often has a defined line in settings
-        if doc_in.doc_type not in ["INTERNAL_DRAFT", "EXPENSE_REPORT", "CONSUMABLES_PURCHASE", "EARLY_LEAVE", "LEAVE_REQUEST", "PURCHASE_ORDER", "OVERTIME"]:
-            # If it's not a common flexible type, it might need a line
-            pass 
-        # The earlier check was too restrictive. Let's ensure we at least log or handle missing lines.
-    
     try:
+        # 0. Log Payload for Debugging
+        logger.info(f"[APPROVAL] Creating document for user {current_user.id}. Type: {doc_in.doc_type}")
+        
+        # 1. Duplicate Check for Attendance
+        if doc_in.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+            content = doc_in.content or {}
+            target_dates = []
+            if doc_in.doc_type == "VACATION":
+                s_date = content.get("start_date")
+                e_date = content.get("end_date") or s_date
+                if s_date:
+                    # Basic range check (could be more sophisticated with daily overlaps)
+                    target_dates = [s_date] 
+            else:
+                t_date = content.get("date")
+                if t_date: target_dates = [t_date]
+            
+            if target_dates:
+                # Check for existing non-rejected documents of the same type or other attendance types on the same date
+                # To keep it simple and DB agnostic, we fetch recent docs for the user and filter in Python
+                # Usually only a handful of docs per user per month
+                recent_limit = datetime.now() - timedelta(days=60)
+                stmt = select(ApprovalDocument).where(
+                    ApprovalDocument.author_id == current_user.id,
+                    ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE", "OVERTIME"]),
+                    ApprovalDocument.status != ApprovalStatus.REJECTED,
+                    ApprovalDocument.created_at >= recent_limit
+                )
+                result = await db.execute(stmt)
+                existing_docs = result.scalars().all()
+                
+                for edoc in existing_docs:
+                    ec = edoc.content or {}
+                    if edoc.doc_type == "VACATION":
+                        if ec.get("start_date") in target_dates or ec.get("end_date") in target_dates:
+                            raise HTTPException(status_code=400, detail="해당 일자 인근에 이미 등록된 근태 내역이 있습니다. 다른 날짜를 선택해 주세요.")
+                    else:
+                        if ec.get("date") in target_dates:
+                            raise HTTPException(status_code=400, detail="해당 일자에 이미 등록된 근태 내역이 있습니다. 다른 날짜를 선택해 주세요.")
+
+        # 1.5 Duplicate Check for Linked Documents (Purchase Order, etc.)
+        if doc_in.reference_id and doc_in.reference_type:
+            stmt = select(ApprovalDocument).where(
+                ApprovalDocument.reference_id == doc_in.reference_id,
+                ApprovalDocument.reference_type == doc_in.reference_type,
+                ApprovalDocument.status.in_([ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS, ApprovalStatus.COMPLETED]),
+                ApprovalDocument.deleted_at.is_(None)
+            )
+            existing_res = await db.execute(stmt)
+            if existing_res.scalars().first():
+                raise HTTPException(
+                    status_code=400, 
+                    detail="이미 해당 건에 대해 진행 중이거나 완료된 결재 문서가 존재합니다."
+                )
+
+        # 2. 문서 저장
+        db_doc = ApprovalDocument(
+            author_id=current_user.id,
+            doc_type=doc_in.doc_type,
+            title=doc_in.title,
+            content=doc_in.content,
+            attachment_file=doc_in.attachment_file,
+            status=ApprovalStatus.PENDING,
+            current_sequence=1,
+            reference_id=doc_in.reference_id,
+            reference_type=doc_in.reference_type
+        )
+        db.add(db_doc)
+        await db.flush()
+        
+        # 3. 첨부파일 저장
+        if doc_in.attachments_to_add:
+            for att in doc_in.attachments_to_add:
+                db_att = ApprovalAttachment(
+                    document_id=db_doc.id,
+                    filename=att.filename,
+                    url=att.url
+                )
+                db.add(db_att)
+        
+        # 4. 결재 단계(Steps) 생성 (지정된 결재자 우선, 없으면 템플릿 사용)
+        lines_to_process = []
+        if doc_in.custom_approvers:
+            for ca in doc_in.custom_approvers:
+                s_res = await db.execute(select(Staff).where(Staff.id == ca.staff_id))
+                target_s = s_res.scalars().first()
+                if target_s:
+                    lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
+        else:
+            # Get default approval lines from template (Case-insensitive & Trimmed)
+            doc_type_clean = doc_in.doc_type.strip().upper()
+            print(f"[DEBUG] Fetching approval lines for: '{doc_type_clean}' (Original: '{doc_in.doc_type}')")
+            lines_res = await db.execute(
+                select(ApprovalLine)
+                .options(selectinload(ApprovalLine.approver))
+                .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
+                .order_by(ApprovalLine.sequence)
+            )
+            lines = lines_res.scalars().all()
+            print(f"[DEBUG] Found {len(lines)} default lines for {doc_type_clean}")
+            if not lines:
+                 print(f"[WARNING] No default approval lines found for {doc_type_clean}")
+            for line in lines:
+                if line.approver:
+                    lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
+                else:
+                    # If approver is NULL but role is specified (generic placeholder) - Not currently supported in model, but for safety:
+                    print(f"[WARNING] ApprovalLine ID {line.id} has no approver_id")
+
+        # Validate approval lines for non-draft documents
+        if not lines_to_process:
+            # Check if this document type is one that *must* have a predefined line
+            if doc_in.doc_type not in ["INTERNAL_DRAFT", "EXPENSE_REPORT", "CONSUMABLES_PURCHASE", "EARLY_LEAVE", "LEAVE_REQUEST", "PURCHASE_ORDER", "OVERTIME"]:
+                pass 
+        
         author_rank = get_staff_rank(current_user.role)
         current_seq = 1
         all_auto_approved = True
         
         if lines_to_process:
             for lp in lines_to_process:
-                # 4-1. Calculate rank for the specific approver in the loop
                 approver_role = lp.get("role", "")
                 approver_rank = get_staff_rank(approver_role)
-                
-                # Auto-approve if author is the approver or has higher rank
                 is_auto = (lp["approver_id"] == current_user.id) or (author_rank >= approver_rank)
                 
                 step = ApprovalStep(
@@ -354,40 +359,41 @@ async def create_document(
                 else:
                     all_auto_approved = False
         else:
-            # If no lines to process, it's either an internal draft or a missing configuration
-            # For draft types, we might allow it, but we set all_auto_approved to False to keep it in PENDING
             all_auto_approved = False
 
         db_doc.current_sequence = current_seq
         if all_auto_approved:
             db_doc.status = ApprovalStatus.COMPLETED
             print(f"[DEBUG] Document {db_doc.id} auto-completed. Type: {db_doc.doc_type}")
-            # 자동 승인 시 처리 (근태/소모품 등)
             if db_doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
                 await create_attendance_record(db, db_doc)
             elif db_doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
                 print(f"[DEBUG] Triggering process_consumables for auto-approved doc {db_doc.id}")
                 await process_consumables(db, db_doc)
             
-            # 구매발주/외주발주 상태 동기화 (자동 승인 시)
             if db_doc.doc_type == "PURCHASE_ORDER" or db_doc.reference_id:
                 await sync_reference_status(db, db_doc)
         elif current_seq > 1:
             db_doc.status = ApprovalStatus.IN_PROGRESS
 
         await db.commit()
-    except Exception as e:
-        import traceback
-        import logging
-        logger = logging.getLogger(__name__)
-        error_msg = traceback.format_exc()
-        logger.error(f"Failed to create document: {error_msg}")
+
+    except HTTPException:
         await db.rollback()
+        raise
+    except Exception as e:
+        error_msg = traceback.format_exc()
+        logger.error(f"[APPROVAL_ERROR] Failed to create document: {error_msg}")
+        await db.rollback()
+        
         # Provide more specific error if possible
         detail_msg = f"결재 문서 생성 중 서버 오류 발생: {str(e)}"
         if "id" in str(e).lower() and "null" in str(e).lower():
-            detail_msg = "결재선 데이터(결재자 ID)가 올바르지 않습니다."
-        raise HTTPException(status_code=500, detail=detail_msg)
+            detail_msg = "결재선 데이터(결재자 ID)가 올바르지 않거나 누락되었습니다."
+        elif "enum" in str(e).lower():
+            detail_msg = "유효하지 않은 상태 또는 구분 값이 포함되었습니다."
+            
+        raise HTTPException(status_code=400, detail=detail_msg)
     
     # 다시 조회 (500 오류 방지 - 관계형 객체 로드)
     result = await db.execute(
@@ -458,15 +464,11 @@ async def process_approval(
         doc.status = ApprovalStatus.REJECTED
         doc.rejection_reason = action.comment
         # [Rollback] 근태 기록 및 소모품 대기열 파기
-        from sqlalchemy import delete as sa_delete
-        from app.models.basics import EmployeeTimeRecord
-        from app.models.purchasing import ConsumablePurchaseWait
-        await db.execute(sa_delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc.id))
-        await db.execute(sa_delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc.id))
+        await db.execute(delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc.id))
+        await db.execute(delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc.id))
         
         # 연차 동기화 (차감된 것 복구)
         if doc.doc_type in ["VACATION", "EARLY_LEAVE", "LEAVE_REQUEST"]:
-            from app.api.endpoints.hr import sync_annual_leave_usage
             # year can be extracted from doc.created_at or start_date
             content = doc.content or {}
             target_year = doc.created_at.year
@@ -516,7 +518,6 @@ def calculate_ot_details(record_date, start_time_str, end_time_str):
     Calculate hours breakdown for Extension, Night, Holiday, Holiday-Night.
     Night window: 22:00 ~ 06:00
     """
-    from datetime import datetime, time, timedelta
     
     def parse_time_flexible(t_str):
         if not t_str: return None
@@ -581,8 +582,6 @@ async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
     """결재 완료된 소모품 신청서를 기반으로 품목 마스터 자동 등록 및 발주 대기 생성"""
     print(f"[DEBUG] process_consumables called for Doc ID: {doc.id}, Type: {doc.doc_type}")
     try:
-        from app.models.product import Product
-        from app.models.purchasing import ConsumablePurchaseWait
         
         content = doc.content or {}
         items = content.get("items")
@@ -620,8 +619,8 @@ async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
             
             if not product:
                 # generate placeholder code
-                import time
-                new_code = f"CON-{int(time.time())}-{name[:2]}"
+                import time as time_mod
+                new_code = f"CON-{int(time_mod.time())}-{name[:2]}"
                 print(f"[DEBUG] Creating new product master for {name} with code {new_code}")
                 product = Product(
                     name=name,
@@ -656,8 +655,6 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
         if doc.doc_type not in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
             return
 
-        from datetime import date
-        from app.api.endpoints.hr import get_or_create_annual_leave, _business_days_between, sync_annual_leave_usage
         content = doc.content or {}
         
         if doc.doc_type in ["VACATION", "LEAVE_REQUEST"]:
@@ -686,8 +683,6 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
                 leave_record.used_leave_hours += applied_days * 8.0
             
             # 개별 근태 기록 생성
-            from datetime import timedelta
-            from app.models.basics import EmployeeTimeRecord
             curr = start_date
             while curr <= end_date:
                 if curr.weekday() < 5:
@@ -734,7 +729,6 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
                         if delta < 0: delta += 1440
                         hours = round(delta / 60.0, 2)
                     else:
-                        from app.models.basics import Company
                         comp_res = await db.execute(select(Company))
                         comp = comp_res.scalars().first()
                         work_end_str = "17:30"
@@ -823,131 +817,145 @@ async def update_document(
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ):
-    """문서 수정 (작성자이며 대기/반려 상태일 때만 가능)"""
-    result = await db.execute(select(ApprovalDocument).where(ApprovalDocument.id == doc_id))
-    doc = result.scalars().first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
-    
-    if doc.author_id != current_user.id and current_user.user_type != "ADMIN":
-        raise HTTPException(status_code=403, detail="수정 권한이 없습니다.")
-    
-    # 관계형 데이터 로드 (is_editable에서 필요)
-    result = await db.execute(
-        select(ApprovalDocument)
-        .options(selectinload(ApprovalDocument.steps))
-        .where(ApprovalDocument.id == doc_id)
-    )
-    doc = result.scalars().first()
-    
-    if not await is_editable(doc, current_user):
-        raise HTTPException(status_code=400, detail="결재가 이미 진행되어 수정할 수 없습니다.")
-    
-    doc.title = doc_in.title
-    doc.content = doc_in.content
-    doc.attachment_file = doc_in.attachment_file
-    
-    # Update attachments
-    if doc_in.attachments_to_add is not None:
-        # For simplicity, we replace attachments if provided
-        await db.execute(delete(ApprovalAttachment).where(ApprovalAttachment.document_id == doc_id))
-        for att in doc_in.attachments_to_add:
-            db_att = ApprovalAttachment(
-                document_id=doc_id,
-                filename=att.filename,
-                url=att.url
-            )
-            db.add(db_att)
-    
-    # 수정 시 상태가 반려였다면 대기로 변경하고 결재 단계 초기화 가능
-    # ADMIN이 수정하는 경우 상태를 유지하거나 필요시 변경함
-    was_completed = doc.status == ApprovalStatus.COMPLETED
-    
-    if current_user.user_type != "ADMIN":
-        doc.status = ApprovalStatus.PENDING
-        doc.current_sequence = 1
-        doc.rejection_reason = None
+    try:
+        logger.info(f"[APPROVAL] Updating document {doc_id} by user {current_user.id}")
         
-        lines_to_process = []
-        if doc_in.custom_approvers:
-            for ca in doc_in.custom_approvers:
-                s_res = await db.execute(select(Staff).where(Staff.id == ca.staff_id))
-                target_s = s_res.scalars().first()
-                if target_s:
-                    lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
-        else:
-            doc_type_clean = doc.doc_type.strip().upper()
-            lines_res = await db.execute(
-                select(ApprovalLine)
-                .options(selectinload(ApprovalLine.approver))
-                .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
-                .order_by(ApprovalLine.sequence)
-            )
-            lines = lines_res.scalars().all()
-            for line in lines:
-                if line.approver:
-                    lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
+        result = await db.execute(select(ApprovalDocument).where(ApprovalDocument.id == doc_id))
+        doc = result.scalars().first()
+        if not doc:
+            raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
         
-        author_rank = get_staff_rank(current_user.role)
-        current_seq = 1
-        all_auto_approved = True
+        if doc.author_id != current_user.id and current_user.user_type != "ADMIN":
+            raise HTTPException(status_code=403, detail="수정 권한이 없습니다.")
+    
+        # 관계형 데이터 로드 (is_editable에서 필요)
+        result = await db.execute(
+            select(ApprovalDocument)
+            .options(selectinload(ApprovalDocument.steps))
+            .where(ApprovalDocument.id == doc_id)
+        )
+        doc = result.scalars().first()
         
-        for lp in lines_to_process:
-            approver_rank = get_staff_rank(lp["role"])
-            is_auto = author_rank >= approver_rank
+        if not await is_editable(doc, current_user):
+            raise HTTPException(status_code=400, detail="결재가 이미 진행되어 수정할 수 없습니다.")
+    
+        doc.title = doc_in.title
+        doc.content = doc_in.content
+        doc.attachment_file = doc_in.attachment_file
+        
+        # Update attachments
+        if doc_in.attachments_to_add is not None:
+            # For simplicity, we replace attachments if provided
+            await db.execute(delete(ApprovalAttachment).where(ApprovalAttachment.document_id == doc_id))
+            for att in doc_in.attachments_to_add:
+                db_att = ApprovalAttachment(
+                    document_id=doc_id,
+                    filename=att.filename,
+                    url=att.url
+                )
+                db.add(db_att)
+    
+        # 수정 시 상태가 반려였다면 대기로 변경하고 결재 단계 초기화 가능
+        # ADMIN이 수정하는 경우 상태를 유지하거나 필요시 변경함
+        was_completed = doc.status == ApprovalStatus.COMPLETED
+    
+        if current_user.user_type != "ADMIN":
+            doc.status = ApprovalStatus.PENDING
+            doc.current_sequence = 1
+            doc.rejection_reason = None
             
-            step = ApprovalStep(
-                document_id=doc.id,
-                approver_id=lp["approver_id"],
-                sequence=lp["sequence"],
-                status="APPROVED" if is_auto else "PENDING",
-                processed_at=datetime.now() if is_auto else None,
-                comment="기안자 직급에 따른 자동 승인" if is_auto else None
-            )
-            db.add(step)
+            # Delete existing steps before regenerating (Avoid duplicates on partial update)
+            await db.execute(delete(ApprovalStep).where(ApprovalStep.document_id == doc_id))
             
-            if is_auto:
-                if current_seq == lp["sequence"]:
-                    current_seq += 1
+            lines_to_process = []
+            if doc_in.custom_approvers:
+                for ca in doc_in.custom_approvers:
+                    s_res = await db.execute(select(Staff).where(Staff.id == ca.staff_id))
+                    target_s = s_res.scalars().first()
+                    if target_s:
+                        lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
+            else:
+                doc_type_clean = doc.doc_type.strip().upper()
+                lines_res = await db.execute(
+                    select(ApprovalLine)
+                    .options(selectinload(ApprovalLine.approver))
+                    .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
+                    .order_by(ApprovalLine.sequence)
+                )
+                lines = lines_res.scalars().all()
+                for line in lines:
+                    if line.approver:
+                        lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
+            
+            author_rank = get_staff_rank(current_user.role)
+            current_seq = 1
+            all_auto_approved = True
+            
+            if lines_to_process:
+                for lp in lines_to_process:
+                    approver_role = lp.get("role", "")
+                    approver_rank = get_staff_rank(approver_role)
+                    is_auto = (lp["approver_id"] == current_user.id) or (author_rank >= approver_rank)
+                    
+                    step = ApprovalStep(
+                        document_id=doc.id,
+                        approver_id=lp["approver_id"],
+                        sequence=lp["sequence"],
+                        status="APPROVED" if is_auto else "PENDING",
+                        processed_at=datetime.now() if is_auto else None,
+                        comment="기안자 자동 승인" if (lp["approver_id"] == current_user.id) else ("기안자 직급에 따른 자동 승인" if is_auto else None)
+                    )
+                    db.add(step)
+                    
+                    if is_auto:
+                        if current_seq == lp["sequence"]:
+                            current_seq += 1
+                    else:
+                        all_auto_approved = False
             else:
                 all_auto_approved = False
 
-        doc.current_sequence = current_seq
-        if all_auto_approved:
-            doc.status = ApprovalStatus.COMPLETED
-            print(f"[DEBUG] Document {doc.id} auto-completed after update. Type: {doc.doc_type}")
-            # 자동 승인 시 처리 (근태/소모품)
-            if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
-                await create_attendance_record(db, doc)
-            elif doc.doc_type == "SUPPLIES":
-                print(f"[DEBUG] Triggering process_consumables for updated/auto-approved doc {doc.id}")
-                await process_consumables(db, doc)
-        elif current_seq > 1:
-            doc.status = ApprovalStatus.IN_PROGRESS
+            doc.current_sequence = current_seq
+            if all_auto_approved:
+                doc.status = ApprovalStatus.COMPLETED
+                print(f"[DEBUG] Document {doc.id} auto-completed after update. Type: {doc.doc_type}")
+                if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
+                    await create_attendance_record(db, doc)
+                elif doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
+                    print(f"[DEBUG] Triggering process_consumables for updated/auto-approved doc {doc.id}")
+                    await process_consumables(db, doc)
+            elif current_seq > 1:
+                doc.status = ApprovalStatus.IN_PROGRESS
+            else:
+                doc.status = ApprovalStatus.PENDING
         else:
-            doc.status = ApprovalStatus.PENDING
-    else:
-        # ADMIN: status is preserved, but sync records if completed
-        if was_completed:
-            # Delete and recreate attendance records to sync
-            await db.execute(delete(EmployeeTimeRecord).where(
-                EmployeeTimeRecord.staff_id == doc.author_id,
-                EmployeeTimeRecord.author_id == doc.author_id # Approximating the link, ideally we'd have it explicit
-            ))
-            # However, since we don't have a direct link from record to doc_id, 
-            # we might need to be careful. In this MES, records are created on completion.
-            # For now, let's just trigger create_attendance_record which adds new ones.
-            # NOTE: To be perfect, we'd need doc_id in EmployeeTimeRecord.
-            await create_attendance_record(db, doc)
+            # ADMIN: status is preserved, but sync records if completed
+            if was_completed:
+                if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
+                    await db.execute(delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc.id))
+                    await create_attendance_record(db, doc)
+    
+        await db.commit()
 
-    await db.commit()
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        error_msg = traceback.format_exc()
+        logger.error(f"[APPROVAL_ERROR] Failed to update document: {error_msg}")
+        await db.rollback()
+        detail_msg = f"결재 문서 수정 중 서버 오류 발생: {str(e)}"
+        if "id" in str(e).lower() and "null" in str(e).lower():
+            detail_msg = "결재선 데이터(결재자 ID)가 올바르지 않거나 누락되었습니다."
+        raise HTTPException(status_code=400, detail=detail_msg)
     
     # 다시 조회 (관계형 객체 로드)
     result = await db.execute(
         select(ApprovalDocument)
         .options(
             selectinload(ApprovalDocument.author),
-            selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver)
+            selectinload(ApprovalDocument.steps).selectinload(ApprovalStep.approver),
+            selectinload(ApprovalDocument.attachments)
         )
         .where(ApprovalDocument.id == doc_id)
     )
@@ -1001,7 +1009,6 @@ async def delete_document(
             
             # Trigger leave sync if relevant
             if doc.doc_type in ["VACATION", "EARLY_LEAVE"]:
-                from app.api.endpoints.hr import sync_annual_leave_usage
                 await sync_annual_leave_usage(db, doc.author_id, doc.created_at.year)
                 
             await db.commit()
@@ -1042,7 +1049,6 @@ async def delete_document(
     
     # [Fix] 잔여 연차 동기화 (commit 직후 호출)
     if doc.doc_type in ["VACATION", "EARLY_LEAVE"]:
-        from app.api.endpoints.hr import sync_annual_leave_usage
         await sync_annual_leave_usage(db, doc.author_id, doc.created_at.year)
         
     return {"message": "삭제되었습니다."}
@@ -1059,7 +1065,6 @@ async def sync_reference_status(db: AsyncSession, doc: ApprovalDocument):
     
     try:
         if doc.reference_type == "PURCHASE":
-            from app.models.purchasing import PurchaseOrder, PurchaseStatus
             stmt = select(PurchaseOrder).where(PurchaseOrder.id == doc.reference_id)
             res = await db.execute(stmt)
             order = res.scalars().first()
@@ -1072,7 +1077,6 @@ async def sync_reference_status(db: AsyncSession, doc: ApprovalDocument):
                     print(f"[DEBUG] PurchaseOrder {order.id} status rolled back to PENDING (Rejected)")
         
         elif doc.reference_type == "OUTSOURCING":
-            from app.models.purchasing import OutsourcingOrder, OutsourcingStatus
             stmt = select(OutsourcingOrder).where(OutsourcingOrder.id == doc.reference_id)
             res = await db.execute(stmt)
             order = res.scalars().first()
