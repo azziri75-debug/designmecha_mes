@@ -24,6 +24,9 @@ import {
     InputLabel,
     Select,
     MenuItem,
+    Radio,
+    RadioGroup,
+    FormControlLabel,
     Dialog,
     DialogTitle,
     DialogContent,
@@ -1253,38 +1256,54 @@ const MobileWorkLogPage = () => {
                             <Stack spacing={2}>
                                 <TextField label="시작일" type="date" fullWidth size="small" value={docFormData.start_date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, start_date: e.target.value })} />
                                 <TextField label="종료일" type="date" fullWidth size="small" value={docFormData.end_date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_date: e.target.value })} />
-                                <FormControl size="small" fullWidth>
-                                    <InputLabel>휴가 종류</InputLabel>
-                                    <Select value={docFormData.vacation_type || '연차'} label="휴가 종류" onChange={e => setDocFormData({ ...docFormData, vacation_type: e.target.value })}>
-                                        <option value="연차">연차</option>
-                                        <option value="반차">반차</option>
-                                        <option value="경조휴가">경조휴가</option>
-                                        <option value="병가">병가</option>
-                                        <option value="기타">기타</option>
-                                    </Select>
-                                </FormControl>
-                                {docFormData.vacation_type === '반차' && (
-                                    <FormControl size="small" fullWidth>
-                                        <InputLabel>반차 구분</InputLabel>
-                                        <Select value={docFormData.half_day_type || '오전'} label="반차 구분" onChange={e => setDocFormData({ ...docFormData, half_day_type: e.target.value })}>
-                                            <option value="오전">오전</option>
-                                            <option value="오후">오후</option>
-                                        </Select>
-                                    </FormControl>
-                                )}
+                                
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">휴가 종류</Typography>
+                                    <RadioGroup 
+                                        value={docFormData.vacation_type === '반차' ? (docFormData.half_day_type === '오전' ? '오전 반차' : '오후 반차') : (docFormData.vacation_type || '연차')} 
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            let newData = { ...docFormData };
+                                            if (val === '오전 반차') {
+                                                newData.vacation_type = '반차';
+                                                newData.half_day_type = '오전';
+                                            } else if (val === '오후 반차') {
+                                                newData.vacation_type = '반차';
+                                                newData.half_day_type = '오후';
+                                            } else {
+                                                newData.vacation_type = val;
+                                                delete newData.half_day_type;
+                                            }
+                                            setDocFormData(newData);
+                                        }}
+                                    >
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                                            <FormControlLabel value="연차" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>연차</Typography>} />
+                                            <FormControlLabel value="오전 반차" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>오전 반차</Typography>} />
+                                            <FormControlLabel value="오후 반차" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>오후 반차</Typography>} />
+                                            <FormControlLabel value="경조휴가" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>경조휴가</Typography>} />
+                                            <FormControlLabel value="병가" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>병가</Typography>} />
+                                            <FormControlLabel value="기타" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>기타</Typography>} />
+                                        </Box>
+                                    </RadioGroup>
+                                </Box>
                                 <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.reason || ''} onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
                             </Stack>
                         )}
                         {selectedDocType === 'EARLY_LEAVE' && (
                             <Stack spacing={2}>
                                 <TextField label="일자" type="date" fullWidth size="small" value={docFormData.date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, date: e.target.value })} />
-                                <FormControl size="small" fullWidth>
-                                    <InputLabel>구분</InputLabel>
-                                    <Select value={docFormData.type || '조퇴'} label="구분" onChange={e => setDocFormData({ ...docFormData, type: e.target.value })}>
-                                        <option value="조퇴">조퇴</option>
-                                        <option value="외출">외출</option>
-                                    </Select>
-                                </FormControl>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" fontWeight="bold">구분</Typography>
+                                    <RadioGroup 
+                                        row
+                                        value={docFormData.type || '조퇴'} 
+                                        onChange={e => setDocFormData({ ...docFormData, type: e.target.value })}
+                                    >
+                                        <FormControlLabel value="조퇴" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>조퇴</Typography>} />
+                                        <FormControlLabel value="외출" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>외출</Typography>} />
+                                    </RadioGroup>
+                                </Box>
                                 <TextField label={docFormData.type === '외출' ? '시작 시간' : '나가는 시간'} type="time" fullWidth size="small" value={docFormData.time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, time: e.target.value })} />
                                 {docFormData.type === '외출' && (
                                     <TextField label="종료(복귀) 시간" type="time" fullWidth size="small" value={docFormData.end_time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_time: e.target.value })} />
