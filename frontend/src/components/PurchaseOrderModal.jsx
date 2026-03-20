@@ -102,10 +102,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;
-        const myStaffId = currentUser?.staff_id || currentUser?.id;
+        
+        // 타입 불일치를 방지하기 위해 모두 String으로 변환
+        const myStaffId = String(currentUser?.staff_id || currentUser?.id || "");
         const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
         const currentApproverToSign = pendingApprovers.length > 0 ? pendingApprovers[0] : null;
-        return currentApproverToSign && (Number(currentApproverToSign.approver_id) === Number(myStaffId) || Number(currentApproverToSign.staff_id) === Number(myStaffId));
+
+        if (!currentApproverToSign) return false;
+
+        const approverId = String(currentApproverToSign.approver_id || "");
+        const stepStaffId = String(currentApproverToSign.staff_id || "");
+
+        return (approverId === myStaffId || stepStaffId === myStaffId);
     };
 
     const handleProcessApproval = async (status) => {
@@ -682,7 +690,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 </Box>
 
             </DialogContent>
-            <DialogActions sx={{ position: 'sticky', bottom: 0, bgcolor: 'background.paper', zIndex: 10, borderTop: '1px solid #eee', p: 2 }}>
+            <DialogActions sx={{ position: 'sticky', bottom: 0, bgcolor: 'background.paper', zIndex: 100, borderTop: '2px solid #ddd', p: 2, boxShadow: '0 -4px 10px rgba(0,0,0,0.1)' }}>
                 <Button onClick={onClose}>취소</Button>
                 <Button onClick={() => window.print()} color="info" startIcon={<Printer />}>인쇄</Button>
                 {canApprove(approvalDoc) && (

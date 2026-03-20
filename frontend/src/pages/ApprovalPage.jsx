@@ -175,16 +175,26 @@ const ApprovalPage = () => {
         if (!doc || !currentUser || !doc.steps) return false;
         
         // 현재 로그인한 사람의 ID (사용자 요청에 따라 staff_id 사용)
-        const myStaffId = currentUser?.staff_id || currentUser?.id;
+        const myStaffId = String(currentUser?.staff_id || currentUser?.id || "");
 
         // 결재선 중 아직 결재 안 한(PENDING) 사람들을 순서대로 찾음
         const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
         
         // PENDING인 사람 중 '첫 번째' 사람이 바로 '지금 결재할 차례'인 사람임
         const currentApproverToSign = pendingApprovers.length > 0 ? pendingApprovers[0] : null;
+
+        if (!currentApproverToSign) return false;
+
+        // 타입 불일치 방지를 위해 모두 String으로 변환하여 비교
+        const approverId = String(currentApproverToSign.approver_id || "");
+        const stepStaffId = String(currentApproverToSign.staff_id || "");
+
+        const result = (approverId === myStaffId || stepStaffId === myStaffId);
         
-        // '지금 결재할 차례인 사람'이 '나'일 때만 승인/반려 버튼을 보여줌
-        return currentApproverToSign && (Number(currentApproverToSign.approver_id) === Number(myStaffId) || Number(currentApproverToSign.staff_id) === Number(myStaffId));
+        // 디버깅용 로그 (나중에 제거 가능)
+        if (result) console.log("결재 권한 확인 성공:", { myStaffId, approverId, stepStaffId });
+        
+        return result;
     };
 
     const handleSaveLines = async (type) => {
@@ -513,8 +523,8 @@ const ApprovalPage = () => {
 
 
             {showDocDetail && selectedDoc && createPortal(
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto approval-modal-overlay">
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl shadow-2xl animation-fade-in my-auto overflow-hidden print-safe-area">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 approval-modal-overlay">
+                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl h-full max-h-[90vh] shadow-2xl animation-fade-in my-auto flex flex-col overflow-hidden print-safe-area">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -734,7 +744,7 @@ const ApprovalPage = () => {
 
                         {/* Processing Section (Only for Approvers if it's their turn) */}
                         {canApprove(selectedDoc) && (
-                            <div className="p-6 border-t border-gray-700 bg-gray-900/80 backdrop-blur sticky bottom-0 z-20">
+                            <div className="p-6 border-t border-gray-600 bg-gray-900 sticky bottom-0 z-[100] shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
                                 <div className="max-w-4xl mx-auto space-y-4">
                                     <div className="flex flex-col gap-2">
                                         <label className="text-sm font-medium text-gray-400">결재 의견 / 반려 사유 (필요 시)</label>
