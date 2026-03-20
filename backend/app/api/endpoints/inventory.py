@@ -60,24 +60,36 @@ async def read_stocks(
             .where(ProductionPlan.id.is_(None))
         
         # 1-b. Active Plans linked to SO
-        # Deduplicate by plan_id to avoid double-counting processes
+        # Deduplicate by plan_id, only include PENDING/IN_PROGRESS (Positive Filtering)
+        from app.models.production import ProductionStatus
+        active_plan_statuses = [
+            ProductionStatus.PENDING, 
+            ProductionStatus.IN_PROGRESS
+        ]
+        
         plan_so_subq = select(
             ProductionPlanItem.plan_id,
             func.max(ProductionPlanItem.quantity).label("qty")
         ).join(ProductionPlan)\
          .where(ProductionPlanItem.product_id == pid)\
          .where(ProductionPlan.order_id.is_not(None))\
-         .where(ProductionPlanItem.status.notin_(['COMPLETED', 'CANCELLED']))\
+         .where(ProductionPlanItem.status.in_(active_plan_statuses))\
          .group_by(ProductionPlanItem.plan_id).subquery()
         
         plan_so_query = select(func.sum(plan_so_subq.c.qty))
 
         # 2. Producing SP = (Pending SP without Plan) + (Active Plans linked to SP)
         # 2-a. SP without Plan
+        from app.models.inventory import StockProductionStatus
+        active_sp_statuses = [
+            StockProductionStatus.PENDING,
+            StockProductionStatus.IN_PROGRESS
+        ]
+        
         sp_no_plan_query = select(func.sum(StockProduction.quantity))\
             .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
             .where(StockProduction.product_id == pid)\
-            .where(StockProduction.status.notin_(['COMPLETED', 'CANCELLED']))\
+            .where(StockProduction.status.in_(active_sp_statuses))\
             .where(ProductionPlan.id.is_(None))
             
         # 2-b. Active Plans linked to SP
@@ -87,7 +99,7 @@ async def read_stocks(
         ).join(ProductionPlan)\
          .where(ProductionPlanItem.product_id == pid)\
          .where(ProductionPlan.stock_production_id.is_not(None))\
-         .where(ProductionPlanItem.status.notin_(['COMPLETED', 'CANCELLED']))\
+         .where(ProductionPlanItem.status.in_(active_plan_statuses))\
          .group_by(ProductionPlanItem.plan_id).subquery()
          
         plan_sp_query = select(func.sum(plan_sp_subq.c.qty))
@@ -449,7 +461,7 @@ async def recalculate_inventory(db: AsyncSession = Depends(get_db)):
                 if bom.child_product_id in stock_map:
                     stock_map[bom.child_product_id]["current"] -= int(bom.required_quantity * qty)
         
-        elif plan.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
+        elif plan.status in [ProductionStatus.PENDING, ProductionStatus.IN_PROGRESS]:
             # 생산 중 (+)
             if product_id in stock_map:
                 stock_map[product_id]["producing"] += qty
