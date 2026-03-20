@@ -44,34 +44,71 @@ async def read_stocks(
     result = await db.execute(query)
     stocks = result.scalars().all()
     
-    # Calculate production breakdown for each stock
+    # Calculate production breakdown for each stock using refined logic
+    from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
+    
     for stock in stocks:
-        # 1. Producing SO (Sales Order driven)
-        # We need to sum the quantity per UNIQUE ProductionPlanItem group (plan_id)
-        # to avoid double-counting multiple processes for the same production.
+        pid = stock.product_id
         
-        subq = select(
+        # 1. Producing SO = (Confirmed SO without Plan) + (Active Plans linked to SO)
+        # 1-a. Confirmed SO without Plan
+        so_no_plan_query = select(func.sum(SalesOrderItem.quantity))\
+            .join(SalesOrder)\
+            .outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
+            .where(SalesOrderItem.product_id == pid)\
+            .where(SalesOrder.status == OrderStatus.CONFIRMED)\
+            .where(ProductionPlan.id.is_(None))
+        
+        # 1-b. Active Plans linked to SO
+        # Deduplicate by plan_id to avoid double-counting processes
+        plan_so_subq = select(
             ProductionPlanItem.plan_id,
             func.max(ProductionPlanItem.quantity).label("qty")
         ).join(ProductionPlan)\
-         .where(ProductionPlanItem.product_id == stock.product_id)\
+         .where(ProductionPlanItem.product_id == pid)\
          .where(ProductionPlan.order_id.is_not(None))\
-         .where(ProductionPlanItem.status != 'COMPLETED')\
+         .where(ProductionPlanItem.status.notin_(['COMPLETED', 'CANCELLED']))\
          .group_by(ProductionPlanItem.plan_id).subquery()
         
-        so_query = select(func.sum(subq.c.qty))
-        
-        # 2. Producing SP (Stock Production driven)
-        sp_query = select(func.sum(StockProduction.quantity))\
-            .where(StockProduction.product_id == stock.product_id)\
-            .where(StockProduction.status != 'COMPLETED')
+        plan_so_query = select(func.sum(plan_so_subq.c.qty))
+
+        # 2. Producing SP = (Pending SP without Plan) + (Active Plans linked to SP)
+        # 2-a. SP without Plan
+        sp_no_plan_query = select(func.sum(StockProduction.quantity))\
+            .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
+            .where(StockProduction.product_id == pid)\
+            .where(StockProduction.status.notin_(['COMPLETED', 'CANCELLED']))\
+            .where(ProductionPlan.id.is_(None))
             
-        res_so = await db.execute(so_query)
-        res_sp = await db.execute(sp_query)
+        # 2-b. Active Plans linked to SP
+        plan_sp_subq = select(
+            ProductionPlanItem.plan_id,
+            func.max(ProductionPlanItem.quantity).label("qty")
+        ).join(ProductionPlan)\
+         .where(ProductionPlanItem.product_id == pid)\
+         .where(ProductionPlan.stock_production_id.is_not(None))\
+         .where(ProductionPlanItem.status.notin_(['COMPLETED', 'CANCELLED']))\
+         .group_by(ProductionPlanItem.plan_id).subquery()
+         
+        plan_sp_query = select(func.sum(plan_sp_subq.c.qty))
+
+        # Execute all
+        res_so_no_plan = await db.execute(so_no_plan_query)
+        res_so_plan = await db.execute(plan_so_query)
+        res_sp_no_plan = await db.execute(sp_no_plan_query)
+        res_sp_plan = await db.execute(plan_sp_query)
         
-        stock.producing_so = res_so.scalar() or 0
-        stock.producing_sp = res_sp.scalar() or 0
+        qty_so_no_plan = res_so_no_plan.scalar() or 0
+        qty_so_plan = res_so_plan.scalar() or 0
+        qty_sp_no_plan = res_sp_no_plan.scalar() or 0
+        qty_sp_plan = res_sp_plan.scalar() or 0
+        
+        stock.producing_so = qty_so_no_plan + qty_so_plan
+        stock.producing_sp = qty_sp_no_plan + qty_sp_plan
         stock.producing_total = stock.producing_so + stock.producing_sp
+        
+        # Sync with in_production_quantity field for consistency
+        stock.in_production_quantity = stock.producing_total
         
     return stocks
 

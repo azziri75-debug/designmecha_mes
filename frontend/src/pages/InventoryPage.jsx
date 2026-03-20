@@ -319,19 +319,26 @@ const InventoryPage = () => {
                                                     {stock.location || '기본창고'}
                                                 </Badge>
                                             </td>
-                                            <td className="px-6 py-4 text-right text-lg font-bold text-white">
-                                                {stock.current_quantity.toLocaleString()}
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="text-lg font-bold text-white">
+                                                    {stock.current_quantity.toLocaleString()}
+                                                </div>
+                                                <div className="text-[10px] text-gray-500">물리적 실재고</div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <div className={cn(
-                                                    "font-semibold",
-                                                    stock.producing_total > 0 ? "text-yellow-500" : "text-gray-600"
-                                                )}>
-                                                    {stock.producing_total.toLocaleString()}
-                                                </div>
-                                                <div className="text-[10px] text-gray-500">
-                                                    (수주: {stock.producing_so || 0}, 재고: {stock.producing_sp || 0})
-                                                </div>
+                                                {stock.producing_total > 0 ? (
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-bold text-sm px-3">
+                                                            + {stock.producing_total.toLocaleString()}
+                                                        </Badge>
+                                                        <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                                                            <span className="w-1 h-1 rounded-full bg-blue-500"></span>
+                                                            수주: {stock.producing_so || 0} / 재고: {stock.producing_sp || 0}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-gray-600 font-medium">-</div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-gray-500 text-xs">
                                                 {new Date(stock.updated_at).toLocaleDateString()}
