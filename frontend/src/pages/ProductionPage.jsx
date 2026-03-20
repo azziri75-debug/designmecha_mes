@@ -871,7 +871,7 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
     );
 };
 
-const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefresh, onOpenProcessFiles, handleDeleteItemAttachment }) => {
+const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefresh, onOpenProcessFiles }) => {
     const [open, setOpen] = useState(false);
 
     return (
@@ -1027,51 +1027,14 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                                             size="small"
                                             color="primary"
                                             onClick={() => {
-                                                const onDelete = (idx) => {
-                                                    const targetFile = allFiles[idx];
-                                                    if (targetFile.isExternal) {
-                                                        alert("외부(발주/외주) 문서에 첨부된 파일은 해당 문서에서만 삭제 가능합니다.");
-                                                        return;
-                                                    }
-                                                    const targetIdxInLocal = localFiles.findIndex(f => f.url === targetFile.url && f.name === targetFile.name);
-                                                    if (targetIdxInLocal !== -1) {
-                                                        handleDeleteItemAttachment(item, targetIdxInLocal);
-                                                    }
-                                                };
                                                 if (onOpenProcessFiles) {
-                                                    onOpenProcessFiles(allFiles, `${item.process_name} 첨부 파일`, onDelete);
+                                                    onOpenProcessFiles(allFiles, `${item.process_name} 첨부 파일`);
                                                 }
                                             }}
                                         >
                                             <FileText className="w-4 h-4" />
                                         </IconButton>
                                     )}
-                                    <input
-                                        type="file"
-                                        id={`file-item-${item.id}`}
-                                        style={{ display: 'none' }}
-                                        onChange={async (e) => {
-                                            const file = e.target.files[0];
-                                            if (!file) return;
-                                            const formData = new FormData();
-                                            formData.append('file', file);
-                                            try {
-                                                const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-                                                const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
-                                                const updatedLocalFiles = [...localFiles, newFile];
-                                                await api.patch(`/production/plan-items/${item.id}`, { attachment_file: updatedLocalFiles });
-                                                if (onRefresh) onRefresh();
-                                            } catch (err) {
-                                                console.error("Upload failed", err);
-                                                alert("파일 업로드 실패");
-                                            } finally {
-                                                e.target.value = null;
-                                            }
-                                        }}
-                                    />
-                                    <IconButton size="small" onClick={() => document.getElementById(`file-item-${item.id}`).click()}>
-                                        <AddIcon sx={{ fontSize: 18 }} />
-                                    </IconButton>
                                 </>
                             );
                         })()}
@@ -1398,7 +1361,6 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                                                     onShowDefects={onShowDefects}
                                                     onRefresh={onRefresh}
                                                     onOpenProcessFiles={onOpenProcessFiles}
-                                                    handleDeleteItemAttachment={handleDeleteItemAttachment}
                                                 />
                                             ))}
                                         </TableBody>
