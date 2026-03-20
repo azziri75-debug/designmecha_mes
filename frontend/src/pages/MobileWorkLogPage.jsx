@@ -1313,19 +1313,102 @@ const MobileWorkLogPage = () => {
                         )}
                         {selectedDocType === 'SUPPLIES' && (
                             <Stack spacing={2}>
-                                <TextField
-                                    label="품목 및 수량"
-                                    multiline
-                                    rows={4}
-                                    fullWidth
-                                    size="small"
-                                    placeholder="A4용지 1박스 등"
-                                    value={Array.isArray(docFormData.items)
-                                        ? docFormData.items.map(i => typeof i === 'object' ? `${i.product_name || '-'} (${i.quantity || 0}EA)${i.remarks ? ` [${i.remarks}]` : ''}` : String(i)).join('\n')
-                                        : (docFormData.items || '')}
-                                    onChange={e => setDocFormData({ ...docFormData, items: e.target.value })}
-                                />
-                                <TextField label="비고" fullWidth size="small" value={docFormData.remarks || ''} onChange={e => setDocFormData({ ...docFormData, remarks: e.target.value })} />
+                                {(() => {
+                                    const items = Array.isArray(docFormData.items) ? docFormData.items : [{ product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, remarks: '' }];
+                                    
+                                    const updateItems = (newItems) => {
+                                        setDocFormData({ ...docFormData, items: newItems });
+                                    };
+
+                                    return (
+                                        <>
+                                            {items.map((item, idx) => (
+                                                <Paper key={idx} variant="outlined" sx={{ p: 1.5, borderRadius: 2, position: 'relative', bgcolor: '#fff' }}>
+                                                    <Stack spacing={1.5}>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <Typography variant="caption" fontWeight="bold" color="primary">품목 {idx + 1}</Typography>
+                                                            {items.length > 1 && (
+                                                                <IconButton size="small" color="error" onClick={() => updateItems(items.filter((_, i) => i !== idx))}>
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            )}
+                                                        </Box>
+                                                        <TextField 
+                                                            label="품명 (용도)" fullWidth size="small" 
+                                                            value={item.product_name || ''} 
+                                                            onChange={e => {
+                                                                const next = [...items];
+                                                                next[idx].product_name = e.target.value;
+                                                                updateItems(next);
+                                                            }} 
+                                                        />
+                                                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+                                                            <TextField 
+                                                                label="제조사" fullWidth size="small" 
+                                                                value={item.manufacturer || ''} 
+                                                                onChange={e => {
+                                                                    const next = [...items];
+                                                                    next[idx].manufacturer = e.target.value;
+                                                                    updateItems(next);
+                                                                }} 
+                                                            />
+                                                            <TextField 
+                                                                label="규격" fullWidth size="small" 
+                                                                value={item.spec || ''} 
+                                                                onChange={e => {
+                                                                    const next = [...items];
+                                                                    next[idx].spec = e.target.value;
+                                                                    updateItems(next);
+                                                                }} 
+                                                            />
+                                                            <TextField 
+                                                                label="단위" fullWidth size="small" 
+                                                                value={item.unit || 'EA'} 
+                                                                onChange={e => {
+                                                                    const next = [...items];
+                                                                    next[idx].unit = e.target.value;
+                                                                    updateItems(next);
+                                                                }} 
+                                                            />
+                                                            <TextField 
+                                                                label="수량" fullWidth size="small" type="number"
+                                                                value={item.quantity || 1} 
+                                                                onChange={e => {
+                                                                    const next = [...items];
+                                                                    next[idx].quantity = e.target.value;
+                                                                    updateItems(next);
+                                                                }} 
+                                                            />
+                                                        </Box>
+                                                        <TextField 
+                                                            label="비고" fullWidth size="small" 
+                                                            value={item.remarks || ''} 
+                                                            onChange={e => {
+                                                                const next = [...items];
+                                                                next[idx].remarks = e.target.value;
+                                                                updateItems(next);
+                                                            }} 
+                                                        />
+                                                    </Stack>
+                                                </Paper>
+                                            ))}
+                                            <Button 
+                                                variant="outlined" 
+                                                startIcon={<AddIcon />} 
+                                                onClick={() => updateItems([...items, { product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, remarks: '' }])}
+                                                sx={{ mt: 1, borderRadius: 2 }}
+                                            >
+                                                품목 추가
+                                            </Button>
+                                            <TextField 
+                                                label="전체 특기사항" multiline rows={2} fullWidth size="small" 
+                                                value={docFormData.special_notes || ''} 
+                                                onChange={e => setDocFormData({ ...docFormData, special_notes: e.target.value })} 
+                                                sx={{ mt: 2 }}
+                                            />
+                                        </>
+                                    );
+                                })()}
                             </Stack>
                         )}
                         {selectedDocType === 'OVERTIME' && (
@@ -1392,7 +1475,17 @@ const MobileWorkLogPage = () => {
                                                             {items.map((item, idx) => (
                                                                 <Typography key={idx} variant="caption" display="block" sx={{ mb: 0.5, borderLeft: '2px solid #e0e0e0', pl: 1, color: 'text.secondary' }}>
                                                                     {typeof item === 'object'
-                                                                        ? `${item.product_name || '-'} (${item.quantity || 0}EA)${item.remarks ? ` - ${item.remarks}` : ''}`
+                                                                        ? (
+                                                                            <>
+                                                                                <Box component="span" sx={{ fontWeight: 'bold', color: 'text.primary' }}>{item.product_name || '-'}</Box>
+                                                                                <Box component="span" sx={{ ml: 0.5 }}>
+                                                                                    {item.manufacturer && `[${item.manufacturer}] `}
+                                                                                    {item.spec && `${item.spec} `}
+                                                                                    {item.quantity && `(${item.quantity}${item.unit || 'EA'})`}
+                                                                                    {item.remarks && ` - ${item.remarks}`}
+                                                                                </Box>
+                                                                            </>
+                                                                        )
                                                                         : String(item)
                                                                     }
                                                                 </Typography>

@@ -63,38 +63,110 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                 </TableBody>
             </Table>
 
-            <Table size="small" sx={{ mb: 1, borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center' } }}>
-                <thead>
-                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                        <th style={{ width: '40px' }}>순</th>
-                        <th>품 명 (용 도)</th>
-                        <th style={{ width: '15%' }}>제조사</th>
-                        <th style={{ width: '15%' }}>규격</th>
-                        <th style={{ width: '8%' }}>단위</th>
-                        <th style={{ width: '8%' }}>수량</th>
-                        <th>비고(청구자)</th>
-                        {!isReadOnly && <th className="idf-no-print" style={{ width: '40px' }}></th>}
-                    </TableRow>
-                </thead>
-                <TableBody>
-                    {items.map((item, idx) => (
-                        <TableRow key={idx}>
-                            <td>{idx + 1}</td>
-                            <td><input value={item.product_name} onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                            <td><input value={item.manufacturer || ''} onChange={(e) => handleItemChange(idx, 'manufacturer', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                            <td><input value={item.spec || ''} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                            <td><input value={item.unit || 'EA'} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                            <td><input type="number" value={item.quantity} onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                            <td><input value={item.remarks || ''} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                            {!isReadOnly && (
-                                <td className="idf-no-print">
-                                    <IconButton size="small" color="error" onClick={() => removeItem(idx)}><Trash2 size={14} /></IconButton>
-                                </td>
-                            )}
+            {/* Items Section - Responsive (Table for Desktop, Cards for Mobile) */}
+            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <Table size="small" sx={{ mb: 1, borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center' } }}>
+                    <thead>
+                        <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                            <th style={{ width: '40px' }}>순</th>
+                            <th>품 명 (용 도)</th>
+                            <th style={{ width: '15%' }}>제조사</th>
+                            <th style={{ width: '15%' }}>규격</th>
+                            <th style={{ width: '8%' }}>단위</th>
+                            <th style={{ width: '8%' }}>수량</th>
+                            <th>비고(청구자)</th>
+                            {!isReadOnly && <th className="idf-no-print" style={{ width: '40px' }}></th>}
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </thead>
+                    <TableBody>
+                        {items.map((item, idx) => (
+                            <TableRow key={idx}>
+                                <td>{idx + 1}</td>
+                                <td><input value={item.product_name} onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                <td><input value={item.manufacturer || ''} onChange={(e) => handleItemChange(idx, 'manufacturer', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                <td><input value={item.spec || ''} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                <td><input value={item.unit || 'EA'} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                <td><input type="number" value={item.quantity} onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                <td><input value={item.remarks || ''} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
+                                {!isReadOnly && (
+                                    <td className="idf-no-print">
+                                        <IconButton size="small" color="error" onClick={() => removeItem(idx)}><Trash2 size={14} /></IconButton>
+                                    </td>
+                                )}
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </Box>
+
+            {/* Mobile Card List (Visible only on xs) */}
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 2, mb: 2 }}>
+                {items.map((item, idx) => (
+                    <Box key={idx} sx={{ p: 2, border: '1px solid #ddd', borderRadius: '8px', position: 'relative', bgcolor: '#f9f9f9' }}>
+                        <Typography sx={{ fontSize: '12px', fontWeight: 'bold', mb: 1, color: '#666' }}>항목 {idx + 1}</Typography>
+                        {!isReadOnly && (
+                            <IconButton 
+                                size="small" 
+                                color="error" 
+                                onClick={() => removeItem(idx)}
+                                sx={{ position: 'absolute', top: 8, right: 8 }}
+                            >
+                                <Trash2 size={16} />
+                            </IconButton>
+                        )}
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                            <Box sx={{ gridColumn: 'span 2' }}>
+                                <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>품명 (용도)</Typography>
+                                <TextField 
+                                    fullWidth size="small" variant="outlined" value={item.product_name} 
+                                    onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)} 
+                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
+                                />
+                            </Box>
+                            <Box>
+                                <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>제조사</Typography>
+                                <TextField 
+                                    fullWidth size="small" variant="outlined" value={item.manufacturer || ''} 
+                                    onChange={(e) => handleItemChange(idx, 'manufacturer', e.target.value)} 
+                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
+                                />
+                            </Box>
+                            <Box>
+                                <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>규격</Typography>
+                                <TextField 
+                                    fullWidth size="small" variant="outlined" value={item.spec || ''} 
+                                    onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} 
+                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
+                                />
+                            </Box>
+                            <Box>
+                                <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>단위</Typography>
+                                <TextField 
+                                    fullWidth size="small" variant="outlined" value={item.unit || 'EA'} 
+                                    onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} 
+                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
+                                />
+                            </Box>
+                            <Box>
+                                <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>수량</Typography>
+                                <TextField 
+                                    fullWidth size="small" variant="outlined" type="number" value={item.quantity} 
+                                    onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} 
+                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
+                                />
+                            </Box>
+                            <Box sx={{ gridColumn: 'span 2' }}>
+                                <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>비고 (청구자)</Typography>
+                                <TextField 
+                                    fullWidth size="small" variant="outlined" value={item.remarks || ''} 
+                                    onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} 
+                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
+                                />
+                            </Box>
+                        </Box>
+                    </Box>
+                ))}
+            </Box>
             
             {!isReadOnly && (
                 <Box className="idf-no-print" sx={{ mb: 2 }}>
