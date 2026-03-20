@@ -682,7 +682,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 </Box>
 
             </DialogContent>
-            <DialogActions>
+            <DialogActions sx={{ position: 'sticky', bottom: 0, bgcolor: 'background.paper', zIndex: 10, borderTop: '1px solid #eee', p: 2 }}>
                 <Button onClick={onClose}>취소</Button>
                 <Button onClick={() => window.print()} color="info" startIcon={<Printer />}>인쇄</Button>
                 {canApprove(approvalDoc) && (

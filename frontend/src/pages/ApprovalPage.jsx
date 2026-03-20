@@ -560,7 +560,7 @@ const ApprovalPage = () => {
                             </div>
                         </div>
 
-                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto max-h-[80vh]", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
+                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto flex-1", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
                             {/* Header Section (Stamp/Signature images) - Hidden for Purchase Order & Expense Report as it's built into the template */}
                             {!['PURCHASE_ORDER', 'EXPENSE_REPORT'].includes(selectedDoc.doc_type) && (
                                 <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-700 pb-8">
@@ -730,49 +730,49 @@ const ApprovalPage = () => {
                                     </div>
                                 </div>
                             )}
+                        </div>
 
-                            {/* Processing Section (Only for Approvers if it's their turn) */}
-                            {canApprove(selectedDoc) && (
-                                <div className="pt-8 border-t border-gray-700">
-                                    <div className="space-y-4">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-sm font-medium text-gray-400">결재 의견 / 반려 사유 (필요 시)</label>
-                                            <textarea
-                                                id="comment"
-                                                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 min-h-[80px]"
-                                                placeholder="반려 시 사유를 명확히 적어주세요."
-                                            />
-                                        </div>
-                                        <div className="flex gap-4">
-                                            <button
-                                                onClick={() => {
-                                                    const comment = document.getElementById('comment').value;
-                                                    if (!comment) {
-                                                        alert('반려 사유를 입력해주세요.');
-                                                        return;
-                                                    }
-                                                    handleProcess(selectedDoc.id, 'REJECTED', comment);
-                                                }}
-                                                className="flex-1 px-4 py-3 bg-red-900/40 hover:bg-red-900/60 text-red-400 rounded-xl transition-all font-bold border border-red-800/50 flex items-center justify-center gap-2"
-                                            >
-                                                <X className="w-5 h-5" />
-                                                반려하기
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const comment = document.getElementById('comment').value;
-                                                    handleProcess(selectedDoc.id, 'APPROVED', comment);
-                                                }}
-                                                className="flex-[2] px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-lg shadow-emerald-900/20 font-bold flex items-center justify-center gap-2"
-                                            >
-                                                <CheckCircle2 className="w-5 h-5" />
-                                                승인/서명하기
-                                            </button>
-                                        </div>
+                        {/* Processing Section (Only for Approvers if it's their turn) */}
+                        {canApprove(selectedDoc) && (
+                            <div className="p-6 border-t border-gray-700 bg-gray-900/80 backdrop-blur sticky bottom-0 z-20">
+                                <div className="max-w-4xl mx-auto space-y-4">
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-sm font-medium text-gray-400">결재 의견 / 반려 사유 (필요 시)</label>
+                                        <textarea
+                                            id="comment"
+                                            className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 min-h-[60px]"
+                                            placeholder="반려 시 사유를 명확히 적어주세요."
+                                        />
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => {
+                                                const comment = document.getElementById('comment').value;
+                                                if (!comment) {
+                                                    alert('반려 사유를 입력해주세요.');
+                                                    return;
+                                                }
+                                                handleProcess(selectedDoc.id, 'REJECTED', comment);
+                                            }}
+                                            className="flex-1 px-4 py-3 bg-red-900/40 hover:bg-red-900/60 text-red-400 rounded-xl transition-all font-bold border border-red-800/50 flex items-center justify-center gap-2"
+                                        >
+                                            <X className="w-5 h-5" />
+                                            반려하기
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const comment = document.getElementById('comment').value;
+                                                handleProcess(selectedDoc.id, 'APPROVED', comment);
+                                            }}
+                                            className="flex-[2] px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-lg shadow-emerald-900/20 font-bold flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle2 className="w-5 h-5" />
+                                            승인/서명하기
+                                        </button>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>,
                 document.body

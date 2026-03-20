@@ -125,6 +125,32 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         }
     };
 
+    const canApprove = (doc) => {
+        if (!doc || !currentUser || !doc.steps) return false;
+        const myStaffId = currentUser?.staff_id || currentUser?.id;
+        const currentApproverToSign = doc.steps.find(step => step.status === 'PENDING');
+        return currentApproverToSign && (Number(currentApproverToSign.approver_id) === Number(myStaffId) || Number(currentApproverToSign.staff_id) === Number(myStaffId));
+    };
+
+    const handleProcessApproval = async (status) => {
+        if (!approvalDoc) return;
+        const comment = window.prompt(status === 'APPROVED' ? "승인 하시겠습니까? (의견 입력 가능)" : "반려 사유를 입력하세요.");
+        if (status === 'REJECTED' && !comment) return alert("반려 사유를 입력해야 합니다.");
+        
+        try {
+            await api.patch(`/approval/documents/${approvalDoc.id}/process`, {
+                status: status,
+                comment: comment || ''
+            });
+            alert(status === 'APPROVED' ? "승인되었습니다." : "반려되었습니다.");
+            fetchApprovalDoc();
+            if (onSuccess) onSuccess();
+        } catch (err) {
+            console.error("Process failed", err);
+            alert("처리 중 오류가 발생했습니다.");
+        }
+    };
+
     useEffect(() => {
         if (isOpen) {
             fetchPartners();
@@ -562,8 +588,14 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddItem} size="small">항목 추가</Button>
                 )}
             </DialogContent>
-            <DialogActions>
+            <DialogActions sx={{ position: 'sticky', bottom: 0, bgcolor: 'background.paper', zIndex: 10, borderTop: '1px solid #eee', p: 2 }}>
                 <Button onClick={onClose}>취소</Button>
+                {canApprove(approvalDoc) && (
+                    <>
+                        <Button onClick={() => handleProcessApproval('REJECTED')} color="error" variant="outlined">반려</Button>
+                        <Button onClick={() => handleProcessApproval('APPROVED')} color="success" variant="contained">승인</Button>
+                    </>
+                )}
                 <Button onClick={handleSubmit} variant="contained" color="primary">저장</Button>
             </DialogActions>
 
