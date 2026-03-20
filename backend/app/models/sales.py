@@ -9,7 +9,8 @@ class OrderStatus(str, enum.Enum):
     CONFIRMED = "CONFIRMED"   # 확정 (수주 승인)
     PRODUCTION_COMPLETED = "PRODUCTION_COMPLETED" # 생산 완료
     PARTIALLY_DELIVERED = "PARTIALLY_DELIVERED" # 부분 납품
-    DELIVERED = "DELIVERED" # 납품 완료 (전체)
+    DELIVERED = "DELIVERED" # 납품 완료 (전체) - Legacy
+    DELIVERY_COMPLETED = "DELIVERY_COMPLETED" # 납품 완료 (전체) - New/Frontend Sync
     CANCELLED = "CANCELLED"   # 취소
 
 class OrderItemStatus(str, enum.Enum):

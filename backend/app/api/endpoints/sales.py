@@ -894,7 +894,7 @@ async def create_delivery(
 
     # Update Order Status
     if all_completed:
-        db_order.status = OrderStatus.DELIVERED
+        db_order.status = OrderStatus.DELIVERY_COMPLETED
         db_order.actual_delivery_date = db_delivery.delivery_date
     else:
         db_order.status = OrderStatus.PARTIALLY_DELIVERED
@@ -1204,7 +1204,7 @@ async def update_delivery_history(
             delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
             
             if delivered_qty >= total_qty:
-                order.status = OrderStatus.DELIVERED
+                order.status = OrderStatus.DELIVERY_COMPLETED
                 order.actual_delivery_date = history.delivery_date
             elif delivered_qty > 0:
                 order.status = OrderStatus.PARTIALLY_DELIVERED
@@ -1277,7 +1277,7 @@ async def delete_delivery_history(
             total_qty = sum(it.quantity for it in order.items)
             delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
             if delivered_qty >= total_qty:
-                order.status = OrderStatus.DELIVERED
+                order.status = OrderStatus.DELIVERY_COMPLETED
             else:
                 order.status = OrderStatus.PARTIALLY_DELIVERED
 
