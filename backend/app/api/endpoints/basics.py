@@ -574,14 +574,45 @@ async def create_or_update_company(
 
 # --- Equipment Endpoints ---
 
+async def get_next_equipment_code(db: AsyncSession):
+    prefix = "DM-PE-"
+    result = await db.execute(
+        select(Equipment.code)
+        .where(Equipment.code.like(f"{prefix}%"))
+        .order_by(Equipment.code.desc())
+        .limit(1)
+    )
+    last_code = result.scalar()
+    if not last_code:
+        return f"{prefix}001"
+    try:
+        num_part = last_code.split("-")[-1]
+        next_num = int(num_part) + 1
+        return f"{prefix}{next_num:03d}"
+    except:
+        return f"{prefix}001"
+
+@router.get("/equipments/next-code")
+async def read_next_equipment_code(db: AsyncSession = Depends(get_db)):
+    code = await get_next_equipment_code(db)
+    return {"code": code}
+
 @router.get("/equipments/", response_model=List[EquipmentResponse])
 async def read_equipments(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Equipment).options(selectinload(Equipment.history)))
+    result = await db.execute(
+        select(Equipment)
+        .options(selectinload(Equipment.history))
+        .order_by(Equipment.code.asc())
+    )
     return result.scalars().all()
 
 @router.post("/equipments/", response_model=EquipmentResponse)
 async def create_equipment(eq_in: EquipmentCreate, db: AsyncSession = Depends(get_db)):
-    new_eq = Equipment(**eq_in.model_dump())
+    data = eq_in.model_dump()
+    if not data.get("code"):
+        data["code"] = await get_next_equipment_code(db)
+        
+    new_eq = Equipment(**data)
     db.add(new_eq)
     await db.commit()
     
@@ -685,31 +716,45 @@ async def create_or_update_form_template(tm_in: FormTemplateCreate, db: AsyncSes
 
 # --- Measuring Instrument Endpoints ---
 
-async def update_next_calibration_date(instrument_id: int, db: AsyncSession):
-    # Find latest CALIBRATION history
+async def get_next_instrument_code(db: AsyncSession):
+    prefix = "DM-ME-"
     result = await db.execute(
-        select(MeasurementHistory)
-        .where(MeasurementHistory.instrument_id == instrument_id, MeasurementHistory.history_type == 'CALIBRATION')
-        .order_by(MeasurementHistory.history_date.desc())
+        select(MeasuringInstrument.code)
+        .where(MeasuringInstrument.code.like(f"{prefix}%"))
+        .order_by(MeasuringInstrument.code.desc())
         .limit(1)
     )
-    latest_cal = result.scalars().first()
-    
-    inst_result = await db.execute(select(MeasuringInstrument).where(MeasuringInstrument.id == instrument_id))
-    inst = inst_result.scalars().first()
-    
-    if inst and latest_cal and inst.calibration_cycle_months:
-        inst.next_calibration_date = latest_cal.history_date + relativedelta(months=inst.calibration_cycle_months)
-        await db.commit()
+    last_code = result.scalar()
+    if not last_code:
+        return f"{prefix}001"
+    try:
+        num_part = last_code.split("-")[-1]
+        next_num = int(num_part) + 1
+        return f"{prefix}{next_num:03d}"
+    except:
+        return f"{prefix}001"
+
+@router.get("/instruments/next-code")
+async def read_next_instrument_code(db: AsyncSession = Depends(get_db)):
+    code = await get_next_instrument_code(db)
+    return {"code": code}
 
 @router.get("/instruments/", response_model=List[MeasuringInstrumentResponse])
 async def read_instruments(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(MeasuringInstrument).options(selectinload(MeasuringInstrument.history)))
+    result = await db.execute(
+        select(MeasuringInstrument)
+        .options(selectinload(MeasuringInstrument.history))
+        .order_by(MeasuringInstrument.code.asc())
+    )
     return result.scalars().all()
 
 @router.post("/instruments/", response_model=MeasuringInstrumentResponse)
 async def create_instrument(inst_in: MeasuringInstrumentCreate, db: AsyncSession = Depends(get_db)):
-    new_inst = MeasuringInstrument(**inst_in.model_dump())
+    data = inst_in.model_dump()
+    if not data.get("code"):
+        data["code"] = await get_next_instrument_code(db)
+        
+    new_inst = MeasuringInstrument(**data)
     db.add(new_inst)
     await db.commit()
     

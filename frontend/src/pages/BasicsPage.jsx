@@ -226,7 +226,7 @@ const BasicsPageContent = () => {
         }
     };
 
-    const openCreateModal = () => {
+    const openCreateModal = async () => {
         if (activeTab === 'partners') {
             setModalType('create');
             setFormData({ partner_type: ['CUSTOMER'] });
@@ -235,10 +235,26 @@ const BasicsPageContent = () => {
             setFormData({ is_active: true });
         } else if (activeTab === 'equipments') {
             setModalType('create_equipment');
-            setFormData({ is_active: true, status: 'IDLE' });
+            setFormData({ is_active: true, status: 'IDLE', code: '채번 중...' });
+            setShowModal(true);
+            try {
+                const res = await api.get('/basics/equipments/next-code');
+                setFormData(prev => ({ ...prev, code: res.data.code }));
+            } catch (error) {
+                console.error("Failed to fetch next equipment code", error);
+            }
+            return;
         } else if (activeTab === 'instruments') {
             setModalType('create_instrument');
-            setFormData({ is_active: true, calibration_cycle_months: 12 });
+            setFormData({ is_active: true, calibration_cycle_months: 12, code: '채번 중...' });
+            setShowModal(true);
+            try {
+                const res = await api.get('/basics/instruments/next-code');
+                setFormData(prev => ({ ...prev, code: res.data.code }));
+            } catch (error) {
+                console.error("Failed to fetch next instrument code", error);
+            }
+            return;
         }
         setShowModal(true);
     };
@@ -436,12 +452,7 @@ const BasicsPageContent = () => {
                 }
             } else if (activeTab === 'equipments') {
                 if (modalType === 'create_equipment') {
-                    // Auto-generate code if empty
-                    const finalData = { ...formData };
-                    if (!finalData.code) {
-                        finalData.code = `EQ-${new Date().getTime().toString().slice(-6)}`;
-                    }
-                    await api.post('/basics/equipments/', finalData);
+                    await api.post('/basics/equipments/', formData);
                 } else if (modalType === 'edit_equipment') {
                     await api.put(`/basics/equipments/${selectedEquipment.id}`, formData);
                 } else if (modalType === 'add_eq_history') {
@@ -451,11 +462,7 @@ const BasicsPageContent = () => {
                 }
             } else if (activeTab === 'instruments') {
                 if (modalType === 'create_instrument') {
-                    const finalData = { ...formData };
-                    if (!finalData.code) {
-                        finalData.code = `MI-${new Date().getTime().toString().slice(-6)}`;
-                    }
-                    await api.post('/basics/instruments/', finalData);
+                    await api.post('/basics/instruments/', formData);
                 } else if (modalType === 'edit_instrument') {
                     await api.put(`/basics/instruments/${selectedInstrument.id}`, formData);
                 } else if (modalType === 'add_inst_history') {
@@ -515,7 +522,7 @@ const BasicsPageContent = () => {
             (eq.code || '').toLowerCase().includes(q) ||
             (eq.specification || '').toLowerCase().includes(q)
         )
-        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        .sort((a, b) => (a.code || '').localeCompare(b.code || ''));
 
     const filteredInstruments = instruments
         .filter(inst => !q ||
@@ -523,7 +530,7 @@ const BasicsPageContent = () => {
             (inst.code || '').toLowerCase().includes(q) ||
             (inst.specification || '').toLowerCase().includes(q)
         )
-        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        .sort((a, b) => (a.code || '').localeCompare(b.code || ''));
 
     const getPartnerTypeLabel = (type) => {
         switch (type) {
@@ -1917,7 +1924,13 @@ const BasicsPageContent = () => {
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-gray-300">장비코드</label>
-                                                <input name="code" value={formData.code || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: MACH-01" />
+                                                <input
+                                                    name="code"
+                                                    value={formData.code || ''}
+                                                    readOnly
+                                                    className="w-full bg-gray-800 border border-gray-700 text-blue-400 rounded-lg px-3 py-2 outline-none font-mono cursor-not-allowed"
+                                                    placeholder="자동 생성됨"
+                                                />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
@@ -2000,7 +2013,13 @@ const BasicsPageContent = () => {
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-gray-300">관리코드</label>
-                                                <input name="code" value={formData.code || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="자동 생성 또는 직접 입력" />
+                                                <input
+                                                    name="code"
+                                                    value={formData.code || ''}
+                                                    readOnly
+                                                    className="w-full bg-gray-800 border border-gray-700 text-blue-400 rounded-lg px-3 py-2 outline-none font-mono cursor-not-allowed"
+                                                    placeholder="자동 생성됨"
+                                                />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
