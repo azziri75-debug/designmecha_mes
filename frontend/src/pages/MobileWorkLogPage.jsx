@@ -465,6 +465,9 @@ const MobileWorkLogPage = () => {
     };
 
     const filteredPlans = allPlans.filter(p => {
+        const isCompleted = p.status === 'COMPLETED';
+        if (isCompleted) return false;
+
         const orderNo = p.order?.order_no || p.stock_production?.production_no || '';
         const productName = p.items?.[0]?.product?.name || '';
         return orderNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -669,7 +672,7 @@ const MobileWorkLogPage = () => {
                                 </Typography>
                                 <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
                                     <List disablePadding>
-                                        {selectedPlan.items.map((item, idx) => (
+                                        {selectedPlan.items.filter(item => item.status !== 'COMPLETED').map((item, idx, arr) => (
                                             <React.Fragment key={item.id}>
                                                 <ListItemButton onClick={() => setSelectedItem(item)}>
                                                     <ListItemText
@@ -684,7 +687,7 @@ const MobileWorkLogPage = () => {
                                                         variant="outlined"
                                                     />
                                                 </ListItemButton>
-                                                {idx < selectedPlan.items.length - 1 && <Divider />}
+                                                {idx < arr.length - 1 && <Divider />}
                                             </React.Fragment>
                                         ))}
                                     </List>

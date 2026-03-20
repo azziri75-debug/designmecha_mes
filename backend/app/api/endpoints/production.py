@@ -58,6 +58,25 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
 
     db.add(plan_item)
     await db.flush()
+    
+    # --- Auto-Complete Check for Parent Plan ---
+    await check_and_complete_production_plan(db, plan_item.plan_id)
+
+async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
+    """
+    모든 공정이 완료되었는지 확인하고, 그렇다면 생산 계획을 완료 처리합니다.
+    """
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id)
+    )
+    plan = result.scalars().first()
+    if not plan or not plan.items:
+        return
+
+    all_completed = all(item.status == ProductionStatus.COMPLETED for item in plan.items)
+    if all_completed and plan.status != ProductionStatus.COMPLETED:
+        await update_production_plan_status(plan_id, ProductionStatus.COMPLETED, db)
 
 async def sync_plan_item_cost(db: AsyncSession, plan_item: ProductionPlanItem):
     """
@@ -823,24 +842,6 @@ async def export_production_plan_excel(
     )
     return result.scalars().first()
 
-async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
-    """
-    모든 공정이 완료되었는지 확인하고, 그렇다면 생산 계획을 완료 처리합니다.
-    """
-    from sqlalchemy.orm import selectinload
-    result = await db.execute(
-        select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id)
-    )
-    plan = result.scalars().first()
-    if not plan or not plan.items:
-        return
-
-    all_completed = all(item.status == ProductionStatus.COMPLETED for item in plan.items)
-    if all_completed and plan.status != ProductionStatus.COMPLETED:
-        # update_production_plan_status의 로직을 수행하기 위해 해당 함수를 직접 호출하거나
-        # 로직을 여기에 복제/호출합니다. 여기서는 안전하게 상태만 변경하고 side effect를 위해
-        # 필요한 최소한의 처리를 수행하거나, 아예 PATCH 엔드포인트 로직을 재사용합니다.
-        await update_production_plan_status(plan_id, ProductionStatus.COMPLETED, db)
 
 @router.delete("/plans/{plan_id}", status_code=200)
 async def delete_production_plan(
@@ -1023,6 +1024,11 @@ async def update_production_plan_status(
             affected_oo_ids = set()
             
             for item in plan.items:
+                # 0. Update Child Item status to COMPLETED if not already
+                if item.status != ProductionStatus.COMPLETED:
+                    item.status = ProductionStatus.COMPLETED
+                    db.add(item)
+
                 # 1. Update Purchase Items
                 for po_item in item.purchase_items:
                     # Set received quantity to full
