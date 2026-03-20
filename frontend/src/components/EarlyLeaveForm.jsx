@@ -69,17 +69,14 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                         <td colSpan={4}>
                             <FormControl fullWidth size="small" variant="outlined" sx={{ maxWidth: 200 }}>
                                 <Select
+                                    native
                                     value={data.leave_type || '조퇴'}
                                     onChange={(e) => handleChange('leave_type', e.target.value)}
                                     disabled={isReadOnly}
-                                    MenuProps={{ 
-                                        disableScrollLock: true, 
-                                        style: { zIndex: 9999 } // 모바일 터치 버그 방지 (Bug #1 대응)
-                                    }}
                                     sx={{ fontSize: '13px', bgcolor: 'white' }}
                                 >
-                                    <MenuItem value="조퇴">조퇴</MenuItem>
-                                    <MenuItem value="외출">외출</MenuItem>
+                                    <option value="조퇴">조퇴</option>
+                                    <option value="외출">외출</option>
                                 </Select>
                             </FormControl>
                         </td>

@@ -82,21 +82,17 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                         <td colSpan={4}>
                             <FormControl fullWidth size="small" variant="outlined" sx={{ maxWidth: 300 }}>
                                 <Select
+                                    native
                                     value={data.vacation_type || '연차'}
                                     onChange={(e) => handleChange('vacation_type', e.target.value)}
                                     disabled={isReadOnly}
-                                    displayEmpty
-                                    MenuProps={{ 
-                                        disableScrollLock: true, 
-                                        style: { zIndex: 9999 } // 모바일 터치/스크롤 버그 방지 강화 (Bug #2 대응)
-                                    }} 
                                     sx={{ fontSize: '13px', bgcolor: 'white' }}
                                 >
-                                    <MenuItem value="연차">연차</MenuItem>
-                                    <MenuItem value="반차">반차</MenuItem>
-                                    <MenuItem value="경조휴가">경조휴가</MenuItem>
-                                    <MenuItem value="병가">병가</MenuItem>
-                                    <MenuItem value="기타">기타</MenuItem>
+                                    <option value="연차">연차</option>
+                                    <option value="반차">반차</option>
+                                    <option value="경조휴가">경조휴가</option>
+                                    <option value="병가">병가</option>
+                                    <option value="기타">기타</option>
                                 </Select>
                             </FormControl>
                         </td>
