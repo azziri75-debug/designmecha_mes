@@ -41,88 +41,80 @@ async def read_stocks(
     # Bug 2 Fix: Exclude CONSUMABLE items from inventory list
     query = query.where(Product.item_type != 'CONSUMABLE')
 
-    result = await db.execute(query)
-    stocks = result.scalars().all()
-    
-    # Calculate production breakdown for each stock using refined logic
+    # Refactored: Efficient single query with subqueries to avoid N+1 and MissingGreenlet
     from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
+    from app.models.production import ProductionStatus
+
+    # 1. Subquery for Confirmed SO without Plan
+    so_no_plan_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
+        .join(SalesOrder)\
+        .outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
+        .where(SalesOrderItem.product_id == Stock.product_id)\
+        .where(SalesOrder.status == OrderStatus.CONFIRMED)\
+        .where(ProductionPlan.id.is_(None))\
+        .scalar_subquery()
+
+    # 2. Subquery for Active Plans linked to SO
+    plan_so_inner = select(
+        ProductionPlanItem.plan_id,
+        func.max(ProductionPlanItem.quantity).label("qty")
+    ).join(ProductionPlan)\
+     .where(ProductionPlanItem.product_id == Stock.product_id)\
+     .where(ProductionPlan.order_id.is_not(None))\
+     .where(ProductionPlanItem.status.in_([ProductionStatus.PENDING, ProductionStatus.IN_PROGRESS]))\
+     .group_by(ProductionPlanItem.plan_id).subquery()
     
-    for stock in stocks:
-        pid = stock.product_id
-        
-        # 1. Producing SO = (Confirmed SO without Plan) + (Active Plans linked to SO)
-        # 1-a. Confirmed SO without Plan
-        so_no_plan_query = select(func.sum(SalesOrderItem.quantity))\
-            .join(SalesOrder)\
-            .outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
-            .where(SalesOrderItem.product_id == pid)\
-            .where(SalesOrder.status == OrderStatus.CONFIRMED)\
-            .where(ProductionPlan.id.is_(None))
-        
-        # 1-b. Active Plans linked to SO
-        # Deduplicate by plan_id, only include PENDING/IN_PROGRESS (Positive Filtering)
-        from app.models.production import ProductionStatus
-        active_plan_statuses = [
-            ProductionStatus.PENDING, 
-            ProductionStatus.IN_PROGRESS
-        ]
-        
-        plan_so_subq = select(
-            ProductionPlanItem.plan_id,
-            func.max(ProductionPlanItem.quantity).label("qty")
-        ).join(ProductionPlan)\
-         .where(ProductionPlanItem.product_id == pid)\
-         .where(ProductionPlan.order_id.is_not(None))\
-         .where(ProductionPlanItem.status.in_(active_plan_statuses))\
-         .group_by(ProductionPlanItem.plan_id).subquery()
-        
-        plan_so_query = select(func.sum(plan_so_subq.c.qty))
+    plan_so_subq = select(func.coalesce(func.sum(plan_so_inner.c.qty), 0)).scalar_subquery()
 
-        # 2. Producing SP = (Pending SP without Plan) + (Active Plans linked to SP)
-        # 2-a. SP without Plan
-        from app.models.inventory import StockProductionStatus
-        active_sp_statuses = [
-            StockProductionStatus.PENDING,
-            StockProductionStatus.IN_PROGRESS
-        ]
-        
-        sp_no_plan_query = select(func.sum(StockProduction.quantity))\
-            .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
-            .where(StockProduction.product_id == pid)\
-            .where(StockProduction.status.in_(active_sp_statuses))\
-            .where(ProductionPlan.id.is_(None))
-            
-        # 2-b. Active Plans linked to SP
-        plan_sp_subq = select(
-            ProductionPlanItem.plan_id,
-            func.max(ProductionPlanItem.quantity).label("qty")
-        ).join(ProductionPlan)\
-         .where(ProductionPlanItem.product_id == pid)\
-         .where(ProductionPlan.stock_production_id.is_not(None))\
-         .where(ProductionPlanItem.status.in_(active_plan_statuses))\
-         .group_by(ProductionPlanItem.plan_id).subquery()
-         
-        plan_sp_query = select(func.sum(plan_sp_subq.c.qty))
+    # 3. Subquery for Pending SP without Plan
+    sp_no_plan_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
+        .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
+        .where(StockProduction.product_id == Stock.product_id)\
+        .where(StockProduction.status.in_([StockProductionStatus.PENDING, StockProductionStatus.IN_PROGRESS]))\
+        .where(ProductionPlan.id.is_(None))\
+        .scalar_subquery()
 
-        # Execute all
-        res_so_no_plan = await db.execute(so_no_plan_query)
-        res_so_plan = await db.execute(plan_so_query)
-        res_sp_no_plan = await db.execute(sp_no_plan_query)
-        res_sp_plan = await db.execute(plan_sp_query)
-        
-        qty_so_no_plan = res_so_no_plan.scalar() or 0
-        qty_so_plan = res_so_plan.scalar() or 0
-        qty_sp_no_plan = res_sp_no_plan.scalar() or 0
-        qty_sp_plan = res_sp_plan.scalar() or 0
-        
-        stock.producing_so = qty_so_no_plan + qty_so_plan
-        stock.producing_sp = qty_sp_no_plan + qty_sp_plan
+    # 4. Subquery for Active Plans linked to SP
+    plan_sp_inner = select(
+        ProductionPlanItem.plan_id,
+        func.max(ProductionPlanItem.quantity).label("qty")
+    ).join(ProductionPlan)\
+     .where(ProductionPlanItem.product_id == Stock.product_id)\
+     .where(ProductionPlan.stock_production_id.is_not(None))\
+     .where(ProductionPlanItem.status.in_([ProductionStatus.PENDING, ProductionStatus.IN_PROGRESS]))\
+     .group_by(ProductionPlanItem.plan_id).subquery()
+    
+    plan_sp_subq = select(func.coalesce(func.sum(plan_sp_inner.c.qty), 0)).scalar_subquery()
+
+    # Main query with all calculated fields joined
+    query = select(
+        Stock,
+        (so_no_plan_subq + plan_so_subq).label("producing_so"),
+        (sp_no_plan_subq + plan_sp_subq).label("producing_sp")
+    ).join(Product).options(
+        selectinload(Stock.product)
+    )
+
+    if item_type:
+        query = query.where(Product.item_type == item_type)
+    if product_name:
+        query = query.where(Product.name.ilike(f"%{product_name}%"))
+    if partner_id:
+        query = query.where(Product.partner_id == partner_id)
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    final_stocks = []
+    for row in rows:
+        stock = row[0]
+        stock.producing_so = row[1]
+        stock.producing_sp = row[2]
         stock.producing_total = stock.producing_so + stock.producing_sp
-        
-        # Sync with in_production_quantity field for consistency
         stock.in_production_quantity = stock.producing_total
+        final_stocks.append(stock)
         
-    return stocks
+    return final_stocks
 
 @router.get("/stocks/{product_id}", response_model=StockResponse)
 async def read_stock_by_product(product_id: int, db: AsyncSession = Depends(get_db)):
