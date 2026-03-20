@@ -229,3 +229,16 @@ class MeasuringInstrumentResponse(MeasuringInstrumentBase):
     class Config:
         from_attributes = True
 
+# Ignored Duplicate Schemas
+class IgnoredDuplicateCreate(BaseModel):
+    partner_id_1: int
+    partner_id_2: int
+
+class IgnoredDuplicateResponse(BaseModel):
+    id: int
+    partner_id_1: int
+    partner_id_2: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

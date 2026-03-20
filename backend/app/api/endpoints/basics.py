@@ -13,7 +13,7 @@ from fastapi import UploadFile, File
 
 from app.api import deps
 get_db = deps.get_db
-from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory, EmployeeTimeRecord
+from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory, EmployeeTimeRecord, IgnoredPartnerDuplicate
 from app.schemas.basics import (
     PartnerCreate, PartnerResponse, PartnerUpdate,
     StaffCreate, StaffResponse, StaffUpdate,
@@ -22,7 +22,8 @@ from app.schemas.basics import (
     EquipmentCreate, EquipmentResponse, EquipmentUpdate, EquipmentHistoryCreate, EquipmentHistoryResponse,
     FormTemplateCreate, FormTemplateResponse, FormTemplateUpdate,
     MeasuringInstrumentCreate, MeasuringInstrumentResponse, MeasuringInstrumentUpdate,
-    MeasurementHistoryCreate, MeasurementHistoryResponse
+    MeasurementHistoryCreate, MeasurementHistoryResponse,
+    IgnoredDuplicateCreate, IgnoredDuplicateResponse
 )
 from dateutil.relativedelta import relativedelta
 
@@ -325,6 +326,15 @@ async def merge_partners(
 async def get_partner_duplicates(
     db: AsyncSession = Depends(get_db)
 ):
+    # Fetch ignored duplicates
+    ignored_result = await db.execute(select(IgnoredPartnerDuplicate))
+    ignored_pairs = ignored_result.scalars().all()
+    ignored_set = set()
+    for ip in ignored_pairs:
+        # Store as sorted tuple to match consistently
+        pair = tuple(sorted([ip.partner_id_1, ip.partner_id_2]))
+        ignored_set.add(pair)
+
     # Fetch all partners
     result = await db.execute(select(Partner))
     partners = result.scalars().all()
@@ -332,9 +342,6 @@ async def get_partner_duplicates(
     # Simple deduplication: group by name (fuzzy)
     groups = []
     processed_ids = set()
-    
-    # Pre-calculate names for difflib
-    id_to_partner = {p.id: p for p in partners}
     
     for p in partners:
         if p.id in processed_ids:
@@ -350,12 +357,20 @@ async def get_partner_duplicates(
             
         other_names = [op.name for op in others]
         
-        # cutoff=0.85 for strong similarity (e.g. "A사" and "A사(주)")
+        # cutoff=0.8 for strong similarity
         matches = difflib.get_close_matches(p.name, other_names, n=10, cutoff=0.8)
         
         for m in matches:
             matched_p = next((op for op in others if op.name == m), None)
-            if matched_p and matched_p.id not in processed_ids:
+            if not matched_p:
+                continue
+                
+            # Check if this pair is ignored
+            pair = tuple(sorted([p.id, matched_p.id]))
+            if pair in ignored_set:
+                continue
+
+            if matched_p.id not in processed_ids:
                 group.append(matched_p)
                 processed_ids.add(matched_p.id)
         
@@ -366,6 +381,31 @@ async def get_partner_duplicates(
             ])
             
     return groups
+
+@router.post("/partners/duplicates/ignore")
+async def ignore_partner_duplicate(
+    req: IgnoredDuplicateCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    # Ensure id_1 < id_2 for consistency
+    id1, id2 = sorted([req.partner_id_1, req.partner_id_2])
+    
+    # Check if already exists
+    stmt = select(IgnoredPartnerDuplicate).where(
+        IgnoredPartnerDuplicate.partner_id_1 == id1,
+        IgnoredPartnerDuplicate.partner_id_2 == id2
+    )
+    result = await db.execute(stmt)
+    if result.scalars().first():
+        return {"message": "Already ignored"}
+        
+    db_obj = IgnoredPartnerDuplicate(
+        partner_id_1=id1,
+        partner_id_2=id2
+    )
+    db.add(db_obj)
+    await db.commit()
+    return {"message": "Duplicate pair ignored successfully"}
 
 class SmartMergeRequest(BaseModel):
     master_id: int

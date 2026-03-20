@@ -42,6 +42,13 @@ class Contact(Base):
     partner = relationship("Partner", back_populates="contacts", lazy="selectin")
 
 
+class IgnoredPartnerDuplicate(Base):
+    __tablename__ = "ignored_partner_duplicates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    partner_id_1 = Column(Integer, ForeignKey("partners.id", ondelete="CASCADE"), nullable=False)
+    partner_id_2 = Column(Integer, ForeignKey("partners.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=func.now())
 
 class Company(Base):
     __tablename__ = "companies"
@@ -56,7 +63,6 @@ class Company(Base):
     registration_number = Column(String, nullable=True) # 사업자번호
     logo_image = Column(JSON, nullable=True) # {name, url}
     stamp_image = Column(JSON, nullable=True) # {name, url}
-    work_start_time = Column(Time, default="08:30")
     work_start_time = Column(Time, default="08:30")
     work_end_time = Column(Time, default="17:30")
     grace_period_start_mins = Column(Integer, default=0)

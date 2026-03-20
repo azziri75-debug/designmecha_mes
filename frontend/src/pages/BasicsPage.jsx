@@ -137,6 +137,28 @@ const BasicsPageContent = () => {
         }
     };
 
+    const handleIgnoreDuplicate = async (group) => {
+        if (!window.confirm("이 거래처들은 서로 다른 회사이므로 다시는 중복으로 표시하지 않습니까?")) return;
+        
+        try {
+            // For a group of N items, we need to ignore all pairs.
+            // But usually groups are pairs. If it's more than 2, iterate all pairs.
+            for (let i = 0; i < group.length; i++) {
+                for (let j = i + 1; j < group.length; j++) {
+                    await api.post('/basics/partners/duplicates/ignore', {
+                        partner_id_1: group[i].id,
+                        partner_id_2: group[j].id
+                    });
+                }
+            }
+            alert("처리되었습니다.");
+            checkDuplicates(); // Refresh the list
+        } catch (error) {
+            console.error("Failed to ignore duplicate", error);
+            alert("처리 중 오류가 발생했습니다.");
+        }
+    };
+
     useEffect(() => {
         fetchData();
         if (activeTab === 'partners') {
@@ -2175,7 +2197,13 @@ const BasicsPageContent = () => {
                                                 );
                                             })}
                                         </div>
-                                        <div className="p-4 bg-gray-800/30 flex justify-end">
+                                        <div className="p-4 bg-gray-800/30 flex justify-end gap-2">
+                                            <button
+                                                onClick={() => handleIgnoreDuplicate(group)}
+                                                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-xl text-xs font-bold transition-all border border-gray-600"
+                                            >
+                                                중복 아님 (무시)
+                                            </button>
                                             <button
                                                 disabled={mergeLoading || !selectedMasterId || !group.some(p => p.id === selectedMasterId)}
                                                 onClick={async () => {

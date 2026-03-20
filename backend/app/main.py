@@ -643,6 +643,14 @@ async def startup_event():
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
                 """),
+                ("ignored_partner_duplicates", """
+                    CREATE TABLE ignored_partner_duplicates (
+                        id SERIAL PRIMARY KEY,
+                        partner_id_1 INTEGER NOT NULL REFERENCES partners(id) ON DELETE CASCADE,
+                        partner_id_2 INTEGER NOT NULL REFERENCES partners(id) ON DELETE CASCADE,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
             ]
 
             # [Safe Migration] Add reference columns and deleted_at column to approval_documents if missing
