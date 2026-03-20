@@ -1,11 +1,32 @@
 import React from 'react';
-import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, FormControlLabel, Radio, Checkbox } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, FormControlLabel, Radio, Checkbox, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import ApprovalGrid from './ApprovalGrid';
 
 const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
-        onChange({ ...data, [field]: value });
+        
+        const newData = { ...data, [field]: value };
+
+        // 반차 선택 시 시간 자동 계산 (Bug #1 대응)
+        if (field === 'half_day_type') {
+            if (value === '오전') {
+                newData.half_day_start = '09:00';
+                newData.half_day_end = '13:00';
+            } else if (value === '오후') {
+                newData.half_day_start = '14:00';
+                newData.half_day_end = '18:00';
+            }
+        }
+
+        // 휴가구분 변경 시 초기화 로직
+        if (field === 'vacation_type' && value !== '반차') {
+            delete newData.half_day_type;
+            delete newData.half_day_start;
+            delete newData.half_day_end;
+        }
+
+        onChange(newData);
     };
 
     return (
@@ -59,24 +80,22 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                     <TableRow>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>휴가구분</Box>
                         <td colSpan={4}>
-                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                <FormControlLabel 
-                                    control={<Checkbox size="small" checked={data.vacation_type === '연차'} onChange={() => handleChange('vacation_type', '연차')} disabled={isReadOnly} />} 
-                                    label={<Typography sx={{ fontSize: '13px' }}>연차</Typography>} 
-                                />
-                                <FormControlLabel 
-                                    control={<Checkbox size="small" checked={data.vacation_type === '반차'} onChange={() => handleChange('vacation_type', '반차')} disabled={isReadOnly} />} 
-                                    label={<Typography sx={{ fontSize: '13px' }}>반차 (오전 / 오후)</Typography>} 
-                                />
-                                <FormControlLabel 
-                                    control={<Checkbox size="small" checked={data.vacation_type === '경조휴가'} onChange={() => handleChange('vacation_type', '경조휴가')} disabled={isReadOnly} />} 
-                                    label={<Typography sx={{ fontSize: '13px' }}>경조휴가</Typography>} 
-                                />
-                                <FormControlLabel 
-                                    control={<Checkbox size="small" checked={data.vacation_type === '기타'} onChange={() => handleChange('vacation_type', '기타')} disabled={isReadOnly} />} 
-                                    label={<Typography sx={{ fontSize: '13px' }}>기타</Typography>} 
-                                />
-                            </Box>
+                            <FormControl fullWidth size="small" variant="outlined" sx={{ maxWidth: 300 }}>
+                                <Select
+                                    value={data.vacation_type || '연차'}
+                                    onChange={(e) => handleChange('vacation_type', e.target.value)}
+                                    disabled={isReadOnly}
+                                    displayEmpty
+                                    MenuProps={{ disableScrollLock: true }} // 모바일 터치/스크롤 버그 방지 (Bug #2 대응)
+                                    sx={{ fontSize: '13px', bgcolor: 'white' }}
+                                >
+                                    <MenuItem value="연차">연차</MenuItem>
+                                    <MenuItem value="반차">반차</MenuItem>
+                                    <MenuItem value="경조휴가">경조휴가</MenuItem>
+                                    <MenuItem value="병가">병가</MenuItem>
+                                    <MenuItem value="기타">기타</MenuItem>
+                                </Select>
+                            </FormControl>
                         </td>
                     </TableRow>
                     <TableRow>
@@ -101,23 +120,27 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                                 <Typography sx={{ ml: 2 }}>(&nbsp;&nbsp;&nbsp;&nbsp;)일간</Typography>
                             </Box>
                             {data.vacation_type === '반차' && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Typography sx={{ fontSize: '13px' }}>반차 :</Typography>
-                                    <input 
-                                        type="time" 
-                                        value={data.half_day_start || ''} 
-                                        onChange={(e) => handleChange('half_day_start', e.target.value)}
-                                        readOnly={isReadOnly}
-                                        style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                    />
-                                    <Typography>~</Typography>
-                                    <input 
-                                        type="time" 
-                                        value={data.half_day_end || ''} 
-                                        onChange={(e) => handleChange('half_day_end', e.target.value)}
-                                        readOnly={isReadOnly}
-                                        style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                    />
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mt: 1, p: 1, border: '1px dashed #ccc', borderRadius: 1, bgcolor: '#fffde7' }}>
+                                    <Typography sx={{ fontSize: '13px', fontWeight: 'bold', color: '#f57f17' }}>반차 구분 :</Typography>
+                                    <RadioGroup 
+                                        row 
+                                        value={data.half_day_type || ''} 
+                                        onChange={(e) => handleChange('half_day_type', e.target.value)}
+                                    >
+                                        <FormControlLabel 
+                                            value="오전" 
+                                            control={<Radio size="small" disabled={isReadOnly} />} 
+                                            label={<Typography sx={{ fontSize: '13px' }}>오전 반차 (09:00~13:00)</Typography>} 
+                                        />
+                                        <FormControlLabel 
+                                            value="오후" 
+                                            control={<Radio size="small" disabled={isReadOnly} />} 
+                                            label={<Typography sx={{ fontSize: '13px' }}>오후 반차 (14:00~18:00)</Typography>} 
+                                        />
+                                    </RadioGroup>
+                                    {/* 시간 값은 백엔드 전송용으로 유지하되 화면에서는 숨김 처리 (Bug #1 지시사항) */}
+                                    <input type="hidden" value={data.half_day_start || ''} />
+                                    <input type="hidden" value={data.half_day_end || ''} />
                                 </Box>
                             )}
                         </td>

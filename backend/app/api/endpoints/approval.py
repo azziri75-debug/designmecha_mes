@@ -242,8 +242,9 @@ async def create_document(
                 recent_limit = datetime.now() - timedelta(days=60)
                 stmt = select(ApprovalDocument).where(
                     ApprovalDocument.author_id == current_user.id,
-                    ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE", "OVERTIME"]),
-                    ApprovalDocument.status != ApprovalStatus.REJECTED,
+                    ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]),
+                    ApprovalDocument.status.notin_([ApprovalStatus.REJECTED, ApprovalStatus.CANCELLED]),
+                    ApprovalDocument.deleted_at.is_(None),  # 소프트 삭제된 문서 제외 (Bug #3 대응)
                     ApprovalDocument.created_at >= recent_limit
                 )
                 result = await db.execute(stmt)

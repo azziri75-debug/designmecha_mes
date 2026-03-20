@@ -9,13 +9,41 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
     
     // 2. Approver steps (dynamic or forced minimum)
     const baseSteps = documentData?.steps || [];
-    const minSteps = 2; // + 1 author = 3 cols total
+    
+    // [Bug #4] 중복 제거 및 직급 정렬 로직 추가
+    const RANK_MAP = {
+        "사원": 1, "연구원": 1, "대리": 2, "과장": 3, "차장": 4, "부장": 5, "이사": 6, "대표이사": 7
+    };
+    
+    // (1) 실제 데이터에서 중복 제거 (approver_id 기준)
+    const seenIds = new Set();
+    let uniqueSteps = baseSteps.filter(step => {
+        if (!step.approver_id) return true; // placeholder 등은 통과
+        if (seenIds.has(step.approver_id)) return false;
+        seenIds.add(step.approver_id);
+        return true;
+    });
+
+    // (2) 실제 데이터 정렬 (역순 또는 직급순 고민 - 요구사항대로 직급순 기안자->부장->대표이사)
+    uniqueSteps.sort((a, b) => {
+        const rankA = RANK_MAP[a.approver?.role] || RANK_MAP[a.role] || 0;
+        const rankB = RANK_MAP[b.approver?.role] || RANK_MAP[b.role] || 0;
+        return rankA - rankB;
+    });
+
+    const minSteps = 2; 
     const defaultRoles = ['부장', '대표이사'];
     
-    let steps = [...baseSteps];
+    let steps = [...uniqueSteps];
+    
+    // (3) 최소 칸수(3칸=기안자+2)를 맞추기 위한 Placeholder 추가 시 중복 방지
     while (steps.length < minSteps) {
+        const nextRole = defaultRoles[steps.length];
+        // 이미 해당 직급이 steps에 있다면 다른 직급이나 '검토'로 대체 (단순화를 위해 중복체크)
+        const roleExists = steps.some(s => (s.approver?.role === nextRole || s.role === nextRole));
+        
         steps.push({ 
-            role: defaultRoles[steps.length] || '검토', 
+            role: roleExists ? '검토' : nextRole, 
             isPlaceholder: true 
         });
     }
