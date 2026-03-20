@@ -67,18 +67,14 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                     <TableRow sx={{ height: '60px' }}>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>구 분</Box>
                         <td colSpan={4}>
-                            <FormControl fullWidth size="small" variant="outlined" sx={{ maxWidth: 200 }}>
-                                <Select
-                                    native
-                                    value={data.leave_type || '조퇴'}
-                                    onChange={(e) => handleChange('leave_type', e.target.value)}
-                                    disabled={isReadOnly}
-                                    sx={{ fontSize: '13px', bgcolor: 'white' }}
-                                >
-                                    <option value="조퇴">조퇴</option>
-                                    <option value="외출">외출</option>
-                                </Select>
-                            </FormControl>
+                            <RadioGroup 
+                                row 
+                                value={data.leave_type || '조퇴'} 
+                                onChange={(e) => handleChange('leave_type', e.target.value)}
+                            >
+                                <FormControlLabel value="조퇴" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>조퇴</Typography>} disabled={isReadOnly} />
+                                <FormControlLabel value="외출" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>외출</Typography>} disabled={isReadOnly} />
+                            </RadioGroup>
                         </td>
                     </TableRow>
                     <TableRow sx={{ height: '60px' }}>

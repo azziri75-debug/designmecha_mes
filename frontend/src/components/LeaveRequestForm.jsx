@@ -6,24 +6,26 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
         
-        const newData = { ...data, [field]: value };
+        let newData = { ...data, [field]: value };
 
-        // 반차 선택 시 시간 자동 계산 (Bug #1 대응)
-        if (field === 'half_day_type') {
-            if (value === '오전') {
+        // [라디오 버튼 통합 대응] '오전 반차'/'오후 반차' 선택 시 처리
+        if (field === 'vacation_type') {
+            if (value === '오전 반차') {
+                newData.vacation_type = '반차';
+                newData.half_day_type = '오전';
                 newData.half_day_start = '09:00';
                 newData.half_day_end = '13:00';
-            } else if (value === '오후') {
+            } else if (value === '오후 반차') {
+                newData.vacation_type = '반차';
+                newData.half_day_type = '오후';
                 newData.half_day_start = '14:00';
                 newData.half_day_end = '18:00';
+            } else if (value !== '반차') {
+                // 반차 외 다른 휴가 선택 시 반차 관련 데이터 삭제
+                delete newData.half_day_type;
+                delete newData.half_day_start;
+                delete newData.half_day_end;
             }
-        }
-
-        // 휴가구분 변경 시 초기화 로직
-        if (field === 'vacation_type' && value !== '반차') {
-            delete newData.half_day_type;
-            delete newData.half_day_start;
-            delete newData.half_day_end;
         }
 
         onChange(newData);
@@ -80,21 +82,20 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                     <TableRow>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>휴가구분</Box>
                         <td colSpan={4}>
-                            <FormControl fullWidth size="small" variant="outlined" sx={{ maxWidth: 300 }}>
-                                <Select
-                                    native
-                                    value={data.vacation_type || '연차'}
-                                    onChange={(e) => handleChange('vacation_type', e.target.value)}
-                                    disabled={isReadOnly}
-                                    sx={{ fontSize: '13px', bgcolor: 'white' }}
-                                >
-                                    <option value="연차">연차</option>
-                                    <option value="반차">반차</option>
-                                    <option value="경조휴가">경조휴가</option>
-                                    <option value="병가">병가</option>
-                                    <option value="기타">기타</option>
-                                </Select>
-                            </FormControl>
+                            <RadioGroup 
+                                row 
+                                value={data.vacation_type === '반차' ? (data.half_day_type === '오전' ? '오전 반차' : '오후 반차') : (data.vacation_type || '연차')} 
+                                onChange={(e) => handleChange('vacation_type', e.target.value)}
+                            >
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    <FormControlLabel value="연차" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>연차</Typography>} disabled={isReadOnly} />
+                                    <FormControlLabel value="오전 반차" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>오전 반차</Typography>} disabled={isReadOnly} />
+                                    <FormControlLabel value="오후 반차" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>오후 반차</Typography>} disabled={isReadOnly} />
+                                    <FormControlLabel value="경조휴가" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>경조휴가</Typography>} disabled={isReadOnly} />
+                                    <FormControlLabel value="병가" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>병가</Typography>} disabled={isReadOnly} />
+                                    <FormControlLabel value="기타" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>기타</Typography>} disabled={isReadOnly} />
+                                </Box>
+                            </RadioGroup>
                         </td>
                     </TableRow>
                     <TableRow>
@@ -119,25 +120,10 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                                 <Typography sx={{ ml: 2 }}>(&nbsp;&nbsp;&nbsp;&nbsp;)일간</Typography>
                             </Box>
                             {data.vacation_type === '반차' && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mt: 1, p: 1, border: '1px dashed #ccc', borderRadius: 1, bgcolor: '#fffde7' }}>
-                                    <Typography sx={{ fontSize: '13px', fontWeight: 'bold', color: '#f57f17' }}>반차 구분 :</Typography>
-                                    <RadioGroup 
-                                        row 
-                                        value={data.half_day_type || ''} 
-                                        onChange={(e) => handleChange('half_day_type', e.target.value)}
-                                    >
-                                        <FormControlLabel 
-                                            value="오전" 
-                                            control={<Radio size="small" disabled={isReadOnly} />} 
-                                            label={<Typography sx={{ fontSize: '13px' }}>오전 반차 (09:00~13:00)</Typography>} 
-                                        />
-                                        <FormControlLabel 
-                                            value="오후" 
-                                            control={<Radio size="small" disabled={isReadOnly} />} 
-                                            label={<Typography sx={{ fontSize: '13px' }}>오후 반차 (14:00~18:00)</Typography>} 
-                                        />
-                                    </RadioGroup>
-                                    {/* 시간 값은 백엔드 전송용으로 유지하되 화면에서는 숨김 처리 (Bug #1 지시사항) */}
+                                <Box sx={{ mt: 1, p: 1, border: '1px dashed #ccc', borderRadius: 1, bgcolor: '#fffde7' }}>
+                                    <Typography sx={{ fontSize: '13px', fontWeight: 'bold', color: '#f57f17' }}>
+                                        반차 시간: {data.half_day_start} ~ {data.half_day_end} (자동 적용)
+                                    </Typography>
                                     <input type="hidden" value={data.half_day_start || ''} />
                                     <input type="hidden" value={data.half_day_end || ''} />
                                 </Box>
