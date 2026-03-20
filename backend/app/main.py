@@ -149,6 +149,25 @@ async def startup_event():
                     if "approval_id" not in etr_cols_list:
                         await db.execute(text("ALTER TABLE employee_time_records ADD COLUMN approval_id INTEGER"))
                         print("Startup: Added approval_id to employee_time_records (SQLite)")
+
+                    # Weight-based pricing migrations (SQLite)
+                    poi_cols = await db.execute(text("PRAGMA table_info('purchase_order_items')"))
+                    poi_cols_list = [row[1] for row in poi_cols.fetchall()]
+                    if "pricing_type" not in poi_cols_list:
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN pricing_type VARCHAR DEFAULT 'UNIT'"))
+                        print("Startup: Added pricing_type to purchase_order_items (SQLite)")
+                    if "total_weight" not in poi_cols_list:
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN total_weight FLOAT"))
+                        print("Startup: Added total_weight to purchase_order_items (SQLite)")
+
+                    ooi_cols = await db.execute(text("PRAGMA table_info('outsourcing_order_items')"))
+                    ooi_cols_list = [row[1] for row in ooi_cols.fetchall()]
+                    if "pricing_type" not in ooi_cols_list:
+                        await db.execute(text("ALTER TABLE outsourcing_order_items ADD COLUMN pricing_type VARCHAR DEFAULT 'UNIT'"))
+                        print("Startup: Added pricing_type to outsourcing_order_items (SQLite)")
+                    if "total_weight" not in ooi_cols_list:
+                        await db.execute(text("ALTER TABLE outsourcing_order_items ADD COLUMN total_weight FLOAT"))
+                        print("Startup: Added total_weight to outsourcing_order_items (SQLite)")
                 else:
                     # stamp_image
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
@@ -208,6 +227,33 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE employee_time_records ADD COLUMN approval_id INTEGER"))
                         print("Startup: Added approval_id to employee_time_records (Postgres)")
+
+                    # Weight-based pricing migrations (Postgres)
+                    # 1. Enum type
+                    try:
+                        await db.execute(text("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'pricingtype') THEN CREATE TYPE pricingtype AS ENUM ('UNIT', 'WEIGHT'); END IF; END $$;"))
+                    except Exception as e:
+                        print(f"Startup: PricingType Enum creation failed: {e}")
+                    
+                    # 2. purchase_order_items columns
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='purchase_order_items' AND column_name='pricing_type'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN pricing_type pricingtype DEFAULT 'UNIT'"))
+                        print("Startup: Added pricing_type to purchase_order_items (Postgres)")
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='purchase_order_items' AND column_name='total_weight'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN total_weight DOUBLE PRECISION"))
+                        print("Startup: Added total_weight to purchase_order_items (Postgres)")
+
+                    # 3. outsourcing_order_items columns
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='outsourcing_order_items' AND column_name='pricing_type'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE outsourcing_order_items ADD COLUMN pricing_type pricingtype DEFAULT 'UNIT'"))
+                        print("Startup: Added pricing_type to outsourcing_order_items (Postgres)")
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='outsourcing_order_items' AND column_name='total_weight'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE outsourcing_order_items ADD COLUMN total_weight DOUBLE PRECISION"))
+                        print("Startup: Added total_weight to outsourcing_order_items (Postgres)")
                     
                     # [Hard Cleanup] 유령 근태 데이터 강제 삭제
                     # approval_id가 NULL이거나 연결된 결재 문서가 삭제된 기록을 서버 시작 시 자동으로 정리
