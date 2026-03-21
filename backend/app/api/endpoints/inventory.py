@@ -97,6 +97,7 @@ async def read_stocks(
         .where(ProductionPlan.stock_production_id.is_not(None))\
         .scalar_subquery()
 
+    from sqlalchemy import or_
     # Main query: Start from Product to include items with NO stock record yet
     query = select(
         Product,
@@ -105,7 +106,8 @@ async def read_stocks(
         so_active_subq.label("so_active"),
         sp_wait_subq.label("sp_wait"),
         sp_active_subq.label("sp_active")
-    ).outerjoin(Stock, Stock.product_id == Product.id)
+    ).outerjoin(Stock, Stock.product_id == Product.id)\
+     .where(or_(Product.item_type != 'CONSUMABLE', Product.item_type.is_(None)))
 
     if item_type:
         query = query.where(Product.item_type == item_type)
@@ -607,7 +609,8 @@ async def recalculate_inventory(db: AsyncSession = Depends(get_db)):
     await db.flush()
 
     # 2. 모든 제품 리스트 가져오기
-    products_res = await db.execute(select(Product.id))
+    from sqlalchemy import or_
+    products_res = await db.execute(select(Product.id).where(or_(Product.item_type != 'CONSUMABLE', Product.item_type.is_(None))))
     product_ids = [p.id for p in products_res.scalars().all()]
     
     # 임시 저장소

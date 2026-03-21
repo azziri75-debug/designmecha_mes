@@ -237,7 +237,6 @@ const InventoryPage = () => {
                                 <option value="PRODUCT">제품</option>
                                 <option value="PART">부품</option>
                                 <option value="RAW_MATERIAL">원자재</option>
-                                <option value="CONSUMABLE">소모품</option>
                             </select>
                         </div>
                     )}
