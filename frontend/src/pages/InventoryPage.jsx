@@ -111,11 +111,13 @@ const InventoryPage = () => {
 
     const [hideEmpty, setHideEmpty] = useState(false);
 
-    // Since we use backend filtering, we don't need extensive client-side filter
-    // Extra client-side filter for "Hide items with 0 stock"
-    const filteredStocks = hideEmpty 
-        ? stocks.filter(s => (s.current_quantity || 0) > 0 || (s.producing_total || 0) > 0)
-        : stocks;
+    const filteredStocks = React.useMemo(() => {
+        if (!hideEmpty) return stocks;
+        return stocks.filter(s => 
+            Number(s.current_quantity || 0) > 0 || 
+            Number(s.producing_total || 0) > 0
+        );
+    }, [stocks, hideEmpty]);
     
     const filteredProductions = productions;
 

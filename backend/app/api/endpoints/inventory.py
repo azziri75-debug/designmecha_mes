@@ -56,7 +56,11 @@ async def read_stocks(
     from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
     from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
 
-    active_plan_statuses = ['PENDING', 'PLANNED', 'CONFIRMED', 'IN_PROGRESS']
+    # Define statuses that represent 'Finished/Inactive' states to exclude from WIP
+    # Using both spellings 'CANCELLED' and 'CANCELED' just in case, based on Enum inconsistencies
+    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
+    finished_plan_statuses = ['COMPLETED', 'CANCELED', 'CANCELLED'] # From ProductionStatus and StockProductionStatus
+    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
 
     # 1. SO Wait
     so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
@@ -71,7 +75,7 @@ async def read_stocks(
     so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
         .join(ProductionPlan)\
         .where(ProductionPlanItem.product_id == Product.id)\
-        .where(ProductionPlanItem.status.in_(active_plan_statuses))\
+        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))\
         .where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.order_id.is_not(None))\
         .scalar_subquery()
@@ -80,7 +84,7 @@ async def read_stocks(
     sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
         .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
         .where(StockProduction.product_id == Product.id)\
-        .where(StockProduction.status.in_(['PENDING', 'IN_PROGRESS']))\
+        .where(StockProduction.status.not_in(finished_sp_statuses))\
         .where(ProductionPlan.id.is_(None))\
         .scalar_subquery()
 
@@ -88,7 +92,7 @@ async def read_stocks(
     sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
         .join(ProductionPlan)\
         .where(ProductionPlanItem.product_id == Product.id)\
-        .where(ProductionPlanItem.status.in_(active_plan_statuses))\
+        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))\
         .where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.stock_production_id.is_not(None))\
         .scalar_subquery()
@@ -246,26 +250,29 @@ async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = 
     # [CRITICAL] Recalculate WIP perfectly for the initial record and SYNC TO DB COLUMN
     from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
     from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
-    active_plan_statuses = ['PENDING', 'PLANNED', 'CONFIRMED', 'IN_PROGRESS']
+    
+    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
+    finished_plan_statuses = ['COMPLETED', 'CANCELED', 'CANCELLED']
+    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
 
     so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
         .join(SalesOrder).outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
-        .where(SalesOrderItem.product_id == product_id).where(SalesOrder.status == OrderStatus.CONFIRMED)\
+        .where(SalesOrderItem.product_id == product_id).where(SalesOrder.status.not_in(finished_so_statuses))\
         .where(ProductionPlan.id.is_(None)).scalar_subquery()
 
     so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
         .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
+        .where(ProductionPlanItem.status.not_in(finished_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.order_id.is_not(None)).scalar_subquery()
 
     sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
         .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
-        .where(StockProduction.product_id == product_id).where(StockProduction.status.in_(['PENDING', 'IN_PROGRESS']))\
+        .where(StockProduction.product_id == product_id).where(StockProduction.status.not_in(finished_sp_statuses))\
         .where(ProductionPlan.id.is_(None)).scalar_subquery()
 
     sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
         .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
+        .where(ProductionPlanItem.status.not_in(finished_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.stock_production_id.is_not(None)).scalar_subquery()
 
     # Get the calculated totals
@@ -332,26 +339,29 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
     # [CRITICAL] Recalculate WIP perfectly for the response and SYNC TO DB COLUMN
     from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
     from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
-    active_plan_statuses = ['PENDING', 'PLANNED', 'CONFIRMED', 'IN_PROGRESS']
+    
+    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
+    finished_plan_statuses = ['COMPLETED', 'CANCELED', 'CANCELLED']
+    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
 
     so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
         .join(SalesOrder).outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
-        .where(SalesOrderItem.product_id == product_id).where(SalesOrder.status == OrderStatus.CONFIRMED)\
+        .where(SalesOrderItem.product_id == product_id).where(SalesOrder.status.not_in(finished_so_statuses))\
         .where(ProductionPlan.id.is_(None)).scalar_subquery()
 
     so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
         .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
+        .where(ProductionPlanItem.status.not_in(finished_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.order_id.is_not(None)).scalar_subquery()
 
     sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
         .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
-        .where(StockProduction.product_id == product_id).where(StockProduction.status.in_(['PENDING', 'IN_PROGRESS']))\
+        .where(StockProduction.product_id == product_id).where(StockProduction.status.not_in(finished_sp_statuses))\
         .where(ProductionPlan.id.is_(None)).scalar_subquery()
 
     sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
         .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
+        .where(ProductionPlanItem.status.not_in(finished_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.stock_production_id.is_not(None)).scalar_subquery()
 
     # Get the calculated totals
@@ -635,18 +645,19 @@ async def recalculate_inventory(db: AsyncSession = Depends(get_db)):
             for bom in bom_res.scalars().all():
                 if bom.child_product_id in stock_map:
                     stock_map[bom.child_product_id]["current"] -= int(bom.required_quantity * qty)
-        
         # Producing WIP Accumulation (Active Plan parts)
-        if plan.status in active_statuses:
+        finished_plan_statuses = ['COMPLETED', 'CANCELED', 'CANCELLED']
+        if plan.status not in finished_plan_statuses:
             if product_id in stock_map:
                 stock_map[product_id]["producing"] += qty
 
     # [B] Producing WIP calculations (Wait SO/Wait SP - NO Plan)
     # Part 1: SO Wait
+    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
     so_wait_query = select(SalesOrderItem.product_id, func.sum(SalesOrderItem.quantity))\
         .join(SalesOrder)\
         .outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
-        .where(SalesOrder.status == OrderStatus.CONFIRMED)\
+        .where(SalesOrder.status.not_in(finished_so_statuses))\
         .where(ProductionPlan.id.is_(None))\
         .group_by(SalesOrderItem.product_id)
     so_wait_res = await db.execute(so_wait_query)
@@ -655,9 +666,10 @@ async def recalculate_inventory(db: AsyncSession = Depends(get_db)):
             stock_map[pid]["producing"] += qty
 
     # Part 2: SP Wait
+    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
     sp_wait_query = select(StockProduction.product_id, func.sum(StockProduction.quantity))\
         .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
-        .where(StockProduction.status.in_(['PENDING', 'IN_PROGRESS']))\
+        .where(StockProduction.status.not_in(finished_sp_statuses))\
         .where(ProductionPlan.id.is_(None))\
         .group_by(StockProduction.product_id)
     sp_wait_res = await db.execute(sp_wait_query)
