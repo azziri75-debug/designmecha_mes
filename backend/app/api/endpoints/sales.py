@@ -556,6 +556,21 @@ async def update_order(
             if item_in.id and item_in.id in existing_items:
                 # 1. Update existing item
                 db_item = existing_items[item_in.id]
+
+                # Check if product_id or quantity is being changed
+                if db_item.product_id != item_in.product_id or db_item.quantity != item_in.quantity:
+                    plan_check = await db.execute(
+                        select(func.count(ProductionPlanItem.id))
+                        .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+                        .where(ProductionPlan.order_id == db_order.id)
+                        .where(ProductionPlanItem.product_id == db_item.product_id)
+                    )
+                    if plan_check.scalar() > 0:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"이미 진행 중인 생산 계획이 있는 품목의 규격(품목)이나 수량은 직접 수정할 수 없습니다."
+                        )
+
                 db_item.product_id = item_in.product_id
                 db_item.unit_price = item_in.unit_price
                 db_item.quantity = item_in.quantity
@@ -590,18 +605,17 @@ async def update_order(
                         detail=f"품목({item.product.name if item.product else item_id})은(는) 이미 납품 이력이 존재하여 삭제할 수 없습니다. 납품 내역을 먼저 취소해 주세요."
                     )
                 
-                # Check Work Logs via Production Plan
-                work_check = await db.execute(
-                    select(func.count(WorkLogItem.id))
-                    .join(ProductionPlanItem, WorkLogItem.plan_item_id == ProductionPlanItem.id)
+                # Check Production Plan
+                plan_check = await db.execute(
+                    select(func.count(ProductionPlanItem.id))
                     .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
                     .where(ProductionPlan.order_id == db_order.id)
                     .where(ProductionPlanItem.product_id == item.product_id)
                 )
-                if work_check.scalar() > 0:
+                if plan_check.scalar() > 0:
                     raise HTTPException(
                         status_code=400, 
-                        detail=f"품목({item.product.name if item.product else item_id})은(는) 이미 진행 중인 생산 실적이 존재하여 삭제할 수 없습니다. 관련 생산 실적을 먼저 취소해 주세요."
+                        detail=f"품목({item.product.name if item.product else item_id})은(는) 이미 진행 중인 생산 계획이 존재하여 삭제할 수 없습니다. 관련 생산 계획을 먼저 취소해 주세요."
                     )
                 
                 await db.delete(item)
