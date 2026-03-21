@@ -114,10 +114,13 @@ const InventoryPage = () => {
     const filteredStocks = React.useMemo(() => {
         if (!Array.isArray(stocks)) return [];
         
-        // 1. Deduplicate by ID to prevent "infinite push" visual bugs
+        // 1. Deduplicate by product_id (9 vs 6 items bug fix)
+        // Using product_id is more reliable as Stock 'id' is 0 for items without stock records
         const uniqueMap = new Map();
         stocks.forEach(s => {
-            if (s.id) uniqueMap.set(s.id, s);
+            if (s.product_id) {
+                uniqueMap.set(s.product_id, s);
+            }
         });
         const uniqueList = Array.from(uniqueMap.values());
 
@@ -127,7 +130,7 @@ const InventoryPage = () => {
         return uniqueList.filter(s => {
             const current = Number(s.current_quantity || 0);
             const producing = Number(s.producing_total || 0);
-            // Hide if both are non-positive
+            // Hide only if both are exactly zero
             return current > 0 || producing > 0;
         });
     }, [stocks, hideEmpty]);

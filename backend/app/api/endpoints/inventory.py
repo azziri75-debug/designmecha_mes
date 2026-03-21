@@ -27,19 +27,8 @@ async def read_stocks(
     from app.models.production import ProductionPlan, ProductionPlanItem
     from app.models.inventory import StockProduction
     
-    query = select(Stock).join(Product).options(
-        selectinload(Stock.product)
-    )
-
-    if item_type:
-        query = query.where(Product.item_type == item_type)
-    if partner_id:
-        query = query.where(Product.partner_id == partner_id)
-    if product_name:
-        query = query.where(Product.name.ilike(f"%{product_name}%"))
-
-    # Bug 2 Fix: Exclude CONSUMABLE items from inventory list
-    query = query.where(Product.item_type != 'CONSUMABLE')
+    # Correct initialization will happen below to avoid variable shadowing and filter loss.
+    pass
 
     # Refactored: Efficient single query with subqueries to avoid N+1 and MissingGreenlet
     # Refactored: Master WIP Calculation Strategy (Non-overlapping)
@@ -98,7 +87,7 @@ async def read_stocks(
         .scalar_subquery()
 
     from sqlalchemy import or_
-    # Main query: Start from Product to include items with NO stock record yet
+    # Final query: Start from Product to include items with NO stock record yet (9 items vs 6 items bug fix)
     query = select(
         Product,
         Stock,
@@ -106,15 +95,18 @@ async def read_stocks(
         so_active_subq.label("so_active"),
         sp_wait_subq.label("sp_wait"),
         sp_active_subq.label("sp_active")
-    ).outerjoin(Stock, Stock.product_id == Product.id)\
-     .where(or_(Product.item_type != 'CONSUMABLE', Product.item_type.is_(None)))
+    ).outerjoin(Stock, Stock.product_id == Product.id)
 
+    # Apply Filters to the Unified Query
     if item_type:
         query = query.where(Product.item_type == item_type)
-    if product_name:
-        query = query.where(Product.name.ilike(f"%{product_name}%"))
     if partner_id:
         query = query.where(Product.partner_id == partner_id)
+    if product_name:
+        query = query.where(Product.name.ilike(f"%{product_name}%"))
+
+    # Bug 2 Fix: Exclude CONSUMABLE items but handle NULL item_type safely
+    query = query.where(or_(Product.item_type != 'CONSUMABLE', Product.item_type.is_(None)))
 
     result = await db.execute(query)
     rows = result.all()
