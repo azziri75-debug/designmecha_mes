@@ -53,8 +53,7 @@ async def read_stocks(
 
     active_order_products_subq = select(ProductionPlanItem.product_id)\
         .join(ProductionPlan)\
-        .where(ProductionPlan.order_id == SalesOrder.id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))
+        .where(ProductionPlan.order_id == SalesOrder.id)
 
     # 1. SO Wait (Confirmed or Pending SO where THIS SPECIFIC PRODUCT is NOT yet planned for this order)
     so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
@@ -87,8 +86,7 @@ async def read_stocks(
 
     active_sp_products_subq = select(ProductionPlanItem.product_id)\
         .join(ProductionPlan)\
-        .where(ProductionPlan.stock_production_id == StockProduction.id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))
+        .where(ProductionPlan.stock_production_id == StockProduction.id)
 
     # 3. SP Wait
     sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
