@@ -4,7 +4,7 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import ResizableTableCell from '../components/ResizableTableCell';
 import PurchaseOrderModal from '../components/PurchaseOrderModal';
@@ -12,6 +12,7 @@ import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
+import ConsumableOrderModal from '../components/ConsumableOrderModal';
 
 const PurchasePage = ({ type }) => {
     const navigate = useNavigate();
@@ -26,6 +27,7 @@ const PurchasePage = ({ type }) => {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [initialModalItems, setInitialModalItems] = useState([]);
+    const [consumableModalOpen, setConsumableModalOpen] = useState(false);
 
     // 견적의뢰서/구매발주서 모달
     const [sheetModalOpen, setSheetModalOpen] = useState(false);
@@ -243,6 +245,18 @@ const PurchasePage = ({ type }) => {
         }
     };
 
+    const handleCompleteOrder = async (orderId) => {
+        if (!window.confirm("이 발주건을 발주 완료(입고) 처리하시겠습니까?\n관련 소모품 재고가 자동으로 업데이트됩니다.")) return;
+        try {
+            await api.post(`/purchasing/purchase/orders/${orderId}/complete`);
+            alert("완료(입고) 처리되었습니다.");
+            handleSuccess();
+        } catch (error) {
+            console.error("Complete failed", error);
+            alert("처리 실패: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
     const handleDeleteAttachment = async (targetId, indexToRemove) => {
         if (!targetId) return;
         if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
@@ -300,16 +314,12 @@ const PurchasePage = ({ type }) => {
 
         setSelectedOrder(null);
         if (type === 'CONSUMABLE') {
-            // For consumable, map fields logic internally in modal or here
-            setInitialModalItems(itemsToOrder.map(i => ({
-                ...i,
-                type: 'CONSUMABLE_WAIT',
-                consumable_purchase_wait_id: i.id
-            })));
+            setInitialModalItems(itemsToOrder);
+            setConsumableModalOpen(true);
         } else {
             setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'PENDING' }))); // Mark as pending item
+            setModalOpen(true);
         }
-        setModalOpen(true);
     };
 
     const handleCreateFromMRP = () => {
@@ -369,10 +379,14 @@ const PurchasePage = ({ type }) => {
     };
 
     const handleSelectPendingItem = (id) => {
-        if (selectedPendingItems.includes(id)) {
-            setSelectedPendingItems(selectedPendingItems.filter(itemId => itemId !== id));
+        if (type === 'CONSUMABLE') {
+            setSelectedPendingItems(selectedPendingItems.includes(id) ? [] : [id]);
         } else {
-            setSelectedPendingItems([...selectedPendingItems, id]);
+            if (selectedPendingItems.includes(id)) {
+                setSelectedPendingItems(selectedPendingItems.filter(itemId => itemId !== id));
+            } else {
+                setSelectedPendingItems([...selectedPendingItems, id]);
+            }
         }
     };
 
@@ -393,6 +407,7 @@ const PurchasePage = ({ type }) => {
     };
 
     const handleSelectAllPending = (event) => {
+        if (type === 'CONSUMABLE') return;
         if (event.target.checked) {
             setSelectedPendingItems(pendingItems.map(item => item.id));
         } else {
@@ -524,11 +539,13 @@ const PurchasePage = ({ type }) => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell padding="checkbox">
-                                        <Checkbox
-                                            indeterminate={selectedPendingItems.length > 0 && selectedPendingItems.length < pendingItems.length}
-                                            checked={pendingItems.length > 0 && selectedPendingItems.length === pendingItems.length}
-                                            onChange={handleSelectAllPending}
-                                        />
+                                        {type !== 'CONSUMABLE' && (
+                                            <Checkbox
+                                                indeterminate={selectedPendingItems.length > 0 && selectedPendingItems.length < pendingItems.length}
+                                                checked={pendingItems.length > 0 && selectedPendingItems.length === pendingItems.length}
+                                                onChange={handleSelectAllPending}
+                                            />
+                                        )}
                                     </TableCell>
                                     {type === 'CONSUMABLE' ? (
                                         <>
@@ -573,9 +590,9 @@ const PurchasePage = ({ type }) => {
                                                             {item?.approval_title || '-'}
                                                         </Typography>
                                                     </TableCell>
-                                                    <TableCell>{item?.author_name || '-'}</TableCell>
-                                                    <TableCell>{item?.product?.name}</TableCell>
-                                                    <TableCell>{item?.product?.specification}</TableCell>
+                                                    <TableCell>{item?.requester_name || item?.author_name || '-'} {item?.department ? `(${item.department})` : ''}</TableCell>
+                                                    <TableCell><b>{item?.requested_item_name || item?.product?.name || '-'}</b></TableCell>
+                                                    <TableCell>{item?.product?.specification || item?.remarks || '-'}</TableCell>
                                                     <TableCell>{item?.quantity} {item?.product?.unit || 'EA'}</TableCell>
                                                     <TableCell>{item?.remarks}</TableCell>
                                                     <TableCell>{item?.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</TableCell>
@@ -800,6 +817,13 @@ const PurchasePage = ({ type }) => {
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}
+                                                    {type === 'CONSUMABLE' && order.status !== 'COMPLETED' && (
+                                                        <Tooltip title="발주 완료(입고)">
+                                                            <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); handleCompleteOrder(order.id); }}>
+                                                                <CheckCircleIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     {(() => {
                                                         let files = [];
                                                         try { files = order.attachment_file ? (typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file) : []; } catch { files = []; }
@@ -904,6 +928,13 @@ const PurchasePage = ({ type }) => {
                     </TableContainer>
                 </>
             )}
+
+            <ConsumableOrderModal
+                open={consumableModalOpen}
+                onClose={() => setConsumableModalOpen(false)}
+                onSuccess={handleSuccess}
+                waitItem={initialModalItems[0]}
+            />
 
             <PurchaseOrderModal
                 isOpen={modalOpen}

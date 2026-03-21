@@ -611,36 +611,17 @@ async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
                 print("[DEBUG] Skipping item with no product_name")
                 continue
             
-            print(f"[DEBUG] Processing consumable: {name}, Qty: {qty}")
+            print(f"[DEBUG] Adding to ConsumablePurchaseWait (No Master Create): {name}, Qty: {qty}")
             
-            # 마스터 조회 및 생성
-            stmt = select(Product).where(Product.name == name)
-            res = await db.execute(stmt)
-            product = res.scalars().first()
-            
-            if not product:
-                # generate placeholder code
-                import time as time_mod
-                new_code = f"CON-{int(time_mod.time())}-{name[:2]}"
-                print(f"[DEBUG] Creating new product master for {name} with code {new_code}")
-                product = Product(
-                    name=name,
-                    code=new_code,
-                    item_type="CONSUMABLE",
-                    specification=remarks[:50] if remarks else "",
-                    unit="EA",
-                    note=f"자동등록(기안ID:{doc.id})"
-                )
-                db.add(product)
-                await db.flush() # get product.id
-                
-            # 대기열 등록 (중복 방지 로직이 필요할 수 있으나, 현재는 기안당 1회 실행 전제)
-            print(f"[DEBUG] Adding to ConsumablePurchaseWait: ProductID {product.id}, Qty {qty}")
+            # 대기열 등록 (품목 마스터 없이 기안 텍스트 그대로 저장)
             wait_record = ConsumablePurchaseWait(
                 approval_id=doc.id,
-                product_id=product.id,
+                product_id=None,
+                requested_item_name=name,
                 quantity=qty,
                 remarks=remarks,
+                requester_name=doc.author.name if doc.author else None,
+                department=doc.author.department if doc.author else None,
                 status="PENDING" # Explicitly set
             )
             db.add(wait_record)

@@ -101,6 +101,103 @@ async def get_consumable_waits(
                 
     return waits
 
+@router.get("/purchase/consumables/match", response_model=List[schemas.Product])
+async def match_consumables(
+    name: str,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    """유사 소모품/부품 자동 매칭 API"""
+    if not name or len(name.strip()) < 2:
+        return []
+        
+    query = select(Product).where(
+        Product.item_type.in_(["CONSUMABLE", "PART", "RAW_MATERIAL"]),
+        Product.name.ilike(f"%{name.strip()}%")
+    ).limit(5)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+
+@router.post("/purchase/consumables/order")
+async def register_consumable_order(
+    req: schemas.ConsumableOrderRequest,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Any = Depends(deps.get_current_user)
+):
+    """소모품 발주 등록 (기존 매핑 or 신규 등록 후 발주서 발행)"""
+    # 1. Get wait item
+    wait_res = await db.execute(select(ConsumablePurchaseWait).where(ConsumablePurchaseWait.id == req.wait_id))
+    wait_item = wait_res.scalars().first()
+    if not wait_item:
+        raise HTTPException(status_code=404, detail="대기 항목을 찾을 수 없습니다.")
+    if wait_item.status != "PENDING":
+        raise HTTPException(status_code=400, detail="이미 처리된 항목입니다.")
+        
+    # 2. Handle Product
+    product_id = req.product_id
+    if not product_id:
+        if not req.new_product_name:
+            raise HTTPException(status_code=400, detail="기존 품목을 선택하거나 신규 품목명을 입력해야 합니다.")
+        
+        import time
+        new_code = f"CON-{int(time.time())}-{req.new_product_name[:2]}"
+        new_product = Product(
+            name=req.new_product_name,
+            code=new_code,
+            item_type="CONSUMABLE",
+            specification=req.new_product_spec or "",
+            unit=req.new_product_unit or "EA",
+            note=f"소모품발주등록(대기ID:{req.wait_id})"
+        )
+        db.add(new_product)
+        await db.flush()
+        product_id = new_product.id
+        
+    # Update wait item
+    wait_item.product_id = product_id
+    wait_item.status = "ORDERED"
+    
+    # 3. Create Purchase Order
+    import datetime
+    today_str = datetime.date.today().strftime("%Y%m%d")
+    
+    stmt_no = select(PurchaseOrder).where(PurchaseOrder.order_no.like(f"PO-{today_str}-%")).order_by(desc(PurchaseOrder.order_no))
+    res_no = await db.execute(stmt_no)
+    latest_po = res_no.scalars().first()
+    next_seq = 1
+    if latest_po:
+        try:
+            next_seq = int(latest_po.order_no.split("-")[-1]) + 1
+        except ValueError:
+            next_seq = 1
+    order_no = f"PO-{today_str}-{next_seq:03d}"
+    
+    new_po = PurchaseOrder(
+        order_no=order_no,
+        partner_id=req.partner_id,
+        order_date=datetime.date.today(),
+        status=PurchaseStatus.PENDING,
+        purchase_type="CONSUMABLE",
+        note=req.note
+    )
+    db.add(new_po)
+    await db.flush()
+    
+    # 4. Create Purchase Order Item
+    po_item = PurchaseOrderItem(
+        purchase_order_id=new_po.id,
+        product_id=product_id,
+        quantity=wait_item.quantity,
+        unit_price=req.unit_price,
+        consumable_purchase_wait_id=wait_item.id
+    )
+    db.add(po_item)
+    
+    await db.commit()
+    return {"message": "발주가 성공적으로 등록되었습니다.", "order_no": order_no}
+
+
+
     # 2. 총 소요량(Demand) 계산 (부품별 합계)
     total_demand = {} # product_id -> quantity
     product_map = {} # product_id -> Product object (for metadata)
@@ -481,6 +578,51 @@ async def create_purchase_order(
         error_msg = traceback.format_exc()
         logger.error(f"Failed to create purchase order: {error_msg}")
         raise HTTPException(status_code=500, detail=f"발주 등록 중 오류 발생 (DB 제약조건 혹은 스키마 충돌): {str(e)}")
+
+@router.post("/purchase/orders/{order_id}/complete")
+async def complete_purchase_order(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Any = Depends(deps.get_current_user)
+):
+    """구매 발주서 완료 처리 (입고 반영)"""
+    query = select(PurchaseOrder).options(selectinload(PurchaseOrder.items)).where(PurchaseOrder.id == order_id)
+    res = await db.execute(query)
+    order = res.scalars().first()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="발주서를 찾을 수 없습니다.")
+    if order.status == PurchaseStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="이미 완료(입고)된 발주건입니다.")
+        
+    order.status = PurchaseStatus.COMPLETED
+    order.actual_delivery_date = datetime.now().date()
+    
+    for item in order.items:
+        qty = item.quantity - item.received_quantity
+        if qty > 0:
+            item.received_quantity += qty
+            
+            if item.product_id:
+                await handle_stock_movement(
+                    db=db,
+                    product_id=item.product_id,
+                    quantity=qty,
+                    transaction_type=TransactionType.INBOUND,
+                    related_id=order.id,
+                    related_type="PURCHASE_RECEIPT",
+                    note=f"발주 완료 자동 입고 (PO: {order.order_no})",
+                    transaction_date=datetime.now()
+                )
+        
+        if getattr(item, 'consumable_purchase_wait_id', None):
+            cw_res = await db.execute(select(ConsumablePurchaseWait).where(ConsumablePurchaseWait.id == item.consumable_purchase_wait_id))
+            cw = cw_res.scalars().first()
+            if cw:
+                cw.status = "COMPLETED"
+
+    await db.commit()
+    return {"message": "발주 완료 및 정상 입고 처리되었습니다.", "order_no": order.order_no}
 
 @router.get("/purchase/orders", response_model=List[schemas.PurchaseOrder])
 async def read_purchase_orders(

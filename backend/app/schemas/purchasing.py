@@ -242,17 +242,30 @@ class MaterialRequirementResponse(MaterialRequirementBase):
 # --- Consumable Purchase Wait ---
 class ConsumablePurchaseWaitBase(BaseModel):
     approval_id: int
-    product_id: int
+    product_id: Optional[int] = None
+    requested_item_name: Optional[str] = None
     quantity: int
     remarks: Optional[str] = None
+    requester_name: Optional[str] = None
+    department: Optional[str] = None
     status: str = "PENDING"
 
 class ConsumablePurchaseWaitResponse(ConsumablePurchaseWaitBase):
     id: int
     created_at: datetime
     product: Optional[Product] = None
-    author_name: Optional[str] = None # For UI
+    author_name: Optional[str] = None # For UI (legacy)
     approval_title: Optional[str] = None # For UI
 
     class Config:
         from_attributes = True
+
+class ConsumableOrderRequest(BaseModel):
+    wait_id: int
+    partner_id: int
+    product_id: Optional[int] = None # If mapping to existing
+    new_product_name: Optional[str] = None # If creating new
+    new_product_spec: Optional[str] = None
+    new_product_unit: Optional[str] = "EA"
+    unit_price: float = 0
+    note: Optional[str] = None

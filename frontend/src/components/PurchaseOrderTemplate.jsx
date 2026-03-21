@@ -351,15 +351,42 @@ const PurchaseOrderTemplate = ({
                     {/* Stamp / Seal Area */}
                     <div className="w-full md:w-[200px] border-t-2 md:border-t-0 md:border-l-2 border-black p-4 flex flex-col items-center justify-center relative">
                         <p className="text-[11px] font-bold mb-3">위와 같이 발주함.</p>
-                        <div className="flex items-center gap-1 font-bold text-lg relative">
-                            <span>{company?.name || '주식회사 디자인메카'}</span>
-                            <span className="text-red-500 relative ml-1 text-sm font-normal">
-                                (인)
-                                {company?.stamp_image?.url && (
-                                    <StampOverlay url={company.stamp_image.url} className="w-20 h-20 -top-6 -left-6" />
-                                )}
-                            </span>
-                        </div>
+                        
+                        {(() => {
+                            let finalApprover = null;
+                            if (documentData && documentData.status === 'APPROVED') {
+                                // Find the last approver who approved it (skipping drafter)
+                                finalApprover = documentData.lines?.slice().reverse().find(l => l.status === 'APPROVED');
+                            }
+                            
+                            return (
+                                <div className="flex flex-col items-center gap-2">
+                                    {finalApprover && (
+                                        <div className="flex items-center gap-2 text-[10px] text-gray-700 font-medium">
+                                            <span>승인자: {finalApprover.staff?.name || finalApprover.approver?.name || '알수없음'}</span>
+                                            {finalApprover.signature_url ? (
+                                                <img 
+                                                    src={finalApprover.signature_url.startsWith('http') ? finalApprover.signature_url : `/${finalApprover.signature_url}`} 
+                                                    alt="서명" 
+                                                    className="h-8 object-contain mix-blend-multiply" 
+                                                />
+                                            ) : (
+                                                <span className="text-[10px] text-blue-600 border border-blue-600 px-1 rounded font-bold">(승인)</span>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-1 font-bold text-lg relative mt-1">
+                                        <span>{company?.name || '주식회사 디자인메카'}</span>
+                                        <span className="text-red-500 relative ml-1 text-sm font-normal">
+                                            (인)
+                                            {company?.stamp_image?.url && (
+                                                <StampOverlay url={company.stamp_image.url} className="w-16 h-16 -top-4 -left-4" />
+                                            )}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>

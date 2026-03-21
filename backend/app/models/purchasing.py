@@ -208,9 +208,16 @@ class ConsumablePurchaseWait(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     approval_id = Column(Integer, ForeignKey("approval_documents.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True) # Changed to nullable
+    requested_item_name = Column(String, nullable=True) # 원본 기안에서 넘어온 품목명
+    
     quantity = Column(Integer, nullable=False)
     remarks = Column(String, nullable=True) # 용도/비고
+    
+    requester_name = Column(String, nullable=True)
+    department = Column(String, nullable=True)
+    
     status = Column(String, default="PENDING") # PENDING 발주 대기, ORDERED 발주 완료, CANCELLED 취소됨
     created_at = Column(DateTime, default=func.now())
 
