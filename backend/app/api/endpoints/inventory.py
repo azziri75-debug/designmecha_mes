@@ -62,7 +62,7 @@ async def read_stocks(
     so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
         .join(SalesOrder)\
         .outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
-        .where(SalesOrderItem.product_id == Stock.product_id)\
+        .where(SalesOrderItem.product_id == Product.id)\
         .where(SalesOrder.status == OrderStatus.CONFIRMED)\
         .where(ProductionPlan.id.is_(None))\
         .scalar_subquery()
@@ -70,7 +70,7 @@ async def read_stocks(
     # 2. SO Active (Deduplicated processes by sequence=1)
     so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
         .join(ProductionPlan)\
-        .where(ProductionPlanItem.product_id == Stock.product_id)\
+        .where(ProductionPlanItem.product_id == Product.id)\
         .where(ProductionPlanItem.status.in_(active_plan_statuses))\
         .where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.order_id.is_not(None))\
@@ -79,7 +79,7 @@ async def read_stocks(
     # 3. SP Wait
     sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
         .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
-        .where(StockProduction.product_id == Stock.product_id)\
+        .where(StockProduction.product_id == Product.id)\
         .where(StockProduction.status.in_(['PENDING', 'IN_PROGRESS']))\
         .where(ProductionPlan.id.is_(None))\
         .scalar_subquery()
@@ -87,22 +87,22 @@ async def read_stocks(
     # 4. SP Active
     sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
         .join(ProductionPlan)\
-        .where(ProductionPlanItem.product_id == Stock.product_id)\
+        .where(ProductionPlanItem.product_id == Product.id)\
         .where(ProductionPlanItem.status.in_(active_plan_statuses))\
         .where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.stock_production_id.is_not(None))\
         .scalar_subquery()
 
-    # Main query
+    # Main query: Start from Product to include items with NO stock record yet
     query = select(
+        Product,
         Stock,
         so_wait_subq.label("so_wait"),
         so_active_subq.label("so_active"),
         sp_wait_subq.label("sp_wait"),
         sp_active_subq.label("sp_active")
-    ).join(Product).options(
-        selectinload(Stock.product)
-    ).where(Product.item_type != 'CONSUMABLE')
+    ).outerjoin(Stock, Stock.product_id == Product.id)\
+     .where(Product.item_type != 'CONSUMABLE')
 
     if item_type:
         query = query.where(Product.item_type == item_type)
@@ -116,12 +116,24 @@ async def read_stocks(
 
     final_stocks = []
     for row in rows:
-        stock = row[0]
-        stock.producing_so = row[1] + row[2] # Wait SO + Active SO Plans
-        stock.producing_sp = row[3] + row[4] # Wait SP + Active SP Plans
-        stock.producing_total = stock.producing_so + stock.producing_sp
-        stock.in_production_quantity = stock.producing_total
-        final_stocks.append(stock)
+        product = row[0]
+        stock_obj = row[1]
+        
+        # If no stock record exists, create a transient one for response
+        if not stock_obj:
+            stock_obj = Stock(
+                product_id=product.id,
+                current_quantity=0,
+                in_production_quantity=0
+            )
+            stock_obj.product = product
+        
+        # Populate computed fields
+        stock_obj.producing_so = row[2] + row[3] # Wait SO + Active SO Plans
+        stock_obj.producing_sp = row[4] + row[5] # Wait SP + Active SP Plans
+        stock_obj.producing_total = stock_obj.producing_so + stock_obj.producing_sp
+        stock_obj.in_production_quantity = stock_obj.producing_total
+        final_stocks.append(stock_obj)
         
     return final_stocks
 

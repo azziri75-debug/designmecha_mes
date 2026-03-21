@@ -109,8 +109,14 @@ const InventoryPage = () => {
     };
 
 
+    const [hideEmpty, setHideEmpty] = useState(false);
+
     // Since we use backend filtering, we don't need extensive client-side filter
-    const filteredStocks = stocks;
+    // Extra client-side filter for "Hide items with 0 stock"
+    const filteredStocks = hideEmpty 
+        ? stocks.filter(s => (s.current_quantity || 0) > 0 || (s.producing_total || 0) > 0)
+        : stocks;
+    
     const filteredProductions = productions;
 
 
@@ -257,6 +263,19 @@ const InventoryPage = () => {
                         </>
                     )}
 
+                    <div className="w-48 flex items-center gap-2 pb-2">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                className="sr-only peer" 
+                                checked={hideEmpty}
+                                onChange={(e) => setHideEmpty(e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span className="ml-3 text-sm font-medium text-gray-300">재고 없는 품목 숨기기</span>
+                        </label>
+                    </div>
+
                     <div className="w-40">
                         <Button
                             variant="ghost"
@@ -268,6 +287,7 @@ const InventoryPage = () => {
                                 setStartDate('');
                                 setEndDate('');
                                 setStatusFilter('');
+                                setHideEmpty(false);
                             }}
                         >
                             필터 초기화
@@ -341,7 +361,7 @@ const InventoryPage = () => {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-gray-500 text-xs">
-                                                {new Date(stock.updated_at).toLocaleDateString()}
+                                                {stock.updated_at ? new Date(stock.updated_at).toLocaleDateString() : '-'}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <Button
