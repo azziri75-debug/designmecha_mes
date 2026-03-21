@@ -112,11 +112,24 @@ const InventoryPage = () => {
     const [hideEmpty, setHideEmpty] = useState(false);
 
     const filteredStocks = React.useMemo(() => {
-        if (!hideEmpty) return stocks;
-        return stocks.filter(s => 
-            Number(s.current_quantity || 0) > 0 || 
-            Number(s.producing_total || 0) > 0
-        );
+        if (!Array.isArray(stocks)) return [];
+        
+        // 1. Deduplicate by ID to prevent "infinite push" visual bugs
+        const uniqueMap = new Map();
+        stocks.forEach(s => {
+            if (s.id) uniqueMap.set(s.id, s);
+        });
+        const uniqueList = Array.from(uniqueMap.values());
+
+        // 2. Apply "Hide Empty" filter
+        if (!hideEmpty) return uniqueList;
+        
+        return uniqueList.filter(s => {
+            const current = Number(s.current_quantity || 0);
+            const producing = Number(s.producing_total || 0);
+            // Hide if both are non-positive
+            return current > 0 || producing > 0;
+        });
     }, [stocks, hideEmpty]);
     
     const filteredProductions = productions;
