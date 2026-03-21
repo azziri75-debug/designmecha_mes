@@ -41,6 +41,26 @@ const StockInitModal = ({ isOpen, onClose, onSuccess }) => {
         (p.code?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
+    const [wip, setWip] = useState(0);
+
+    useEffect(() => {
+        if (selectedProduct) {
+            fetchStockInfo(selectedProduct.id);
+        } else {
+            setWip(0);
+        }
+    }, [selectedProduct]);
+
+    const fetchStockInfo = async (pid) => {
+        try {
+            const res = await api.get(`/inventory/stocks/${pid}`);
+            setWip(res.data.in_production_quantity || 0);
+        } catch (error) {
+            console.error("Failed to fetch stock info", error);
+            setWip(0);
+        }
+    };
+
     const handleSubmit = async () => {
         if (!selectedProduct) {
             alert("재고를 초기화할 대상을 선택해주세요.");
@@ -51,7 +71,7 @@ const StockInitModal = ({ isOpen, onClose, onSuccess }) => {
         try {
             await api.post(`/inventory/stocks/init?product_id=${selectedProduct.id}`, {
                 current_quantity: formData.current_quantity,
-                in_production_quantity: 0,
+                // WIP is ignored by backend during init, it recalculates and saves correctly
                 location: formData.location
             });
             alert("초기 재고가 성공적으로 등록되었습니다.");
@@ -139,17 +159,24 @@ const StockInitModal = ({ isOpen, onClose, onSuccess }) => {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-300">초기 현재고 수량</label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                className="w-full bg-gray-900 border border-gray-700 rounded-lg text-white p-3 focus:ring-2 focus:ring-blue-500 outline-none text-lg font-mono font-bold"
-                                                value={formData.current_quantity}
-                                                onChange={(e) => setFormData({ ...formData, current_quantity: parseInt(e.target.value) || 0 })}
-                                            />
-                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">EA</span>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">초기 현재고 수량</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    className="w-full bg-gray-900 border border-gray-700 rounded-lg text-white p-3 focus:ring-2 focus:ring-blue-500 outline-none text-lg font-mono font-bold"
+                                                    value={formData.current_quantity}
+                                                    onChange={(e) => setFormData({ ...formData, current_quantity: parseInt(e.target.value) || 0 })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2 opacity-60">
+                                            <label className="text-sm font-medium text-gray-300">현재 생산 중 (WIP)</label>
+                                            <div className="w-full bg-gray-950 border border-gray-800 rounded-lg text-blue-400 p-3 text-lg font-mono font-bold">
+                                                {wip.toLocaleString()}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="space-y-2">

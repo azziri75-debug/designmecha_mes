@@ -243,17 +243,7 @@ async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = 
     if stock:
         raise HTTPException(status_code=400, detail="이미 해당 품목의 재고 레코드가 존재합니다.")
         
-    stock = Stock(
-        product_id=product_id,
-        current_quantity=stock_in.current_quantity or 0,
-        in_production_quantity=0, # Initial DB value should be 0, we calculate on the fly
-        location=stock_in.location
-    )
-    db.add(stock)
-    await db.commit()
-    await db.refresh(stock)
-    
-    # [CRITICAL] Recalculate WIP perfectly for the response
+    # [CRITICAL] Recalculate WIP perfectly for the initial record and SYNC TO DB COLUMN
     from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
     from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
     active_plan_statuses = ['PENDING', 'PLANNED', 'CONFIRMED', 'IN_PROGRESS']
@@ -278,15 +268,27 @@ async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = 
         .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.stock_production_id.is_not(None)).scalar_subquery()
 
-    q = select(Stock, so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq)\
-        .where(Stock.id == stock.id).options(selectinload(Stock.product))
-    res = await db.execute(q)
-    row = res.first()
-    
-    stock_obj = row[0]
-    producing_so = (row[1] or 0) + (row[2] or 0)
-    producing_sp = (row[3] or 0) + (row[4] or 0)
+    # Get the calculated totals
+    calc_res = await db.execute(select(so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq))
+    row = calc_res.first()
+    producing_so = (row[0] or 0) + (row[1] or 0)
+    producing_sp = (row[2] or 0) + (row[3] or 0)
     producing_total = producing_so + producing_sp
+
+    stock = Stock(
+        product_id=product_id,
+        current_quantity=stock_in.current_quantity or 0,
+        in_production_quantity=producing_total, # SAVE IT TO DB
+        location=stock_in.location
+    )
+    db.add(stock)
+    await db.commit()
+    await db.refresh(stock)
+    
+    # Reload with product for Response
+    q = select(Stock).where(Stock.id == stock.id).options(selectinload(Stock.product))
+    res = await db.execute(q)
+    stock_obj = res.scalar_one()
     
     return {
         "id": stock_obj.id,
@@ -327,7 +329,7 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
     await db.commit()
     await db.refresh(stock)
     
-    # [CRITICAL] Recalculate WIP perfectly for the response
+    # [CRITICAL] Recalculate WIP perfectly for the response and SYNC TO DB COLUMN
     from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
     from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
     active_plan_statuses = ['PENDING', 'PLANNED', 'CONFIRMED', 'IN_PROGRESS']
@@ -352,16 +354,22 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
         .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
         .where(ProductionPlan.stock_production_id.is_not(None)).scalar_subquery()
 
-    # Re-fetch everything to ensure consistency
-    q = select(Stock, so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq)\
-        .where(Stock.id == stock.id).options(selectinload(Stock.product))
-    res = await db.execute(q)
-    row = res.first()
-    
-    stock_obj = row[0]
-    producing_so = (row[1] or 0) + (row[2] or 0)
-    producing_sp = (row[3] or 0) + (row[4] or 0)
+    # Get the calculated totals
+    calc_res = await db.execute(select(so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq))
+    row = calc_res.first()
+    producing_so = (row[0] or 0) + (row[1] or 0)
+    producing_sp = (row[2] or 0) + (row[3] or 0)
     producing_total = producing_so + producing_sp
+
+    # Sync to DB column
+    stock.in_production_quantity = producing_total
+    await db.commit()
+    await db.refresh(stock)
+    
+    # Reload with product for Response
+    q = select(Stock).where(Stock.id == stock.id).options(selectinload(Stock.product))
+    res = await db.execute(q)
+    stock_obj = res.scalar_one()
     
     return {
         "id": stock_obj.id,
