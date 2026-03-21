@@ -51,39 +51,56 @@ async def read_stocks(
     finished_plan_statuses = ['COMPLETED', 'CANCELED'] # ProductionStatus uses one L
     finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
 
-    # 1. SO Wait (Confirmed or Pending SO with NO plan)
+    active_order_products_subq = select(ProductionPlanItem.product_id)\
+        .join(ProductionPlan)\
+        .where(ProductionPlan.order_id == SalesOrder.id)\
+        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))
+
+    # 1. SO Wait (Confirmed or Pending SO where THIS SPECIFIC PRODUCT is NOT yet planned for this order)
     so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
         .join(SalesOrder)\
-        .outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
         .where(SalesOrderItem.product_id == Product.id)\
         .where(SalesOrder.status.in_([OrderStatus.PENDING, OrderStatus.CONFIRMED]))\
-        .where(ProductionPlan.id.is_(None))\
+        .where(~SalesOrderItem.product_id.in_(active_order_products_subq))\
         .scalar_subquery()
 
-    # 2. SO Active (Deduplicated processes by sequence=1)
-    so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
-        .join(ProductionPlan)\
-        .where(ProductionPlanItem.product_id == Product.id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))\
-        .where(ProductionPlanItem.sequence == 1)\
-        .where(ProductionPlan.order_id.is_not(None))\
+    # We need to sum ProductionPlanItem.quantity. BUT a single product in a plan might have MULTIPLE processes (rows), 
+    # and they all have the same target quantity. To avoid double/triple counting, 
+    # we take the max quantity per (plan_id, product_id) first, then sum those maxes.
+    active_plan_product_qty = select(
+        ProductionPlanItem.plan_id,
+        ProductionPlanItem.product_id,
+        ProductionPlan.order_id,
+        ProductionPlan.stock_production_id,
+        func.max(ProductionPlanItem.quantity).label('qty')
+    )\
+    .join(ProductionPlan)\
+    .where(ProductionPlanItem.status.not_in(finished_plan_statuses))\
+    .group_by(ProductionPlanItem.plan_id, ProductionPlanItem.product_id, ProductionPlan.order_id, ProductionPlan.stock_production_id)\
+    .subquery()
+
+    # 2. SO Active (Sum unique quantites for active plans tied to SO)
+    so_active_subq = select(func.coalesce(func.sum(active_plan_product_qty.c.qty), 0))\
+        .where(active_plan_product_qty.c.product_id == Product.id)\
+        .where(active_plan_product_qty.c.order_id.is_not(None))\
         .scalar_subquery()
+
+    active_sp_products_subq = select(ProductionPlanItem.product_id)\
+        .join(ProductionPlan)\
+        .where(ProductionPlan.stock_production_id == StockProduction.id)\
+        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))
 
     # 3. SP Wait
     sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
-        .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
         .where(StockProduction.product_id == Product.id)\
         .where(StockProduction.status.not_in(finished_sp_statuses))\
-        .where(ProductionPlan.id.is_(None))\
+        .where(~StockProduction.product_id.in_(active_sp_products_subq))\
         .scalar_subquery()
 
-    # 4. SP Active
-    sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
-        .join(ProductionPlan)\
-        .where(ProductionPlanItem.product_id == Product.id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))\
-        .where(ProductionPlanItem.sequence == 1)\
-        .where(ProductionPlan.stock_production_id.is_not(None))\
+    # 4. SP Active (Sum unique quantites for active plans tied to SP)
+    sp_active_subq = select(func.coalesce(func.sum(active_plan_product_qty.c.qty), 0))\
+        .where(active_plan_product_qty.c.product_id == Product.id)\
+        .where(active_plan_product_qty.c.stock_production_id.is_not(None))\
         .scalar_subquery()
 
     from sqlalchemy import or_
