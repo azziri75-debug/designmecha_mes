@@ -338,10 +338,12 @@ const InventoryPage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
                                     {filteredStocks.map((stock) => (
-                                        <tr key={stock.id} className="hover:bg-gray-800/30 transition-colors cursor-pointer" onDoubleClick={() => handleStockEdit(stock)}>
+                                        <tr key={stock.product_id} className="hover:bg-gray-800/30 transition-colors cursor-pointer" onDoubleClick={() => handleStockEdit(stock)}>
                                             <td className="px-6 py-4">
                                                 <Badge variant="outline" className="bg-gray-800 text-gray-300 border-gray-700">
-                                                    {stock.product?.item_type === 'PRODUCT' ? '제품' : stock.product?.item_type === 'PART' ? '부품' : stock.product?.item_type === 'RAW_MATERIAL' ? '원자재' : stock.product?.item_type || '-'}
+                                                    {stock.product?.item_type === 'PRODUCED' || stock.product?.item_type === 'PRODUCT' ? '제품' : 
+                                                     stock.product?.item_type === 'PART' ? '부품' : 
+                                                     stock.product?.item_type === 'RAW_MATERIAL' ? '원자재' : stock.product?.item_type || '-'}
                                                 </Badge>
                                             </td>
                                             <td className="px-6 py-4">

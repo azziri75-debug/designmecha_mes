@@ -51,12 +51,12 @@ async def read_stocks(
     finished_plan_statuses = ['COMPLETED', 'CANCELED'] # ProductionStatus uses one L
     finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
 
-    # 1. SO Wait
+    # 1. SO Wait (Confirmed or Pending SO with NO plan)
     so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
         .join(SalesOrder)\
         .outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
         .where(SalesOrderItem.product_id == Product.id)\
-        .where(SalesOrder.status == OrderStatus.CONFIRMED)\
+        .where(SalesOrder.status.in_([OrderStatus.PENDING, OrderStatus.CONFIRMED]))\
         .where(ProductionPlan.id.is_(None))\
         .scalar_subquery()
 
