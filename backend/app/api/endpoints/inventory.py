@@ -119,25 +119,25 @@ async def read_stocks(
         product = row[0]
         stock_obj = row[1]
         
-        # If no stock record exists, create a transient one for response
-        if not stock_obj:
-            stock_obj = Stock(
-                id=0,
-                product_id=product.id,
-                current_quantity=0,
-                in_production_quantity=0
-            )
-            stock_obj.product = product
-        else:
-            # Ensure id exists for Pydantic even if not committed? No, real stocks have IDs.
-            pass
+        # Calculate computed fields
+        producing_so = row[2] + row[3] # Wait SO + Active SO Plans
+        producing_sp = row[4] + row[5] # Wait SP + Active SP Plans
+        producing_total = producing_so + producing_sp
         
-        # Populate computed fields
-        stock_obj.producing_so = row[2] + row[3] # Wait SO + Active SO Plans
-        stock_obj.producing_sp = row[4] + row[5] # Wait SP + Active SP Plans
-        stock_obj.producing_total = stock_obj.producing_so + stock_obj.producing_sp
-        stock_obj.in_production_quantity = stock_obj.producing_total
-        final_stocks.append(stock_obj)
+        # Build dictionary to match StockResponse schema
+        stock_data = {
+            "id": stock_obj.id if stock_obj else 0,
+            "product_id": product.id,
+            "current_quantity": stock_obj.current_quantity if stock_obj else 0,
+            "in_production_quantity": producing_total,
+            "location": stock_obj.location if stock_obj else None,
+            "updated_at": stock_obj.updated_at if stock_obj else None,
+            "product": product, # Product object serializes to ProductSimple correctly
+            "producing_total": producing_total,
+            "producing_so": producing_so,
+            "producing_sp": producing_sp
+        }
+        final_stocks.append(stock_data)
         
     return final_stocks
 
@@ -197,14 +197,34 @@ async def read_stock_by_product(product_id: int, db: AsyncSession = Depends(get_
     row = result.first()
     
     if not row:
-        return Stock(id=0, product_id=product_id, current_quantity=0, in_production_quantity=0)
+        return {
+            "id": 0,
+            "product_id": product_id,
+            "current_quantity": 0,
+            "in_production_quantity": 0,
+            "producing_total": 0,
+            "producing_so": 0,
+            "producing_sp": 0,
+            "product": await db.get(Product, product_id)
+        }
     
-    stock = row[0]
-    stock.producing_so = (row[1] or 0) + (row[2] or 0)
-    stock.producing_sp = (row[3] or 0) + (row[4] or 0)
-    stock.producing_total = stock.producing_so + stock.producing_sp
-    stock.in_production_quantity = stock.producing_total
-    return stock
+    stock_obj = row[0]
+    producing_so = (row[1] or 0) + (row[2] or 0)
+    producing_sp = (row[3] or 0) + (row[4] or 0)
+    producing_total = producing_so + producing_sp
+    
+    return {
+        "id": stock_obj.id,
+        "product_id": stock_obj.product_id,
+        "current_quantity": stock_obj.current_quantity,
+        "in_production_quantity": producing_total,
+        "location": stock_obj.location,
+        "updated_at": stock_obj.updated_at,
+        "product": stock_obj.product,
+        "producing_total": producing_total,
+        "producing_so": producing_so,
+        "producing_sp": producing_sp
+    }
 
 @router.post("/stocks/init", response_model=StockResponse)
 async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = Depends(get_db)):
