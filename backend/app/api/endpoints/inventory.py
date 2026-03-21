@@ -120,7 +120,12 @@ async def read_stocks(
     if partner_id:
         query = query.where(Product.partner_id == partner_id)
     if product_name:
-        query = query.where(Product.name.ilike(f"%{product_name}%"))
+        query = query.where(
+            or_(
+                Product.name.ilike(f"%{product_name}%"),
+                Product.specification.ilike(f"%{product_name}%")
+            )
+        )
 
     # Bug 2 Fix: Exclude CONSUMABLE items but handle NULL item_type safely
     query = query.where(or_(Product.item_type != 'CONSUMABLE', Product.item_type.is_(None)))

@@ -33,6 +33,7 @@ const InventoryPage = () => {
         type: 100,
         product: 200,
         spec: 150,
+        partner_stock: 120,
         loc: 120,
         qty: 100,
         producing: 120,
@@ -220,7 +221,7 @@ const InventoryPage = () => {
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                             <Input
-                                placeholder="품목명, 코드 검색..."
+                                placeholder="품목명, 규격 검색..."
                                 className="pl-10 bg-gray-950 border-gray-800 focus:ring-blue-500"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -240,6 +241,22 @@ const InventoryPage = () => {
                                 <option value="PRODUCT">제품</option>
                                 <option value="PART">부품</option>
                                 <option value="RAW_MATERIAL">원자재</option>
+                            </select>
+                        </div>
+                    )}
+
+                    {activeTab === 'status' && (
+                        <div className="w-40">
+                            <label className="text-xs text-gray-500 mb-1 block">고객사</label>
+                            <select
+                                className="w-full bg-gray-950 border-gray-800 rounded-md text-sm px-3 py-2 text-white h-10 focus:ring-blue-500"
+                                value={selectedPartnerId}
+                                onChange={(e) => setSelectedPartnerId(e.target.value)}
+                            >
+                                <option value="">전체 고객사</option>
+                                {partners.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
                             </select>
                         </div>
                     )}
@@ -329,6 +346,7 @@ const InventoryPage = () => {
                                         <ResizableTableCell width={columnWidths.type} onResize={(w) => handleResize('type', w)} className="px-6 py-4 font-medium">구분</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-4 font-medium">품목명</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.spec} onResize={(w) => handleResize('spec', w)} className="px-6 py-4 font-medium">코드 / 규격</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.partner_stock} onResize={(w) => handleResize('partner_stock', w)} className="px-6 py-4 font-medium">고객사</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.loc} onResize={(w) => handleResize('loc', w)} className="px-6 py-4 font-medium">보관 위치</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)} className="px-6 py-4 font-medium text-right">현재고</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.producing} onResize={(w) => handleResize('producing', w)} className="px-6 py-4 font-medium text-right">생산중</ResizableTableCell>
@@ -352,6 +370,11 @@ const InventoryPage = () => {
                                             <td className="px-6 py-4">
                                                 <div className="text-xs text-gray-300">{stock.product?.code}</div>
                                                 <div className="text-xs text-gray-500">{stock.product?.specification}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-300 truncate max-w-[120px]" title={partners.find(p => p.id === stock.product?.partner_id)?.name || ''}>
+                                                    {partners.find(p => p.id === stock.product?.partner_id)?.name || '-'}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
