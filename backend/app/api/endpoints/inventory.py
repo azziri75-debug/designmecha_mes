@@ -246,19 +246,60 @@ async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = 
     stock = Stock(
         product_id=product_id,
         current_quantity=stock_in.current_quantity or 0,
-        in_production_quantity=stock_in.in_production_quantity or 0,
+        in_production_quantity=0, # Initial DB value should be 0, we calculate on the fly
         location=stock_in.location
     )
     db.add(stock)
     await db.commit()
     await db.refresh(stock)
     
-    # Reload with product and its standard processes
-    query = select(Stock).where(Stock.id == stock.id).options(
-        selectinload(Stock.product)
-    )
-    result = await db.execute(query)
-    return result.scalar_one()
+    # [CRITICAL] Recalculate WIP perfectly for the response
+    from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
+    from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
+    active_plan_statuses = ['PENDING', 'PLANNED', 'CONFIRMED', 'IN_PROGRESS']
+
+    so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
+        .join(SalesOrder).outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
+        .where(SalesOrderItem.product_id == product_id).where(SalesOrder.status == OrderStatus.CONFIRMED)\
+        .where(ProductionPlan.id.is_(None)).scalar_subquery()
+
+    so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
+        .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
+        .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
+        .where(ProductionPlan.order_id.is_not(None)).scalar_subquery()
+
+    sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
+        .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
+        .where(StockProduction.product_id == product_id).where(StockProduction.status.in_(['PENDING', 'IN_PROGRESS']))\
+        .where(ProductionPlan.id.is_(None)).scalar_subquery()
+
+    sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
+        .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
+        .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
+        .where(ProductionPlan.stock_production_id.is_not(None)).scalar_subquery()
+
+    q = select(Stock, so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq)\
+        .where(Stock.id == stock.id).options(selectinload(Stock.product))
+    res = await db.execute(q)
+    row = res.first()
+    
+    stock_obj = row[0]
+    producing_so = (row[1] or 0) + (row[2] or 0)
+    producing_sp = (row[3] or 0) + (row[4] or 0)
+    producing_total = producing_so + producing_sp
+    
+    return {
+        "id": stock_obj.id,
+        "product_id": stock_obj.product_id,
+        "current_quantity": stock_obj.current_quantity,
+        "in_production_quantity": producing_total,
+        "location": stock_obj.location,
+        "updated_at": stock_obj.updated_at,
+        "product": stock_obj.product,
+        "producing_total": producing_total,
+        "producing_so": producing_so,
+        "producing_sp": producing_sp
+    }
 
 @router.put("/stocks/{product_id}", response_model=StockResponse)
 async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession = Depends(get_db)):
@@ -271,22 +312,69 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
     result = await db.execute(query)
     stock = result.scalar_one_or_none()
     
+    # [IMPORTANT] Prevent manual overwrite of in_production_quantity
+    payload = stock_in.model_dump(exclude_unset=True)
+    if "in_production_quantity" in payload:
+        del payload["in_production_quantity"]
+
     if not stock:
-        stock = Stock(product_id=product_id, **stock_in.model_dump(exclude_unset=True))
+        stock = Stock(product_id=product_id, **payload)
         db.add(stock)
     else:
-        for field, value in stock_in.model_dump(exclude_unset=True).items():
+        for field, value in payload.items():
             setattr(stock, field, value)
             
     await db.commit()
     await db.refresh(stock)
     
-    # Reload with product and its standard processes
-    query = select(Stock).where(Stock.id == stock.id).options(
-        selectinload(Stock.product)
-    )
-    result = await db.execute(query)
-    return result.scalar_one()
+    # [CRITICAL] Recalculate WIP perfectly for the response
+    from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
+    from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
+    active_plan_statuses = ['PENDING', 'PLANNED', 'CONFIRMED', 'IN_PROGRESS']
+
+    so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
+        .join(SalesOrder).outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
+        .where(SalesOrderItem.product_id == product_id).where(SalesOrder.status == OrderStatus.CONFIRMED)\
+        .where(ProductionPlan.id.is_(None)).scalar_subquery()
+
+    so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
+        .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
+        .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
+        .where(ProductionPlan.order_id.is_not(None)).scalar_subquery()
+
+    sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
+        .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
+        .where(StockProduction.product_id == product_id).where(StockProduction.status.in_(['PENDING', 'IN_PROGRESS']))\
+        .where(ProductionPlan.id.is_(None)).scalar_subquery()
+
+    sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
+        .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
+        .where(ProductionPlanItem.status.in_(active_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
+        .where(ProductionPlan.stock_production_id.is_not(None)).scalar_subquery()
+
+    # Re-fetch everything to ensure consistency
+    q = select(Stock, so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq)\
+        .where(Stock.id == stock.id).options(selectinload(Stock.product))
+    res = await db.execute(q)
+    row = res.first()
+    
+    stock_obj = row[0]
+    producing_so = (row[1] or 0) + (row[2] or 0)
+    producing_sp = (row[3] or 0) + (row[4] or 0)
+    producing_total = producing_so + producing_sp
+    
+    return {
+        "id": stock_obj.id,
+        "product_id": stock_obj.product_id,
+        "current_quantity": stock_obj.current_quantity,
+        "in_production_quantity": producing_total,
+        "location": stock_obj.location,
+        "updated_at": stock_obj.updated_at,
+        "product": stock_obj.product,
+        "producing_total": producing_total,
+        "producing_so": producing_so,
+        "producing_sp": producing_sp
+    }
 
 @router.delete("/stocks/{product_id}")
 async def delete_stock(product_id: int, db: AsyncSession = Depends(get_db)):

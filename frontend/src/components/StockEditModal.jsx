@@ -26,7 +26,7 @@ const StockEditModal = ({ isOpen, onClose, onSuccess, initialData }) => {
         try {
             await api.put(`/inventory/stocks/${initialData.product_id}`, {
                 current_quantity: formData.current_quantity,
-                in_production_quantity: formData.in_production_quantity,
+                // [IMPORTANT] in_production_quantity is handled as read-only and ignored by backend during update
                 location: formData.location
             });
             alert("재고 정보가 수정되었습니다.");
@@ -62,7 +62,7 @@ const StockEditModal = ({ isOpen, onClose, onSuccess, initialData }) => {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-400">현재고 수량</label>
+                            <label className="text-sm font-medium text-gray-400">현재고 수량 (수정 가능)</label>
                             <input
                                 type="number"
                                 className="w-full bg-gray-700 border-gray-600 rounded text-white p-2.5 focus:ring-1 focus:ring-blue-500 outline-none"
@@ -70,14 +70,11 @@ const StockEditModal = ({ isOpen, onClose, onSuccess, initialData }) => {
                                 onChange={(e) => setFormData({ ...formData, current_quantity: parseInt(e.target.value) || 0 })}
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-400">생산 중 수량</label>
-                            <input
-                                type="number"
-                                className="w-full bg-gray-700 border-gray-600 rounded text-white p-2.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                                value={formData.in_production_quantity}
-                                onChange={(e) => setFormData({ ...formData, in_production_quantity: parseInt(e.target.value) || 0 })}
-                            />
+                        <div className="space-y-2 opacity-60">
+                            <label className="text-sm font-medium text-gray-400">생산 중 수량 (자동 계산)</label>
+                            <div className="w-full bg-gray-950 border border-gray-800 rounded text-blue-400 p-2.5 font-bold">
+                                {formData.in_production_quantity.toLocaleString()}
+                            </div>
                         </div>
                     </div>
 
