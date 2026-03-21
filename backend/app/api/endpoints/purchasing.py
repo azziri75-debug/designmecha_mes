@@ -266,7 +266,8 @@ async def read_pending_purchase_items(
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
             selectinload(ProductionPlanItem.purchase_items),
-            selectinload(ProductionPlanItem.outsourcing_items)
+            selectinload(ProductionPlanItem.outsourcing_items),
+            selectinload(ProductionPlanItem.work_log_items)
         )\
         .where(or_(
             ProductionPlanItem.course_type.ilike('%PURCHASE%'),
@@ -321,7 +322,8 @@ async def read_pending_outsourcing_items(
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
             selectinload(ProductionPlanItem.purchase_items),
-            selectinload(ProductionPlanItem.outsourcing_items)
+            selectinload(ProductionPlanItem.outsourcing_items),
+            selectinload(ProductionPlanItem.work_log_items)
         )\
         .where(or_(
             ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
