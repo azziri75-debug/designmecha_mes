@@ -19,6 +19,7 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
+import Select from 'react-select';
 import StockProductionModal from '../components/StockProductionModal';
 import StockEditModal from '../components/StockEditModal';
 import StockInitModal from '../components/StockInitModal';
@@ -138,6 +139,36 @@ const InventoryPage = () => {
     
     const filteredProductions = productions;
 
+    const selectStyles = {
+        control: (base) => ({
+            ...base,
+            backgroundColor: '#030712',
+            borderColor: '#1f2937',
+            color: 'white',
+            fontSize: '0.875rem',
+            minHeight: '40px',
+            height: '40px',
+            borderRadius: '0.375rem',
+            boxShadow: 'none',
+            '&:hover': {
+                borderColor: '#3b82f6'
+            }
+        }),
+        input: (base) => ({ ...base, color: 'white', margin: 0, paddingBottom: 0, paddingTop: 0 }),
+        valueContainer: (base) => ({ ...base, padding: '0 8px' }),
+        menu: (base) => ({ ...base, backgroundColor: '#030712', border: '1px solid #1f2937', zIndex: 9999 }),
+        option: (base, { isFocused, isSelected }) => ({
+            ...base,
+            backgroundColor: isSelected ? '#2563eb' : isFocused ? '#1f2937' : '#030712',
+            color: 'white',
+            fontSize: '0.875rem',
+            cursor: 'pointer'
+        }),
+        singleValue: (base) => ({ ...base, color: 'white' }),
+        placeholder: (base) => ({ ...base, color: '#9ca3af' }),
+        noOptionsMessage: (base) => ({ ...base, color: '#9ca3af', fontSize: '0.875rem' }),
+    };
+
 
     const handleEdit = (prod) => {
         setEditingProduction(prod);
@@ -246,18 +277,19 @@ const InventoryPage = () => {
                     )}
 
                     {activeTab === 'status' && (
-                        <div className="w-40">
+                        <div className="w-56">
                             <label className="text-xs text-gray-500 mb-1 block">고객사</label>
-                            <select
-                                className="w-full bg-gray-950 border-gray-800 rounded-md text-sm px-3 py-2 text-white h-10 focus:ring-blue-500"
-                                value={selectedPartnerId}
-                                onChange={(e) => setSelectedPartnerId(e.target.value)}
-                            >
-                                <option value="">전체 고객사</option>
-                                {partners.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+                            <Select
+                                options={[{ value: '', label: '전체 고객사' }, ...partners.map(p => ({ value: p.id, label: p.name }))]}
+                                value={selectedPartnerId ? { value: selectedPartnerId, label: partners.find(p => p.id == selectedPartnerId)?.name } : { value: '', label: '전체 고객사' }}
+                                onChange={(option) => setSelectedPartnerId(option ? option.value : '')}
+                                placeholder="고객사 선택/검색..."
+                                isClearable={false}
+                                styles={selectStyles}
+                                className="react-select-container"
+                                classNamePrefix="react-select"
+                                noOptionsMessage={() => "검색 결과가 없습니다"}
+                            />
                         </div>
                     )}
 
