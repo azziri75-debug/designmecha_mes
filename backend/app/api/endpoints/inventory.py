@@ -105,8 +105,7 @@ async def read_stocks(
         so_active_subq.label("so_active"),
         sp_wait_subq.label("sp_wait"),
         sp_active_subq.label("sp_active")
-    ).outerjoin(Stock, Stock.product_id == Product.id)\
-     .where(Product.item_type != 'CONSUMABLE')
+    ).outerjoin(Stock, Stock.product_id == Product.id)
 
     if item_type:
         query = query.where(Product.item_type == item_type)
@@ -608,7 +607,7 @@ async def recalculate_inventory(db: AsyncSession = Depends(get_db)):
     await db.flush()
 
     # 2. 모든 제품 리스트 가져오기
-    products_res = await db.execute(select(Product.id).where(Product.item_type != 'CONSUMABLE'))
+    products_res = await db.execute(select(Product.id))
     product_ids = [p.id for p in products_res.scalars().all()]
     
     # 임시 저장소
