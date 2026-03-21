@@ -122,11 +122,15 @@ async def read_stocks(
         # If no stock record exists, create a transient one for response
         if not stock_obj:
             stock_obj = Stock(
+                id=0,
                 product_id=product.id,
                 current_quantity=0,
                 in_production_quantity=0
             )
             stock_obj.product = product
+        else:
+            # Ensure id exists for Pydantic even if not committed? No, real stocks have IDs.
+            pass
         
         # Populate computed fields
         stock_obj.producing_so = row[2] + row[3] # Wait SO + Active SO Plans
@@ -193,7 +197,7 @@ async def read_stock_by_product(product_id: int, db: AsyncSession = Depends(get_
     row = result.first()
     
     if not row:
-        return Stock(product_id=product_id, current_quantity=0, in_production_quantity=0)
+        return Stock(id=0, product_id=product_id, current_quantity=0, in_production_quantity=0)
     
     stock = row[0]
     stock.producing_so = (row[1] or 0) + (row[2] or 0)

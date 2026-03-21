@@ -19,7 +19,7 @@ class StockUpdate(BaseModel):
     location: Optional[str] = None
 
 class StockResponse(StockBase):
-    id: int
+    id: Optional[int] = 0
     updated_at: Optional[datetime] = None
     product: Optional[ProductSimple] = None
     producing_total: Optional[int] = 0
