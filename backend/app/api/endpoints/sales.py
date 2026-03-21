@@ -1331,3 +1331,45 @@ async def delete_delivery_history(
     await db.commit()
     return {"status": "ok", "message": f"DeliveryHistory {history_id} deleted and quantities reverted"}
 
+# --- TEMPORARY FIX ENDPOINT ---
+@router.get("/fix-mismatched-plans")
+async def fix_mismatched_plans_in_db(db: AsyncSession = Depends(deps.get_db)):
+    """
+    TEMPORARY ENDPOINT to auto-fix data corruption.
+    """
+    from sqlalchemy import text
+    try:
+        query = text("""
+        UPDATE production_plan_items
+        SET 
+            product_id = (
+                SELECT soi.product_id 
+                FROM sales_orders so 
+                JOIN sales_order_items soi ON so.id = soi.order_id 
+                JOIN production_plans pp ON so.id = pp.order_id 
+                WHERE pp.id = production_plan_items.plan_id
+                LIMIT 1
+            ),
+            quantity = (
+                SELECT soi.quantity 
+                FROM sales_orders so 
+                JOIN sales_order_items soi ON so.id = soi.order_id 
+                JOIN production_plans pp ON so.id = pp.order_id 
+                WHERE pp.id = production_plan_items.plan_id
+                LIMIT 1
+            )
+        WHERE id IN (
+            SELECT ppi.id
+            FROM sales_orders so
+            JOIN sales_order_items soi ON so.id = soi.order_id
+            JOIN production_plans pp ON so.id = pp.order_id
+            JOIN production_plan_items ppi ON pp.id = ppi.plan_id
+            WHERE soi.product_id != ppi.product_id OR soi.quantity != ppi.quantity
+        );
+        """)
+        await db.execute(query)
+        await db.commit()
+        return {"status": "success", "message": "어긋난 생산계획 품목 및 수량 데이터가 수주 데이터에 맞춰 정상적으로 동기화되었습니다. 새로고침해 주세요."}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
