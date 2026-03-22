@@ -618,6 +618,28 @@ async def complete_purchase_order(
     await db.commit()
     return {"message": "발주 완료 및 정상 입고 처리되었습니다.", "order_no": order.order_no}
 
+@router.get("/fix-consumable-types")
+async def trigger_fix_consumable_types(
+    db: AsyncSession = Depends(deps.get_db)
+) -> Any:
+    """
+    Emergency endpoint to fix missing purchase_type for consumables.
+    Triggered via browser for environments where manual script execution is difficult (e.g. NAS).
+    """
+    from fix_purchase_type import fix_purchase_type
+    try:
+        updated_count = await fix_purchase_type()
+        if updated_count == -1:
+            return {"status": "error", "message": "발주 유형 보정 중 오류가 발생했습니다. 로그를 확인하세요."}
+        return {
+            "status": "success", 
+            "message": f"총 {updated_count}건의 발주서 유형이 '소모품(CONSUMABLE)'으로 보정되었습니다.",
+            "updated_count": updated_count
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 @router.get("/purchase/orders", response_model=List[schemas.PurchaseOrder])
 async def read_purchase_orders(
     skip: int = 0,
