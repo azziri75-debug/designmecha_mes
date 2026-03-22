@@ -624,20 +624,19 @@ async def trigger_fix_consumable_types(
 ) -> Any:
     """
     Emergency endpoint to fix missing purchase_type for consumables.
-    Triggered via browser for environments where manual script execution is difficult (e.g. NAS).
+    Integrated via inner-app utility to avoid module import issues.
     """
-    from fix_purchase_type import fix_purchase_type
     try:
-        updated_count = await fix_purchase_type()
-        if updated_count == -1:
-            return {"status": "error", "message": "발주 유형 보정 중 오류가 발생했습니다. 로그를 확인하세요."}
+        from app.api.utils.purchasing import fix_purchase_type
+        updated_count = await fix_purchase_type(db)
         return {
             "status": "success", 
             "message": f"총 {updated_count}건의 발주서 유형이 '소모품(CONSUMABLE)'으로 보정되었습니다.",
             "updated_count": updated_count
         }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        import traceback
+        return {"status": "error", "message": str(e), "trace": traceback.format_exc()}
 
 
 @router.get("/purchase/orders", response_model=List[schemas.PurchaseOrder])

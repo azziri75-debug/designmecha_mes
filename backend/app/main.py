@@ -1112,8 +1112,8 @@ async def startup_event():
 
                 # [NEW] Fix missing purchase_type for consumables
                 try:
-                    from fix_purchase_type import fix_purchase_type
-                    await fix_purchase_type()
+                    from app.api.utils.purchasing import fix_purchase_type
+                    await fix_purchase_type(db)
                 except Exception as e:
                     print(f"Startup: Purchase type fix failed: {e}")
             except Exception as e:
