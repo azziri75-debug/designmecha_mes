@@ -136,6 +136,9 @@ async def startup_event():
                     if "actual_delivery_date" not in po_cols_list:
                         await db.execute(text("ALTER TABLE purchase_orders ADD COLUMN actual_delivery_date DATE"))
                         print("Startup: Added actual_delivery_date to purchase_orders (SQLite)")
+                    if "purchase_type" not in po_cols_list:
+                        await db.execute(text("ALTER TABLE purchase_orders ADD COLUMN purchase_type VARCHAR DEFAULT 'PART'"))
+                        print("Startup: Added purchase_type to purchase_orders (SQLite)")
                         
                     oo_cols = await db.execute(text("PRAGMA table_info('outsourcing_orders')"))
                     oo_cols_list = [row[1] for row in oo_cols.fetchall()]
@@ -216,6 +219,11 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE purchase_orders ADD COLUMN actual_delivery_date DATE"))
                         print("Startup: Added actual_delivery_date to purchase_orders (Postgres)")
+                    
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='purchase_orders' AND column_name='purchase_type'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE purchase_orders ADD COLUMN purchase_type VARCHAR DEFAULT 'PART'"))
+                        print("Startup: Added purchase_type to purchase_orders (Postgres)")
                         
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='outsourcing_orders' AND column_name='actual_delivery_date'"))
                     if not r.scalar():
