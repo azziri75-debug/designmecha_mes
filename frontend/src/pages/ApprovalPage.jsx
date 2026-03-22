@@ -174,8 +174,8 @@ const ApprovalPage = () => {
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;
         
-        // 현재 로그인한 사람의 ID (사용자 요청에 따라 staff_id 사용)
-        const myStaffId = String(currentUser?.staff_id || currentUser?.id || "");
+        // 현재 로그인한 사람의 DB PK (결재 권한 확인의 기준)
+        const myId = String(currentUser?.id || "");
 
         // 결재선 중 아직 결재 안 한(PENDING) 사람들을 순서대로 찾음
         const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
@@ -185,11 +185,10 @@ const ApprovalPage = () => {
 
         if (!currentApproverToSign) return false;
 
-        // 타입 불일치 방지를 위해 모두 String으로 변환하여 비교
+        // 타입 불일치 방지를 위해 모두 String으로 변환하여 비교 (approver_id는 Staff 엔티티의 ID)
         const approverId = String(currentApproverToSign.approver_id || "");
-        const stepStaffId = String(currentApproverToSign.staff_id || "");
 
-        const result = (approverId === myStaffId || stepStaffId === myStaffId);
+        const result = (approverId === myId);
         
         // 디버깅용 로그 (나중에 제거 가능)
         if (result) console.log("결재 권한 확인 성공:", { myStaffId, approverId, stepStaffId });
@@ -611,7 +610,7 @@ const ApprovalPage = () => {
                                     <div className="flex gap-3">
                                         {selectedDoc.steps.map((step, idx) => (
                                             <div key={idx} className="flex flex-col items-center gap-1.5 w-20">
-                                                <div className="text-[10px] font-bold text-gray-500 uppercase">{step.sequence === 1 ? '부장' : step.sequence === 2 ? '이사' : '대표이사'}</div>
+                                                <div className="text-[10px] font-bold text-gray-500 uppercase">{step.approver?.role || (step.sequence === 1 ? '부장' : step.sequence === 2 ? '이사' : '대표이사')}</div>
                                                 <div className="w-16 h-16 bg-white rounded border border-gray-600 flex items-center justify-center relative overflow-hidden group">
                                                     {step.status === 'APPROVED' ? (
                                                         step.approver?.stamp_image ? (

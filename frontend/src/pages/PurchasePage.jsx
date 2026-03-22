@@ -180,7 +180,7 @@ const PurchasePage = ({ type }) => {
             // 결재선 데이터 미리 가져오기 (PURCHASE_ORDER 타입의 기본 결재선)
             const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
             const customApprovers = lineRes.data.map(line => ({
-                staff_id: line.staff_id || line.user_id || line.id || line.approver_id || line.approver?.id || line.value,
+                staff_id: line.approver_id || line.staff_id || line.user_id || line.id || line.approver?.id || line.value,
                 sequence: line.sequence
             }));
             console.log("현재 결재자 배열 상태:", customApprovers);

@@ -41,7 +41,9 @@ ROLE_RANKING = {
 }
 
 def get_staff_rank(role: str) -> int:
-    return ROLE_RANKING.get(role, 0)
+    if not role:
+        return 0
+    return ROLE_RANKING.get(role.strip(), 0)
 
 @router.get("/stats", response_model=ApprovalStats)
 async def get_approval_stats(
