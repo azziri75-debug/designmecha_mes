@@ -1109,6 +1109,13 @@ async def startup_event():
                     await cleanup_consumable_stocks()
                 except Exception as e:
                     print(f"Startup: Consumable stock cleanup failed: {e}")
+
+                # [NEW] Fix missing purchase_type for consumables
+                try:
+                    from fix_purchase_type import fix_purchase_type
+                    await fix_purchase_type()
+                except Exception as e:
+                    print(f"Startup: Purchase type fix failed: {e}")
             except Exception as e:
                 print(f"Startup: MRP auto-patch failed: {e}")
                 await db.rollback()
