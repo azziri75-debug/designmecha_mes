@@ -10,12 +10,12 @@ async def fix_purchase_type(db):
     """
     try:
         # 1. Strategy A: Orders linked to consumable_purchase_waits
-        stmt_a = select(PurchaseOrderItem.order_id).where(
+        stmt_a = select(PurchaseOrderItem.purchase_order_id).where(
             PurchaseOrderItem.consumable_purchase_wait_id.is_not(None)
         ).distinct()
         
         # 2. Strategy B: Orders containing items with Product.item_type == 'CONSUMABLE'
-        stmt_b = select(PurchaseOrderItem.order_id).join(Product, PurchaseOrderItem.product_id == Product.id).where(
+        stmt_b = select(PurchaseOrderItem.purchase_order_id).join(Product, PurchaseOrderItem.product_id == Product.id).where(
             Product.item_type == 'CONSUMABLE'
         ).distinct()
         
@@ -23,8 +23,8 @@ async def fix_purchase_type(db):
         res_a = await db.execute(stmt_a)
         res_b = await db.execute(stmt_b)
         
-        ids_a = {r[0] for r in res_a.fetchall()}
-        ids_b = {r[0] for r in res_b.fetchall()}
+        ids_a = set(res_a.scalars().all())
+        ids_b = set(res_b.scalars().all())
         order_ids = list(ids_a | ids_b)
         
         if not order_ids:
