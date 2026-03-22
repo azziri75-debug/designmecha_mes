@@ -364,11 +364,22 @@ const PurchasePage = ({ type }) => {
         }
     };
 
-    const handleSuccess = () => {
+    const handleSuccess = async (newOrder) => {
         if (type === 'CONSUMABLE') {
             if (tabValue === 0) fetchPendingItems();
             else if (tabValue === 1) fetchOrders();
             else fetchCompletedOrders();
+
+            // 소모품 발주인 경우, 결재 상신 여부 확인
+            if (newOrder && newOrder.id && window.confirm("발주서가 생성되었습니다. 지금 바로 결재 요청을 진행하시겠습니까?")) {
+                try {
+                    // 전체 정보를 위해 다시 Fetch (items, partner 등 포함)
+                    const res = await api.get(`/purchasing/purchase/orders/${newOrder.id}`);
+                    handleApprovalSubmit(res.data);
+                } catch (err) {
+                    console.error("Failed to fetch order for approval", err);
+                }
+            }
         } else {
             if (tabValue === 0) fetchPendingItems();
             else if (tabValue === 1) fetchMrpItems();
@@ -376,6 +387,7 @@ const PurchasePage = ({ type }) => {
             else fetchCompletedOrders();
         }
         setModalOpen(false);
+        setConsumableModalOpen(false);
     };
 
     const handleSelectPendingItem = (id) => {

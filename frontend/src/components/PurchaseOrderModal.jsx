@@ -468,7 +468,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 savedOrder = res.data;
             }
 
-            onSuccess();
+            onSuccess(savedOrder);
             onClose();
         } catch (error) {
             console.error("Failed to save purchase order", error);

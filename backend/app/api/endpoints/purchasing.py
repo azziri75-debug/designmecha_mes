@@ -155,8 +155,8 @@ async def register_consumable_order(
     wait_item.status = "ORDERED"
     
     # 3. Create Purchase Order
-    import datetime
-    today_str = datetime.date.today().strftime("%Y%m%d")
+    from datetime import date
+    today_str = date.today().strftime("%Y%m%d")
     
     stmt_no = select(PurchaseOrder).where(PurchaseOrder.order_no.like(f"PO-{today_str}-%")).order_by(desc(PurchaseOrder.order_no))
     res_no = await db.execute(stmt_no)
@@ -172,7 +172,7 @@ async def register_consumable_order(
     new_po = PurchaseOrder(
         order_no=order_no,
         partner_id=req.partner_id,
-        order_date=datetime.date.today(),
+        order_date=date.today(),
         status=PurchaseStatus.PENDING,
         purchase_type="CONSUMABLE",
         note=req.note
@@ -191,7 +191,7 @@ async def register_consumable_order(
     db.add(po_item)
     
     await db.commit()
-    return {"message": "발주가 성공적으로 등록되었습니다.", "order_no": order_no}
+    return {"message": "발주가 성공적으로 등록되었습니다.", "id": new_po.id, "order_no": order_no}
 
 
 
@@ -605,11 +605,8 @@ async def complete_purchase_order(
                     db=db,
                     product_id=item.product_id,
                     quantity=qty,
-                    transaction_type=TransactionType.INBOUND,
-                    related_id=order.id,
-                    related_type="PURCHASE_RECEIPT",
-                    note=f"발주 완료 자동 입고 (PO: {order.order_no})",
-                    transaction_date=datetime.now()
+                    transaction_type=TransactionType.IN,
+                    reference=f"PO: {order.order_no}"
                 )
         
         if getattr(item, 'consumable_purchase_wait_id', None):

@@ -136,7 +136,7 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
 
             const res = await api.post('/purchasing/purchase/consumables/order', payload);
             alert(`발주서(${res.data.order_no})가 성공적으로 발행되었습니다.`);
-            onSuccess();
+            onSuccess(res.data);
         } catch (err) {
             console.error(err);
             alert("발주 중 오류 발생: " + (err.response?.data?.detail || err.message));
