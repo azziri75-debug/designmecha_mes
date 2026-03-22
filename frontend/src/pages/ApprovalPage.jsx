@@ -190,8 +190,7 @@ const ApprovalPage = () => {
 
         const result = (approverId === myId);
         
-        // 디버깅용 로그 (나중에 제거 가능)
-        if (result) console.log("결재 권한 확인 성공:", { myStaffId, approverId, stepStaffId });
+        if (result) console.log("결재 권한 확인 성공:", { myId, approverId });
         
         return result;
     };
