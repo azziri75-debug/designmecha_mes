@@ -139,11 +139,8 @@ async def register_consumable_order(
         if not req.new_product_name:
             raise HTTPException(status_code=400, detail="기존 품목을 선택하거나 신규 품목명을 입력해야 합니다.")
         
-        import time
-        new_code = f"CON-{int(time.time())}-{req.new_product_name[:2]}"
         new_product = Product(
             name=req.new_product_name,
-            code=new_code,
             item_type="CONSUMABLE",
             specification=req.new_product_spec or "",
             unit=req.new_product_unit or "EA",
