@@ -54,8 +54,8 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
 
     const fetchPartners = async () => {
         try {
-            const res = await api.get('/basics/partners/');
-            setPartners(res.data.filter(p => p.type === 'SUPPLIER'));
+            const res = await api.get('/basics/partners/', { params: { type: 'SUPPLIER' } });
+            setPartners(res.data);
         } catch (err) {
             console.error(err);
         }
