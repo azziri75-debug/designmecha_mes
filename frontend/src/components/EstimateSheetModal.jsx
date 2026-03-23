@@ -108,7 +108,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             }
         } catch (e) { }
 
-        const defaultWidths = [30, 250, 100, 40, 80, 80, 60];
+        const defaultWidths = [30, 240, 100, 40, 80, 80, 60];
 
         setMetadata(prev => ({
             ...prev,
@@ -237,7 +237,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                             
                             <div className="flex justify-between items-start w-full">
                                 <div className="flex-1">
-                                    <div className="flex items-end gap-2 border-b-2 border-black pb-1 w-fit min-w-[300px] whitespace-nowrap">
+                                    <div className="flex items-end gap-4 border-b-2 border-black pb-1 w-fit whitespace-nowrap">
                                         <EditableText 
                                             value={metadata.recipient} 
                                             onChange={(v) => handleMetaChange('recipient', v)}

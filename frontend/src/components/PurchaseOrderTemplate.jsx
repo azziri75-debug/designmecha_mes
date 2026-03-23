@@ -193,7 +193,7 @@ const PurchaseOrderTemplate = ({
     return (
         <div className="flex flex-col w-full h-full">
             {/* Toolbar - Only visible in View mode and not during print */}
-            {isReadOnly && (!documentData || documentData.status === 'REJECTED' || !documentData.id) && orderId && (
+            {isReadOnly && (!documentData || documentData.status !== 'APPROVED') && orderId && (
                 <Box className="idf-no-print" sx={{ 
                     display: 'flex', 
                     justifyContent: 'flex-end', 
