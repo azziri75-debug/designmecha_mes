@@ -915,7 +915,7 @@ const PurchasePage = ({ type }) => {
                                                                     </TableRow>
                                                                 </TableHead>
                                                                 <TableBody>
-                                                                    {order.items.map((item) => (
+                                                                    {(order.items || []).map((item) => (
                                                                         <TableRow key={item.id}>
                                                                             <TableCell>{item.process_name || '-'}</TableCell>
                                                                             <TableCell>{item.product?.name}</TableCell>

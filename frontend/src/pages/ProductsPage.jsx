@@ -1055,7 +1055,7 @@ const ProductsPage = ({ type }) => {
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody className="divide-y divide-gray-700">
-                                                                                {product.standard_processes.sort((a, b) => a.sequence - b.sequence).map((pp, idx) => (
+                                                                                {(product.standard_processes || []).slice().sort((a, b) => a.sequence - b.sequence).map((pp, idx) => (
                                                                                     <tr key={idx} className="hover:bg-gray-800/50 transition-colors">
                                                                                         <td className="px-4 py-2 text-center text-white font-medium bg-gray-800/30">
                                                                                             {pp.sequence}
