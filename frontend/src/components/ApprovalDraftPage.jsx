@@ -10,6 +10,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../lib/api';
 import MultiFileUpload from './MultiFileUpload';
 import { formatNumber } from '../lib/utils';
+import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import { useAuth } from '../contexts/AuthContext';
 
 // Import New Components
@@ -129,63 +130,21 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         }
     };
 
-    const handlePrint = () => {
-        // 팝업 방식으로 printRef 내용만 인쇄
-        if (!printRef.current) { window.print(); return; }
-        const printWin = window.open("", "_blank", "width=900,height=1200");
-        if (!printWin) { window.print(); return; }
-        const styles = Array.from(document.styleSheets)
-            .map(sheet => { try { return Array.from(sheet.cssRules||[]).map(r=>r.cssText).join("\n"); } catch{return "";} }).join("\n");
-        printWin.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>전자결재</title>
-<style>${styles}
-@page { size: A4 portrait; margin: 15mm; }
-@media print { body{margin:0;padding:0;background:white;} *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;} }
-body { background: white; font-family: "Malgun Gothic", sans-serif; }
-</style></head><body>
-${printRef.current.innerHTML}
-<script>window.onload=function(){setTimeout(function(){window.print();window.close();},500);};<\/script>
-</body></html>`);
-        printWin.document.close();
+    const handlePrint = async () => {
+        await printAsImage(printRef.current, { title: "전자결재 문서", orientation: "portrait" });
     };
 
-    const handleDownloadPDF = async () => {
+        const handleDownloadPDF = async () => {
         if (!printRef.current) return;
-        const cvs = await html2canvas(printRef.current, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            width: printRef.current.scrollWidth,
-            height: printRef.current.scrollHeight,
-            windowWidth: printRef.current.scrollWidth,
-            windowHeight: printRef.current.scrollHeight,
+        const fileName = `${docType}_${title || '문서'}_${Date.now()}.pdf`;
+        await generateA4PDF(printRef.current, {
+            fileName,
+            orientation: 'portrait',
+            action: 'download',
+            pixelRatio: 3,
+            multiPage: true
         });
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfW = pdf.internal.pageSize.getWidth();
-        const pdfH = pdf.internal.pageSize.getHeight();
-        const imgW = cvs.width; const imgH = cvs.height;
-        const totalMm = (imgH * pdfW) / imgW;
-        if (totalMm <= pdfH + 1) {
-            pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, pdfW, totalMm);
-        } else {
-            const imgEl = new Image(); imgEl.src = cvs.toDataURL("image/png");
-            await new Promise(r => { imgEl.onload = r; });
-            const scale = imgW / pdfW;
-            const pageHPx = pdfH * scale;
-            let yOff = 0; let pg = 0;
-            const tmpCvs = document.createElement("canvas");
-            while (yOff < imgH) {
-                if (pg > 0) pdf.addPage();
-                const sliceH = Math.min(pageHPx, imgH - yOff);
-                tmpCvs.width = imgW; tmpCvs.height = Math.ceil(sliceH);
-                const ctx = tmpCvs.getContext("2d");
-                ctx.clearRect(0, 0, tmpCvs.width, tmpCvs.height);
-                ctx.drawImage(imgEl, 0, -yOff, imgW, imgH);
-                pdf.addImage(tmpCvs.toDataURL("image/png"), "PNG", 0, 0, pdfW, sliceH / scale);
-                yOff += pageHPx; pg++;
-            }
-        }
-        pdf.save(${docType}_.pdf);
-    };
+    };;
 
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;

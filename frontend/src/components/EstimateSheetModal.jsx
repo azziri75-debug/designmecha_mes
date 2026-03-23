@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState, useRef } from 'react';
 import { X, Save, Download } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
@@ -144,65 +145,28 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
 
     const fmt = (n) => typeof n === 'number' ? n.toLocaleString() : n;
 
+    const handlePrintWindow = async () => {
+        await printAsImage(sheetRef.current, { title: '견적서', orientation: 'portrait' });
+    };
+
     const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            const images = sheetRef.current.getElementsByTagName('img');
-            await Promise.all(Array.from(images).map(img => {
-                if (img.complete) return Promise.resolve();
-                return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
-            }));
-
-            const dataUrl = await toPng(sheetRef.current, {
-                cacheBust: true,
-                backgroundColor: '#ffffff',
+            const fileName = estimate__.pdf;
+            const blob = await generateA4PDF(sheetRef.current, {
+                fileName,
+                orientation: 'portrait',
+                action: 'blob',
                 pixelRatio: 3,
-                style: {
-                    transform: 'scale(1)',
-                    transformOrigin: 'top left',
-                    width: '210mm',
-                },
-                filter: (node) => {
-                    if (node.style && node.style.color && node.style.color.includes('oklch')) node.style.color = '#000000';
-                    if (node.style && node.style.backgroundColor && node.style.backgroundColor.includes('oklch')) node.style.backgroundColor = '#ffffff';
-                    return true;
-                }
+                multiPage: true
             });
 
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeightMm = pdf.internal.pageSize.getHeight();
-            const imgProps = pdf.getImageProperties(dataUrl);
-            const totalHeightMm = (imgProps.height * pdfWidth) / imgProps.width;
-            if (totalHeightMm <= pdfHeightMm + 1) {
-                // A4 한 페이지에 들어오는 경우
-                pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, totalHeightMm);
-            } else {
-                // A4 높이 초과 시 페이지 자동 분할
-                const imgEl = new Image(); imgEl.src = dataUrl;
-                await new Promise(r => { imgEl.onload = r; });
-                const scale = imgProps.width / pdfWidth;
-                const pageHPx = pdfHeightMm * scale;
-                let yOff = 0; let pg = 0;
-                const cvs = document.createElement('canvas');
-                while (yOff < imgProps.height) {
-                    if (pg > 0) pdf.addPage();
-                    const sliceH = Math.min(pageHPx, imgProps.height - yOff);
-                    cvs.width = imgProps.width; cvs.height = Math.ceil(sliceH);
-                    const ctx = cvs.getContext('2d');
-                    ctx.clearRect(0, 0, cvs.width, cvs.height);
-                    ctx.drawImage(imgEl, 0, -yOff, imgProps.width, imgProps.height);
-                    pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, sliceH / scale);
-                    yOff += pageHPx; pg++;
-                }
-            }
-            const fileName = `estimate_${estimate.id}_${Date.now()}.pdf`;
-
             if (action === 'download') {
-                pdf.save(fileName);
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = fileName; a.click();
             } else {
-                const blob = pdf.output('blob');
                 const file = new File([blob], fileName, { type: 'application/pdf' });
                 const formData = new FormData();
                 formData.append('file', file);
@@ -212,205 +176,12 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 try { if (estimate.attachment_file) currentAttachments = typeof estimate.attachment_file === 'string' ? JSON.parse(estimate.attachment_file) : estimate.attachment_file; } catch { currentAttachments = []; }
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
-                await api.put(`/sales/estimates/${estimate.id}`, { attachment_file: newAttachments, sheet_metadata: metadata });
-                alert("저장 및 첨부되었습니다.");
-                if (onSave) onSave();
-                onClose();
+                await api.put(/sales/estimates/, { attachment_file: newAttachments });
+                alert('저장 및 첨부되었습니다.');
+                if (onSave) onSave(); onClose();
             }
         } catch (err) {
             console.error(err);
             alert('PDF 생성 실패: ' + err.message);
         } finally { setSaving(false); }
     };
-
-    if (!isOpen || !estimate) return null;
-
-    const totalAmount = metadata.items.reduce((s, i) => {
-        const val = i.total?.toString().replace(/,/g, '');
-        return s + (parseFloat(val) || 0);
-    }, 0);
-
-    const columns = [
-        { key: 'idx', label: '번호', align: 'center' },
-        { key: 'name', label: '품 명', align: 'left' },
-        { key: 'spec', label: '규 격', align: 'center' },
-        { key: 'qty', label: '수 량', align: 'center' },
-        { key: 'price', label: '단 가', align: 'right' },
-        { key: 'total', label: '금 액', align: 'right' },
-        { key: 'note', label: '비 고', align: 'center' },
-    ];
-
-    // Fix Stamp URL Data Binding
-    let stampUrl = null;
-    if (company?.stamp_image?.url) {
-        stampUrl = company.stamp_image.url;
-    } else if (Array.isArray(company?.stamp_image)) {
-        stampUrl = company.stamp_image[0]?.url;
-    } else if (company?.stamp_file?.[0]?.url) {
-        stampUrl = company.stamp_file[0].url;
-    }
-
-    // Ensure absolute if needed, but usually '/static/...' is fine via proxy
-    if (stampUrl && !stampUrl.startsWith('http') && !stampUrl.startsWith('/')) {
-        stampUrl = '/' + stampUrl;
-    }
-
-    return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
-                <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                    <h3 className="text-white font-bold flex items-center gap-2">견적서 미리보기 및 정밀 편집</h3>
-                    <div className="flex items-center gap-2 text-[11px] text-gray-400 mr-4 italic">
-                        * 항목 너비와 내용을 직접 수정할 수 있습니다.
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => generatePDF('save')}
-                            disabled={saving}
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20"
-                        >
-                            {saving ? '처리 중...' : 'PDF 저장 및 첨부'}
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="text-gray-400 hover:text-white p-2 flex items-center justify-center font-bold"
-                        >
-                            <X className="w-6 h-6" />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white text-black w-[210mm] h-[297mm] p-[10mm] flex flex-col shadow-none origin-top relative" style={{ fontFamily: '"Malgun Gothic", sans-serif', border: '1px solid #e5e7eb' }}>
-
-                        {/* Title Section - Improved size and visibility */}
-                        <div className="text-center mb-10 relative flex justify-center items-center h-24">
-                            <div className="text-5xl font-extrabold tracking-[1em] indent-[1em] border-b-4 border-black pb-3 max-w-[600px] w-full text-center leading-none">
-                                <EditableText value={metadata.title} onChange={(v) => handleMetaChange('title', v)} isHeader className="justify-center" />
-                            </div>
-                        </div>
-
-                        {/* Top Info Section */}
-                        <div className="flex justify-between items-start mb-6 text-xs px-2">
-                            <div className="flex-1 space-y-8 pr-4">
-                                <div className="text-[12px] font-bold border-b border-gray-100 flex items-center gap-2 min-w-[140px] pb-1">
-                                    <span>Date :</span>
-                                    <EditableText value={metadata.estimate_date} onChange={(v) => handleMetaChange('estimate_date', v)} className="flex-1" />
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-end gap-2 text-2xl font-bold border-b-2 border-black pb-1 mb-2 max-w-[350px]">
-                                        <EditableText value={metadata.recipient} onChange={(v) => handleMetaChange('recipient', v)} className="flex-1" />
-                                        <span className="text-base pb-1 font-normal">귀하</span>
-                                    </div>
-                                    <p className="italic" style={{ fontSize: '12px', color: '#6b7280' }}>아래와 같이 견적해 드립니다.</p>
-                                </div>
-                            </div>
-
-                            {/* Company Info Box - Refined font sizes and dimensions */}
-                            <div className="w-[350px] shrink-0 border-2 border-black flex text-[9px] h-44 overflow-hidden">
-                                <div className="w-8 border-r border-black flex flex-col items-center justify-center font-bold" style={{ backgroundColor: '#f9fafb' }}>
-                                    <div>공</div><div>급</div><div>자</div>
-                                </div>
-                                <div className="flex-1">
-                                    <table className="w-full border-collapse h-full">
-                                        <tbody>
-                                            <tr className="border-b border-black h-10">
-                                                <td className="w-16 border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>등록번호</td>
-                                                <td colSpan="3" className="p-1 font-bold text-center text-[12px]">
-                                                    <EditableText value={metadata.company_reg_no} onChange={(v) => handleMetaChange('company_reg_no', v)} className="justify-center" />
-                                                </td>
-                                            </tr>
-                                            <tr className="border-b border-black h-10">
-                                                <td className="border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}> 상 호</td>
-                                                <td className="border-r border-black p-1 text-center font-bold">
-                                                    <EditableText value={metadata.company_name} onChange={(v) => handleMetaChange('company_name', v)} className="justify-center" />
-                                                </td>
-                                                <td className="w-12 border-r border-black font-bold p-1 text-center" style={{ backgroundColor: '#f9fafb' }}>대표</td>
-                                                <td className="p-1 text-center relative font-bold text-[12px]">
-                                                    <EditableText value={metadata.company_ceo} onChange={(v) => handleMetaChange('company_ceo', v)} className="justify-center" />
-                                                    {stampUrl && <StampOverlay url={stampUrl} className="w-12 h-12 -top-2 -left-2" />}
-                                                </td>
-                                            </tr>
-                                            <tr className="border-b border-black h-12">
-                                                <td className="border-r border-black font-bold p-1 text-center leading-tight text-[9px]" style={{ backgroundColor: '#f9fafb' }}>사업장<br />소재지</td>
-                                                <td colSpan="3" className="p-1 leading-tight text-[9px]">
-                                                    <EditableText
-                                                        value={metadata.company_address}
-                                                        onChange={(v) => handleMetaChange('company_address', v)}
-                                                        className="items-start whitespace-pre-wrap leading-tight text-[9px]"
-                                                    />
-                                                </td>
-                                            </tr>
-                                            <tr className="h-12">
-                                                <td className="border-r border-black font-bold p-1 text-center text-[9px]" style={{ backgroundColor: '#f9fafb' }}>연락처</td>
-                                                <td colSpan="3" className="p-1 leading-tight text-[9px]">
-                                                    <EditableText
-                                                        value={metadata.company_contact}
-                                                        onChange={(v) => handleMetaChange('company_contact', v)}
-                                                        className="items-start whitespace-pre-wrap leading-tight text-[9px]"
-                                                    />
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Amount Bar */}
-                        <div className="mx-2 flex border-t-2 border-b-2 border-black py-2 mb-6 font-bold text-base px-6 justify-between items-center h-14" style={{ backgroundColor: '#f9fafb' }}>
-                            <div className="flex items-center gap-6 flex-1">
-                                <span className="whitespace-nowrap text-sm">합 계 금 액 <span className="text-[9px] font-normal opacity-60">(부가세 별도)</span></span>
-                                <EditableText value={metadata.total_amount_text} onChange={(v) => handleMetaChange('total_amount_text', v)} className="text-lg tracking-[0.1em] flex-1" style={{ color: '#1e3a8a' }} />
-                            </div>
-                            <div className="text-2xl whitespace-nowrap min-w-[150px] text-right font-mono">
-                                ₩ {fmt(totalAmount)}
-                            </div>
-                        </div>
-
-                        {/* Items Table */}
-                        <div className="px-2">
-                            <ResizableTable
-                                columns={columns}
-                                data={metadata.items}
-                                colWidths={metadata.colWidths}
-                                onUpdateWidths={(w) => handleMetaChange('colWidths', w)}
-                                onUpdateData={updateItem}
-                                className="text-[10px]"
-                            />
-                        </div>
-
-                        {/* Footer Summary - Ensured one line for total */}
-                        <div className="mx-2 flex border-2 border-black border-t-0 font-bold text-[10px] items-center h-10" style={{ backgroundColor: '#f9fafb' }}>
-                            <div className="flex-1 px-4 uppercase">합 계 (Total Amount)</div>
-                            <div className="min-w-[150px] text-right px-4 text-sm font-mono tracking-tight whitespace-nowrap">₩ {fmt(totalAmount)}</div>
-                            <div className="w-[60px]"></div>
-                        </div>
-
-                        {/* Footer Section - Balanced Margin */}
-                        <div className="mt-auto px-2 pt-6">
-                            <h4 className="font-bold border-b-2 border-black w-24 mb-2 pb-1 text-[11px]">견 적 기 준</h4>
-                            <div className="leading-relaxed border-2 border-black p-4 min-h-[100px]" style={{ backgroundColor: 'rgba(249, 250, 251, 0.2)' }}>
-                                <EditableText
-                                    value={metadata.notes}
-                                    onChange={(v) => handleMetaChange('notes', v)}
-                                    className="min-h-[80px] items-start whitespace-pre-wrap leading-6 text-[11px]"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Bottom Decoration */}
-                        <div className="text-center mt-8 mb-2 shrink-0" style={{ opacity: 0.4 }}>
-                            <div className="font-bold tracking-[2em] uppercase" style={{ fontSize: '10px', color: '#9ca3af' }}>
-                                디자인메카
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-        </div >
-    );
-};
-
-export default EstimateSheetModal;

@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf';
 import { toPng } from 'html-to-image';
 import { X, FileText, Printer, Save, Download } from 'lucide-react';
 import api from '../lib/api';
+import { printMultiPageAsImage, generateMultiPageA4PDF } from '../lib/printUtils';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import { cn } from '../lib/utils';
 
@@ -211,125 +212,31 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     };
 
     // 인쇄 전용 창 방식 - 메뉴/다크 배경 없이 A4만 인쇄
-    const handlePrintWindow = () => {
-        const printWin = window.open('', '_blank', 'width=900,height=1200');
-        if (!printWin) { alert('팝업 차단을 해제해주세요'); return; }
-
-        // 현재 페이지의 모든 스타일시트 수집
-        const styles = Array.from(document.styleSheets)
-            .map(sheet => {
-                try {
-                    return Array.from(sheet.cssRules || []).map(r => r.cssText).join('\n');
-                } catch { return ''; }
-            }).join('\n');
-
-        // PageFrame들의 HTML 내용 수집
-        const pagesHtml = pageRefs.current
-            .filter(Boolean)
-            .map((el, i) => `
-                <div class="sheet-page" style="page-break-after: ${i < pageRefs.current.filter(Boolean).length - 1 ? 'always' : 'auto'}; margin-bottom: 20px;">
-                    ${el.innerHTML}
-                </div>`)
-            .join('');
-
-        printWin.document.write(`
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>생산관리시트</title>
-<style>
-${styles}
-@page { size: A4 portrait; margin: 10mm; }
-@media print {
-    body { margin: 0; padding: 0; background: white; }
-    .sheet-page { width: 100%; box-sizing: border-box; page-break-after: always; }
-    .sheet-page:last-child { page-break-after: auto; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-}
-body { background: white; margin: 10px; font-family: "Malgun Gothic", sans-serif; }
-.sheet-page { width: 210mm; margin: 0 auto 20px; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.15); }
-</style>
-</head>
-<body>
-${pagesHtml}
-<script>
-window.onload = function() {
-    setTimeout(function() { window.print(); window.close(); }, 500);
-};
+    const handlePrintWindow = async () => {
+        await printMultiPageAsImage(pageRefs.current, { title: '생산관리시트', orientation: 'portrait' });
+    };
 </script>
 </body>
 </html>`);
         printWin.document.close();
     };
-        const generatePDF = async (action = 'save') => {
+    const generatePDF = async (action = 'save') => {
         if (pageRefs.current.length === 0) return;
         setSaving(true);
         try {
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-
-            for (let i = 0; i < metadata.groups.length; i++) {
-                const page = pageRefs.current[i];
-                if (!page) continue;
-
-                // Wait for all images
-                const images = page.getElementsByTagName('img');
-                await Promise.all(Array.from(images).map(img => {
-                    if (img.complete) return Promise.resolve();
-                    return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
-                }));
-
-                // Using html-to-image instead of html2canvas
-                const dataUrl = await toPng(page, {
-                    cacheBust: true,
-                    backgroundColor: '#ffffff',
-                    pixelRatio: 3,
-                    style: {
-                        transform: 'scale(1)',
-                        transformOrigin: 'top left',
-
-                    },
-                    filter: (node) => {
-                        if (node.style && node.style.color && node.style.color.includes('oklch')) node.style.color = '#000000';
-                        if (node.style && node.style.backgroundColor && node.style.backgroundColor.includes('oklch')) node.style.backgroundColor = '#ffffff';
-                        return true;
-                    }
-                });
-
-                const pdfHeightMm = pdf.internal.pageSize.getHeight();
-                const imgProps = pdf.getImageProperties(dataUrl);
-                const totalHeightMm = (imgProps.height * pdfWidth) / imgProps.width;
-
-                if (i > 0) pdf.addPage();
-                if (totalHeightMm <= pdfHeightMm + 1) {
-                    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, totalHeightMm);
-                } else {
-                    const imgEl = new Image(); imgEl.src = dataUrl;
-                    await new Promise(r => { imgEl.onload = r; });
-                    const scale = imgProps.width / pdfWidth;
-                    const pageHPx = pdfHeightMm * scale;
-                    let yOff = 0; let pg = 0;
-                    const cvs = document.createElement('canvas');
-                    while (yOff < imgProps.height) {
-                        if (pg > 0) { pdf.addPage(); }
-                        const sliceH = Math.min(pageHPx, imgProps.height - yOff);
-                        cvs.width = imgProps.width; cvs.height = Math.ceil(sliceH);
-                        const ctx = cvs.getContext('2d');
-                        ctx.clearRect(0, 0, cvs.width, cvs.height);
-                        ctx.drawImage(imgEl, 0, -yOff, imgProps.width, imgProps.height);
-                        pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, sliceH / scale);
-                        yOff += pageHPx; pg++;
-                    }
-                }
-            }
-
-            const fileName = `production_sheet_${plan.id}_${Date.now()}.pdf`;
+            const fileName = production_sheet__.pdf;
+            const blob = await generateMultiPageA4PDF(pageRefs.current, {
+                fileName,
+                orientation: 'portrait',
+                action: 'blob',
+                pixelRatio: 3
+            });
 
             if (action === 'download') {
-                pdf.save(fileName);
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = fileName; a.click();
             } else {
-                const blob = pdf.output('blob');
                 const file = new File([blob], fileName, { type: 'application/pdf' });
                 const formData = new FormData();
                 formData.append('file', file);
@@ -339,10 +246,9 @@ window.onload = function() {
                 try { if (plan.attachment_file) currentAttachments = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file; } catch { currentAttachments = []; }
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
-                await api.put(`/production/plans/${plan.id}`, { attachment_file: newAttachments, sheet_metadata: { colWidths } });
-                alert("저장 및 첨부되었습니다.");
-                if (onSave) onSave();
-                onClose();
+                await api.put(/production/plans/, { attachment_file: newAttachments, sheet_metadata: { colWidths } });
+                alert('저장 및 첨부되었습니다.');
+                if (onSave) onSave(); onClose();
             }
         } catch (err) {
             console.error(err);

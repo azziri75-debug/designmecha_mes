@@ -6,6 +6,7 @@ import {
 import { X, Printer, FileDown, CheckCircle2 } from 'lucide-react';
 import { formatNumber, toKoreanCurrency, getImageUrl } from '../lib/utils';
 import html2canvas from 'html2canvas';
+import { printAsImage } from '../lib/printUtils';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 
@@ -212,8 +213,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         }
     };
 
-    const handlePrint = () => {
-        window.print();
+    const handlePrint = async () => {
+        await printAsImage(printRef.current, { title: '거래명세표', orientation: 'landscape' });
     };
 
     // ════════════════════════════════════════

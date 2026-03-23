@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState, useRef } from 'react';
 import { X, Download, Save, Printer } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
@@ -133,83 +134,29 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         return isNaN(parsed) ? n : parsed.toLocaleString();
     };
 
-    const handlePrintWindow = () => {
-        if (!sheetRef.current) return;
-        const printWin = window.open('', '_blank', 'width=900,height=1200');
-        if (!printWin) { alert('팝업 차단을 해제해주세요'); return; }
-        const styles = Array.from(document.styleSheets)
-            .map(sheet => { try { return Array.from(sheet.cssRules||[]).map(r=>r.cssText).join('\n'); } catch { return ''; } }).join('\n');
-        const html = sheetRef.current.innerHTML;
-        printWin.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>발주서</title>
-<style>${styles}
-@page { size: A4 portrait; margin: 10mm; }
-@media print { body{margin:0;padding:0;} * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
-body { background: white; margin: 10px; font-family: "Malgun Gothic", sans-serif; }
-</style></head><body>
-${html}
-<script>window.onload=function(){setTimeout(function(){window.print();window.close();},500);};</script>
-</body></html>`);
-        printWin.document.close();
+    const handlePrintWindow = async () => {
+        await printAsImage(sheetRef.current, { title: '발주서/견적의뢰서', orientation: 'portrait' });
     };
-        const generatePDF = async (action = 'save') => {
+    const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            const images = sheetRef.current.getElementsByTagName('img');
-            await Promise.all(Array.from(images).map(img => {
-                if (img.complete) return Promise.resolve();
-                return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
-            }));
-
-            const dataUrl = await toPng(sheetRef.current, {
-                cacheBust: true,
-                backgroundColor: '#ffffff',
+            const fileName = ${activeTab}__.pdf;
+            const blob = await generateA4PDF(sheetRef.current, {
+                fileName,
+                orientation: 'portrait',
+                action: 'blob',
                 pixelRatio: 3,
-                style: {
-                    transform: 'scale(1)',
-                    transformOrigin: 'top left',
-                    width: '210mm',
-                },
-                filter: (node) => {
-                    if (node.style && node.style.color && node.style.color.includes('oklch')) node.style.color = '#000000';
-                    if (node.style && node.style.backgroundColor && node.style.backgroundColor.includes('oklch')) node.style.backgroundColor = '#ffffff';
-                    return true;
-                }
+                multiPage: true
             });
 
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeightMm = pdf.internal.pageSize.getHeight();
-            const imgProps = pdf.getImageProperties(dataUrl);
-            const totalHeightMm = (imgProps.height * pdfWidth) / imgProps.width;
-            if (totalHeightMm <= pdfHeightMm + 1) {
-                // A4 한 페이지에 들어오는 경우
-                pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, totalHeightMm);
-            } else {
-                // A4 높이 초과 시 페이지 자동 분할
-                const imgEl = new Image(); imgEl.src = dataUrl;
-                await new Promise(r => { imgEl.onload = r; });
-                const scale = imgProps.width / pdfWidth;
-                const pageHPx = pdfHeightMm * scale;
-                let yOff = 0; let pg = 0;
-                const cvs = document.createElement('canvas');
-                while (yOff < imgProps.height) {
-                    if (pg > 0) pdf.addPage();
-                    const sliceH = Math.min(pageHPx, imgProps.height - yOff);
-                    cvs.width = imgProps.width; cvs.height = Math.ceil(sliceH);
-                    const ctx = cvs.getContext('2d');
-                    ctx.clearRect(0, 0, cvs.width, cvs.height);
-                    ctx.drawImage(imgEl, 0, -yOff, imgProps.width, imgProps.height);
-                    pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, sliceH / scale);
-                    yOff += pageHPx; pg++;
-                }
-            }
-            const fileName = `${activeTab}_${order.order_no}_${Date.now()}.pdf`;
-
             if (action === 'download') {
-                pdf.save(fileName);
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
             } else {
-                const blob = pdf.output('blob');
                 const file = new File([blob], fileName, { type: 'application/pdf' });
                 const formData = new FormData();
                 formData.append('file', file);
@@ -220,10 +167,16 @@ ${html}
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
                 const apiBase = orderType === 'outsourcing' ? '/purchasing/outsourcing/orders' : '/purchasing/purchase/orders';
-                await api.put(`${apiBase}/${order.id}`, { attachment_file: newAttachments, sheet_metadata: metadata });
-                alert("저장 및 첨부되었습니다.");
+                await api.put(${apiBase}/, { attachment_file: newAttachments, sheet_metadata: metadata });
+                alert('저장 및 첨부되었습니다.');
                 if (onSave) onSave();
                 onClose();
+            }
+        } catch (err) {
+            console.error(err);
+            alert('PDF 생성 실패: ' + err.message);
+        } finally { setSaving(false); }
+    };
             }
         } catch (err) {
             console.error(err);

@@ -75,13 +75,31 @@ export async function generateA4PDF(element, options = {}) {
     )
   );
 
-  // 2. 요소를 PNG 이미지로 캡처
+  // 2. 요소를 PNG 이미지로 캡처 (스케일 보정 포함)
+  const origTransform = element.style.transform;
+  const origMargin = element.style.margin;
+  const origTransformOrigin = element.style.transformOrigin;
+
+  element.style.transform = 'scale(1)';
+  element.style.margin = '0';
+  element.style.transformOrigin = 'top left';
+
+  // reflow 대기
+  await new Promise(r => setTimeout(r, 100));
+
   const dataUrl = await toPng(element, {
     cacheBust: true,
     backgroundColor: '#ffffff',
     pixelRatio,
     filter: oklchFilter,
+    width: element.scrollWidth,
+    height: element.scrollHeight,
   });
+
+  // 원복
+  element.style.transform = origTransform;
+  element.style.margin = origMargin;
+  element.style.transformOrigin = origTransformOrigin;
 
   // 3. PDF 생성
   const pdf = new jsPDF({
@@ -147,18 +165,234 @@ export async function generateA4PDF(element, options = {}) {
 }
 
 /**
- * window.print()를 사용하는 컴포넌트에서 인쇄 영역 제어 유틸리티
+ * ✅ 다중 요소를 하나의 PDF로 병합하여 생성
+ * 생산관리시트처럼 여러 페이지(PageFrame)로 나뉜 경우 사용
  * 
- * 특정 요소만 인쇄하고 싶을 때 사용. 해당 요소에 print-safe-area 클래스를 부여해야 함.
- * @param {Function} beforePrint - 인쇄 전 콜백
- * @param {Function} afterPrint - 인쇄 후 콜백
+ * @param {HTMLElement[]} elements - PDF로 합칠 요소 배열
+ * @param {Object} options - generateA4PDF와 동일한 옵션
+ * @returns {Promise<Blob|void>}
  */
-export function triggerPrint(beforePrint, afterPrint) {
-  if (beforePrint) beforePrint();
-  const cleanup = () => {
-    if (afterPrint) afterPrint();
-    window.removeEventListener('afterprint', cleanup);
-  };
-  window.addEventListener('afterprint', cleanup);
-  window.print();
+export async function generateMultiPageA4PDF(elements, options = {}) {
+  const {
+    fileName = `document_${Date.now()}.pdf`,
+    orientation = 'portrait',
+    action = 'download',
+    pixelRatio = 3,
+    marginMm = 0,
+  } = options;
+
+  if (!elements || elements.length === 0) { alert('내용이 없습니다.'); return; }
+
+  const isLandscape = orientation === 'landscape';
+  const pdf = new jsPDF({
+    orientation: isLandscape ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidthMm = pdf.internal.pageSize.getWidth();
+  const pageHeightMm = pdf.internal.pageSize.getHeight();
+  const usableWidthMm = pageWidthMm - marginMm * 2;
+  const usableHeightMm = pageHeightMm - marginMm * 2;
+
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    if (!el) continue;
+    if (i > 0) pdf.addPage();
+
+    // 1. 이미지 로드 대기
+    const images = el.querySelectorAll('img');
+    await Promise.all(Array.from(images).map(img =>
+      img.complete ? Promise.resolve()
+      : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
+
+    // 2. 캡처
+    const dataUrl = await toPng(el, {
+      cacheBust: true,
+      backgroundColor: '#ffffff',
+      pixelRatio,
+      filter: oklchFilter,
+    });
+
+    const img = new window.Image();
+    const imgLoaded = new Promise(res => { img.onload = res; });
+    img.src = dataUrl;
+    await imgLoaded;
+
+    const scale = usableWidthMm / img.naturalWidth;
+    const imgHMM = img.naturalHeight * scale;
+
+    // A4 높이에 맞게 조절 (잘리지 않도록)
+    const finalHMM = Math.min(imgHMM, usableHeightMm);
+    pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, usableWidthMm, finalHMM);
+  }
+
+  if (action === 'download') {
+    pdf.save(fileName);
+    return;
+  } else if (action === 'blob') {
+    return pdf.output('blob');
+  }
+}
+
+/**
+ * ✅ 핵심 인쇄 유틸리티: DOM 요소를 이미지로 캡처 후 팝업에서 인쇄
+ * 
+ * 이 방식은 React 번들 CSS를 팝업에서 로드할 필요가 없습니다.
+ * 이미 렌더링된 요소를 PNG로 캡처하므로 CSS 의존성이 완전히 제거됩니다.
+ * 
+ * @param {HTMLElement} element - 캡처할 DOM 요소
+ * @param {Object} options
+ * @param {'portrait'|'landscape'} options.orientation - 용지 방향 (기본: portrait)
+ * @param {number} options.pixelRatio - 캡처 해상도 (기본: 3)
+ * @param {string} options.title - 팝업 창 제목
+ */
+export async function printAsImage(element, options = {}) {
+  const {
+    orientation = 'portrait',
+    pixelRatio = 3,
+    title = '문서 인쇄',
+  } = options;
+
+  if (!element) { alert('인쇄할 요소를 찾을 수 없습니다.'); return; }
+
+  // 1. 이미지 로드 완료 대기
+  const images = element.querySelectorAll('img');
+  await Promise.all(Array.from(images).map(img =>
+    img.complete ? Promise.resolve()
+    : new Promise(r => { img.onload = r; img.onerror = r; })
+  ));
+
+  // 2. 요소를 PNG로 캡처 (스케일 보정 포함)
+  const origTransform = element.style.transform;
+  const origMargin = element.style.margin;
+  const origTransformOrigin = element.style.transformOrigin;
+  element.style.transform = 'scale(1)';
+  element.style.margin = '0';
+  element.style.transformOrigin = 'top left';
+  await new Promise(r => setTimeout(r, 100));
+
+  const dataUrl = await toPng(element, {
+    cacheBust: true,
+    backgroundColor: '#ffffff',
+    pixelRatio,
+    filter: oklchFilter,
+    width: element.scrollWidth,
+    height: element.scrollHeight,
+  });
+
+  // 원복
+  element.style.transform = origTransform;
+  element.style.margin = origMargin;
+  element.style.transformOrigin = origTransformOrigin;
+
+  // 3. 팝업 창에 이미지만 넣어 인쇄 (CSS 의존성 없음)
+  const isLandscape = orientation === 'landscape';
+  const printWin = window.open('', '_blank', 'width=900,height=1100');
+  if (!printWin) { alert('팝업 차단을 해제해 주세요.'); return; }
+
+  printWin.document.write(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<style>
+  @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: white; }
+  img { display: block; width: 100%; height: auto; page-break-inside: avoid; }
+  @media print { body { margin: 0; } }
+</style>
+</head>
+<body>
+<img src="${dataUrl}" alt="인쇄 내용" />
+<script>
+window.onload = function() {
+  setTimeout(function() { window.print(); window.close(); }, 300);
+};
+</script>
+</body>
+</html>`);
+  printWin.document.close();
+}
+
+/**
+ * ✅ 다중 페이지 요소 배열을 이미지로 캡처 후 팝업에서 인쇄
+ * 생산관리시트처럼 PageRef 배열이 있는 경우에 사용
+ * 
+ * @param {HTMLElement[]} elements - 캡처할 DOM 요소 배열 (각각 A4 1페이지)
+ * @param {Object} options - printAsImage와 동일한 옵션
+ */
+export async function printMultiPageAsImage(elements, options = {}) {
+  const {
+    orientation = 'portrait',
+    pixelRatio = 3,
+    title = '문서 인쇄',
+  } = options;
+
+  if (!elements || elements.length === 0) { alert('인쇄할 내용이 없습니다.'); return; }
+
+  // 모든 페이지 이미지 캡처
+  const dataUrls = await Promise.all(elements.filter(Boolean).map(async el => {
+    const imgs = el.querySelectorAll('img');
+    await Promise.all(Array.from(imgs).map(img =>
+      img.complete ? Promise.resolve()
+      : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
+
+    const origT = el.style.transform;
+    const origM = el.style.margin;
+    const origTO = el.style.transformOrigin;
+    el.style.transform = 'scale(1)';
+    el.style.margin = '0';
+    el.style.transformOrigin = 'top left';
+    await new Promise(r => setTimeout(r, 100));
+
+    const url = await toPng(el, {
+      cacheBust: true,
+      backgroundColor: '#ffffff',
+      pixelRatio,
+      filter: oklchFilter,
+      width: el.scrollWidth,
+      height: el.scrollHeight,
+    });
+
+    el.style.transform = origT;
+    el.style.margin = origM;
+    el.style.transformOrigin = origTO;
+    return url;
+  }));
+
+  const isLandscape = orientation === 'landscape';
+  const imgTags = dataUrls.map((url, i) =>
+    `<img src="${url}" alt="페이지 ${i+1}" style="display:block;width:100%;height:auto;${i < dataUrls.length - 1 ? 'page-break-after:always;' : ''}" />`
+  ).join('\n');
+
+  const printWin = window.open('', '_blank', 'width=900,height=1100');
+  if (!printWin) { alert('팝업 차단을 해제해 주세요.'); return; }
+
+  printWin.document.write(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<style>
+  @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; background: white; }
+  img { display: block; width: 100%; height: auto; }
+  @media print { body { margin: 0; } }
+</style>
+</head>
+<body>
+${imgTags}
+<script>
+window.onload = function() {
+  setTimeout(function() { window.print(); window.close(); }, 300);
+};
+</script>
+</body>
+</html>`);
+  printWin.document.close();
 }

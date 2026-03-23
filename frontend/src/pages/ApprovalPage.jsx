@@ -12,6 +12,7 @@ import { cn, getImageUrl } from '../lib/utils';
 import { Box, Typography, Modal } from '@mui/material';
 import Card from '../components/Card';
 import { format } from 'date-fns';
+import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import { useAuth } from '../contexts/AuthContext';
 import InternalDraftForm from '../components/InternalDraftForm';
 import ExpenseReportForm from '../components/ExpenseReportForm';
@@ -43,24 +44,25 @@ const ApprovalPage = () => {
     const [activeTab, setActiveTab] = useState('documents'); // documents, settings
     const [documents, setDocuments] = useState([]);
     // 문서 내용만 새 팝업으로 인쇄하는 함수
-    const handlePrintApproval = React.useCallback(() => {
+    const handlePrintApproval = async () => {
         const contentEl = document.querySelector('.a4-paper-container');
-        if (!contentEl) { window.print(); return; }
-        const printWin = window.open('', '_blank', 'width=900,height=1200');
-        if (!printWin) { window.print(); return; }
-        const styles = Array.from(document.styleSheets)
-            .map(sheet => { try { return Array.from(sheet.cssRules||[]).map(r=>r.cssText).join('\n'); } catch{return '';} }).join('\n');
-        printWin.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>전자결재 문서</title>
-<style>${styles}
-@page { size: A4 portrait; margin: 15mm; }
-@media print { body{margin:0;padding:0;background:white;} * {-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;} }
-body { background: white; font-family: "Malgun Gothic", sans-serif; }
-</style></head><body>
-${contentEl.innerHTML}
-<script>window.onload=function(){setTimeout(function(){window.print();window.close();},500);};</script>
-</body></html>`);
-        printWin.document.close();
-    }, []);
+        if (contentEl) {
+            await printAsImage(contentEl, { title: '전자결재 문서', orientation: 'portrait' });
+     const handleDownloadPDFApproval = async () => {
+        const contentEl = document.querySelector('.a4-paper-container');
+        if (contentEl) {
+            const fileName = `${selectedDoc.doc_type}_${selectedDoc.id}_${Date.now()}.pdf`;
+            await generateA4PDF(contentEl, {
+                fileName,
+                orientation: 'portrait',
+                action: 'download',
+                pixelRatio: 3,
+                multiPage: true
+            });
+        }
+    };
+       }
+    };
 
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(false);
