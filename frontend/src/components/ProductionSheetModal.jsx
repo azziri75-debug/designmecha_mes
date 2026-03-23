@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { toPng } from 'html-to-image';
 import { X, FileText, Printer, Save, Download } from 'lucide-react';
@@ -220,7 +220,12 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         if (pageRefs.current.length === 0) return;
         setSaving(true);
         try {
-            const fileName = `production_sheet_${plan.id}_${Date.now()}.pdf`;
+            const partnerName = plan.order?.partner?.name || '사내생산';
+            const groups = metadata.groups || [];
+            const firstItemName = groups[0]?.product_name || '품명';
+            const extraCount = groups.length > 1 ? ` 외 ${groups.length - 1}건` : '';
+            const date = plan.plan_date || '날짜';
+            const fileName = `생산관리시트-${partnerName}-${firstItemName}${extraCount}-${date}.pdf`;
             const blob = await generateMultiPageA4PDF(pageRefs.current, {
                 fileName,
                 orientation: 'portrait',

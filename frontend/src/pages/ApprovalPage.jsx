@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
@@ -54,7 +54,10 @@ const ApprovalPage = () => {
     const handleDownloadPDFApproval = async () => {
         const contentEl = document.querySelector('.a4-paper-container');
         if (contentEl) {
-            const fileName = `${selectedDoc.doc_type}_${selectedDoc.id}_${Date.now()}.pdf`;
+            const docType = DOC_TYPES[selectedDoc.doc_type]?.label || '문서';
+            const authorName = selectedDoc.author?.name || '기안자';
+            const date = format(new Date(selectedDoc.created_at), 'yyyyMMdd');
+            const fileName = `${docType}-${authorName}-${date}.pdf`;
             await generateA4PDF(contentEl, {
                 fileName,
                 orientation: 'portrait',

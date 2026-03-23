@@ -1,6 +1,6 @@
 import React from 'react';
 import { Typography, Button, Box } from '@mui/material';
-import { Printer, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import { cn } from '../lib/utils';
@@ -193,7 +193,7 @@ const PurchaseOrderTemplate = ({
     return (
         <div className="flex flex-col w-full h-full">
             {/* Toolbar - Only visible in View mode and not during print */}
-            {isReadOnly && (
+            {isReadOnly && (!documentData || documentData.status === 'REJECTED' || !documentData.id) && orderId && (
                 <Box className="idf-no-print" sx={{ 
                     display: 'flex', 
                     justifyContent: 'flex-end', 
@@ -204,15 +204,6 @@ const PurchaseOrderTemplate = ({
                     borderRadius: 1,
                     border: '1px solid #e2e8f0'
                 }}>
-                    <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Printer size={16} />}
-                        onClick={() => window.print()}
-                    >
-                        인쇄하기
-                    </Button>
-                    {(!documentData || documentData.status === 'REJECTED' || !documentData.id) && orderId && (
                         <Button
                             variant="contained"
                             size="small"
@@ -223,7 +214,6 @@ const PurchaseOrderTemplate = ({
                         >
                             {isSubmitting ? "상신 중..." : "결재요청"}
                         </Button>
-                    )}
                 </Box>
             )}
 

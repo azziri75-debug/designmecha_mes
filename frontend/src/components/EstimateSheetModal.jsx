@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useState, useRef } from 'react';
-import { X, Save, Download } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { X, Save, Download, Printer } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import jsPDF from 'jspdf';
@@ -153,7 +153,12 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            const fileName = `estimate_${estimate.id}_${Date.now()}.pdf`;
+            const partnerName = estimate.partner?.name || '고객사';
+            const items = estimate.items || [];
+            const firstItemName = items[0]?.product?.name || '품명';
+            const extraCount = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
+            const date = estimate.estimate_date || '날짜';
+            const fileName = `견적서-${partnerName}-${firstItemName}${extraCount}-${date}.pdf`;
             const blob = await generateA4PDF(sheetRef.current, {
                 fileName,
                 orientation: 'portrait',

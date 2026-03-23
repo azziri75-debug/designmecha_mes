@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useState, useRef } from 'react';
-import { X, Save, Download, Edit2, FileSpreadsheet } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { X, Save, Download, Edit2, FileSpreadsheet, Printer } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import jsPDF from 'jspdf';
@@ -18,13 +18,13 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
 
     // Editable State (Metadata)
     const [metadata, setMetadata] = useState({
-        title: "�� �� �� �� ��",
-        note: "���� ���� �����մϴ�.",
-        special_notes: "* �緮������ ���۽� ��ó���� �����Ͽ� �ֽñ� �ٶ��ϴ�.\n* ������ ǥ�鿡 ���� ������ ������ �ʵ��� ���ǹٶ��ϴ�.\n* ��� : ������ ���� (010-2850-8369)\n* ÷�� ���� 1��.",
+        title: "구 매 발 주 서",
+        note: "아래와 같이 발주합니다.",
+        special_notes: "* 납기일자와 납품처 일정을 상호협의하여 주시기 바랍니다.\n* 가공부위 표면에 찍힘 현상이 발생하지 않도록 주의바랍니다.\n* 담당 : 생산관리 조인호 (010-2850-8369)\n* 첨부 파일 1부.",
         delivery_date: "",
-        delivery_place: "(��)�����θ�ī",
+        delivery_place: "(주)디자인메카",
         valid_until: "",
-        payment_terms: "��ǰ �� �������",
+        payment_terms: "물품 수령 후 90일 결제",
     });
 
     const sheetRef = useRef(null);
@@ -71,13 +71,13 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
     const initializeData = () => {
         if (order) {
             let initialMetadata = {
-                title: "�� �� �� �� ��",
-                note: "���� ���� �����մϴ�.",
+                title: "구 매 발 주 서",
+                note: "아래와 같이 발주합니다.",
                 special_notes: order.note || "",
                 delivery_date: order.delivery_date || "",
-                delivery_place: "(��)�����θ�ī",
+                delivery_place: "(주)디자인메카",
                 valid_until: "",
-                payment_terms: "��ǰ �� �������",
+                payment_terms: "물품 수령 후 90일 결제",
             };
             if (order.sheet_metadata) {
                 try {
@@ -96,14 +96,19 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
     };
 
     const handlePrintWindow = async () => {
-        await printAsImage(sheetRef.current, { title: '���Ź��ּ�', orientation: 'portrait' });
+        await printAsImage(sheetRef.current, { title: '구매발주서', orientation: 'portrait' });
     };
 
-        const generatePDF = async (action = 'save') => {
+    const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            const fileName = `purchase_order_${order.id}_${Date.now()}.pdf`;
+            const vendorName = order.vendor?.name || '공급사';
+            const items = order.items || [];
+            const firstItemName = items[0]?.product?.name || '품명';
+            const extraCount = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
+            const date = order.order_date || '날짜';
+            const fileName = `구매발주서-${vendorName}-${firstItemName}${extraCount}-${date}.pdf`;
             const blob = await generateA4PDF(sheetRef.current, {
                 fileName,
                 orientation: 'portrait',
@@ -127,13 +132,13 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
                 await api.put(`/purchasing/purchase/orders/${order.id}`, { attachment_file: newAttachments });
-                alert('���� �� ÷�εǾ����ϴ�.');
+                alert('파일이 전송 및 첨부되었습니다.');
                 if (onSave) onSave();
                 onClose();
             }
         } catch (err) {
             console.error(err);
-            alert('PDF ���� ����: ' + err.message);
+            alert('PDF 생성 실패: ' + err.message);
         } finally { setSaving(false); }
     };
 
@@ -143,20 +148,19 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto no-print">
             <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
                 <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
-                    <h2 className="text-xl font-bold text-white">���Ź��ּ� ��</h2>
+                    <h2 className="text-xl font-bold text-white">구매발주서 창</h2>
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handlePrintWindow}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
                         >
-                            <Download className="w-4 h-4" /> �μ�
-                        </button>
+                            <Printer className="w-4 h-4" /> 인쇄</button>
                         <button
                             onClick={() => generatePDF('save')}
                             disabled={saving}
                             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg"
                         >
-                            {saving ? 'ó�� ��...' : 'PDF ���� �� ÷��'}
+                            {saving ? '처리 중...' : 'PDF 저장 및 첨부'}
                         </button>
                         <button
                             onClick={onClose}

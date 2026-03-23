@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     Modal, Box, Button, IconButton,
     CircularProgress, Alert
@@ -167,7 +167,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         if (!printRef.current) return;
         setIsGeneratingPdf(true);
         try {
-            const fileName = `transaction_statement_${Date.now()}.pdf`;
+            const partnerName = data.partner?.name || '고객사';
+            const firstItemName = items[0]?.product?.name || items[0]?.item_name || '품명';
+            const extraCount = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
+            const deliveryDate = data.delivery_date || '날짜';
+            const fileName = `거래명세서-${partnerName}-${firstItemName}${extraCount}-${deliveryDate}.pdf`;
             await generateA4PDF(printRef.current, {
                 fileName,
                 orientation: 'landscape',

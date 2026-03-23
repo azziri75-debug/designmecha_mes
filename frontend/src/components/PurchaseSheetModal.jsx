@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { X, Download, Save, Printer } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { printAsImage, generateA4PDF } from '../lib/printUtils';
@@ -141,7 +141,13 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            const fileName = `${activeTab}_${order.id}_${Date.now()}.pdf`;
+            const type = activeTab === 'purchase_order' ? '구매발주서' : '견적의뢰서';
+            const vendorName = order.partner?.name || '공급사';
+            const items = order.items || [];
+            const firstItemName = items[0]?.product?.name || '품명';
+            const extraCount = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
+            const date = order.order_date || '날짜';
+            const fileName = `${type}-${vendorName}-${firstItemName}${extraCount}-${date}.pdf`;
             const blob = await generateA4PDF(sheetRef.current, {
                 fileName,
                 orientation: 'portrait',
