@@ -3,6 +3,7 @@ import { X, Save, Download, Edit2, FileSpreadsheet } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import jsPDF from 'jspdf';
+import PurchaseOrderTemplate from './PurchaseOrderTemplate';
 import api from '../lib/api';
 import { getImageUrl } from '../lib/utils';
 import ApprovalGrid from './ApprovalGrid';
@@ -17,13 +18,13 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
 
     // Editable State (Metadata)
     const [metadata, setMetadata] = useState({
-        title: "구 매 발 주 서",
-        note: "위와 같이 발주합니다.",
-        special_notes: "* 사량나이프 제작시 열처리에 주의하여 주시기 바랍니다.\n* 연마시 표면에 떨림 현상이 생기지 않도록 주의바랍니다.\n* 담당 : 류형룡 부장 (010-2850-8369)\n* 첨부 도면 1부.",
+        title: "�� �� �� �� ��",
+        note: "���� ���� �����մϴ�.",
+        special_notes: "* �緮������ ���۽� ��ó���� �����Ͽ� �ֽñ� �ٶ��ϴ�.\n* ������ ǥ�鿡 ���� ������ ������ �ʵ��� ���ǹٶ��ϴ�.\n* ��� : ������ ���� (010-2850-8369)\n* ÷�� ���� 1��.",
         delivery_date: "",
-        delivery_place: "(주)디자인메카",
+        delivery_place: "(��)�����θ�ī",
         valid_until: "",
-        payment_terms: "납품 후 정기결제",
+        payment_terms: "��ǰ �� �������",
     });
 
     const sheetRef = useRef(null);
@@ -70,13 +71,13 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
     const initializeData = () => {
         if (order) {
             let initialMetadata = {
-                title: "구 매 발 주 서",
-                note: "위와 같이 발주합니다.",
+                title: "�� �� �� �� ��",
+                note: "���� ���� �����մϴ�.",
                 special_notes: order.note || "",
                 delivery_date: order.delivery_date || "",
-                delivery_place: "(주)디자인메카",
+                delivery_place: "(��)�����θ�ī",
                 valid_until: "",
-                payment_terms: "납품 후 정기결제",
+                payment_terms: "��ǰ �� �������",
             };
             if (order.sheet_metadata) {
                 try {
@@ -95,14 +96,14 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
     };
 
     const handlePrintWindow = async () => {
-        await printAsImage(sheetRef.current, { title: '구매발주서', orientation: 'portrait' });
+        await printAsImage(sheetRef.current, { title: '���Ź��ּ�', orientation: 'portrait' });
     };
 
-    const generatePDF = async (action = 'save') => {
+        const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            const fileName = purchase_order__.pdf;
+            const fileName = `purchase_order_${order.id}_${Date.now()}.pdf`;
             const blob = await generateA4PDF(sheetRef.current, {
                 fileName,
                 orientation: 'portrait',
@@ -114,9 +115,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
             if (action === 'download') {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                a.click();
+                a.href = url; a.download = fileName; a.click();
             } else {
                 const file = new File([blob], fileName, { type: 'application/pdf' });
                 const formData = new FormData();
@@ -124,16 +123,68 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                 const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
                 let currentAttachments = [];
-                try { if (plan.attachment_file) currentAttachments = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file; } catch { currentAttachments = []; }
+                try { if (order.attachment_file) currentAttachments = typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file; } catch { currentAttachments = []; }
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
-                await api.put(/purchasing/purchase/orders/, { attachment_file: newAttachments });
-                alert('저장 및 첨부되었습니다.');
+                await api.put(`/purchasing/purchase/orders/${order.id}`, { attachment_file: newAttachments });
+                alert('���� �� ÷�εǾ����ϴ�.');
                 if (onSave) onSave();
                 onClose();
             }
         } catch (err) {
             console.error(err);
-            alert('PDF 생성 실패: ' + err.message);
+            alert('PDF ���� ����: ' + err.message);
         } finally { setSaving(false); }
     };
+
+    if (!isOpen || !order) return null;
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto no-print">
+            <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
+                <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
+                    <h2 className="text-xl font-bold text-white">���Ź��ּ� ��</h2>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handlePrintWindow}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+                        >
+                            <Download className="w-4 h-4" /> �μ�
+                        </button>
+                        <button
+                            onClick={() => generatePDF('save')}
+                            disabled={saving}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg"
+                        >
+                            {saving ? 'ó�� ��...' : 'PDF ���� �� ÷��'}
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-white p-2 transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
+                    <div ref={sheetRef} className="bg-white shadow-2xl">
+                        <PurchaseOrderTemplate
+                            data={metadata}
+                            onChange={handleMetadataChange}
+                            isReadOnly={true}
+                            documentData={approvalDoc}
+                            currentUser={currentUser}
+                            company={company}
+                            orderId={order.id}
+                            purchaseType="PURCHASE"
+                            onSubmitApproval={fetchApprovalDoc}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default PurchaseOrderSheetModal;

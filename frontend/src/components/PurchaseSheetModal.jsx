@@ -137,11 +137,11 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
     const handlePrintWindow = async () => {
         await printAsImage(sheetRef.current, { title: '발주서/견적의뢰서', orientation: 'portrait' });
     };
-    const generatePDF = async (action = 'save') => {
+        const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            const fileName = ${activeTab}__.pdf;
+            const fileName = `${activeTab}_${order.id}_${Date.now()}.pdf`;
             const blob = await generateA4PDF(sheetRef.current, {
                 fileName,
                 orientation: 'portrait',
@@ -153,9 +153,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
             if (action === 'download') {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                a.click();
+                a.href = url; a.download = fileName; a.click();
             } else {
                 const file = new File([blob], fileName, { type: 'application/pdf' });
                 const formData = new FormData();
@@ -166,17 +164,11 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                 try { if (order.attachment_file) currentAttachments = typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file; } catch { currentAttachments = []; }
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
-                const apiBase = orderType === 'outsourcing' ? '/purchasing/outsourcing/orders' : '/purchasing/purchase/orders';
-                await api.put(${apiBase}/, { attachment_file: newAttachments, sheet_metadata: metadata });
+                const apiBase = orderType === 'outsourcing' ? `/purchasing/outsourcing/orders/${order.id}` : `/purchasing/purchase/orders/${order.id}`;
+                await api.put(apiBase, { attachment_file: newAttachments, sheet_metadata: metadata });
                 alert('저장 및 첨부되었습니다.');
                 if (onSave) onSave();
                 onClose();
-            }
-        } catch (err) {
-            console.error(err);
-            alert('PDF 생성 실패: ' + err.message);
-        } finally { setSaving(false); }
-    };
             }
         } catch (err) {
             console.error(err);

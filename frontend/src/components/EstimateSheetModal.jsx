@@ -149,11 +149,11 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         await printAsImage(sheetRef.current, { title: '견적서', orientation: 'portrait' });
     };
 
-    const generatePDF = async (action = 'save') => {
+        const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            const fileName = estimate__.pdf;
+            const fileName = `estimate_${estimate.id}_${Date.now()}.pdf`;
             const blob = await generateA4PDF(sheetRef.current, {
                 fileName,
                 orientation: 'portrait',
@@ -176,12 +176,59 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 try { if (estimate.attachment_file) currentAttachments = typeof estimate.attachment_file === 'string' ? JSON.parse(estimate.attachment_file) : estimate.attachment_file; } catch { currentAttachments = []; }
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
-                await api.put(/sales/estimates/, { attachment_file: newAttachments });
+                await api.put(`/sales/estimates/${estimate.id}`, { attachment_file: newAttachments });
                 alert('저장 및 첨부되었습니다.');
-                if (onSave) onSave(); onClose();
+                if (onSave) onSave();
+                onClose();
             }
         } catch (err) {
             console.error(err);
             alert('PDF 생성 실패: ' + err.message);
         } finally { setSaving(false); }
     };
+    if (!isOpen || !estimate) return null;
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
+                <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
+                    <h2 className="text-xl font-bold text-white">견적서 상세</h2>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handlePrintWindow}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+                        >
+                            <Printer className="w-4 h-4" /> 인쇄
+                        </button>
+                        <button
+                            onClick={() => generatePDF('save')}
+                            disabled={saving}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg"
+                        >
+                            {saving ? '처리 중...' : 'PDF 저장 및 첨부'}
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-white p-2 transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
+                    <div ref={sheetRef} className="bg-white shadow-2xl">
+                        <ResizableTable
+                            data={metadata}
+                            onChange={handleMetaChange}
+                            onItemChange={updateItem}
+                            company={company}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default EstimateSheetModal;

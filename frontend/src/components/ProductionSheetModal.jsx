@@ -216,7 +216,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         await printMultiPageAsImage(pageRefs.current, { title: '생산관리시트', orientation: 'portrait' });
     };
 
-    const generatePDF = async (action = 'save') => {
+        const generatePDF = async (action = 'save') => {
         if (pageRefs.current.length === 0) return;
         setSaving(true);
         try {
