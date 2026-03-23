@@ -46,7 +46,8 @@ export const EditableText = ({
     autoFit = false,
     maxWidth = 0,
     forceWrap = false,
-    isReadOnly = false
+    isReadOnly = false,
+    style = {}
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [text, setText] = useState(value || "");
@@ -68,7 +69,7 @@ export const EditableText = ({
                     autoFit ? "whitespace-pre-wrap break-all" : "whitespace-nowrap overflow-hidden",
                     className
                 )}
-                style={{ fontSize: fittedSize }}
+                style={{ fontSize: fittedSize, ...style }}
             >
                 {value || ""}
             </div>
@@ -87,7 +88,7 @@ export const EditableText = ({
                     e.target.style.height = e.target.scrollHeight + 'px';
                 }}
                 onBlur={handleBlur}
-                style={{ fontSize: fittedSize }}
+                style={{ fontSize: fittedSize, ...style }}
                 rows={1}
             />
         );
@@ -104,7 +105,8 @@ export const EditableText = ({
             style={{
                 fontSize: fittedSize,
                 ...(isEditing ? {} : { cursor: 'pointer' }),
-                ...(!value ? { color: '#d1d5db', fontStyle: 'italic' } : {})
+                ...(!value ? { color: '#d1d5db', fontStyle: 'italic' } : {}),
+                ...style
             }}
         >
             {value || placeholder}

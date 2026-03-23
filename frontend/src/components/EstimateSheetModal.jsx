@@ -108,7 +108,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             }
         } catch (e) { }
 
-        const defaultWidths = [30, 240, 100, 40, 80, 80, 60];
+        const defaultWidths = [30, 220, 100, 40, 70, 70, 60];
 
         setMetadata(prev => ({
             ...prev,
@@ -241,7 +241,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                         <EditableText 
                                             value={metadata.recipient} 
                                             onChange={(v) => handleMetaChange('recipient', v)}
-                                            className="text-[120px] font-extrabold"
+                                            style={{ fontSize: '100px' }}
+                                            className="font-extrabold leading-none"
                                         />
                                         <span className="text-sm font-normal pb-4 text-black">귀하</span>
                                     </div>
@@ -306,7 +307,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Table Section */}
-                        <div className="w-full border-2 border-black">
+                        <div className="w-full">
                             <ResizableTable
                                 columns={columns}
                                 data={metadata.items}
