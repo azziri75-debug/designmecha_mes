@@ -48,7 +48,10 @@ const ApprovalPage = () => {
         const contentEl = document.querySelector('.a4-paper-container');
         if (contentEl) {
             await printAsImage(contentEl, { title: '전자결재 문서', orientation: 'portrait' });
-     const handleDownloadPDFApproval = async () => {
+        }
+    };
+
+    const handleDownloadPDFApproval = async () => {
         const contentEl = document.querySelector('.a4-paper-container');
         if (contentEl) {
             const fileName = `${selectedDoc.doc_type}_${selectedDoc.id}_${Date.now()}.pdf`;
@@ -60,8 +63,6 @@ const ApprovalPage = () => {
                 multiPage: true
             });
         }
-    };
-       }
     };
 
     const [staff, setStaff] = useState([]);
@@ -553,8 +554,31 @@ const ApprovalPage = () => {
                                 </h3>
                                 <p className="text-xs text-gray-500 mt-1">ID: {selectedDoc.id} | 기안일: {format(new Date(selectedDoc.created_at), 'yyyy-MM-dd HH:mm')}</p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handlePrintApproval}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+                                >
+                                    <Printer className="w-4 h-4" /> 인쇄
+                                </button>
+                                <button
+                                    onClick={handleDownloadPDFApproval}
+                                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+                                >
+                                    <Download className="w-4 h-4" /> PDF 저장
+                                </button>
+                                <button onClick={() => setShowDocDetail(false)} className="text-gray-400 hover:text-white transition-colors">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto flex-1", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
+                            {/* Header Section */}
+                            {!['PURCHASE_ORDER', 'EXPENSE_REPORT'].includes(selectedDoc.doc_type) && (
+                                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-700 pb-8">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2">
                                             <span className={cn(
                                                 "px-2 py-1 rounded text-[10px] font-bold uppercase",
                                                 `bg-${DOC_TYPES[selectedDoc.doc_type]?.color}-900/40 text-${DOC_TYPES[selectedDoc.doc_type]?.color}-400`
@@ -569,15 +593,7 @@ const ApprovalPage = () => {
                                                 {STATUS_MAP[selectedDoc.status]?.label}
                                             </span>
                                         </div>
-                                        <h2 className="text-2xl font-bold text-white hidden md:block">{selectedDoc.title}</h2>
-                                        {/* Mobile-only prominent title */}
-                                        <div className="md:hidden w-full bg-blue-600/20 p-4 rounded-xl border border-blue-500/30 mb-2">
-                                            <p className="text-xs text-blue-400 font-bold mb-1">문서 제목</p>
-                                            <h2 className="text-xl font-black text-white leading-tight break-all">
-                                                {selectedDoc.title}
-                                            </h2>
-                                        </div>
-
+                                        <h2 className="text-2xl font-bold text-white">{selectedDoc.title}</h2>
                                         <div className="flex items-center gap-4 text-sm text-gray-400">
                                             <div className="flex items-center gap-1.5 bg-gray-900 px-3 py-1 rounded-full border border-gray-700">
                                                 <User className="w-3.5 h-3.5" />
@@ -586,7 +602,7 @@ const ApprovalPage = () => {
                                         </div>
                                     </div>
 
-                                    {/* Approval Steps (Horizontal) */}
+                                    {/* Approval Steps */}
                                     <div className="flex gap-3">
                                         {selectedDoc.steps.map((step, idx) => (
                                             <div key={idx} className="flex flex-col items-center gap-1.5 w-20">
@@ -606,10 +622,13 @@ const ApprovalPage = () => {
                                                     ) : step.status === 'REJECTED' ? (
                                                         <span className="text-[11px] text-red-600 font-bold border-2 border-red-500 px-1 rounded -rotate-12 uppercase">Rejected</span>
                                                     ) : (
-                                                        <div className="text-[10px] text-gray-400">대기중</div>
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                        <div className="text-[9px] text-white font-medium text-center px-1">{step.approver?.name}</div>
-                                                    </div>
+                                                        <>
+                                                            <div className="text-[10px] text-gray-400">대기중</div>
+                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                <div className="text-[9px] text-white font-medium text-center px-1">{step.approver?.name}</div>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                                 <div className="text-[9px] text-gray-500">{step.processed_at ? format(new Date(step.processed_at), 'MM-dd') : '---'}</div>
                                             </div>
