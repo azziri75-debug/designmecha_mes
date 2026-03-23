@@ -6,7 +6,7 @@ import {
 import { X, Printer, FileDown, CheckCircle2 } from 'lucide-react';
 import { formatNumber, toKoreanCurrency, getImageUrl } from '../lib/utils';
 import html2canvas from 'html2canvas';
-import { printAsImage } from '../lib/printUtils';
+import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 
@@ -163,46 +163,18 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const [remarks, setRemarks] = useState(data.remarks || '');
 
     // ── PDF 다운로드 ────────────────────────────
-    const handleDownloadPDF = async () => {
+        const handleDownloadPDF = async () => {
+        if (!printRef.current) return;
         setIsGeneratingPdf(true);
         try {
-            // 캡처 전 scale 1로 임시 변경하여 실제 297x210mm 크기로 캡처
-            const el = printRef.current;
-            const origTransform = el.style.transform;
-            const origMarginBottom = el.style.marginBottom;
-            el.style.transform = 'scale(1)';
-            el.style.marginBottom = '0';
-            await new Promise(r => setTimeout(r, 150)); // reflow 대기
-
-            const cvs = await html2canvas(el, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                logging: false,
-                width: el.scrollWidth,
-                height: el.scrollHeight,
-                windowWidth: el.scrollWidth,
-                windowHeight: el.scrollHeight,
+            const fileName = `transaction_statement_${Date.now()}.pdf`;
+            await generateA4PDF(printRef.current, {
+                fileName,
+                orientation: 'landscape',
+                action: 'download',
+                pixelRatio: 3,
+                multiPage: false
             });
-
-            // 원복
-            el.style.transform = origTransform;
-            el.style.marginBottom = origMarginBottom;
-
-            const pdf = new jsPDF('l', 'mm', 'a4');
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-
-            pdf.addImage(
-                cvs.toDataURL('image/png'),
-                'PNG',
-                0, 0,
-                pageWidth, pageHeight,
-                undefined, 'FAST'
-            );
-            const fileName = `거래명세서_${data.partner?.name || '공급처'}_${data.delivery_date || ''}.pdf`;
-            pdf.save(fileName);
-
             setPdfStatus('success');
             setTimeout(() => setPdfStatus(null), 3000);
         } catch (err) {
@@ -213,8 +185,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         }
     };
 
-    const handlePrint = async () => {
-        await printAsImage(printRef.current, { title: '거래명세표', orientation: 'landscape' });
+        const handlePrint = async () => {
+        await printAsImage(printRef.current, { title: '거래명세표', orientation: 'landscape', pixelRatio: 3 });
     };
 
     // ════════════════════════════════════════

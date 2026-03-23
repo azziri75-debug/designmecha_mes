@@ -1,4 +1,4 @@
-/**
+﻿/**
  * printUtils.js - 공통 A4 인쇄/PDF 저장 유틸리티
  *
  * 문제: jsPDF에 이미지를 삽입할 때 pdfHeight를 비율로만 계산하면
@@ -75,31 +75,53 @@ export async function generateA4PDF(element, options = {}) {
     )
   );
 
-  // 2. 요소를 PNG 이미지로 캡처 (스케일 보정 포함)
+  // 2. 요소를 PNG 이미지로 캡처 (스케일 및 레이아웃 보정 포함)
   const origTransform = element.style.transform;
   const origMargin = element.style.margin;
   const origTransformOrigin = element.style.transformOrigin;
+  const origWidth = element.style.width;
+  const origMinHeight = element.style.minHeight;
+  const origOverflow = element.style.overflow;
+  const origPosition = element.style.position;
 
+  // 캡처를 위한 강제 스타일 주입 (A4 규격 강제)
+  const targetWidthMM = isLandscape ? A4.W_MM_LAND : A4.W_MM;
   element.style.transform = 'scale(1)';
   element.style.margin = '0';
   element.style.transformOrigin = 'top left';
+  element.style.width = `${targetWidthMM}mm`;
+  element.style.minHeight = 'auto';
+  element.style.overflow = 'visible';
+  element.style.position = 'relative';
 
   // reflow 대기
-  await new Promise(r => setTimeout(r, 100));
+  await new Promise(r => setTimeout(r, 200));
+
+  const scrollW = element.scrollWidth;
+  const scrollH = element.scrollHeight;
 
   const dataUrl = await toPng(element, {
     cacheBust: true,
-    backgroundColor: '#ffffff',
+    backgroundColor: null,
     pixelRatio,
     filter: oklchFilter,
-    width: element.scrollWidth,
-    height: element.scrollHeight,
+    width: scrollW,
+    height: scrollH,
+    style: {
+      transform: 'scale(1)',
+      left: '0',
+      top: '0'
+    }
   });
 
   // 원복
   element.style.transform = origTransform;
   element.style.margin = origMargin;
   element.style.transformOrigin = origTransformOrigin;
+  element.style.width = origWidth;
+  element.style.minHeight = origMinHeight;
+  element.style.overflow = origOverflow;
+  element.style.position = origPosition;
 
   // 3. PDF 생성
   const pdf = new jsPDF({
@@ -115,12 +137,12 @@ export async function generateA4PDF(element, options = {}) {
 
   // 이미지 실제 픽셀 크기 → mm 비율 변환
   const img = new window.Image();
-  const imgLoaded = new Promise((res) => { img.onload = res; });
+  const imgLoaded = new Promise((res) => { img.onload = res; img.onerror = res; });
   img.src = dataUrl;
   await imgLoaded;
 
-  const imgWidthPx = img.naturalWidth;
-  const imgHeightPx = img.naturalHeight;
+  const imgWidthPx = img.naturalWidth || scrollW;
+  const imgHeightPx = img.naturalHeight || scrollH;
 
   // 이미지의 전체 높이를 mm 단위로 계산 (비율 유지)
   const scale = usableWidthMm / imgWidthPx;
@@ -128,30 +150,25 @@ export async function generateA4PDF(element, options = {}) {
 
   if (multiPage && imgTotalHeightMm > usableHeightMm) {
     // 여러 페이지로 분할
-    const pageImgHeightPx = usableHeightMm / scale; // 한 페이지에 해당하는 이미지 픽셀 높이
+    const pageImgHeightPx = usableHeightMm / scale;
     let yOffset = 0;
     let pageNum = 0;
 
     while (yOffset < imgHeightPx) {
       if (pageNum > 0) pdf.addPage();
-
-      // 캔버스로 해당 페이지 영역만 잘라냄
       const canvas = document.createElement('canvas');
       const sliceHeight = Math.min(pageImgHeightPx, imgHeightPx - yOffset);
       canvas.width = imgWidthPx;
       canvas.height = sliceHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, -yOffset, imgWidthPx, imgHeightPx);
-
       const sliceDataUrl = canvas.toDataURL('image/png');
-      const sliceHeightMm = sliceHeight * scale;
-      pdf.addImage(sliceDataUrl, 'PNG', marginMm, marginMm, usableWidthMm, sliceHeightMm);
-
+      pdf.addImage(sliceDataUrl, 'PNG', marginMm, marginMm, usableWidthMm, sliceHeight * scale);
       yOffset += pageImgHeightPx;
       pageNum++;
     }
   } else {
-    // 단일 페이지 (A4 높이에 맞게 축소)
+    // 단일 페이지 (A4 높이에 맞게 조절, 잘리지 않도록)
     const finalHeightMm = Math.min(imgTotalHeightMm, usableHeightMm);
     pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, usableWidthMm, finalHeightMm);
   }
@@ -166,11 +183,6 @@ export async function generateA4PDF(element, options = {}) {
 
 /**
  * ✅ 다중 요소를 하나의 PDF로 병합하여 생성
- * 생산관리시트처럼 여러 페이지(PageFrame)로 나뉜 경우 사용
- * 
- * @param {HTMLElement[]} elements - PDF로 합칠 요소 배열
- * @param {Object} options - generateA4PDF와 동일한 옵션
- * @returns {Promise<Blob|void>}
  */
 export async function generateMultiPageA4PDF(elements, options = {}) {
   const {
@@ -195,37 +207,52 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
   const usableWidthMm = pageWidthMm - marginMm * 2;
   const usableHeightMm = pageHeightMm - marginMm * 2;
 
+  const targetWidthMM = isLandscape ? A4.W_MM_LAND : A4.W_MM;
+
   for (let i = 0; i < elements.length; i++) {
     const el = elements[i];
     if (!el) continue;
     if (i > 0) pdf.addPage();
 
-    // 1. 이미지 로드 대기
-    const images = el.querySelectorAll('img');
-    await Promise.all(Array.from(images).map(img =>
-      img.complete ? Promise.resolve()
-      : new Promise(r => { img.onload = r; img.onerror = r; })
-    ));
+    const origT = el.style.transform;
+    const origM = el.style.margin;
+    const origTO = el.style.transformOrigin;
+    const origW = el.style.width;
+    const origH = el.style.minHeight;
+    const origO = el.style.overflow;
 
-    // 2. 캡처
+    el.style.transform = 'scale(1)';
+    el.style.margin = '0';
+    el.style.transformOrigin = 'top left';
+    el.style.width = `${targetWidthMM}mm`;
+    el.style.minHeight = 'auto';
+    el.style.overflow = 'visible';
+
+    await new Promise(r => setTimeout(r, 150));
+
     const dataUrl = await toPng(el, {
       cacheBust: true,
-      backgroundColor: '#ffffff',
+      backgroundColor: null,
       pixelRatio,
       filter: oklchFilter,
+      width: el.scrollWidth,
+      height: el.scrollHeight
     });
 
+    el.style.transform = origT;
+    el.style.margin = origM;
+    el.style.transformOrigin = origTO;
+    el.style.width = origW;
+    el.style.minHeight = origH;
+    el.style.overflow = origO;
+
     const img = new window.Image();
-    const imgLoaded = new Promise(res => { img.onload = res; });
+    const imgLoaded = new Promise(res => { img.onload = res; img.onerror = res; });
     img.src = dataUrl;
     await imgLoaded;
 
     const scale = usableWidthMm / img.naturalWidth;
-    const imgHMM = img.naturalHeight * scale;
-
-    // A4 높이에 맞게 조절 (잘리지 않도록)
-    const finalHMM = Math.min(imgHMM, usableHeightMm);
-    pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, usableWidthMm, finalHMM);
+    pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, usableWidthMm, img.naturalHeight * scale);
   }
 
   if (action === 'download') {
@@ -238,15 +265,6 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
 
 /**
  * ✅ 핵심 인쇄 유틸리티: DOM 요소를 이미지로 캡처 후 팝업에서 인쇄
- * 
- * 이 방식은 React 번들 CSS를 팝업에서 로드할 필요가 없습니다.
- * 이미 렌더링된 요소를 PNG로 캡처하므로 CSS 의존성이 완전히 제거됩니다.
- * 
- * @param {HTMLElement} element - 캡처할 DOM 요소
- * @param {Object} options
- * @param {'portrait'|'landscape'} options.orientation - 용지 방향 (기본: portrait)
- * @param {number} options.pixelRatio - 캡처 해상도 (기본: 3)
- * @param {string} options.title - 팝업 창 제목
  */
 export async function printAsImage(element, options = {}) {
   const {
@@ -257,38 +275,43 @@ export async function printAsImage(element, options = {}) {
 
   if (!element) { alert('인쇄할 요소를 찾을 수 없습니다.'); return; }
 
-  // 1. 이미지 로드 완료 대기
-  const images = element.querySelectorAll('img');
-  await Promise.all(Array.from(images).map(img =>
-    img.complete ? Promise.resolve()
-    : new Promise(r => { img.onload = r; img.onerror = r; })
-  ));
+  const isLandscape = orientation === 'landscape';
+  const targetWidthMM = isLandscape ? A4.W_MM_LAND : A4.W_MM;
 
-  // 2. 요소를 PNG로 캡처 (스케일 보정 포함)
-  const origTransform = element.style.transform;
-  const origMargin = element.style.margin;
-  const origTransformOrigin = element.style.transformOrigin;
+  // 1. 스타일 보정 및 캡처
+  const origT = element.style.transform;
+  const origM = element.style.margin;
+  const origTO = element.style.transformOrigin;
+  const origW = element.style.width;
+  const origH = element.style.minHeight;
+  const origO = element.style.overflow;
+
   element.style.transform = 'scale(1)';
   element.style.margin = '0';
   element.style.transformOrigin = 'top left';
-  await new Promise(r => setTimeout(r, 100));
+  element.style.width = `${targetWidthMM}mm`;
+  element.style.minHeight = 'auto';
+  element.style.overflow = 'visible';
+
+  await new Promise(r => setTimeout(r, 200));
 
   const dataUrl = await toPng(element, {
     cacheBust: true,
-    backgroundColor: '#ffffff',
+    backgroundColor: null,
     pixelRatio,
     filter: oklchFilter,
     width: element.scrollWidth,
     height: element.scrollHeight,
   });
 
-  // 원복
-  element.style.transform = origTransform;
-  element.style.margin = origMargin;
-  element.style.transformOrigin = origTransformOrigin;
+  element.style.transform = origT;
+  element.style.margin = origM;
+  element.style.transformOrigin = origTO;
+  element.style.width = origW;
+  element.style.minHeight = origH;
+  element.style.overflow = origO;
 
-  // 3. 팝업 창에 이미지만 넣어 인쇄 (CSS 의존성 없음)
-  const isLandscape = orientation === 'landscape';
+  // 2. 팝업 창 인쇄 (이미지 로드 완료 보장)
   const printWin = window.open('', '_blank', 'width=900,height=1100');
   if (!printWin) { alert('팝업 차단을 해제해 주세요.'); return; }
 
@@ -301,16 +324,18 @@ export async function printAsImage(element, options = {}) {
   @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; background: white; }
-  img { display: block; width: 100%; height: auto; page-break-inside: avoid; }
-  @media print { body { margin: 0; } }
+  img { display: block; width: 100%; height: auto; }
 </style>
 </head>
 <body>
-<img src="${dataUrl}" alt="인쇄 내용" />
+<img id="print-img" src="${dataUrl}" alt="인쇄 내용" />
 <script>
-window.onload = function() {
-  setTimeout(function() { window.print(); window.close(); }, 300);
-};
+  const img = document.getElementById('print-img');
+  function doPrint() {
+    setTimeout(() => { window.print(); window.close(); }, 500);
+  }
+  if (img.complete) { doPrint(); } 
+  else { img.onload = doPrint; img.onerror = () => window.close(); }
 </script>
 </body>
 </html>`);
@@ -319,10 +344,6 @@ window.onload = function() {
 
 /**
  * ✅ 다중 페이지 요소 배열을 이미지로 캡처 후 팝업에서 인쇄
- * 생산관리시트처럼 PageRef 배열이 있는 경우에 사용
- * 
- * @param {HTMLElement[]} elements - 캡처할 DOM 요소 배열 (각각 A4 1페이지)
- * @param {Object} options - printAsImage와 동일한 옵션
  */
 export async function printMultiPageAsImage(elements, options = {}) {
   const {
@@ -331,27 +352,32 @@ export async function printMultiPageAsImage(elements, options = {}) {
     title = '문서 인쇄',
   } = options;
 
-  if (!elements || elements.length === 0) { alert('인쇄할 내용이 없습니다.'); return; }
+  const validElements = elements.filter(Boolean);
+  if (validElements.length === 0) { alert('인쇄할 내용이 없습니다.'); return; }
 
-  // 모든 페이지 이미지 캡처
-  const dataUrls = await Promise.all(elements.filter(Boolean).map(async el => {
-    const imgs = el.querySelectorAll('img');
-    await Promise.all(Array.from(imgs).map(img =>
-      img.complete ? Promise.resolve()
-      : new Promise(r => { img.onload = r; img.onerror = r; })
-    ));
+  const isLandscape = orientation === 'landscape';
+  const targetWidthMM = isLandscape ? A4.W_MM_LAND : A4.W_MM;
 
+  const dataUrls = await Promise.all(validElements.map(async el => {
     const origT = el.style.transform;
     const origM = el.style.margin;
     const origTO = el.style.transformOrigin;
+    const origW = el.style.width;
+    const origH = el.style.minHeight;
+    const origO = el.style.overflow;
+
     el.style.transform = 'scale(1)';
     el.style.margin = '0';
     el.style.transformOrigin = 'top left';
-    await new Promise(r => setTimeout(r, 100));
+    el.style.width = `${targetWidthMM}mm`;
+    el.style.minHeight = 'auto';
+    el.style.overflow = 'visible';
+
+    await new Promise(r => setTimeout(r, 200));
 
     const url = await toPng(el, {
       cacheBust: true,
-      backgroundColor: '#ffffff',
+      backgroundColor: null,
       pixelRatio,
       filter: oklchFilter,
       width: el.scrollWidth,
@@ -361,12 +387,14 @@ export async function printMultiPageAsImage(elements, options = {}) {
     el.style.transform = origT;
     el.style.margin = origM;
     el.style.transformOrigin = origTO;
+    el.style.width = origW;
+    el.style.minHeight = origH;
+    el.style.overflow = origO;
     return url;
   }));
 
-  const isLandscape = orientation === 'landscape';
   const imgTags = dataUrls.map((url, i) =>
-    `<img src="${url}" alt="페이지 ${i+1}" style="display:block;width:100%;height:auto;${i < dataUrls.length - 1 ? 'page-break-after:always;' : ''}" />`
+    `<img class="page-img" src="${url}" alt="페이지 ${i+1}" style="display:block;width:100%;height:auto;${i < dataUrls.length - 1 ? 'page-break-after:always;' : ''}" />`
   ).join('\n');
 
   const printWin = window.open('', '_blank', 'width=900,height=1100');
@@ -375,22 +403,30 @@ export async function printMultiPageAsImage(elements, options = {}) {
   printWin.document.write(`<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>${title}</title>
+<meta charset="UTF-8"><title>${title}</title>
 <style>
   @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; background: white; }
   img { display: block; width: 100%; height: auto; }
-  @media print { body { margin: 0; } }
 </style>
 </head>
 <body>
 ${imgTags}
 <script>
-window.onload = function() {
-  setTimeout(function() { window.print(); window.close(); }, 300);
-};
+  const imgs = document.querySelectorAll('.page-img');
+  let loadedCount = 0;
+  function checkDone() {
+    loadedCount++;
+    if (loadedCount >= imgs.length) {
+      setTimeout(() => { window.print(); window.close(); }, 500);
+    }
+  }
+  if (imgs.length === 0) window.close();
+  imgs.forEach(img => {
+    if (img.complete) { checkDone(); }
+    else { img.onload = checkDone; img.onerror = checkDone; }
+  });
 </script>
 </body>
 </html>`);

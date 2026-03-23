@@ -215,16 +215,12 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
     const handlePrintWindow = async () => {
         await printMultiPageAsImage(pageRefs.current, { title: '생산관리시트', orientation: 'portrait' });
     };
-</script>
-</body>
-</html>`);
-        printWin.document.close();
-    };
+
     const generatePDF = async (action = 'save') => {
         if (pageRefs.current.length === 0) return;
         setSaving(true);
         try {
-            const fileName = production_sheet__.pdf;
+            const fileName = `production_sheet_${plan.id}_${Date.now()}.pdf`;
             const blob = await generateMultiPageA4PDF(pageRefs.current, {
                 fileName,
                 orientation: 'portrait',
@@ -246,9 +242,10 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                 try { if (plan.attachment_file) currentAttachments = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file; } catch { currentAttachments = []; }
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
-                await api.put(/production/plans/, { attachment_file: newAttachments, sheet_metadata: { colWidths } });
+                await api.put(`/production/plans/${plan.id}`, { attachment_file: newAttachments, sheet_metadata: { colWidths } });
                 alert('저장 및 첨부되었습니다.');
-                if (onSave) onSave(); onClose();
+                if (onSave) onSave();
+                onClose();
             }
         } catch (err) {
             console.error(err);

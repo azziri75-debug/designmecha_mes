@@ -554,46 +554,7 @@ const ApprovalPage = () => {
                                 <p className="text-xs text-gray-500 mt-1">ID: {selectedDoc.id} | 기안일: {format(new Date(selectedDoc.created_at), 'yyyy-MM-dd HH:mm')}</p>
                             </div>
                             <div className="flex items-center gap-3">
-                                {selectedDoc.status === 'APPROVED' && (
-                                    <button
-                                        onClick={handlePrintApproval}
-                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
-                                    >
-                                        <Printer className="w-4 h-4" /> 인쇄
-                                    </button>
-                                )}
-                                {currentUser?.id === selectedDoc.author?.id && (
-                                    <>
-                                        {selectedDoc.status !== 'APPROVED' && (
-                                            <button
-                                                onClick={() => handleEditDoc(selectedDoc)}
-                                                className="p-2 hover:bg-gray-700 rounded-lg text-blue-400 transition-colors"
-                                                title="수정"
-                                            >
-                                                <Pencil className="w-5 h-5" />
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => handleDeleteDoc(selectedDoc.id)}
-                                            className="p-2 hover:bg-gray-700 rounded-lg text-red-400 transition-colors"
-                                            title="삭제"
-                                        >
-                                            <Trash className="w-5 h-5" />
-                                        </button>
-                                    </>
-                                )}
-                                <button onClick={() => setShowDocDetail(false)} className="text-gray-400 hover:text-white transition-colors">
-                                    <X className="w-6 h-6" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto flex-1", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
-                            {/* Header Section (Stamp/Signature images) - Hidden for Purchase Order & Expense Report as it's built into the template */}
-                            {!['PURCHASE_ORDER', 'EXPENSE_REPORT'].includes(selectedDoc.doc_type) && (
-                                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-700 pb-8">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2">
                                             <span className={cn(
                                                 "px-2 py-1 rounded text-[10px] font-bold uppercase",
                                                 `bg-${DOC_TYPES[selectedDoc.doc_type]?.color}-900/40 text-${DOC_TYPES[selectedDoc.doc_type]?.color}-400`
@@ -646,7 +607,6 @@ const ApprovalPage = () => {
                                                         <span className="text-[11px] text-red-600 font-bold border-2 border-red-500 px-1 rounded -rotate-12 uppercase">Rejected</span>
                                                     ) : (
                                                         <div className="text-[10px] text-gray-400">대기중</div>
-                                                    )}
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                         <div className="text-[9px] text-white font-medium text-center px-1">{step.approver?.name}</div>
                                                     </div>
