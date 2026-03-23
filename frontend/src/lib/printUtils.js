@@ -1,4 +1,4 @@
-﻿/**
+/**
  * printUtils.js - 공통 A4 인쇄/PDF 저장 유틸리티
  *
  * 문제: jsPDF에 이미지를 삽입할 때 pdfHeight를 비율로만 계산하면
@@ -145,11 +145,20 @@ export async function generateA4PDF(element, options = {}) {
   const imgHeightPx = img.naturalHeight || scrollH;
 
   // 이미지의 전체 높이를 mm 단위로 계산 (비율 유지)
-  const scale = usableWidthMm / imgWidthPx;
-  const imgTotalHeightMm = imgHeightPx * scale;
+  let scale = usableWidthMm / imgWidthPx;
+  let imgTotalHeightMm = imgHeightPx * scale;
+
+  // [최적화] 단일 페이지 선호 시 높이가 아주 미세하게 넘어가면 강제 축소
+  if (!multiPage || imgTotalHeightMm <= usableHeightMm * 1.05) {
+    if (imgTotalHeightMm > usableHeightMm) {
+      // 너비 기준 스케일보다 높이 기준 스케일이 더 작아야 함 (더 많이 축소)
+      scale = Math.min(usableWidthMm / imgWidthPx, usableHeightMm / imgHeightPx);
+      imgTotalHeightMm = imgHeightPx * scale;
+    }
+  }
 
   if (multiPage && imgTotalHeightMm > usableHeightMm) {
-    // 여러 페이지로 분할
+    // 여러 페이지로 분할 (이미 축소 처리를 거쳤음에도 여전히 큰 경우)
     const pageImgHeightPx = usableHeightMm / scale;
     let yOffset = 0;
     let pageNum = 0;
@@ -163,14 +172,13 @@ export async function generateA4PDF(element, options = {}) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, -yOffset, imgWidthPx, imgHeightPx);
       const sliceDataUrl = canvas.toDataURL('image/png');
-      pdf.addImage(sliceDataUrl, 'PNG', marginMm, marginMm, usableWidthMm, sliceHeight * scale);
+      pdf.addImage(sliceDataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scale, sliceHeight * scale);
       yOffset += pageImgHeightPx;
       pageNum++;
     }
   } else {
     // 단일 페이지 (A4 높이에 맞게 조절, 잘리지 않도록)
-    const finalHeightMm = Math.min(imgTotalHeightMm, usableHeightMm);
-    pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, usableWidthMm, finalHeightMm);
+    pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scale, imgHeightPx * scale);
   }
 
   if (action === 'download') {
@@ -323,8 +331,14 @@ export async function printAsImage(element, options = {}) {
 <style>
   @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; background: white; }
-  img { display: block; width: 100%; height: auto; }
+  html, body { width: 100%; height: 100%; background: white; overflow: hidden; }
+  img { 
+    display: block; 
+    width: 100%; 
+    height: 100%; 
+    object-fit: contain;
+    page-break-inside: avoid;
+  }
 </style>
 </head>
 <body>
@@ -394,7 +408,7 @@ export async function printMultiPageAsImage(elements, options = {}) {
   }));
 
   const imgTags = dataUrls.map((url, i) =>
-    `<img class="page-img" src="${url}" alt="페이지 ${i+1}" style="display:block;width:100%;height:auto;${i < dataUrls.length - 1 ? 'page-break-after:always;' : ''}" />`
+    `<img class="page-img" src="${url}" alt="페이지 ${i+1}" />`
   ).join('\n');
 
   const printWin = window.open('', '_blank', 'width=900,height=1100');
@@ -408,7 +422,14 @@ export async function printMultiPageAsImage(elements, options = {}) {
   @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; background: white; }
-  img { display: block; width: 100%; height: auto; }
+  img { 
+    display: block; 
+    width: 100vw; 
+    height: 100vh; 
+    object-fit: contain; 
+    page-break-after: always; 
+    page-break-inside: avoid;
+  }
 </style>
 </head>
 <body>
