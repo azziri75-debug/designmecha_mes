@@ -301,6 +301,11 @@ async def create_document(
                 )
                 db.add(db_att)
         
+        # [NEW] 원본 데이터(PO/OO)와 첨부파일 동기화
+        await db.flush()
+        await db.refresh(db_doc, ["attachments"])
+        await sync_attachments_to_reference(db, db_doc)
+        
         # 4. 결재 단계(Steps) 생성 (지정된 결재자 우선, 없으면 템플릿 사용)
         lines_to_process = []
         if doc_in.custom_approvers:
@@ -779,20 +784,62 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
 
 async def is_editable(doc: ApprovalDocument, user: Staff = None) -> bool:
     """문서가 수정/삭제 가능한 상태인지 확인 (PENDING, REJECTED 또는 자동 승인만 된 IN_PROGRESS)"""
+    if not doc:
+        return False
+        
     if user and user.user_type == "ADMIN":
         return True
         
+    # [보안 강화] '진행 중'이거나 '완료'된 문서는 수정 불가 (사용자 요구사항 반영)
+    if doc.status in [ApprovalStatus.IN_PROGRESS, ApprovalStatus.COMPLETED]:
+        # '진행 중'인 경우 중, 지금까지 완료된 모든 단계가 '자동 승인'인 경우만 예외적으로 허용 (기안 직후 상태)
+        # 하지만 요구사항에 따라 더 보수적으로 'PENDING'과 'REJECTED'(재기안용)만 허용하는 것이 안전함.
+        for step in doc.steps:
+            if step.status == "APPROVED" and "자동 승인" not in (step.comment or ""):
+                return False
+                
     if doc.status in [ApprovalStatus.PENDING, ApprovalStatus.REJECTED]:
         return True
     
-    if doc.status == ApprovalStatus.IN_PROGRESS:
-        # 진행 중인 경우, 지금까지 완료된 모든 단계가 '자동 승인'인지 확인
-        for step in doc.steps:
-            if step.status == "APPROVED" and step.comment != "기안자 직급에 따른 자동 승인":
-                return False
-        return True
-    
     return False
+
+async def sync_attachments_to_reference(db: AsyncSession, doc: ApprovalDocument):
+    """결재 문서의 첨부파일을 연동된 원본 객체(PO/OO)의 attachment_file 필드에 동기화 (1:N 대응)"""
+    if not doc.reference_id or not doc.reference_type:
+        return
+
+    # 최신 첨부파일 리스트 준비 (JSON 배열 형태)
+    attachments_json = []
+    if doc.attachments:
+        attachments_json = [{"name": a.filename, "url": a.url} for a in doc.attachments]
+    
+    try:
+        if doc.reference_type == "PURCHASE":
+            stmt = select(PurchaseOrder).where(PurchaseOrder.id == doc.reference_id)
+            res = await db.execute(stmt)
+            order = res.scalars().first()
+            if order:
+                import json
+                # 기존 파일과 합치거나 덮어쓰기 (결재 시점의 파일이 최종본이 되도록 덮어쓰기 권장)
+                order.attachment_file = json.dumps(attachments_json, ensure_ascii=False)
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(order, "attachment_file")
+                print(f"[DEBUG] Synced {len(attachments_json)} attachments to PurchaseOrder {order.id}")
+        
+        elif doc.reference_type == "OUTSOURCING":
+            stmt = select(OutsourcingOrder).where(OutsourcingOrder.id == doc.reference_id)
+            res = await db.execute(stmt)
+            order = res.scalars().first()
+            if order:
+                import json
+                order.attachment_file = json.dumps(attachments_json, ensure_ascii=False)
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(order, "attachment_file")
+                print(f"[DEBUG] Synced {len(attachments_json)} attachments to OutsourcingOrder {order.id}")
+
+        await db.flush()
+    except Exception as e:
+        print(f"[ERROR] sync_attachments_to_reference failed: {e}")
 
 @router.put("/documents/{doc_id}", response_model=ApprovalDocumentResponse)
 async def update_document(
@@ -838,6 +885,11 @@ async def update_document(
                     url=att.url
                 )
                 db.add(db_att)
+        
+        # [NEW] 원본 데이터(PO/OO)와 첨부파일 동기화
+        await db.flush()
+        await db.refresh(doc, ["attachments"])
+        await sync_attachments_to_reference(db, doc)
     
         # 수정 시 상태가 반려였다면 대기로 변경하고 결재 단계 초기화 가능
         # ADMIN이 수정하는 경우 상태를 유지하거나 필요시 변경함

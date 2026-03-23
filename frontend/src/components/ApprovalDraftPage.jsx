@@ -348,7 +348,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <FileText size={20} /> 증빙 서류 및 첨부파일
                 </Typography>
-                <MultiFileUpload files={attachments} onChange={setAttachments} />
+                <MultiFileUpload files={attachments} onChange={setAttachments} isReadOnly={isReadOnly} />
             </Paper>
 
             <ApprovalLineSelector 

@@ -3,7 +3,7 @@ import { Upload, X, FileText, Trash2, Loader2, Image as ImageIcon } from 'lucide
 import api from '../lib/api';
 import { getImageUrl, cn } from '../lib/utils';
 
-const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드" }) => {
+const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드", isReadOnly = false }) => {
     const [uploading, setUploading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const inputRef = useRef(null);
@@ -68,8 +68,10 @@ const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드" }) =
                 className={cn(
                     "relative border-2 border-dashed rounded-xl p-6 transition-all cursor-pointer flex flex-col items-center justify-center gap-2",
                     dragActive ? "border-blue-500 bg-blue-500/10" : "border-gray-700 bg-gray-900/50 hover:border-gray-500 hover:bg-gray-800",
-                    uploading && "opacity-50 pointer-events-none"
+                    uploading && "opacity-50 pointer-events-none",
+                    isReadOnly && "opacity-60 cursor-default hover:bg-gray-900/50 hover:border-gray-700"
                 )}
+                style={isReadOnly ? { pointerEvents: 'none' } : {}}
             >
                 <input
                     ref={inputRef}
@@ -86,8 +88,10 @@ const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드" }) =
                 )}
 
                 <div className="text-center">
-                    <p className="text-sm font-medium text-gray-300">{label}</p>
-                    <p className="text-xs text-gray-500 mt-1">파일을 드래그하여 올리거나 클릭하여 선택하세요</p>
+                    <p className="text-sm font-medium text-gray-300">{label}{isReadOnly && " (읽기 전용)"}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                        {isReadOnly ? "첨부된 파일을 확인하려면 파일명을 클릭하세요" : "파일을 드래그하여 올리거나 클릭하여 선택하세요"}
+                    </p>
                 </div>
             </div>
 
@@ -106,16 +110,18 @@ const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드" }) =
                                     {file?.name || 'Unknown File'}
                                 </a>
                             </div>
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onChange(files.filter((_, i) => i !== idx));
-                                }}
-                                className="text-gray-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-all"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                            {!isReadOnly && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onChange(files.filter((_, i) => i !== idx));
+                                    }}
+                                    className="text-gray-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-all"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Float, DateTime, Enum as SqlEnum, Text
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Float, DateTime, Enum as SqlEnum, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -32,7 +32,7 @@ class PurchaseOrder(Base):
     actual_delivery_date = Column(Date, nullable=True)
     total_amount = Column(Float, default=0.0)
     note = Column(String, nullable=True)
-    attachment_file = Column(Text, nullable=True)  # JSON array of {name, url}
+    attachment_file = Column(JSON, nullable=True)  # JSON array of {name, url}
     status = Column(SqlEnum(PurchaseStatus), default=PurchaseStatus.PENDING)
     purchase_type = Column(String, default="PART", nullable=True) # PART(부품), CONSUMABLE(소모품)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True)
@@ -124,7 +124,7 @@ class OutsourcingOrder(Base):
     actual_delivery_date = Column(Date, nullable=True)
     total_amount = Column(Float, default=0.0)
     note = Column(String, nullable=True)
-    attachment_file = Column(Text, nullable=True)  # JSON array of {name, url}
+    attachment_file = Column(JSON, nullable=True)  # JSON array of {name, url}
     status = Column(SqlEnum(OutsourcingStatus), default=OutsourcingStatus.PENDING)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True)
     

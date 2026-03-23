@@ -5,7 +5,8 @@ import {
     FileText, UserPlus, Clock, CheckCircle2, AlertCircle,
     Plus, Search, Filter, Pencil, Trash, X, Check,
     Calendar, User, Layers, Info, Settings, ClipboardList,
-    ChevronRight, ArrowRight, Download, Upload, Printer
+    ChevronRight, ArrowRight, Download, Upload, Printer,
+    Paperclip, File, ExternalLink
 } from 'lucide-react';
 import api from '../lib/api';
 import { cn, getImageUrl } from '../lib/utils';
@@ -407,7 +408,12 @@ const ApprovalPage = () => {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-gray-100 font-semibold">
-                                                        {doc.title}
+                                                        <div className="flex items-center gap-2">
+                                                            {doc.title}
+                                                            {doc.attachments && doc.attachments.length > 0 && (
+                                                                <Paperclip className="w-3.5 h-3.5 text-blue-400" />
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-sm">
                                                         <span className={cn(
@@ -698,6 +704,53 @@ const ApprovalPage = () => {
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
                                         />
+                                    )}
+
+                                    {/* Attachment Section */}
+                                    {selectedDoc.attachments && selectedDoc.attachments.length > 0 && (
+                                        <Box sx={{ mt: 6, pt: 4, borderTop: '2px solid #eee' }}>
+                                            <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, fontWeight: 'bold', color: '#374151' }}>
+                                                <Paperclip size={16} /> 관련 첨부파일 ({selectedDoc.attachments.length})
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                                                {selectedDoc.attachments.map((file, idx) => (
+                                                    <Box 
+                                                        key={idx} 
+                                                        sx={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            gap: 1.5, 
+                                                            p: 1.5, 
+                                                            pr: 2,
+                                                            bgcolor: '#f9fafb', 
+                                                            border: '1px solid #e5e7eb', 
+                                                            borderRadius: 2,
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            '&:hover': {
+                                                                bgcolor: '#f3f4f6',
+                                                                borderColor: '#d1d5db',
+                                                                transform: 'translateY(-1px)'
+                                                            }
+                                                        }}
+                                                        onClick={() => window.open(`${import.meta.env.VITE_API_URL}${file.url}`, '_blank')}
+                                                    >
+                                                        <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                                                            <File size={16} />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <Typography sx={{ fontSize: '0.8rem', fontWeight: 'medium', color: '#111827', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                {file.filename}
+                                                            </Typography>
+                                                            <Typography sx={{ fontSize: '0.65rem', color: '#6b7280' }}>
+                                                                파일 열기
+                                                            </Typography>
+                                                        </div>
+                                                        <ExternalLink size={12} className="text-gray-400 ml-1" />
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        </Box>
                                     )}
                                 </Box>
                             </div>

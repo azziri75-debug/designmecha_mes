@@ -151,6 +151,18 @@ const PurchasePage = ({ type }) => {
         const customerName = order.related_customer_names || '재고용';
         const partnerName = order.partner?.name || '공급사미지정';
 
+        let existingAttachments = [];
+        try {
+            if (order.attachment_file) {
+                const parsed = typeof order.attachment_file === 'string' 
+                    ? JSON.parse(order.attachment_file) 
+                    : order.attachment_file;
+                existingAttachments = Array.isArray(parsed) ? parsed : [parsed];
+            }
+        } catch (e) {
+            console.error("Attachment parse error", e);
+        }
+
         const approvalPayload = {
             title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
             doc_type: 'PURCHASE_ORDER',
@@ -172,6 +184,10 @@ const PurchasePage = ({ type }) => {
                 })),
                 colWidths: [40, 200, 120, 60, 80, 100]
             },
+            attachments_to_add: existingAttachments.map(a => ({
+                filename: a.name || a.filename,
+                url: a.url
+            })),
             reference_id: order.id,
             reference_type: 'PURCHASE'
         };

@@ -334,15 +334,6 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
 
                             <div className="text-center font-extrabold text-2xl mt-4 border-t-2 border-black pt-10">
                                 <p className="mb-10 text-xl">위와 같이 견적함.</p>
-                                <div className="flex items-center justify-center gap-6">
-                                    <span className="text-4xl tracking-widest">{metadata.company_name}</span>
-                                    <div className="relative inline-block">
-                                        <span className="text-red-500 font-normal text-xl">(인)</span>
-                                        {company?.stamp_image?.url && (
-                                            <StampOverlay url={company.stamp_image.url} className="w-24 h-24 -top-10 -left-6" />
-                                        )}
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
