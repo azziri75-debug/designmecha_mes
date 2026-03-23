@@ -49,7 +49,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         company_ceo: "조인호",
         company_address: "충남 아산시 음봉면 월암로 336-39\n(www.designmecha.co.kr)",
         company_contact: "TEL : 041-544-6220 / FAX : 041-544-6207\n(E-mail : juno@designmecha.co.kr)",
-        colWidths: [35, 200, 140, 45, 85, 95, 60],
+        colWidths: [30, 200, 130, 40, 85, 95, 60],
         items: []
     });
 
@@ -108,7 +108,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             }
         } catch (e) { }
 
-        const defaultWidths = [35, 200, 140, 45, 85, 95, 60];
+        const defaultWidths = [30, 200, 130, 40, 85, 95, 60];
 
         setMetadata(prev => ({
             ...prev,
@@ -141,7 +141,6 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             const p = parseFloat(newItems[rIdx].price?.toString().replace(/,/g, '')) || 0;
             newItems[rIdx].total = (q * p).toLocaleString();
 
-            // Re-format price if it was changed
             if (key === 'price') {
                 const numVal = parseFloat(val.toString().replace(/,/g, ''));
                 if (!isNaN(numVal)) newItems[rIdx].price = numVal.toLocaleString();
@@ -153,13 +152,11 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         setMetadata(prev => ({ ...prev, items: newItems }));
     };
 
-    const fmt = (n) => typeof n === 'number' ? n.toLocaleString() : n;
-
     const handlePrintWindow = async () => {
         await printAsImage(sheetRef.current, { title: '견적서', orientation: 'portrait' });
     };
 
-        const generatePDF = async (action = 'save') => {
+    const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
         setSaving(true);
         try {
@@ -201,6 +198,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             alert('PDF 생성 실패: ' + err.message);
         } finally { setSaving(false); }
     };
+
     if (!isOpen || !estimate) return null;
 
     return (
@@ -234,14 +232,14 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
                     <div ref={sheetRef} className="bg-white shadow-2xl p-[20mm] w-[210mm] min-h-[297mm] flex flex-col text-black font-['Malgun_Gothic']">
                         {/* Header Section */}
-                        <div className="flex justify-between items-start mb-10">
+                        <div className="flex justify-between items-start mb-10 w-full">
                             <div className="flex-1">
                                 <h1 className="text-4xl font-bold tracking-[1em] mb-10 text-center border-b-4 border-black pb-4">견 적 서</h1>
                                 <div className="mt-4 flex items-end gap-1 border-b-2 border-black pb-1 w-fit min-w-[200px] whitespace-nowrap">
                                     <EditableText 
                                         value={metadata.recipient} 
                                         onChange={(v) => handleMetaChange('recipient', v)}
-                                        className="text-3xl font-bold"
+                                        className="text-5xl font-bold"
                                     />
                                     <span className="text-lg font-bold pb-1 text-black">귀하</span>
                                 </div>
@@ -255,7 +253,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 </div>
                             </div>
 
-                            <div className="w-[300px] border-2 border-black flex">
+                            <div className="w-[350px] border-2 border-black flex">
                                 <div className="w-8 bg-gray-50 border-r border-black flex items-center justify-center text-[10px] font-bold p-1 leading-tight text-center [writing-mode:vertical-rl] tracking-widest uppercase">
                                     공급자
                                 </div>
@@ -281,13 +279,13 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                     </div>
                                     <div className="flex border-b border-black">
                                         <div className="w-16 bg-gray-50 border-r border-black p-1 flex items-center justify-center font-bold text-[9px]">주 소</div>
-                                        <div className="flex-1 p-1 flex items-center leading-tight text-[8px]">
+                                        <div className="flex-1 p-1 flex items-center leading-tight text-[9px]">
                                             <EditableText value={metadata.company_address} onChange={(v) => handleMetaChange('company_address', v)} autoFit />
                                         </div>
                                     </div>
                                     <div className="flex">
                                         <div className="w-16 bg-gray-50 border-r border-black p-1 flex items-center justify-center font-bold text-[9px]">연락처</div>
-                                        <div className="flex-1 p-1 flex items-center leading-tight text-[8px]">
+                                        <div className="flex-1 p-1 flex items-center leading-tight text-[9px]">
                                             <EditableText value={metadata.company_contact} onChange={(v) => handleMetaChange('company_contact', v)} autoFit />
                                         </div>
                                     </div>

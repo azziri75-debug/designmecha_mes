@@ -860,7 +860,7 @@ const ProductsPage = ({ type }) => {
                                     <ResizableTh className="px-6 py-3">규격</ResizableTh>
                                     {type !== 'CONSUMABLE' && <ResizableTh className="px-6 py-3">재질</ResizableTh>}
                                     <ResizableTh className="px-6 py-3">단위</ResizableTh>
-                                    {type !== 'PART' && <ResizableTh className="px-6 py-3">공정 수</ResizableTh>}
+                                    {type !== 'PART' && type !== 'CONSUMABLE' && <ResizableTh className="px-6 py-3">공정 수</ResizableTh>}
                                     <ResizableTh className="px-6 py-3">최근 단가</ResizableTh>
                                     <ResizableTh className="px-6 py-3">첨부파일</ResizableTh>
                                     <ResizableTh className="px-6 py-3">비고</ResizableTh>
@@ -926,7 +926,7 @@ const ProductsPage = ({ type }) => {
                                                 <td className="px-6 py-4">{product.specification}</td>
                                                 {type !== 'CONSUMABLE' && <td className="px-6 py-4">{product.material}</td>}
                                                 <td className="px-6 py-4">{product.unit}</td>
-                                                {type !== 'PART' && (
+                                                {type !== 'PART' && type !== 'CONSUMABLE' && (
                                                     <td className="px-6 py-4">
                                                         <span className="bg-gray-700 text-white px-2 py-1 rounded text-xs">
                                                             {product.standard_processes ? product.standard_processes.length : 0} 공정

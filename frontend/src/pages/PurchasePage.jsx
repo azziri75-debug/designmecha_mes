@@ -822,7 +822,7 @@ const PurchasePage = ({ type }) => {
                                                             <PrintIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
-                                                    {order.status === 'PENDING' && (
+                                                    {(order.status === 'PENDING' || order.status === 'ORDERED') && (
                                                         <Tooltip title="결재요청">
                                                             <IconButton size="small" color="primary" onClick={() => handleApprovalSubmit(order)}>
                                                                 <SendIcon fontSize="small" />
