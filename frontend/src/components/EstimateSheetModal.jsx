@@ -55,6 +55,16 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
 
     const sheetRef = useRef(null);
 
+    const columns = [
+        { key: 'idx', label: '순번', align: 'center' },
+        { key: 'name', label: '품목명', align: 'left' },
+        { key: 'spec', label: '규격', align: 'center' },
+        { key: 'qty', label: '수량', align: 'center' },
+        { key: 'price', label: '단가', align: 'right' },
+        { key: 'total', label: '금액', align: 'right' },
+        { key: 'note', label: '비고', align: 'left' },
+    ];
+
     useEffect(() => {
         if (isOpen && estimate) {
             fetchCompany();
