@@ -740,7 +740,7 @@ const ApprovalPage = () => {
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <Typography sx={{ fontSize: '0.8rem', fontWeight: 'medium', color: '#111827', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                                {file.filename}
+                                                                {file.filename || file.name}
                                                             </Typography>
                                                             <Typography sx={{ fontSize: '0.65rem', color: '#6b7280' }}>
                                                                 파일 열기

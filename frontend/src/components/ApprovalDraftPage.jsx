@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     Box, Button, TextField, Typography, Paper, Tabs, Tab,
     IconButton, Select, MenuItem, InputLabel, FormControl
@@ -310,7 +310,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 sx={{
                     width: '210mm',
                     minHeight: '297mm',
-                    p: '15mm',
+                    p: docType === 'PURCHASE_ORDER' || docType === 'OUTSOURCING' ? 0 : '15mm',
                     mb: 4,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                     bgcolor: 'white',
@@ -340,6 +340,18 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     word-wrap: break-word !important;
                     white-space: pre-wrap !important;
                     overflow: visible !important;
+                }
+                /* Reset nested a4-wrapper to be flexible within the paper root */
+                .a4-paper-root .a4-wrapper {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-height: auto !important;
+                    margin: 0 !important;
+                    box-shadow: none !important;
+                    background-color: transparent !important;
+                }
+                .a4-paper-root .a4-wrapper.print-safe-area {
+                    padding: 10mm !important;
                 }
             `}</style>
 

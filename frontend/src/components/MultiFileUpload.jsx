@@ -107,7 +107,7 @@ const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드", isR
                                     rel="noopener noreferrer"
                                     className="text-sm text-gray-300 hover:text-blue-400 truncate"
                                 >
-                                    {file?.name || 'Unknown File'}
+                                    {file?.name || file?.filename || 'Unknown File'}
                                 </a>
                             </div>
                             {!isReadOnly && (
