@@ -237,13 +237,13 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         <div className="flex justify-between items-start mb-10">
                             <div className="flex-1">
                                 <h1 className="text-4xl font-bold tracking-[1em] mb-10 text-center border-b-4 border-black pb-4">견 적 서</h1>
-                                <div className="mt-4 flex items-end gap-2 border-b-2 border-black pb-1 w-fit min-w-[200px]">
+                                <div className="mt-4 flex items-end gap-1 border-b-2 border-black pb-1 w-fit min-w-[200px] whitespace-nowrap">
                                     <EditableText 
                                         value={metadata.recipient} 
                                         onChange={(v) => handleMetaChange('recipient', v)}
-                                        className="text-xl font-bold"
+                                        className="text-3xl font-bold"
                                     />
-                                    <span className="text-sm font-bold pb-1 text-black">귀하</span>
+                                    <span className="text-lg font-bold pb-1 text-black">귀하</span>
                                 </div>
                                 <div className="mt-4 text-xs space-y-1">
                                     <p className="flex items-center gap-2">
@@ -281,13 +281,13 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                     </div>
                                     <div className="flex border-b border-black">
                                         <div className="w-16 bg-gray-50 border-r border-black p-1 flex items-center justify-center font-bold text-[9px]">주 소</div>
-                                        <div className="flex-1 p-1 flex items-center leading-tight">
+                                        <div className="flex-1 p-1 flex items-center leading-tight text-[8px]">
                                             <EditableText value={metadata.company_address} onChange={(v) => handleMetaChange('company_address', v)} autoFit />
                                         </div>
                                     </div>
                                     <div className="flex">
                                         <div className="w-16 bg-gray-50 border-r border-black p-1 flex items-center justify-center font-bold text-[9px]">연락처</div>
-                                        <div className="flex-1 p-1 flex items-center leading-tight">
+                                        <div className="flex-1 p-1 flex items-center leading-tight text-[8px]">
                                             <EditableText value={metadata.company_contact} onChange={(v) => handleMetaChange('company_contact', v)} autoFit />
                                         </div>
                                     </div>
@@ -305,7 +305,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Table Section */}
-                        <div className="flex-1">
+                        <div className="w-full">
                             <ResizableTable
                                 columns={columns}
                                 data={metadata.items}
