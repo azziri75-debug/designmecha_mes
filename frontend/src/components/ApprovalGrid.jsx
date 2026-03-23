@@ -31,22 +31,7 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
         return rankA - rankB;
     });
 
-    const minSteps = 2; 
-    const defaultRoles = ['부장', '대표이사'];
-    
-    let steps = [...uniqueSteps];
-    
-    // (3) 최소 칸수(3칸=기안자+2)를 맞추기 위한 Placeholder 추가 시 중복 방지
-    while (steps.length < minSteps) {
-        const nextRole = defaultRoles[steps.length];
-        // 이미 해당 직급이 steps에 있다면 다른 직급이나 '검토'로 대체 (단순화를 위해 중복체크)
-        const roleExists = steps.some(s => (s.approver?.role === nextRole || s.role === nextRole));
-        
-        steps.push({ 
-            role: roleExists ? '검토' : nextRole, 
-            isPlaceholder: true 
-        });
-    }
+    const steps = [...uniqueSteps];
     
     console.log("렌더링되는 결재선 데이터:", steps);
 

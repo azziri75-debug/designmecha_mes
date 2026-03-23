@@ -12,16 +12,25 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     // Initialize items if they don't exist
     useEffect(() => {
         if (typeof onChange !== 'function') return;
+        
+        const updates = {};
         if (!data.items || data.items.length === 0) {
-            onChange({
-                ...data,
-                items: [{ acc_category: '', description: '', amount: '' }],
-                draft_date: data.draft_date || rawToday,
-                dept: data.dept || currentUser?.dept || '',
-                name: data.name || currentUser?.name || ''
-            });
+            updates.items = [{ acc_category: '', description: '', amount: '' }];
         }
-    }, [onChange]);
+        if (!data.draft_date) {
+            updates.draft_date = rawToday;
+        }
+        if (!data.dept) {
+            updates.dept = currentUser?.dept || '';
+        }
+        if (!data.name) {
+            updates.name = currentUser?.name || '';
+        }
+
+        if (Object.keys(updates).length > 0) {
+            onChange({ ...data, ...updates });
+        }
+    }, [onChange, currentUser]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
@@ -105,14 +114,14 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             }}>
                 {/* Left Info Table */}
                 <Table size="small" sx={{ 
-                    width: { xs: '100%', md: '300px' }, 
+                    width: { xs: '100%', md: '340px' }, 
                     border: '2px solid #000', 
                     borderCollapse: 'collapse', 
                     '& td': { border: '1px solid #000', height: '28px', fontSize: '12px' } 
                 }}>
                     <TableBody>
                         <TableRow>
-                            <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '80px' }}>작 성 일</TableCell>
+                            <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '100px' }}>작 성 일</TableCell>
                             <TableCell sx={{ p: '0 8px !important' }}>
                                 <input 
                                     type="date" 
@@ -180,7 +189,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             <Table size="small" sx={{ mb: 2, border: '2px solid #000', borderCollapse: 'collapse', '& td': { border: '1px solid #000', height: '35px', fontSize: '13px' } }}>
                 <TableBody>
                     <TableRow>
-                        <TableCell align="center" sx={{ width: '80px', bgcolor: '#f5f5f5', fontWeight: 'bold' }}>내 역</TableCell>
+                        <TableCell align="center" sx={{ width: '100px', bgcolor: '#f5f5f5', fontWeight: 'bold' }}>내 역</TableCell>
                         <TableCell sx={{ p: '0 10px !important' }}>
                             <input 
                                 type="text" 
