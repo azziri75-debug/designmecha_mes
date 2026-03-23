@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
@@ -42,6 +42,26 @@ const ApprovalPage = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('documents'); // documents, settings
     const [documents, setDocuments] = useState([]);
+    // 문서 내용만 새 팝업으로 인쇄하는 함수
+    const handlePrintApproval = React.useCallback(() => {
+        const contentEl = document.querySelector('.a4-paper-container');
+        if (!contentEl) { window.print(); return; }
+        const printWin = window.open('', '_blank', 'width=900,height=1200');
+        if (!printWin) { window.print(); return; }
+        const styles = Array.from(document.styleSheets)
+            .map(sheet => { try { return Array.from(sheet.cssRules||[]).map(r=>r.cssText).join('\n'); } catch{return '';} }).join('\n');
+        printWin.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>전자결재 문서</title>
+<style>${styles}
+@page { size: A4 portrait; margin: 15mm; }
+@media print { body{margin:0;padding:0;background:white;} * {-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;} }
+body { background: white; font-family: "Malgun Gothic", sans-serif; }
+</style></head><body>
+${contentEl.innerHTML}
+<script>window.onload=function(){setTimeout(function(){window.print();window.close();},500);};</script>
+</body></html>`);
+        printWin.document.close();
+    }, []);
+
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(false);
     const { user: currentUser } = useAuth();
@@ -521,8 +541,8 @@ const ApprovalPage = () => {
 
 
             {showDocDetail && selectedDoc && createPortal(
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 approval-modal-overlay">
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl h-full max-h-[90vh] shadow-2xl animation-fade-in my-auto flex flex-col overflow-hidden print-safe-area">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 approval-modal-overlay no-print">
+                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl h-full max-h-[90vh] shadow-2xl animation-fade-in my-auto flex flex-col overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -534,9 +554,7 @@ const ApprovalPage = () => {
                             <div className="flex items-center gap-3">
                                 {selectedDoc.status === 'APPROVED' && (
                                     <button
-                                        onClick={() => {
-                                            window.print();
-                                        }}
+                                        onClick={handlePrintApproval}
                                         className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
                                     >
                                         <Printer className="w-4 h-4" /> 인쇄

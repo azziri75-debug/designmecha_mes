@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+﻿import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     Modal, Box, Button, IconButton,
     CircularProgress, Alert
@@ -165,13 +165,28 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const handleDownloadPDF = async () => {
         setIsGeneratingPdf(true);
         try {
-            // 캡처용 high-scale 캔버스 생성
-            const cvs = await html2canvas(printRef.current, {
-                scale: 2.5,
+            // 캡처 전 scale 1로 임시 변경하여 실제 297x210mm 크기로 캡처
+            const el = printRef.current;
+            const origTransform = el.style.transform;
+            const origMarginBottom = el.style.marginBottom;
+            el.style.transform = 'scale(1)';
+            el.style.marginBottom = '0';
+            await new Promise(r => setTimeout(r, 150)); // reflow 대기
+
+            const cvs = await html2canvas(el, {
+                scale: 2,
                 useCORS: true,
                 backgroundColor: '#ffffff',
-                logging: false
+                logging: false,
+                width: el.scrollWidth,
+                height: el.scrollHeight,
+                windowWidth: el.scrollWidth,
+                windowHeight: el.scrollHeight,
             });
+
+            // 원복
+            el.style.transform = origTransform;
+            el.style.marginBottom = origMarginBottom;
 
             const pdf = new jsPDF('l', 'mm', 'a4');
             const pageWidth = pdf.internal.pageSize.getWidth();
@@ -184,7 +199,6 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 pageWidth, pageHeight,
                 undefined, 'FAST'
             );
-
             const fileName = `거래명세서_${data.partner?.name || '공급처'}_${data.delivery_date || ''}.pdf`;
             pdf.save(fileName);
 

@@ -133,7 +133,25 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         return isNaN(parsed) ? n : parsed.toLocaleString();
     };
 
-    const generatePDF = async (action = 'save') => {
+    const handlePrintWindow = () => {
+        if (!sheetRef.current) return;
+        const printWin = window.open('', '_blank', 'width=900,height=1200');
+        if (!printWin) { alert('팝업 차단을 해제해주세요'); return; }
+        const styles = Array.from(document.styleSheets)
+            .map(sheet => { try { return Array.from(sheet.cssRules||[]).map(r=>r.cssText).join('\n'); } catch { return ''; } }).join('\n');
+        const html = sheetRef.current.innerHTML;
+        printWin.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>발주서</title>
+<style>${styles}
+@page { size: A4 portrait; margin: 10mm; }
+@media print { body{margin:0;padding:0;} * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+body { background: white; margin: 10px; font-family: "Malgun Gothic", sans-serif; }
+</style></head><body>
+${html}
+<script>window.onload=function(){setTimeout(function(){window.print();window.close();},500);};</script>
+</body></html>`);
+        printWin.document.close();
+    };
+        const generatePDF = async (action = 'save') => {
         if (!sheetRef.current) return;
         setSaving(true);
         try {
@@ -258,7 +276,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => window.print()}
+                            onClick={handlePrintWindow}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"
                         >
                             <Printer className="w-4 h-4" /> 인쇄

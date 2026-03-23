@@ -36,7 +36,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
     return (
         <div 
             ref={ref} 
-            className="bg-white text-black flex flex-col shadow-none origin-top relative mb-8 last:mb-0 print-safe-area" 
+            className="bg-white text-black flex flex-col shadow-none origin-top relative mb-8 last:mb-0" 
             style={{ 
                 fontFamily: '"Malgun Gothic", sans-serif', 
                 border: '1px solid #e5e7eb',
@@ -210,7 +210,59 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         setMetadata(prev => ({ ...prev, groups: newGroups }));
     };
 
-    const generatePDF = async (action = 'save') => {
+    // 인쇄 전용 창 방식 - 메뉴/다크 배경 없이 A4만 인쇄
+    const handlePrintWindow = () => {
+        const printWin = window.open('', '_blank', 'width=900,height=1200');
+        if (!printWin) { alert('팝업 차단을 해제해주세요'); return; }
+
+        // 현재 페이지의 모든 스타일시트 수집
+        const styles = Array.from(document.styleSheets)
+            .map(sheet => {
+                try {
+                    return Array.from(sheet.cssRules || []).map(r => r.cssText).join('\n');
+                } catch { return ''; }
+            }).join('\n');
+
+        // PageFrame들의 HTML 내용 수집
+        const pagesHtml = pageRefs.current
+            .filter(Boolean)
+            .map((el, i) => `
+                <div class="sheet-page" style="page-break-after: ${i < pageRefs.current.filter(Boolean).length - 1 ? 'always' : 'auto'}; margin-bottom: 20px;">
+                    ${el.innerHTML}
+                </div>`)
+            .join('');
+
+        printWin.document.write(`
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>생산관리시트</title>
+<style>
+${styles}
+@page { size: A4 portrait; margin: 10mm; }
+@media print {
+    body { margin: 0; padding: 0; background: white; }
+    .sheet-page { width: 100%; box-sizing: border-box; page-break-after: always; }
+    .sheet-page:last-child { page-break-after: auto; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+body { background: white; margin: 10px; font-family: "Malgun Gothic", sans-serif; }
+.sheet-page { width: 210mm; margin: 0 auto 20px; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.15); }
+</style>
+</head>
+<body>
+${pagesHtml}
+<script>
+window.onload = function() {
+    setTimeout(function() { window.print(); window.close(); }, 500);
+};
+</script>
+</body>
+</html>`);
+        printWin.document.close();
+    };
+        const generatePDF = async (action = 'save') => {
         if (pageRefs.current.length === 0) return;
         setSaving(true);
         try {
@@ -236,7 +288,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                     style: {
                         transform: 'scale(1)',
                         transformOrigin: 'top left',
-                        width: '210mm',
+
                     },
                     filter: (node) => {
                         if (node.style && node.style.color && node.style.color.includes('oklch')) node.style.color = '#000000';
@@ -309,7 +361,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                         * 표 선을 드래그하여 간격을 조절할 수 있습니다.
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Printer className="w-4 h-4" /> 인쇄</button>
+                        <button onClick={handlePrintWindow} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Printer className="w-4 h-4" /> 인쇄</button>
                         <button onClick={() => generatePDF('save')} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Save className="w-4 h-4" /> {saving ? '처리 중...' : 'PDF 저장 및 첨부'}</button>
                         <button onClick={onClose} className="text-gray-400 hover:text-white p-2 flex items-center justify-center"><X className="w-6 h-6" /></button>
                     </div>
