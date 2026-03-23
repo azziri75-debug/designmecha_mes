@@ -224,9 +224,11 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
                     <div ref={sheetRef} className="bg-white shadow-2xl">
                         <ResizableTable
-                            data={metadata}
-                            onChange={handleMetaChange}
-                            onItemChange={updateItem}
+                            columns={columns}
+                            data={metadata.items}
+                            colWidths={metadata.colWidths}
+                            onUpdateWidths={(w) => handleMetaChange('colWidths', w)}
+                            onUpdateData={updateItem}
                             company={company}
                         />
                     </div>

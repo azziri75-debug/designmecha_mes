@@ -230,14 +230,14 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, on
         <table className={cn("w-full border-collapse table-fixed md:table-fixed border-t-2 border-b-2 border-black idf-resizable-table", className)}>
             <thead>
                 <tr className="font-bold border-b border-black" style={{ backgroundColor: '#f9fafb' }}>
-                    {columns.map((col, idx) => (
+                    {(columns || []).map((col, idx) => (
                         <th
                             key={idx}
                             className={cn(
                                 "border-r border-black last:border-0 relative p-1 text-xs",
                                 col.key === 'idx' && "w-[40px] md:w-auto"
                             )}
-                            style={{ width: widths[idx] }}
+                            style={{ width: (widths || [])[idx] }}
                         >
                             <div className="flex flex-col items-center justify-center leading-tight">
                                 <span>{col.label}</span>
@@ -252,7 +252,7 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, on
                 </tr>
             </thead>
             <tbody>
-                {data.map((row, rIdx) => (
+                {(data || []).map((row, rIdx) => (
                     <tr key={rIdx} className="min-h-[2rem] h-auto border-b border-gray-100 last:border-0 hover:bg-[#f9fafb] idf-stack-row">
                         {columns.map((col, cIdx) => (
                             <td key={cIdx} data-label={col.label} className="border-r border-black last:border-0 p-0 text-center h-full relative group">
