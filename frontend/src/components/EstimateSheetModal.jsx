@@ -48,7 +48,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         company_name: "디자인메카",
         company_ceo: "조인호",
         company_address: "충남 아산시 음봉면 월암로 336-39\n(www.designmecha.co.kr)",
-        company_contact: "TEL : 041-544-6220 / FAX : 041-544-6207\n(E-mail : juno@designmecha.co.kr)",
+        company_contact: "TEL : 041-544-6220\nFAX : 041-544-6207\n(Email : juno@designmecha.co.kr)",
         colWidths: [30, 250, 100, 40, 80, 80, 60],
         items: []
     });
@@ -121,7 +121,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             company_name: company?.name || "디자인메카",
             company_ceo: company?.ceo_name || "조인호",
             company_address: (company?.address || "충남 아산시 음봉면 월암로 336-39") + (company?.website ? `\n(${company.website})` : "\n(www.designmecha.co.kr)"),
-            company_contact: `TEL : ${company?.phone || '041-544-6220'} / FAX : ${company?.fax || '041-544-6207'}\n(E-mail : ${company?.email || 'juno@designmecha.co.kr'})`,
+            company_contact: `TEL : ${company?.phone || '041-544-6220'}\nFAX : ${company?.fax || '041-544-6207'}\n(Email : ${company?.email || 'juno@designmecha.co.kr'})`,
             colWidths: savedColWidths || defaultWidths,
             items: items.map(i => ({
                 ...i,
@@ -233,7 +233,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                     <div ref={sheetRef} className="bg-white shadow-2xl p-[20mm] w-[210mm] min-h-[297mm] flex flex-col text-black font-['Malgun_Gothic']">
                         {/* Header Section */}
                         <div className="flex flex-col items-center mb-10 w-full">
-                            <h1 className="text-6xl font-extrabold tracking-[0.5em] mb-12 text-center border-b-[6px] border-black pb-4 w-full">견 적 서</h1>
+                            <h1 className="text-3xl font-extrabold tracking-[0.5em] mb-12 text-center border-b-[6px] border-black pb-4 w-full">견 적 서</h1>
                             
                             <div className="flex justify-between items-start w-full">
                                 <div className="flex-1">
@@ -241,9 +241,9 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                         <EditableText 
                                             value={metadata.recipient} 
                                             onChange={(v) => handleMetaChange('recipient', v)}
-                                            className="text-7xl font-extrabold"
+                                            className="text-[120px] font-extrabold"
                                         />
-                                        <span className="text-sm font-normal pb-1 text-black">귀하</span>
+                                        <span className="text-sm font-normal pb-4 text-black">귀하</span>
                                     </div>
                                     <div className="mt-6 text-xs space-y-2">
                                         <p className="flex items-center gap-2">
@@ -306,7 +306,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Table Section */}
-                        <div className="w-full overflow-hidden border-2 border-black">
+                        <div className="w-full border-2 border-black">
                             <ResizableTable
                                 columns={columns}
                                 data={metadata.items}
