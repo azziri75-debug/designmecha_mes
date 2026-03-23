@@ -962,10 +962,8 @@ const PurchasePage = ({ type }) => {
                 onClose={() => setSheetModalOpen(false)}
                 order={sheetOrder}
                 sheetType={sheetType}
-                onSave={() => {
-                    if (tabValue === 1) fetchOrders();
-                    else fetchCompletedOrders();
-                }}
+                onSave={() => handleSuccess()} 
+
             />
 
             <FileViewerModal
