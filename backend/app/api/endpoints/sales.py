@@ -928,6 +928,33 @@ async def create_delivery(
     else:
         db_order.status = OrderStatus.PARTIALLY_DELIVERED
 
+    # [Fix] 납품 완료 시 연관 생산계획 자동 완료 처리
+    try:
+        if all_completed:
+            plans_res = await db.execute(
+                select(ProductionPlan).where(
+                    ProductionPlan.order_id == order_id,
+                    ProductionPlan.status != 'COMPLETED'
+                )
+            )
+            pending_plans = plans_res.scalars().all()
+            if pending_plans:
+                pending_plan_ids = [p.id for p in pending_plans]
+                for plan in pending_plans:
+                    plan.status = 'COMPLETED'
+                    db.add(plan)
+                ppi_res = await db.execute(
+                    select(ProductionPlanItem).where(
+                        ProductionPlanItem.plan_id.in_(pending_plan_ids),
+                        ProductionPlanItem.status != 'COMPLETED'
+                    )
+                )
+                for ppi in ppi_res.scalars().all():
+                    ppi.status = 'COMPLETED'
+                    db.add(ppi)
+    except Exception as e:
+        print(f'[create_delivery] Auto-complete production plan failed: {e}')
+
     await db.commit()
     await db.refresh(db_delivery)
     
