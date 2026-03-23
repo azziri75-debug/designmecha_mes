@@ -49,7 +49,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         company_ceo: "조인호",
         company_address: "충남 아산시 음봉면 월암로 336-39\n(www.designmecha.co.kr)",
         company_contact: "TEL : 041-544-6220 / FAX : 041-544-6207\n(E-mail : juno@designmecha.co.kr)",
-        colWidths: [30, 200, 130, 40, 85, 95, 60],
+        colWidths: [30, 250, 100, 40, 80, 80, 60],
         items: []
     });
 
@@ -108,7 +108,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             }
         } catch (e) { }
 
-        const defaultWidths = [30, 200, 130, 40, 85, 95, 60];
+        const defaultWidths = [30, 250, 100, 40, 80, 80, 60];
 
         setMetadata(prev => ({
             ...prev,
@@ -232,61 +232,64 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
                     <div ref={sheetRef} className="bg-white shadow-2xl p-[20mm] w-[210mm] min-h-[297mm] flex flex-col text-black font-['Malgun_Gothic']">
                         {/* Header Section */}
-                        <div className="flex justify-between items-start mb-10 w-full">
-                            <div className="flex-1">
-                                <h1 className="text-4xl font-bold tracking-[1em] mb-10 text-center border-b-4 border-black pb-4">견 적 서</h1>
-                                <div className="mt-4 flex items-end gap-1 border-b-2 border-black pb-1 w-fit min-w-[200px] whitespace-nowrap">
-                                    <EditableText 
-                                        value={metadata.recipient} 
-                                        onChange={(v) => handleMetaChange('recipient', v)}
-                                        className="text-5xl font-bold"
-                                    />
-                                    <span className="text-lg font-bold pb-1 text-black">귀하</span>
+                        <div className="flex flex-col items-center mb-10 w-full">
+                            <h1 className="text-6xl font-extrabold tracking-[0.5em] mb-12 text-center border-b-[6px] border-black pb-4 w-full">견 적 서</h1>
+                            
+                            <div className="flex justify-between items-start w-full">
+                                <div className="flex-1">
+                                    <div className="flex items-end gap-2 border-b-2 border-black pb-1 w-fit min-w-[300px] whitespace-nowrap">
+                                        <EditableText 
+                                            value={metadata.recipient} 
+                                            onChange={(v) => handleMetaChange('recipient', v)}
+                                            className="text-7xl font-extrabold"
+                                        />
+                                        <span className="text-sm font-normal pb-1 text-black">귀하</span>
+                                    </div>
+                                    <div className="mt-6 text-xs space-y-2">
+                                        <p className="flex items-center gap-2">
+                                            <span className="font-bold">견적일자:</span> <EditableText value={metadata.estimate_date} onChange={(v) => handleMetaChange('estimate_date', v)} className="w-32" />
+                                        </p>
+                                        <p className="flex items-center gap-2">
+                                            <span className="font-bold">합계금액:</span> <span className="font-bold underline text-base">{metadata.total_amount_text}</span>
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="mt-4 text-xs space-y-1">
-                                    <p className="flex items-center gap-2">
-                                        견적일자: <EditableText value={metadata.estimate_date} onChange={(v) => handleMetaChange('estimate_date', v)} className="w-32" />
-                                    </p>
-                                    <p className="flex items-center gap-2">
-                                        합계금액: <span className="font-bold underline">{metadata.total_amount_text}</span>
-                                    </p>
-                                </div>
-                            </div>
 
-                            <div className="w-[350px] border-2 border-black flex">
-                                <div className="w-8 bg-gray-50 border-r border-black flex items-center justify-center text-[10px] font-bold p-1 leading-tight text-center [writing-mode:vertical-rl] tracking-widest uppercase">
-                                    공급자
-                                </div>
-                                <div className="flex-1 text-[10px]">
-                                    <div className="flex border-b border-black">
-                                        <div className="w-16 bg-gray-50 border-r border-black p-1 flex items-center justify-center font-bold">등록번호</div>
-                                        <div className="flex-1 p-1 flex items-center justify-center font-bold text-sm tracking-tighter">
-                                            <EditableText value={metadata.company_reg_no} onChange={(v) => handleMetaChange('company_reg_no', v)} />
-                                        </div>
+                                <div className="w-[340px] border-2 border-black flex">
+                                    <div className="w-8 bg-gray-50 border-r-2 border-black flex items-center justify-center text-[10px] font-bold p-1 leading-tight text-center [writing-mode:vertical-rl] tracking-widest uppercase">
+                                        공급자
                                     </div>
-                                    <div className="grid grid-cols-[64px_1fr_40px_1fr] border-b border-black">
-                                        <div className="bg-gray-50 border-r border-black p-1 flex items-center justify-center font-bold text-[9px]">상 호</div>
-                                        <div className="border-r border-black p-1 flex items-center justify-center font-bold">
-                                            <EditableText value={metadata.company_name} onChange={(v) => handleMetaChange('company_name', v)} />
+                                    <div className="flex-1 text-[11px]">
+                                        <div className="flex border-b-2 border-black">
+                                            <div className="w-16 bg-gray-50 border-r-2 border-black p-1 flex items-center justify-center font-bold">등록번호</div>
+                                            <div className="flex-1 p-1 flex items-center justify-center font-bold text-sm tracking-tighter">
+                                                <EditableText value={metadata.company_reg_no} onChange={(v) => handleMetaChange('company_reg_no', v)} />
+                                            </div>
                                         </div>
-                                        <div className="bg-gray-50 border-r border-black p-1 flex items-center justify-center font-bold text-[9px]">성 명</div>
-                                        <div className="p-1 flex items-center justify-center font-bold relative group">
-                                            <EditableText value={metadata.company_ceo} onChange={(v) => handleMetaChange('company_ceo', v)} />
-                                            {company?.stamp_image?.url && (
-                                                <StampOverlay url={company.stamp_image.url} className="w-12 h-12 -top-1 -right-1 opacity-70" />
-                                            )}
+                                        <div className="grid grid-cols-[64px_1fr_40px_1fr] border-b-2 border-black">
+                                            <div className="bg-gray-50 border-r-2 border-black p-1 flex items-center justify-center font-bold text-[10px]">상 호</div>
+                                            <div className="border-r-2 border-black p-1 flex items-center justify-center font-extrabold text-sm">
+                                                <EditableText value={metadata.company_name} onChange={(v) => handleMetaChange('company_name', v)} />
+                                            </div>
+                                            <div className="bg-gray-50 border-r-2 border-black p-1 flex items-center justify-center font-bold text-[10px]">성 명</div>
+                                            <div className="p-1 flex items-center justify-center font-bold relative group">
+                                                <EditableText value={metadata.company_ceo} onChange={(v) => handleMetaChange('company_ceo', v)} />
+                                                {company?.stamp_image?.url && (
+                                                    <StampOverlay url={company.stamp_image.url} className="w-12 h-12 -top-1 -right-1 opacity-70" />
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex border-b border-black">
-                                        <div className="w-16 bg-gray-50 border-r border-black p-1 flex items-center justify-center font-bold text-[9px]">주 소</div>
-                                        <div className="flex-1 p-1 flex items-center leading-tight text-[9px]">
-                                            <EditableText value={metadata.company_address} onChange={(v) => handleMetaChange('company_address', v)} autoFit />
+                                        <div className="flex border-b-2 border-black">
+                                            <div className="w-16 bg-gray-50 border-r-2 border-black p-1 flex items-center justify-center font-bold">주 소</div>
+                                            <div className="flex-1 p-1 flex items-center leading-tight text-[8px]">
+                                                <EditableText value={metadata.company_address} onChange={(v) => handleMetaChange('company_address', v)} autoFit />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex">
-                                        <div className="w-16 bg-gray-50 border-r border-black p-1 flex items-center justify-center font-bold text-[9px]">연락처</div>
-                                        <div className="flex-1 p-1 flex items-center leading-tight text-[9px]">
-                                            <EditableText value={metadata.company_contact} onChange={(v) => handleMetaChange('company_contact', v)} autoFit />
+                                        <div className="flex">
+                                            <div className="w-16 bg-gray-50 border-r-2 border-black p-1 flex items-center justify-center font-bold">연락처</div>
+                                            <div className="flex-1 p-1 flex items-center leading-tight text-[8px]">
+                                                <EditableText value={metadata.company_contact} onChange={(v) => handleMetaChange('company_contact', v)} autoFit />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -294,16 +297,16 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Summary Bar */}
-                        <div className="bg-gray-100 border-2 border-black p-2 mb-4 flex justify-between items-center font-bold text-sm">
+                        <div className="bg-gray-50 border-2 border-black p-3 mb-6 flex justify-between items-center font-bold text-base shadow-sm">
                             <span>합계금액 (VAT 별도)</span>
-                            <div className="flex items-center gap-4">
-                                <span className="text-gray-500 font-normal">{metadata.total_amount_text}</span>
-                                <span className="text-lg">￦ {metadata.items.reduce((s, i) => s + (parseFloat(i.total?.toString().replace(/,/g, '')) || 0), 0).toLocaleString()}</span>
+                            <div className="flex items-center gap-6">
+                                <span className="text-gray-600 font-normal text-sm">{metadata.total_amount_text}</span>
+                                <span className="text-xl tracking-tight">￦ {metadata.items.reduce((s, i) => s + (parseFloat(i.total?.toString().replace(/,/g, '')) || 0), 0).toLocaleString()}</span>
                             </div>
                         </div>
 
                         {/* Table Section */}
-                        <div className="w-full">
+                        <div className="w-full overflow-hidden border-2 border-black">
                             <ResizableTable
                                 columns={columns}
                                 data={metadata.items}
@@ -312,29 +315,30 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 onItemChange={updateItem}
                                 onUpdateData={updateItem}
                                 company={company}
+                                className="!border-t-0 !border-b-0"
                             />
                         </div>
 
                         {/* Bottom Section */}
-                        <div className="mt-6 flex flex-col gap-6">
-                            <div className="border border-black p-4 min-h-[120px]">
-                                <h4 className="font-bold border-b border-black w-20 mb-2 pb-1 italic text-xs">Note.</h4>
+                        <div className="mt-8 flex flex-col gap-8">
+                            <div className="border-2 border-black p-4 min-h-[140px] bg-white">
+                                <h4 className="font-bold border-b-2 border-black w-20 mb-3 pb-1 italic text-sm">Note.</h4>
                                 <EditableText 
                                     value={metadata.notes} 
                                     onChange={(v) => handleMetaChange('notes', v)}
                                     autoFit
-                                    className="text-xs items-start"
+                                    className="text-xs items-start leading-relaxed"
                                 />
                             </div>
 
-                            <div className="text-center font-bold text-lg mt-4 border-t-2 border-black pt-6">
-                                <p>위와 같이 견적함.</p>
-                                <div className="mt-8 flex items-center justify-center gap-4">
-                                    <span className="text-2xl">{metadata.company_name}</span>
+                            <div className="text-center font-extrabold text-2xl mt-4 border-t-2 border-black pt-10">
+                                <p className="mb-10 text-xl">위와 같이 견적함.</p>
+                                <div className="flex items-center justify-center gap-6">
+                                    <span className="text-4xl tracking-widest">{metadata.company_name}</span>
                                     <div className="relative inline-block">
-                                        <span className="text-red-500 font-normal">(인)</span>
+                                        <span className="text-red-500 font-normal text-xl">(인)</span>
                                         {company?.stamp_image?.url && (
-                                            <StampOverlay url={company.stamp_image.url} className="w-20 h-20 -top-8 -left-4" />
+                                            <StampOverlay url={company.stamp_image.url} className="w-24 h-24 -top-10 -left-6" />
                                         )}
                                     </div>
                                 </div>
