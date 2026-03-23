@@ -241,7 +241,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                         <EditableText 
                                             value={metadata.recipient} 
                                             onChange={(v) => handleMetaChange('recipient', v)}
-                                            style={{ fontSize: '100px' }}
+                                            style={{ fontSize: '1.875rem' }}
                                             className="font-extrabold leading-none"
                                         />
                                         <span className="text-sm font-normal pb-4 text-black">귀하</span>
