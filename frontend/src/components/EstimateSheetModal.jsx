@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { X, Save, Download } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
@@ -172,10 +172,31 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
 
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeightMm = pdf.internal.pageSize.getHeight();
             const imgProps = pdf.getImageProperties(dataUrl);
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-            pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            const totalHeightMm = (imgProps.height * pdfWidth) / imgProps.width;
+            if (totalHeightMm <= pdfHeightMm + 1) {
+                // A4 한 페이지에 들어오는 경우
+                pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, totalHeightMm);
+            } else {
+                // A4 높이 초과 시 페이지 자동 분할
+                const imgEl = new Image(); imgEl.src = dataUrl;
+                await new Promise(r => { imgEl.onload = r; });
+                const scale = imgProps.width / pdfWidth;
+                const pageHPx = pdfHeightMm * scale;
+                let yOff = 0; let pg = 0;
+                const cvs = document.createElement('canvas');
+                while (yOff < imgProps.height) {
+                    if (pg > 0) pdf.addPage();
+                    const sliceH = Math.min(pageHPx, imgProps.height - yOff);
+                    cvs.width = imgProps.width; cvs.height = Math.ceil(sliceH);
+                    const ctx = cvs.getContext('2d');
+                    ctx.clearRect(0, 0, cvs.width, cvs.height);
+                    ctx.drawImage(imgEl, 0, -yOff, imgProps.width, imgProps.height);
+                    pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, sliceH / scale);
+                    yOff += pageHPx; pg++;
+                }
+            }
             const fileName = `estimate_${estimate.id}_${Date.now()}.pdf`;
 
             if (action === 'download') {

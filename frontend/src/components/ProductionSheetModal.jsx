@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+﻿import React, { useRef, useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { toPng } from 'html-to-image';
 import { X, FileText, Printer, Save, Download } from 'lucide-react';
@@ -245,11 +245,31 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                     }
                 });
 
+                const pdfHeightMm = pdf.internal.pageSize.getHeight();
                 const imgProps = pdf.getImageProperties(dataUrl);
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                const totalHeightMm = (imgProps.height * pdfWidth) / imgProps.width;
 
                 if (i > 0) pdf.addPage();
-                pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                if (totalHeightMm <= pdfHeightMm + 1) {
+                    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, totalHeightMm);
+                } else {
+                    const imgEl = new Image(); imgEl.src = dataUrl;
+                    await new Promise(r => { imgEl.onload = r; });
+                    const scale = imgProps.width / pdfWidth;
+                    const pageHPx = pdfHeightMm * scale;
+                    let yOff = 0; let pg = 0;
+                    const cvs = document.createElement('canvas');
+                    while (yOff < imgProps.height) {
+                        if (pg > 0) { pdf.addPage(); }
+                        const sliceH = Math.min(pageHPx, imgProps.height - yOff);
+                        cvs.width = imgProps.width; cvs.height = Math.ceil(sliceH);
+                        const ctx = cvs.getContext('2d');
+                        ctx.clearRect(0, 0, cvs.width, cvs.height);
+                        ctx.drawImage(imgEl, 0, -yOff, imgProps.width, imgProps.height);
+                        pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, sliceH / scale);
+                        yOff += pageHPx; pg++;
+                    }
+                }
             }
 
             const fileName = `production_sheet_${plan.id}_${Date.now()}.pdf`;
