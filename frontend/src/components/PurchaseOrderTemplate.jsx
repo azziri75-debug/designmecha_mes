@@ -156,7 +156,7 @@ const PurchaseOrderTemplate = ({
                     order_date: data.order_date,
                     delivery_date: data.delivery_date,
                     special_notes: data.special_notes,
-                    items: data.items.map((item, idx) => {
+                    items: (data.items || []).map((item, idx) => {
                         const isWeight = item.pricing_type === 'WEIGHT';
                         const multiplier = isWeight ? (parseFloat(item.total_weight) || 0) : (parseFloat(item.qty) || 0);
                         return {

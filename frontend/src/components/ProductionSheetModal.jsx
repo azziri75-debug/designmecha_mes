@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+﻿import React, { useRef, useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { toPng } from 'html-to-image';
 import { X, FileText, Printer, Save, Download } from 'lucide-react';
@@ -13,20 +13,20 @@ import { cn } from '../lib/utils';
 const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPages, colWidths, onUpdateWidths, onUpdateData, groupIdx }, ref) => {
     const columns = [
         { key: 'idx', label: 'NO', align: 'center' },
-        { key: 'name', label: '공정명', align: 'left' },
-        { key: 'course_label', label: '구분', align: 'center' },
-        { key: 'partner_worker', label: '외주.구매/작업자', align: 'center' },
-        { key: 'equipment', label: '배정장비', align: 'center' },
-        { key: 'detail', label: '작업내용', align: 'left' },
-        { key: 'start_date', label: '시작일', align: 'center' },
-        { key: 'end_date', label: '종료일', align: 'center' },
-        { key: 'note', label: '비고', align: 'left' },
+        { key: 'name', label: '怨듭젙紐?, align: 'left' },
+        { key: 'course_label', label: '援щ텇', align: 'center' },
+        { key: 'partner_worker', label: '?몄＜.援щℓ/?묒뾽??, align: 'center' },
+        { key: 'equipment', label: '諛곗젙?λ퉬', align: 'center' },
+        { key: 'detail', label: '?묒뾽?댁슜', align: 'left' },
+        { key: 'start_date', label: '?쒖옉??, align: 'center' },
+        { key: 'end_date', label: '醫낅즺??, align: 'center' },
+        { key: 'note', label: '鍮꾧퀬', align: 'left' },
     ];
 
-    const tableData = group.processes.map((proc, pIdx) => ({
+    const tableData = (group.processes || []).map((proc, pIdx) => ({
         ...proc,
         idx: pIdx + 1,
-        course_label: proc.course === 'INTERNAL' ? '사내' : '사외'
+        course_label: proc.course === 'INTERNAL' ? '?щ궡' : '?ъ쇅'
     }));
 
     // Fill empty rows
@@ -53,29 +53,29 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
             {/* Header Area */}
             <div className="text-center py-4 border-b-2 border-black mb-6">
                 <h1 className="text-4xl font-bold tracking-[1em] indent-[1em]">
-                    생 산 관 리 시 트
+                    ????愿 由?????
                 </h1>
             </div>
 
             <div className="flex justify-between items-start border-b border-black pb-2 mb-4 text-[11px] font-bold">
                 <div className="space-y-1">
-                    <p>수주/생산번호 : <span style={{ color: '#1d4ed8' }}>{metadata.order_no}</span></p>
-                    <p>발주 거래처 : <span style={{ color: '#1d4ed8' }}>{metadata.partner_name}</span></p>
+                    <p>?섏＜/?앹궛踰덊샇 : <span style={{ color: '#1d4ed8' }}>{metadata.order_no}</span></p>
+                    <p>諛쒖＜ 嫄곕옒泥?: <span style={{ color: '#1d4ed8' }}>{metadata.partner_name}</span></p>
                     <p className="uppercase tracking-widest font-normal" style={{ fontSize: '9px', color: '#d1d5db' }}>DESIGNMECHA PRODUCTION MANAGEMENT</p>
                 </div>
                 <div className="text-right space-y-1">
-                    <h2 className="text-lg font-bold">{company?.name || '디자인메카'}</h2>
-                    <p>수주일 : <span>{metadata.order_date}</span></p>
-                    <p>납기일 : <span>{metadata.delivery_date}</span></p>
+                    <h2 className="text-lg font-bold">{company?.name || '?붿옄?몃찓移?}</h2>
+                    <p>?섏＜??: <span>{metadata.order_date}</span></p>
+                    <p>?⑷린??: <span>{metadata.delivery_date}</span></p>
                 </div>
             </div>
 
             {/* Product Summary */}
             <div className="border-2 border-black mb-4">
                 <div className="p-2 border-b border-black flex justify-between font-bold text-[11px]" style={{ backgroundColor: '#f3f4f6' }}>
-                    <span className="flex-1">[품명] {group.product_name}</span>
-                    <span className="flex-1 text-center font-mono">[규격] {group.product_spec}</span>
-                    <span className="w-24 text-right">[수량] {group.quantity} EA</span>
+                    <span className="flex-1">[?덈챸] {group.product_name}</span>
+                    <span className="flex-1 text-center font-mono">[洹쒓꺽] {group.product_spec}</span>
+                    <span className="w-24 text-right">[?섎웾] {group.quantity} EA</span>
                 </div>
             </div>
 
@@ -97,7 +97,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
             {/* Footer */}
             <div className="mt-4 flex justify-between items-end shrink-0" style={{ fontSize: '9px', color: '#9ca3af' }}>
                 <span>Page {pageNum} of {totalPages}</span>
-                <span className="font-bold uppercase tracking-widest leading-none">{company?.name || '디자인메카'}</span>
+                <span className="font-bold uppercase tracking-widest leading-none">{company?.name || '?붿옄?몃찓移?}</span>
             </div>
         </div>
     );
@@ -196,7 +196,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         setMetadata(prev => ({
             ...prev,
             order_no: plan.order?.order_no || plan.stock_production?.production_no || "PLAN-" + plan.id,
-            partner_name: plan.order?.partner?.name || "사내 생산",
+            partner_name: plan.order?.partner?.name || "?щ궡 ?앹궛",
             order_date: plan.order?.order_date || plan.plan_date || "-",
             delivery_date: plan.order?.delivery_date || plan.target_date || "-",
             groups: groups
@@ -211,21 +211,21 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         setMetadata(prev => ({ ...prev, groups: newGroups }));
     };
 
-    // 인쇄 전용 창 방식 - 메뉴/다크 배경 없이 A4만 인쇄
+    // ?몄뇙 ?꾩슜 李?諛⑹떇 - 硫붾돱/?ㅽ겕 諛곌꼍 ?놁씠 A4留??몄뇙
     const handlePrintWindow = async () => {
-        await printMultiPageAsImage(pageRefs.current, { title: '생산관리시트', orientation: 'portrait' });
+        await printMultiPageAsImage(pageRefs.current, { title: '?앹궛愿由ъ떆??, orientation: 'portrait' });
     };
 
         const generatePDF = async (action = 'save') => {
         if (pageRefs.current.length === 0) return;
         setSaving(true);
         try {
-            const partnerName = plan.order?.partner?.name || '사내생산';
+            const partnerName = plan.order?.partner?.name || '?щ궡?앹궛';
             const groups = metadata.groups || [];
-            const firstItemName = groups[0]?.product_name || '품명';
-            const extraCount = groups.length > 1 ? ` 외 ${groups.length - 1}건` : '';
-            const date = plan.plan_date || '날짜';
-            const fileName = `생산관리시트-${partnerName}-${firstItemName}${extraCount}-${date}.pdf`;
+            const firstItemName = groups[0]?.product_name || '?덈챸';
+            const extraCount = groups.length > 1 ? ` ??${groups.length - 1}嫄? : '';
+            const date = plan.plan_date || '?좎쭨';
+            const fileName = `?앹궛愿由ъ떆??${partnerName}-${firstItemName}${extraCount}-${date}.pdf`;
             const blob = await generateMultiPageA4PDF(pageRefs.current, {
                 fileName,
                 orientation: 'portrait',
@@ -248,13 +248,13 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
                 await api.put(`/production/plans/${plan.id}`, { attachment_file: newAttachments, sheet_metadata: { colWidths } });
-                alert('저장 및 첨부되었습니다.');
+                alert('???諛?泥⑤??섏뿀?듬땲??');
                 if (onSave) onSave();
                 onClose();
             }
         } catch (err) {
             console.error(err);
-            alert('PDF 생성 실패: ' + err.message);
+            alert('PDF ?앹꽦 ?ㅽ뙣: ' + err.message);
         } finally { setSaving(false); }
     };
 
@@ -264,19 +264,19 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
             <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col h-[95vh]">
                 <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                    <h3 className="text-white font-bold flex items-center gap-2">생산관리시트 편집 ({metadata.groups.length} 페이지)</h3>
+                    <h3 className="text-white font-bold flex items-center gap-2">?앹궛愿由ъ떆???몄쭛 ({metadata.groups.length} ?섏씠吏)</h3>
                     <div className="flex items-center gap-2 text-[11px] text-gray-400 mr-4 italic">
-                        * 표 선을 드래그하여 간격을 조절할 수 있습니다.
+                        * ???좎쓣 ?쒕옒洹명븯??媛꾧꺽??議곗젅?????덉뒿?덈떎.
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={handlePrintWindow} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Printer className="w-4 h-4" /> 인쇄</button>
-                        <button onClick={() => generatePDF('save')} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Save className="w-4 h-4" /> {saving ? '처리 중...' : 'PDF 저장 및 첨부'}</button>
+                        <button onClick={handlePrintWindow} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Printer className="w-4 h-4" /> ?몄뇙</button>
+                        <button onClick={() => generatePDF('save')} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"><Save className="w-4 h-4" /> {saving ? '泥섎━ 以?..' : 'PDF ???諛?泥⑤?'}</button>
                         <button onClick={onClose} className="text-gray-400 hover:text-white p-2 flex items-center justify-center"><X className="w-6 h-6" /></button>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex flex-col items-center gap-8">
-                    {metadata.groups.map((group, idx) => (
+                    {(metadata.groups || []).map((group, idx) => (
                         <PageFrame
                             key={idx}
                             ref={el => pageRefs.current[idx] = el}
@@ -298,3 +298,5 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
 };
 
 export default ProductionSheetModal;
+
+

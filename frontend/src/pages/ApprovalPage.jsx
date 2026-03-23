@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
@@ -23,39 +23,39 @@ import OvertimeWorkForm from '../components/OvertimeWorkForm';
 import PurchaseOrderForm from '../components/PurchaseOrderForm';
 
 const DOC_TYPES = {
-    INTERNAL_DRAFT: { label: '내부기안', color: 'blue' },
-    EXPENSE_REPORT: { label: '지출결의서', color: 'indigo' },
-    LEAVE_REQUEST: { label: '휴가원', color: 'teal' },
-    EARLY_LEAVE: { label: '조퇴/외출원', color: 'purple' },
-    CONSUMABLES_PURCHASE: { label: '소모품 구매신청서', color: 'cyan' },
-    OVERTIME: { label: '야근/특근신청서', color: 'orange' },
-    PURCHASE_ORDER: { label: '구매발주서', color: 'amber' }
+    INTERNAL_DRAFT: { label: '?대?湲곗븞', color: 'blue' },
+    EXPENSE_REPORT: { label: '吏異쒓껐?섏꽌', color: 'indigo' },
+    LEAVE_REQUEST: { label: '?닿???, color: 'teal' },
+    EARLY_LEAVE: { label: '議고눜/?몄텧??, color: 'purple' },
+    CONSUMABLES_PURCHASE: { label: '?뚮え??援щℓ?좎껌??, color: 'cyan' },
+    OVERTIME: { label: '?쇨렐/?밴렐?좎껌??, color: 'orange' },
+    PURCHASE_ORDER: { label: '援щℓ諛쒖＜??, color: 'amber' }
 };
 
 const STATUS_MAP = {
-    PENDING: { label: '기안대기', bg: 'bg-gray-700', text: 'text-gray-300' },
-    IN_PROGRESS: { label: '결재진행', bg: 'bg-blue-900/40', text: 'text-blue-400' },
-    COMPLETED: { label: '결재완료', bg: 'bg-emerald-900/40', text: 'text-emerald-400' },
-    REJECTED: { label: '반려', bg: 'bg-red-900/40', text: 'text-red-400' }
+    PENDING: { label: '湲곗븞?湲?, bg: 'bg-gray-700', text: 'text-gray-300' },
+    IN_PROGRESS: { label: '寃곗옱吏꾪뻾', bg: 'bg-blue-900/40', text: 'text-blue-400' },
+    COMPLETED: { label: '寃곗옱?꾨즺', bg: 'bg-emerald-900/40', text: 'text-emerald-400' },
+    REJECTED: { label: '諛섎젮', bg: 'bg-red-900/40', text: 'text-red-400' }
 };
 
 const ApprovalPage = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('documents'); // documents, settings
     const [documents, setDocuments] = useState([]);
-    // 문서 내용만 새 팝업으로 인쇄하는 함수
+    // 臾몄꽌 ?댁슜留????앹뾽?쇰줈 ?몄뇙?섎뒗 ?⑥닔
     const handlePrintApproval = async () => {
         const contentEl = document.querySelector('.a4-paper-container');
         if (contentEl) {
-            await printAsImage(contentEl, { title: '전자결재 문서', orientation: 'portrait' });
+            await printAsImage(contentEl, { title: '?꾩옄寃곗옱 臾몄꽌', orientation: 'portrait' });
         }
     };
 
     const handleDownloadPDFApproval = async () => {
         const contentEl = document.querySelector('.a4-paper-container');
         if (contentEl) {
-            const docType = DOC_TYPES[selectedDoc.doc_type]?.label || '문서';
-            const authorName = selectedDoc.author?.name || '기안자';
+            const docType = DOC_TYPES[selectedDoc.doc_type]?.label || '臾몄꽌';
+            const authorName = selectedDoc.author?.name || '湲곗븞??;
             const date = format(new Date(selectedDoc.created_at), 'yyyyMMdd');
             const fileName = `${docType}-${authorName}-${date}.pdf`;
             await generateA4PDF(contentEl, {
@@ -155,18 +155,18 @@ const ApprovalPage = () => {
 
 
     const handleDeleteDoc = async (docId) => {
-        if (!window.confirm('정말 삭제하시겠습니까? 관련 결재 데이터가 모두 삭제됩니다.')) return;
+        if (!window.confirm('?뺣쭚 ??젣?섏떆寃좎뒿?덇퉴? 愿??寃곗옱 ?곗씠?곌? 紐⑤몢 ??젣?⑸땲??')) return;
         try {
             await api.delete(`/approval/documents/${docId}`);
-            alert('삭제되었습니다.');
+            alert('??젣?섏뿀?듬땲??');
             setShowDocDetail(false);
-            // 즉시 리스트에서 제거 (새로고침 없이 반영)
+            // 利됱떆 由ъ뒪?몄뿉???쒓굅 (?덈줈怨좎묠 ?놁씠 諛섏쁺)
             setDocuments(prev => prev.filter(doc => doc.id !== docId));
 
-            // 만약 서버 데이터의 최신 상태가 필요하다면 fetchInitialData()를 호출할 수도 있지만,
-            // 사용자 요청은 "새로고침하지 않아도 사라지도록" 하는 것이므로 state update가 우선입니다.
+            // 留뚯빟 ?쒕쾭 ?곗씠?곗쓽 理쒖떊 ?곹깭媛 ?꾩슂?섎떎硫?fetchInitialData()瑜??몄텧???섎룄 ?덉?留?
+            // ?ъ슜???붿껌? "?덈줈怨좎묠?섏? ?딆븘???щ씪吏?꾨줉" ?섎뒗 寃껋씠誘濡?state update媛 ?곗꽑?낅땲??
         } catch (error) {
-            alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+            alert('??젣 ?ㅽ뙣: ' + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -178,45 +178,45 @@ const ApprovalPage = () => {
     const handleProcess = async (docId, status, comment) => {
         try {
             await api.post(`/approval/documents/${docId}/process`, { status, comment });
-            alert(status === 'APPROVED' ? '승인되었습니다.' : '반려되었습니다.');
+            alert(status === 'APPROVED' ? '?뱀씤?섏뿀?듬땲??' : '諛섎젮?섏뿀?듬땲??');
             setShowDocDetail(false);
             fetchInitialData();
         } catch (error) {
-            alert('처리 실패: ' + (error.response?.data?.detail || error.message));
+            alert('泥섎━ ?ㅽ뙣: ' + (error.response?.data?.detail || error.message));
         }
     };
 
     const isEditable = (doc) => {
         if (!doc || !currentUser) return false;
         
-        // 기안자 본인 확인 (문자열/숫자 혼용 대비 Number로 통일)
+        // 湲곗븞??蹂몄씤 ?뺤씤 (臾몄옄???レ옄 ?쇱슜 ?鍮?Number濡??듭씪)
         const isAuthor = Number(doc.author_id) === Number(currentUser?.id);
         if (!isAuthor) return false;
 
-        // 임시저장(PENDING/DRAFT) 또는 반려(REJECTED) 상태에서만 수정/삭제 가능
+        // ?꾩떆???PENDING/DRAFT) ?먮뒗 諛섎젮(REJECTED) ?곹깭?먯꽌留??섏젙/??젣 媛??
         return ['PENDING', 'DRAFT', 'REJECTED'].includes(doc.status);
     };
 
     const canApprove = (doc) => {
         if (!doc || !currentUser || !doc.steps) return false;
         
-        // 현재 로그인한 사람의 DB PK (결재 권한 확인의 기준)
+        // ?꾩옱 濡쒓렇?명븳 ?щ엺??DB PK (寃곗옱 沅뚰븳 ?뺤씤??湲곗?)
         const myId = String(currentUser?.id || "");
 
-        // 결재선 중 아직 결재 안 한(PENDING) 사람들을 순서대로 찾음
+        // 寃곗옱??以??꾩쭅 寃곗옱 ????PENDING) ?щ엺?ㅼ쓣 ?쒖꽌?濡?李얠쓬
         const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
         
-        // PENDING인 사람 중 '첫 번째' 사람이 바로 '지금 결재할 차례'인 사람임
+        // PENDING???щ엺 以?'泥?踰덉㎏' ?щ엺??諛붾줈 '吏湲?寃곗옱??李⑤?'???щ엺??
         const currentApproverToSign = pendingApprovers.length > 0 ? pendingApprovers[0] : null;
 
         if (!currentApproverToSign) return false;
 
-        // 타입 불일치 방지를 위해 모두 String으로 변환하여 비교 (approver_id는 Staff 엔티티의 ID)
+        // ???遺덉씪移?諛⑹?瑜??꾪빐 紐⑤몢 String?쇰줈 蹂?섑븯??鍮꾧탳 (approver_id??Staff ?뷀떚?곗쓽 ID)
         const approverId = String(currentApproverToSign.approver_id || "");
 
         const result = (approverId === myId);
         
-        if (result) console.log("결재 권한 확인 성공:", { myId, approverId });
+        if (result) console.log("寃곗옱 沅뚰븳 ?뺤씤 ?깃났:", { myId, approverId });
         
         return result;
     };
@@ -231,17 +231,17 @@ const ApprovalPage = () => {
             }));
 
             await api.post(`/approval/lines?doc_type=${type}`, sanitizedLines);
-            alert('결재선이 저장되었습니다.');
+            alert('寃곗옱?좎씠 ??λ릺?덉뒿?덈떎.');
         } catch (error) {
             console.error('Save failed:', error);
-            alert('저장 실패: ' + (error.response?.data?.detail || error.message));
+            alert('????ㅽ뙣: ' + (error.response?.data?.detail || error.message));
         }
     };
 
     const addApprover = (type) => {
-        const admins = staff.filter(s => s.user_type === 'ADMIN' && ['부장', '이사', '대표이사'].includes(s.role));
+        const admins = staff.filter(s => s.user_type === 'ADMIN' && ['遺??, '?댁궗', '??쒖씠??].includes(s.role));
         if (admins.length === 0) {
-            alert('결재권자로 지정 가능한 부장급 이상의 관리자가 없습니다.');
+            alert('寃곗옱沅뚯옄濡?吏??媛?ν븳 遺?κ툒 ?댁긽??愿由ъ옄媛 ?놁뒿?덈떎.');
             return;
         }
         const currentRes = approvalLines[type] || [];
@@ -275,9 +275,9 @@ const ApprovalPage = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                         <FileText className="w-6 h-6 text-blue-500" />
-                        전자결재 및 문서 관리
+                        ?꾩옄寃곗옱 諛?臾몄꽌 愿由?
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">휴가, 조퇴, 소모품 신청 및 결재 프로세스</p>
+                    <p className="text-gray-500 text-sm mt-1">?닿?, 議고눜, ?뚮え???좎껌 諛?寃곗옱 ?꾨줈?몄뒪</p>
                 </div>
                 <div className="flex gap-2">
                     <button
@@ -285,20 +285,20 @@ const ApprovalPage = () => {
                         className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                     >
                         <Plus className="w-4 h-4" />
-                        문서 기안
+                        臾몄꽌 湲곗븞
                     </button>
                     <div className="bg-gray-800 p-1 rounded-lg border border-gray-700 flex">
                         <button
                             onClick={() => setActiveTab('documents')}
                             className={cn("px-4 py-1.5 rounded-md text-sm transition-all", activeTab === 'documents' ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-white")}
                         >
-                            문서함
+                            臾몄꽌??
                         </button>
                         <button
                             onClick={() => setActiveTab('settings')}
                             className={cn("px-4 py-1.5 rounded-md text-sm transition-all", activeTab === 'settings' ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-white")}
                         >
-                            결재선 설정
+                            寃곗옱???ㅼ젙
                         </button>
                     </div>
                 </div>
@@ -308,12 +308,12 @@ const ApprovalPage = () => {
                 <div className="space-y-4">
                     <div className="flex gap-1 bg-gray-900/50 p-1 rounded-xl border border-gray-700/50">
                         {[
-                            { id: 'ALL', label: '전체' },
-                            { id: 'ALL_PENDING', label: '전체 대기' },
-                            { id: 'ALL_COMPLETED', label: '전체 완료' },
-                            { id: 'ALL_REJECTED', label: '전체 반려' },
-                            { id: 'WAITING_FOR_ME', label: '나의결재대기' },
-                            { id: 'MY_WAITING', label: '나의 기안' }
+                            { id: 'ALL', label: '?꾩껜' },
+                            { id: 'ALL_PENDING', label: '?꾩껜 ?湲? },
+                            { id: 'ALL_COMPLETED', label: '?꾩껜 ?꾨즺' },
+                            { id: 'ALL_REJECTED', label: '?꾩껜 諛섎젮' },
+                            { id: 'WAITING_FOR_ME', label: '?섏쓽寃곗옱?湲? },
+                            { id: 'MY_WAITING', label: '?섏쓽 湲곗븞' }
                         ].map(m => (
                             <button
                                 key={m.id}
@@ -335,33 +335,33 @@ const ApprovalPage = () => {
 
                     <Card className="p-4 flex flex-wrap gap-4 items-end">
                         <div className="space-y-1">
-                            <label className="text-xs text-gray-400">문서 종류</label>
+                            <label className="text-xs text-gray-400">臾몄꽌 醫낅쪟</label>
                             <select
                                 className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
                                 value={filterDocType}
                                 onChange={(e) => setFilterDocType(e.target.value)}
                             >
-                                <option value="">전체</option>
+                                <option value="">?꾩껜</option>
                                 {Object.entries(DOC_TYPES).map(([k, v]) => (
                                     <option key={k} value={k}>{v.label}</option>
                                 ))}
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs text-gray-400">기안자</label>
+                            <label className="text-xs text-gray-400">湲곗븞??/label>
                             <select
                                 className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
                                 value={filterAuthorId}
                                 onChange={(e) => setFilterAuthorId(e.target.value)}
                             >
-                                <option value="">전체 기안자</option>
+                                <option value="">?꾩껜 湲곗븞??/option>
                                 {staff.map(s => (
                                     <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
                                 ))}
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs text-gray-400">시작일(기안일)</label>
+                            <label className="text-xs text-gray-400">?쒖옉??湲곗븞??</label>
                             <input
                                 type="date"
                                 className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
@@ -370,7 +370,7 @@ const ApprovalPage = () => {
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs text-gray-400">종료일(기안일)</label>
+                            <label className="text-xs text-gray-400">醫낅즺??湲곗븞??</label>
                             <input
                                 type="date"
                                 className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
@@ -385,13 +385,13 @@ const ApprovalPage = () => {
                             <table className="w-full text-left">
                                 <thead className="bg-gray-900/50 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                     <tr>
-                                        <th className="px-6 py-4">기안일</th>
-                                        <th className="px-6 py-4">신청 적용일</th>
-                                        <th className="px-6 py-4">기안자</th>
-                                        <th className="px-6 py-4">종류</th>
-                                        <th className="px-6 py-4">제목</th>
-                                        <th className="px-6 py-4">상태</th>
-                                        <th className="px-6 py-4 text-right">관리</th>
+                                        <th className="px-6 py-4">湲곗븞??/th>
+                                        <th className="px-6 py-4">?좎껌 ?곸슜??/th>
+                                        <th className="px-6 py-4">湲곗븞??/th>
+                                        <th className="px-6 py-4">醫낅쪟</th>
+                                        <th className="px-6 py-4">?쒕ぉ</th>
+                                        <th className="px-6 py-4">?곹깭</th>
+                                        <th className="px-6 py-4 text-right">愿由?/th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-700">
@@ -450,7 +450,7 @@ const ApprovalPage = () => {
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); handleEditDoc(doc); }}
                                                                         className="p-1 hover:bg-gray-700 rounded text-blue-400 transition-colors"
-                                                                        title="수정"
+                                                                        title="?섏젙"
                                                                     >
                                                                         <Pencil className="w-4 h-4" />
                                                                     </button>
@@ -458,7 +458,7 @@ const ApprovalPage = () => {
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc.id); }}
                                                                     className="p-1 hover:bg-gray-700 rounded text-red-400 transition-colors"
-                                                                    title="삭제"
+                                                                    title="??젣"
                                                                 >
                                                                     <Trash className="w-4 h-4" />
                                                                 </button>
@@ -473,7 +473,7 @@ const ApprovalPage = () => {
                                     {documents.length === 0 && (
                                         <tr>
                                             <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
-                                                문서가 없습니다.
+                                                臾몄꽌媛 ?놁뒿?덈떎.
                                             </td>
                                         </tr>
                                     )}
@@ -489,7 +489,7 @@ const ApprovalPage = () => {
                             <div className="p-4 border-b border-gray-700 bg-gray-900/30 flex items-center justify-between">
                                 <h3 className="font-bold text-white flex items-center gap-2">
                                     <Settings className={cn("w-4 h-4", `text-${info.color}-500`)} />
-                                    {info.label} 결재선
+                                    {info.label} 寃곗옱??
                                 </h3>
                                 <button
                                     onClick={() => addApprover(type)}
@@ -500,7 +500,7 @@ const ApprovalPage = () => {
                             </div>
                             <div className="p-4 flex-1 space-y-3 min-h-[300px]">
                                 {(approvalLines[type] || []).length > 0 ? (
-                                    approvalLines[type].map((line, idx) => (
+                                    (approvalLines[type] || []).map((line, idx) => (
                                         <div key={idx} className="flex items-center gap-3 bg-gray-900 p-3 rounded-lg border border-gray-700 group">
                                             <span className="bg-gray-800 text-gray-500 text-[10px] font-bold w-6 h-6 flex items-center justify-center rounded-full border border-gray-700">
                                                 {line.sequence}
@@ -511,7 +511,7 @@ const ApprovalPage = () => {
                                                 className="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500"
                                             >
                                                 {staff
-                                                    .filter(s => s.user_type === 'ADMIN' && ['부장', '이사', '대표이사'].includes(s.role))
+                                                    .filter(s => s.user_type === 'ADMIN' && ['遺??, '?댁궗', '??쒖씠??].includes(s.role))
                                                     .map(s => (
                                                         <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
                                                     ))}
@@ -527,7 +527,7 @@ const ApprovalPage = () => {
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full text-gray-600 text-xs py-10">
                                         <Info className="w-8 h-8 opacity-20 mb-2" />
-                                        결재선을 추가해주세요.
+                                        寃곗옱?좎쓣 異붽??댁＜?몄슂.
                                     </div>
                                 )}
                             </div>
@@ -536,7 +536,7 @@ const ApprovalPage = () => {
                                     onClick={() => handleSaveLines(type)}
                                     className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-2 rounded-lg transition-colors"
                                 >
-                                    설정 저장
+                                    ?ㅼ젙 ???
                                 </button>
                             </div>
                         </Card>
@@ -553,23 +553,22 @@ const ApprovalPage = () => {
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-blue-500" />
-                                    문서 상세 정보
+                                    臾몄꽌 ?곸꽭 ?뺣낫
                                 </h3>
-                                <p className="text-xs text-gray-500 mt-1">ID: {selectedDoc.id} | 기안일: {format(new Date(selectedDoc.created_at), 'yyyy-MM-dd HH:mm')}</p>
+                                <p className="text-xs text-gray-500 mt-1">ID: {selectedDoc.id} | 湲곗븞?? {format(new Date(selectedDoc.created_at), 'yyyy-MM-dd HH:mm')}</p>
                             </div>
                                                         <div className="flex items-center gap-3">
                                 <button
                                     onClick={handlePrintApproval}
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
                                 >
-                                    <Printer className="w-4 h-4" /> 인쇄
+                                    <Printer className="w-4 h-4" /> ?몄뇙
                                 </button>
                                 <button
                                     onClick={handleDownloadPDFApproval}
                                     className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
                                 >
-                                    <Download className="w-4 h-4" /> PDF 저장
-                                </button>
+                                    <Download className="w-4 h-4" /> PDF ???                                </button>
                                 <button onClick={() => setShowDocDetail(false)} className="text-gray-400 hover:text-white transition-colors">
                                     <X className="w-6 h-6" />
                                 </button>
@@ -607,9 +606,9 @@ const ApprovalPage = () => {
 
                                     {/* Approval Steps */}
                                     <div className="flex gap-3">
-                                        {selectedDoc.steps.map((step, idx) => (
+                                        {(selectedDoc.steps || []).map((step, idx) => (
                                             <div key={idx} className="flex flex-col items-center gap-1.5 w-20">
-                                                <div className="text-[10px] font-bold text-gray-500 uppercase">{step.approver?.role || (step.sequence === 1 ? '부장' : step.sequence === 2 ? '이사' : '대표이사')}</div>
+                                                <div className="text-[10px] font-bold text-gray-500 uppercase">{step.approver?.role || (step.sequence === 1 ? '遺?? : step.sequence === 2 ? '?댁궗' : '??쒖씠??)}</div>
                                                 <div className="w-16 h-16 bg-white rounded border border-gray-600 flex items-center justify-center relative overflow-hidden group">
                                                     {step.status === 'APPROVED' ? (
                                                         step.approver?.stamp_image ? (
@@ -626,7 +625,7 @@ const ApprovalPage = () => {
                                                         <span className="text-[11px] text-red-600 font-bold border-2 border-red-500 px-1 rounded -rotate-12 uppercase">Rejected</span>
                                                     ) : (
                                                         <>
-                                                            <div className="text-[10px] text-gray-400">대기중</div>
+                                                            <div className="text-[10px] text-gray-400">?湲곗쨷</div>
                                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                                 <div className="text-[9px] text-white font-medium text-center px-1">{step.approver?.name}</div>
                                                             </div>
@@ -735,7 +734,7 @@ const ApprovalPage = () => {
                                 <div className="bg-red-900/20 border border-red-900/50 p-4 rounded-xl flex gap-3">
                                     <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                                     <div>
-                                        <p className="text-red-400 text-sm font-bold">반려 사유</p>
+                                        <p className="text-red-400 text-sm font-bold">諛섎젮 ?ъ쑀</p>
                                         <p className="text-red-300/80 text-sm mt-1">{selectedDoc.rejection_reason}</p>
                                     </div>
                                 </div>
@@ -747,11 +746,11 @@ const ApprovalPage = () => {
                             <div className="p-6 border-t border-gray-600 bg-gray-900 sticky bottom-0 z-[100] shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
                                 <div className="max-w-4xl mx-auto space-y-4">
                                     <div className="flex flex-col gap-2">
-                                        <label className="text-sm font-medium text-gray-400">결재 의견 / 반려 사유 (필요 시)</label>
+                                        <label className="text-sm font-medium text-gray-400">寃곗옱 ?섍껄 / 諛섎젮 ?ъ쑀 (?꾩슂 ??</label>
                                         <textarea
                                             id="comment"
                                             className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 min-h-[60px]"
-                                            placeholder="반려 시 사유를 명확히 적어주세요."
+                                            placeholder="諛섎젮 ???ъ쑀瑜?紐낇솗???곸뼱二쇱꽭??"
                                         />
                                     </div>
                                     <div className="flex gap-4">
@@ -759,7 +758,7 @@ const ApprovalPage = () => {
                                             onClick={() => {
                                                 const comment = document.getElementById('comment').value;
                                                 if (!comment) {
-                                                    alert('반려 사유를 입력해주세요.');
+                                                    alert('諛섎젮 ?ъ쑀瑜??낅젰?댁＜?몄슂.');
                                                     return;
                                                 }
                                                 handleProcess(selectedDoc.id, 'REJECTED', comment);
@@ -767,7 +766,7 @@ const ApprovalPage = () => {
                                             className="flex-1 px-4 py-3 bg-red-900/40 hover:bg-red-900/60 text-red-400 rounded-xl transition-all font-bold border border-red-800/50 flex items-center justify-center gap-2"
                                         >
                                             <X className="w-5 h-5" />
-                                            반려하기
+                                            諛섎젮?섍린
                                         </button>
                                         <button
                                             onClick={() => {
@@ -777,7 +776,7 @@ const ApprovalPage = () => {
                                             className="flex-[2] px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-lg shadow-emerald-900/20 font-bold flex items-center justify-center gap-2"
                                         >
                                             <CheckCircle2 className="w-5 h-5" />
-                                            승인/서명하기
+                                            ?뱀씤/?쒕챸?섍린
                                         </button>
                                     </div>
                                 </div>
@@ -793,3 +792,4 @@ const ApprovalPage = () => {
 };
 
 export default ApprovalPage;
+
