@@ -708,7 +708,7 @@ const ApprovalPage = () => {
 
                                     {/* Attachment Section */}
                                     {selectedDoc.attachments && selectedDoc.attachments.length > 0 && (
-                                        <Box sx={{ mt: 6, pt: 4, borderTop: '2px solid #eee' }}>
+                                        <Box sx={{ mt: 2, pt: 4, px: 4, pb: 4, borderTop: '2px solid #eee' }}>
                                             <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, fontWeight: 'bold', color: '#374151' }}>
                                                 <Paperclip size={16} /> 관련 첨부파일 ({selectedDoc.attachments.length})
                                             </Typography>
@@ -733,10 +733,10 @@ const ApprovalPage = () => {
                                                                 transform: 'translateY(-1px)'
                                                             }
                                                         }}
-                                                        onClick={() => window.open(`${import.meta.env.VITE_API_URL}${file.url}`, '_blank')}
+                                                        onClick={() => window.open(getImageUrl(file.url), '_blank')}
                                                     >
                                                         <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-                                                            <File size={16} />
+                                                            <FileText size={16} />
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <Typography sx={{ fontSize: '0.8rem', fontWeight: 'medium', color: '#111827', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
