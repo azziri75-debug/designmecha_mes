@@ -245,7 +245,9 @@ const SalesPage = () => {
                     <label className="text-xs text-gray-400">거래처 검색</label>
                     <Select
                         isClearable
-                        placeholder="전체 거래처"
+                        isSearchable
+                        placeholder="거래처 선택 또는 타이핑 검색..."
+                        noOptionsMessage={() => "거래처가 없습니다"}
                         options={partners.map(p => ({ value: p.id, label: p.name }))}
                         value={partners.find(p => p.id === selectedPartnerId) ? { value: selectedPartnerId, label: partners.find(p => p.id === selectedPartnerId).name } : null}
                         onChange={(opt) => setSelectedPartnerId(opt ? opt.value : "")}
@@ -257,6 +259,8 @@ const SalesPage = () => {
                                 color: 'white',
                                 fontSize: '0.875rem'
                             }),
+                            input: (base) => ({ ...base, color: 'white' }),
+                            placeholder: (base) => ({ ...base, color: '#9ca3af' }),
                             menu: (base) => ({ ...base, backgroundColor: '#1f2937', color: 'white', zIndex: 99 }),
                             option: (base, state) => ({
                                 ...base,
@@ -268,7 +272,7 @@ const SalesPage = () => {
                     />
                 </div>
                 <div className="space-y-1">
-                    <label className="text-xs text-gray-400">품명/품번</label>
+                    <label className="text-xs text-gray-400">품명/규격</label>
                     <div className="relative">
                         <input
                             type="text"

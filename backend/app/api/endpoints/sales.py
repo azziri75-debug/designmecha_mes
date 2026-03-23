@@ -100,7 +100,9 @@ async def read_estimates(
     if end_date:
         query = query.where(Estimate.estimate_date <= end_date)
     if product_name:
-        query = query.join(EstimateItem).join(Product).where(Product.name.ilike(f"%{product_name}%")).distinct()
+        query = query.join(EstimateItem).join(Product).where(
+            or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
+        ).distinct()
 
     query = query.order_by(desc(Estimate.estimate_date)).offset(skip).limit(limit)
 
@@ -495,7 +497,9 @@ async def read_orders(
     if status:
         query = query.where(SalesOrder.status == status)
     if product_name:
-        query = query.join(SalesOrderItem).join(Product).where(Product.name.ilike(f"%{product_name}%")).distinct()
+        query = query.join(SalesOrderItem).join(Product).where(
+            or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
+        ).distinct()
 
     if start_date:
         if date_type == "delivery":
