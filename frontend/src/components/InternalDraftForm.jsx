@@ -36,9 +36,37 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
         const newWidths = [...colWidths];
         const minWidth = 30;
         
-        // Update current column
-        const currentNewWidth = Math.max(minWidth, startWidth + delta);
-        newWidths[index] = currentNewWidth;
+        // [Fix] Zero-sum resizing to keep total width at 100%
+        // Only adjust if it's not the last column (or if we want to allow the last one to grow/shrink against the previous)
+        if (index < newWidths.length - 1) {
+            const nextStartWidth = colWidths[index + 1];
+            
+            // Calculate new current width
+            const currentNewWidth = Math.max(minWidth, startWidth + delta);
+            const actualDelta = currentNewWidth - startWidth;
+            
+            // Calculate corresponding next width (stolen from/given to the next column)
+            const nextNewWidth = Math.max(minWidth, nextStartWidth - actualDelta);
+            
+            // Final adjustments based on minWidth constraints
+            const finalDelta = nextStartWidth - nextNewWidth;
+            
+            newWidths[index] = startWidth + finalDelta;
+            newWidths[index + 1] = nextNewWidth;
+        } else {
+            // If it's the last column, we can either block it or steal from the previous one.
+            // But usually, adjusting the border between index and index+1 is the standard.
+            // For the last column's right border, we don't have a next one, so we just let it resize (might cause overflow)
+            // or we steal from the previous one. Let's steal from index - 1 for the last column's right edge.
+            const prevStartWidth = colWidths[index - 1];
+            const currentNewWidth = Math.max(minWidth, startWidth + delta);
+            const actualDelta = currentNewWidth - startWidth;
+            const prevNewWidth = Math.max(minWidth, prevStartWidth - actualDelta);
+            const finalDelta = prevStartWidth - prevNewWidth;
+
+            newWidths[index] = startWidth + finalDelta;
+            newWidths[index - 1] = prevNewWidth;
+        }
         
         setColWidths(newWidths);
     };
@@ -194,7 +222,13 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             ) : (
                 <Box sx={{ flex: 1 }}>
                     <Typography sx={{ mb: 1, fontWeight: 'bold', fontSize: '14px' }}>[지급 내역]</Typography>
-                    <Table size="small" className="responsive-table flex-table resizable-table" sx={{ mb: 1, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center', height: 'auto !important', position: 'relative' } }}>
+                    <Table size="small" className="resizable-table" sx={{ mb: 1, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center', height: 'auto !important', position: 'relative', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>
+                        <colgroup>
+                            {colWidths.map((w, i) => (
+                                <col key={i} style={{ width: `${w}px` }} />
+                            ))}
+                            {!isReadOnly && <col style={{ width: '40px' }} />}
+                        </colgroup>
                         <thead>
                             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                                 <th style={{ width: colWidths[0] }}>순번 <Resizer index={0} /></th>

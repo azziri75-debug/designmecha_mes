@@ -195,9 +195,13 @@ const ProductsPage = ({ type }) => {
     const fetchProcesses = async () => {
         setLoading(true);
         try {
-            const params = {
-                major_group_id: selectedMajorGroupId || undefined
-            };
+            const params = {};
+            // [Fix] 공정 관리 탭에서는 상단 사업부 필터에 구애받지 않고 모든 공정을 불러와야 함
+            // (ProcessGroupManager 내부에서 각 그룹별로 공정을 분류하여 보여주기 때문)
+            if (activeTab !== 'processes' && selectedMajorGroupId) {
+                params.major_group_id = selectedMajorGroupId;
+            }
+            
             const res = await api.get('/product/processes/', { params });
             setProcesses(res.data);
         } catch (error) {
