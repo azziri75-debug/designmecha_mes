@@ -227,7 +227,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         }
     };
 
-    const isReadOnly = (documentData && documentData.status !== 'PENDING' && documentData.status !== 'REJECTED') || (documentData && parseInt(documentData.author_id) !== parseInt(currentUser?.id));
+    const isReadOnly = (documentData && !['PENDING', 'REJECTED', 'IN_PROGRESS'].includes(documentData.status)) || (documentData && parseInt(documentData.author_id) !== parseInt(currentUser?.id));
 
     const virtualDocData = documentData || {
         author: currentUser,

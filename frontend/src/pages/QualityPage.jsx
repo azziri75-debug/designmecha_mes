@@ -34,10 +34,25 @@ const QualityPage = () => {
     // Filters
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
+    const [groups, setGroups] = useState([]);
+
+    useEffect(() => {
+        fetchGroups();
+    }, []);
 
     useEffect(() => {
         fetchDefects();
-    }, [activeTab, startDate, endDate]);
+    }, [activeTab, startDate, endDate, selectedMajorGroupId]);
+
+    const fetchGroups = async () => {
+        try {
+            const res = await api.get('/product/groups/');
+            setGroups(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch groups", error);
+        }
+    };
 
     const fetchDefects = async () => {
         setLoading(true);
@@ -46,6 +61,7 @@ const QualityPage = () => {
             const params = { status };
             if (startDate) params.start_date = startDate;
             if (endDate) params.end_date = endDate;
+            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
 
             const res = await api.get('/quality/defects/', { params });
             setDefects(res.data);
@@ -110,7 +126,20 @@ const QualityPage = () => {
             </div>
 
             {/* Filters */}
-            <Card className="p-4 flex flex-wrap gap-4 items-end">
+            <Card className="p-4 flex flex-wrap gap-4 items-end bg-gray-800/50 border-gray-700">
+                <div className="space-y-1">
+                    <label className="text-xs text-gray-400">사업부</label>
+                    <select
+                        className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm"
+                        value={selectedMajorGroupId}
+                        onChange={(e) => setSelectedMajorGroupId(e.target.value)}
+                    >
+                        <option value="">전체 사업부</option>
+                        {groups.filter(g => g.type === 'MAJOR').map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                    </select>
+                </div>
                 <div className="space-y-1">
                     <label className="text-xs text-gray-400">시작일</label>
                     <input

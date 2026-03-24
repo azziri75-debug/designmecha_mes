@@ -27,13 +27,26 @@ if not os.path.exists(UPLOAD_DIR):
 async def read_defects(
     skip: int = 0,
     limit: int = 100,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(QualityDefect).options(
         selectinload(QualityDefect.order),
         selectinload(QualityDefect.plan),
         selectinload(QualityDefect.plan_item)
-    ).order_by(desc(QualityDefect.defect_date)).offset(skip).limit(limit)
+    )
+    
+    if major_group_id:
+        from app.models.product import Product, ProductGroup
+        from app.models.production import ProductionPlanItem
+        from sqlalchemy import or_
+        query = query.join(ProductionPlanItem, QualityDefect.plan_item_id == ProductionPlanItem.id)\
+                     .join(Product, ProductionPlanItem.product_id == Product.id)\
+                     .join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
+
+    query = query.order_by(desc(QualityDefect.defect_date)).offset(skip).limit(limit)
     res = await db.execute(query)
     return res.scalars().all()
 
@@ -149,9 +162,9 @@ async def create_complaint(
 @router.get("/", response_model=List[schemas.CustomerComplaintResponse])
 async def read_complaints(
     skip: int = 0,
-    limit: int = 100,
     status: Optional[str] = None,
     partner_id: Optional[int] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(CustomerComplaint).options(
@@ -162,6 +175,17 @@ async def read_complaints(
         query = query.where(CustomerComplaint.status == status)
     if partner_id:
         query = query.where(CustomerComplaint.partner_id == partner_id)
+        
+    if major_group_id:
+        from app.models.product import Product, ProductGroup
+        from app.models.sales import SalesOrderItem
+        from sqlalchemy import or_
+        # Join via SalesOrder -> SalesOrderItem -> Product
+        query = query.join(SalesOrderItem, CustomerComplaint.order_id == SalesOrderItem.order_id)\
+                     .join(Product, SalesOrderItem.product_id == Product.id)\
+                     .join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
         
     query = query.order_by(desc(CustomerComplaint.receipt_date)).offset(skip).limit(limit)
     res = await db.execute(query)

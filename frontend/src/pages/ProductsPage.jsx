@@ -28,6 +28,7 @@ const ProductsPage = ({ type }) => {
     const [showProductModal, setShowProductModal] = useState(false);
     const [productFormData, setProductFormData] = useState({});
     const [selectedPartnerId, setSelectedPartnerId] = useState("");
+    const [selectedMajorGroupId, setSelectedMajorGroupId] = useState("");
 
     // Process Modal State (Master Data)
     const [showProcessModal, setShowProcessModal] = useState(false);
@@ -98,7 +99,7 @@ const ProductsPage = ({ type }) => {
             fetchProcesses();
             fetchGroups();
         }
-    }, [activeTab, selectedPartnerId, type]);
+    }, [activeTab, selectedPartnerId, selectedMajorGroupId, type]);
 
     // [Fix] Sync price history for expanded row
     useEffect(() => {
@@ -147,7 +148,10 @@ const ProductsPage = ({ type }) => {
     const fetchProducts = async () => {
         setLoading(true);
         try {
-            const params = { partner_id: selectedPartnerId || undefined };
+            const params = { 
+                partner_id: selectedPartnerId || undefined,
+                major_group_id: selectedMajorGroupId || undefined
+            };
             if (type && type !== 'PROCESSES') {
                 params.item_type = type;
             }
@@ -191,10 +195,14 @@ const ProductsPage = ({ type }) => {
     const fetchProcesses = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/product/processes/');
+            const params = {
+                major_group_id: selectedMajorGroupId || undefined
+            };
+            const res = await api.get('/product/processes/', { params });
             setProcesses(res.data);
         } catch (error) {
             console.error("Failed to fetch processes", error);
+            alert("공정 목록을 불러오는 데 실패했습니다: " + (error.response?.data?.detail || error.message));
         } finally {
             setLoading(false);
         }
@@ -839,6 +847,15 @@ const ProductsPage = ({ type }) => {
                                 className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
+                        <Select
+                            isClearable
+                            placeholder="전체 사업부"
+                            options={groups.filter(g => g.type === 'MAJOR').map(g => ({ value: g.id, label: g.name }))}
+                            value={groups.find(g => g.id === selectedMajorGroupId) ? { value: selectedMajorGroupId, label: groups.find(g => g.id === selectedMajorGroupId).name } : null}
+                            onChange={(opt) => setSelectedMajorGroupId(opt ? opt.value : "")}
+                            styles={selectStyles}
+                            className="min-w-[150px]"
+                        />
                         <Select
                             isClearable
                             placeholder="전체 거래처"

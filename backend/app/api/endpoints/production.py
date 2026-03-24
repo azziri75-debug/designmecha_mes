@@ -112,8 +112,9 @@ async def read_production_plans(
     partner_id: Optional[int] = None,
     product_name: Optional[str] = None,
     customer_id: Optional[int] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
-) -> Any:
+):
     """
     Retrieve production plans with advanced filtering.
     """
@@ -137,6 +138,12 @@ async def read_production_plans(
         stmt = stmt.where(SalesOrder.partner_id == customer_id)
     if product_name:
         stmt = stmt.join(ProductionPlanItem).join(Product).where(Product.name.ilike(f"%{product_name}%")).distinct()
+    if major_group_id:
+        from app.models.product import ProductGroup
+        from sqlalchemy import or_
+        stmt = stmt.join(ProductionPlanItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                   .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                   .distinct()
 
     result = await db.execute(
         stmt
@@ -1385,6 +1392,7 @@ async def update_production_plan_item(
 async def read_work_logs(
     skip: int = 0,
     limit: int = 1000,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
@@ -1396,6 +1404,13 @@ async def read_work_logs(
     # 일반 사용자의 경우 본인이 작성자(worker_id)인 일지만 조회 가능
     if current_user.user_type != "ADMIN":
         stmt = stmt.where(WorkLog.worker_id == current_user.id)
+        
+    if major_group_id:
+        from app.models.product import ProductGroup
+        from sqlalchemy import or_
+        stmt = stmt.join(WorkLogItem).join(ProductionPlanItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                   .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                   .distinct()
 
     result = await db.execute(
         stmt
@@ -1718,6 +1733,7 @@ async def get_worker_performance(
     start_date: Union[date, None] = None,
     end_date: Union[date, None] = None,
     worker_id: Optional[int] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
@@ -1754,6 +1770,13 @@ async def get_worker_performance(
         stmt = stmt.where(WorkLog.work_date <= end_date)
     if worker_id:
         stmt = stmt.where(Staff.id == worker_id)
+        
+    if major_group_id:
+        from app.models.product import ProductGroup
+        from sqlalchemy import or_
+        # Note: ProductionPlanItem and Product are already joined for calc_unit_price/total_cost
+        stmt = stmt.join(ProductGroup, Product.group_id == ProductGroup.id)\
+                   .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         
     # 일반 사용자의 경우 본인 데이터만 조회
     if current_user.user_type != "ADMIN":

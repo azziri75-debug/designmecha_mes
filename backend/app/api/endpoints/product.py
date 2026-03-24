@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import delete
+from sqlalchemy import delete, or_
 from sqlalchemy.orm import selectinload, joinedload
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from app.api.deps import get_db
 from app.models.product import Product, Process, ProductProcess, ProductGroup, BOM
@@ -92,9 +92,23 @@ async def create_process(
 async def read_processes(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
-):
-    result = await db.execute(select(Process).offset(skip).limit(limit))
+    major_group_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Retrieve processes.
+    """
+    query = select(Process)
+    if major_group_id:
+        query = query.outerjoin(ProductGroup, Process.group_id == ProductGroup.id).where(
+            or_(
+                Process.group_id == None,
+                ProductGroup.id == major_group_id,
+                ProductGroup.parent_id == major_group_id
+            )
+        )
+    query = query.offset(skip).limit(limit)
+    result = await db.execute(query)
     processes = result.scalars().all()
     return processes
 
@@ -169,17 +183,27 @@ async def create_product(
 @router.get("/products/", response_model=List[ProductResponse])
 async def read_products(
     skip: int = 0,
-    limit: int = 100,
-    partner_id: int = None,
+    limit: int = 200,
     item_type: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
-):
-    # Eager loading needed for standard_processes AND its nested process relationship
+    partner_id: Optional[int] = None,
+    group_id: Optional[int] = None,
+    major_group_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Retrieve products.
+    """
     query = select(Product).options(
         selectinload(Product.standard_processes).selectinload(ProductProcess.process),
         selectinload(Product.bom_items).selectinload(BOM.child_product),
-        joinedload(Product.partner)
+        selectinload(Product.partner)
     )
+    
+    if major_group_id:
+        query = query.join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+    elif group_id:
+        query = query.where(Product.group_id == group_id)
     
     if partner_id:
         query = query.where(Product.partner_id == partner_id)

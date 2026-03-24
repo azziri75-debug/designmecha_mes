@@ -44,6 +44,8 @@ const DeliveryPage = () => {
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [partnerFilter, setPartnerFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
+    const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
+    const [groups, setGroups] = useState([]);
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -53,6 +55,7 @@ const DeliveryPage = () => {
             if (dateRange.end) params.append('end_date', dateRange.end);
             if (partnerFilter) params.append('partner_name', partnerFilter);
             if (statusFilter !== 'ALL') params.append('status', statusFilter);
+            if (selectedMajorGroupId) params.append('major_group_id', selectedMajorGroupId);
 
             const response = await api.get(`/sales/delivery-status?${params.toString()}`);
             setOrders(response.data);
@@ -63,9 +66,19 @@ const DeliveryPage = () => {
         }
     };
 
+    const fetchGroups = async () => {
+        try {
+            const res = await api.get('/product/groups/');
+            setGroups(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch groups", error);
+        }
+    };
+
     useEffect(() => {
         fetchOrders();
-    }, []);
+        fetchGroups();
+    }, [selectedMajorGroupId]);
 
     const handleDeliveryClick = (order) => {
         setSelectedOrder(order);
@@ -143,7 +156,22 @@ const DeliveryPage = () => {
                 {/* Filter section */}
                 <Card sx={{ bgcolor: '#111', border: '1px solid #333', borderRadius: '1.5rem', p: 3 }}>
                     <Grid container spacing={4} alignItems="center">
-                        <Grid item xs={12} md={3}>
+                        <Grid item xs={12} md={2}>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Business Unit</label>
+                                <select
+                                    value={selectedMajorGroupId}
+                                    onChange={(e) => setSelectedMajorGroupId(e.target.value)}
+                                    className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-bold"
+                                >
+                                    <option value="">전체 사업부</option>
+                                    {groups.filter(g => g.type === 'MAJOR').map(g => (
+                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </Grid>
+                        <Grid item xs={12} md={2}>
                             <TextField
                                 label="고객사명"
                                 fullWidth

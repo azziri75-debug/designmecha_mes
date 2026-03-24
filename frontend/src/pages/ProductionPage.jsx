@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Select from 'react-select';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon, Description as DescIcon } from '@mui/icons-material';
@@ -33,6 +33,8 @@ const ProductionPage = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
+    const [groups, setGroups] = useState([]);
     const [defects, setDefects] = useState([]);
 
 
@@ -98,6 +100,7 @@ const ProductionPage = () => {
                 }
             }
             if (searchQuery) params.product_name = searchQuery;
+            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
 
             const response = await api.get('/production/plans/', { params });
             setPlans(response.data);
@@ -125,6 +128,15 @@ const ProductionPage = () => {
         }
     };
 
+    const fetchGroups = async () => {
+        try {
+            const res = await api.get('/product/groups/');
+            setGroups(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch groups", error);
+        }
+    };
+
     const fetchPartners = async () => {
         try {
             const response = await api.get('/basics/partners/', { params: { type: 'CUSTOMER' } });
@@ -140,11 +152,12 @@ const ProductionPage = () => {
         fetchStockProductions();
         fetchPartners();
         fetchDefects();
+        fetchGroups();
     }, []);
 
     useEffect(() => {
         fetchPlans();
-    }, [startDate, endDate, filterPartner, searchQuery]);
+    }, [startDate, endDate, filterPartner, searchQuery, selectedMajorGroupId]);
 
 
     const handleCreateClick = (order, stockProd = null) => {
@@ -386,6 +399,24 @@ const ProductionPage = () => {
                             style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
                         />
                     </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 150 }}>
+                        <Typography variant="body2" color="textSecondary">사업부:</Typography>
+                        <div style={{ flex: 1 }}>
+                            <Select
+                                isClearable
+                                placeholder="전체 사업부"
+                                options={groups.filter(g => g.type === 'MAJOR').map(g => ({ value: g.id.toString(), label: g.name }))}
+                                value={groups.find(g => g.id.toString() === selectedMajorGroupId) ? { value: selectedMajorGroupId, label: groups.find(g => g.id.toString() === selectedMajorGroupId).name } : null}
+                                onChange={(opt) => setSelectedMajorGroupId(opt ? opt.value : '')}
+                                styles={{
+                                    control: (base) => ({ ...base, minHeight: '32px', height: '32px', fontSize: '0.875rem' }),
+                                    valueContainer: (base) => ({ ...base, padding: '0 8px' }),
+                                    input: (base) => ({ ...base, margin: '0' }),
+                                    indicatorsContainer: (base) => ({ ...base, height: '32px' }),
+                                }}
+                            />
+                        </div>
+                    </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
                         <Typography variant="body2" color="textSecondary">거래처:</Typography>
                         <div style={{ flex: 1 }}>
@@ -429,6 +460,7 @@ const ProductionPage = () => {
                             setEndDate('');
                             setFilterPartner('all');
                             setSearchQuery('');
+                            setSelectedMajorGroupId('');
                         }}
                     >
                         필터 초기화

@@ -23,6 +23,7 @@ router = APIRouter()
 
 @router.get("/mrp/unordered-requirements", response_model=List[schemas.MaterialRequirementResponse])
 async def get_unordered_requirements(
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
     status: str = "PENDING"
 ):
@@ -38,6 +39,12 @@ async def get_unordered_requirements(
             selectinload(MaterialRequirement.order).selectinload(SalesOrder.partner),
             selectinload(MaterialRequirement.plan)
         )
+    
+    if major_group_id:
+        from app.models.product import ProductGroup
+        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
     
     result = await db.execute(query)
     requirements = result.scalars().all()
@@ -68,6 +75,7 @@ async def get_unordered_requirements(
 
 @router.get("/purchase/consumable-waits", response_model=List[schemas.ConsumablePurchaseWaitResponse])
 async def get_consumable_waits(
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
     status: str = "PENDING"
 ):
@@ -86,6 +94,12 @@ async def get_consumable_waits(
             ),
             selectinload(ConsumablePurchaseWait.approval_document)
         )
+    
+    if major_group_id:
+        from app.models.product import ProductGroup
+        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
     
     result = await db.execute(query)
     waits = result.scalars().all()
@@ -339,6 +353,7 @@ async def get_price_history(
 
 @router.get("/purchase/pending-items", response_model=List[prod_schemas.ProductionPlanItem])
 async def read_pending_purchase_items(
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
@@ -374,6 +389,12 @@ async def read_pending_purchase_items(
         )\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
         
+    if major_group_id:
+        from app.models.product import ProductGroup
+        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
+        
     # Debug: Print Query
     # print(f"[DEBUG] Query: {query}")
         
@@ -396,6 +417,7 @@ async def read_pending_purchase_items(
 
 @router.get("/outsourcing/pending-items", response_model=List[prod_schemas.ProductionPlanItem])
 async def read_pending_outsourcing_items(
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
@@ -429,6 +451,18 @@ async def read_pending_outsourcing_items(
             )
         )\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+        
+    if major_group_id:
+        from app.models.product import ProductGroup
+        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
+        
+    if major_group_id:
+        from app.models.product import ProductGroup
+        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
         
     result = await db.execute(query)
     items = result.scalars().all()
@@ -689,6 +723,13 @@ async def read_purchase_orders(
         query = query.where(PurchaseOrder.order_date <= end_date)
     if customer_id:
         query = query.where(SalesOrder.partner_id == customer_id)
+        
+    if major_group_id:
+        from app.models.product import ProductGroup
+        from sqlalchemy import or_
+        query = query.join(PurchaseOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
 
     query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit)
 
@@ -1025,6 +1066,13 @@ async def read_outsourcing_orders(
             query = query.where(OutsourcingOrder.order_date <= end_date)
         if customer_id:
             query = query.where(SalesOrder.partner_id == customer_id)
+            
+        if major_group_id:
+            from app.models.product import ProductGroup
+            from sqlalchemy import or_
+            query = query.join(OutsourcingOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                         .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                         .distinct()
 
         query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit)
 

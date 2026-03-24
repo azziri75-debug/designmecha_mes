@@ -798,7 +798,8 @@ async def is_editable(doc: ApprovalDocument, user: Staff = None) -> bool:
             if step.status == "APPROVED" and "자동 승인" not in (step.comment or ""):
                 return False
                 
-    if doc.status in [ApprovalStatus.PENDING, ApprovalStatus.REJECTED]:
+    # [사용자 요구사항] 결제가 완료되기 전에는 수정이 가능하도록 변경
+    if doc.status in [ApprovalStatus.PENDING, ApprovalStatus.REJECTED, ApprovalStatus.IN_PROGRESS]:
         return True
     
     return False

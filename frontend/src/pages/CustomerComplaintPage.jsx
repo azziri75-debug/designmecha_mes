@@ -13,8 +13,9 @@ import ResizableTableCell from '../components/ResizableTableCell';
 const CustomerComplaintPage = () => {
     const [complaints, setComplaints] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [tab, setTab] = useState('RECEIVED'); // RECEIVED, COMPLETED
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
+    const [groups, setGroups] = useState([]);
     const [columnWidths, setColumnWidths] = useState({
         date: 120,
         partner: 150,
@@ -45,7 +46,17 @@ const CustomerComplaintPage = () => {
     useEffect(() => {
         fetchComplaints();
         fetchInitialData();
-    }, [tab]);
+        fetchGroups();
+    }, [tab, selectedMajorGroupId]);
+
+    const fetchGroups = async () => {
+        try {
+            const res = await api.get('/product/groups/');
+            setGroups(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch groups", error);
+        }
+    };
 
     const fetchInitialData = async () => {
         try {
@@ -63,7 +74,9 @@ const CustomerComplaintPage = () => {
     const fetchComplaints = async () => {
         setLoading(true);
         try {
-            const res = await api.get(`/quality/`, { params: { status: tab } });
+            const params = { status: tab };
+            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
+            const res = await api.get(`/quality/`, { params });
             setComplaints(res.data);
         } catch (error) {
             console.error("Failed to fetch complaints", error);
@@ -154,8 +167,9 @@ const CustomerComplaintPage = () => {
             </div>
 
             {/* Tabs & Filter */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-800/50 p-4 rounded-xl border border-gray-700">
-                <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700">
+            <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700">
                     <button
                         onClick={() => setTab('RECEIVED')}
                         className={cn(
@@ -176,15 +190,31 @@ const CustomerComplaintPage = () => {
                     </button>
                 </div>
 
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                        type="text"
-                        placeholder="고객사명, 내용 검색..."
-                        className="bg-gray-700 border-none rounded-lg pl-10 pr-4 py-2 text-sm text-white w-full md:w-64 focus:ring-2 focus:ring-blue-500 transition-all"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-400 font-bold">사업부:</label>
+                            <select
+                                className="bg-gray-700 border-none rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 transition-all font-bold"
+                                value={selectedMajorGroupId}
+                                onChange={(e) => setSelectedMajorGroupId(e.target.value)}
+                            >
+                                <option value="">전체 사업부</option>
+                                {groups.filter(g => g.type === 'MAJOR').map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                placeholder="고객사명, 내용 검색..."
+                                className="bg-gray-700 border-none rounded-lg pl-10 pr-4 py-2 text-sm text-white w-full md:w-64 focus:ring-2 focus:ring-blue-500 transition-all"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 

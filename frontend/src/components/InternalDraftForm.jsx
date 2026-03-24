@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     Box, Typography, Table, TableBody, TableRow, TableCell, 
     TextField, RadioGroup, FormControlLabel, Radio, IconButton, Button 
@@ -10,6 +10,50 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     // Default to Internal Draft type if not set
     const draftType = data.draft_type || 'GENERAL';
     const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }];
+
+    // --- Column Resizing Logic ---
+    const initialWidths = [40, 200, 100, 60, 60, 100, 120, 200];
+    const [colWidths, setColWidths] = useState(data.colWidths || initialWidths);
+    const resizingRef = useRef({ index: -1, startX: 0, startWidth: 0 });
+
+    const handleMouseDown = (e, index) => {
+        if (isReadOnly) return;
+        resizingRef.current = {
+            index,
+            startX: e.pageX,
+            startWidth: colWidths[index]
+        };
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'col-resize';
+    };
+
+    const handleMouseMove = (e) => {
+        const { index, startX, startWidth } = resizingRef.current;
+        if (index === -1) return;
+
+        const delta = e.pageX - startX;
+        const newWidths = [...colWidths];
+        const minWidth = 30;
+        
+        // Update current column
+        const currentNewWidth = Math.max(minWidth, startWidth + delta);
+        newWidths[index] = currentNewWidth;
+        
+        setColWidths(newWidths);
+    };
+
+    const handleMouseUp = () => {
+        const { index } = resizingRef.current;
+        if (index !== -1) {
+            // Save to parent data if needed, but keeping it local for smoothness is better unless we want persistence
+            // handleChange({ colWidths }); // Uncomment if persistence is required
+        }
+        resizingRef.current.index = -1;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'default';
+    };
 
     const handleChange = (newData) => {
         if (isReadOnly || typeof onChange !== 'function') return;
@@ -40,6 +84,24 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
 
     // Calculate total amount
     const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+
+    // Resizer Component
+    const Resizer = ({ index }) => (
+        <div
+            onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, index); }}
+            style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: '5px',
+                cursor: 'col-resize',
+                zIndex: 1,
+                userSelect: 'none'
+            }}
+            className="col-resizer idf-no-print"
+        />
+    );
 
     return (
         <Box className="a4-form-container print-safe-area" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
@@ -96,10 +158,21 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     </TableRow>
                     <TableRow>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>기안구분</Box>
-                        <td colSpan={3}>
+                        <td>
                             <RadioGroup row value={draftType} onChange={(e) => handleChange({ draft_type: e.target.value })}>
                                 <FormControlLabel value="GENERAL" control={<Radio size="small" />} label="일반기안" disabled={isReadOnly} />
                                 <FormControlLabel value="PAYMENT" control={<Radio size="small" />} label="대금지급기안" disabled={isReadOnly} />
+                            </RadioGroup>
+                        </td>
+                        <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>통화단위</Box>
+                        <td>
+                            <RadioGroup 
+                                row 
+                                value={data.currency || 'KRW'} 
+                                onChange={(e) => handleChange({ currency: e.target.value })}
+                            >
+                                <FormControlLabel value="KRW" control={<Radio size="small" />} label="KRW(₩)" disabled={isReadOnly || draftType !== 'PAYMENT'} />
+                                <FormControlLabel value="USD" control={<Radio size="small" />} label="USD($)" disabled={isReadOnly || draftType !== 'PAYMENT'} />
                             </RadioGroup>
                         </td>
                     </TableRow>
@@ -121,17 +194,17 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             ) : (
                 <Box sx={{ flex: 1 }}>
                     <Typography sx={{ mb: 1, fontWeight: 'bold', fontSize: '14px' }}>[지급 내역]</Typography>
-                    <Table size="small" className="responsive-table flex-table" sx={{ mb: 1, borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center', height: 'auto !important' } }}>
+                    <Table size="small" className="responsive-table flex-table resizable-table" sx={{ mb: 1, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center', height: 'auto !important', position: 'relative' } }}>
                         <thead>
                             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                                <th style={{ width: '40px' }}>순번</th>
-                                <th>품명/항목</th>
-                                <th style={{ width: '15%' }}>규격</th>
-                                <th style={{ width: '60px' }}>단위</th>
-                                <th style={{ width: '60px' }}>수량</th>
-                                <th style={{ width: '100px' }}>단가</th>
-                                <th style={{ width: '120px' }}>금액</th>
-                                <th>비고</th>
+                                <th style={{ width: colWidths[0] }}>순번 <Resizer index={0} /></th>
+                                <th style={{ width: colWidths[1] }}>품명/항목 <Resizer index={1} /></th>
+                                <th style={{ width: colWidths[2] }}>규격 <Resizer index={2} /></th>
+                                <th style={{ width: colWidths[3] }}>단위 <Resizer index={3} /></th>
+                                <th style={{ width: colWidths[4] }}>수량 <Resizer index={4} /></th>
+                                <th style={{ width: colWidths[5] }}>단가 <Resizer index={5} /></th>
+                                <th style={{ width: colWidths[6] }}>금액 <Resizer index={6} /></th>
+                                <th style={{ width: colWidths[7] }}>비고 <Resizer index={7} /></th>
                                 {!isReadOnly && <th className="idf-no-print" style={{ width: '40px' }}></th>}
                             </TableRow>
                         </thead>
@@ -144,7 +217,9 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                     <td data-label="단위"><input value={item.unit} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
                                     <td data-label="수량"><input type="number" value={item.quantity} onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
                                     <td data-label="단가"><input type="number" value={item.unit_price} onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                    <td data-label="금액" style={{ textAlign: 'right', paddingRight: '10px' }}>{ (item.amount || 0).toLocaleString() }</td>
+                                    <td data-label="금액" style={{ textAlign: 'right', paddingRight: '10px' }}>
+                                        { data.currency === 'USD' ? '$ ' : '₩ ' }{ (item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: data.currency === 'USD' ? 2 : 0 }) }
+                                    </td>
                                     <td data-label="비고"><input value={item.remarks} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
                                     {!isReadOnly && (
                                         <td className="idf-no-print">
@@ -155,7 +230,9 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                             ))}
                             <TableRow sx={{ bgcolor: '#fffde7', fontWeight: 'bold' }}>
                                 <td colSpan={6} style={{ textAlign: 'center' }}>합 계</td>
-                                <td style={{ textAlign: 'right', paddingRight: '10px' }}>{ totalAmount.toLocaleString() }</td>
+                                <td style={{ textAlign: 'right', paddingRight: '10px' }}>
+                                    { data.currency === 'USD' ? '$ ' : '₩ ' }{ totalAmount.toLocaleString(undefined, { minimumFractionDigits: data.currency === 'USD' ? 2 : 0 }) }
+                                </td>
                                 <td></td>
                                 {!isReadOnly && <td className="idf-no-print"></td>}
                             </TableRow>
@@ -194,6 +271,10 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     .flex-table td { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 5px 0 !important; }
                     .flex-table td::before { content: attr(data-label); font-weight: bold; margin-right: 10px; }
                     textarea, input { font-size: 16px !important; } 
+                    .col-resizer:hover { background-color: #2196f3; width: 4px !important; }
+                }
+                @media screen {
+                    .col-resizer:hover { background-color: #2196f3; width: 4px !important; }
                 }
             `}</style>
         </Box>

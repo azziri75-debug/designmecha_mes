@@ -186,7 +186,7 @@ const ApprovalPage = () => {
         if (!doc || !currentUser) return false;
         const isAuthor = Number(doc.author_id) === Number(currentUser?.id);
         if (!isAuthor) return false;
-        return ['PENDING', 'DRAFT', 'REJECTED'].includes(doc.status);
+        return ['PENDING', 'DRAFT', 'REJECTED', 'IN_PROGRESS'].includes(doc.status);
     };
 
     const canApprove = (doc) => {

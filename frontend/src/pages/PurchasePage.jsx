@@ -70,10 +70,13 @@ const PurchasePage = ({ type }) => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [partners, setPartners] = useState([]);
+    const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
+    const [groups, setGroups] = useState([]);
 
 
     useEffect(() => {
         fetchPartners();
+        fetchGroups();
     }, []);
 
     useEffect(() => {
@@ -87,12 +90,13 @@ const PurchasePage = ({ type }) => {
             else if (tabValue === 2) fetchOrders();
             else fetchCompletedOrders();
         }
-    }, [tabValue, type, searchQuery, selectedPartnerId, startDate, endDate]);
+    }, [tabValue, type, searchQuery, selectedPartnerId, startDate, endDate, selectedMajorGroupId]);
 
 
     const fetchMrpItems = async () => {
         try {
-            const response = await api.get('/purchasing/mrp/unordered-requirements');
+            const params = { major_group_id: selectedMajorGroupId };
+            const response = await api.get('/purchasing/mrp/unordered-requirements', { params });
             // Filter by type: MRP returns item_type as "PART" or "CONSUMABLE" or others
             const filteredData = response.data.filter(item =>
                 type === 'CONSUMABLE' ? item.item_type === 'CONSUMABLE' : item.item_type === 'PART'
@@ -101,6 +105,15 @@ const PurchasePage = ({ type }) => {
             setSelectedMrpItems([]);
         } catch (error) {
             console.error("Failed to fetch MRP items", error);
+        }
+    };
+
+    const fetchGroups = async () => {
+        try {
+            const res = await api.get('/product/groups/');
+            setGroups(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch groups", error);
         }
     };
 
@@ -120,6 +133,7 @@ const PurchasePage = ({ type }) => {
             if (selectedPartnerId) params.partner_id = selectedPartnerId;
             if (startDate) params.start_date = startDate;
             if (endDate) params.end_date = endDate;
+            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
 
             const response = await api.get('/purchasing/purchase/orders', { params });
             setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
@@ -135,6 +149,7 @@ const PurchasePage = ({ type }) => {
             if (selectedPartnerId) params.partner_id = selectedPartnerId;
             if (startDate) params.start_date = startDate;
             if (endDate) params.end_date = endDate;
+            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
 
             const response = await api.get('/purchasing/purchase/orders', { params });
             setOrders(response.data);
@@ -220,11 +235,12 @@ const PurchasePage = ({ type }) => {
     };
     const fetchPendingItems = async () => {
         try {
+            const params = { major_group_id: selectedMajorGroupId };
             if (type === 'CONSUMABLE') {
-                const response = await api.get('/purchasing/purchase/consumable-waits');
+                const response = await api.get('/purchasing/purchase/consumable-waits', { params });
                 setPendingItems(response.data);
             } else {
-                const response = await api.get('/purchasing/purchase/pending-items');
+                const response = await api.get('/purchasing/purchase/pending-items', { params });
                 setPendingItems(response.data);
             }
             setSelectedPendingItems([]); // Reset selection on refresh
@@ -488,67 +504,84 @@ const PurchasePage = ({ type }) => {
             </Box>
 
             {/* Filter Section */}
-            {((type === 'CONSUMABLE' ? tabValue !== 0 : (tabValue === 2 || tabValue === 3))) && (
-                <Paper sx={{ p: 2, mb: 2, bgcolor: '#fcfcfc', border: '1px solid #eee' }}>
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="textSecondary">기간:</Typography>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
-                            />
-                            <span>~</span>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
-                            />
+            <Paper sx={{ p: 2, mb: 2, bgcolor: '#fcfcfc', border: '1px solid #eee' }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 150 }}>
+                        <Typography variant="body2" color="textSecondary">사업부:</Typography>
+                        <Box sx={{ flex: 1 }}>
+                            <select
+                                value={selectedMajorGroupId}
+                                onChange={(e) => setSelectedMajorGroupId(e.target.value)}
+                                style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', fontSize: '14px' }}
+                            >
+                                <option value="">전체 사업부</option>
+                                {groups.filter(g => g.type === 'MAJOR').map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                ))}
+                            </select>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
-                            <Typography variant="body2" color="textSecondary">공급사:</Typography>
-                            <Box sx={{ flex: 1 }}>
-                                <select
-                                    value={selectedPartnerId || ''}
-                                    onChange={(e) => setSelectedPartnerId(e.target.value || null)}
-                                    style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', fontSize: '14px' }}
-                                >
-                                    <option value="">전체 공급사</option>
-                                    {partners.filter(p => p.type === 'SUPPLIER').map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                    ))}
-                                </select>
-                            </Box>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="textSecondary">품명/품번:</Typography>
-                            <input
-                                type="text"
-                                placeholder="검색어 입력..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '150px', fontSize: '14px' }}
-                            />
-                        </Box>
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            color="inherit"
-                            onClick={() => {
-                                setStartDate('');
-                                setEndDate('');
-                                setSelectedPartnerId(null);
-                                setSearchQuery('');
-                            }}
-                        >
-                            초기화
-                        </Button>
                     </Box>
-                </Paper>
-            )}
-
+                    {((type === 'CONSUMABLE' ? tabValue !== 0 : (tabValue === 2 || tabValue === 3))) && (
+                        <>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="body2" color="textSecondary">기간:</Typography>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
+                                />
+                                <span>~</span>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
+                                />
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
+                                <Typography variant="body2" color="textSecondary">공급사:</Typography>
+                                <Box sx={{ flex: 1 }}>
+                                    <select
+                                        value={selectedPartnerId || ''}
+                                        onChange={(e) => setSelectedPartnerId(e.target.value || null)}
+                                        style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', fontSize: '14px' }}
+                                    >
+                                        <option value="">전체 공급사</option>
+                                        {partners.filter(p => p.type === 'SUPPLIER').map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </Box>
+                            </Box>
+                        </>
+                    )}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" color="textSecondary">품명/품번:</Typography>
+                        <input
+                            type="text"
+                            placeholder="검색어 입력..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '150px', fontSize: '14px' }}
+                        />
+                    </Box>
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        color="inherit"
+                        onClick={() => {
+                            setStartDate('');
+                            setEndDate('');
+                            setSelectedPartnerId(null);
+                            setSearchQuery('');
+                            setSelectedMajorGroupId('');
+                        }}
+                    >
+                        초기화
+                    </Button>
+                </Box>
+            </Paper>
 
             {tabValue === 0 && (
                 <>

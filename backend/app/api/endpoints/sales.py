@@ -77,6 +77,7 @@ async def read_estimates(
     skip: int = 0,
     limit: int = 100,
     partner_id: Optional[int] = None,
+    major_group_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     product_name: Optional[str] = None,
@@ -95,6 +96,11 @@ async def read_estimates(
 
     if partner_id:
         query = query.where(Estimate.partner_id == partner_id)
+    if major_group_id:
+        from app.models.product import ProductGroup
+        query = query.join(EstimateItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
     if start_date:
         query = query.where(Estimate.estimate_date >= start_date)
     if end_date:
@@ -473,6 +479,7 @@ async def read_orders(
     skip: int = 0,
     limit: int = 100,
     partner_id: Optional[int] = None,
+    major_group_id: Optional[int] = None,
     status: Optional[str] = None,
     date_type: Optional[str] = "order",
     start_date: Optional[date] = None,
@@ -494,6 +501,11 @@ async def read_orders(
 
     if partner_id:
         query = query.where(SalesOrder.partner_id == partner_id)
+    if major_group_id:
+        from app.models.product import ProductGroup
+        query = query.join(SalesOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
     if status:
         query = query.where(SalesOrder.status == status)
     if product_name:
@@ -1120,6 +1132,7 @@ async def read_delivery_status(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     partner_name: Optional[str] = None,
+    major_group_id: Optional[int] = None,
     status: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db)
 ):
@@ -1145,6 +1158,11 @@ async def read_delivery_status(
         query = query.where(SalesOrder.order_date <= end_date)
     if partner_name:
         query = query.join(Partner).where(Partner.name.ilike(f"%{partner_name}%"))
+    if major_group_id:
+        from app.models.product import ProductGroup
+        query = query.join(SalesOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .distinct()
     if status and status != 'ALL':
         query = query.where(SalesOrder.status == status)
 

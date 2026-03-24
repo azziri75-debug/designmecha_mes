@@ -62,10 +62,13 @@ const SalesPage = () => {
     const [statusFilter, setStatusFilter] = useState('');
     const [selectedPartnerId, setSelectedPartnerId] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [selectedMajorGroupId, setSelectedMajorGroupId] = useState("");
+    const [groups, setGroups] = useState([]);
 
 
     useEffect(() => {
         fetchPartners();
+        fetchGroups();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -75,7 +78,7 @@ const SalesPage = () => {
         } else {
             fetchOrders();
         }
-    }, [activeTab, startDate, endDate, statusFilter, selectedPartnerId, searchQuery]);
+    }, [activeTab, startDate, endDate, statusFilter, selectedPartnerId, searchQuery, selectedMajorGroupId]);
 
     // Note: Re-fetching on filter change
 
@@ -85,6 +88,15 @@ const SalesPage = () => {
             setPartners(res.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);
+        }
+    };
+    
+    const fetchGroups = async () => {
+        try {
+            const res = await api.get('/product/groups/');
+            setGroups(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch groups", error);
         }
     };
 
@@ -97,6 +109,7 @@ const SalesPage = () => {
             if (statusFilter) params.status = statusFilter;
             if (selectedPartnerId) params.partner_id = selectedPartnerId;
             if (searchQuery) params.product_name = searchQuery;
+            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
 
 
             const res = await api.get('/sales/estimates/', { params });
@@ -117,6 +130,7 @@ const SalesPage = () => {
             if (statusFilter) params.status = statusFilter;
             if (selectedPartnerId) params.partner_id = selectedPartnerId;
             if (searchQuery) params.product_name = searchQuery;
+            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
 
 
             const res = await api.get('/sales/orders/', { params });
@@ -241,6 +255,34 @@ const SalesPage = () => {
 
             {/* Content & Filters */}
             <Card className="p-4 flex flex-wrap gap-4 items-end mb-4">
+                <div className="flex-1 min-w-[150px] space-y-1">
+                    <label className="text-xs text-gray-400">사업부</label>
+                    <Select
+                        isClearable
+                        placeholder="전체 사업부"
+                        options={groups.filter(g => g.type === 'MAJOR').map(g => ({ value: g.id, label: g.name }))}
+                        value={groups.find(g => g.id === selectedMajorGroupId) ? { value: selectedMajorGroupId, label: groups.find(g => g.id === selectedMajorGroupId).name } : null}
+                        onChange={(opt) => setSelectedMajorGroupId(opt ? opt.value : "")}
+                        styles={{
+                            control: (base) => ({
+                                ...base,
+                                backgroundColor: '#374151',
+                                borderColor: '#4b5563',
+                                color: 'white',
+                                fontSize: '0.875rem'
+                            }),
+                            input: (base) => ({ ...base, color: 'white' }),
+                            placeholder: (base) => ({ ...base, color: '#9ca3af' }),
+                            menu: (base) => ({ ...base, backgroundColor: '#1f2937', color: 'white', zIndex: 99 }),
+                            option: (base, state) => ({
+                                ...base,
+                                backgroundColor: state.isFocused ? '#374151' : 'transparent',
+                                color: 'white'
+                            }),
+                            singleValue: (base) => ({ ...base, color: 'white' })
+                        }}
+                    />
+                </div>
                 <div className="flex-1 min-w-[200px] space-y-1">
                     <label className="text-xs text-gray-400">거래처 검색</label>
                     <Select
