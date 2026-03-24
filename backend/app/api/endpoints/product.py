@@ -82,7 +82,9 @@ async def create_process(
     process: ProcessCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    new_process = Process(**process.model_dump())
+    # [Fix] Exclude major_group_id as it is not a column in the Process model
+    process_data = process.model_dump(exclude={"major_group_id"})
+    new_process = Process(**process_data)
     db.add(new_process)
     await db.commit()
     await db.refresh(new_process)

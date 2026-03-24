@@ -31,7 +31,7 @@ class ProcessBase(BaseModel):
     description: Optional[str] = None
 
 class ProcessCreate(ProcessBase):
-    pass
+    major_group_id: Optional[int] = None  # UI only - not stored in Process model, only group_id (minor) is stored
 
 class ProcessUpdate(ProcessBase):
     pass
