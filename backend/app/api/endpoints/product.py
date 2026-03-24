@@ -91,7 +91,7 @@ async def create_process(
 @router.get("/processes/", response_model=List[ProcessResponse])
 async def read_processes(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 2000,  # [Fix] Increased from 100 to 2000 to avoid missing newly added processes
     major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
 ) -> Any:

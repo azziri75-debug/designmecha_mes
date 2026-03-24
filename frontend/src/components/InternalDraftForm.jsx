@@ -11,73 +11,54 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const draftType = data.draft_type || 'GENERAL';
     const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }];
 
-    // --- Column Resizing Logic ---
-    // Initial widths reduced so total fits within A4 container (~790px usable width)
-    const initialWidths = [35, 150, 80, 50, 50, 80, 100, 170];
-    const [colWidths, setColWidths] = useState(data.colWidths || initialWidths);
-    const resizingRef = useRef({ index: -1, startX: 0, startWidth: 0 });
+    // --- Column Resizing Logic (Percentage-based to always fit container) ---
+    // Percentages sum to 100 (excluding the optional delete-button column)
+    const initialPcts = data.colPcts || [5, 22, 11, 7, 7, 11, 14, 23]; // sum = 100
+    const [colPcts, setColPcts] = useState(initialPcts);
+    // Tracks resizing in pixel space, converts delta to % on mouse move
+    const resizingRef = useRef({ index: -1, startX: 0, startPct: 0, nextStartPct: 0, containerWidth: 0 });
 
-    const handleMouseDown = (e, index) => {
+    const handleMouseDown = (e, index, containerRef) => {
         if (isReadOnly) return;
+        // Get the actual pixel width of the table container
+        const container = e.target.closest('table') || document.body;
+        const containerWidth = container.offsetWidth || 700;
         resizingRef.current = {
             index,
             startX: e.pageX,
-            startWidth: colWidths[index]
+            startPct: colPcts[index],
+            nextStartPct: colPcts[index + 1] || 0,
+            containerWidth,
         };
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         document.body.style.cursor = 'col-resize';
+        e.preventDefault();
     };
 
     const handleMouseMove = (e) => {
-        const { index, startX, startWidth } = resizingRef.current;
+        const { index, startX, startPct, nextStartPct, containerWidth } = resizingRef.current;
         if (index === -1) return;
 
-        const delta = e.pageX - startX;
-        const newWidths = [...colWidths];
-        const minWidth = 30;
-        
-        // [Fix] Zero-sum resizing to keep total width at 100%
-        // Only adjust if it's not the last column (or if we want to allow the last one to grow/shrink against the previous)
-        if (index < newWidths.length - 1) {
-            const nextStartWidth = colWidths[index + 1];
-            
-            // Calculate new current width
-            const currentNewWidth = Math.max(minWidth, startWidth + delta);
-            const actualDelta = currentNewWidth - startWidth;
-            
-            // Calculate corresponding next width (stolen from/given to the next column)
-            const nextNewWidth = Math.max(minWidth, nextStartWidth - actualDelta);
-            
-            // Final adjustments based on minWidth constraints
-            const finalDelta = nextStartWidth - nextNewWidth;
-            
-            newWidths[index] = startWidth + finalDelta;
-            newWidths[index + 1] = nextNewWidth;
-        } else {
-            // If it's the last column, we can either block it or steal from the previous one.
-            // But usually, adjusting the border between index and index+1 is the standard.
-            // For the last column's right border, we don't have a next one, so we just let it resize (might cause overflow)
-            // or we steal from the previous one. Let's steal from index - 1 for the last column's right edge.
-            const prevStartWidth = colWidths[index - 1];
-            const currentNewWidth = Math.max(minWidth, startWidth + delta);
-            const actualDelta = currentNewWidth - startWidth;
-            const prevNewWidth = Math.max(minWidth, prevStartWidth - actualDelta);
-            const finalDelta = prevStartWidth - prevNewWidth;
+        const deltaPixels = e.pageX - startX;
+        const deltaPct = (deltaPixels / containerWidth) * 100;
+        const minPct = 3; // minimum 3%
 
-            newWidths[index] = startWidth + finalDelta;
-            newWidths[index - 1] = prevNewWidth;
+        if (index < colPcts.length - 1) {
+            // Zero-sum: grow current, shrink next
+            const newCurrent = Math.max(minPct, startPct + deltaPct);
+            const actualDelta = newCurrent - startPct;
+            const newNext = Math.max(minPct, nextStartPct - actualDelta);
+            const finalDelta = nextStartPct - newNext;
+
+            const newPcts = [...colPcts];
+            newPcts[index] = startPct + finalDelta;
+            newPcts[index + 1] = newNext;
+            setColPcts(newPcts);
         }
-        
-        setColWidths(newWidths);
     };
 
     const handleMouseUp = () => {
-        const { index } = resizingRef.current;
-        if (index !== -1) {
-            // Save to parent data if needed, but keeping it local for smoothness is better unless we want persistence
-            // handleChange({ colWidths }); // Uncomment if persistence is required
-        }
         resizingRef.current.index = -1;
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -141,7 +122,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                         fontWeight: 'bold', 
                         letterSpacing: { xs: '2px', md: '10px' }, 
                         mt: 2,
-                        fontSize: { xs: '24px', md: '34px' } // Prominent Title
+                        fontSize: { xs: '24px', md: '34px' }
                     }}>
                         내 부 기 안
                     </Typography>
@@ -223,26 +204,45 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             ) : (
                 <Box sx={{ flex: 1 }}>
                     <Typography sx={{ mb: 1, fontWeight: 'bold', fontSize: '14px' }}>[지급 내역]</Typography>
-                    {/* [Fix] Wrap table in overflow-x:hidden container to prevent page overflow */}
-                    <div style={{ width: '100%', overflowX: 'auto' }}>
-                    <Table size="small" className="resizable-table" sx={{ mb: 1, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center', height: 'auto !important', position: 'relative', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>
+                    {/* [Fix] Percentage-based column widths so table always fits within parent container */}
+                    <Table
+                        size="small"
+                        className="resizable-table"
+                        sx={{
+                            mb: 1,
+                            tableLayout: 'fixed',
+                            width: '100%',
+                            borderCollapse: 'collapse',
+                            '& td, & th': {
+                                border: '1px solid #000',
+                                p: 0.8,
+                                fontSize: '12px',
+                                textAlign: 'center',
+                                height: 'auto !important',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                            }
+                        }}
+                    >
                         <colgroup>
-                            {colWidths.map((w, i) => (
-                                <col key={i} style={{ width: `${w}px` }} />
+                            {colPcts.map((pct, i) => (
+                                <col key={i} style={{ width: `${pct}%` }} />
                             ))}
-                            {!isReadOnly && <col style={{ width: '40px' }} />}
+                            {!isReadOnly && <col style={{ width: '32px' }} />}
                         </colgroup>
                         <thead>
                             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                                <th style={{ width: colWidths[0] }}>순번 <Resizer index={0} /></th>
-                                <th style={{ width: colWidths[1] }}>품명/항목 <Resizer index={1} /></th>
-                                <th style={{ width: colWidths[2] }}>규격 <Resizer index={2} /></th>
-                                <th style={{ width: colWidths[3] }}>단위 <Resizer index={3} /></th>
-                                <th style={{ width: colWidths[4] }}>수량 <Resizer index={4} /></th>
-                                <th style={{ width: colWidths[5] }}>단가 <Resizer index={5} /></th>
-                                <th style={{ width: colWidths[6] }}>금액 <Resizer index={6} /></th>
-                                <th style={{ width: colWidths[7] }}>비고 <Resizer index={7} /></th>
-                                {!isReadOnly && <th className="idf-no-print" style={{ width: '40px' }}></th>}
+                                <th>순번 <Resizer index={0} /></th>
+                                <th>품명/항목 <Resizer index={1} /></th>
+                                <th>규격 <Resizer index={2} /></th>
+                                <th>단위 <Resizer index={3} /></th>
+                                <th>수량 <Resizer index={4} /></th>
+                                <th>단가 <Resizer index={5} /></th>
+                                <th>금액 <Resizer index={6} /></th>
+                                <th>비고 <Resizer index={7} /></th>
+                                {!isReadOnly && <th className="idf-no-print"></th>}
                             </TableRow>
                         </thead>
                         <TableBody>
@@ -254,7 +254,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                     <td data-label="단위"><input value={item.unit} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
                                     <td data-label="수량"><input type="number" value={item.quantity} onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
                                     <td data-label="단가"><input type="number" value={item.unit_price} onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
-                                    <td data-label="금액" style={{ textAlign: 'right', paddingRight: '10px' }}>
+                                    <td data-label="금액" style={{ textAlign: 'right', paddingRight: '8px' }}>
                                         { data.currency === 'USD' ? '$ ' : '₩ ' }{ (item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: data.currency === 'USD' ? 2 : 0 }) }
                                     </td>
                                     <td data-label="비고"><input value={item.remarks} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
@@ -267,7 +267,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                             ))}
                             <TableRow sx={{ bgcolor: '#fffde7', fontWeight: 'bold' }}>
                                 <td colSpan={6} style={{ textAlign: 'center' }}>합 계</td>
-                                <td style={{ textAlign: 'right', paddingRight: '10px' }}>
+                                <td style={{ textAlign: 'right', paddingRight: '8px' }}>
                                     { data.currency === 'USD' ? '$ ' : '₩ ' }{ totalAmount.toLocaleString(undefined, { minimumFractionDigits: data.currency === 'USD' ? 2 : 0 }) }
                                 </td>
                                 <td></td>
@@ -275,7 +275,6 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                             </TableRow>
                         </TableBody>
                     </Table>
-                    </div>
                     {!isReadOnly && (
                         <Box className="idf-no-print" sx={{ mb: 2 }}>
                             <Button size="small" startIcon={<Plus size={14} />} onClick={addItem}>항목 추가</Button>
@@ -298,21 +297,11 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             </Typography>
 
             <style>{`
-                @media screen and (max-width: 768px) {
-                    .a4-form-container { padding: 0 !important; }
-                    .idf-header { flex-direction: column !important; align-items: center !important; gap: 20px; }
-                    .responsive-table, .responsive-table table { border: none !important; display: block !important; }
-                    .responsive-table tr { display: flex !important; flex-direction: column !important; border-bottom: 1px solid #eee !important; padding: 10px 0 !important; }
-                    .responsive-table td, .responsive-table th { border: none !important; width: 100% !important; text-align: left !important; display: block !important; padding: 5px 0 !important; }
-                    .flex-table thead { display: none !important; }
-                    .flex-table tr { border: 1px solid #ddd !important; border-radius: 8px !important; margin-bottom: 15px !important; padding: 15px !important; }
-                    .flex-table td { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 5px 0 !important; }
-                    .flex-table td::before { content: attr(data-label); font-weight: bold; margin-right: 10px; }
-                    textarea, input { font-size: 16px !important; } 
-                    .col-resizer:hover { background-color: #2196f3; width: 4px !important; }
-                }
                 @media screen {
                     .col-resizer:hover { background-color: #2196f3; width: 4px !important; }
+                }
+                @media print {
+                    .idf-no-print { display: none !important; }
                 }
             `}</style>
         </Box>
