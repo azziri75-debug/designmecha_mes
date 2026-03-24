@@ -28,6 +28,7 @@ async def read_defects(
     skip: int = 0,
     limit: int = 100,
     major_group_id: Optional[str] = None,
+    limit: int = 100,
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(QualityDefect).options(
@@ -165,6 +166,7 @@ async def read_complaints(
     status: Optional[str] = None,
     partner_id: Optional[int] = None,
     major_group_id: Optional[str] = None,
+    limit: int = 100,
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(CustomerComplaint).options(
