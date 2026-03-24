@@ -77,7 +77,7 @@ async def read_estimates(
     skip: int = 0,
     limit: int = 100,
     partner_id: Optional[int] = None,
-    major_group_id: Optional[int] = None,
+    major_group_id: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     product_name: Optional[str] = None,
@@ -159,7 +159,7 @@ async def export_estimate_excel(
         
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "견적서"
+        ws.title = "견적??
 
         header_font = Font(name='Malgun Gothic', size=16, bold=True)
         bold_font = Font(name='Malgun Gothic', size=10, bold=True)
@@ -189,46 +189,46 @@ async def export_estimate_excel(
             ws.column_dimensions[col].width = width
 
         ws.merge_cells('A1:H2')
-        ws['A1'] = "견  적  서"
+        ws['A1'] = "�? ?? ??
         ws['A1'].font = header_font
         ws['A1'].alignment = center_align
 
         ws.merge_cells('A4:D4')
-        ws['A4'] = f"일자: {estimate.estimate_date}"
+        ws['A4'] = f"?�자: {estimate.estimate_date}"
         ws['A4'].alignment = left_align
         
         ws.merge_cells('A5:D5')
-        ws['A5'] = f"수신: {estimate.partner.name if estimate.partner else ''} 귀하"
+        ws['A5'] = f"?�신: {estimate.partner.name if estimate.partner else ''} 귀??
         ws['A5'].alignment = left_align
         ws['A5'].font = bold_font
         
         ws.merge_cells('A6:D6')
-        ws['A6'] = f"합계금액: {estimate.total_amount:,.0f} 원 (VAT 별도)"
+        ws['A6'] = f"?�계금액: {estimate.total_amount:,.0f} ??(VAT 별도)"
         ws['A6'].alignment = left_align
         ws['A6'].font = bold_font
         
         ws.merge_cells('E4:E6')
-        ws['E4'] = "공급자"
+        ws['E4'] = "공급??
         ws['E4'].font = bold_font
         ws['E4'].alignment = center_align
         ws['E4'].fill = gray_fill
         ws['E4'].border = thin_border
         
         ws.merge_cells('F4:H4')
-        ws['F4'] = "상호: (주)디자인메카"
+        ws['F4'] = "?�호: (�??�자?�메�?
         ws.merge_cells('F5:H5')
-        ws['F5'] = "대표: 조인호"
+        ws['F5'] = "?�?? 조인??
         ws.merge_cells('F6:H6')
-        ws['F6'] = "등록번호: xxx-xx-xxxxx" # placeholder if actual doesn't exist
+        ws['F6'] = "?�록번호: xxx-xx-xxxxx" # placeholder if actual doesn't exist
         
         style_range(ws, 'F4:H6', alignment=left_align)
         
         ws['A8'] = "번호"
-        ws['B8'] = "품명"
+        ws['B8'] = "?�명"
         ws['C8'] = "규격"
-        ws['D8'] = "수량"
-        ws['E8'] = "단위"
-        ws['F8'] = "단가"
+        ws['D8'] = "?�량"
+        ws['E8'] = "?�위"
+        ws['F8'] = "?��?"
         ws['G8'] = "금액"
         ws['H8'] = "비고"
         style_range(ws, 'A8:H8', font=bold_font, fill=gray_fill)
@@ -255,7 +255,7 @@ async def export_estimate_excel(
             row_idx += 1
 
         ws.merge_cells(f'A{row_idx}:E{row_idx}')
-        ws[f'A{row_idx}'] = "합계"
+        ws[f'A{row_idx}'] = "?�계"
         ws[f'A{row_idx}'].font = bold_font
         ws[f'A{row_idx}'].fill = gray_fill
         ws[f'A{row_idx}'].alignment = center_align
@@ -268,7 +268,7 @@ async def export_estimate_excel(
         row_idx += 2
         ws.merge_cells(f'A{row_idx}:A{row_idx+1}')
         ws.merge_cells(f'B{row_idx}:H{row_idx+1}')
-        ws[f'A{row_idx}'] = "특기사항"
+        ws[f'A{row_idx}'] = "?�기?�항"
         ws[f'A{row_idx}'].font = bold_font
         ws[f'A{row_idx}'].fill = gray_fill
         ws[f'A{row_idx}'].alignment = center_align
@@ -455,7 +455,7 @@ async def create_order(
         )
         db.add(db_item)
     
-    # MRP 계산 및 부족분 기록
+    # MRP 계산 �?부족분 기록
     await calculate_and_record_mrp(db, db_order.id)
     
     await db.commit()
@@ -479,7 +479,7 @@ async def read_orders(
     skip: int = 0,
     limit: int = 100,
     partner_id: Optional[int] = None,
-    major_group_id: Optional[int] = None,
+    major_group_id: Optional[str] = None,
     status: Optional[str] = None,
     date_type: Optional[str] = "order",
     start_date: Optional[date] = None,
@@ -584,7 +584,7 @@ async def update_order(
                     if plan_check.scalar() > 0:
                         raise HTTPException(
                             status_code=400,
-                            detail=f"이미 진행 중인 생산 계획이 있는 품목의 규격(품목)이나 수량은 직접 수정할 수 없습니다."
+                            detail=f"?��? 진행 중인 ?�산 계획???�는 ?�목??규격(?�목)?�나 ?�량?� 직접 ?�정?????�습?�다."
                         )
 
                 db_item.product_id = item_in.product_id
@@ -608,7 +608,7 @@ async def update_order(
         # 3. Handle deletions for items not in the request
         for item_id, item in existing_items.items():
             if item_id not in kept_item_ids:
-                # 🚨 ERP Safeguard: Block deletion if delivery history or work logs exist
+                # ?�� ERP Safeguard: Block deletion if delivery history or work logs exist
                 
                 # Check Delivery History
                 hist_check = await db.execute(
@@ -618,7 +618,7 @@ async def update_order(
                 if hist_check.scalar() > 0:
                     raise HTTPException(
                         status_code=400, 
-                        detail=f"품목({item.product.name if item.product else item_id})은(는) 이미 납품 이력이 존재하여 삭제할 수 없습니다. 납품 내역을 먼저 취소해 주세요."
+                        detail=f"?�목({item.product.name if item.product else item_id})?�(?? ?��? ?�품 ?�력??존재?�여 ??��?????�습?�다. ?�품 ?�역??먼�? 취소??주세??"
                     )
                 
                 # Check Production Plan
@@ -631,7 +631,7 @@ async def update_order(
                 if plan_check.scalar() > 0:
                     raise HTTPException(
                         status_code=400, 
-                        detail=f"품목({item.product.name if item.product else item_id})은(는) 이미 진행 중인 생산 계획이 존재하여 삭제할 수 없습니다. 관련 생산 계획을 먼저 취소해 주세요."
+                        detail=f"?�목({item.product.name if item.product else item_id})?�(?? ?��? 진행 중인 ?�산 계획??존재?�여 ??��?????�습?�다. 관???�산 계획??먼�? 취소??주세??"
                     )
                 
                 await db.delete(item)
@@ -667,16 +667,16 @@ async def delete_order(
     # Bug 4 Safety Check: Block if already delivered or status is COMPLETED
     if db_order.status == OrderStatus.DELIVERY_COMPLETED or db_order.actual_delivery_date:
         if db_order.status != OrderStatus.PENDING:
-            raise HTTPException(status_code=400, detail="이미 납품이 완료된 수주 건은 삭제할 수 없습니다.")
+            raise HTTPException(status_code=400, detail="?��? ?�품???�료???�주 건�? ??��?????�습?�다.")
     
-    # Cascade delete 연관 데이터 (의존 관계 역순 및 명시적 삭제)
-    # 1. 연관된 생산 계획 ID들 가져오기
+    # Cascade delete ?��? ?�이??(?�존 관�???�� �?명시????��)
+    # 1. ?��????�산 계획 ID??가?�오�?
     plans_query = select(ProductionPlan.id).where(ProductionPlan.order_id == order_id)
     plans_result = await db.execute(plans_query)
     plan_ids = plans_result.scalars().all()
 
-    # [안전 장치] 이미 발주/외주가 진행된 연관 데이터가 있는지 확인 (PENDING 상태 제외)
-    # 1) 직결된 MRP(자재소요량) 기반 발주 확인
+    # [?�전 ?�치] ?��? 발주/?�주가 진행???��? ?�이?��? ?�는지 ?�인 (PENDING ?�태 ?�외)
+    # 1) 직결??MRP(?�재?�요?? 기반 발주 ?�인
     mrp_po_check = await db.execute(
         select(PurchaseOrder.id)
         .join(PurchaseOrderItem, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
@@ -685,16 +685,16 @@ async def delete_order(
         .where(PurchaseOrder.status != PurchaseStatus.PENDING)
     )
     if mrp_po_check.scalars().first():
-        raise HTTPException(status_code=400, detail="이미 자재 발주가 진행된 수주 건은 삭제할 수 없습니다.")
+        raise HTTPException(status_code=400, detail="?��? ?�재 발주가 진행???�주 건�? ??��?????�습?�다.")
 
     if plan_ids:
-        # 생산 계획에 엮인 공정 아이템들 식별
+        # ?�산 계획????�� 공정 ?�이?�들 ?�별
         items_query = select(ProductionPlanItem.id).where(ProductionPlanItem.plan_id.in_(plan_ids))
         items_res = await db.execute(items_query)
         item_ids = items_res.scalars().all()
 
         if item_ids:
-            # 2) 생산 계획 공차/부품 발주 확인
+            # 2) ?�산 계획 공차/부??발주 ?�인
             po_check = await db.execute(
                 select(PurchaseOrder.id)
                 .join(PurchaseOrderItem, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
@@ -702,9 +702,9 @@ async def delete_order(
                 .where(PurchaseOrder.status != PurchaseStatus.PENDING)
             )
             if po_check.scalars().first():
-                raise HTTPException(status_code=400, detail="이미 자재 발주가 진행된 수주 건은 삭제할 수 없습니다.")
+                raise HTTPException(status_code=400, detail="?��? ?�재 발주가 진행???�주 건�? ??��?????�습?�다.")
 
-            # 3) 외주 발주 확인
+            # 3) ?�주 발주 ?�인
             os_check = await db.execute(
                 select(OutsourcingOrder.id)
                 .join(OutsourcingOrderItem, OutsourcingOrderItem.outsourcing_order_id == OutsourcingOrder.id)
@@ -712,17 +712,17 @@ async def delete_order(
                 .where(OutsourcingOrder.status != OutsourcingStatus.PENDING)
             )
             if os_check.scalars().first():
-                raise HTTPException(status_code=400, detail="이미 외주 발주가 진행된 수주 건은 삭제할 수 없습니다.")
+                raise HTTPException(status_code=400, detail="?��? ?�주 발주가 진행???�주 건�? ??��?????�습?�다.")
 
 
     if plan_ids:
-        # 2. 연관된 생산 공정(Item) ID들 가져오기
+        # 2. ?��????�산 공정(Item) ID??가?�오�?
         items_query = select(ProductionPlanItem.id).where(ProductionPlanItem.plan_id.in_(plan_ids))
         items_result = await db.execute(items_query)
         item_ids = items_result.scalars().all()
 
         if item_ids:
-            # 3. 작업 지시 및 검사 결과 삭제
+            # 3. ?�업 지??�?검??결과 ??��
             wo_query = select(WorkOrder.id).where(WorkOrder.plan_item_id.in_(item_ids))
             wo_result = await db.execute(wo_query)
             wo_ids = wo_result.scalars().all()
@@ -731,32 +731,32 @@ async def delete_order(
                 await db.execute(delete(InspectionResult).where(InspectionResult.work_order_id.in_(wo_ids)))
                 await db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
 
-            # 4. 발주 품목 삭제 (ProductionPlanItem 참조)
+            # 4. 발주 ?�목 ??�� (ProductionPlanItem 참조)
             await db.execute(delete(PurchaseOrderItem).where(PurchaseOrderItem.production_plan_item_id.in_(item_ids)))
             await db.execute(delete(OutsourcingOrderItem).where(OutsourcingOrderItem.production_plan_item_id.in_(item_ids)))
 
-            # 5. 불량 내역 삭제 (계획 아이템 기준)
+            # 5. 불량 ?�역 ??�� (계획 ?�이??기�?)
             await db.execute(delete(QualityDefect).where(QualityDefect.plan_item_id.in_(item_ids)))
             
-            # 6. 생산 공정 아이템 삭제
+            # 6. ?�산 공정 ?�이????��
             await db.execute(delete(ProductionPlanItem).where(ProductionPlanItem.id.in_(item_ids)))
         
-        # 7. 불량 내역 삭제 (계획 기준 - 아이템이 없는 경우 대비)
+        # 7. 불량 ?�역 ??�� (계획 기�? - ?�이?�이 ?�는 경우 ?��?
         await db.execute(delete(QualityDefect).where(QualityDefect.plan_id.in_(plan_ids)))
 
-        # 8. 생산 계획 삭제
+        # 8. ?�산 계획 ??��
         await db.execute(delete(ProductionPlan).where(ProductionPlan.id.in_(plan_ids)))
     
-    # 9. 불량 내역 삭제 (수주 기준 직접 링크된 것들)
+    # 9. 불량 ?�역 ??�� (?�주 기�? 직접 링크??것들)
     await db.execute(delete(QualityDefect).where(QualityDefect.order_id == order_id))
     
-    # 10. 수주 품목 삭제
+    # 10. ?�주 ?�목 ??��
     await db.execute(delete(SalesOrderItem).where(SalesOrderItem.order_id == order_id))
     
     # Bug 4 Fix: Explicitly delete MaterialRequirement for this Order
     await db.execute(delete(MaterialRequirement).where(MaterialRequirement.order_id == order_id))
         
-    # 11. 수주 헤더 삭제
+    # 11. ?�주 ?�더 ??��
     await db.delete(db_order)
     await db.commit()
     return None
@@ -859,10 +859,10 @@ async def create_delivery(
     db: AsyncSession = Depends(deps.get_db)
 ):
     """
-    부분 납품 처리:
-    1. SalesOrderItem의 delivered_quantity 업데이트
-    2. SalesOrder 상태를 PARTIALLY_DELIVERED 또는 DELIVERED로 변경
-    3. DeliveryHistory 및 품목 생성
+    부�??�품 처리:
+    1. SalesOrderItem??delivered_quantity ?�데?�트
+    2. SalesOrder ?�태�?PARTIALLY_DELIVERED ?�는 DELIVERED�?변�?
+    3. DeliveryHistory �??�목 ?�성
     """
     order_query = select(SalesOrder).options(selectinload(SalesOrder.items)).where(SalesOrder.id == order_id)
     order_res = await db.execute(order_query)
@@ -940,7 +940,7 @@ async def create_delivery(
     else:
         db_order.status = OrderStatus.PARTIALLY_DELIVERED
 
-    # [Fix] 납품 완료 시 연관 생산계획 자동 완료 처리
+    # [Fix] ?�품 ?�료 ???��? ?�산계획 ?�동 ?�료 처리
     try:
         if all_completed:
             plans_res = await db.execute(
@@ -1020,7 +1020,7 @@ async def attach_delivery_statement(
     db: AsyncSession = Depends(deps.get_db)
 ):
     """
-    거래명세서 PDF를 납품 이력에 첨부파일로 저장
+    거래명세??PDF�??�품 ?�력??첨�??�일�??�??
     """
     query = select(DeliveryHistory).where(DeliveryHistory.id == delivery_id)
     res = await db.execute(query)
@@ -1061,9 +1061,9 @@ async def batch_complete_order(
     db: AsyncSession = Depends(deps.get_db)
 ):
     """
-    납품 완결 시 후방 공정(생산계획, 발주) 일괄 완료 처리
+    ?�품 ?�결 ???�방 공정(?�산계획, 발주) ?�괄 ?�료 처리
     """
-    # 1. 생산 계획 COMPLETED
+    # 1. ?�산 계획 COMPLETED
     plans_query = select(ProductionPlan).where(ProductionPlan.order_id == order_id)
     plans_res = await db.execute(plans_query)
     plans = plans_res.scalars().all()
@@ -1073,7 +1073,7 @@ async def batch_complete_order(
         plan.status = "COMPLETED"
         db.add(plan)
 
-    # 2. 관련 생산 공정(ProductionPlanItem) COMPLETED
+    # 2. 관???�산 공정(ProductionPlanItem) COMPLETED
     if plan_ids:
         items_query = select(ProductionPlanItem).where(ProductionPlanItem.plan_id.in_(plan_ids))
         items_res = await db.execute(items_query)
@@ -1083,8 +1083,8 @@ async def batch_complete_order(
             pi.status = "COMPLETED"
             db.add(pi)
 
-    # 3. 관련 자재 발주(PurchaseOrder) COMPLETED (PENDING/ORDERED 건)
-    # 직접 연결된 PO
+    # 3. 관???�재 발주(PurchaseOrder) COMPLETED (PENDING/ORDERED �?
+    # 직접 ?�결??PO
     po_query = select(PurchaseOrder).where(
         PurchaseOrder.order_id == order_id,
         PurchaseOrder.status.in_(["PENDING", "ORDERED", "PARTIAL"])
@@ -1094,7 +1094,7 @@ async def batch_complete_order(
         po.status = PurchaseStatus.COMPLETED
         db.add(po)
 
-    # 생산계획(PlanItem)을 통해 연결된 PO
+    # ?�산계획(PlanItem)???�해 ?�결??PO
     if plan_ids:
         sub_po_query = select(PurchaseOrder).join(PurchaseOrderItem).where(
             PurchaseOrderItem.production_plan_item_id.in_(plan_item_ids),
@@ -1105,7 +1105,7 @@ async def batch_complete_order(
             po.status = PurchaseStatus.COMPLETED
             db.add(po)
 
-    # 4. 관련 외주 발주(OutsourcingOrder) COMPLETED
+    # 4. 관???�주 발주(OutsourcingOrder) COMPLETED
     if plan_ids:
         os_query = select(OutsourcingOrder).join(OutsourcingOrderItem).where(
             OutsourcingOrderItem.production_plan_item_id.in_(plan_item_ids),
@@ -1132,12 +1132,12 @@ async def read_delivery_status(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     partner_name: Optional[str] = None,
-    major_group_id: Optional[int] = None,
+    major_group_id: Optional[str] = None,
     status: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db)
 ):
     """
-    납품 현황 조회를 위한 수주 목록 (배송 이력 포함)
+    ?�품 ?�황 조회�??�한 ?�주 목록 (배송 ?�력 ?�함)
     """
     query = select(SalesOrder).options(
         # partner (required by SalesOrder schema)
@@ -1170,9 +1170,9 @@ async def read_delivery_status(
     return result.scalars().unique().all()
 
 
-# ─────────────────────────────────────────────────────────────
-# 거래명세서 PDF 첨부 (납품 이력 → statement_json 업데이트)
-# ─────────────────────────────────────────────────────────────
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+# 거래명세??PDF 첨�? (?�품 ?�력 ??statement_json ?�데?�트)
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
 @router.post("/delivery-histories/{history_id}/attach-statement")
 async def attach_statement_to_delivery_history(
     history_id: int,
@@ -1180,7 +1180,7 @@ async def attach_statement_to_delivery_history(
     db: AsyncSession = Depends(deps.get_db),
     current_user=Depends(deps.get_current_user),
 ):
-    """거래명세서 PDF를 저장하고 해당 DeliveryHistory에 링크를 저장합니다."""
+    """거래명세??PDF�??�?�하�??�당 DeliveryHistory??링크�??�?�합?�다."""
     # 1. Fetch delivery history
     result = await db.execute(select(DeliveryHistory).where(DeliveryHistory.id == history_id))
     history = result.scalars().first()
@@ -1219,9 +1219,9 @@ async def attach_statement_to_delivery_history(
     return {"status": "ok", "pdf_url": file_url, "history_id": history_id}
 
 
-# ─────────────────────────────────────────────────────────────
-# 납품 이력 수정 (PUT)
-# ─────────────────────────────────────────────────────────────
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+# ?�품 ?�력 ?�정 (PUT)
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
 @router.put("/delivery-histories/{history_id}", response_model=schemas.DeliveryHistory)
 async def update_delivery_history(
     history_id: int,
@@ -1229,7 +1229,7 @@ async def update_delivery_history(
     db: AsyncSession = Depends(deps.get_db),
     current_user=Depends(deps.get_current_user),
 ):
-    """납품 이력 수정 API (수량 변경 시 수주 잔량 및 상태 동기화 포함)"""
+    """?�품 ?�력 ?�정 API (?�량 변�????�주 ?�량 �??�태 ?�기???�함)"""
     result = await db.execute(
         select(DeliveryHistory)
         .options(
@@ -1242,7 +1242,7 @@ async def update_delivery_history(
     if not history:
         raise HTTPException(status_code=404, detail="DeliveryHistory not found")
 
-    # 1) 기본 정보 수정
+    # 1) 기본 ?�보 ?�정
     if delivery_update.note is not None:
         history.note = delivery_update.note
     if delivery_update.delivery_date is not None:
@@ -1252,22 +1252,22 @@ async def update_delivery_history(
     if delivery_update.supplier_info is not None:
         history.supplier_info = delivery_update.supplier_info
 
-    # 2) 품목 수량 수정 및 수주 데이터 동기화
+    # 2) ?�목 ?�량 ?�정 �??�주 ?�이???�기??
     if delivery_update.items is not None:
         for item_in in delivery_update.items:
-            # 기존 납품 내역 아이템 찾기
+            # 기존 ?�품 ?�역 ?�이??찾기
             dh_item = next((it for it in history.items if it.order_item_id == item_in.order_item_id), None)
             if not dh_item:
-                continue # 혹은 새로 추가하는 로직이 필요할 수 있으나 여기선 수정만 처리
+                continue # ?��? ?�로 추�??�는 로직???�요?????�으???�기???�정�?처리
             
             old_qty = dh_item.quantity
             new_qty = item_in.quantity
             diff = new_qty - old_qty
             
             if diff != 0:
-                # 납품 이력 아이템 수량 업데이트
+                # ?�품 ?�력 ?�이???�량 ?�데?�트
                 dh_item.quantity = new_qty
-                # 수주 품목의 누적 납품 수량 업데이트
+                # ?�주 ?�목???�적 ?�품 ?�량 ?�데?�트
                 if dh_item.order_item:
                     dh_item.order_item.delivered_quantity = max(0, (dh_item.order_item.delivered_quantity or 0) + diff)
                     
@@ -1282,7 +1282,7 @@ async def update_delivery_history(
                         reference=history.delivery_no
                     )
 
-        # 3) 수주 상태 재계산
+        # 3) ?�주 ?�태 ?�계??
         order = history.order
         if order:
             total_qty = sum(it.quantity for it in order.items)
@@ -1312,16 +1312,16 @@ async def update_delivery_history(
     return result.scalars().first()
 
 
-# ─────────────────────────────────────────────────────────────
-# 납품 이력 삭제/취소 (DELETE) - 수주 잔량 복원 포함
-# ─────────────────────────────────────────────────────────────
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+# ?�품 ?�력 ??��/취소 (DELETE) - ?�주 ?�량 복원 ?�함
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
 @router.delete("/delivery-histories/{history_id}")
 async def delete_delivery_history(
     history_id: int,
     db: AsyncSession = Depends(deps.get_db),
     current_user=Depends(deps.get_current_user),
 ):
-    """납품 이력 삭제 API (삭제 시 수주 잔량 원복 포함)"""
+    """?�품 ?�력 ??�� API (??�� ???�주 ?�량 ?�복 ?�함)"""
     result = await db.execute(
         select(DeliveryHistory)
         .options(selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item))
@@ -1333,7 +1333,7 @@ async def delete_delivery_history(
 
     order_id = history.order_id
 
-    # 1) 납품된 수량을 수주 품목의 delivered_quantity에서 차감 (원복)
+    # 1) ?�품???�량???�주 ?�목??delivered_quantity?�서 차감 (?�복)
     for dh_item in history.items:
         order_item = dh_item.order_item
         if order_item:
@@ -1350,11 +1350,11 @@ async def delete_delivery_history(
                 reference=f"Delete DH ({history.delivery_no})"
             )
 
-    # 2) 납품 이력 삭제
+    # 2) ?�품 ?�력 ??��
     await db.delete(history)
     await db.flush()
 
-    # 3) 해당 수주의 상태 재계산
+    # 3) ?�당 ?�주???�태 ?�계??
     order_result = await db.execute(
         select(SalesOrder)
         .options(selectinload(SalesOrder.items))
@@ -1418,7 +1418,7 @@ async def fix_mismatched_plans_in_db(db: AsyncSession = Depends(deps.get_db)):
         """)
         await db.execute(query)
         await db.commit()
-        return {"status": "success", "message": "어긋난 생산계획 품목 및 수량 데이터가 수주 데이터에 맞춰 정상적으로 동기화되었습니다. 새로고침해 주세요."}
+        return {"status": "success", "message": "?�긋???�산계획 ?�목 �??�량 ?�이?��? ?�주 ?�이?�에 맞춰 ?�상?�으�??�기?�되?�습?�다. ?�로고침??주세??"}
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
