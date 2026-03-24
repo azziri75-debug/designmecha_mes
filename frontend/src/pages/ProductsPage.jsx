@@ -1263,7 +1263,13 @@ const ProductsPage = ({ type }) => {
                     fetchProcesses={fetchProcesses}
                     processes={processes}
                     onAddProcess={(initData) => {
-                        setProcessFormData(initData || {});
+                        // [Fix] Convert integer IDs to strings so <select> value comparison works correctly
+                        const formattedData = initData ? {
+                            ...initData,
+                            major_group_id: initData.major_group_id != null ? String(initData.major_group_id) : '',
+                            group_id: initData.group_id != null ? String(initData.group_id) : '',
+                        } : {};
+                        setProcessFormData(formattedData);
                         setShowProcessModal(true);
                     }}
                     onEditProcess={(process) => {

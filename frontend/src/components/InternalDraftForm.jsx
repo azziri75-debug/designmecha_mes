@@ -12,7 +12,8 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }];
 
     // --- Column Resizing Logic ---
-    const initialWidths = [40, 200, 100, 60, 60, 100, 120, 200];
+    // Initial widths reduced so total fits within A4 container (~790px usable width)
+    const initialWidths = [35, 150, 80, 50, 50, 80, 100, 170];
     const [colWidths, setColWidths] = useState(data.colWidths || initialWidths);
     const resizingRef = useRef({ index: -1, startX: 0, startWidth: 0 });
 
@@ -222,6 +223,8 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             ) : (
                 <Box sx={{ flex: 1 }}>
                     <Typography sx={{ mb: 1, fontWeight: 'bold', fontSize: '14px' }}>[지급 내역]</Typography>
+                    {/* [Fix] Wrap table in overflow-x:hidden container to prevent page overflow */}
+                    <div style={{ width: '100%', overflowX: 'auto' }}>
                     <Table size="small" className="resizable-table" sx={{ mb: 1, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center', height: 'auto !important', position: 'relative', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>
                         <colgroup>
                             {colWidths.map((w, i) => (
@@ -272,6 +275,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                             </TableRow>
                         </TableBody>
                     </Table>
+                    </div>
                     {!isReadOnly && (
                         <Box className="idf-no-print" sx={{ mb: 2 }}>
                             <Button size="small" startIcon={<Plus size={14} />} onClick={addItem}>항목 추가</Button>
