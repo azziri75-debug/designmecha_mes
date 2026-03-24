@@ -16,6 +16,7 @@ const CustomerComplaintPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
     const [groups, setGroups] = useState([]);
+    const [tab, setTab] = useState('RECEIVED');
     const [columnWidths, setColumnWidths] = useState({
         date: 120,
         partner: 150,
