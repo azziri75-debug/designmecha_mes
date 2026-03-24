@@ -17,6 +17,7 @@ const CustomerComplaintPage = () => {
     const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
     const [groups, setGroups] = useState([]);
     const [tab, setTab] = useState('RECEIVED');
+    const [tab, setTab] = useState('RECEIVED');
     const [columnWidths, setColumnWidths] = useState({
         date: 120,
         partner: 150,
