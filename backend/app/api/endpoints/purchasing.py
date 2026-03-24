@@ -458,12 +458,6 @@ async def read_pending_outsourcing_items(
                      .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
                      .distinct()
         
-    if major_group_id:
-        from app.models.product import ProductGroup
-        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
-                     .distinct()
-        
     result = await db.execute(query)
     items = result.scalars().all()
 
