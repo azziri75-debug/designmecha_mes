@@ -51,7 +51,7 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
         plan_item.status = ProductionStatus.IN_PROGRESS
     # Do not revert to PLANNED here as it might be 'ORDERED' or manually set.
     # But if the user wants it to be 'PLANNED' if 0, we can add that.
-    # The requirement says "if 0 then ?湲?PLANNED) OR if there is quantity then 吏꾪뻾以?IN_PROGRESS)".
+    # The requirement says "if 0 then 대기(PLANNED) OR if there is quantity then 진행중(IN_PROGRESS)".
     elif total_good == 0 and plan_item.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.COMPLETED]:
          # Only revert if it was automatically moved to progress/completed
          plan_item.status = ProductionStatus.PLANNED
@@ -64,7 +64,7 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
 
 async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
     """
-    紐⑤뱺 怨듭젙???꾨즺?섏뿀?붿? ?뺤씤?섍퀬, 洹몃젃?ㅻ㈃ ?앹궛 怨꾪쉷???꾨즺 泥섎━?⑸땲??
+    모든 공정이 완료되었는지 확인하고, 그렇다면 생산 계획을 완료 처리합니다.
     """
     from sqlalchemy.orm import selectinload
     result = await db.execute(
@@ -112,7 +112,7 @@ async def read_production_plans(
     partner_id: Optional[int] = None,
     product_name: Optional[str] = None,
     customer_id: Optional[int] = None,
-    major_group_id: Optional[str] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ):
     """
@@ -476,7 +476,7 @@ async def create_production_plan(
             item.completed_quantity = calculate_completed_quantity(item)
         return plan
     except MultipleResultsFound:
-        raise HTTPException(status_code=400, detail="?곗씠??以묐났 ?ㅻ쪟: ?숈씪 ?덈ぉ??????щ윭 媛쒖쓽 ?섏＜ ?먮뒗 留덉뒪???곗씠?곌? 諛쒓껄?섏뿀?듬땲?? 愿由ъ옄?먭쾶 臾몄쓽?섏꽭??")
+        raise HTTPException(status_code=400, detail="데이터 중복 오류: 동일 품목에 대해 여러 개의 수주 또는 마스터 데이터가 발견되었습니다. 관리자에게 문의하세요.")
 
 def calculate_completed_quantity(item: ProductionPlanItem) -> int:
     """
@@ -648,7 +648,7 @@ async def export_production_plan_excel(
     # 3. Create Workbook
     wb = Workbook()
     ws = wb.active
-    ws.title = "?앹궛愿由ъ떆??
+    ws.title = "생산관리시트"
 
     # Define Styles
     header_font = Font(name='Malgun Gothic', size=14, bold=True)
@@ -681,20 +681,20 @@ async def export_production_plan_excel(
 
     ws.merge_cells('A1:J2')
     title_cell = ws['A1']
-    title_cell.value = "?앹궛愿由ъ떆??
+    title_cell.value = "생산관리시트"
     title_cell.font = header_font
     title_cell.alignment = center_align
 
     ws.merge_cells('B4:E4')
     ws.merge_cells('G4:J4')
-    ws['A4'] = "怨좉컼"
+    ws['A4'] = "고객"
     ws['B4'] = order.partner.name if order and order.partner else "-"
-    ws['F4'] = "?섏＜??
+    ws['F4'] = "수주일"
     ws['G4'] = str(order.order_date) if order and order.order_date else "-"
     
     ws.merge_cells('B5:E5')
     ws.merge_cells('G5:J5')
-    ws['A5'] = "?덈챸"
+    ws['A5'] = "품명"
     unique_products = []
     seen = set()
     for item in plan.items:
@@ -706,17 +706,17 @@ async def export_production_plan_excel(
     if unique_products:
         summary_prod_name = unique_products[0]["product"].name
         if len(unique_products) > 1:
-            summary_prod_name += f" ??{len(unique_products) - 1}嫄?
+            summary_prod_name += f" 외 {len(unique_products) - 1}건"
             
     ws['B5'] = summary_prod_name
-    ws['F5'] = "?붽뎄?⑷린??
+    ws['F5'] = "요구납기일"
     ws['G5'] = str(order.delivery_date) if order and order.delivery_date else "-"
 
     ws.merge_cells('B6:E6')
     ws.merge_cells('G6:J6')
-    ws['A6'] = "?섏＜湲덉븸"
+    ws['A6'] = "수주금액"
     ws['B6'] = metadata.get('order_amount', str(order.total_amount) if order else "-")
-    ws['F6'] = "?섏＜?대떦??
+    ws['F6'] = "수주담당자"
     ws['G6'] = metadata.get('manager', "-")
 
     style_range(ws, 'A4:A6', font=bold_font, fill=gray_fill)
@@ -729,10 +729,10 @@ async def export_production_plan_excel(
     ws.merge_cells(f'G{start_row}:H{start_row}')
     ws.merge_cells(f'I{start_row}:J{start_row}')
     
-    ws[f'A{start_row}'] = "?덈챸"
-    ws[f'D{start_row}'] = "洹쒓꺽"
-    ws[f'G{start_row}'] = "?ъ쭏"
-    ws[f'I{start_row}'] = "?섎웾"
+    ws[f'A{start_row}'] = "품명"
+    ws[f'D{start_row}'] = "규격"
+    ws[f'G{start_row}'] = "재질"
+    ws[f'I{start_row}'] = "수량"
     style_range(ws, f'A{start_row}:J{start_row}', font=bold_font, fill=gray_fill)
 
     curr_row = start_row + 1
@@ -768,7 +768,7 @@ async def export_production_plan_excel(
     style_range(ws, f'B{memo_row}:J{memo_row+1}', alignment=left_align)
 
     proc_start_row = memo_row + 3
-    headers = ["援щ텇", "?쒕쾲", "怨듭젙", "怨듭젙?댁슜", "?낆껜", "?덈챸", "洹쒓꺽", "?섎웾", "?쒖옉", "醫낅즺"]
+    headers = ["구분", "순번", "공정", "공정내용", "업체", "품명", "규격", "수량", "시작", "종료"]
     for i, h in enumerate(headers):
         cell = ws.cell(row=proc_start_row, column=i+1, value=h)
         cell.font = bold_font
@@ -779,9 +779,9 @@ async def export_production_plan_excel(
     proc_row = proc_start_row + 1
     def get_type_label(ctype):
         if not ctype: return "-"
-        if "INTERNAL" in ctype or "?먭?" in ctype: return "?먭?"
-        if "OUTSOURCING" in ctype or "?몄＜" in ctype: return "?몄＜"
-        if "PURCHASE" in ctype or "援щℓ" in ctype: return "援щℓ"
+        if "INTERNAL" in ctype or "자가" in ctype: return "자가"
+        if "OUTSOURCING" in ctype or "외주" in ctype: return "외주"
+        if "PURCHASE" in ctype or "구매" in ctype: return "구매"
         return ctype
         
     for idx, item in enumerate(plan.items):
@@ -882,7 +882,7 @@ async def delete_production_plan(
     from app.models.inventory import Stock, TransactionType
     from app.api.utils.inventory import handle_stock_movement, handle_backflush
 
-    # 1-1. ?ш퀬 濡ㅻ갚 泥섎━ (??젣 ???ㅽ뻾)
+    # 1-1. 재고 롤백 처리 (삭제 전 실행)
     if plan.status == ProductionStatus.COMPLETED:
         if plan.stock_production:
             sp = plan.stock_production
@@ -894,7 +894,7 @@ async def delete_production_plan(
                 await handle_backflush(db, item.product_id, -item.quantity, f"Delete Rollback ({plan.order.order_no})")
 
     elif plan.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
-        # ?앹궛 以??섎웾 李④컧
+        # 생산 중 수량 차감
         if plan.stock_production:
             sp = plan.stock_production
             stock = (await db.execute(select(Stock).where(Stock.product_id == sp.product_id))).scalars().first()
@@ -942,19 +942,19 @@ async def delete_production_plan(
         )
         all_oo_items.extend(oo_via_pi.scalars().all())
 
-    # ?슚 ERP Safeguard: Check for COMPLETED status
+    # 🚨 ERP Safeguard: Check for COMPLETED status
     for p_item in all_po_items:
         if p_item.purchase_order and p_item.purchase_order.status == PurchaseStatus.COMPLETED:
             raise HTTPException(
                 status_code=400, 
-                detail="?대? ?낃퀬 ?꾨즺???먯옱媛 ?덉뼱 ?앹궛怨꾪쉷????젣?????놁뒿?덈떎. ?낃퀬瑜?癒쇱? 痍⑥냼??二쇱꽭??"
+                detail="이미 입고 완료된 자재가 있어 생산계획을 삭제할 수 없습니다. 입고를 먼저 취소해 주세요."
             )
     
     for o_item in all_oo_items:
         if o_item.outsourcing_order and o_item.outsourcing_order.status == OutsourcingStatus.COMPLETED:
             raise HTTPException(
                 status_code=400, 
-                detail="?대? ?낃퀬 ?꾨즺???몄＜ 嫄댁씠 ?덉뼱 ?앹궛怨꾪쉷????젣?????놁뒿?덈떎. ?낃퀬瑜?癒쇱? 痍⑥냼??二쇱꽭??"
+                detail="이미 입고 완료된 외주 건이 있어 생산계획을 삭제할 수 없습니다. 입고를 먼저 취소해 주세요."
             )
 
     # 3. Cascading Deletion
@@ -1120,7 +1120,7 @@ async def update_production_plan_status(
             # --- Stock Movement & Backflush Hook ---
             if plan.stock_production:
                 sp = plan.stock_production
-                # 1. ?꾩젣???낃퀬 泥섎━
+                # 1. 완제품 입고 처리
                 await handle_stock_movement(
                     db=db,
                     product_id=sp.product_id,
@@ -1128,7 +1128,7 @@ async def update_production_plan_status(
                     transaction_type=TransactionType.IN,
                     reference=sp.production_no
                 )
-                # 2. ?섏쐞 遺??Backflush (異쒓퀬) 泥섎━
+                # 2. 하위 부품 Backflush (출고) 처리
                 await handle_backflush(
                     db=db,
                     parent_product_id=sp.product_id,
@@ -1136,7 +1136,7 @@ async def update_production_plan_status(
                     reference=sp.production_no
                 )
 
-                # 3. ?앹궛 以??섎웾 李④컧
+                # 3. 생산 중 수량 차감
                 stock_query = select(Stock).where(Stock.product_id == sp.product_id)
                 s_res = await db.execute(stock_query)
                 stock = s_res.scalars().first()
@@ -1149,7 +1149,7 @@ async def update_production_plan_status(
                 
             elif plan.order:
                 for item in plan.order.items:
-                    # 1. ?꾩젣???낃퀬 泥섎━
+                    # 1. 완제품 입고 처리
                     await handle_stock_movement(
                         db=db,
                         product_id=item.product_id,
@@ -1157,7 +1157,7 @@ async def update_production_plan_status(
                         transaction_type=TransactionType.IN,
                         reference=plan.order.order_no
                     )
-                    # 2. ?섏쐞 遺??Backflush (異쒓퀬) 泥섎━
+                    # 2. 하위 부품 Backflush (출고) 처리
                     await handle_backflush(
                         db=db,
                         parent_product_id=item.product_id,
@@ -1165,7 +1165,7 @@ async def update_production_plan_status(
                         reference=plan.order.order_no
                     )
 
-                    # 3. ?앹궛 以??섎웾 李④컧
+                    # 3. 생산 중 수량 차감
                     stock_query = select(Stock).where(Stock.product_id == item.product_id)
                     s_res = await db.execute(stock_query)
                     stock = s_res.scalars().first()
@@ -1181,7 +1181,7 @@ async def update_production_plan_status(
             # 1. Rollback Stocks
             if plan.stock_production:
                 sp = plan.stock_production
-                # 1-1. ?꾩젣???낃퀬 痍⑥냼 (李④컧)
+                # 1-1. 완제품 입고 취소 (차감)
                 await handle_stock_movement(
                     db=db,
                     product_id=sp.product_id,
@@ -1189,14 +1189,14 @@ async def update_production_plan_status(
                     transaction_type=TransactionType.OUT,
                     reference=f"Rollback ({sp.production_no})"
                 )
-                # 1-2. ?섏쐞 遺??Backflush 痍⑥냼 (?먮났)
+                # 1-2. 하위 부품 Backflush 취소 (원복)
                 await handle_backflush(
                     db=db,
                     parent_product_id=sp.product_id,
                     produced_quantity=-sp.quantity,
                     reference=f"Rollback ({sp.production_no})"
                 )
-                # 1-3. ?앹궛 以??섎웾 蹂듭썝 (吏꾪뻾 以묒씤 ?곹깭濡?媛??寃쎌슦?먮쭔 ?ㅼ떆 ?앹궛 以묒쑝濡??≪쓬)
+                # 1-3. 생산 중 수량 복원 (진행 중인 상태로 가는 경우에만 다시 생산 중으로 잡음)
                 if status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
                     stock_query = select(Stock).where(Stock.product_id == sp.product_id)
                     s_res = await db.execute(stock_query)
@@ -1213,7 +1213,7 @@ async def update_production_plan_status(
                 
             elif plan.order:
                 for item in plan.order.items:
-                    # 1-1. ?꾩젣???낃퀬 痍⑥냼 (李④컧)
+                    # 1-1. 완제품 입고 취소 (차감)
                     await handle_stock_movement(
                         db=db,
                         product_id=item.product_id,
@@ -1221,14 +1221,14 @@ async def update_production_plan_status(
                         transaction_type=TransactionType.OUT,
                         reference=f"Rollback ({plan.order.order_no})"
                     )
-                    # 1-2. ?섏쐞 遺??Backflush 痍⑥냼 (?먮났)
+                    # 1-2. 하위 부품 Backflush 취소 (원복)
                     await handle_backflush(
                         db=db,
                         parent_product_id=item.product_id,
                         produced_quantity=-item.quantity,
                         reference=f"Rollback ({plan.order.order_no})"
                     )
-                    # 1-3. ?앹궛 以??섎웾 蹂듭썝
+                    # 1-3. 생산 중 수량 복원
                     if status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
                         stock_query = select(Stock).where(Stock.product_id == item.product_id)
                         s_res = await db.execute(stock_query)
@@ -1246,7 +1246,7 @@ async def update_production_plan_status(
             for item in plan.items:
                 for po_item in item.purchase_items:
                     # Revert received quantity? 
-                    # (User said "?湲??곹깭濡?蹂寃?, which usually means received_quantity = 0 or status = PENDING)
+                    # (User said "대기 상태로 변경", which usually means received_quantity = 0 or status = PENDING)
                     po_item.received_quantity = 0
                     db.add(po_item)
                     affected_po_ids.add(po_item.purchase_order_id)
@@ -1301,7 +1301,7 @@ async def update_production_plan_status(
         )
         return result.scalars().first()
     except MultipleResultsFound:
-        raise HTTPException(status_code=400, detail="?곗씠??以묐났 ?ㅻ쪟: ?숈씪 ?덈ぉ??????щ윭 媛쒖쓽 ?ш퀬 ?덉퐫?쒓? 諛쒓껄?섏뿀?듬땲?? 愿由ъ옄?먭쾶 臾몄쓽?섏꽭??")
+        raise HTTPException(status_code=400, detail="데이터 중복 오류: 동일 품목에 대해 여러 개의 재고 레코드가 발견되었습니다. 관리자에게 문의하세요.")
 
 @router.patch("/plan-items/{item_id}", response_model=schemas.ProductionPlanItem)
 async def update_production_plan_item(
@@ -1392,7 +1392,7 @@ async def update_production_plan_item(
 async def read_work_logs(
     skip: int = 0,
     limit: int = 1000,
-    major_group_id: Optional[str] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
@@ -1401,7 +1401,7 @@ async def read_work_logs(
     """
     stmt = select(WorkLog)
     
-    # ?쇰컲 ?ъ슜?먯쓽 寃쎌슦 蹂몄씤???묒꽦??worker_id)???쇱?留?議고쉶 媛??
+    # 일반 사용자의 경우 본인이 작성자(worker_id)인 일지만 조회 가능
     if current_user.user_type != "ADMIN":
         stmt = stmt.where(WorkLog.worker_id == current_user.id)
         
@@ -1460,7 +1460,7 @@ async def create_work_log(
     existing_log = result.scalars().first()
 
     if existing_log and log_in.mode == "CREATE":
-        raise HTTPException(status_code=409, detail="?대떦 ?좎쭨???대? ?깅줉???묒뾽?쇱?媛 ?덉뒿?덈떎.")
+        raise HTTPException(status_code=409, detail="해당 날짜에 이미 등록된 작업일지가 있습니다.")
 
     if existing_log and log_in.mode == "REPLACE":
         await db.delete(existing_log)
@@ -1524,7 +1524,7 @@ async def create_work_log(
         
         # --- Stock Movement & Backflush Hook ---
         if item_in.good_quantity > 0 and plan_item:
-            # 1. ?꾩젣??怨듭젙???낃퀬 泥섎━
+            # 1. 완제품/공정품 입고 처리
             await handle_stock_movement(
                 db=db,
                 product_id=plan_item.product_id,
@@ -1532,7 +1532,7 @@ async def create_work_log(
                 transaction_type=TransactionType.IN,
                 reference=f"WorkLog (Item {log_item.id})"
             )
-            # 2. ?섏쐞 遺??Backflush 泥섎━
+            # 2. 하위 부품 Backflush 처리
             await handle_backflush(
                 db=db,
                 parent_product_id=plan_item.product_id,
@@ -1601,7 +1601,7 @@ async def update_work_log(
                 # Load plan item to get product_id
                 plan_item = await db.get(ProductionPlanItem, old_item.plan_item_id)
                 if plan_item:
-                    # ?꾩젣???낃퀬 痍⑥냼 (異쒓퀬 泥섎━)
+                    # 완제품 입고 취소 (출고 처리)
                     await handle_stock_movement(
                         db=db,
                         product_id=plan_item.product_id,
@@ -1609,7 +1609,7 @@ async def update_work_log(
                         transaction_type=TransactionType.ADJUSTMENT,
                         reference=f"WorkLog Update (Reverse Item {old_item.id})"
                     )
-                    # ?섏쐞 遺??Backflush 痍⑥냼 (?낃퀬 泥섎━)
+                    # 하위 부품 Backflush 취소 (입고 처리)
                     await handle_backflush(
                         db=db,
                         parent_product_id=plan_item.product_id,
@@ -1733,7 +1733,7 @@ async def get_worker_performance(
     start_date: Union[date, None] = None,
     end_date: Union[date, None] = None,
     worker_id: Optional[int] = None,
-    major_group_id: Optional[str] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
@@ -1778,7 +1778,7 @@ async def get_worker_performance(
         stmt = stmt.join(ProductGroup, Product.group_id == ProductGroup.id)\
                    .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         
-    # ?쇰컲 ?ъ슜?먯쓽 寃쎌슦 蹂몄씤 ?곗씠?곕쭔 議고쉶
+    # 일반 사용자의 경우 본인 데이터만 조회
     if current_user.user_type != "ADMIN":
         stmt = stmt.where(Staff.id == current_user.id)
         
@@ -1823,7 +1823,7 @@ async def get_performance_details(
     if end_date:
         stmt = stmt.where(WorkLog.work_date <= end_date)
         
-    # ?쇰컲 ?ъ슜?먯쓽 寃쎌슦 蹂몄씤 ?곗씠?곕쭔 議고쉶
+    # 일반 사용자의 경우 본인 데이터만 조회
     if current_user.user_type != "ADMIN":
         stmt = stmt.where(WorkLogItem.worker_id == current_user.id)
         

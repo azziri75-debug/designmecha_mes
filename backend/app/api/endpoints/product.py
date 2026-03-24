@@ -94,7 +94,7 @@ async def create_process(
 async def read_processes(
     skip: int = 0,
     limit: int = 2000,  # [Fix] Increased from 100 to 2000 to avoid missing newly added processes
-    major_group_id: Optional[str] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """
@@ -120,14 +120,14 @@ async def quick_create_process(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    ?꾨줎?몄뿏???쒗뭹 ?섏젙 ?붾㈃?먯꽌 利됱떆 ??怨듭젙???깅줉?섍린 ?꾪븳 API
+    프론트엔드 제품 수정 화면에서 즉시 새 공정을 등록하기 위한 API
     """
     new_process = Process(
         name=process_in.name,
         course_type=process_in.course_type,
         group_id=process_in.group_id,
-        # major_group_id??ProductGroup ?뚯씠釉붿뿉??蹂꾨룄 ?꾨뱶媛 ?덉쑝??Process ?뚯씠釉붿뿉??group_id(?뚭렇猷?留??곌껐?섏뼱 ?덉뼱
-        # ?꾩슂??Process 紐⑤뜽???뺤씤?댁빞 ?섏?留??꾩옱 ?ㅽ궎留덉긽 group_id(minor)留?諛쏆쓬.
+        # major_group_id는 ProductGroup 테이블에는 별도 필드가 있으나 Process 테이블에는 group_id(소그룹)만 연결되어 있어
+        # 필요시 Process 모델을 확인해야 하지만 현재 스키마상 group_id(minor)만 받음.
     )
     db.add(new_process)
     await db.commit()
@@ -148,7 +148,7 @@ async def create_product(
 
     # Auto-initialize Stock with 0 quantity
     from app.models.inventory import Stock
-    new_stock = Stock(product_id=new_product.id, current_quantity=0, location="湲곕낯李쎄퀬")
+    new_stock = Stock(product_id=new_product.id, current_quantity=0, location="기본창고")
     db.add(new_stock)
 
     # 2. Add Standard Processes (Routing)
@@ -189,7 +189,7 @@ async def read_products(
     item_type: Optional[str] = None,
     partner_id: Optional[int] = None,
     group_id: Optional[int] = None,
-    major_group_id: Optional[str] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """
@@ -211,7 +211,7 @@ async def read_products(
         query = query.where(Product.partner_id == partner_id)
     
     if item_type:
-        # 吏?먰븯??寃쎌슦 肄ㅻ쭏濡?援щ텇???щ윭 ??낆쓣 諛쏆쓣 ???덈룄濡?泥섎━
+        # 지원하는 경우 콤마로 구분된 여러 타입을 받을 수 있도록 처리
         if "," in item_type:
             types = [t.strip() for t in item_type.split(",")]
             query = query.where(Product.item_type.in_(types))
@@ -389,7 +389,7 @@ async def get_product_purchase_history(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    ?뱀젙 ?쒗뭹??怨쇨굅 援щℓ(諛쒖＜) ?댁뿭 議고쉶
+    특정 제품의 과거 구매(발주) 내역 조회
     """
     stmt = select(PurchaseOrderItem, PurchaseOrder, Partner)\
         .select_from(PurchaseOrderItem)\
@@ -419,7 +419,7 @@ async def get_product_price_history(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    ?뱀젙 ?쒗뭹??怨쇨굅 寃ъ쟻 諛??섏＜ ?댁뿭 ?듯빀 議고쉶
+    특정 제품의 과거 견적 및 수주 내역 통합 조회
     """
     history = []
 
@@ -472,7 +472,7 @@ async def get_process_cost_history(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    ?뱀젙 ?쒗뭹-怨듭젙 議고빀???먭? ?대젰 (援щℓ/?몄＜) 議고쉶
+    특정 제품-공정 조합의 원가 이력 (구매/외주) 조회
     """
     # Check process type
     proc_stmt = select(Process).where(Process.id == process_id)
@@ -484,7 +484,7 @@ async def get_process_cost_history(
     history = []
     
     if process.course_type == "PURCHASE":
-        # ?먯옱 援щℓ ?댁뿭
+        # 자재 구매 내역
         stmt = select(PurchaseOrderItem, PurchaseOrder, Partner)\
             .select_from(PurchaseOrderItem)\
             .join(PurchaseOrder)\
@@ -500,7 +500,7 @@ async def get_process_cost_history(
                 source="PURCHASE"
             ))
     elif process.course_type == "OUTSOURCING":
-        # ?몄＜ 諛쒖＜ ?댁뿭
+        # 외주 발주 내역
         stmt = select(OutsourcingOrderItem, OutsourcingOrder, Partner)\
             .select_from(OutsourcingOrderItem)\
             .join(OutsourcingOrder)\
@@ -527,7 +527,7 @@ async def get_latest_process_cost(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    媛??理쒓렐???ㅺ굅?섍? 議고쉶
+    가장 최근의 실거래가 조회
     """
     history = await get_process_cost_history(product_id, process_id, db)
     if not history:
@@ -543,7 +543,7 @@ async def get_bom(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    ?뱀젙 ?쒗뭹??BOM(?섏쐞 遺??紐⑸줉) 議고쉶
+    특정 제품의 BOM(하위 부품 목록) 조회
     """
     result = await db.execute(
         select(BOM)
@@ -561,17 +561,17 @@ async def update_bom(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    ?뱀젙 ?쒗뭹??BOM ?꾩껜 援먯껜 (???踰꾪듉)
+    특정 제품의 BOM 전체 교체 (저장 버튼)
     """
     try:
-        # 湲곗〈 BOM ?꾩껜 ??젣
+        # 기존 BOM 전체 삭제
         await db.execute(delete(BOM).where(BOM.parent_product_id == product_id))
 
-        # ??BOM ??ぉ ?쇨큵 ?낅젰
+        # 새 BOM 항목 일괄 입력
         new_items = []
         for item in items:
             if item.child_product_id == product_id:
-                raise HTTPException(status_code=400, detail="?먭린 ?먯떊??BOM ?섏쐞 ?덈ぉ?쇰줈 ?ㅼ젙?????놁뒿?덈떎.")
+                raise HTTPException(status_code=400, detail="자기 자신을 BOM 하위 품목으로 설정할 수 없습니다.")
             bom_row = BOM(
                 parent_product_id=product_id,
                 child_product_id=item.child_product_id,
@@ -594,7 +594,7 @@ async def update_bom(
         raise
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"BOM ????ㅽ뙣: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"BOM 저장 실패: {str(e)}")
 
 
 @router.delete("/products/{product_id}/bom/{bom_id}")
@@ -604,20 +604,20 @@ async def delete_bom_item(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    BOM ?⑥씪 ??ぉ ??젣
+    BOM 단일 항목 삭제
     """
     result = await db.execute(
         select(BOM).where(BOM.id == bom_id, BOM.parent_product_id == product_id)
     )
     bom_item = result.scalar_one_or_none()
     if not bom_item:
-        raise HTTPException(status_code=404, detail="BOM ??ぉ??李얠쓣 ???놁뒿?덈떎.")
+        raise HTTPException(status_code=404, detail="BOM 항목을 찾을 수 없습니다.")
 
     try:
         await db.delete(bom_item)
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"BOM ??젣 ?ㅽ뙣: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"BOM 삭제 실패: {str(e)}")
 
     return {"message": "BOM item deleted successfully"}
