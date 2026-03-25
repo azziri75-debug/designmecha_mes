@@ -135,6 +135,12 @@ const Dashboard = () => {
         rejected_count: 0,
         waiting_for_me_count: 0
     });
+    const [dashboardStats, setDashboardStats] = useState({
+        total_order_amount: 0,
+        month_order_amount: 0,
+        total_sales_amount: 0,
+        month_sales_amount: 0
+    });
 
     // Grouping States
     const [groups, setGroups] = useState([]);
@@ -163,10 +169,11 @@ const Dashboard = () => {
                     api.get('/inventory/productions'),
                     api.get('/quality/defects/'),
                     api.get('/product/groups/'),
-                    api.get('/approval/stats')
+                    api.get('/approval/stats'),
+                    api.get('/dashboard/stats')
                 ]);
 
-                const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes, gRes, appRes] = results;
+                const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes, gRes, appRes, dshRes] = results;
 
                 if (ordRes.status === 'fulfilled') setOrders(ordRes.value.data);
                 if (planRes.status === 'fulfilled') setPlans(planRes.value.data);
@@ -181,6 +188,7 @@ const Dashboard = () => {
                 if (defRes.status === 'fulfilled') setDefects(defRes.value.data);
                 if (gRes && gRes.status === 'fulfilled') setGroups(gRes.value.data || []);
                 if (appRes && appRes.status === 'fulfilled') setApprovalStats(appRes.value.data);
+                if (dshRes && dshRes.status === 'fulfilled') setDashboardStats(dshRes.value.data);
             } catch (e) { console.error(e); }
             setLoading(false);
         };
@@ -219,8 +227,22 @@ const Dashboard = () => {
 
         // Orders
         const monthOrders = fOrders.filter(o => o.order_date?.startsWith(thisMonth));
-        const totalRevenue = fOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
-        const monthRevenue = monthOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
+        
+        // Use backend stats for totals as requested, but allow filtering if groups selected 
+        // (If filtering is active, we fallback to frontend calculation for the filtered set)
+        const isFiltered = selectedMajorGroup || selectedMinorGroup;
+        
+        const totalOrderAmount = isFiltered ? fOrders.reduce((s, o) => s + (o.total_amount || 0), 0) : dashboardStats.total_order_amount;
+        const monthOrderAmount = isFiltered ? monthOrders.reduce((s, o) => s + (o.total_amount || 0), 0) : dashboardStats.month_order_amount;
+        
+        const totalSalesAmount = isFiltered 
+            ? fOrders.filter(o => o.status === 'DELIVERY_COMPLETED' || o.status === 'DELIVERED').reduce((s, o) => s + (o.total_amount || 0), 0)
+            : dashboardStats.total_sales_amount;
+            
+        const monthSalesAmount = isFiltered
+            ? monthOrders.filter(o => o.status === 'DELIVERY_COMPLETED' || o.status === 'DELIVERED').reduce((s, o) => s + (o.total_amount || 0), 0)
+            : dashboardStats.month_sales_amount;
+
         const pendingOrders = fOrders.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED');
         const deliveredOrders = fOrders.filter(o => o.status === 'DELIVERY_COMPLETED');
         const prodCompOrders = fOrders.filter(o => o.status === 'PRODUCTION_COMPLETED');
@@ -243,9 +265,15 @@ const Dashboard = () => {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             const label = `${d.getMonth() + 1}월`;
-            const rev = fOrders.filter(o => o.order_date?.startsWith(key)).reduce((s, o) => s + (o.total_amount || 0), 0);
-            const cnt = fOrders.filter(o => o.order_date?.startsWith(key)).length;
-            monthlyRevenue.push({ name: label, 매출: rev, 건수: cnt });
+            const monthFiltered = fOrders.filter(o => o.order_date?.startsWith(key));
+            
+            const orderAmt = monthFiltered.reduce((s, o) => s + (o.total_amount || 0), 0);
+            const salesAmt = monthFiltered
+                .filter(o => o.status === 'DELIVERY_COMPLETED' || o.status === 'DELIVERED')
+                .reduce((s, o) => s + (o.total_amount || 0), 0);
+                
+            const cnt = monthFiltered.length;
+            monthlyRevenue.push({ name: label, 수주액: orderAmt, 매출액: salesAmt, 건수: cnt });
         }
 
         // Production status
@@ -256,7 +284,7 @@ const Dashboard = () => {
         });
         const planStatusData = Object.entries(planStatusCounts).map(([name, value]) => ({ name, value }));
 
-        // Top customers
+        // Top customers (Based on Total Order Amount)
         const customerRevenue = {};
         fOrders.forEach(o => {
             const name = o.partner?.name || '알 수 없음';
@@ -280,7 +308,8 @@ const Dashboard = () => {
         return {
             totalOrders: fOrders.length,
             monthOrders: monthOrders.length,
-            totalRevenue, monthRevenue,
+            totalOrderAmount, monthOrderAmount,
+            totalSalesAmount, monthSalesAmount,
             pendingOrders: pendingOrders.length,
             deliveredOrders: deliveredOrders.length,
             prodCompOrders: prodCompOrders.length,
@@ -371,9 +400,10 @@ const Dashboard = () => {
             </div>
 
             {/* ── KPI Cards Row 1: Core Metrics ── */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
                 <StatCard title="총 수주" value={fmt(stats.totalOrders)} sub={`이번 달 ${stats.monthOrders}건`} icon={ShoppingCart} color="blue" onClick={() => navigate('/sales')} />
-                <StatCard title="이번 달 매출" value={fmtWon(stats.monthRevenue)} sub={`누적 ${fmtWon(stats.totalRevenue)}`} icon={DollarSign} color="green" />
+                <StatCard title="수주 금액" value={fmtWon(stats.monthOrderAmount)} sub={`누적 ${fmtWon(stats.totalOrderAmount)}`} icon={FileText} color="cyan" />
+                <StatCard title="매출액 (납품기준)" value={fmtWon(stats.monthSalesAmount)} sub={`누적 ${fmtWon(stats.totalSalesAmount)}`} icon={DollarSign} color="green" />
                 <StatCard title="생산 진행" value={fmt(stats.activePlans)} sub={`총 ${stats.totalPlans}건 중`} icon={Factory} color="amber" onClick={() => navigate('/production')} />
                 <StatCard title="미발주 (자재)" value={fmt(stats.pendingPurchaseCount)} sub="발주 대기" icon={Package} color={stats.pendingPurchaseCount > 0 ? 'red' : 'green'} onClick={() => navigate('/purchase')} />
                 <StatCard title="미발주 (외주)" value={fmt(stats.pendingOutsourcingCount)} sub="외주 대기" icon={Truck} color={stats.pendingOutsourcingCount > 0 ? 'red' : 'green'} onClick={() => navigate('/outsourcing')} />
@@ -434,17 +464,23 @@ const Dashboard = () => {
                             <ResponsiveContainer width="100%" height={300}>
                                 <AreaChart data={stats.monthlyRevenue}>
                                     <defs>
-                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                                        <linearGradient id="colorOrder" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" vertical={false} />
                                     <XAxis dataKey="name" stroke="#6B7280" tick={{ fontSize: 12 }} />
                                     <YAxis stroke="#6B7280" tick={{ fontSize: 11 }} tickFormatter={v => `₩${(v / 10000).toFixed(0)}만`} />
                                     <Tooltip content={<CustomTooltip />} />
-                                    <Area type="monotone" dataKey="매출" stroke="#3B82F6" strokeWidth={2.5} fill="url(#colorRev)" name="매출" />
-                                    <Bar dataKey="건수" fill="#6366F1" radius={[3, 3, 0, 0]} barSize={18} name="수주 건수" />
+                                    <Legend verticalAlign="top" height={36}/>
+                                    <Area type="monotone" dataKey="수주액" stroke="#06B6D4" strokeWidth={2} fill="url(#colorOrder)" name="수주 금액" />
+                                    <Area type="monotone" dataKey="매출액" stroke="#10B981" strokeWidth={2} fill="url(#colorSales)" name="매출액 (납품)" />
+                                    <Bar dataKey="건수" fill="#6366F1" radius={[3, 3, 0, 0]} barSize={12} name="수주 건수" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         )}
