@@ -37,7 +37,8 @@ async def get_settlement_orders(
         SalesOrderItem.quantity,
         SalesOrderItem.unit_price,
         (SalesOrderItem.quantity * SalesOrderItem.unit_price).label("total_price")
-    ).join(SalesOrderItem, SalesOrder.id == SalesOrderItem.order_id)\
+    ).select_from(SalesOrder)\
+     .join(SalesOrderItem, SalesOrder.id == SalesOrderItem.order_id)\
      .join(Partner, SalesOrder.partner_id == Partner.id)\
      .join(Product, SalesOrderItem.product_id == Product.id)\
      .where(
@@ -71,7 +72,8 @@ async def get_settlement_sales(
         SalesOrderItem.quantity,
         SalesOrderItem.unit_price,
         (SalesOrderItem.quantity * SalesOrderItem.unit_price).label("total_price")
-    ).join(SalesOrderItem, SalesOrder.id == SalesOrderItem.order_id)\
+    ).select_from(SalesOrder)\
+     .join(SalesOrderItem, SalesOrder.id == SalesOrderItem.order_id)\
      .join(Partner, SalesOrder.partner_id == Partner.id)\
      .join(Product, SalesOrderItem.product_id == Product.id)\
      .where(
@@ -105,7 +107,8 @@ async def get_settlement_purchases(
         PurchaseOrderItem.quantity,
         PurchaseOrderItem.unit_price,
         (PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price).label("total_price")
-    ).join(PurchaseOrderItem, PurchaseOrder.id == PurchaseOrderItem.purchase_order_id)\
+    ).select_from(PurchaseOrder)\
+     .join(PurchaseOrderItem, PurchaseOrder.id == PurchaseOrderItem.purchase_order_id)\
      .join(Partner, PurchaseOrder.partner_id == Partner.id)\
      .join(Product, PurchaseOrderItem.product_id == Product.id)\
      .where(
@@ -122,7 +125,8 @@ async def get_settlement_purchases(
         OutsourcingOrderItem.quantity,
         OutsourcingOrderItem.unit_price,
         (OutsourcingOrderItem.quantity * OutsourcingOrderItem.unit_price).label("total_price")
-    ).join(OutsourcingOrderItem, OutsourcingOrder.id == OutsourcingOrderItem.outsourcing_order_id)\
+    ).select_from(OutsourcingOrder)\
+     .join(OutsourcingOrderItem, OutsourcingOrder.id == OutsourcingOrderItem.outsourcing_order_id)\
      .join(Partner, OutsourcingOrder.partner_id == Partner.id)\
      .outerjoin(Product, OutsourcingOrderItem.product_id == Product.id)\
      .where(
@@ -162,7 +166,8 @@ async def get_settlement_production(
         ProductionPlanItem.quantity,
         ProductionPlanItem.cost.label("process_cost"),
         (ProductionPlanItem.quantity * ProductionPlanItem.cost).label("total_cost")
-    ).join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)\
+    ).select_from(ProductionPlanItem)\
+     .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)\
      .outerjoin(SalesOrder, ProductionPlan.order_id == SalesOrder.id)\
      .outerjoin(Partner, SalesOrder.partner_id == Partner.id)\
      .join(Product, ProductionPlanItem.product_id == Product.id)\
@@ -195,7 +200,8 @@ async def get_settlement_defects(
         QualityDefect.quantity,
         QualityDefect.amount,
         QualityDefect.resolution_date
-    ).join(SalesOrder, QualityDefect.order_id == SalesOrder.id)\
+    ).select_from(QualityDefect)\
+     .join(SalesOrder, QualityDefect.order_id == SalesOrder.id)\
      .join(Partner, SalesOrder.partner_id == Partner.id)\
      .join(ProductionPlanItem, QualityDefect.plan_item_id == ProductionPlanItem.id)\
      .join(Product, ProductionPlanItem.product_id == Product.id)\
@@ -224,7 +230,8 @@ async def get_settlement_complaints(
         CustomerComplaint.content,
         CustomerComplaint.status,
         CustomerComplaint.action_note
-    ).join(Partner, CustomerComplaint.partner_id == Partner.id)\
+    ).select_from(CustomerComplaint)\
+     .join(Partner, CustomerComplaint.partner_id == Partner.id)\
      .where(
          get_month_filter(CustomerComplaint.receipt_date, year, month)
      )
