@@ -109,15 +109,13 @@ const OutsourcingPage = () => {
 
     const fetchOrders = async () => {
         try {
-            const params = {};
-            if (searchQuery) params.product_name = searchQuery;
-            if (selectedPartnerId) params.partner_id = selectedPartnerId;
-            if (startDate) params.start_date = startDate;
-            if (endDate) params.end_date = endDate;
-            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
-
-            // Remove empty string or null params to avoid 422 errors
-            Object.keys(params).forEach(key => (params[key] === "" || params[key] === null) && delete params[key]);
+            const params = {
+                product_name: searchQuery || undefined,
+                partner_id: selectedPartnerId || undefined,
+                start_date: startDate || undefined,
+                end_date: endDate || undefined,
+                major_group_id: selectedMajorGroupId || undefined
+            };
 
             const response = await api.get('/purchasing/outsourcing/orders/', { params });
             setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
@@ -128,15 +126,14 @@ const OutsourcingPage = () => {
 
     const fetchCompletedOrders = async () => {
         try {
-            const params = { status: 'COMPLETED' };
-            if (searchQuery) params.product_name = searchQuery;
-            if (selectedPartnerId) params.partner_id = selectedPartnerId;
-            if (startDate) params.start_date = startDate;
-            if (endDate) params.end_date = endDate;
-            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
-
-            // Remove empty string or null params to avoid 422 errors
-            Object.keys(params).forEach(key => (params[key] === "" || params[key] === null) && delete params[key]);
+            const params = {
+                status: 'COMPLETED',
+                product_name: searchQuery || undefined,
+                partner_id: selectedPartnerId || undefined,
+                start_date: startDate || undefined,
+                end_date: endDate || undefined,
+                major_group_id: selectedMajorGroupId || undefined
+            };
 
             const response = await api.get('/purchasing/outsourcing/orders/', { params });
             setOrders(response.data);
@@ -208,8 +205,9 @@ const OutsourcingPage = () => {
     };
     const fetchPendingItems = async () => {
         try {
-            const params = { major_group_id: selectedMajorGroupId };
-            if (!params.major_group_id) delete params.major_group_id;
+            const params = {
+                major_group_id: selectedMajorGroupId || undefined
+            };
             const response = await api.get('/purchasing/outsourcing/pending-items/', { params });
             setPendingItems(response.data);
             setSelectedPendingItems([]);

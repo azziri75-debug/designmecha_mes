@@ -677,7 +677,7 @@ async def read_purchase_orders(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     customer_id: Optional[int] = None,
-    major_group_id: Optional[int] = Query(None),
+    major_group_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
@@ -719,11 +719,12 @@ async def read_purchase_orders(
     if customer_id:
         query = query.where(SalesOrder.partner_id == customer_id)
         
-    if major_group_id:
+    if major_group_id and str(major_group_id).isdigit():
+        major_group_id_int = int(major_group_id)
         from app.models.product import ProductGroup
         from sqlalchemy import or_
         query = query.join(PurchaseOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
                      .distinct()
 
     query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit)
@@ -1029,7 +1030,7 @@ async def read_outsourcing_orders(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     customer_id: Optional[int] = None,
-    major_group_id: Optional[int] = Query(None),
+    major_group_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
@@ -1063,11 +1064,12 @@ async def read_outsourcing_orders(
         if customer_id:
             query = query.where(SalesOrder.partner_id == customer_id)
             
-        if major_group_id:
+        if major_group_id and str(major_group_id).isdigit():
+            major_group_id_int = int(major_group_id)
             from app.models.product import ProductGroup
             from sqlalchemy import or_
             query = query.join(OutsourcingOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                         .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
+                         .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
                          .distinct()
 
         query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit)
