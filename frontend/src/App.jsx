@@ -21,6 +21,7 @@ import CustomerComplaintPage from './pages/CustomerComplaintPage';
 import MobileAttendancePage from './pages/MobileAttendancePage';
 import AttendancePage from './pages/AttendancePage';
 import ApprovalDraftPage from './components/ApprovalDraftPage';
+import SettlementPage from './pages/SettlementPage';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -80,6 +81,7 @@ const App = () => {
         <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
         <Route path="approval" element={<ProtectedRoute menuKey="approval"><ApprovalPage /></ProtectedRoute>} />
         <Route path="approval/draft" element={<ProtectedRoute menuKey="approval"><ApprovalDraftPage /></ProtectedRoute>} />
+        <Route path="settlement" element={<ProtectedRoute menuKey="sales"><SettlementPage /></ProtectedRoute>} />
         <Route path="attendance" element={<ProtectedRoute menuKey="hr"><AttendancePage /></ProtectedRoute>} />
         <Route path="complaints" element={<ProtectedRoute menuKey="quality"><CustomerComplaintPage /></ProtectedRoute>} />
         <Route path="db-management" element={<ProtectedRoute menuKey="ADMIN"><DataManagementPage /></ProtectedRoute>} />
