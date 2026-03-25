@@ -28,7 +28,7 @@ class AttendanceSummaryResponse(BaseModel):
     total_overtime_hours: float      # 누적 야근/특근 시간
 
     # New: Overall Balance Info for UI
-    total_annual_days: float         # 총 연차 (기본 + 조정)
+    total_annual_days: float         # 총 연차 (기본 연차만)
     remaining_annual_days: float     # 잔여 연차
 
     documents: List[AttendanceDocItem]  # 집계 근거 문서 리스트

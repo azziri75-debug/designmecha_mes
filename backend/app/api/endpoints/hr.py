@@ -78,29 +78,16 @@ def _business_days_between(start: date, end: date) -> int:
 
 
 def calculate_base_days(join_date: date, target_year: int) -> float:
-    """근로기준법 기반 연차 계산 로직"""
+    """사내 규정 반영 연차 계산 로직"""
     if not join_date:
         return 15.0
-    
-    # 1. 1년 미만 근속자 여부 판단
-    # target_year 1월 1일 이전에 1년이 되었는지 확인
-    first_anniversary = join_date.replace(year=join_date.year + 1)
-    year_start = date(target_year, 1, 1)
-    
-    if first_anniversary > year_start:
-        # 아직 1년이 안 된 상태로 target_year를 시작함
-        if join_date.year == target_year:
-            # 올해 입사자: 입사월부터 12월까지 최대 발생 가능한 연차 (1개월 만근 시 1일)
-            return float(max(0, 12 - join_date.month))
-        elif join_date.year == target_year - 1:
-            # 작년 중도 입사자: 올해 1년이 되기 전까지 남은 개수 (최대 11일 기준)
-            # 여기서는 단순하게 1년 미만 기간 동안 총 11일이 발생한다고 가정
-            return 11.0 
-        return 0.0
-    
-    # 2. 1년 이상 근속자 (15일 + 가산연차)
+        
+    # 1. 입사 당해 연도 (올해 입사자)
+    if join_date.year == target_year:
+        return float(max(0, 12 - join_date.month))
+        
+    # 2. 입사 다음 해부터 (무조건 15일 + 2년마다 가산연차 1일)
     years_of_service = target_year - join_date.year
-    # 가산연차: 1년 초과하는 매 2년마다 1일 (최대 25일)
     extra_days = (years_of_service - 1) // 2
     base = 15.0 + extra_days
     return float(min(25.0, base))
@@ -290,15 +277,11 @@ async def get_attendance_summary(
     await db.commit()
     await db.refresh(leave_record)
 
+    # [FIXED] total_annual_days = strictly base_days (Company Policy)
     # [FIXED] remaining = base + adjustment - (used / 8)
-    # adjustment_days > 0 → admin gave extra leave → remaining goes UP
-    # adjustment_days < 0 → admin penalized → remaining goes DOWN
-    # [FIXED] total_annual_days = base_days + adjustment_days (effective total)
-    # This matches the employee management page's display of total available leave.
     total_annual = leave_record.base_days
     adj_days = leave_record.adjustment_days or 0.0
-    total_effective_annual = total_annual + adj_days
-    remaining = total_effective_annual - (leave_record.used_leave_hours / 8.0)
+    remaining = total_annual + adj_days - (leave_record.used_leave_hours / 8.0)
 
     return AttendanceSummaryResponse(
         year=year,
@@ -309,7 +292,7 @@ async def get_attendance_summary(
         total_event_leave_days=total_event_leave_days,
         total_leave_outing_hours=total_leave_outing_hours,
         total_overtime_hours=total_overtime_hours,
-        total_annual_days=round(total_effective_annual, 2),   # base + adjustment
+        total_annual_days=round(total_annual, 2),   # Only base_days
         remaining_annual_days=round(remaining, 2),
         documents=document_items
     )
@@ -805,6 +788,13 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
             except: pass
             
     record = await get_or_create_annual_leave(db, staff_id, year)
+    
+    # [FIXED] Recalculate base_days during sync to reflect new policy for existing records
+    res_s = await db.execute(select(Staff).where(Staff.id == staff_id))
+    staff = res_s.scalar_one_or_none()
+    if staff:
+        record.base_days = calculate_base_days(staff.join_date, year)
+
     # [FIXED] used_leave_hours = ONLY actual approval-doc-based usage (no adjustment inside)
     # adjustment_days is applied separately in all remaining_days calculations
     record.used_leave_hours = float(v_days * 8.0 + o_hours)
