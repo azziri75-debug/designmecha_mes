@@ -95,7 +95,7 @@ const PurchasePage = ({ type }) => {
 
     const fetchMrpItems = async () => {
         try {
-            const params = { major_group_id: selectedMajorGroupId };
+            const params = { major_group_id: selectedMajorGroupId || undefined };
             const response = await api.get('/purchasing/mrp/unordered-requirements', { params });
             // Filter by type: MRP returns item_type as "PART" or "CONSUMABLE" or others
             const filteredData = response.data.filter(item =>
@@ -128,12 +128,14 @@ const PurchasePage = ({ type }) => {
 
     const fetchOrders = async () => {
         try {
-            const params = { purchase_type: type };
-            if (searchQuery) params.product_name = searchQuery;
-            if (selectedPartnerId) params.partner_id = selectedPartnerId;
-            if (startDate) params.start_date = startDate;
-            if (endDate) params.end_date = endDate;
-            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
+            const params = { 
+                purchase_type: type,
+                product_name: searchQuery || undefined,
+                partner_id: selectedPartnerId || undefined,
+                start_date: startDate || undefined,
+                end_date: endDate || undefined,
+                major_group_id: selectedMajorGroupId || undefined
+            };
 
             const response = await api.get('/purchasing/purchase/orders', { params });
             setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
@@ -144,12 +146,15 @@ const PurchasePage = ({ type }) => {
 
     const fetchCompletedOrders = async () => {
         try {
-            const params = { status: 'COMPLETED', purchase_type: type };
-            if (searchQuery) params.product_name = searchQuery;
-            if (selectedPartnerId) params.partner_id = selectedPartnerId;
-            if (startDate) params.start_date = startDate;
-            if (endDate) params.end_date = endDate;
-            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
+            const params = { 
+                status: 'COMPLETED', 
+                purchase_type: type,
+                product_name: searchQuery || undefined,
+                partner_id: selectedPartnerId || undefined,
+                start_date: startDate || undefined,
+                end_date: endDate || undefined,
+                major_group_id: selectedMajorGroupId || undefined
+            };
 
             const response = await api.get('/purchasing/purchase/orders', { params });
             setOrders(response.data);
@@ -235,7 +240,7 @@ const PurchasePage = ({ type }) => {
     };
     const fetchPendingItems = async () => {
         try {
-            const params = { major_group_id: selectedMajorGroupId };
+            const params = { major_group_id: selectedMajorGroupId || undefined };
             if (type === 'CONSUMABLE') {
                 const response = await api.get('/purchasing/purchase/consumable-waits', { params });
                 setPendingItems(response.data);
