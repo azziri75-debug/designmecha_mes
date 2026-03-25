@@ -162,6 +162,7 @@ async def create_complaint(
 @router.get("/", response_model=List[schemas.CustomerComplaintResponse])
 async def read_complaints(
     skip: int = 0,
+    limit: int = 100,
     status: Optional[str] = None,
     partner_id: Optional[int] = None,
     major_group_id: Optional[int] = None,
