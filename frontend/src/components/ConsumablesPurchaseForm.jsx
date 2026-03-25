@@ -33,7 +33,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                         소모품 구매 신청서
                     </Typography>
                 </Box>
-                <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                <ApprovalGrid documentData={documentData} currentUser={currentUser} docType="CONSUMABLES_PURCHASE" />
             </Box>
 
             <Table size="small" sx={{ mb: 2, '& td': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>

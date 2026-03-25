@@ -39,7 +39,7 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                         휴 가 원
                     </Typography>
                 </Box>
-                <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                <ApprovalGrid documentData={documentData} currentUser={currentUser} docType="LEAVE_REQUEST" />
             </Box>
 
             <Table size="small" sx={{ mb: 3, '& td': { border: '1px solid #000', p: 1.5, fontSize: '14px' } }}>

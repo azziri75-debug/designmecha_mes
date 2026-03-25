@@ -16,7 +16,7 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                         야근 · 특근 신청서
                     </Typography>
                 </Box>
-                <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                <ApprovalGrid documentData={documentData} currentUser={currentUser} docType="OVERTIME" />
             </Box>
 
             <Table size="small" className="responsive-table" sx={{ mb: 3, '& td': { border: '1px solid #000', p: 1.5, fontSize: '14px' } }}>

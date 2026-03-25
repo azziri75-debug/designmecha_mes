@@ -20,7 +20,8 @@ const PurchaseOrderTemplate = ({
     onSearchProduct,
     onSubmitApproval,
     orderId,
-    purchaseType = 'PURCHASE' // 'PURCHASE' or 'OUTSOURCING'
+    purchaseType = 'PURCHASE', // 'PURCHASE' or 'OUTSOURCING'
+    docType = 'PURCHASE_ORDER'
 }) => {
     const navigate = useNavigate();
     const [company, setCompany] = React.useState(initialCompany);
@@ -236,11 +237,11 @@ const PurchaseOrderTemplate = ({
                     </div>
                 </div>
                 <div className="w-full md:w-[200px] idf-no-print order-3">
-                    {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} />}
+                    {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
                 </div>
                 {/* Print-only approval grid placeholder or simplified view if needed */}
                 <div className="hidden print:block w-[200px] idf-header-approval">
-                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} />}
+                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
                 </div>
             </div>
 

@@ -24,7 +24,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                         조퇴 · 외출원
                     </Typography>
                 </Box>
-                <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                <ApprovalGrid documentData={documentData} currentUser={currentUser} docType="EARLY_LEAVE" />
             </Box>
 
             <Table size="small" sx={{ mb: 3, '& td': { border: '1px solid #000', p: 1.5, fontSize: '14px' } }}>

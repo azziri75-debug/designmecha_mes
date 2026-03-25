@@ -181,7 +181,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     }}>
                         결<br/>재
                     </Box>
-                    <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                    <ApprovalGrid documentData={documentData} currentUser={currentUser} docType="EXPENSE_REPORT" />
                 </Box>
             </Box>
 

@@ -127,7 +127,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                         내 부 기 안
                     </Typography>
                 </Box>
-                <ApprovalGrid documentData={documentData} currentUser={currentUser} />
+                <ApprovalGrid documentData={documentData} currentUser={currentUser} docType="INTERNAL_DRAFT" />
             </Box>
 
             <Table size="small" className="responsive-table" sx={{ mb: 3, '& td, & th': { border: '1px solid #000', p: 1, fontSize: '13px', height: 'auto !important' } }}>

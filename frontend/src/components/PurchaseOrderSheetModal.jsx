@@ -182,6 +182,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                             company={company}
                             orderId={order.id}
                             purchaseType="PURCHASE"
+                            docType="PURCHASE_ORDER"
                             onSubmitApproval={fetchApprovalDoc}
                         />
                     </div>

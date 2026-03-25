@@ -260,6 +260,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                             company={company}
                             orderId={order.id}
                             purchaseType={orderType === 'outsourcing' ? 'OUTSOURCING' : 'PURCHASE'}
+                            docType={activeTab === 'purchase_order' ? 'PURCHASE_ORDER' : 'ESTIMATE_REQUEST'}
                             onSubmitApproval={fetchApprovalDoc}
                         />
                     </div>

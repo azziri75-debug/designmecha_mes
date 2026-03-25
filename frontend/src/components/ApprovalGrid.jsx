@@ -1,14 +1,49 @@
 import React from 'react';
 import { Box, Table, TableBody, TableRow, Typography } from '@mui/material';
 import { getImageUrl } from '../lib/utils';
+import api from '../lib/api';
 
-const ApprovalGrid = ({ documentData, currentUser }) => {
+const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] }) => {
     // 1. Author (기안자) info
     const author = documentData?.author || currentUser;
     const createdAt = documentData?.created_at || new Date().toISOString();
     
     // 2. Approver steps (dynamic or forced minimum)
-    const baseSteps = documentData?.steps || [];
+    let baseSteps = documentData?.steps || [];
+    const [fallbackSteps, setFallbackSteps] = React.useState([]);
+    const [loadingDefault, setLoadingDefault] = React.useState(false);
+
+    React.useEffect(() => {
+        // Fetch default lines if no document data exists OR if the document exists but has zero steps (draft)
+        if (docType && (!documentData || !documentData.steps || documentData.steps.length === 0)) {
+            fetchDefaultLines();
+        }
+    }, [documentData, docType]);
+
+    const fetchDefaultLines = async () => {
+        setLoadingDefault(true);
+        try {
+            const res = await api.get(`/approval/lines?doc_type=${docType}`);
+            const steps = (res.data || []).sort((a,b) => a.sequence - b.sequence).map(line => ({
+                role: line.approver?.role || '검토',
+                status: 'PENDING'
+            }));
+            setFallbackSteps(steps);
+        } catch (err) {
+            console.error('Failed to fetch default approval lines', err);
+        } finally {
+            setLoadingDefault(false);
+        }
+    };
+
+    // If no steps and docType provided, use fetched fallbacks
+    if (baseSteps.length === 0) {
+        if (fallbackSteps.length > 0) {
+            baseSteps = fallbackSteps;
+        } else if (defaultSteps.length > 0) {
+            baseSteps = defaultSteps.map(role => ({ role, status: 'PENDING' }));
+        }
+    }
     
     // [Bug #4] 중복 제거 및 직급 정렬 로직 추가
     const RANK_MAP = {
@@ -125,6 +160,10 @@ const ApprovalGrid = ({ documentData, currentUser }) => {
         if (!dateStr) return '';
         return dateStr.split('T')[0].replace(/-/g, '.');
     };
+
+    if (loadingDefault && steps.length === 0) {
+        return <Box sx={{ fontSize: '12px', color: 'text.secondary', textAlign: 'right', p: 1 }}>결재선 불러오는 중...</Box>;
+    }
 
     // Calculate columns: 1 (Author) + N (Steps)
     const totalCols = steps.length + 1;
