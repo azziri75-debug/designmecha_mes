@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, extract, and_
+from sqlalchemy import func, extract, and_, String
 from typing import List, Optional, Dict, Any
 from datetime import date
 

@@ -131,6 +131,19 @@ const SettlementPage = () => {
         }
     };
 
+    const totalSum = useMemo(() => {
+        const sumKey = {
+            orders: "total_price",
+            sales: "total_price",
+            purchases: "total_price",
+            production: "total_cost",
+            defects: "amount"
+        }[activeTab];
+        
+        if (!sumKey) return null;
+        return data.reduce((acc, curr) => acc + (curr[sumKey] || 0), 0);
+    }, [data, activeTab]);
+
     const handleDownloadExcel = () => {
         if (!data || data.length === 0) {
             alert("다운로드할 데이터가 없습니다.");
@@ -227,8 +240,8 @@ const SettlementPage = () => {
                 </button>
             </div>
 
-            {/* Tabs */}
-            <div className="border-b border-gray-800">
+            {/* Tabs & Total Sum */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-800 gap-4">
                 <nav className="flex gap-1">
                     {tabs.map((tab) => (
                         <button
@@ -245,6 +258,13 @@ const SettlementPage = () => {
                         </button>
                     ))}
                 </nav>
+
+                {totalSum !== null && (
+                    <div className="bg-blue-500/10 border border-blue-500/30 px-6 py-2 rounded-full mb-2 md:mb-0 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <span className="text-gray-400 text-xs mr-3 font-medium uppercase tracking-wider">Total Sum</span>
+                        <span className="text-blue-400 font-bold text-lg">{fmtWon(totalSum)}</span>
+                    </div>
+                )}
             </div>
 
             {/* Table Container */}
