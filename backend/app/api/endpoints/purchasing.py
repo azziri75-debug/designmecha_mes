@@ -1,9 +1,9 @@
 from typing import Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, desc, func, or_, cast, String
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
+from datetime import datetime, date
 
 from app.api import deps
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus, MaterialRequirement
@@ -677,6 +677,7 @@ async def read_purchase_orders(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     customer_id: Optional[int] = None,
+    major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
@@ -1028,6 +1029,7 @@ async def read_outsourcing_orders(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     customer_id: Optional[int] = None,
+    major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """
