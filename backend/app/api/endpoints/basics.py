@@ -6,6 +6,8 @@ from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional, Any
 from pydantic import BaseModel
 import difflib
+from passlib.context import CryptContext
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 import openpyxl
 import io
 from datetime import date, timedelta
@@ -40,14 +42,26 @@ async def login(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(Staff).where(Staff.name == req.username))
+    from sqlalchemy import or_
+    result = await db.execute(select(Staff).where(or_(Staff.name == req.username, Staff.login_id == req.username)))
     staff = result.scalars().first()
     
     if not staff:
-        raise HTTPException(status_code=401, detail="사원 이름이 존재하지 않습니다.")
+        raise HTTPException(status_code=401, detail="사원 정보가 존재하지 않습니다.")
     if not staff.is_active:
         raise HTTPException(status_code=401, detail="비활성화된 계정입니다.")
-    if staff.password != req.password:
+        
+    # Password verification (bcrypt with plain text fallback)
+    is_password_correct = False
+    try:
+        if pwd_context.identify(staff.password):
+            is_password_correct = pwd_context.verify(req.password, staff.password)
+        else:
+            is_password_correct = (staff.password == req.password)
+    except:
+        is_password_correct = (staff.password == req.password)
+        
+    if not is_password_correct:
         raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다.")
     
     # --- [보안 검문소] 작업자 외부망 로그인 차단 로직 ---
@@ -67,18 +81,17 @@ async def login(
             ip.startswith("172.")  # 도커 브릿지 포함
         )
     
-    # 차단 조건: 외부망 접속 + (작업자 권한 OR 일반 생산직)
-    # * ADMIN이나 MANAGER 등 관리자/결재권자는 통과
+    # 차단 조건: 외부망 접속 + (작업자 권한 OR 일반 생산직) + (명시적 권한 없음)
+    # * sysadmin이나 can_access_external 권한이 있으면 통과
     is_external = not is_internal(client_ip)
-    is_worker = staff.role in ["현장 작업자", "WORKER", "생산직"] or staff.user_type == "USER"
     
-    # 관리자 예외 처리 (ADMIN이거나 '대표' 등 관리 직책일 경우 무조건 통과)
-    is_admin_privileged = staff.user_type == "ADMIN" or (staff.role and staff.role in ["대표", "대표이사", "MANAGER", "관리자"])
+    # [NEW] 권한 기반 체크
+    is_authorized = staff.is_sysadmin or staff.can_access_external
     
-    if is_external and is_worker and not is_admin_privileged:
+    if is_external and not is_authorized:
         raise HTTPException(
             status_code=403, 
-            detail="현장 작업자는 사내 네트워크(와이파이)에서만 접속할 수 있습니다."
+            detail="사내 네트워크(와이파이)에서만 접속할 수 있습니다."
         )
     # -----------------------------------------------
     

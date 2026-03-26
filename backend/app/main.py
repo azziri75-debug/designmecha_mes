@@ -122,6 +122,15 @@ async def startup_event():
                     if "join_date" not in cols:
                         await db.execute(text("ALTER TABLE staff ADD COLUMN join_date DATE"))
                         print("Startup: Added join_date to staff (SQLite)")
+                    if "is_sysadmin" not in cols:
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN is_sysadmin BOOLEAN DEFAULT 0"))
+                        print("Startup: Added is_sysadmin to staff (SQLite)")
+                    if "can_access_external" not in cols:
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN can_access_external BOOLEAN DEFAULT 0"))
+                        print("Startup: Added can_access_external to staff (SQLite)")
+                    if "can_view_others" not in cols:
+                        await db.execute(text("ALTER TABLE staff ADD COLUMN can_view_others BOOLEAN DEFAULT 0"))
+                        print("Startup: Added can_view_others to staff (SQLite)")
                         
                     # PurchaseOrderItem migrations
                     poi_cols = await db.execute(text("PRAGMA table_info('purchase_order_items')"))
@@ -787,34 +796,50 @@ async def startup_event():
                 print(f"Startup: WorkLog fix failed: {e}")
                 await db.rollback()
             
-            # 7. Initialize Admin User
+            # 7. Initialize Admin User (Force ID: admin, PW: hashed 5446220)
             try:
-                ALL_MENUS = ["basics", "products", "sales", "production", "purchase", "outsourcing", "quality", "inventory", "approval"]
-                result = await db.execute(select(Staff).where(Staff.name == "이준호"))
+                from passlib.context import CryptContext
+                pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+                
+                MENU_KEYS = ["basics", "products", "sales", "production", "purchasing", "outsourcing", "worklogs", "delivery", "inventory", "quality", "approval", "hr", "ADMIN"]
+                FULL_PERMISSIONS = {k: {"view": True, "edit": True, "price": True} for k in MENU_KEYS}
+                
+                # Check for ID: admin
+                result = await db.execute(select(Staff).where(Staff.login_id == "admin"))
                 admin = result.scalar_one_or_none()
+                
+                hashed_password = pwd_context.hash("5446220")
                 
                 if not admin:
                     admin = Staff(
-                        name="이준호",
-                        role="대표",
-                        main_duty="총괄관리",
+                        name="관리자",
+                        login_id="admin",
+                        role="시스템 관리자",
+                        main_duty="시스템 총괄",
                         user_type="ADMIN",
-                        password="6220",
-                        menu_permissions=ALL_MENUS,
+                        password=hashed_password,
+                        menu_permissions=FULL_PERMISSIONS,
+                        is_sysadmin=True,
+                        can_access_external=True,
+                        can_view_others=True,
                         is_active=True
                     )
                     db.add(admin)
-                    print("Startup: Created admin '이준호'")
+                    print("Startup: Created system admin account (ID: admin)")
                 else:
-                    admin.password = "6220"
-                    admin.user_type = "ADMIN"
-                    admin.menu_permissions = ALL_MENUS
+                    # Always force reset admin account per request
+                    admin.password = hashed_password
+                    admin.is_sysadmin = True
+                    admin.can_access_external = True
+                    admin.can_view_others = True
+                    admin.menu_permissions = FULL_PERMISSIONS
                     admin.is_active = True
                     db.add(admin)
-                    print("Startup: Updated admin '이준호' settings")
+                    print("Startup: Reset system admin account (ID: admin)")
+                
                 await db.commit()
             except Exception as e:
-                print(f"Startup: Admin init failed: {e}")
+                print(f"Startup: System Admin init failed: {e}")
                 await db.rollback()
                 
             # 8. Initialize Default Form Templates

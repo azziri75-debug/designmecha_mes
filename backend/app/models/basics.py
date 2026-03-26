@@ -96,6 +96,11 @@ class Staff(Base):
     # Wi-Fi attendance tracking
     mac_address = Column(String, nullable=True)
     ip_address = Column(String, nullable=True)
+    
+    # New Permission Fields
+    is_sysadmin = Column(Boolean, default=False)
+    can_access_external = Column(Boolean, default=False)
+    can_view_others = Column(Boolean, default=False)
 
 class EmployeeTimeRecord(Base):
     """사원 근태/HR 기록 (전자결재 승인 시 자동 생성 및 수동 관리)"""
