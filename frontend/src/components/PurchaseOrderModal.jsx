@@ -7,11 +7,15 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
 import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Printer, Pencil, Trash, ChevronRight } from 'lucide-react';
+import { Printer, Pencil, Trash, ChevronRight, Plus } from 'lucide-react';
 import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import PurchaseOrderTemplate from './PurchaseOrderTemplate';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
+import ProductModal from './ProductModal';
+import { createFilterOptions } from '@mui/material/Autocomplete';
+
+const filter = createFilterOptions();
 
 const ProductSelectionModal = ({ isOpen, onClose, onSelect, products }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -93,9 +97,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [activeItemIndex, setActiveItemIndex] = useState(null);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
-    // Product Modal State
-    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    // New Product Registration Modal State
+    const [newProductModalOpen, setNewProductModalOpen] = useState(false);
+    const [newProductInitialName, setNewProductInitialName] = useState('');
     const [activeRowIndex, setActiveRowIndex] = useState(null);
+
+    const [showPreview, setShowPreview] = useState(false);
+    const [purchaseTypeState, setPurchaseTypeState] = useState(purchaseType || 'PRODUCED');
 
     const [approvalDoc, setApprovalDoc] = useState(null);
     const [defaultSteps, setDefaultSteps] = useState([]);
@@ -340,6 +348,19 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         }
     };
 
+    const handleOpenNewProductModal = (index, name) => {
+        setActiveRowIndex(index);
+        setNewProductInitialName(name);
+        setNewProductModalOpen(true);
+    };
+
+    const handleNewProductSuccess = (newProduct) => {
+        if (activeRowIndex !== null) {
+            handleItemChange(activeRowIndex, 'product_id', newProduct.id);
+        }
+        fetchProducts();
+    };
+
     const handleAddItem = () => {
         setFormData({
             ...formData,
@@ -468,7 +489,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 savedOrder = res.data;
             }
 
-            onSuccess(savedOrder);
+            if (onSuccess) onSuccess(savedOrder);
             onClose();
         } catch (error) {
             console.error("Failed to save purchase order", error);
@@ -570,18 +591,43 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     getOptionLabel={getProductLabel}
                                                     isOptionEqualToValue={(option, value) => option.id === value?.id}
                                                     value={prod || null}
-                                                    onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
+                                                    onChange={(_, newValue) => {
+                                                        if (newValue && newValue.isNew) {
+                                                            handleOpenNewProductModal(index, newValue.inputValue);
+                                                        } else {
+                                                            handleItemChange(index, 'product_id', newValue ? newValue.id : '');
+                                                        }
+                                                    }}
+                                                    filterOptions={(options, params) => {
+                                                        const filtered = filter(options, params);
+                                                        const { inputValue } = params;
+                                                        const isExisting = options.some((option) => inputValue === option.name);
+                                                        if (inputValue !== '' && !isExisting && purchaseTypeState === 'CONSUMABLE') {
+                                                            filtered.push({
+                                                                inputValue,
+                                                                name: `[신규 등록] "${inputValue}"`,
+                                                                isNew: true
+                                                            });
+                                                        }
+                                                        return filtered;
+                                                    }}
                                                     renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}
                                                     renderOption={(props, option) => (
                                                         <li {...props}>
-                                                            <Box>
-                                                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                                    [{option.code || option.product_code}] {option.name}
-                                                                </Typography>
-                                                                <Typography variant="caption" color="textSecondary">
-                                                                    규격: {option.specification || '-'} | 현재고: {option.current_inventory || 0}
-                                                                </Typography>
-                                                            </Box>
+                                                            {option.isNew ? (
+                                                                <Box sx={{ color: 'primary.main', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                    <Plus size={16} /> {option.name}
+                                                                </Box>
+                                                            ) : (
+                                                                <Box>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                                        [{option.code || option.product_code}] {option.name}
+                                                                    </Typography>
+                                                                    <Typography variant="caption" color="textSecondary">
+                                                                        규격: {option.specification || '-'} | 현재고: {option.current_inventory || 0}
+                                                                    </Typography>
+                                                                </Box>
+                                                            )}
                                                         </li>
                                                     )}
                                                     sx={{ width: '100%' }}

@@ -5,6 +5,7 @@ import {
     List, ListItem, ListItemText, CircularProgress, Divider
 } from '@mui/material';
 import api from '../lib/api';
+import ProductModal from './ProductModal';
 
 const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
     const [partners, setPartners] = useState([]);
@@ -28,6 +29,9 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
     const [unitPrice, setUnitPrice] = useState('');
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // New Product Modal State
+    const [newProductModalOpen, setNewProductModalOpen] = useState(false);
 
     useEffect(() => {
         if (open) {
@@ -145,6 +149,12 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
         }
     };
 
+    const handleNewProductSuccess = (newProduct) => {
+        setMatchedProducts(prev => [newProduct, ...prev]);
+        setSelectedProductId(newProduct.id);
+        setMode('EXISTING');
+    };
+
     if (!waitItem) return null;
 
     return (
@@ -192,15 +202,25 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
 
                     {mode === 'EXISTING' && (
                         <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                            <TextField
-                                fullWidth
-                                label="사내 마스터 품목명 검색 (입력 시 자동 검색)"
-                                variant="outlined"
-                                size="small"
-                                value={searchQuery}
-                                onChange={handleSearchChange}
-                                sx={{ mb: 2, bgcolor: '#fff' }}
-                            />
+                            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                                <TextField
+                                    fullWidth
+                                    label="사내 마스터 품목명 검색 (입력 시 자동 검색)"
+                                    variant="outlined"
+                                    size="small"
+                                    value={searchQuery}
+                                    onChange={handleSearchChange}
+                                    sx={{ bgcolor: '#fff' }}
+                                />
+                                <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    onClick={() => setNewProductModalOpen(true)}
+                                    sx={{ whiteSpace: 'nowrap', minWidth: 'fit-content' }}
+                                >
+                                    + 신규 등록
+                                </Button>
+                            </Box>
                             {isSearching ? <CircularProgress size={24} sx={{ display: 'block', m: 'auto' }} /> : (
                                 <List sx={{ bgcolor: 'background.paper', border: '1px solid #ccc', borderRadius: 1, maxHeight: 180, overflow: 'auto' }} disablePadding>
                                     {matchedProducts.length > 0 ? matchedProducts.map((p) => (
@@ -293,6 +313,13 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
                     {loading ? <CircularProgress size={24} color="inherit" /> : '최종 발주서 생성'}
                 </Button>
             </DialogActions>
+            <ProductModal
+                isOpen={newProductModalOpen}
+                onClose={() => setNewProductModalOpen(false)}
+                onSuccess={handleNewProductSuccess}
+                initialData={{ name: searchQuery }}
+                type="CONSUMABLE"
+            />
         </Dialog>
     );
 };
