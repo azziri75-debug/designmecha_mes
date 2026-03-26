@@ -656,17 +656,31 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     renderOption={(props, option) => (
                                                         <li {...props}>
                                                             {option.isNew ? (
-                                                                <Box sx={{ color: 'primary.main', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Box 
+                                                                    sx={{ color: 'primary.main', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}
+                                                                    onMouseDown={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation(); // MUI의 기본 선택/해제 이벤트를 완벽히 차단!
+                                                                        handleOpenNewProductModal(index, option.inputValue);
+                                                                    }}
+                                                                >
                                                                     <Plus size={16} /> {option.name}
                                                                 </Box>
                                                             ) : option.isDummy ? ( // 가짜(미등록) 품목 렌더링 (경고 표시)
-                                                                <Box sx={{ color: 'error.main', py: 0.5 }}>
+                                                                <Box 
+                                                                    sx={{ color: 'error.main', py: 0.5, width: '100%', cursor: 'pointer' }}
+                                                                    onMouseDown={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation(); // 미등록 품목 클릭 시 Deselect 방지 및 강제 팝업!
+                                                                        handleOpenNewProductModal(index, option.name);
+                                                                    }}
+                                                                >
                                                                     <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                                                                         ⚠️ [미등록] {option.name} (클릭하여 정식 등록)
                                                                     </Typography>
                                                                 </Box>
                                                             ) : ( // 기존 정식 품목 렌더링
-                                                                <Box>
+                                                                <Box sx={{ width: '100%' }}>
                                                                     <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                                                                         [{option.code || option.product_code || 'N/A'}] {option.name}
                                                                     </Typography>
