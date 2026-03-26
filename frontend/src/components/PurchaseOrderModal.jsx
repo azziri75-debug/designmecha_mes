@@ -630,9 +630,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     isOptionEqualToValue={(option, val) => String(option.id) === String(val?.id)}
                                                     getOptionLabel={getProductLabel}
                                                     onChange={(_, newValue) => {
-                                                        if (newValue && newValue.isNew) {
-                                                            // INTERCEPT: Do not set form data, just open modal
-                                                            handleOpenNewProductModal(index, newValue.inputValue);
+                                                        if (newValue && (newValue.isNew || newValue.isDummy)) {
+                                                            // isNew이거나 isDummy(미등록)를 클릭하면 무조건 신규 등록 팝업 띄우기!
+                                                            handleOpenNewProductModal(index, newValue.inputValue || newValue.name);
                                                             return; 
                                                         }
                                                         handleItemChange(index, 'product_id', newValue ? newValue.id : '');
@@ -640,7 +640,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     filterOptions={(options, params) => {
                                                         const filtered = filter(options, params);
                                                         const { inputValue } = params;
-                                                        const isExisting = options.some((option) => inputValue === option.name);
+                                                        // option.isDummy가 아닌 진짜 정식 등록된 품목만 중복 검사!
+                                                        const isExisting = options.some((option) => inputValue === option.name && !option.isDummy);
+                                                        
                                                         if (inputValue !== '' && !isExisting && purchaseTypeState === 'CONSUMABLE') {
                                                             filtered.push({
                                                                 inputValue,
@@ -657,10 +659,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                                 <Box sx={{ color: 'primary.main', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
                                                                     <Plus size={16} /> {option.name}
                                                                 </Box>
-                                                            ) : (
+                                                            ) : option.isDummy ? ( // 가짜(미등록) 품목 렌더링 (경고 표시)
+                                                                <Box sx={{ color: 'error.main', py: 0.5 }}>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                                        ⚠️ [미등록] {option.name} (클릭하여 정식 등록)
+                                                                    </Typography>
+                                                                </Box>
+                                                            ) : ( // 기존 정식 품목 렌더링
                                                                 <Box>
                                                                     <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                                        [{option.code || option.product_code}] {option.name}
+                                                                        [{option.code || option.product_code || 'N/A'}] {option.name}
                                                                     </Typography>
                                                                     <Typography variant="caption" color="textSecondary">
                                                                         규격: {option.specification || '-'} | 현재고: {option.current_inventory || 0}
