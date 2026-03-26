@@ -229,8 +229,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 display_order_no: displayCode,
                 items: (initialItems || []).map(item => {
                     // [Defense] Try various field names for product/item/material
-                    const productObj = item?.product || item?.material || item?.item || {};
-                    const productId = item?.product_id || productObj?.id || item?.material_id || item?.item_id;
+                    const productObj = item?.product || item?.material || item?.item || item?.consumable || {};
+                    // [Defense] User requested exhaustive check for ID
+                    const productId = item?.product_id || item?.consumable_id || item?.item_id || item?.material_id || productObj?.id || item?.consumable?.id || '';
                     
                     if (item?.type === 'PENDING') {
                         // Priority: 1. standard_processes of provided product, 2. products list, 3. item.unit_price
@@ -280,10 +281,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     } else if (item?.type === 'CONSUMABLE_WAIT') {
                         return {
                             product_id: productId || '',
-                            quantity: item?.quantity || 1,
+                            quantity: item?.quantity || 0,
                             unit_price: item?.unit_price || 0,
                             note: item?.remarks || '',
-                            consumable_purchase_wait_id: item?.id
+                            consumable_purchase_wait_id: item?.id,
+                            specification: productObj?.specification || item?.specification || item?.remarks || ''
                         };
                     }
                     return {
