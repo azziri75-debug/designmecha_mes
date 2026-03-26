@@ -75,6 +75,9 @@ const BasicsPageContent = () => {
         return parsed;
     });
 
+    // Absolute power condition for system administrator
+    const isSystemAdmin = user?.login_id === 'admin' || user?.is_sysadmin === true || user?.user_type === 'ADMIN' || user?.role === '대표이사';
+
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
     const [equipments, setEquipments] = useState([]);
@@ -1827,12 +1830,12 @@ const BasicsPageContent = () => {
                                                 <div className="flex items-center justify-between">
                                                     <label className="text-sm font-bold text-blue-400">특수 권한 및 메뉴 설정</label>
                                                     <span className="text-[11px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
-                                                        {(!user.is_sysadmin && user.login_id !== 'admin') ? '조회 전용' : '시스템 관리자 전용'}
+                                                        {!isSystemAdmin ? '조회 전용 (권한 없음)' : '시스템 관리자 전용'}
                                                     </span>
                                                 </div>
 
                                                 {/* 1. Global Special Permission Switches (Always visible, but disabled for non-admins) */}
-                                                <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 bg-blue-600/5 border border-blue-500/20 p-4 rounded-xl ${(!user.is_sysadmin && user.login_id !== 'admin') ? 'opacity-60' : ''}`}>
+                                                <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 bg-blue-600/5 border border-blue-500/20 p-4 rounded-xl ${!isSystemAdmin ? 'opacity-60' : ''}`}>
                                                     <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
                                                         <div className="flex flex-col">
                                                             <span className="text-xs font-semibold text-white">시스템 관리자</span>
@@ -1844,7 +1847,7 @@ const BasicsPageContent = () => {
                                                                 checked={!!formData.is_sysadmin} 
                                                                 onChange={(e) => setFormData(p => ({...p, is_sysadmin: e.target.checked}))}
                                                                 className="sr-only peer"
-                                                                disabled={!user.is_sysadmin && user.login_id !== 'admin'}
+                                                                disabled={!isSystemAdmin}
                                                             />
                                                             <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
                                                         </div>
@@ -1860,7 +1863,7 @@ const BasicsPageContent = () => {
                                                                 checked={!!formData.can_access_external} 
                                                                 onChange={(e) => setFormData(p => ({...p, can_access_external: e.target.checked}))}
                                                                 className="sr-only peer"
-                                                                disabled={!user.is_sysadmin && user.login_id !== 'admin'}
+                                                                disabled={!isSystemAdmin}
                                                             />
                                                             <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
                                                         </div>
@@ -1876,7 +1879,7 @@ const BasicsPageContent = () => {
                                                                 checked={!!formData.can_view_others} 
                                                                 onChange={(e) => setFormData(p => ({...p, can_view_others: e.target.checked}))}
                                                                 className="sr-only peer"
-                                                                disabled={!user.is_sysadmin && user.login_id !== 'admin'}
+                                                                disabled={!isSystemAdmin}
                                                             />
                                                             <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
                                                         </div>
@@ -1953,23 +1956,23 @@ const BasicsPageContent = () => {
                                                                     };
 
                                                                     return (
-                                                                        <tr key={menu.key} className={`hover:bg-blue-500/5 transition-colors group ${(!user.is_sysadmin && user.login_id !== 'admin') ? 'opacity-70' : ''}`}>
+                                                                        <tr key={menu.key} className={`hover:bg-blue-500/5 transition-colors group ${!isSystemAdmin ? 'opacity-70' : ''}`}>
                                                                             <td className="px-3 py-2 text-gray-300 group-hover:text-blue-300 font-medium">{menu.label}</td>
                                                                             <td className="px-1 py-2 text-center">
-                                                                                <input type="checkbox" checked={!!p.view} onChange={() => toggle('view')} disabled={!user.is_sysadmin && user.login_id !== 'admin'} className="w-3.5 h-3.5 rounded border-gray-600 text-blue-600 bg-gray-800 focus:ring-0 disabled:opacity-50" />
+                                                                                <input type="checkbox" checked={!!p.view} onChange={() => toggle('view')} disabled={!isSystemAdmin} className="w-3.5 h-3.5 rounded border-gray-600 text-blue-600 bg-gray-800 focus:ring-0 disabled:opacity-50" />
                                                                             </td>
                                                                             <td className="px-1 py-2 text-center">
-                                                                                <input type="checkbox" checked={!!p.edit} onChange={() => toggle('edit')} disabled={!user.is_sysadmin && user.login_id !== 'admin'} className="w-3.5 h-3.5 rounded border-gray-600 text-green-600 bg-gray-800 focus:ring-0 disabled:opacity-50" />
+                                                                                <input type="checkbox" checked={!!p.edit} onChange={() => toggle('edit')} disabled={!isSystemAdmin} className="w-3.5 h-3.5 rounded border-gray-600 text-green-600 bg-gray-800 focus:ring-0 disabled:opacity-50" />
                                                                             </td>
                                                                             <td className="px-1 py-2 text-center">
-                                                                                <input type="checkbox" checked={!!p.price} onChange={() => toggle('price')} disabled={!user.is_sysadmin && user.login_id !== 'admin'} className="w-3.5 h-3.5 rounded border-gray-600 text-amber-600 bg-gray-800 focus:ring-0 disabled:opacity-50" />
+                                                                                <input type="checkbox" checked={!!p.price} onChange={() => toggle('price')} disabled={!isSystemAdmin} className="w-3.5 h-3.5 rounded border-gray-600 text-amber-600 bg-gray-800 focus:ring-0 disabled:opacity-50" />
                                                                             </td>
                                                                             <td className="px-2 py-2 text-center bg-blue-500/5">
                                                                                 <input 
                                                                                     type="checkbox" 
                                                                                     checked={isAllChecked} 
                                                                                     onChange={() => toggle('all')} 
-                                                                                    disabled={!user.is_sysadmin && user.login_id !== 'admin'}
+                                                                                    disabled={!isSystemAdmin}
                                                                                     className="w-4 h-4 rounded-full border-blue-500/50 text-blue-500 bg-gray-800 ring-offset-gray-900 focus:ring-1 focus:ring-blue-500 disabled:opacity-50" 
                                                                                 />
                                                                             </td>
