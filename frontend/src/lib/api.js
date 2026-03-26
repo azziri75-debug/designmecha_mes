@@ -43,9 +43,13 @@ api.interceptors.request.use(
 
         const savedUser = localStorage.getItem('mes_user') || localStorage.getItem('user');
         if (savedUser) {
-            const user = safeParseJSON(savedUser, null);
-            if (user && user.id) {
-                config.headers['X-User-ID'] = user.id.toString();
+            try {
+                const user = JSON.parse(savedUser);
+                if (user && user.id) {
+                    config.headers['X-User-ID'] = user.id.toString();
+                }
+            } catch (e) {
+                console.error('Failed to parse user session for header', e);
             }
         }
         return config;

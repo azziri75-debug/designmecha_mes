@@ -20,8 +20,14 @@ const MENUS = [
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
-        const saved = localStorage.getItem('mes_user');
-        return safeParseJSON(saved, null);
+        const saved = localStorage.getItem('mes_user') || localStorage.getItem('user');
+        if (!saved) return null;
+        try {
+            return JSON.parse(saved);
+        } catch (e) {
+            console.error("Auth initialization error:", e);
+            return null;
+        }
     });
 
     const login = (userData) => {
