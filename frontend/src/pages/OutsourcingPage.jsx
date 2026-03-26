@@ -6,13 +6,13 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon } from '@mui/icons-material';
 import api from '../lib/api';
+import { cn, safeParseJSON } from '../lib/utils';
 import OutsourcingOrderModal from '../components/OutsourcingOrderModal';
 import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 import ResizableTableCell from '../components/ResizableTableCell';
-import { safeParseJSON } from '../lib/utils';
 
 const OutsourcingPage = () => {
     const navigate = useNavigate();
@@ -154,10 +154,8 @@ const OutsourcingPage = () => {
         let existingAttachments = [];
         try {
             if (order.attachment_file) {
-                const parsed = typeof order.attachment_file === 'string' 
-                    ? JSON.parse(order.attachment_file) 
-                    : order.attachment_file;
-                existingAttachments = Array.isArray(parsed) ? parsed : [parsed];
+                const parsed = safeParseJSON(order.attachment_file, []);
+                existingAttachments = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
             }
         } catch (e) {
             console.error("Attachment parse error", e);
@@ -253,7 +251,7 @@ const OutsourcingPage = () => {
             const order = orders.find(o => o.id === targetId);
             if (!order) return;
 
-            const files = typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file;
+            const files = safeParseJSON(order.attachment_file, []);
             const currentFiles = Array.isArray(files) ? files : [files];
             const newFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
 

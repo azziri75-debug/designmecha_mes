@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Clock, Trash2, Save, FileText } from 'lucide-react';
 import api from '../lib/api';
+import { safeParseJSON } from '../lib/utils';
 import { cn } from '../lib/utils';
 import FileViewerModal from './FileViewerModal';
 
@@ -27,7 +28,7 @@ const DefectDetailModal = ({ isOpen, onClose, defect, onSuccess }) => {
                 amount: defect.amount || 0,
                 resolution_note: defect.resolution_note || '',
                 status: defect.status || 'OCCURRED',
-                attachment_file: defect.attachment_file ? (typeof defect.attachment_file === 'string' ? JSON.parse(defect.attachment_file) : defect.attachment_file) : []
+                attachment_file: safeParseJSON(defect.attachment_file, [])
             });
         }
     }, [defect]);

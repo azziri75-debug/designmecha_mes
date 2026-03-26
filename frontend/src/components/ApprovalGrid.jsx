@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Table, TableBody, TableRow, Typography } from '@mui/material';
-import { getImageUrl } from '../lib/utils';
+import { getImageUrl, safeParseJSON } from '../lib/utils';
 import api from '../lib/api';
 
 const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] }) => {
@@ -74,7 +74,7 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
         if (!img) return null;
         let url = "";
         if (typeof img === 'string') {
-            try { url = JSON.parse(img).url; } catch { url = img; }
+            url = safeParseJSON(img, { url: img }).url;
         } else if (img.url) {
             url = img.url;
         } else if (Array.isArray(img) && img.length > 0) {

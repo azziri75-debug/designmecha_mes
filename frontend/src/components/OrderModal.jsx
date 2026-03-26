@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Search, FileText, Download, Upload, History } from 'lucide-react';
 import api from '../lib/api';
-import { cn } from '../lib/utils';
+import { cn, safeParseJSON } from '../lib/utils';
 
 import Select from 'react-select';
 import OrderHistoryModal from './OrderHistoryModal';
@@ -92,7 +92,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                     })),
                     note: orderToEdit.note || '',
                     status: orderToEdit.status || 'PENDING',
-                    attachment_file: orderToEdit.attachment_file ? (typeof orderToEdit.attachment_file === 'string' ? JSON.parse(orderToEdit.attachment_file) : orderToEdit.attachment_file) : []
+                    attachment_file: safeParseJSON(orderToEdit.attachment_file, [])
                 });
             } else {
                 // Create Mode

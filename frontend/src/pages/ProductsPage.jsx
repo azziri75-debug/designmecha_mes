@@ -3,7 +3,7 @@ import api from '../lib/api';
 import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt, Copy } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
-import { cn } from '../lib/utils';
+import { cn, safeParseJSON } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import ProcessGroupManager from '../components/ProcessGroupManager';
 import ResizableTh from '../components/ResizableTh';
@@ -252,7 +252,7 @@ const ProductsPage = ({ type }) => {
 
     const partnerOptions = partners.filter(p => {
         const types = Array.isArray(p.partner_type) ? p.partner_type :
-            (typeof p.partner_type === 'string' ? JSON.parse(p.partner_type) : []);
+            safeParseJSON(p.partner_type, []);
         const currentItemType = productFormData.item_type || type;
         if (currentItemType === 'PRODUCED') {
             return types.includes('CUSTOMER');
@@ -290,7 +290,7 @@ const ProductsPage = ({ type }) => {
             if (fileData) {
                 let currentFiles = [];
                 try {
-                    const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
+                    const parsed = safeParseJSON(productFormData.drawing_file, []);
                     currentFiles = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
                 } catch {
                     currentFiles = [];
@@ -304,7 +304,7 @@ const ProductsPage = ({ type }) => {
     const handleRemoveFile = (index) => {
         let currentFiles = [];
         try {
-            const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
+            const parsed = safeParseJSON(productFormData.drawing_file, []);
             currentFiles = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
         } catch {
             currentFiles = [];
@@ -456,7 +456,7 @@ const ProductsPage = ({ type }) => {
             const product = products.find(p => p.id === targetId);
             if (!product) return;
 
-            const files = typeof product.attachment_file === 'string' ? JSON.parse(product.attachment_file) : product.attachment_file;
+            const files = safeParseJSON(product.attachment_file, []);
             const currentFiles = Array.isArray(files) ? files : [files];
             const newFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
 
@@ -962,7 +962,7 @@ const ProductsPage = ({ type }) => {
                                                     {(() => {
                                                         let fileList = [];
                                                         try {
-                                                            const parsed = product.drawing_file ? (typeof product.drawing_file === 'string' ? JSON.parse(product.drawing_file) : product.drawing_file) : null;
+                                                            const parsed = safeParseJSON(product.drawing_file, null);
                                                             fileList = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
                                                         } catch { fileList = []; }
                                                         if (fileList.length > 0) {
@@ -1115,7 +1115,7 @@ const ProductsPage = ({ type }) => {
                                                                                                         // Parse files logic
                                                                                                         let fileList = [];
                                                                                                         try {
-                                                                                                            fileList = pp.attachment_file ? JSON.parse(pp.attachment_file) : [];
+                                                                                                            fileList = safeParseJSON(pp.attachment_file, []);
                                                                                                             if (!Array.isArray(fileList)) fileList = [pp.attachment_file];
                                                                                                         } catch {
                                                                                                             fileList = pp.attachment_file ? [pp.attachment_file] : [];
@@ -1477,7 +1477,7 @@ const ProductsPage = ({ type }) => {
                                                 {(() => {
                                                     let fileList = [];
                                                     try {
-                                                        const parsed = productFormData.drawing_file ? (typeof productFormData.drawing_file === 'string' ? JSON.parse(productFormData.drawing_file) : productFormData.drawing_file) : [];
+                                                        const parsed = safeParseJSON(productFormData.drawing_file, []);
                                                         fileList = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
                                                     } catch { fileList = []; }
 

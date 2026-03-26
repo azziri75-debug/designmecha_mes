@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon, Upload as UploadIcon, FilePresent as FileIcon } from '@mui/icons-material';
 import { X } from 'lucide-react';
+import { safeParseJSON } from '../lib/utils';
 import api from '../lib/api';
 import FileViewerModal from './FileViewerModal';
 
@@ -36,7 +37,7 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                     ...i,
                     cid: Math.random().toString(36).substr(2, 9)
                 })));
-                setAttachmentFile(log.attachment_file ? (typeof log.attachment_file === 'string' ? JSON.parse(log.attachment_file) : log.attachment_file) : []);
+                setAttachmentFile(safeParseJSON(log.attachment_file, []));
             } else {
                 setWorkDate(new Date().toISOString().split('T')[0]);
                 setWorkerId('');

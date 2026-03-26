@@ -7,6 +7,7 @@ import {
 import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import { cn, safeParseJSON } from '../lib/utils';
+import ResizableTableCell from '../components/ResizableTableCell';
 import PurchaseOrderModal from '../components/PurchaseOrderModal';
 import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';

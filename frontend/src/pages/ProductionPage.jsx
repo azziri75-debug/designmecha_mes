@@ -4,6 +4,7 @@ import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableConta
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon, Description as DescIcon } from '@mui/icons-material';
 import { X, FileText, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
+import { cn, safeParseJSON } from '../lib/utils';
 import ProductionPlanModal from '../components/ProductionPlanModal';
 import ProductionSheetModal from '../components/ProductionSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
@@ -266,7 +267,7 @@ const ProductionPage = () => {
         if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
 
         try {
-            const files = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file;
+            const files = safeParseJSON(plan.attachment_file, []);
             const currentFiles = Array.isArray(files) ? files : [files];
             const newFiles = currentFiles.filter((_, idx) => idx !== idxToRemove);
 
@@ -289,7 +290,7 @@ const ProductionPage = () => {
         if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
 
         try {
-            const files = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
+            const files = safeParseJSON(item.attachment_file, []);
             const currentFiles = Array.isArray(files) ? files : [files];
             const newFiles = currentFiles.filter((_, idx) => idx !== idxToRemove);
 
@@ -1078,7 +1079,7 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                                             let logFiles = [];
                                             try {
                                                 if (logItem.work_log?.attachment_file) {
-                                                    const parsed = typeof logItem.work_log.attachment_file === 'string' ? JSON.parse(logItem.work_log.attachment_file) : logItem.work_log.attachment_file;
+                                                    const parsed = safeParseJSON(logItem.work_log.attachment_file, []);
                                                     logFiles = Array.isArray(parsed) ? parsed : [parsed];
                                                 }
                                             } catch { }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Search, FileText, Upload, History } from 'lucide-react';
 import api from '../lib/api';
-import { cn } from '../lib/utils';
+import { cn, safeParseJSON } from '../lib/utils';
 import Select from 'react-select';
 import OrderHistoryModal from './OrderHistoryModal';
 import QuotationHistoryModal from './QuotationHistoryModal';
@@ -91,7 +91,7 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                     attachment_file: (() => {
                         if (!estimateToEdit.attachment_file) return [];
                         if (Array.isArray(estimateToEdit.attachment_file)) return estimateToEdit.attachment_file;
-                        try { return JSON.parse(estimateToEdit.attachment_file); } catch { return []; }
+                        return safeParseJSON(estimateToEdit.attachment_file, []);
                     })()
                 });
             } else {

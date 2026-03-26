@@ -5,7 +5,7 @@ import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
-import { cn } from '../lib/utils';
+import { cn, safeParseJSON } from '../lib/utils';
 
 const numberToKorean = (num) => {
     const units = ['', '만', '억', '조'];
@@ -101,12 +101,10 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         }, 0);
 
         let savedColWidths;
-        try {
             if (estimate.sheet_metadata) {
-                const sm = typeof estimate.sheet_metadata === 'string' ? JSON.parse(estimate.sheet_metadata) : estimate.sheet_metadata;
+                const sm = safeParseJSON(estimate.sheet_metadata, {});
                 if (sm.colWidths) savedColWidths = sm.colWidths;
             }
-        } catch (e) { }
 
         const defaultWidths = [30, 220, 100, 40, 70, 70, 60];
 
@@ -184,9 +182,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 formData.append('file', file);
                 const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
-                let currentAttachments = [];
-                try { if (estimate.attachment_file) currentAttachments = typeof estimate.attachment_file === 'string' ? JSON.parse(estimate.attachment_file) : estimate.attachment_file; } catch { currentAttachments = []; }
-                const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
+                const currentAttachments = safeParseJSON(estimate.attachment_file, []);
+                const newAttachments = [...currentAttachments, { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
                 await api.put(`/sales/estimates/${estimate.id}`, { attachment_file: newAttachments });
                 alert('저장 및 첨부되었습니다.');

@@ -5,7 +5,7 @@ import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import jsPDF from 'jspdf';
 import api from '../lib/api';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
-import { cn } from '../lib/utils';
+import { cn, safeParseJSON } from '../lib/utils';
 import ApprovalGrid from './ApprovalGrid';
 import { useAuth } from '../contexts/AuthContext';
 import PurchaseOrderTemplate from './PurchaseOrderTemplate';

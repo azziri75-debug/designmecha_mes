@@ -5,7 +5,7 @@ import { X, FileText, Printer, Save, Download } from 'lucide-react';
 import api from '../lib/api';
 import { printMultiPageAsImage, generateMultiPageA4PDF } from '../lib/printUtils';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
-import { cn } from '../lib/utils';
+import { cn, safeParseJSON } from '../lib/utils';
 
 /**
  * Production Page Component (A4 single page)

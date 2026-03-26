@@ -5,7 +5,7 @@ import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import jsPDF from 'jspdf';
 import PurchaseOrderTemplate from './PurchaseOrderTemplate';
 import api from '../lib/api';
-import { getImageUrl } from '../lib/utils';
+import { getImageUrl, safeParseJSON } from '../lib/utils';
 import ApprovalGrid from './ApprovalGrid';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -80,12 +80,8 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                 payment_terms: "물품 수령 후 90일 결제",
             };
             if (order.sheet_metadata) {
-                try {
-                    const savedMeta = typeof order.sheet_metadata === 'string'
-                        ? JSON.parse(order.sheet_metadata)
-                        : order.sheet_metadata;
-                    initialMetadata = { ...initialMetadata, ...savedMeta };
-                } catch (e) { console.error("Failed to parse metadata", e); }
+            const savedMeta = safeParseJSON(order.sheet_metadata, {});
+            initialMetadata = { ...initialMetadata, ...savedMeta };
             }
             setMetadata(initialMetadata);
         }
@@ -127,9 +123,8 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                 formData.append('file', file);
                 const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
-                let currentAttachments = [];
-                try { if (order.attachment_file) currentAttachments = typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file; } catch { currentAttachments = []; }
-                const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
+                const currentAttachments = safeParseJSON(order.attachment_file, []);
+                const newAttachments = [...currentAttachments, { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
                 await api.put(`/purchasing/purchase/orders/${order.id}`, { attachment_file: newAttachments });
                 alert('파일이 전송 및 첨부되었습니다.');

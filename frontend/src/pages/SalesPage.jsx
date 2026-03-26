@@ -190,7 +190,7 @@ const SalesPage = () => {
             const item = targetList.find(i => i.id === targetId);
             if (!item) return;
 
-            const files = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
+            const files = safeParseJSON(item.attachment_file, []);
             const currentFiles = Array.isArray(files) ? files : [files];
             const newFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Collapse, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, KeyboardArrowDown, KeyboardArrowUp, AttachFile as AttachFileIcon, TrendingUp as PerformanceIcon, List as ListIcon, Save as SaveIcon } from '@mui/icons-material';
 import api from '../lib/api';
+import { cn, safeParseJSON } from '../lib/utils';
 import WorkLogModal from '../components/WorkLogModal';
 import FileViewerModal from '../components/FileViewerModal';
 import { Tabs, Tab } from '@mui/material';
@@ -79,7 +80,7 @@ const WorkLogPage = () => {
         let parsedFiles = files;
         if (typeof files === 'string') {
             try {
-                parsedFiles = JSON.parse(files);
+                parsedFiles = safeParseJSON(files, []);
             } catch (e) {
                 console.error("Failed to parse attachment files", e);
                 parsedFiles = [];
@@ -266,7 +267,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                 <TableCell>{log.items?.length || 0}건</TableCell>
                 <TableCell>
                     {log.note || '-'}
-                    {log.attachment_file && (typeof log.attachment_file === 'string' ? JSON.parse(log.attachment_file).length > 0 : log.attachment_file.length > 0) && (
+                    {log.attachment_file && safeParseJSON(log.attachment_file, []).length > 0 && (
                         <IconButton size="small" color="info" onClick={(e) => { e.stopPropagation(); onViewFiles(); }} title="첨부파일 보기" sx={{ ml: 1 }}>
                             <AttachFileIcon fontSize="small" />
                         </IconButton>
