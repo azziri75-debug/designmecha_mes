@@ -42,6 +42,7 @@ async def login(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
+    from sqlalchemy import or_
     print(f"Login Debug: Attempting login for username/ID: '{req.username}'")
     result = await db.execute(select(Staff).where(or_(Staff.name == req.username, Staff.login_id == req.username)))
     staff = result.scalars().first()

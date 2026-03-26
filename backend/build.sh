@@ -6,4 +6,4 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 # Run migrations
-alembic upgrade head
+# alembic upgrade head
