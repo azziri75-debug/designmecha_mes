@@ -182,7 +182,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         let savedColWidths;
         try {
             if (plan.sheet_metadata) {
-                const sm = typeof plan.sheet_metadata === 'string' ? JSON.parse(plan.sheet_metadata) : plan.sheet_metadata;
+                const sm = safeParseJSON(plan.sheet_metadata, {});
                 if (sm.colWidths) savedColWidths = sm.colWidths;
             }
         } catch (e) { }

@@ -11,7 +11,6 @@ import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 import ResizableTableCell from '../components/ResizableTableCell';
-import { safeParseJSON } from '../lib/utils';
 
 const ProductionPage = () => {
     // Add Print Styles

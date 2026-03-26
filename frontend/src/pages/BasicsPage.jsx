@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { Plus, Search, Building2, User, MoreHorizontal, X, UserPlus, Phone, Mail, Pencil, Trash, Smartphone, Upload, FileText, MapPin, Factory } from 'lucide-react';
-import { cn, getImageUrl } from '../lib/utils';
+import { cn, getImageUrl, safeParseJSON } from '../lib/utils';
 
 import FileViewerModal from '../components/FileViewerModal';
 import Card from '../components/Card';
@@ -67,7 +67,7 @@ const autoHyphen = (value, type) => {
 
 const BasicsPageContent = () => {
     const [activeTab, setActiveTab] = useState('partners');
-    const [user] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+    const [user] = useState(safeParseJSON(localStorage.getItem('user'), {}));
 
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
@@ -289,7 +289,7 @@ const BasicsPageContent = () => {
         if (Array.isArray(partner.partner_type)) {
             types = partner.partner_type;
         } else if (typeof partner.partner_type === 'string') {
-            try { types = JSON.parse(partner.partner_type); } catch (e) { types = []; }
+            types = safeParseJSON(partner.partner_type, []);
         }
         setFormData({ ...partner, partner_type: Array.isArray(types) ? types : [] });
         setShowModal(true);
@@ -793,7 +793,7 @@ const BasicsPageContent = () => {
                                                         crossOrigin="anonymous"
                                                         src={getImageUrl((() => {
                                                             if (typeof formData.logo_image === 'string') {
-                                                                try { return JSON.parse(formData.logo_image).url; } catch (e) { return formData.logo_image; }
+                                                                return safeParseJSON(formData.logo_image, { url: formData.logo_image }).url;
                                                             }
                                                             return formData.logo_image?.url || '';
                                                         })())}
@@ -841,7 +841,7 @@ const BasicsPageContent = () => {
                                                         crossOrigin="anonymous"
                                                         src={getImageUrl((() => {
                                                             if (typeof formData.stamp_image === 'string') {
-                                                                try { return JSON.parse(formData.stamp_image).url; } catch (e) { return formData.stamp_image; }
+                                                                return safeParseJSON(formData.stamp_image, { url: formData.stamp_image }).url;
                                                             }
                                                             return formData.stamp_image?.url || '';
                                                         })())}
@@ -979,7 +979,7 @@ const BasicsPageContent = () => {
                                                         const rawFiles = partner.attachment_file;
                                                         try {
                                                             if (rawFiles) {
-                                                                const parsed = typeof rawFiles === 'string' ? JSON.parse(rawFiles) : rawFiles;
+                                                                const parsed = safeParseJSON(rawFiles, rawFiles);
                                                                 fileList = Array.isArray(parsed) ? parsed : [parsed];
                                                             }
                                                         } catch {
@@ -1479,7 +1479,7 @@ const BasicsPageContent = () => {
                                                                     // Use optional chaining and default to empty array
                                                                     existingFiles = formData.attachment_file ? (
                                                                         typeof formData.attachment_file === 'string'
-                                                                            ? JSON.parse(formData.attachment_file)
+                                                                            ? safeParseJSON(formData.attachment_file, [])
                                                                             : formData.attachment_file
                                                                     ) : [];
                                                                     if (!Array.isArray(existingFiles)) existingFiles = [existingFiles].filter(Boolean); // handle legacy single obj/string
@@ -1520,7 +1520,7 @@ const BasicsPageContent = () => {
                                                     try {
                                                         fileList = formData.attachment_file ? (
                                                             typeof formData.attachment_file === 'string'
-                                                                ? JSON.parse(formData.attachment_file)
+                                                                ? safeParseJSON(formData.attachment_file, [])
                                                                 : formData.attachment_file
                                                         ) : [];
                                                         if (!Array.isArray(fileList)) fileList = [fileList].filter(Boolean);

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Button } from '../components/ui/button';
 import api from '../lib/api';
 import VisualFormEditor from '../components/VisualFormEditor';
-import { cn } from '../lib/utils';
+import { cn, safeParseJSON } from '../lib/utils';
 
 const FormManagementPage = () => {
     const [templates, setTemplates] = useState([]);
@@ -140,12 +140,8 @@ const FormManagementPage = () => {
                                                 rows={20}
                                                 value={JSON.stringify(selectedTemplate.layout_data, null, 4)}
                                                 onChange={(e) => {
-                                                    try {
-                                                        const parsed = JSON.parse(e.target.value);
-                                                        setSelectedTemplate({ ...selectedTemplate, layout_data: parsed });
-                                                    } catch (err) {
-                                                        // ignore parse errors while typing
-                                                    }
+                                                    const parsed = safeParseJSON(e.target.value, null);
+                                                    if (parsed) setSelectedTemplate({ ...selectedTemplate, layout_data: parsed });
                                                 }}
                                                 className="w-full bg-gray-950 border border-gray-800 text-blue-400 font-mono text-xs rounded-lg p-4 focus:ring-1 focus:ring-blue-500 outline-none"
                                             />

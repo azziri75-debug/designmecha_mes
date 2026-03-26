@@ -27,6 +27,8 @@ if (api.defaults.baseURL) {
     api.defaults.baseURL = '/api/v1';
 }
 
+import { safeParseJSON } from './utils';
+
 // Request interceptor to add user identification header
 api.interceptors.request.use(
     (config) => {
@@ -39,15 +41,11 @@ api.interceptors.request.use(
             config.baseURL = config.baseURL.replace('http://', 'https://');
         }
 
-        const savedUser = localStorage.getItem('mes_user');
+        const savedUser = localStorage.getItem('mes_user') || localStorage.getItem('user');
         if (savedUser) {
-            try {
-                const user = JSON.parse(savedUser);
-                if (user && user.id) {
-                    config.headers['X-User-ID'] = user.id.toString();
-                }
-            } catch (e) {
-                console.error('Failed to parse mes_user from localStorage', e);
+            const user = safeParseJSON(savedUser, null);
+            if (user && user.id) {
+                config.headers['X-User-ID'] = user.id.toString();
             }
         }
         return config;

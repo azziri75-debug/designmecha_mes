@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { safeParseJSON } from '../lib/utils';
 
 const AuthContext = createContext(null);
 
@@ -20,7 +21,7 @@ const MENUS = [
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         const saved = localStorage.getItem('mes_user');
-        return saved ? JSON.parse(saved) : null;
+        return safeParseJSON(saved, null);
     });
 
     const login = (userData) => {

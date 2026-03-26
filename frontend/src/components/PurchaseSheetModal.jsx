@@ -84,7 +84,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         let savedColWidths;
         try {
             if (order.sheet_metadata) {
-                const sm = typeof order.sheet_metadata === 'string' ? JSON.parse(order.sheet_metadata) : order.sheet_metadata;
+                const sm = safeParseJSON(order.sheet_metadata, {});
                 if (sm.colWidths) savedColWidths = sm.colWidths;
             }
         } catch (e) { }
