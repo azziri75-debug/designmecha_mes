@@ -1826,65 +1826,60 @@ const BasicsPageContent = () => {
                                             <input name="main_duty" value={formData.main_duty || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 금형 설계, CNC 선반 가공" />
                                         </div>
 
-                                            <div className="space-y-4 pt-4 border-t border-gray-700">
-                                                <div className="flex items-center justify-between">
-                                                    <label className="text-sm font-bold text-blue-400">특수 권한 및 메뉴 설정</label>
-                                                    <span className="text-[11px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
-                                                        {!isSystemAdmin ? '조회 전용 (권한 없음)' : '시스템 관리자 전용'}
-                                                    </span>
-                                                </div>
+                                        <div className="space-y-4 pt-4 border-t border-gray-700">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-sm font-bold text-blue-400">특수 권한 및 메뉴 설정</label>
+                                                <span className="text-[11px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">관리자 전용 설정</span>
+                                            </div>
 
-                                                {/* 1. Global Special Permission Switches (Always visible, but disabled for non-admins) */}
-                                                <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 bg-blue-600/5 border border-blue-500/20 p-4 rounded-xl ${!isSystemAdmin ? 'opacity-60' : ''}`}>
-                                                    <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-xs font-semibold text-white">시스템 관리자</span>
-                                                            <span className="text-[10px] text-gray-500">모든 설정 제어 가능</span>
-                                                        </div>
-                                                        <div className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                checked={!!formData.is_sysadmin} 
-                                                                onChange={(e) => setFormData(p => ({...p, is_sysadmin: e.target.checked}))}
-                                                                className="sr-only peer"
-                                                                disabled={!isSystemAdmin}
-                                                            />
-                                                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                                                        </div>
-                                                    </label>
-                                                    <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-xs font-semibold text-white">외부망 접속</span>
-                                                            <span className="text-[10px] text-gray-500">사외 및 모바일 허용</span>
-                                                        </div>
-                                                        <div className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                checked={!!formData.can_access_external} 
-                                                                onChange={(e) => setFormData(p => ({...p, can_access_external: e.target.checked}))}
-                                                                className="sr-only peer"
-                                                                disabled={!isSystemAdmin}
-                                                            />
-                                                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                                                        </div>
-                                                    </label>
-                                                    <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-xs font-semibold text-white">타 직원 열람</span>
-                                                            <span className="text-[10px] text-gray-500">전체 근태/결재 조회</span>
-                                                        </div>
-                                                        <div className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                checked={!!formData.can_view_others} 
-                                                                onChange={(e) => setFormData(p => ({...p, can_view_others: e.target.checked}))}
-                                                                className="sr-only peer"
-                                                                disabled={!isSystemAdmin}
-                                                            />
-                                                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                                                        </div>
-                                                    </label>
-                                                </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-blue-600/5 border border-blue-500/20 p-4 rounded-xl">
+                                                <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-semibold text-white">시스템 관리자</span>
+                                                        <span className="text-[10px] text-gray-500">모든 설정 제어 가능</span>
+                                                    </div>
+                                                    <div className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.is_sysadmin === true} 
+                                                            onChange={(e) => setFormData(prev => ({ ...prev, is_sysadmin: e.target.checked }))} 
+                                                            className="sr-only peer"
+                                                        />
+                                                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                    </div>
+                                                </label>
+                                                <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-semibold text-white">외부망 접속</span>
+                                                        <span className="text-[10px] text-gray-500">사외 및 모바일 허용</span>
+                                                    </div>
+                                                    <div className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.can_access_external === true} 
+                                                            onChange={(e) => setFormData(prev => ({ ...prev, can_access_external: e.target.checked }))} 
+                                                            className="sr-only peer"
+                                                        />
+                                                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                    </div>
+                                                </label>
+                                                <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-semibold text-white">타 직원 열람</span>
+                                                        <span className="text-[10px] text-gray-500">전체 근태/결재 조회</span>
+                                                    </div>
+                                                    <div className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.can_view_others === true} 
+                                                            onChange={(e) => setFormData(prev => ({ ...prev, can_view_others: e.target.checked }))} 
+                                                            className="sr-only peer"
+                                                        />
+                                                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
 
                                             {/* 2. Granular Menu Permission Table (2-Column Grid) */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1956,24 +1951,23 @@ const BasicsPageContent = () => {
                                                                     };
 
                                                                     return (
-                                                                        <tr key={menu.key} className={`hover:bg-blue-500/5 transition-colors group ${!isSystemAdmin ? 'opacity-70' : ''}`}>
+                                                                        <tr key={menu.key} className="hover:bg-blue-500/5 transition-colors group">
                                                                             <td className="px-3 py-2 text-gray-300 group-hover:text-blue-300 font-medium">{menu.label}</td>
                                                                             <td className="px-1 py-2 text-center">
-                                                                                <input type="checkbox" checked={!!p.view} onChange={() => toggle('view')} disabled={!isSystemAdmin} className="w-3.5 h-3.5 rounded border-gray-600 text-blue-600 bg-gray-800 focus:ring-0 disabled:opacity-50" />
+                                                                                <input type="checkbox" checked={p.view === true} onChange={() => toggle('view')} className="w-3.5 h-3.5 rounded border-gray-600 text-blue-600 bg-gray-800 focus:ring-0" />
                                                                             </td>
                                                                             <td className="px-1 py-2 text-center">
-                                                                                <input type="checkbox" checked={!!p.edit} onChange={() => toggle('edit')} disabled={!isSystemAdmin} className="w-3.5 h-3.5 rounded border-gray-600 text-green-600 bg-gray-800 focus:ring-0 disabled:opacity-50" />
+                                                                                <input type="checkbox" checked={p.edit === true} onChange={() => toggle('edit')} className="w-3.5 h-3.5 rounded border-gray-600 text-green-600 bg-gray-800 focus:ring-0" />
                                                                             </td>
                                                                             <td className="px-1 py-2 text-center">
-                                                                                <input type="checkbox" checked={!!p.price} onChange={() => toggle('price')} disabled={!isSystemAdmin} className="w-3.5 h-3.5 rounded border-gray-600 text-amber-600 bg-gray-800 focus:ring-0 disabled:opacity-50" />
+                                                                                <input type="checkbox" checked={p.price === true} onChange={() => toggle('price')} className="w-3.5 h-3.5 rounded border-gray-600 text-amber-600 bg-gray-800 focus:ring-0" />
                                                                             </td>
                                                                             <td className="px-2 py-2 text-center bg-blue-500/5">
                                                                                 <input 
                                                                                     type="checkbox" 
-                                                                                    checked={isAllChecked} 
+                                                                                    checked={isAllChecked === true} 
                                                                                     onChange={() => toggle('all')} 
-                                                                                    disabled={!isSystemAdmin}
-                                                                                    className="w-4 h-4 rounded-full border-blue-500/50 text-blue-500 bg-gray-800 ring-offset-gray-900 focus:ring-1 focus:ring-blue-500 disabled:opacity-50" 
+                                                                                    className="w-4 h-4 rounded-full border-blue-500/50 text-blue-500 bg-gray-800 ring-offset-gray-900 focus:ring-1 focus:ring-blue-500" 
                                                                                 />
                                                                             </td>
                                                                         </tr>
@@ -1987,54 +1981,53 @@ const BasicsPageContent = () => {
                                             {formData.user_type === 'ADMIN' && (
                                                 <p className="text-[11px] text-purple-400">※ 관리자 설정 시 기본 권한이 자동 부여되나, 여기서 개별 조정이 가능합니다.</p>
                                             )}
-                                        </div>
 
-                                        {/* 도장/서명 이미지 */}
-                                        <div className="space-y-2 pt-4 border-t border-gray-700">
-                                            <label className="text-sm font-medium text-gray-300">결재용 도장/서명 이미지</label>
-                                            <div className="flex items-center gap-4">
-                                                {formData.stamp_image ? (
-                                                    <div className="relative group">
-                                                        <img
-                                                            src={formData.stamp_image.url}
-                                                            alt="Stamp"
-                                                            className="w-20 h-20 object-contain bg-white rounded border border-gray-600"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setFormData(prev => ({ ...prev, stamp_image: null }))}
-                                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                                        >
-                                                            <X className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="relative w-24 h-24 bg-gray-900 border border-gray-700 border-dashed rounded flex items-center justify-center group hover:border-blue-500 transition-colors">
-                                                        <Upload className="w-5 h-5 text-gray-500 group-hover:text-blue-500" />
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            className="absolute inset-0 opacity-0 cursor-pointer"
-                                                            onChange={async (e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) {
-                                                                    const fileData = await handleFileUpload(file);
-                                                                    if (fileData) {
-                                                                        setFormData(prev => ({ ...prev, stamp_image: fileData }));
+                                            {/* 도장/서명 이미지 */}
+                                            <div className="space-y-2 pt-4 border-t border-gray-700">
+                                                <label className="text-sm font-medium text-gray-300">결재용 도장/서명 이미지</label>
+                                                <div className="flex items-center gap-4">
+                                                    {formData.stamp_image ? (
+                                                        <div className="relative group">
+                                                            <img
+                                                                src={formData.stamp_image.url}
+                                                                alt="Stamp"
+                                                                className="w-20 h-20 object-contain bg-white rounded border border-gray-600"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setFormData(prev => ({ ...prev, stamp_image: null }))}
+                                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                            >
+                                                                <X className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="relative w-24 h-24 bg-gray-900 border border-gray-700 border-dashed rounded flex items-center justify-center group hover:border-blue-500 transition-colors">
+                                                            <Upload className="w-5 h-5 text-gray-500 group-hover:text-blue-500" />
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                                                onChange={async (e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) {
+                                                                        const fileData = await handleFileUpload(file);
+                                                                        if (fileData) {
+                                                                            setFormData(prev => ({ ...prev, stamp_image: fileData }));
+                                                                        }
                                                                     }
-                                                                }
-                                                            }}
-                                                        />
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <p className="text-[11px] text-gray-400">배경이 투명한 PNG 이미지를 권장합니다. (최대 1MB)</p>
+                                                        <p className="text-[11px] text-gray-400">전자결재 시 해당 이미지가 문서에 서명으로 삽입됩니다.</p>
                                                     </div>
-                                                )}
-                                                <div className="flex-1">
-                                                    <p className="text-[11px] text-gray-400">배경이 투명한 PNG 이미지를 권장합니다. (최대 1MB)</p>
-                                                    <p className="text-[11px] text-gray-400">전자결재 시 해당 이미지가 문서에 서명으로 삽입됩니다.</p>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </>
-                                )}
+                                        </>
+                                    )}
 
                                 {/* Equipment Forms */}
                                 {(modalType === 'create_equipment' || modalType === 'edit_equipment') && (
