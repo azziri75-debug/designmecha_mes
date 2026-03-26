@@ -232,7 +232,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     const productObj = item?.product || item?.material || item?.item || item?.consumable || {};
                     const productId = item?.product_id || item?.consumable_id || item?.item_id || item?.material_id || productObj?.id || item?.consumable?.id || '';
                     
-                    // [Defense] User requested robust specification extraction
+                    // [Defense] Robust name and specification extraction
+                    const productName = productObj?.name || item?.product?.name || item?.consumable?.name || item?.name || item?.item_name || item?.requested_item_name || item?.display_product_name || '알 수 없는 품목';
                     const spec = productObj?.specification || item?.specification || item?.remarks || '';
 
                     if (item?.type === 'PENDING') {
@@ -250,11 +251,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         }
                         return {
                             product_id: productId || '',
+                            product_name: productName,
                             quantity: item?.quantity || 1,
                             unit_price: unitPrice,
                             note: item?.note || item?.process_name || '',
                             production_plan_item_id: item?.id,
-                            display_product_name: productObj?.name || item?.product_name_of_plan || '',
+                            display_product_name: productName || item?.product_name_of_plan || '',
                             display_client_name: item?.client_name || '',
                             order_size: '',
                             material: productObj?.material || '',
@@ -272,6 +274,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         }
                         return {
                             product_id: productId || '',
+                            product_name: productName || item?.product_name || '',
                             quantity: item?.shortage_quantity !== undefined ? item?.shortage_quantity : (item?.required_purchase_qty || 0),
                             unit_price: unitPrice || 0,
                             note: 'MRP 소요량 기반 발주',
@@ -285,6 +288,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     } else if (item?.type === 'CONSUMABLE_WAIT') {
                         return {
                             product_id: productId || '',
+                            product_name: productName,
                             quantity: item?.quantity || 0,
                             unit_price: item?.unit_price || 0,
                             note: item?.remarks || '',
@@ -294,6 +298,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     }
                     return {
                         product_id: productId || '',
+                        product_name: productName,
                         quantity: item?.quantity || 1,
                         unit_price: item?.unit_price || 0,
                         note: item?.note || '',
@@ -594,21 +599,30 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         <TableBody>
                             {formData.items.map((item, index) => {
                                 const prod = products.find(p => String(p.id) === String(item.product_id));
+                                
+                                // [CRITICAL] Fallback logic to prevent blank Autocomplete
+                                const displayValue = prod || (item.product_id ? { 
+                                    id: item.product_id, 
+                                    name: item.product_name || item.display_product_name || '로딩 중...',
+                                    specification: item.specification || '',
+                                    isDummy: true 
+                                } : null);
+
                                 return (
                                     <React.Fragment key={index}>
                                         {/* Row 1: Primary Fields */}
                                         <TableRow sx={{ '& > td': { borderBottom: 'none' } }}>
-                                            <TableCell rowSpan={2} sx={{ textAlign: 'center', borderRight: '1px solid #eee' }}>{index + 1}</TableCell>
+                                            <TableCell rowSpan={2} sx={{ textAlign: 'center', borderRight: '1px solid #eee', bgcolor: '#fafafa' }}>{index + 1}</TableCell>
                                             <TableCell>
                                                 <Autocomplete
                                                     size="small"
+                                                    value={displayValue}
+                                                    isOptionEqualToValue={(option, val) => String(option.id) === String(val?.id)}
                                                     options={purchaseTypeState === 'CONSUMABLE' 
                                                         ? products.filter(p => p.item_type === 'CONSUMABLE' || p.type === 'CONSUMABLE')
                                                         : products
                                                     }
                                                     getOptionLabel={getProductLabel}
-                                                    isOptionEqualToValue={(option, value) => option.id === value?.id}
-                                                    value={prod || null}
                                                     onChange={(_, newValue) => {
                                                         if (newValue && newValue.isNew) {
                                                             // INTERCEPT: Do not set form data, just open modal
