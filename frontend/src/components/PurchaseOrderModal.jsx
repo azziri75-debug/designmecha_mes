@@ -600,13 +600,22 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             {formData.items.map((item, index) => {
                                 const prod = products.find(p => String(p.id) === String(item.product_id));
                                 
-                                // [CRITICAL] Fallback logic to prevent blank Autocomplete
-                                const displayValue = prod || (item.product_id ? { 
-                                    id: item.product_id, 
-                                    name: item.product_name || item.display_product_name || '로딩 중...',
+                                // 1. product_id가 없어도(미등록), product_name만 있으면 무조건 화면에 텍스트를 띄우도록 조건 완화!
+                                const displayValue = prod || (item.product_name ? { 
+                                    id: item.product_id || `dummy-${index}`, 
+                                    name: item.product_name,
                                     specification: item.specification || '',
                                     isDummy: true 
                                 } : null);
+
+                                // 2. MUI Autocomplete가 가짜 객체를 튕겨내지 못하도록 options 배열에 몰래 끼워 넣기
+                                const currentOptions = purchaseTypeState === 'CONSUMABLE' 
+                                    ? [...products.filter(p => p.item_type === 'CONSUMABLE' || p.type === 'CONSUMABLE')]
+                                    : [...products];
+
+                                if (displayValue && displayValue.isDummy && !currentOptions.find(o => String(o.id) === String(displayValue.id))) {
+                                    currentOptions.push(displayValue);
+                                }
 
                                 return (
                                     <React.Fragment key={index}>
@@ -617,11 +626,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                 <Autocomplete
                                                     size="small"
                                                     value={displayValue}
+                                                    options={currentOptions}
                                                     isOptionEqualToValue={(option, val) => String(option.id) === String(val?.id)}
-                                                    options={purchaseTypeState === 'CONSUMABLE' 
-                                                        ? products.filter(p => p.item_type === 'CONSUMABLE' || p.type === 'CONSUMABLE')
-                                                        : products
-                                                    }
                                                     getOptionLabel={getProductLabel}
                                                     onChange={(_, newValue) => {
                                                         if (newValue && newValue.isNew) {
