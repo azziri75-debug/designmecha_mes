@@ -59,6 +59,8 @@ const PurchaseOrderTemplate = ({
     }, 0);
     const totalQty = (data.items || []).reduce((s, i) => s + (parseFloat(i.qty) || 0), 0);
 
+    const isEstimate = docType === 'ESTIMATE_REQUEST';
+
     const columns = [
         { key: 'idx', label: '순번', subLabel: 'Order', align: 'center' },
         { key: 'name', label: '품목', subLabel: 'Description', align: 'left' },
@@ -88,8 +90,8 @@ const PurchaseOrderTemplate = ({
             idx: item.idx || idx + 1,
             spec: specDisplay,
             qty: fmt(item.qty),
-            price: item.pricing_type === 'WEIGHT' ? `${fmt(item.price)} (kg당)` : fmt(item.price),
-            total: fmt(
+            price: isEstimate ? "" : (item.pricing_type === 'WEIGHT' ? `${fmt(item.price)} (kg당)` : fmt(item.price)),
+            total: isEstimate ? "" : fmt(
                 (item.pricing_type === 'WEIGHT' 
                     ? (parseFloat(item.total_weight) || 0) 
                     : (parseFloat(item.qty) || 0)
@@ -212,6 +214,8 @@ const PurchaseOrderTemplate = ({
                             startIcon={<Send size={16} />}
                             onClick={handleSubmitApproval}
                             disabled={isSubmitting}
+                            className="print:hidden"
+                            data-html2canvas-ignore="true"
                         >
                             {isSubmitting ? "상신 중..." : "결재요청"}
                         </Button>
@@ -282,25 +286,27 @@ const PurchaseOrderTemplate = ({
                 />
                 
                 {/* Summary */}
-                <div className="flex border-2 border-black border-t-0 font-bold text-[10px] h-10 items-center bg-gray-50">
-                    <div className="border-r border-black flex-1 text-center uppercase tracking-widest text-gray-500 flex items-center justify-center gap-2">
-                        합계 (VAT 별도)
-                        {!isReadOnly && onAddItem && (
-                            <button 
-                                onClick={onAddItem}
-                                className="bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center hover:bg-blue-500 transition-colors idf-no-print"
-                                title="품목 추가"
-                            >
-                                +
-                            </button>
-                        )}
+                {(!isEstimate) && (
+                    <div className="flex border-2 border-black border-t-0 font-bold text-[10px] h-10 items-center bg-gray-50">
+                        <div className="border-r border-black flex-1 text-center uppercase tracking-widest text-gray-500 flex items-center justify-center gap-2">
+                            합계 (VAT 별도)
+                            {!isReadOnly && onAddItem && (
+                                <button 
+                                    onClick={onAddItem}
+                                    className="bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center hover:bg-blue-500 transition-colors idf-no-print"
+                                    title="품목 추가"
+                                >
+                                    +
+                                </button>
+                            )}
+                        </div>
+                        <div className="w-[60px] border-r border-black text-center text-gray-700">
+                            {fmt(totalQty)}
+                        </div>
+                        <div className="w-[80px] border-r border-black"></div>
+                        <div className="w-[100px] text-right px-2 text-black">{fmt(totalAmount)} 원</div>
                     </div>
-                    <div className="w-[60px] border-r border-black text-center text-gray-700">
-                        {fmt(totalQty)}
-                    </div>
-                    <div className="w-[80px] border-r border-black"></div>
-                    <div className="w-[100px] text-right px-2 text-black">{fmt(totalAmount)} 원</div>
-                </div>
+                )}
             </div>
 
             {/* Footer */}
