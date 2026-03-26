@@ -218,7 +218,32 @@ const BasicsPageContent = () => {
             finalValue = autoHyphen(value, 'phone').slice(0, 13); // Limit length
         }
 
-        setFormData(prev => ({ ...prev, [name]: finalValue }));
+        setFormData(prev => {
+            const newState = { ...prev, [name]: finalValue };
+            
+            // Phase 2: Role-based Permission Auto-Sync
+            if (name === 'role') {
+                const highRanks = ['대표이사', '사장', '부사장', '전무', '상무', '이사', '관리자'];
+                const isHighRank = highRanks.some(rank => value.includes(rank));
+                
+                if (isHighRank) {
+                    // Auto-enable all special permissions
+                    newState.is_sysadmin = true;
+                    newState.can_access_external = true;
+                    newState.can_view_others = true;
+                    
+                    // Auto-enable all menu permissions
+                    const menus = ['dashboard', 'basics', 'products', 'sales', 'production', 'worklogs', 'purchasing', 'outsourcing', 'quality', 'inventory', 'delivery', 'hr', 'approval', 'ADMIN'];
+                    const fullPerms = {};
+                    menus.forEach(m => {
+                        fullPerms[m] = { view: true, edit: true, price: true };
+                    });
+                    newState.menu_permissions = fullPerms;
+                    newState.user_type = 'ADMIN';
+                }
+            }
+            return newState;
+        });
     };
 
     const handleCheckboxChange = (e) => {
@@ -1792,100 +1817,137 @@ const BasicsPageContent = () => {
                                             <input name="main_duty" value={formData.main_duty || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 금형 설계, CNC 선반 가공" />
                                         </div>
 
-                                        {/* 메뉴 상세 권한 설정 */}
-                                        <div className="space-y-3 pt-4 border-t border-gray-700">
+                                        <div className="space-y-4 pt-4 border-t border-gray-700">
                                             <div className="flex items-center justify-between">
-                                                <label className="text-sm font-medium text-gray-300">메뉴별 상세 권한 설정</label>
-                                                <span className="text-[11px] text-gray-500">※ 조회 권한이 있어야 해당 메뉴가 보입니다.</span>
+                                                <label className="text-sm font-bold text-blue-400">특수 권한 및 메뉴 설정</label>
+                                                {user.is_sysadmin && (
+                                                    <span className="text-[11px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">시스템 관리자 전용</span>
+                                                )}
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {[
-                                                    { key: 'basics', label: '기초 정보' },
-                                                    { key: 'products', label: '제품/공정 관리' },
-                                                    { key: 'sales', label: '영업 관리' },
-                                                    { key: 'production', label: '생산 관리' },
-                                                    { key: 'worklogs', label: '작업 일지' },
-                                                    { key: 'purchasing', label: '자재/소모품 구매' },
-                                                    { key: 'outsourcing', label: '외주 발주' },
-                                                    { key: 'quality', label: '품질 관리' },
-                                                    { key: 'inventory', label: '재고 관리' },
-                                                    { key: 'delivery', label: '납품 관리' },
-                                                    { key: 'hr', label: '근태 관리' },
-                                                    { key: 'approval', label: '전자결재/문서' },
-                                                ].map(menu => {
-                                                    const isAdmin = formData.user_type === 'ADMIN';
-                                                    const perms = formData.menu_permissions || {};
-                                                    const isArray = Array.isArray(perms);
 
-                                                    const getVal = (action) => {
-                                                        if (isAdmin) return true;
-                                                        if (isArray) return perms.includes(menu.key);
-                                                        return !!(perms[menu.key] && perms[menu.key][action]);
-                                                    };
-
-                                                    const handleChange = (action, val) => {
-                                                        let newPerms = isArray ? {} : { ...perms };
-                                                        if (isArray) {
-                                                            perms.forEach(k => {
-                                                                newPerms[k] = { view: true, edit: true, showPrice: true };
-                                                            });
-                                                        }
-
-                                                        if (!newPerms[menu.key]) {
-                                                            newPerms[menu.key] = { view: false, edit: false, showPrice: false };
-                                                        } else {
-                                                            newPerms[menu.key] = { ...newPerms[menu.key] };
-                                                        }
-
-                                                        newPerms[menu.key][action] = val;
-                                                        if ((action === 'edit' || action === 'showPrice') && val) {
-                                                            newPerms[menu.key].view = true;
-                                                        }
-
-                                                        setFormData(prev => ({ ...prev, menu_permissions: newPerms }));
-                                                    };
-
-                                                    return (
-                                                        <div key={menu.key} className="bg-gray-900 border border-gray-700 rounded-lg p-3 hover:bg-gray-800/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
-                                                            <div className="text-sm font-medium text-gray-300">{menu.label}</div>
-                                                            <div className="flex items-center gap-4">
-                                                                <label className="flex items-center gap-1.5 cursor-pointer">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={getVal('view')}
-                                                                        disabled={isAdmin}
-                                                                        onChange={(e) => handleChange('view', e.target.checked)}
-                                                                        className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-800 disabled:opacity-50"
-                                                                    />
-                                                                    <span className="text-[13px] text-gray-400">조회</span>
-                                                                </label>
-                                                                <label className="flex items-center gap-1.5 cursor-pointer">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={getVal('edit')}
-                                                                        disabled={isAdmin}
-                                                                        onChange={(e) => handleChange('edit', e.target.checked)}
-                                                                        className="w-4 h-4 rounded border-gray-600 text-green-600 focus:ring-green-500 bg-gray-800 disabled:opacity-50"
-                                                                    />
-                                                                    <span className="text-[13px] text-gray-400">편집</span>
-                                                                </label>
-                                                                <label className="flex items-center gap-1.5 cursor-pointer">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={getVal('showPrice')}
-                                                                        disabled={isAdmin}
-                                                                        onChange={(e) => handleChange('showPrice', e.target.checked)}
-                                                                        className="w-4 h-4 rounded border-gray-600 text-amber-600 focus:ring-amber-500 bg-gray-800 disabled:opacity-50"
-                                                                    />
-                                                                    <span className="text-[13px] text-gray-400">단가</span>
-                                                                </label>
-                                                            </div>
+                                            {/* 1. Global Special Permission Switches (Visible only to sysadmin) */}
+                                            {user.is_sysadmin && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-blue-600/5 border border-blue-500/20 p-4 rounded-xl">
+                                                    <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-semibold text-white">시스템 관리자</span>
+                                                            <span className="text-[10px] text-gray-500">모든 설정 제어 가능</span>
                                                         </div>
-                                                    );
-                                                })}
+                                                        <div className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={!!formData.is_sysadmin} 
+                                                                onChange={(e) => setFormData(p => ({...p, is_sysadmin: e.target.checked}))}
+                                                                className="sr-only peer"
+                                                            />
+                                                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                        </div>
+                                                    </label>
+                                                    <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-semibold text-white">외부망 접속</span>
+                                                            <span className="text-[10px] text-gray-500">사외 및 모바일 허용</span>
+                                                        </div>
+                                                        <div className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={!!formData.can_access_external} 
+                                                                onChange={(e) => setFormData(p => ({...p, can_access_external: e.target.checked}))}
+                                                                className="sr-only peer"
+                                                            />
+                                                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                        </div>
+                                                    </label>
+                                                    <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-semibold text-white">타 직원 열람</span>
+                                                            <span className="text-[10px] text-gray-500">전체 근태/결재 조회</span>
+                                                        </div>
+                                                        <div className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={!!formData.can_view_others} 
+                                                                onChange={(e) => setFormData(p => ({...p, can_view_others: e.target.checked}))}
+                                                                className="sr-only peer"
+                                                            />
+                                                            <div className="w-11 h-6 bg-gray-900 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            )}
+
+                                            {/* 2. Granular Menu Permission Table */}
+                                            <div className="overflow-hidden border border-gray-700 rounded-xl bg-gray-900/30">
+                                                <table className="w-full text-xs text-left">
+                                                    <thead className="bg-gray-800/80 text-gray-400">
+                                                        <tr>
+                                                            <th className="px-4 py-2 font-medium">메뉴명</th>
+                                                            <th className="px-2 py-2 text-center w-16">조회</th>
+                                                            <th className="px-2 py-2 text-center w-16">편집</th>
+                                                            <th className="px-2 py-2 text-center w-16">금액</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-800">
+                                                        {[
+                                                            { key: 'dashboard', label: '대시보드' },
+                                                            { key: 'basics', label: '기초 정보' },
+                                                            { key: 'products', label: '제품/공정 관리' },
+                                                            { key: 'sales', label: '영업 관리' },
+                                                            { key: 'production', label: '생산 관리' },
+                                                            { key: 'worklogs', label: '작업 일지' },
+                                                            { key: 'purchasing', label: '자재/소모품 구매' },
+                                                            { key: 'outsourcing', label: '외주 발주' },
+                                                            { key: 'quality', label: '품질 관리' },
+                                                            { key: 'inventory', label: '재고 관리' },
+                                                            { key: 'delivery', label: '납품 관리' },
+                                                            { key: 'hr', label: '근태 관리' },
+                                                            { key: 'approval', label: '전자결재/문서' },
+                                                            { key: 'ADMIN', label: 'DB 관리' },
+                                                        ].map(menu => {
+                                                            const perms = formData.menu_permissions || {};
+                                                            const isArray = Array.isArray(perms);
+                                                            const p = !isArray && perms[menu.key] ? perms[menu.key] : {view: false, edit: false, price: false};
+                                                            
+                                                            // Legacy array support
+                                                            if (isArray && perms.includes(menu.key)) {
+                                                                p.view = true; p.edit = true; p.price = true;
+                                                            }
+
+                                                            const toggle = (action) => {
+                                                                const newPerms = isArray ? {} : { ...perms };
+                                                                if (isArray) {
+                                                                    perms.forEach(k => { newPerms[k] = {view: true, edit: true, price: true}; });
+                                                                }
+                                                                const current = newPerms[menu.key] || {view: false, edit: false, price: false};
+                                                                newPerms[menu.key] = { ...current, [action]: !current[action] };
+                                                                
+                                                                // Logical chaining: edit/price implies view
+                                                                if ((action === 'edit' || action === 'price') && newPerms[menu.key][action]) {
+                                                                    newPerms[menu.key].view = true;
+                                                                }
+                                                                setFormData(prev => ({ ...prev, menu_permissions: newPerms }));
+                                                            };
+
+                                                            return (
+                                                                <tr key={menu.key} className="hover:bg-gray-800/40 transition-colors">
+                                                                    <td className="px-4 py-2.5 font-medium text-gray-300">{menu.label}</td>
+                                                                    <td className="px-2 py-2 text-center">
+                                                                        <input type="checkbox" checked={!!p.view} onChange={() => toggle('view')} className="w-4 h-4 rounded border-gray-600 text-blue-600 bg-gray-800" />
+                                                                    </td>
+                                                                    <td className="px-2 py-2 text-center">
+                                                                        <input type="checkbox" checked={!!p.edit} onChange={() => toggle('edit')} className="w-4 h-4 rounded border-gray-600 text-green-600 bg-gray-800" />
+                                                                    </td>
+                                                                    <td className="px-2 py-2 text-center">
+                                                                        <input type="checkbox" checked={!!p.price} onChange={() => toggle('price')} className="w-4 h-4 rounded border-gray-600 text-amber-600 bg-gray-800" />
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
                                             </div>
                                             {formData.user_type === 'ADMIN' && (
-                                                <p className="text-[11px] text-purple-400 mt-1">※ 관리자는 모든 권한을 가집니다.</p>
+                                                <p className="text-[11px] text-purple-400">※ 관리자 설정 시 기본 권한이 자동 부여되나, 여기서 개별 조정이 가능합니다.</p>
                                             )}
                                         </div>
 
