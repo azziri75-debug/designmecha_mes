@@ -847,9 +847,10 @@ async def startup_event():
                     admin.menu_permissions = FULL_PERMISSIONS
                     admin.is_active = True
                     db.add(admin)
-                    print("Startup: Reset system admin account (ID: admin)")
+                    print("Startup: Reset system admin account (ID: admin) - Force Overwrite")
                 
                 await db.commit()
+                print("Startup: System Admin account committed successfully.")
             except Exception as e:
                 print(f"Startup: System Admin init failed: {e}")
                 await db.rollback()

@@ -42,29 +42,37 @@ async def login(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    from sqlalchemy import or_
+    print(f"Login Debug: Attempting login for username/ID: '{req.username}'")
     result = await db.execute(select(Staff).where(or_(Staff.name == req.username, Staff.login_id == req.username)))
     staff = result.scalars().first()
     
     if not staff:
+        print(f"Login Debug: Staff not found for '{req.username}'")
         raise HTTPException(status_code=401, detail="사원 정보가 존재하지 않습니다.")
     if not staff.is_active:
         raise HTTPException(status_code=401, detail="비활성화된 계정입니다.")
         
     # Password verification (Hybrid: bcrypt -> plain fallback)
+    # [DEBUG] Strip whitespace and log attempt
+    input_pw = req.password.strip()
+    db_pw = staff.password.strip() if staff.password else ""
+    
     is_password_correct = False
     try:
         # 1. Try bcrypt verification first
-        is_password_correct = pwd_context.verify(req.password, staff.password)
-    except Exception:
-        # If verify fails (e.g. not a hash), fallback to plain comparison
+        is_password_correct = pwd_context.verify(input_pw, db_pw)
+    except Exception as e:
+        print(f"Login Debug: Bcrypt verify error for {req.username}: {e}")
         is_password_correct = False
     
     # 2. Strong fallback for existing plain-text passwords
     if not is_password_correct:
-        is_password_correct = (req.password == staff.password)
+        is_password_correct = (input_pw == db_pw)
+        if is_password_correct:
+            print(f"Login Debug: Plain-text fallback match for {req.username}")
         
     if not is_password_correct:
+        print(f"Login Debug: Password mismatch for ID: {req.username} (Staff ID found: {staff.login_id})")
         raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다.")
     
     # --- [보안 검문소] 작업자 외부망 로그인 차단 로직 ---
