@@ -239,6 +239,60 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         >
                             {saving ? '처리 중...' : 'PDF 저장 및 첨부'}
                         </button>
+
+                        {/* [MOD] 결재요청 button moved from template to header to avoid print inclusion */}
+                        {(!approvalDoc || approvalDoc.status !== 'APPROVED') && (
+                            <button
+                                onClick={async () => {
+                                    if (!order?.id) return;
+                                    if (!window.confirm("이 내용으로 전자결재 [결재요청]을 진행하시겠습니까?")) return;
+                                    setSaving(true);
+                                    try {
+                                        const firstItemProcess = metadata.items?.[0]?.name || (orderType === 'outsourcing' ? '외주공정' : (metadata.purchase_type === 'CONSUMABLE' ? '소모품' : '구매자재'));
+                                        const customerName = metadata.related_customer_names || '재고용';
+                                        const partnerName = metadata.partner_name || '공급사미지정';
+
+                                        const approvalPayload = {
+                                            title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
+                                            doc_type: 'PURCHASE_ORDER',
+                                            content: {
+                                                order_no: metadata.order_no,
+                                                partner_name: metadata.partner_name,
+                                                partner_phone: metadata.partner_phone,
+                                                partner_fax: metadata.partner_fax,
+                                                order_date: metadata.order_date || order.order_date,
+                                                delivery_date: metadata.delivery_date,
+                                                special_notes: metadata.special_notes,
+                                                items: (metadata.items || []).filter(i => i.name).map((item, idx) => ({
+                                                    idx: idx + 1,
+                                                    name: item.name,
+                                                    spec: item.spec,
+                                                    qty: item.qty,
+                                                    price: item.price,
+                                                    total: (parseFloat(item.qty) || 0) * (parseFloat(item.price) || 0)
+                                                }))
+                                            },
+                                            reference_id: order.id,
+                                            reference_type: orderType === 'outsourcing' ? 'OUTSOURCING' : 'PURCHASE'
+                                        };
+                                        
+                                        await api.post('/approval/documents', approvalPayload);
+                                        alert("결재 요청이 상신되었습니다.");
+                                        fetchApprovalDoc();
+                                    } catch (err) {
+                                        console.error("Failed to submit approval", err);
+                                        alert("결재 요청 중 오류가 발생했습니다.");
+                                    } finally {
+                                        setSaving(false);
+                                    }
+                                }}
+                                disabled={saving}
+                                className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"
+                            >
+                                <Save className="w-4 h-4" /> 결재요청
+                            </button>
+                        )}
+
                         <button
                             onClick={onClose}
                             className="text-gray-400 hover:text-white p-2 flex items-center justify-center"

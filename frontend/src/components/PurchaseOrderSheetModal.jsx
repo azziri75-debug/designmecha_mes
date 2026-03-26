@@ -157,6 +157,58 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                         >
                             {saving ? '처리 중...' : 'PDF 저장 및 첨부'}
                         </button>
+
+                        {/* [MOD] 결재요청 button moved from template to header to avoid print inclusion */}
+                        {(!approvalDoc || approvalDoc.status !== 'APPROVED') && (
+                            <button
+                                onClick={async () => {
+                                    if (!order?.id) return;
+                                    if (!window.confirm("이 내용으로 전자결재 [결재요청]을 진행하시겠습니까?")) return;
+                                    setSaving(true);
+                                    try {
+                                        const firstItemProcess = order.items?.[0]?.product?.name || '구매자재';
+                                        const customerName = '재고용';
+                                        const partnerName = order.vendor?.name || '공급사미지정';
+
+                                        const approvalPayload = {
+                                            title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
+                                            doc_type: 'PURCHASE_ORDER',
+                                            content: {
+                                                order_no: metadata.order_no,
+                                                partner_name: order.vendor?.name,
+                                                order_date: order.order_date,
+                                                delivery_date: metadata.delivery_date,
+                                                special_notes: metadata.special_notes,
+                                                items: (order.items || []).map((item, idx) => ({
+                                                    idx: idx + 1,
+                                                    name: item.product?.name,
+                                                    spec: item.product?.specification,
+                                                    qty: item.quantity,
+                                                    price: item.unit_price,
+                                                    total: (item.quantity || 0) * (item.unit_price || 0)
+                                                }))
+                                            },
+                                            reference_id: order.id,
+                                            reference_type: 'PURCHASE'
+                                        };
+                                        
+                                        await api.post('/approval/documents', approvalPayload);
+                                        alert("결재 요청이 상신되었습니다.");
+                                        fetchApprovalDoc();
+                                    } catch (err) {
+                                        console.error("Failed to submit approval", err);
+                                        alert("결재 요청 중 오류가 발생했습니다.");
+                                    } finally {
+                                        setSaving(false);
+                                    }
+                                }}
+                                disabled={saving}
+                                className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+                            >
+                                <Save className="w-4 h-4" /> 결재요청
+                            </button>
+                        )}
+
                         <button
                             onClick={onClose}
                             className="text-gray-400 hover:text-white p-2 transition-colors"

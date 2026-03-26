@@ -195,32 +195,6 @@ const PurchaseOrderTemplate = ({
 
     return (
         <div className="flex flex-col w-full h-full">
-            {/* Toolbar - Only visible in View mode and not during print */}
-            {isReadOnly && (!documentData || documentData.status !== 'APPROVED') && orderId && (
-                <Box className="idf-no-print" sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'flex-end', 
-                    gap: 1, 
-                    mb: 2, 
-                    p: 1, 
-                    bgcolor: '#f1f5f9', 
-                    borderRadius: 1,
-                    border: '1px solid #e2e8f0'
-                }}>
-                        <Button
-                            variant="contained"
-                            size="small"
-                            color="primary"
-                            startIcon={<Send size={16} />}
-                            onClick={handleSubmitApproval}
-                            disabled={isSubmitting}
-                            className="print:hidden"
-                            data-html2canvas-ignore="true"
-                        >
-                            {isSubmitting ? "상신 중..." : "결재요청"}
-                        </Button>
-                </Box>
-            )}
 
             <div className={cn("bg-white text-black relative flex flex-col a4-wrapper print-safe-area", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
