@@ -1013,7 +1013,7 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {(() => {
-                            const localFiles = safeParseJSON(item.attachment_file, []);
+                            let localFiles = safeParseJSON(item.attachment_file, []);
                             localFiles = localFiles.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== ''))).map(f => typeof f === 'string' ? { name: f.split?.('/')?.pop() || '파일', url: f } : f);
 
                             let externalFiles = [];
