@@ -420,21 +420,33 @@ const ProductsPage = ({ type }) => {
 
     const handleDuplicateProduct = (product) => {
         // Prepare the duplicated data
-        const { id, created_at, updated_at, vendor, partner, ...cleanData } = product;
+        const { id, created_at, updated_at, vendor, partner, ...rest } = product;
+        const cleanData = { ...rest };
+
+        // [ 정밀 클렌징 ]
+        // '부품(PART)'과 '소모품(CONSUMABLE)'은 생산 전용 데이터(공정, 라우팅, BOM)를 가지지 않음
+        if (type === 'PART' || type === 'CONSUMABLE') {
+            delete cleanData.standard_processes;
+            delete cleanData.routings;
+            delete cleanData.bom;
+            delete cleanData.processes; // 혹시라도 존재할 경우 삭제
+        }
 
         // Append "- 복사본" to the name
         const duplicatedName = `${product.name} - 복사본`;
 
-        // Handle standard_processes duplication
-        // We need to clear IDs from processes to trigger new creation on the backend
-        const duplicatedProcesses = (product.standard_processes || []).map((proc, idx) => {
-            const { id, product_id, created_at, updated_at, process, ...procData } = proc;
-            return {
-                ...procData,
-                sequence: idx + 1,
-                _tempId: Math.random()
-            };
-        });
+        // Handle standard_processes duplication for PRODUCED items
+        let duplicatedProcesses = [];
+        if (type === 'PRODUCED') {
+            duplicatedProcesses = (product.standard_processes || []).map((proc, idx) => {
+                const { id, product_id, created_at, updated_at, process, ...procData } = proc;
+                return {
+                    ...procData,
+                    sequence: idx + 1,
+                    _tempId: Math.random()
+                };
+            });
+        }
 
         setProductFormData({
             ...cleanData,

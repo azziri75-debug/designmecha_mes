@@ -150,7 +150,7 @@ const PurchaseOrderTemplate = ({
 
             const approvalPayload = {
                 title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
-                doc_type: 'PURCHASE_ORDER',
+                doc_type: docType,
                 content: {
                     order_no: data.order_no,
                     partner_name: data.partner_name,
@@ -215,11 +215,11 @@ const PurchaseOrderTemplate = ({
                     </div>
                 </div>
                 <div className="w-full md:w-[200px] idf-no-print order-3">
-                    {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
+                    {!hideApprovalGrid && !isEstimate && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
                 </div>
                 {/* Print-only approval grid placeholder or simplified view if needed */}
                 <div className="hidden print:block w-[200px] idf-header-approval">
-                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
+                     {!hideApprovalGrid && !isEstimate && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
                 </div>
             </div>
 
@@ -321,7 +321,9 @@ const PurchaseOrderTemplate = ({
                     </div>
                     {/* Stamp / Seal Area */}
                     <div className="w-full md:w-[200px] border-t-2 md:border-t-0 md:border-l-2 border-black p-4 flex flex-col items-center justify-center relative">
-                        <p className="text-[11px] font-bold mb-3">위와 같이 발주함.</p>
+                        <p className="text-[11px] font-bold mb-3">
+                            {isEstimate ? "위와 같이 견적을 의뢰합니다." : "위와 같이 발주합니다."}
+                        </p>
                         
                         {(() => {
                             let finalApprover = null;
