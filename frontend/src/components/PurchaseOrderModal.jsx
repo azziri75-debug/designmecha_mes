@@ -103,7 +103,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [activeRowIndex, setActiveRowIndex] = useState(null);
 
     const [showPreview, setShowPreview] = useState(false);
-    const [purchaseTypeState, setPurchaseTypeState] = useState(purchaseType || 'PRODUCED');
+    const [purchaseTypeState, setPurchaseTypeState] = useState(purchaseType || 'PART');
+
+    useEffect(() => {
+        if (purchaseType) setPurchaseTypeState(purchaseType);
+        else if (order && order.purchase_type) setPurchaseTypeState(order.purchase_type);
+    }, [purchaseType, order]);
 
     const [approvalDoc, setApprovalDoc] = useState(null);
     const [defaultSteps, setDefaultSteps] = useState([]);
@@ -587,12 +592,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 'bold', width: 50, textAlign: 'center' }}>No</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>품목명</TableCell>
-                                {purchaseTypeState === 'CONSUMABLE' && (
+                                {purchaseTypeState === 'CONSUMABLE' ? (
                                     <TableCell sx={{ fontWeight: 'bold', width: 150 }}>규격</TableCell>
+                                ) : (
+                                    <>
+                                        <TableCell sx={{ fontWeight: 'bold', width: 100 }}>재질</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>주문사이즈</TableCell>
+                                    </>
                                 )}
-                                <TableCell sx={{ fontWeight: 'bold', width: 100, textAlign: 'center' }}>수량</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>단가</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>금액</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 90, textAlign: 'center' }}>수량</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>단가</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>금액</TableCell>
                                 <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
                             </TableRow>
                         </TableHead>
@@ -695,7 +705,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     readOnly={!!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id))}
                                                 />
                                             </TableCell>
-                                            {purchaseTypeState === 'CONSUMABLE' && (
+                                            {purchaseTypeState === 'CONSUMABLE' ? (
                                                 <TableCell sx={{ width: 150 }}>
                                                     <TextField
                                                         size="small"
@@ -707,6 +717,29 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                         sx={{ bgcolor: prod ? '#f9f9f9' : 'white' }}
                                                     />
                                                 </TableCell>
+                                            ) : (
+                                                <>
+                                                    <TableCell sx={{ width: 100 }}>
+                                                        <TextField
+                                                            size="small"
+                                                            fullWidth
+                                                            value={item.material || ''}
+                                                            onChange={(e) => handleItemChange(index, 'material', e.target.value)}
+                                                            placeholder="재질"
+                                                            sx={{ bgcolor: 'white' }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell sx={{ width: 120 }}>
+                                                        <TextField
+                                                            size="small"
+                                                            fullWidth
+                                                            value={item.order_size || ''}
+                                                            onChange={(e) => handleItemChange(index, 'order_size', e.target.value)}
+                                                            placeholder="주문사이즈"
+                                                            sx={{ bgcolor: 'white' }}
+                                                        />
+                                                    </TableCell>
+                                                </>
                                             )}
                                             <TableCell sx={{ width: 100 }}>
                                                 <TextField
@@ -740,7 +773,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     ₩{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString()}
                                                 </Typography>
                                             </TableCell>
-                                            <TableCell rowSpan={purchaseTypeState === 'CONSUMABLE' ? 1 : 2} align="center" sx={{ borderLeft: '1px solid #eee' }}>
+                                            <TableCell rowSpan={2} align="center" sx={{ borderLeft: '1px solid #eee' }}>
                                                 <IconButton 
                                                     size="small" 
                                                     color="error" 
@@ -753,43 +786,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                         </TableRow>
 
                                         {/* Row 2: Secondary Fields (Hidden for Consumables except for Note) */}
-                                        {purchaseTypeState !== 'CONSUMABLE' ? (
                                             <TableRow sx={{ bgcolor: '#fafafa' }}>
-                                                <TableCell colSpan={4} sx={{ pt: 0, pb: 1 }}>
-                                                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                                        <TextField
-                                                            size="small"
-                                                            label="재질"
-                                                            value={item.material || ''}
-                                                            onChange={(e) => handleItemChange(index, 'material', e.target.value)}
-                                                            sx={{ width: 180, bgcolor: 'white' }}
-                                                        />
-                                                        <TextField
-                                                            size="small"
-                                                            label="주문사이즈"
-                                                            value={item.order_size || ''}
-                                                            onChange={(e) => handleItemChange(index, 'order_size', e.target.value)}
-                                                            sx={{ width: 180, bgcolor: 'white' }}
-                                                        />
-                                                        <TextField
-                                                            size="small"
-                                                            label="비고"
-                                                            placeholder="상세 내용을 입력하세요."
-                                                            fullWidth
-                                                            value={item.note || ''}
-                                                            onChange={(e) => handleItemChange(index, 'note', e.target.value)}
-                                                            sx={{ bgcolor: 'white' }}
-                                                        />
-                                                    </Box>
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            /* For Consumables, still show Note in a condensed way if needed, or just Row 1 is enough? 
-                                               Let's hide Row 2 completely for Consumables but ensure 'note' is editable.
-                                               Actually, let's keep Row 2 just for the Note for all types. 
-                                            */
-                                            <TableRow sx={{ bgcolor: '#fafafa' }}>
-                                                <TableCell colSpan={6} sx={{ pt: 0, pb: 1 }}>
+                                                <TableCell colSpan={purchaseTypeState === 'CONSUMABLE' ? 5 : 6} sx={{ pt: 0, pb: 1 }}>
                                                     <TextField
                                                         size="small"
                                                         label="비고"
@@ -801,7 +799,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     />
                                                 </TableCell>
                                             </TableRow>
-                                        )}
                                     </React.Fragment>
                                 );
                             })}
