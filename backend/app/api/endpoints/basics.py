@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -42,13 +43,21 @@ async def login(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    from sqlalchemy import or_
-    print(f"Login Debug: Attempting login for username/ID: '{req.username}'")
-    result = await db.execute(select(Staff).where(or_(Staff.name == req.username, Staff.login_id == req.username)))
+    # [DEBUG] Requested prints
+    search_id = req.username.strip()
+    print(f"Login Debug: 검색 시도 아이디: '{search_id}'")
+    
+    # Use ilike for case-insensitive search on both name and login_id
+    stmt = select(Staff).where(or_(
+        func.lower(Staff.login_id) == func.lower(search_id),
+        func.lower(Staff.name) == func.lower(search_id)
+    ))
+    result = await db.execute(stmt)
     staff = result.scalars().first()
     
+    print(f"Login Debug: DB에서 찾은 사원 유무: {True if staff else False}")
+    
     if not staff:
-        print(f"Login Debug: Staff not found for '{req.username}'")
         raise HTTPException(status_code=401, detail="사원 정보가 존재하지 않습니다.")
     if not staff.is_active:
         raise HTTPException(status_code=401, detail="비활성화된 계정입니다.")

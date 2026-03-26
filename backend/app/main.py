@@ -837,17 +837,20 @@ async def startup_event():
                         is_active=True
                     )
                     db.add(admin)
-                    print("Startup: Created system admin account (ID: admin)")
+                    print("Startup: Created system admin account (ID: admin, Name: 관리자)")
                 else:
-                    # Always force reset admin account per request
+                    # Always force reset admin account per request (UPSERT)
+                    admin.name = "관리자"
+                    admin.login_id = "admin"
                     admin.password = hashed_password
+                    admin.user_type = "ADMIN"
                     admin.is_sysadmin = True
                     admin.can_access_external = True
                     admin.can_view_others = True
                     admin.menu_permissions = FULL_PERMISSIONS
                     admin.is_active = True
                     db.add(admin)
-                    print("Startup: Reset system admin account (ID: admin) - Force Overwrite")
+                    print("Startup: Force Reset system admin account (ID: admin, Name: 관리자)")
                 
                 await db.commit()
                 print("Startup: System Admin account committed successfully.")

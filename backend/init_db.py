@@ -49,9 +49,11 @@ async def init_models():
                 is_active=True
             )
             db.add(admin)
-            print("Admin account created (ID: admin)")
+            print("Admin account created (ID: admin, Name: 관리자)")
         else:
-            # Always force reset password and permissions
+            # Always force reset password and permissions (UPSERT)
+            admin.name = "관리자"
+            admin.login_id = "admin"
             admin.password = hashed_password
             admin.user_type = "ADMIN"
             admin.is_sysadmin = True
@@ -60,7 +62,7 @@ async def init_models():
             admin.menu_permissions = FULL_PERMISSIONS
             admin.is_active = True
             db.add(admin)
-            print("Admin account updated/reset (ID: admin)")
+            print("Admin account force-reset (ID: admin, Name: 관리자)")
         await db.commit()
 
 if __name__ == "__main__":
