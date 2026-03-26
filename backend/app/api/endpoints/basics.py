@@ -51,15 +51,18 @@ async def login(
     if not staff.is_active:
         raise HTTPException(status_code=401, detail="비활성화된 계정입니다.")
         
-    # Password verification (bcrypt with plain text fallback)
+    # Password verification (Hybrid: bcrypt -> plain fallback)
     is_password_correct = False
     try:
-        if pwd_context.identify(staff.password):
-            is_password_correct = pwd_context.verify(req.password, staff.password)
-        else:
-            is_password_correct = (staff.password == req.password)
-    except:
-        is_password_correct = (staff.password == req.password)
+        # 1. Try bcrypt verification first
+        is_password_correct = pwd_context.verify(req.password, staff.password)
+    except Exception:
+        # If verify fails (e.g. not a hash), fallback to plain comparison
+        is_password_correct = False
+    
+    # 2. Strong fallback for existing plain-text passwords
+    if not is_password_correct:
+        is_password_correct = (req.password == staff.password)
         
     if not is_password_correct:
         raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다.")

@@ -51,13 +51,16 @@ async def init_models():
             db.add(admin)
             print("Admin account created (ID: admin)")
         else:
+            # Always force reset password and permissions
             admin.password = hashed_password
+            admin.user_type = "ADMIN"
             admin.is_sysadmin = True
             admin.can_access_external = True
             admin.can_view_others = True
             admin.menu_permissions = FULL_PERMISSIONS
+            admin.is_active = True
             db.add(admin)
-            print("Admin account updated (ID: admin)")
+            print("Admin account updated/reset (ID: admin)")
         await db.commit()
 
 if __name__ == "__main__":
