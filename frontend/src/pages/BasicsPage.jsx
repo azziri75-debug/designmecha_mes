@@ -1826,13 +1826,13 @@ const BasicsPageContent = () => {
                                         <div className="space-y-4 pt-4 border-t border-gray-700">
                                             <div className="flex items-center justify-between">
                                                 <label className="text-sm font-bold text-blue-400">특수 권한 및 메뉴 설정</label>
-                                                {user.is_sysadmin && (
+                                                {(user.is_sysadmin || user.login_id === 'admin' || user.user_type === 'ADMIN') && (
                                                     <span className="text-[11px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">시스템 관리자 전용</span>
                                                 )}
                                             </div>
 
-                                            {/* 1. Global Special Permission Switches (Visible only to sysadmin) */}
-                                            {user.is_sysadmin && (
+                                            {/* 1. Global Special Permission Switches (Visible only to sysadmin/admin) */}
+                                            {(user.is_sysadmin || user.login_id === 'admin' || user.user_type === 'ADMIN') && (
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-blue-600/5 border border-blue-500/20 p-4 rounded-xl">
                                                     <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
                                                         <div className="flex flex-col">
