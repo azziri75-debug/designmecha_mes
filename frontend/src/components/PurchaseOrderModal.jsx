@@ -330,10 +330,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     const fetchProducts = async () => {
         try {
-            // Material purchase (PART) should include RAW_MATERIAL
-            // Consumable purchase should only include CONSUMABLE
             const response = await api.get('/product/products');
-            setProducts(response.data);
+            let data = response.data;
+            if (purchaseTypeState === 'CONSUMABLE') {
+                data = data.filter(p => p.item_type === 'CONSUMABLE' || p.type === 'CONSUMABLE');
+            } else if (purchaseTypeState === 'PART') {
+                data = data.filter(p => p.item_type === 'PART' || p.item_type === 'RAW_MATERIAL' || p.type === 'PART' || p.type === 'RAW_MATERIAL');
+            }
+            setProducts(data);
         } catch (error) {
             console.error("Failed to fetch products", error);
         }
@@ -587,7 +591,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                             <TableCell>
                                                 <Autocomplete
                                                     size="small"
-                                                    options={products}
+                                                    options={purchaseTypeState === 'CONSUMABLE' 
+                                                        ? products.filter(p => p.item_type === 'CONSUMABLE' || p.type === 'CONSUMABLE')
+                                                        : products
+                                                    }
                                                     getOptionLabel={getProductLabel}
                                                     isOptionEqualToValue={(option, value) => option.id === value?.id}
                                                     value={prod || null}

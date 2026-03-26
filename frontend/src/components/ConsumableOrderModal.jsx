@@ -73,7 +73,7 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
         setIsSearching(true);
         try {
             const res = await api.get(`/purchasing/purchase/consumables/match?name=${encodeURIComponent(query)}`);
-            const results = res.data;
+            const results = res.data.filter(item => item.item_type === 'CONSUMABLE' || item.type === 'CONSUMABLE');
             setMatchedProducts(results);
             if (results.length > 0) {
                 // Auto-select the first one 
