@@ -646,16 +646,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     readOnly={!!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id))}
                                                 />
                                             </TableCell>
-                                            <TableCell sx={{ width: 100 }}>
-                                                <TextField
-                                                    type="number"
-                                                    size="small"
-                                                    fullWidth
-                                                    value={item.quantity}
-                                                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                                    inputProps={{ min: 1, style: { textAlign: 'center' } }}
-                                                />
-                                            </TableCell>
                                             {purchaseTypeState === 'CONSUMABLE' && (
                                                 <TableCell sx={{ width: 150 }}>
                                                     <TextField
@@ -669,6 +659,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     />
                                                 </TableCell>
                                             )}
+                                            <TableCell sx={{ width: 100 }}>
+                                                <TextField
+                                                    type="number"
+                                                    size="small"
+                                                    fullWidth
+                                                    value={item.quantity}
+                                                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                                    inputProps={{ min: 1, style: { textAlign: 'center' } }}
+                                                />
+                                            </TableCell>
                                             <TableCell sx={{ width: 130 }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                     <TextField
@@ -847,6 +847,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     )}
                 </Box>
             </Popover>
+
+            <ProductModal 
+                isOpen={newProductModalOpen} 
+                onClose={() => setNewProductModalOpen(false)} 
+                initialData={{ name: newProductInitialName }} 
+                onSuccess={handleNewProductSuccess} 
+                type={purchaseTypeState === 'CONSUMABLE' ? 'CONSUMABLE' : 'PART'}
+            />
         </Dialog>
     );
 };
