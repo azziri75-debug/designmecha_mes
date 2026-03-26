@@ -272,6 +272,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                                                     total: (parseFloat(item.qty) || 0) * (parseFloat(item.price) || 0)
                                                 }))
                                             },
+                                            attachment_file: [],
                                             reference_id: order.id,
                                             reference_type: orderType === 'outsourcing' ? 'OUTSOURCING' : 'PURCHASE'
                                         };

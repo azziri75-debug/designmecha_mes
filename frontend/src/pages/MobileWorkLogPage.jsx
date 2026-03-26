@@ -67,6 +67,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
+import { safeParseJSON } from '../lib/utils';
 
 const ATTENDANCE_DOC_META = {
     VACATION: { label: '휴가원', color: '#3b82f6', Icon: VacationIcon },
@@ -383,7 +384,10 @@ const MobileWorkLogPage = () => {
             const payload = {
                 title: `${user.name} - ${DOC_TYPES[selectedDocType].label}`,
                 doc_type: selectedDocType,
-                content: docFormData
+                // [FIX] Ensure content is a valid dictionary (Object) for Pydantic
+                content: typeof docFormData === 'string' ? safeParseJSON(docFormData, {}) : (docFormData || {}),
+                // [FIX] Ensure attachment_file is a valid list of dicts for Pydantic
+                attachment_file: [] 
             };
             if (editingDocId) {
                 await api.put(`/approval/documents/${editingDocId}`, payload);

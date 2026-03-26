@@ -188,6 +188,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                                                     total: (item.quantity || 0) * (item.unit_price || 0)
                                                 }))
                                             },
+                                            attachment_file: [],
                                             reference_id: order.id,
                                             reference_type: 'PURCHASE'
                                         };

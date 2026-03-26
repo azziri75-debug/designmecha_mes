@@ -9,7 +9,7 @@ import jsPDF from 'jspdf';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../lib/api';
 import MultiFileUpload from './MultiFileUpload';
-import { formatNumber } from '../lib/utils';
+import { formatNumber, safeParseJSON } from '../lib/utils';
 import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -196,7 +196,10 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             const payload = {
                 title: finalTitle,
                 doc_type: docType,
-                content: formContent,
+                // [FIX] Ensure content is a valid dictionary (Object) for Pydantic
+                content: typeof formContent === 'string' ? safeParseJSON(formContent, {}) : (formContent || {}),
+                // [FIX] Ensure attachment_file is a valid list of dicts for Pydantic
+                attachment_file: attachments?.map(a => ({ filename: a.name || a.filename, url: a.url })) || [],
                 attachments_to_add: attachments?.map(a => ({ filename: a.name || a.filename, url: a.url })) || [],
                 custom_approvers: (customApprovers || []).length > 0 ? customApprovers.map(a => ({ 
                     staff_id: a.staff_id || a.user_id || a.id || a.value,
