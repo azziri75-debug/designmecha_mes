@@ -230,12 +230,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 items: (initialItems || []).map(item => {
                     // [Defense] Try various field names for product/item/material
                     const productObj = item?.product || item?.material || item?.item || item?.consumable || {};
-                    // [Defense] User requested exhaustive check for ID
                     const productId = item?.product_id || item?.consumable_id || item?.item_id || item?.material_id || productObj?.id || item?.consumable?.id || '';
                     
+                    // [Defense] User requested robust specification extraction
+                    const spec = productObj?.specification || item?.specification || item?.remarks || '';
+
                     if (item?.type === 'PENDING') {
                         // Priority: 1. standard_processes of provided product, 2. products list, 3. item.unit_price
-                        const product = productObj?.id ? productObj : (products.find(p => p?.id === productId) || {});
+                        const product = productObj?.id ? productObj : (products.find(p => String(p?.id) === String(productId)) || {});
                         let unitPrice = item?.unit_price || 0;
                         
                         if (product && product?.standard_processes) {
@@ -255,10 +257,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             display_product_name: productObj?.name || item?.product_name_of_plan || '',
                             display_client_name: item?.client_name || '',
                             order_size: '',
-                            material: productObj?.material || ''
+                            material: productObj?.material || '',
+                            specification: spec
                         };
                     } else if (item?.type === 'MRP') {
-                        const product = productObj?.id ? productObj : (products.find(p => p?.id === productId) || {});
+                        const product = productObj?.id ? productObj : (products.find(p => String(p?.id) === String(productId)) || {});
                         let unitPrice = 0;
                         if (product && product?.standard_processes) {
                             const standardProc = product?.standard_processes?.find(sp =>
@@ -276,7 +279,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             material_requirement_id: item?.id,
                             current_stock: item?.current_stock,
                             required_quantity: item?.required_quantity !== undefined ? item?.required_quantity : (item?.total_demand || 0),
-                            shortage_quantity: item?.shortage_quantity !== undefined ? item?.shortage_quantity : (item?.required_purchase_qty || 0)
+                            shortage_quantity: item?.shortage_quantity !== undefined ? item?.shortage_quantity : (item?.required_purchase_qty || 0),
+                            specification: spec
                         };
                     } else if (item?.type === 'CONSUMABLE_WAIT') {
                         return {
@@ -285,14 +289,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             unit_price: item?.unit_price || 0,
                             note: item?.remarks || '',
                             consumable_purchase_wait_id: item?.id,
-                            specification: productObj?.specification || item?.specification || item?.remarks || ''
+                            specification: spec
                         };
                     }
                     return {
                         product_id: productId || '',
                         quantity: item?.quantity || 1,
                         unit_price: item?.unit_price || 0,
-                        note: item?.note || ''
+                        note: item?.note || '',
+                        specification: spec
                     };
                 })
             }));
@@ -385,7 +390,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
         // Auto-fill price AND material if product selected
         if (field === 'product_id' && value) {
-            const product = products.find(p => p.id === value);
+            const product = products.find(p => String(p.id) === String(value));
             
             // Auto-fill material and specification if available
             if (product) {
@@ -588,7 +593,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         </TableHead>
                         <TableBody>
                             {formData.items.map((item, index) => {
-                                const prod = products.find(p => p.id === item.product_id);
+                                const prod = products.find(p => String(p.id) === String(item.product_id));
                                 return (
                                     <React.Fragment key={index}>
                                         {/* Row 1: Primary Fields */}

@@ -23,8 +23,16 @@ const ProductModal = ({
                 unit: 'EA',
                 ...initialData
             });
+            
+            // Explicitly sync name if provided (User requested specific pre-fill fix)
+            if (initialData?.name) {
+                setProductFormData(prev => ({ ...prev, name: initialData.name }));
+            }
+
             fetchPartners();
             fetchGroups();
+        } else {
+            setProductFormData({});
         }
     }, [isOpen, initialData, type]);
 
