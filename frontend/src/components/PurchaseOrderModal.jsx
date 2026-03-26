@@ -585,7 +585,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                         </li>
                                                     )}
                                                     sx={{ width: '100%' }}
-                                                    readOnly={!!item.production_plan_item_id || !!item.material_requirement_id || !!item.consumable_purchase_wait_id}
+                                                    readOnly={!!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id))}
                                                 />
                                             </TableCell>
                                             <TableCell sx={{ width: 100 }}>

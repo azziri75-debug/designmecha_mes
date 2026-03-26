@@ -341,8 +341,9 @@ const PurchasePage = ({ type }) => {
 
         setSelectedOrder(null);
         if (type === 'CONSUMABLE') {
-            setInitialModalItems(itemsToOrder);
-            setConsumableModalOpen(true);
+            // Bulk consumable ordering via standard PurchaseOrderModal
+            setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'CONSUMABLE_WAIT' })));
+            setModalOpen(true);
         } else {
             setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'PENDING' }))); // Mark as pending item
             setModalOpen(true);
@@ -418,14 +419,10 @@ const PurchasePage = ({ type }) => {
     };
 
     const handleSelectPendingItem = (id) => {
-        if (type === 'CONSUMABLE') {
-            setSelectedPendingItems(selectedPendingItems.includes(id) ? [] : [id]);
+        if (selectedPendingItems.includes(id)) {
+            setSelectedPendingItems(selectedPendingItems.filter(itemId => itemId !== id));
         } else {
-            if (selectedPendingItems.includes(id)) {
-                setSelectedPendingItems(selectedPendingItems.filter(itemId => itemId !== id));
-            } else {
-                setSelectedPendingItems([...selectedPendingItems, id]);
-            }
+            setSelectedPendingItems([...selectedPendingItems, id]);
         }
     };
 
@@ -446,7 +443,6 @@ const PurchasePage = ({ type }) => {
     };
 
     const handleSelectAllPending = (event) => {
-        if (type === 'CONSUMABLE') return;
         if (event.target.checked) {
             setSelectedPendingItems(pendingItems.map(item => item.id));
         } else {
@@ -595,13 +591,11 @@ const PurchasePage = ({ type }) => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell padding="checkbox">
-                                        {type !== 'CONSUMABLE' && (
-                                            <Checkbox
-                                                indeterminate={selectedPendingItems.length > 0 && selectedPendingItems.length < pendingItems.length}
-                                                checked={pendingItems.length > 0 && selectedPendingItems.length === pendingItems.length}
-                                                onChange={handleSelectAllPending}
-                                            />
-                                        )}
+                                        <Checkbox
+                                            indeterminate={selectedPendingItems.length > 0 && selectedPendingItems.length < pendingItems.length}
+                                            checked={pendingItems.length > 0 && selectedPendingItems.length === pendingItems.length}
+                                            onChange={handleSelectAllPending}
+                                        />
                                     </TableCell>
                                     {type === 'CONSUMABLE' ? (
                                         <>

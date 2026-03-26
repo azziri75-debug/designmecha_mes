@@ -467,7 +467,10 @@ async def create_production_plan(
                 ),
                 selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
                 selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
+                selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items).options(
+                    selectinload(WorkLogItem.work_log).selectinload(WorkLog.worker),
+                    selectinload(WorkLogItem.worker)
+                )
             )
             .where(ProductionPlan.id == plan.id)
         )
@@ -602,7 +605,10 @@ async def update_production_plan(
             ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items)
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items).options(
+                selectinload(WorkLogItem.work_log).selectinload(WorkLog.worker),
+                selectinload(WorkLogItem.worker)
+            )
         )
         .where(ProductionPlan.id == plan_id)
     )
@@ -844,7 +850,10 @@ async def export_production_plan_excel(
                 selectinload(ProductionPlanItem.worker),
                 selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
                 selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-                selectinload(ProductionPlanItem.work_log_items)
+                selectinload(ProductionPlanItem.work_log_items).options(
+                    selectinload(WorkLogItem.work_log).selectinload(WorkLog.worker),
+                    selectinload(WorkLogItem.worker)
+                )
             ),
             selectinload(ProductionPlan.order).selectinload(SalesOrder.partner)
         )
