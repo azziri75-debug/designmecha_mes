@@ -167,8 +167,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                 formData.append('file', file);
                 const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
-                let currentAttachments = [];
-                try { if (order.attachment_file) currentAttachments = typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file; } catch { currentAttachments = []; }
+                const currentAttachments = safeParseJSON(order.attachment_file, []);
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
                 const apiBase = orderType === 'outsourcing' ? `/purchasing/outsourcing/orders/${order.id}` : `/purchasing/purchase/orders/${order.id}`;

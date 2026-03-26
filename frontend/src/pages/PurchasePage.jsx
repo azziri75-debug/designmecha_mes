@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import api from '../lib/api';
-import ResizableTableCell from '../components/ResizableTableCell';
+import { cn, safeParseJSON } from '../lib/utils';
 import PurchaseOrderModal from '../components/PurchaseOrderModal';
 import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
@@ -171,17 +171,7 @@ const PurchasePage = ({ type }) => {
         const customerName = order.related_customer_names || '재고용';
         const partnerName = order.partner?.name || '공급사미지정';
 
-        let existingAttachments = [];
-        try {
-            if (order.attachment_file) {
-                const parsed = typeof order.attachment_file === 'string' 
-                    ? JSON.parse(order.attachment_file) 
-                    : order.attachment_file;
-                existingAttachments = Array.isArray(parsed) ? parsed : [parsed];
-            }
-        } catch (e) {
-            console.error("Attachment parse error", e);
-        }
+        const existingAttachments = safeParseJSON(order.attachment_file, []);
 
         const approvalPayload = {
             title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
@@ -305,9 +295,8 @@ const PurchasePage = ({ type }) => {
                 return;
             }
 
-            const files = typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file;
-            const currentFiles = Array.isArray(files) ? files : [files];
-            const newFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
+            const currentAttachments = safeParseJSON(order.attachment_file, []);
+            const newFiles = currentAttachments.filter((_, idx) => idx !== indexToRemove);
 
             const res = await api.put(`/purchasing/purchase/orders/${targetId}`, { attachment_file: newFiles });
             const updatedOrder = res.data;
@@ -891,9 +880,7 @@ const PurchasePage = ({ type }) => {
                                                         </Tooltip>
                                                     )}
                                                     {(() => {
-                                                        let files = [];
-                                                        try { files = order.attachment_file ? (typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file) : []; } catch { files = []; }
-                                                        if (!Array.isArray(files)) files = [];
+                                                        const files = safeParseJSON(order.attachment_file, []);
                                                         return (
                                                             <>
                                                                 {files.length > 0 && (
@@ -924,11 +911,16 @@ const PurchasePage = ({ type }) => {
                                                                             const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
                                                                             const updatedFiles = [...files, newFile];
                                                                             await api.put(`/purchasing/purchase/orders/${order.id}`, { attachment_file: updatedFiles });
+                                                                            
+                                                                            // 일관된 리스트 갱신 (탭 구분 없이 현재 활성 탭에 맞는 데이터 다시 가져오기)
                                                                             if (type === 'CONSUMABLE') {
-                                                                                if (tabValue === 0) fetchOrders();
+                                                                                if (tabValue === 0) fetchPendingItems();
+                                                                                else if (tabValue === 1) fetchOrders();
                                                                                 else fetchCompletedOrders();
                                                                             } else {
-                                                                                if (tabValue === 2) fetchOrders();
+                                                                                if (tabValue === 0) fetchPendingItems();
+                                                                                else if (tabValue === 1) fetchMrpItems();
+                                                                                else if (tabValue === 2) fetchOrders();
                                                                                 else fetchCompletedOrders();
                                                                             }
                                                                         } catch (err) {

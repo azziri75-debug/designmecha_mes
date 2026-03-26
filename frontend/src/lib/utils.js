@@ -97,3 +97,32 @@ export function toKoreanCurrency(num) {
 
     return `일금 ${result}원정`;
 }
+
+/**
+ * 어떤 데이터가 와도 뻗지 않는 완벽한 파서 (Safe Parser)
+ * 1. Array면 그대로 반환
+ * 2. String이면 JSON.parse를 시도 (껍데기가 다 벗겨질 때까지 최대 5회 반복)
+ * 3. 에러 시 또는 최종 결과가 Array가 아니면 defaultValue (기본 []) 반환
+ */
+export function safeParseJSON(data, defaultValue = []) {
+    if (!data) return defaultValue;
+    if (Array.isArray(data)) return data;
+    if (typeof data !== 'string') return defaultValue;
+
+    let current = data;
+    let iterations = 0;
+    // 껍데기가 다 벗겨질 때까지 (String이 아닐 때까지) 최대 5회 시도
+    while (typeof current === 'string' && iterations < 5) {
+        try {
+            const parsed = JSON.parse(current);
+            if (Array.isArray(parsed)) return parsed;
+            current = parsed;
+        } catch (e) {
+            break;
+        }
+        iterations++;
+    }
+    
+    // 최종 결과가 배열이면 반환, 아니면 기본값
+    return Array.isArray(current) ? current : defaultValue;
+}

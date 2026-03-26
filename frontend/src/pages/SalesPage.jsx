@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { safeParseJSON } from '../lib/utils';
 import api from '../lib/api';
 import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, Printer, X } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -420,12 +421,7 @@ const SalesPage = () => {
                                                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center gap-2">
                                                         {(() => {
-                                                            let files = [];
-                                                            try {
-                                                                if (est.attachment_file) {
-                                                                    files = typeof est.attachment_file === 'string' ? JSON.parse(est.attachment_file) : est.attachment_file;
-                                                                }
-                                                            } catch { files = [] }
+                                                            const files = safeParseJSON(est.attachment_file, []);
 
                                                             if (Array.isArray(files) && files.length > 0) {
                                                                 return (
@@ -541,12 +537,7 @@ const SalesPage = () => {
                                                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center gap-2">
                                                         {(() => {
-                                                            let files = [];
-                                                            try {
-                                                                if (ord.attachment_file) {
-                                                                    files = typeof ord.attachment_file === 'string' ? JSON.parse(ord.attachment_file) : ord.attachment_file;
-                                                                }
-                                                            } catch { files = [] }
+                                                            const files = safeParseJSON(ord.attachment_file, []);
 
                                                             if (Array.isArray(files) && files.length > 0) {
                                                                 return (

@@ -12,6 +12,7 @@ import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 import ResizableTableCell from '../components/ResizableTableCell';
+import { safeParseJSON } from '../lib/utils';
 
 const OutsourcingPage = () => {
     const navigate = useNavigate();
@@ -621,9 +622,7 @@ const OutsourcingPage = () => {
                                                         </Tooltip>
                                                     )}
                                                     {(() => {
-                                                        let files = [];
-                                                        try { files = order.attachment_file ? (typeof order.attachment_file === 'string' ? JSON.parse(order.attachment_file) : order.attachment_file) : []; } catch { files = []; }
-                                                        if (!Array.isArray(files)) files = [];
+                                                        const files = safeParseJSON(order.attachment_file, []);
                                                         return (
                                                             <>
                                                                 {files.length > 0 && (
@@ -654,7 +653,10 @@ const OutsourcingPage = () => {
                                                                             const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
                                                                             const updatedFiles = [...files, newFile];
                                                                             await api.put(`/purchasing/outsourcing/orders/${order.id}`, { attachment_file: updatedFiles });
-                                                                            if (tabValue === 1) fetchOrders();
+                                                                            
+                                                                            // UI 즉시 갱신
+                                                                            if (tabValue === 0) fetchPendingItems();
+                                                                            else if (tabValue === 1) fetchOrders();
                                                                             else fetchCompletedOrders();
                                                                         } catch (err) {
                                                                             console.error("Upload failed", err);

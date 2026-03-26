@@ -10,6 +10,7 @@ import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 import ResizableTableCell from '../components/ResizableTableCell';
+import { safeParseJSON } from '../lib/utils';
 
 const ProductionPage = () => {
     // Add Print Styles
@@ -1012,32 +1013,16 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {(() => {
-                            let localFiles = [];
-                            try {
-                                if (item.attachment_file) {
-                                    const parsed = typeof item.attachment_file === 'string' ? JSON.parse(item.attachment_file) : item.attachment_file;
-                                    localFiles = Array.isArray(parsed) ? parsed : [parsed];
-                                }
-                            } catch {
-                                localFiles = item.attachment_file ? [{ name: 'file', url: item.attachment_file }] : [];
-                            }
+                            const localFiles = safeParseJSON(item.attachment_file, []);
                             localFiles = localFiles.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== ''))).map(f => typeof f === 'string' ? { name: f.split?.('/')?.pop() || '파일', url: f } : f);
 
                             let externalFiles = [];
                             if (item.course_type === 'PURCHASE' && item.purchase_items?.length > 0 && item.purchase_items[0].purchase_order?.attachment_file) {
-                                try {
-                                    let poFiles = item.purchase_items[0].purchase_order.attachment_file;
-                                    poFiles = typeof poFiles === 'string' ? JSON.parse(poFiles) : poFiles;
-                                    if (!Array.isArray(poFiles)) poFiles = [poFiles];
-                                    externalFiles = poFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[구매] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
-                                } catch (e) { }
+                                const poFiles = safeParseJSON(item.purchase_items[0].purchase_order.attachment_file);
+                                externalFiles = poFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[구매] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
                             } else if (item.course_type === 'OUTSOURCING' && item.outsourcing_items?.length > 0 && item.outsourcing_items[0].outsourcing_order?.attachment_file) {
-                                try {
-                                    let outFiles = item.outsourcing_items[0].outsourcing_order.attachment_file;
-                                    outFiles = typeof outFiles === 'string' ? JSON.parse(outFiles) : outFiles;
-                                    if (!Array.isArray(outFiles)) outFiles = [outFiles];
-                                    externalFiles = outFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[외주] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
-                                } catch (e) { }
+                                const outFiles = safeParseJSON(item.outsourcing_items[0].outsourcing_order.attachment_file);
+                                externalFiles = outFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[외주] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
                             }
 
                             const allFiles = [...externalFiles, ...localFiles];
@@ -1272,15 +1257,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     {(() => {
-                        let files = [];
-                        try {
-                            if (plan.attachment_file) {
-                                files = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file;
-                            }
-                        } catch {
-                            files = [];
-                        }
-                        const fileList = Array.isArray(files) ? files : [files].filter(Boolean);
+                        const fileList = safeParseJSON(plan.attachment_file, []);
                         if (fileList.length > 0) {
                             return (
                                 <button

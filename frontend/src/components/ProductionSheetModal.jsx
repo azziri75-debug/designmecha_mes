@@ -243,8 +243,7 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
                 formData.append('file', file);
                 const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
-                let currentAttachments = [];
-                try { if (plan.attachment_file) currentAttachments = typeof plan.attachment_file === 'string' ? JSON.parse(plan.attachment_file) : plan.attachment_file; } catch { currentAttachments = []; }
+                const currentAttachments = safeParseJSON(plan.attachment_file, []);
                 const newAttachments = [...(Array.isArray(currentAttachments) ? currentAttachments : []), { name: uploadRes.data.filename, url: uploadRes.data.url }];
 
                 await api.put(`/production/plans/${plan.id}`, { attachment_file: newAttachments, sheet_metadata: { colWidths } });
