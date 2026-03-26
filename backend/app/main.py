@@ -796,6 +796,18 @@ async def startup_event():
                 print(f"Startup: WorkLog fix failed: {e}")
                 await db.rollback()
             
+            # --- [NEW] Raw SQL Permission Migration (PostgreSQL) ---
+            try:
+                await db.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS is_sysadmin BOOLEAN DEFAULT FALSE;"))
+                await db.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS can_access_external BOOLEAN DEFAULT FALSE;"))
+                await db.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS can_view_others BOOLEAN DEFAULT FALSE;"))
+                print("Startup: Permission columns verified/added via Raw SQL")
+                await db.commit()
+            except Exception as e:
+                print(f"Startup: Raw SQL migration failed: {e}")
+                await db.rollback()
+            # -----------------------------------------------------
+            
             # 7. Initialize Admin User (Force ID: admin, PW: hashed 5446220)
             try:
                 from passlib.context import CryptContext

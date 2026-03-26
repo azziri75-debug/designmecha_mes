@@ -5,11 +5,18 @@ from app.api.deps import engine
 from app.models import basics, product, sales, quality, purchasing
 
 async def init_models():
+    from sqlalchemy import text
     async with engine.begin() as conn:
+        # 1. Raw SQL Migration (PostgreSQL)
+        await conn.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS is_sysadmin BOOLEAN DEFAULT FALSE;"))
+        await conn.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS can_access_external BOOLEAN DEFAULT FALSE;"))
+        await conn.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS can_view_others BOOLEAN DEFAULT FALSE;"))
+        
+        # 2. Base Metadata Creation (Ensure other tables exist)
         await conn.run_sync(Base.metadata.create_all)
-    print("Tables created successfully.")
+    print("DB Schema updated and tables checked successfully.")
 
-    # Initialize Admin User
+    # 3. Initialize Admin User
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.future import select
