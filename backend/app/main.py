@@ -813,36 +813,52 @@ async def startup_event():
                 from passlib.context import CryptContext
                 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
                 
-                MENU_KEYS = ["basics", "products", "sales", "production", "purchasing", "outsourcing", "worklogs", "delivery", "inventory", "quality", "approval", "hr", "ADMIN"]
-                FULL_PERMISSIONS = {k: {"view": True, "edit": True, "price": True} for k in MENU_KEYS}
+                # Full permissions for admin (Defensive structure)
+                FULL_PERMISSIONS = {
+                    "dashboard": {"view": True, "edit": True, "price": True},
+                    "basics": {"view": True, "edit": True, "price": True},
+                    "products": {"view": True, "edit": True, "price": True},
+                    "sales": {"view": True, "edit": True, "price": True},
+                    "production": {"view": True, "edit": True, "price": True},
+                    "quality": {"view": True, "edit": True, "price": True},
+                    "materials": {"view": True, "edit": True, "price": True},
+                    "outsourcing": {"view": True, "edit": True, "price": True},
+                    "attendance": {"view": True, "edit": True, "price": True},
+                    "approval": {"view": True, "edit": True, "price": True}
+                }
                 
                 # Check for ID: admin
                 result = await db.execute(select(Staff).where(Staff.login_id == "admin"))
-                admin = result.scalar_one_or_none()
+                admin = result.scalars().first()
                 
                 hashed_password = pwd_context.hash("5446220")
                 
                 if not admin:
                     admin = Staff(
-                        name="관리자",
                         login_id="admin",
-                        role="시스템 관리자",
+                        name="관리자",
+                        password=hashed_password,
+                        role="MANAGER",
+                        department="시스템관리부",
+                        phone="010-0000-0000",
                         main_duty="시스템 총괄",
                         user_type="ADMIN",
-                        password=hashed_password,
-                        menu_permissions=FULL_PERMISSIONS,
+                        is_active=True,
                         is_sysadmin=True,
                         can_access_external=True,
                         can_view_others=True,
-                        is_active=True
+                        menu_permissions=FULL_PERMISSIONS
                     )
                     db.add(admin)
-                    print("Startup: Created system admin account (ID: admin, Name: 관리자)")
+                    print("🚀 Startup: Creating FIRM system admin account (ID: admin)")
                 else:
                     # Always force reset admin account per request (UPSERT)
                     admin.name = "관리자"
-                    admin.login_id = "admin"
                     admin.password = hashed_password
+                    admin.role = "MANAGER"
+                    admin.department = "시스템관리부"
+                    admin.phone = "010-0000-0000"
+                    admin.main_duty = "시스템 총괄"
                     admin.user_type = "ADMIN"
                     admin.is_sysadmin = True
                     admin.can_access_external = True
@@ -850,13 +866,15 @@ async def startup_event():
                     admin.menu_permissions = FULL_PERMISSIONS
                     admin.is_active = True
                     db.add(admin)
-                    print("Startup: Force Reset system admin account (ID: admin, Name: 관리자)")
+                    print("🚀 Startup: Force RESET system admin account (ID: admin)")
                 
                 await db.commit()
-                print("Startup: System Admin account committed successfully.")
+                print("✅ [SUCCESS] Admin account firmly created/updated in DB!")
             except Exception as e:
-                print(f"Startup: System Admin init failed: {e}")
                 await db.rollback()
+                print(f"❌ [CRITICAL ERROR] Failed to create/reset admin: {e}")
+                import traceback
+                print(traceback.format_exc())
                 
             # 8. Initialize Default Form Templates
             try:
