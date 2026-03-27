@@ -70,60 +70,57 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
     }
 
     return createPortal(
-        <div id="print-overlay-wrapper" className="fixed inset-0 z-[10000] bg-gray-800 flex justify-center overflow-y-auto py-10 no-print-bg">
-            {/* Scoped Style Tag - User's Perfect Print Logic */}
+        <div id="print-overlay-wrapper" className="fixed inset-0 z-[10000] bg-gray-800 flex justify-center overflow-y-auto py-10">
             <style>{`
                 @media screen {
                     .no-print { display: flex !important; }
-                    /* 화면 뷰어에서는 A4 비율 유지 (늘어짐 방지) */
+                    /* 화면 뷰어: A4 세로 비율 강제 고정 (가로 늘어짐 방지) */
                     #process-chart-printable {
                         width: 210mm !important;
-                        margin: 0 auto !important;
-                        padding: 10mm 15mm !important;
-                        box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important;
+                        min-height: 297mm !important;
+                        background: white;
+                        padding: 15mm;
+                        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+                        margin: 0 auto;
                     }
                 }
                 @media print {
-                    /* 1. 브라우저 자체 여백 설정 */
                     @page {
                         size: A4 portrait;
-                        margin: 10mm 15mm !important;
+                        margin: 10mm 15mm !important; 
                     }
-                    
-                    /* 2. 백지 방지 및 배경 초기화 */
                     html, body {
                         height: auto !important;
+                        min-height: auto !important;
                         margin: 0 !important;
                         padding: 0 !important;
-                        overflow: visible !important;
+                        background: white !important;
                     }
                     
-                    /* 3. 출력 대상 외 모든 요소 숨김 (백지 버그 핵심 픽스) */
-                    body > *:not(#print-overlay-wrapper) { display: none !important; }
-                    #print-overlay-wrapper { 
-                        position: static !important;
-                        display: block !important;
-                        background: none !important;
+                    /* 백지 방지 핵심: 포탈 껍데기(#print-overlay-wrapper)만 살리고 기존 화면(#root) 다 숨김 */
+                    body > :not(#print-overlay-wrapper) { display: none !important; }
+                    .no-print { display: none !important; }
+                    
+                    /* 오버레이 배경 날리고 인쇄 문서 흐름으로 전환 */
+                    #print-overlay-wrapper {
+                        position: relative !important;
+                        background: white !important;
                         padding: 0 !important;
+                        display: block !important;
                         overflow: visible !important;
                     }
-                    
-                    /* 4. 공정도 출력 레이아웃 최적화 */
+
+                    /* 인쇄 시에는 용지 여백에 맞춰 100% 꽉 채움 */
                     #process-chart-printable {
-                        visibility: visible !important;
                         width: 100% !important;
-                        max-width: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         box-shadow: none !important;
                     }
 
-                    /* 헤더 반복 및 행 쪼개짐 방지 유지 */
                     thead { display: table-header-group !important; }
                     tbody { display: table-row-group !important; }
                     tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-                    
-                    .no-print { display: none !important; }
                 }
             `}</style>
 
@@ -150,7 +147,6 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                 className="bg-white text-black shadow-2xl border-collapse"
                 style={{
                     backgroundColor: 'white',
-                    padding: 0,
                     boxSizing: 'border-box',
                     fontFamily: '"Malgun Gothic", sans-serif'
                 }}
