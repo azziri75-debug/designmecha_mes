@@ -77,38 +77,45 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                     .no-print { display: flex !important; }
                 }
                 @media print {
-                    /* 브라우저 기본 여백 및 페이지 설정 */
-                    @page { size: A4 portrait; margin: 0; }
-
-                    /* 기존 화면 모두 투명화 (공간은 남겨둠) */
-                    body * { visibility: hidden !important; }
-
-                    /* 프린트 영역만 강제로 끄집어내서 종이 좌상단에 고정 */
-                    #process-chart-printable, #process-chart-printable * {
-                        visibility: visible !important;
+                    /* 1. 브라우저 자체 여백으로 깔끔한 좌우 마진 확보 */
+                    @page {
+                        size: A4 portrait;
+                        margin: 10mm 15mm !important; /* 상하 10mm, 좌우 15mm 여백 강제 고정 */
                     }
                     
-                    #process-chart-printable {
-                        position: absolute !important;
-                        top: 0 !important;
-                        left: 0 !important;
-                        width: 210mm !important;
+                    /* 2. 유령 페이지(빈 2페이지) 생성의 주범인 불필요한 높이/여백 완전 소멸 */
+                    html, body {
+                        height: auto !important;
+                        min-height: auto !important;
                         margin: 0 !important;
-                        padding: 10mm 15mm !important;
-                        box-shadow: none !important;
+                        padding: 0 !important;
+                        overflow: visible !important;
                         background: white !important;
-                        color: black !important;
+                    }
+                    
+                    /* 기존 화면 요소 투명화 (사용자 요청에 따라 주석 처리 또는 ID 매칭) */
+                    body > :not(#process-chart-printable) { display: none !important; }
+                    .no-print { display: none !important; }
+                    
+                    /* 3. 공정도 래퍼 최적화 (너비를 @page 여백에 맞게 100%로 자동 조정) */
+                    #process-chart-printable, #process-chart-printable * { visibility: visible !important; }
+                    #process-chart-printable {
+                        position: relative !important;
+                        width: 100% !important; /* 210mm 고정 해제 -> 브라우저 여백 안에서 100% 꽉 차게 */
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important; /* @page에서 여백을 줬으므로 내부 패딩은 제거 */
+                        box-shadow: none !important;
+                        page-break-after: auto !important; /* 강제 페이지 넘김 방지 */
                     }
 
-                    /* [핵심] 매 페이지 상단 헤더 반복 설정 */
-                    thead { display: table-header-group; }
-                    tbody { display: table-row-group; }
-                    
-                    /* 행 쪼개짐 방지 */
-                    tr { page-break-inside: avoid; break-inside: avoid; }
+                    /* 4. 테이블 끝난 후 남아있는 하단 여백 제거 (2페이지 밀림 방지) */
+                    .chart-table { margin-bottom: 0 !important; }
 
-                    /* 인쇄 시 불필요한 요소 제거 */
-                    .no-print, .no-print * { display: none !important; }
+                    /* 5. 매 페이지 상단 헤더 반복 및 행 쪼개짐 방지 (기존 기능 유지) */
+                    thead { display: table-header-group !important; }
+                    tbody { display: table-row-group !important; }
+                    tr { page-break-inside: avoid !important; break-inside: avoid !important; }
                 }
             `}</style>
 
@@ -134,9 +141,9 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                 ref={printRef}
                 className="bg-white text-black shadow-2xl border-collapse"
                 style={{
-                    width: '210mm',
+                    width: '100%',
                     backgroundColor: 'white',
-                    padding: '10mm 15mm',
+                    padding: 0,
                     boxSizing: 'border-box',
                     fontFamily: '"Malgun Gothic", sans-serif'
                 }}
