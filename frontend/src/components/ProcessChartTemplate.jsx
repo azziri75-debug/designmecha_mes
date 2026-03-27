@@ -43,7 +43,7 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
     if (!productId) return null;
 
     return (
-        <div className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 no-print overflow-auto">
+        <div className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-auto">
             <style>
                 {`
                 @media screen {
@@ -51,22 +51,26 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                 }
                 @media print {
                     .no-print { display: none !important; }
-                    body { background: white !important; margin: 0 !important; padding: 0 !important; }
+                    
+                    /* 기존 화면의 모든 요소를 숨김 */
+                    body * { visibility: hidden; }
+                    /* 인쇄할 공정도 영역과 그 하위 요소만 보이게 강제 설정 */
+                    #process-chart-printable, #process-chart-printable * { visibility: visible; }
+                    
                     #process-chart-printable { 
                         position: absolute !important;
                         left: 0 !important;
                         top: 0 !important;
                         margin: 0 !important;
-                        padding: 15mm !important;
+                        padding: 0 !important;
                         width: 210mm !important;
-                        height: 297mm !important;
                         background: white !important;
                         color: black !important;
                         box-shadow: none !important;
                     }
                     @page {
                         size: A4 portrait;
-                        margin: 0;
+                        margin: 10mm;
                     }
                 }
 
