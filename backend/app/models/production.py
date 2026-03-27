@@ -55,7 +55,10 @@ class ProductionPlanItem(Base):
     course_type = Column(String, default="INTERNAL") # INTERNAL, OUTSOURCING, PURCHASE
     
     # Details
-    quantity = Column(Integer, default=1) # 생산 수량 (Target)
+    gross_quantity = Column(Integer, default=0) # 총 수주 수량 (Gross)
+    stock_use_quantity = Column(Integer, default=0) # 재고 소진량
+    quantity = Column(Integer, default=1) # 생산 수량 (Net Production Quantity)
+    stock_deducted = Column(Boolean, default=False) # 재고 차감 여부
     partner_name = Column(String, nullable=True) # 외주처/구매처
     work_center = Column(String, nullable=True) # 작업장/기계 (내부)
     

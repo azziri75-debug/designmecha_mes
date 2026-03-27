@@ -14,6 +14,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
     const [partners, setPartners] = useState([]);
     const [staffList, setStaffList] = useState([]);
     const [equipments, setEquipments] = useState([]);
+    const [productStocks, setProductStocks] = useState({}); // { product_id: current_stock }
+    const [stockUseQtys, setStockUseQtys] = useState({}); // { product_id: use_qty }
 
     // Drag and Drop Refs
     const dragItem = useRef(null);
@@ -36,15 +38,30 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     product_unit: item.product?.unit || "EA",
                     product: item.product // Ensure product object is here
                 })));
-            } else if (order || stockProduction) {
                 // Create Mode
                 setPlanDate(new Date().toISOString().split('T')[0]);
                 const defaultItems = [];
                 const sourceItems = order ? order.items : [{ product: stockProduction.product, quantity: stockProduction.quantity, product_id: stockProduction.product_id }];
+                
+                // Fetch stocks for all products
+                const productIds = sourceItems.map(si => si.product_id);
+                api.get('/inventory/stocks', { params: { product_ids: productIds.join(',') } })
+                    .then(res => {
+                        const stockMap = {};
+                        res.data.forEach(s => { stockMap[s.product_id] = s.current_quantity; });
+                        setProductStocks(stockMap);
+                    })
+                    .catch(() => { });
+
+                const initialStockUse = {};
 
                 sourceItems.forEach(sourceItem => {
                     const product = sourceItem.product;
                     const processes = product?.standard_processes || [];
+                    const grossQty = sourceItem.quantity;
+                    
+                    // Default stock use: 0 initially (or can be min(stock, gross))
+                    initialStockUse[sourceItem.product_id] = 0;
 
                     if (processes.length > 0) {
                         processes.sort((a, b) => a.sequence - b.sequence).forEach(proc => {
@@ -54,7 +71,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                 product_name: product?.name || "Unknown",
                                 product_spec: product?.specification || "",
                                 product_unit: product?.unit || "EA",
-                                product: product, // Store product for lookup
+                                product: product, 
                                 process_name: proc.process?.name || "Unknown",
                                 sequence: proc.sequence,
                                 course_type: proc.process?.course_type || "INTERNAL",
@@ -65,8 +82,10 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                 start_date: null,
                                 end_date: null,
                                 unit_cost: proc.cost || 0,
-                                cost: (proc.cost || 0) * sourceItem.quantity,
-                                quantity: sourceItem.quantity,
+                                cost: (proc.cost || 0) * grossQty,
+                                quantity: grossQty,
+                                gross_quantity: grossQty,
+                                stock_use_quantity: 0,
                                 note: ""
                             });
                         });
@@ -77,7 +96,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                             product_name: product?.name || "Unknown",
                             product_spec: product?.specification || "",
                             product_unit: product?.unit || "EA",
-                            product: product, // Store product for lookup
+                            product: product, 
                             process_name: "기본 공정",
                             sequence: 1,
                             course_type: "INTERNAL",
@@ -89,15 +108,49 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                             end_date: null,
                             unit_cost: 0,
                             cost: 0,
-                            quantity: sourceItem.quantity,
+                            quantity: grossQty,
+                            gross_quantity: grossQty,
+                            stock_use_quantity: 0,
                             note: ""
                         });
                     }
                 });
                 setItems(defaultItems);
+                setStockUseQtys(initialStockUse);
             }
         }
     }, [isOpen, order, stockProduction, plan]);
+
+    // Handle Stock Use Change
+    const handleStockUseChange = (productId, value) => {
+        const stockUse = parseInt(value) || 0;
+        const currentStock = productStocks[productId] || 0;
+        
+        // Find first item to get gross qty
+        const firstItem = items.find(i => i.product_id === productId);
+        if (!firstItem) return;
+        const grossQty = firstItem.gross_quantity || firstItem.quantity;
+
+        // Validation
+        const safeStockUse = Math.max(0, Math.min(stockUse, currentStock, grossQty));
+        const netQty = grossQty - safeStockUse;
+
+        setStockUseQtys(prev => ({ ...prev, [productId]: safeStockUse }));
+
+        // Update all processes for this product
+        const newItems = items.map(item => {
+            if (item.product_id === productId) {
+                return {
+                    ...item,
+                    stock_use_quantity: safeStockUse,
+                    quantity: netQty,
+                    cost: (item.unit_cost || 0) * netQty
+                };
+            }
+            return item;
+        });
+        setItems(newItems);
+    };
 
     const handleItemChange = (index, field, value) => {
         const newItems = [...items];
@@ -251,6 +304,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     end_date: item.end_date || null,
                     cost: parseFloat(item.cost) || 0,
                     quantity: parseInt(item.quantity) || 0,
+                    gross_quantity: item.gross_quantity || (parseInt(item.quantity) + (item.stock_use_quantity || 0)),
+                    stock_use_quantity: item.stock_use_quantity || 0,
                     note: item.note,
                     status: item.status || 'CONFIRMED'
                 })),
@@ -340,6 +395,48 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                 >
                                     공정 추가
                                 </Button>
+                            </Box>
+
+                            {/* Net Requirement Calculator */}
+                            <Box sx={{ p: 1.5, mb: 2, bgcolor: '#f1f5f9', borderRadius: 1, border: '1px solid #e2e8f0', display: 'flex', gap: 3, alignItems: 'center' }}>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" display="block">총 수주(Gross)</Typography>
+                                    <Typography variant="body1" fontWeight="bold">{(group.items[0]?.gross_quantity || group.items[0]?.quantity || 0).toLocaleString()}</Typography>
+                                </Box>
+                                <Typography variant="h6" color="textSecondary">-</Typography>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" display="block">현재고(Stock)</Typography>
+                                    <Typography variant="body1" color="primary" fontWeight="bold">{(productStocks[productId] || 0).toLocaleString()}</Typography>
+                                </Box>
+                                <Typography variant="h6" color="textSecondary">→</Typography>
+                                <Box sx={{ minWidth: 120 }}>
+                                    <Typography variant="caption" color="textSecondary" display="block">재고 소진량(Stock Use)</Typography>
+                                    <TextField
+                                        size="small"
+                                        type="number"
+                                        value={stockUseQtys[productId] || 0}
+                                        onChange={(e) => handleStockUseChange(productId, e.target.value)}
+                                        inputProps={{ min: 0, max: Math.min(productStocks[productId] || 0, group.items[0]?.gross_quantity || group.items[0]?.quantity || 0) }}
+                                        variant="outlined"
+                                        sx={{ bgcolor: 'white' }}
+                                    />
+                                </Box>
+                                <Typography variant="h6" color="textSecondary">=</Typography>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" display="block">실 생산 수량(Net Qty)</Typography>
+                                    <Typography variant="h5" color="secondary" fontWeight="bold">{(group.items[0]?.quantity || 0).toLocaleString()}</Typography>
+                                </Box>
+                                <Box sx={{ ml: 'auto' }}>
+                                    {group.items[0]?.quantity === 0 ? (
+                                        <Typography variant="caption" sx={{ color: '#059669', bgcolor: '#ecfdf5', px: 1, py: 0.5, borderRadius: 1, border: '1px solid #10b981' }}>
+                                            ⚠️ 재고로 전량 대체 (자동 주문 생략)
+                                        </Typography>
+                                    ) : (
+                                        <Typography variant="caption" color="textSecondary">
+                                            * 부족분에 대해서만 자동 발주가 실행됩니다.
+                                        </Typography>
+                                    )}
+                                </Box>
                             </Box>
 
                             <TableContainer>

@@ -352,10 +352,27 @@ const PurchasePage = ({ type }) => {
 
     const handleCreateFromMRP = () => {
         if (selectedMrpItems.length === 0) return;
-        const itemsToOrder = mrpItems.filter(item => selectedMrpItems.includes(item.product_id));
+
+        // Filter out items where Net (shortage_quantity) <= 0
+        const itemsWithShortage = mrpItems.filter(item => 
+            selectedMrpItems.includes(item.product_id) && 
+            (item.shortage_quantity || 0) > 0
+        );
+
+        if (itemsWithShortage.length === 0) {
+            alert("전부 현재 재고가 충분하여 발주할 품목이 없습니다.");
+            return;
+        }
+
+        const skippedCount = selectedMrpItems.length - itemsWithShortage.length;
+        if (skippedCount > 0) {
+            if (!window.confirm(`선택한 ${selectedMrpItems.length}개 중 ${skippedCount}개는 재고가 충분하여 제외됩니다.\n남은 ${itemsWithShortage.length}개에 대해 발주를 진행하시겠습니까?`)) {
+                return;
+            }
+        }
 
         setSelectedOrder(null);
-        setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'MRP' }))); // Mark as MRP item
+        setInitialModalItems(itemsWithShortage.map(i => ({ ...i, type: 'MRP', quantity: i.shortage_quantity }))); // Set quantity to Net
         setModalOpen(true);
     };
 
@@ -714,14 +731,16 @@ const PurchasePage = ({ type }) => {
                                             onChange={handleSelectAllMrp}
                                         />
                                     </TableCell>
-                                    <TableCell>규격</TableCell>
-                                    <TableCell>품목명</TableCell>
-                                    <TableCell>구분</TableCell>
-                                    <TableCell>수주 번호</TableCell>
-                                    <TableCell align="right">총 소요량</TableCell>
-                                    <TableCell align="right">현재고</TableCell>
-                                    <TableCell align="right">발주잔량</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>최종 발주필요</TableCell>
+                                    <TableCell sx={{ minWidth: 200, fontWeight: 'bold' }}>품목명</TableCell>
+                                    <TableCell sx={{ minWidth: 150 }}>규격</TableCell>
+                                    <TableCell sx={{ minWidth: 100 }}>구분</TableCell>
+                                    <TableCell sx={{ minWidth: 150 }}>연결번호 (수주)</TableCell>
+                                    <TableCell align="right" sx={{ minWidth: 100, fontWeight: 'bold' }}>총 소요량 (Gross)</TableCell>
+                                    <TableCell align="right" sx={{ minWidth: 100, color: 'text.secondary' }}>현재 재고 (Stock)</TableCell>
+                                    <TableCell align="right" sx={{ minWidth: 100, color: 'info.main' }}>발주 잔량</TableCell>
+                                    <TableCell align="right" sx={{ minWidth: 100, fontWeight: 'bold', color: 'error.main', bgcolor: 'rgba(211, 47, 47, 0.05)' }}>
+                                        실제 발주 (Net)
+                                    </TableCell>
                                     <TableCell align="center">관리</TableCell>
                                 </TableRow>
                             </TableHead>
@@ -734,16 +753,28 @@ const PurchasePage = ({ type }) => {
                                             <TableCell padding="checkbox">
                                                 <Checkbox checked={selectedMrpItems.includes(item.product_id)} />
                                             </TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>{item.product_name}</TableCell>
                                             <TableCell>{item.specification}</TableCell>
-                                            <TableCell>{item.product_name}</TableCell>
                                             <TableCell>
-                                                <Chip label={item.item_type} size="small" variant="outlined" />
+                                                <Chip label={item.item_type} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
                                             </TableCell>
-                                            <TableCell>{item.sales_order_number || "-"}</TableCell>
-                                            <TableCell align="right">{item.required_quantity?.toLocaleString() || '0'}</TableCell>
-                                            <TableCell align="right">{item.current_stock?.toLocaleString() || '0'}</TableCell>
-                                            <TableCell align="right">{item.open_purchase_qty?.toLocaleString() || '0'}</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: 'error.main' }}>{item.shortage_quantity?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell>
+                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                                                    {item.sales_order_number || "-"}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>{item.required_quantity?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell align="right" sx={{ color: item.current_stock > 0 ? 'success.main' : 'text.secondary' }}>
+                                                {item.current_stock?.toLocaleString() || '0'}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: 'info.main' }}>{item.open_purchase_qty?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell align="right" sx={{ 
+                                                fontWeight: 'bold', 
+                                                color: (item.shortage_quantity || 0) > 0 ? 'error.main' : 'success.main',
+                                                bgcolor: (item.shortage_quantity || 0) > 0 ? 'rgba(211, 47, 47, 0.05)' : 'rgba(46, 125, 50, 0.05)'
+                                            }}>
+                                                {(item.shortage_quantity || 0).toLocaleString()}
+                                            </TableCell>
                                             <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                                                 <Tooltip title="삭제">
                                                     <IconButton size="small" color="error" onClick={() => handleDeleteMrpItem(item.id)}>

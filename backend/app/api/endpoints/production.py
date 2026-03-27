@@ -78,6 +78,34 @@ async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
     if all_completed and plan.status != ProductionStatus.COMPLETED:
         await update_production_plan_status(plan_id, ProductionStatus.COMPLETED, db)
 
+async def process_stock_deduction(db: AsyncSession, plan_id: int):
+    """
+    생산 계획 확정 시, 사용하기로 한 재고(stock_use_quantity)를 실제 창고에서 차감합니다.
+    """
+    result = await db.execute(
+        select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id)
+    )
+    plan = result.scalars().first()
+    if not plan:
+        return
+
+    for item in plan.items:
+        if (item.stock_use_quantity or 0) > 0 and not item.stock_deducted:
+            from app.api.utils.inventory import handle_stock_movement
+            from app.models.inventory import TransactionType
+            
+            await handle_stock_movement(
+                db=db,
+                product_id=item.product_id,
+                quantity=-(item.stock_use_quantity),
+                transaction_type=TransactionType.OUT,
+                reference=f"생산계획 확정 재고소진 (Plan #{plan.id})"
+            )
+            item.stock_deducted = True
+            db.add(item)
+    
+    await db.flush()
+
 async def sync_plan_item_cost(db: AsyncSession, plan_item: ProductionPlanItem):
     """
     If INTERNAL, fetch standard cost from ProductProcess and sync plan_item.cost.
@@ -294,6 +322,8 @@ async def create_production_plan(
                     status=item_in.status,
                     attachment_file=item_in.attachment_file,
                     quantity=item_in.quantity,
+                    gross_quantity=item_in.gross_quantity or item_in.quantity,
+                    stock_use_quantity=item_in.stock_use_quantity or 0,
                     cost=item_in.cost
                 )
                 db.add(plan_item)
@@ -303,6 +333,7 @@ async def create_production_plan(
             
             # 5. Trigger MRP if status is CONFIRMED
             if plan.status == ProductionStatus.CONFIRMED:
+                await process_stock_deduction(db, plan_id=plan.id)
                 from app.api.utils.mrp import calculate_and_record_mrp
                 await calculate_and_record_mrp(db, plan_id=plan.id)
         else:
@@ -553,6 +584,8 @@ async def update_production_plan(
                 "status": item_in.get("status", ProductionStatus.PLANNED),
                 "attachment_file": item_in.get("attachment_file"),
                 "quantity": item_in.get("quantity", 1),
+                "gross_quantity": item_in.get("gross_quantity"),
+                "stock_use_quantity": item_in.get("stock_use_quantity"),
                 "cost": item_in.get("cost", 0.0)
             }
 
@@ -576,11 +609,12 @@ async def update_production_plan(
 
     await db.commit()
     
-    # --- Trigger MRP if status changed to CONFIRMED ---
+    # --- Trigger MRP and Stock Deduction if status changed to CONFIRMED ---
     is_now_confirmed = getattr(plan, 'status', None) == ProductionStatus.CONFIRMED
     if update_data.get('status') == ProductionStatus.CONFIRMED or is_now_confirmed:
-        # Avoid triggering if it was already confirmed before? The requirement says "When updated to CONFIRMED, trigger MRP."
-        # The mrp utility handles duplicate deletion automatically for plan_id.
+        # Stock deduction happens here
+        await process_stock_deduction(db, plan_id=plan.id)
+        # MRP (Material Requirements Planning) calculation
         from app.api.utils.mrp import calculate_and_record_mrp
         await calculate_and_record_mrp(db, plan_id=plan.id)
     

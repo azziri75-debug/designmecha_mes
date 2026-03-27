@@ -23,6 +23,9 @@ class ProductionPlanItemBase(BaseModel):
     sequence: int
     course_type: str = "INTERNAL"
     quantity: int = 1
+    gross_quantity: int = 0
+    stock_use_quantity: int = 0
+    stock_deducted: bool = False
     
     partner_name: Optional[str] = None
     work_center: Optional[str] = None
@@ -53,6 +56,9 @@ class ProductionPlanItemUpdate(BaseModel):
     cost: Optional[float] = None
     attachment_file: Optional[Union[List[Any], str]] = None
     quantity: Optional[int] = None
+    gross_quantity: Optional[int] = None
+    stock_use_quantity: Optional[int] = None
+    stock_deducted: Optional[bool] = None
 
 # --- Plan Schemas (Base) ---
 class ProductionPlanBase(BaseModel):

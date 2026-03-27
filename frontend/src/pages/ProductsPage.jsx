@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt, Copy } from 'lucide-react';
+import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt, Copy, Printer } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
 import { cn, safeParseJSON } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import ProcessGroupManager from '../components/ProcessGroupManager';
 import ResizableTh from '../components/ResizableTh';
+import ProcessChartTemplate from '../components/ProcessChartTemplate';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -72,6 +73,9 @@ const ProductsPage = ({ type }) => {
     const [bomItems, setBomItems] = useState([]); // 현재 BOM 목록 (편집 중)
     const [bomNewRow, setBomNewRow] = useState({ child_product_id: '', required_quantity: 1 }); // 새 BOM 항목 입력용
     const [loadingBom, setLoadingBom] = useState(false);
+
+    // Print State
+    const [printProductId, setPrintProductId] = useState(null);
 
     const ITEM_TYPES = {
         PRODUCED: '생산제품',
@@ -999,6 +1003,16 @@ const ProductsPage = ({ type }) => {
                                                 </td>
                                                 <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                                     <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPrintProductId(product.id);
+                                                        }}
+                                                        className="text-gray-400 hover:text-blue-500"
+                                                        title="공정도 인쇄"
+                                                    >
+                                                        <Printer className="w-4 h-4" />
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleDuplicateProduct(product)}
                                                         className="text-gray-400 hover:text-emerald-400"
                                                         title="복사"
@@ -1007,7 +1021,7 @@ const ProductsPage = ({ type }) => {
                                                     </button>
                                                     <button
                                                         onClick={() => handleEditProduct(product)}
-                                                        className="text-gray-400 hover:text-blue-400"
+                                                        className="text-gray-500 hover:text-blue-400"
                                                         title="수정"
                                                     >
                                                         <Edit2 className="w-4 h-4" />
@@ -2119,6 +2133,14 @@ const ProductsPage = ({ type }) => {
                         </div>
                     </div>
                 </div>
+            )}
+            
+            {/* Print Process Chart Overlay */}
+            {printProductId && (
+                <ProcessChartTemplate 
+                    productId={printProductId} 
+                    onClose={() => setPrintProductId(null)} 
+                />
             )}
         </div>
     );
