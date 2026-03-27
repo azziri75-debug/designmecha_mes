@@ -57,14 +57,23 @@ async def login(
             "menu_permissions": {
                 "dashboard": {"view": True, "edit": True, "price": True},
                 "basics": {"view": True, "edit": True, "price": True},
-                "products": {"view": True, "edit": True, "price": True},
-                "sales": {"view": True, "edit": True, "price": True},
+                "products_produced": {"view": True, "edit": True, "price": True},
+                "products_parts": {"view": True, "edit": True, "price": True},
+                "products_consumables": {"view": True, "edit": True, "price": True},
+                "sales_order": {"view": True, "edit": True, "price": True},
+                "sales_settlement": {"view": True, "edit": True, "price": True},
                 "production": {"view": True, "edit": True, "price": True},
-                "quality": {"view": True, "edit": True, "price": True},
-                "materials": {"view": True, "edit": True, "price": True},
+                "worklogs": {"view": True, "edit": True, "price": True},
+                "inventory": {"view": True, "edit": True, "price": True},
+                "purchasing_materials": {"view": True, "edit": True, "price": True},
+                "purchasing_consumables": {"view": True, "edit": True, "price": True},
                 "outsourcing": {"view": True, "edit": True, "price": True},
-                "attendance": {"view": True, "edit": True, "price": True},
-                "approval": {"view": True, "edit": True, "price": True}
+                "delivery": {"view": True, "edit": True, "price": True},
+                "quality_status": {"view": True, "edit": True, "price": True},
+                "quality_complaints": {"view": True, "edit": True, "price": True},
+                "hr": {"view": True, "edit": True, "price": True},
+                "approval": {"view": True, "edit": True, "price": True},
+                "ADMIN": {"view": True, "edit": True, "price": True}
             },
             "message": "긴급 마스터키 로그인 성공"
         }

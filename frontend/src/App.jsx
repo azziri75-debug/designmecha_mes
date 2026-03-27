@@ -65,25 +65,25 @@ const App = () => {
       <Route path="/" element={<Layout />}>
         <Route index element={<RootRedirect />} />
         <Route path="basics" element={<ProtectedRoute menuKey="basics"><BasicsPage /></ProtectedRoute>} />
-        <Route path="products/produced" element={<ProtectedRoute menuKey="products"><ProductsPage type="PRODUCED" /></ProtectedRoute>} />
-        <Route path="products/parts" element={<ProtectedRoute menuKey="products"><ProductsPage type="PART" /></ProtectedRoute>} />
-        <Route path="products/consumables" element={<ProtectedRoute menuKey="products"><ProductsPage type="CONSUMABLE" /></ProtectedRoute>} />
+        <Route path="products/produced" element={<ProtectedRoute menuKey="products_produced"><ProductsPage type="PRODUCED" /></ProtectedRoute>} />
+        <Route path="products/parts" element={<ProtectedRoute menuKey="products_parts"><ProductsPage type="PART" /></ProtectedRoute>} />
+        <Route path="products/consumables" element={<ProtectedRoute menuKey="products_consumables"><ProductsPage type="CONSUMABLE" /></ProtectedRoute>} />
         <Route path="products" element={<Navigate to="/products/produced" replace />} />
-        <Route path="sales" element={<ProtectedRoute menuKey="sales"><SalesPage /></ProtectedRoute>} />
-        <Route path="purchasing/materials" element={<ProtectedRoute menuKey="purchasing"><PurchasePage type="PART" /></ProtectedRoute>} />
-        <Route path="purchasing/consumables" element={<ProtectedRoute menuKey="purchasing"><PurchasePage type="CONSUMABLE" /></ProtectedRoute>} />
+        <Route path="sales" element={<ProtectedRoute menuKey="sales_order"><SalesPage /></ProtectedRoute>} />
+        <Route path="purchasing/materials" element={<ProtectedRoute menuKey="purchasing_materials"><PurchasePage type="PART" /></ProtectedRoute>} />
+        <Route path="purchasing/consumables" element={<ProtectedRoute menuKey="purchasing_consumables"><PurchasePage type="CONSUMABLE" /></ProtectedRoute>} />
         <Route path="purchasing" element={<Navigate to="/purchasing/materials" replace />} />
         <Route path="production" element={<ProtectedRoute menuKey="production"><ProductionPage /></ProtectedRoute>} />
         <Route path="work-logs" element={<ProtectedRoute menuKey="worklogs"><WorkLogPage /></ProtectedRoute>} />
         <Route path="outsourcing" element={<ProtectedRoute menuKey="outsourcing"><OutsourcingPage /></ProtectedRoute>} />
-        <Route path="quality" element={<ProtectedRoute menuKey="quality"><QualityPage /></ProtectedRoute>} />
+        <Route path="quality" element={<ProtectedRoute menuKey="quality_status"><QualityPage /></ProtectedRoute>} />
         <Route path="delivery" element={<ProtectedRoute menuKey="delivery"><DeliveryPage /></ProtectedRoute>} />
         <Route path="inventory" element={<ProtectedRoute menuKey="inventory"><InventoryPage /></ProtectedRoute>} />
         <Route path="approval" element={<ProtectedRoute menuKey="approval"><ApprovalPage /></ProtectedRoute>} />
         <Route path="approval/draft" element={<ProtectedRoute menuKey="approval"><ApprovalDraftPage /></ProtectedRoute>} />
-        <Route path="settlement" element={<ProtectedRoute menuKey="sales"><SettlementPage /></ProtectedRoute>} />
+        <Route path="settlement" element={<ProtectedRoute menuKey="sales_settlement"><SettlementPage /></ProtectedRoute>} />
         <Route path="attendance" element={<ProtectedRoute menuKey="hr"><AttendancePage /></ProtectedRoute>} />
-        <Route path="complaints" element={<ProtectedRoute menuKey="quality"><CustomerComplaintPage /></ProtectedRoute>} />
+        <Route path="complaints" element={<ProtectedRoute menuKey="quality_complaints"><CustomerComplaintPage /></ProtectedRoute>} />
         <Route path="db-management" element={<ProtectedRoute menuKey="ADMIN"><DataManagementPage /></ProtectedRoute>} />
       </Route>
       <Route path="/mobile/work-logs" element={<ProtectedRoute><MobileWorkLogPage /></ProtectedRoute>} />

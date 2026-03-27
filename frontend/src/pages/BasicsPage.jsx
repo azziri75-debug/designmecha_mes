@@ -242,7 +242,12 @@ const BasicsPageContent = () => {
                     newState.can_view_others = true;
                     
                     // Auto-enable all menu permissions
-                    const menus = ['dashboard', 'basics', 'products', 'sales', 'production', 'worklogs', 'purchasing', 'outsourcing', 'quality', 'inventory', 'delivery', 'hr', 'approval', 'ADMIN'];
+                    const menus = [
+                        'dashboard', 'basics', 'products_produced', 'products_parts', 'sales_order', 
+                        'production', 'purchasing_materials', 'outsourcing', 'worklogs', 'delivery', 
+                        'inventory', 'quality_status', 'quality_complaints', 'products_consumables', 
+                        'purchasing_consumables', 'approval', 'sales_settlement', 'hr', 'ADMIN'
+                    ];
                     const fullPerms = {};
                     menus.forEach(m => {
                         fullPerms[m] = { view: true, edit: true, price: true };
@@ -1887,17 +1892,22 @@ const BasicsPageContent = () => {
                                                     [
                                                         { key: 'dashboard', label: '대시보드' },
                                                         { key: 'basics', label: '기초 정보' },
-                                                        { key: 'products', label: '제품/공정 관리' },
-                                                        { key: 'sales', label: '영업 관리' },
+                                                        { key: 'products_produced', label: '생산 제품 관리' },
+                                                        { key: 'products_parts', label: '부품 관리' },
+                                                        { key: 'products_consumables', label: '소모품 관리' },
+                                                        { key: 'sales_order', label: '영업 관리' },
+                                                        { key: 'sales_settlement', label: '결산 자료' },
                                                         { key: 'production', label: '생산 관리' },
-                                                        { key: 'worklogs', label: '작업 일지' },
-                                                        { key: 'purchasing', label: '자재/소모품 구매' },
+                                                        { key: 'worklogs', label: '작업 일지 관리' },
+                                                        { key: 'inventory', label: '재고/재고생산' },
                                                     ],
                                                     [
-                                                        { key: 'outsourcing', label: '외주 발주' },
-                                                        { key: 'quality', label: '품질 관리' },
-                                                        { key: 'inventory', label: '재고 관리' },
+                                                        { key: 'purchasing_materials', label: '자재 구매 관리' },
+                                                        { key: 'purchasing_consumables', label: '소모품 발주 관리' },
+                                                        { key: 'outsourcing', label: '외주 발주 관리' },
                                                         { key: 'delivery', label: '납품 관리' },
+                                                        { key: 'quality_status', label: '품질 관리' },
+                                                        { key: 'quality_complaints', label: '고객 불만 관리' },
                                                         { key: 'hr', label: '근태 관리' },
                                                         { key: 'approval', label: '전자결재/문서' },
                                                         { key: 'ADMIN', label: 'DB 관리' },

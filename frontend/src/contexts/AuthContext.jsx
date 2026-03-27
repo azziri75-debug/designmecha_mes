@@ -4,18 +4,25 @@ import { safeParseJSON } from '../lib/utils';
 const AuthContext = createContext(null);
 
 const MENUS = [
-    { key: 'basics', label: '기초 정보 (거래처/사원)' },
-    { key: 'products', label: '제품 및 공정 관리' },
-    { key: 'sales', label: '영업 관리 (견적/수주)' },
-    { key: 'production', label: '생산 관리 (계획/지시)' },
-    { key: 'purchasing', label: '자재/소모품 구매 관리' },
-    { key: 'outsourcing', label: '외주 발주 관리' },
-    { key: 'quality', label: '품질 관리' },
-    { key: 'inventory', label: '재고 관리' },
-    { key: 'delivery', label: '납품 관리' },
+    { key: 'dashboard', label: '대시보드' },
+    { key: 'basics', label: '기초 정보' },
+    { key: 'products_produced', label: '생산 제품 관리' },
+    { key: 'products_parts', label: '부품 관리' },
+    { key: 'products_consumables', label: '소모품 관리' },
+    { key: 'sales_order', label: '영업 관리' },
+    { key: 'sales_settlement', label: '결산 자료' },
+    { key: 'production', label: '생산 관리' },
     { key: 'worklogs', label: '작업 일지 관리' },
+    { key: 'inventory', label: '재고/재고생산' },
+    { key: 'purchasing_materials', label: '자재 구매 관리' },
+    { key: 'purchasing_consumables', label: '소모품 발주 관리' },
+    { key: 'outsourcing', label: '외주 발주 관리' },
+    { key: 'delivery', label: '납품 관리' },
+    { key: 'quality_status', label: '품질 관리' },
+    { key: 'quality_complaints', label: '고객 불만 관리' },
     { key: 'hr', label: '근태 관리' },
-    { key: 'approval', label: '전자결재 및 문서 관리' },
+    { key: 'approval', label: '전자결재/문서' },
+    { key: 'ADMIN', label: 'DB 관리' },
 ];
 
 export const AuthProvider = ({ children }) => {
