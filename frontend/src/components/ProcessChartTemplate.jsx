@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../lib/api';
-import { Package, Settings, FileText, Loader2 } from 'lucide-react';
+import { Package, Settings, FileText, Loader2, X } from 'lucide-react';
 
 const ProcessChartTemplate = ({ productId, onClose }) => {
     const [product, setProduct] = useState(null);
@@ -16,21 +17,15 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // 1. Fetch Product (includes routing/standard_processes)
             const prodRes = await api.get(`/product/products/${productId}`);
             setProduct(prodRes.data);
 
-            // 2. Fetch BOM
             const bomRes = await api.get(`/product/products/${productId}/bom`);
             setBomItems(bomRes.data);
 
-            // Wait for DOM to render then print
             setTimeout(() => {
                 window.print();
-                // We keep the modal open briefly for the print dialog, 
-                // but the user can close it manually or we could onClose after a delay.
-                // However, window.print() is blocking in most browsers until dialog closes.
-            }, 1000);
+            }, 1500);
         } catch (error) {
             console.error("Failed to fetch process chart data", error);
             alert("데이터를 불러오는 데 실패했습니다.");
@@ -42,35 +37,44 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
 
     if (!productId) return null;
 
-    return (
-        <div className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-auto">
+    // Portal content
+    const content = (
+        <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-auto print-overlay">
             <style>
                 {`
                 @media screen {
                     .no-print { display: flex !important; }
                 }
                 @media print {
+                    /* 1. 불필요한 모든 UI 요소 완벽히 숨김 */
+                    body > :not(.print-overlay) { display: none !important; }
                     .no-print { display: none !important; }
                     
-                    /* 기존 화면의 모든 요소를 숨김 */
-                    body * { visibility: hidden; }
-                    /* 인쇄할 공정도 영역과 그 하위 요소만 보이게 강제 설정 */
-                    #process-chart-printable, #process-chart-printable * { visibility: visible; }
+                    /* 2. 모달 배경 해제 및 문서 흐름 정상화 */
+                    .print-overlay {
+                        position: relative !important;
+                        background: none !important;
+                        inset: auto !important;
+                        overflow: visible !important;
+                        display: block !important;
+                        padding: 0 !important;
+                        width: 100% !important;
+                    }
                     
-                    #process-chart-printable { 
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
+                    /* 3. 인쇄 대상 규격 고정 */
+                    #process-chart-printable {
+                        position: relative !important;
+                        width: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
-                        width: 210mm !important;
-                        background: white !important;
-                        color: black !important;
                         box-shadow: none !important;
+                        break-after: page;
+                        visibility: visible !important;
                     }
-                    @page {
-                        size: A4 portrait;
-                        margin: 10mm;
+                    
+                    @page { 
+                        size: A4 portrait; 
+                        margin: 10mm; 
                     }
                 }
 
@@ -80,9 +84,11 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                     width: 210mm;
                     min-height: 297mm;
                     padding: 20mm;
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+                    box-shadow: 0 10px 50px rgba(0,0,0,0.8);
                     font-family: 'Inter', 'Noto Sans KR', sans-serif;
                     line-height: 1.5;
+                    margin: 20px auto;
+                    border-radius: 4px;
                 }
 
                 .chart-table {
@@ -144,30 +150,40 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                     width: 100px;
                     color: #4a5568;
                 }
+
+                /* Control Button Styles (Screen Only) */
+                .print-controls {
+                    position: sticky;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10001;
+                    justify-content: flex-end;
+                    margin-bottom: -50px;
+                }
                 `}
             </style>
 
-            <div className="relative max-h-full">
+            <div className="relative w-full max-w-[215mm] mx-auto min-h-screen py-10">
                 {/* Print Control Overlay (Visible only on screen) */}
-                <div className="absolute -top-12 right-0 flex gap-2 no-print">
+                <div className="flex gap-3 no-print print-controls">
                     <button 
                         onClick={() => window.print()}
-                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-2xl flex items-center gap-2 transform active:scale-95 transition-all"
                     >
-                        <FileText className="w-4 h-4" /> 인쇄 / PDF 저장
+                        <FileText className="w-5 h-5" /> 인쇄 / PDF 저장
                     </button>
                     <button 
                         onClick={onClose}
-                        className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-bold"
+                        className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-2xl flex items-center gap-2 transform active:scale-95 transition-all"
                     >
-                        닫기
+                        <X className="w-5 h-5" /> 닫기 (ESC)
                     </button>
                 </div>
 
                 {loading ? (
-                    <div className="bg-gray-900 border border-gray-700 rounded-xl p-12 flex flex-col items-center gap-4 text-white w-[210mm]">
-                        <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
-                        <p className="text-lg font-medium">인쇄 데이터를 준비 중입니다...</p>
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-20 flex flex-col items-center gap-6 text-white w-[210mm] mx-auto mt-20 shadow-2xl">
+                        <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+                        <p className="text-xl font-bold tracking-tight">인쇄 데이터를 신속하게 준비 중입니다...</p>
                     </div>
                 ) : (
                     <div id="process-chart-printable">
@@ -278,6 +294,8 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
             </div>
         </div>
     );
+
+    return createPortal(content, document.body);
 };
 
 export default ProcessChartTemplate;
