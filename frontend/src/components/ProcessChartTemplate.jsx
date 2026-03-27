@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Printer, FileText } from 'lucide-react';
+import { X, Printer, FileText, ChevronRight } from 'lucide-react';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 
@@ -81,15 +81,19 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                     @page { size: A4 portrait; margin: 0; }
 
                     /* 기존 화면 모두 투명화 (공간은 남겨둠) */
-                    body { visibility: hidden !important; background: white !important; }
+                    body * { visibility: hidden !important; }
 
                     /* 프린트 영역만 강제로 끄집어내서 종이 좌상단에 고정 */
-                    #print-section {
+                    #process-chart-printable, #process-chart-printable * {
                         visibility: visible !important;
+                    }
+                    
+                    #process-chart-printable {
                         position: absolute !important;
                         top: 0 !important;
                         left: 0 !important;
                         width: 210mm !important;
+                        min-height: 297mm !important;
                         margin: 0 !important;
                         padding: 15mm !important;
                         box-shadow: none !important;
@@ -120,7 +124,7 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
 
             {/* The Actual Document */}
             <div 
-                id="print-section"
+                id="process-chart-printable"
                 ref={printRef}
                 className="bg-white text-black flex flex-col shadow-2xl"
                 style={{
@@ -164,18 +168,73 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                             <div className="flex-1 px-3 flex items-center">{new Date().toLocaleDateString()}</div>
                         </div>
                         <div className="flex border-b border-black">
-                            <div className="w-24 bg-gray-100 flex items-center justify-center font-bold border-r border-black py-2">작성부서</div>
-                            <div className="flex-1 px-3 flex items-center">생산기술팀</div>
+                            <div className="w-24 bg-gray-100 flex items-center justify-center font-bold border-r border-black py-2">재질</div>
+                            <div className="flex-1 px-3 flex items-center font-bold">{product.material || '-'}</div>
                         </div>
                         <div className="flex">
-                            <div className="w-24 bg-gray-100 flex items-center justify-center font-bold border-r border-black py-2">작성자</div>
-                            <div className="flex-1 px-3 flex items-center">시스템 관리자</div>
+                            <div className="w-24 bg-gray-100 flex items-center justify-center font-bold border-r border-black py-2">거래처</div>
+                            <div className="flex-1 px-3 flex items-center">{product.partner_name || product.partner?.name || '-'}</div>
                         </div>
                     </div>
                 </div>
 
+                {/* ── BOM (소요 자재 및 부품) Table ── */}
+                <div className="mb-8">
+                    <div className="text-xs font-bold mb-1 flex items-center gap-1">
+                        <FileText size={14} /> [BOM] 소요 자재 및 부품 상세
+                    </div>
+                    <table className="w-full border-collapse border border-black text-[11px]">
+                        <thead>
+                            <tr className="bg-gray-50">
+                                <th className="border border-black px-1 py-1 w-10">No</th>
+                                <th className="border border-black px-2 py-1">부품명(자재명)</th>
+                                <th className="border border-black px-2 py-1 w-32">규격</th>
+                                <th className="border border-black px-1 py-1 w-16">소요량</th>
+                                <th className="border border-black px-1 py-1 w-12">단위</th>
+                                <th className="border border-black px-2 py-1 w-24">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {(product.bom_items || []).length > 0 ? (
+                                product.bom_items.map((bom, idx) => (
+                                    <tr key={idx} className="h-7 text-center">
+                                        <td className="border border-black">{idx + 1}</td>
+                                        <td className="border border-black px-2 text-left font-bold">
+                                            {bom.child_product?.name || bom.product_name || '-'}
+                                        </td>
+                                        <td className="border border-black px-2 text-left">
+                                            {bom.child_product?.specification || bom.specification || '-'}
+                                        </td>
+                                        <td className="border border-black font-bold">{bom.quantity}</td>
+                                        <td className="border border-black">{bom.child_product?.unit || 'EA'}</td>
+                                        <td className="border border-black text-[9px]">{bom.note || '-'}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr className="h-7">
+                                    <td colSpan={6} className="border border-black text-center text-gray-400">등록된 BOM 정보가 없습니다.</td>
+                                </tr>
+                            )}
+                            {/* Fill empty BOM rows */}
+                            {Array.from({ length: Math.max(0, 3 - (product.bom_items?.length || 0)) }).map((_, i) => (
+                                <tr key={`empty-bom-${i}`} className="h-7">
+                                    <td className="border border-black"></td>
+                                    <td className="border border-black"></td>
+                                    <td className="border border-black"></td>
+                                    <td className="border border-black"></td>
+                                    <td className="border border-black"></td>
+                                    <td className="border border-black"></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
                 {/* ── Process Table ── */}
                 <div className="flex-1">
+                    <div className="text-xs font-bold mb-1 flex items-center gap-1">
+                        <ChevronRight size={14} /> [Routing] 주요 공정 흐름 및 작업 표준
+                    </div>
                     <table className="w-full border-collapse border-2 border-black text-sm">
                         <thead>
                             <tr className="bg-gray-100">
@@ -191,7 +250,9 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                                 product.standard_processes.sort((a,b) => a.sequence - b.sequence).map((proc, idx) => (
                                     <tr key={idx} className="h-16">
                                         <td className="border border-black text-center font-bold">{idx + 1}</td>
-                                        <td className="border border-black px-3 font-bold">{proc.process_name}</td>
+                                        <td className="border border-black px-3 font-bold">
+                                            {proc.process?.name || proc.process_name || '-'}
+                                        </td>
                                         <td className="border border-black text-center">
                                             <span className={cn(
                                                 "px-2 py-1 rounded text-[10px] font-bold",
