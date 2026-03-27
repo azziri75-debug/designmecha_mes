@@ -70,7 +70,7 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
     }
 
     return createPortal(
-        <div id="print-overlay-wrapper" className="fixed inset-0 z-[10000] bg-gray-800 flex justify-center py-10 overflow-y-auto">
+        <div id="print-overlay-wrapper" className="fixed inset-0 z-[10000] bg-gray-800 flex justify-center items-start py-10 overflow-y-auto">
             <style>{`
                 /* ── [화면 뷰어 모드] ── */
                 @media screen {
@@ -79,6 +79,7 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                     .a4-container {
                         width: 210mm !important;
                         min-height: 297mm !important;
+                        height: max-content !important; /* 세로 늘어짐 방지 핵심 */
                         background: white;
                         padding: 15mm !important;
                         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
