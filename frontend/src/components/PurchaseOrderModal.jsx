@@ -542,7 +542,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     <Autocomplete
                         options={partners}
                         getOptionLabel={(option) => option.name || ''}
-                        value={partners.find(p => p.id === formData.partner_id) || null}
+                        isOptionEqualToValue={(option, value) => String(option.id) === String(value?.id)}
+                        value={partners.find(p => String(p.id) === String(formData.partner_id)) || null}
                         onChange={(_, newValue) => {
                             setFormData(prev => ({ ...prev, partner_id: newValue ? newValue.id : '' }));
                         }}
@@ -704,7 +705,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                                         [{option.code || option.product_code || 'N/A'}] {option.name}
                                                                     </Typography>
                                                                     <Typography variant="caption" color="textSecondary">
-                                                                        규격: {option.specification || '-'} | 현재고: <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>{option.current_inventory || 0}</span>
+                                                                        규격: {option.specification || '-'}
+                                                                        {(!order && (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL')) && (
+                                                                            <> | 현재고: <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>{option.current_inventory || 0}</span></>
+                                                                        )}
                                                                     </Typography>
                                                                 </Box>
                                                             )}
@@ -713,6 +717,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     sx={{ width: '100%' }}
                                                     readOnly={!!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id))}
                                                 />
+                                                {(!order && (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') && prod) && (
+                                                    <Typography variant="caption" sx={{ color: '#d32f2f', fontWeight: 'bold', mt: 0.5, display: 'block' }}>
+                                                        (현재 재고: {prod.current_inventory || 0} EA)
+                                                    </Typography>
+                                                )}
                                             </TableCell>
                                             {purchaseTypeState === 'CONSUMABLE' ? (
                                                 <TableCell sx={{ width: 150 }}>

@@ -476,7 +476,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                                     [{option.code || option.product_code || 'N/A'}] {option.name}
                                                                 </Typography>
                                                                 <Typography variant="caption" color="textSecondary">
-                                                                    규격: {option.specification || '-'} | 현재고: <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>{option.current_inventory || 0}</span>
+                                                                    규격: {option.specification || '-'}
                                                                 </Typography>
                                                             </Box>
                                                         </li>
@@ -484,11 +484,6 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     sx={{ width: '100%' }}
                                                     readOnly={!!item.production_plan_item_id}
                                                 />
-                                                {prod && (
-                                                    <Typography variant="caption" sx={{ color: '#d32f2f', fontWeight: 'bold', mt: 0.5, display: 'block' }}>
-                                                        (현재 재고: {prod.current_inventory || 0} EA)
-                                                    </Typography>
-                                                )}
                                             </TableCell>
                                             <TableCell sx={{ width: 120 }}>
                                                 <TextField 
