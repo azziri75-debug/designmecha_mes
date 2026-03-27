@@ -346,8 +346,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const fetchProducts = async () => {
         try {
             const response = await api.get('/product/products');
-            // 필터링 절대 하지 말고 전체 데이터 저장! (Stale State 버그 원천 차단)
-            setProducts(response.data);
+            // [절대 주의] 여기서 filter 절대 쓰지 마라! 대기리스트 품목 증발의 1등 공신이다.
+            setProducts(response.data); 
         } catch (error) {
             console.error("Failed to fetch products", error);
         }
@@ -622,15 +622,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                         product: p
                                     }));
 
-                                // 전체 product 리스트에서 ID로 직접 찾기 (가장 확실한 데이터 백업)
+                                // 1. 전체 제품(products) 리스트에서 ID로 확실하게 찾아내기 백업
                                 const matchedProduct = products.find(p => String(p.id) === String(item.product_id));
-                                const finalProductName = matchedProduct?.name || item.product_name || '';
 
+                                // 2. 이름이 정 없으면 에러 방지용으로 '(미확인 품목 ID: x)' 강제 출력!
+                                const displayLabel = matchedProduct?.name || item.product_name || `(미확인 품목 ID: ${item.product_id || '없음'})`;
+
+                                // 3. React-Select에 무조건 데이터 꽂아넣기
                                 const selectedOption = itemOptions.find(opt => String(opt.value) === String(item.product_id)) || 
-                                                     (finalProductName ? { value: item.product_id || finalProductName, label: finalProductName } : null);
+                                                     (item.product_id ? { value: item.product_id, label: displayLabel } : null);
 
-                                // 잠금 조건도 이름이 없으면 수동 입력 가능하도록 유연하게!
-                                const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id && item.product_name));
+                                // 4. 잠금 조건 (데이터가 없으면 사용자가 수동 검색할 수 있게 유연화)
+                                const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id && matchedProduct?.name));
 
                                 return (
                                     <React.Fragment key={index}>
