@@ -191,9 +191,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             console.error("Failed to fetch approval doc", err);
         }
     };
-
     useEffect(() => {
+        if (!isOpen) return;
+
         if (order) {
+            // [EDIT MODE]
             setFormData({
                 partner_id: order.partner_id || '',
                 order_id: order.order_id || '',
@@ -209,16 +211,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     specification: item.product?.specification || item.specification || '',
                     order_size: item.order_size || '',
                     material: item.material || '',
-                    pricing_type: item.pricing_type || 'UNIT'
+                    pricing_type: item.pricing_type || 'UNIT',
+                    total_weight: item.total_weight || 0
                 }))
             });
-        }
-    }, [order]);
-
-    // Pre-fill logic: Only run once when modal opens and initialItems are provided
-    useEffect(() => {
-        if (isOpen && !order && initialItems && initialItems.length > 0) {
-            // [Defense] Try various field names for partner identification
+        } else if (initialItems && initialItems.length > 0) {
+            // [PRE-FILL MODE]
             const firstItem = initialItems[0];
             const firstPartnerName = firstItem.partner_name || 
                                      (firstItem.partner && (typeof firstItem.partner === 'string' ? firstItem.partner : firstItem.partner.name)) ||
@@ -230,116 +228,65 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 firstItem?.plan?.order?.order_no ||
                 firstItem?.plan?.stock_production?.production_no || '';
 
-            setFormData(prev => ({
-                ...prev,
-                partner_id: foundPartner ? foundPartner.id : (prev.partner_id || ''),
+            setFormData({
+                partner_id: foundPartner ? foundPartner.id : '',
                 order_id: firstItem?.plan?.order_id || '',
+                order_date: new Date().toISOString().split('T')[0],
+                delivery_date: '',
+                note: '',
                 display_order_no: displayCode,
+                purchase_type: purchaseType || 'PART',
                 items: (initialItems || []).map(item => {
-                    // [Defense] Try various field names for product/item/material
                     const productObj = item?.product || item?.material || item?.item || item?.consumable || {};
-                    const productId = item?.product_id || item?.consumable_id || item?.item_id || item?.material_id || productObj?.id || item?.consumable?.id || '';
-                    
-                    // [Defense] Robust name and specification extraction
-                    const productName = productObj?.name || item?.product?.name || item?.consumable?.name || item?.name || item?.item_name || item?.requested_item_name || item?.display_product_name || '알 수 없는 품목';
+                    const productId = item?.product_id || item?.consumable_id || item?.item_id || item?.material_id || productObj?.id || '';
+                    const productName = productObj?.name || item?.product?.name || item?.consumable?.name || item?.name || item?.item_name || '알 수 없는 품목';
                     const spec = productObj?.specification || item?.specification || item?.remarks || '';
 
-                    if (item?.type === 'PENDING') {
-                        // Priority: 1. standard_processes of provided product, 2. products list, 3. item.unit_price
-                        const product = productObj?.id ? productObj : (products.find(p => String(p?.id) === String(productId)) || {});
-                        let unitPrice = item?.unit_price || 0;
-                        
-                        if (product && product?.standard_processes) {
-                            const standardProc = product?.standard_processes?.find(sp =>
-                                sp?.process?.name === item?.process_name ||
-                                sp?.course_type?.includes('PURCHASE') ||
-                                sp?.process?.course_type?.includes('PURCHASE')
-                            );
-                            if (standardProc) unitPrice = standardProc?.cost || unitPrice;
-                        }
-                        return {
-                            product_id: productId || '',
-                            product_name: productName,
-                            quantity: item?.quantity || 1,
-                            unit_price: unitPrice,
-                            note: item?.note || item?.process_name || '',
-                            production_plan_item_id: item?.id,
-                            display_product_name: productName || item?.product_name_of_plan || '',
-                            display_client_name: item?.client_name || '',
-                            order_size: '',
-                            material: productObj?.material || '',
-                            specification: spec
-                        };
-                    } else if (item?.type === 'MRP') {
-                        const product = productObj?.id ? productObj : (products.find(p => String(p?.id) === String(productId)) || {});
-                        let unitPrice = 0;
-                        if (product && product?.standard_processes) {
-                            const standardProc = product?.standard_processes?.find(sp =>
-                                sp?.course_type?.includes('PURCHASE') ||
-                                sp?.process?.course_type?.includes('PURCHASE')
-                            );
-                            if (standardProc) unitPrice = standardProc?.cost || 0;
-                        }
-                        return {
-                            product_id: productId || '',
-                            product_name: productName || item?.product_name || '',
-                            quantity: item?.shortage_quantity !== undefined ? item?.shortage_quantity : (item?.required_purchase_qty || 0),
-                            unit_price: unitPrice || 0,
-                            note: 'MRP 소요량 기반 발주',
-                            production_plan_item_id: null,
-                            material_requirement_id: item?.id,
-                            current_stock: item?.current_stock,
-                            required_quantity: item?.required_quantity !== undefined ? item?.required_quantity : (item?.total_demand || 0),
-                            shortage_quantity: item?.shortage_quantity !== undefined ? item?.shortage_quantity : (item?.required_purchase_qty || 0),
-                            specification: spec
-                        };
-                    } else if (item?.type === 'CONSUMABLE_WAIT') {
-                        return {
-                            product_id: productId || '',
-                            product_name: productName,
-                            quantity: item?.quantity || 0,
-                            unit_price: item?.unit_price || 0,
-                            note: item?.remarks || '',
-                            consumable_purchase_wait_id: item?.id,
-                            specification: spec
-                        };
+                    let unitPrice = item?.unit_price || 0;
+                    const productFound = products.find(p => String(p?.id) === String(productId));
+                    const finalProduct = productObj?.id ? productObj : (productFound || {});
+
+                    if (finalProduct && finalProduct?.standard_processes) {
+                        const standardProc = finalProduct?.standard_processes?.find(sp =>
+                            sp?.process?.name === item?.process_name ||
+                            sp?.course_type?.includes('PURCHASE') ||
+                            sp?.process?.course_type?.includes('PURCHASE')
+                        );
+                        if (standardProc) unitPrice = standardProc?.cost || unitPrice;
                     }
+
                     return {
                         product_id: productId || '',
                         product_name: productName,
-                        quantity: item?.quantity || 1,
-                        unit_price: item?.unit_price || 0,
-                        note: item?.note || '',
+                        quantity: item?.quantity || (item?.shortage_quantity !== undefined ? item?.shortage_quantity : 1),
+                        unit_price: unitPrice,
+                        note: item?.note || item?.process_name || (item?.type === 'MRP' ? 'MRP 소요량 기반 발주' : ''),
+                        production_plan_item_id: item?.id || null,
+                        material_requirement_id: item?.type === 'MRP' ? item?.id : null,
+                        consumable_purchase_wait_id: item?.type === 'CONSUMABLE_WAIT' ? item?.id : null,
                         specification: spec,
-                        pricing_type: item?.pricing_type || 'UNIT',
-                        total_weight: item?.total_weight || 0
+                        pricing_type: 'UNIT',
+                        total_weight: 0
                     };
                 })
-            }));
-        } else if (isOpen && !order && (!initialItems || initialItems?.length === 0)) {
-            setFormData(prev => ({
-                ...prev,
+            });
+        } else {
+            // [NEW MODE]
+            setFormData({
                 partner_id: '',
                 order_id: '',
+                order_date: new Date().toISOString().split('T')[0],
+                delivery_date: '',
+                note: '',
+                purchase_type: purchaseType || 'PART',
                 items: []
-            }));
+            });
         }
-    }, [isOpen, order, initialItems, products, partners]); // Added products/partners back to deps to ensure mapping completes when they load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]); 
+ // Added products/partners back to deps to ensure mapping completes when they load
 
-    // Sync partner_id when partners are loaded
-    useEffect(() => {
-        if (isOpen && !order && initialItems && initialItems.length > 0 && partners.length > 0 && !formData.partner_id) {
-            const firstItem = initialItems[0];
-            const firstPartnerName = firstItem.partner_name || 
-                                     (firstItem.partner && (typeof firstItem.partner === 'string' ? firstItem.partner : firstItem.partner.name)) ||
-                                     firstItem.supplier_name || '';
-                                     
-            const foundPartner = partners.find(p => p.name === firstPartnerName);
-            if (foundPartner) {
-                setFormData(prev => ({ ...prev, partner_id: foundPartner.id }));
-            }
-        }
-    }, [partners, isOpen, initialItems]);
+    // Removed separate sync effect to prevent initialization loops
 
     const fetchPartners = async () => {
         try {
@@ -407,10 +354,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         if (field === 'product_id' && value) {
             const product = products.find(p => String(p.id) === String(value));
             
-            // Auto-fill material and specification if available
+            // Auto-fill material, specification and inventory if available
             if (product) {
                 if (product.material) newItems[index].material = product.material;
                 if (product.specification) newItems[index].specification = product.specification;
+                newItems[index].current_inventory = product.current_inventory || 0;
             }
 
             // 1. Try to fetch LATEST purchase price from history
@@ -706,7 +654,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                                     </Typography>
                                                                     <Typography variant="caption" color="textSecondary">
                                                                         규격: {option.specification || '-'}
-                                                                        {(!order && (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL')) && (
+                                                                        {(purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') && !order && option.id && (
                                                                             <> | 현재고: <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>{option.current_inventory || 0}</span></>
                                                                         )}
                                                                     </Typography>
@@ -717,7 +665,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     sx={{ width: '100%' }}
                                                     readOnly={!!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id))}
                                                 />
-                                                {(!order && (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') && prod) && (
+                                                {(purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') && !order && item.product_id && prod && (
                                                     <Typography variant="caption" sx={{ color: '#d32f2f', fontWeight: 'bold', mt: 0.5, display: 'block' }}>
                                                         (현재 재고: {prod.current_inventory || 0} EA)
                                                     </Typography>

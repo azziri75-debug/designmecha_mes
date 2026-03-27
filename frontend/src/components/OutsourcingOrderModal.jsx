@@ -159,21 +159,12 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         }
     };
 
+    // Unified initialization logic: Runs only when the modal opens [isOpen]
     useEffect(() => {
-        if (isOpen) {
-            fetchPartners();
-            fetchProducts();
-            fetchSalesOrders();
-            if (order) fetchApprovalDoc();
-            else fetchDefaultLines();
-        } else {
-            setApprovalDoc(null);
-            setDefaultSteps([]);
-        }
-    }, [isOpen, order, formData.partner_id]);
+        if (!isOpen) return;
 
-    useEffect(() => {
         if (order) {
+            // [EDIT MODE]
             setFormData({
                 partner_id: order.partner_id || '',
                 order_id: order.order_id || '',
@@ -181,21 +172,20 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                 delivery_date: order.delivery_date || '',
                 note: order.note || '',
                 status: order.status || 'PENDING',
-                items: order.items.map(item => ({
+                items: (order.items || []).map(item => ({
                     ...item,
-                    product_id: item.product.id,
+                    product_id: item.product?.id || item.product_id,
+                    product_name: item.product?.name || item.product_name || '',
+                    specification: item.product?.specification || item.specification || '',
                     order_size: item.order_size || '',
                     material: item.material || '',
                     pricing_type: item.pricing_type || 'UNIT',
                     total_weight: item.total_weight || 0
                 }))
             });
-        }
-    }, [order]);
-
-    useEffect(() => {
-        if (isOpen && !order && initialItems && initialItems.length > 0) {
-            // [Defense] Try various field names for partner identification
+            fetchApprovalDoc();
+        } else if (initialItems && initialItems.length > 0) {
+            // [PRE-FILL MODE]
             const firstItem = initialItems[0];
             const firstPartnerName = firstItem.partner_name || 
                                      (firstItem.partner && (typeof firstItem.partner === 'string' ? firstItem.partner : firstItem.partner.name)) ||
@@ -207,22 +197,26 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                 firstItem?.plan?.order?.order_no ||
                 firstItem?.plan?.stock_production?.production_no || '';
 
-            setFormData(prev => ({
-                ...prev,
-                partner_id: foundPartner ? foundPartner.id : (prev.partner_id || ''),
+            setFormData({
+                partner_id: foundPartner ? foundPartner.id : '',
                 order_id: firstItem?.plan?.order_id || '',
+                order_date: new Date().toISOString().split('T')[0],
+                delivery_date: '',
+                note: '',
+                status: 'PENDING',
                 display_order_no: displayCode,
                 items: (initialItems || []).map(item => {
-                    // [Defense] Try various field names for product/item
                     const productObj = item?.product || item?.item || item?.material || {};
                     const productId = item?.product_id || productObj?.id || item?.item_id;
-                    
-                    // Prioritize product detail from mapping if available
-                    const product = productObj?.id ? productObj : (products.find(p => p?.id === productId) || {});
-                    
+                    const productName = productObj?.name || item?.product_name_of_plan || '알 수 없는 품목';
+                    const spec = productObj?.specification || item?.specification || '';
+
                     let unitPrice = item?.unit_price || 0;
-                    if (product && product?.standard_processes) {
-                        const standardProc = product?.standard_processes?.find(sp =>
+                    const productFound = products.find(p => String(p?.id) === String(productId));
+                    const finalProduct = productObj?.id ? productObj : (productFound || {});
+
+                    if (finalProduct && finalProduct?.standard_processes) {
+                        const standardProc = finalProduct?.standard_processes?.find(sp =>
                             sp?.process?.name === item?.process_name ||
                             sp?.course_type?.includes('OUTSOURCING') ||
                             sp?.process?.course_type?.includes('OUTSOURCING')
@@ -232,28 +226,38 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
                     return {
                         product_id: productId || '',
+                        product_name: productName,
                         quantity: item?.quantity || 1,
                         unit_price: unitPrice,
                         note: item?.note || item?.process_name || '',
-                        production_plan_item_id: item?.id,
-                        display_product_name: productObj?.name || item?.product_name_of_plan || '',
-                        display_client_name: item?.client_name || '',
-                        order_size: '',
-                        material: productObj?.material || '',
+                        production_plan_item_id: item?.id || null,
+                        specification: spec,
                         pricing_type: 'UNIT',
                         total_weight: 0
                     };
                 })
-            }));
-        } else if (isOpen && !order && (!initialItems || initialItems?.length === 0)) {
-            setFormData(prev => ({
-                ...prev,
+            });
+            fetchDefaultLines();
+        } else {
+            // [NEW MODE]
+            setFormData({
                 partner_id: '',
                 order_id: '',
+                order_date: new Date().toISOString().split('T')[0],
+                delivery_date: '',
+                note: '',
+                status: 'PENDING',
                 items: []
-            }));
+            });
+            fetchDefaultLines();
         }
-    }, [isOpen, order, initialItems, partners, products]);
+        
+        fetchPartners();
+        fetchProducts();
+        fetchSalesOrders();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     const fetchPartners = async () => {
         try {
@@ -301,7 +305,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         newItems[index][field] = value;
 
         if (field === 'product_id' && value) {
-            const product = products.find(p => p.id === value);
+            const product = products.find(p => String(p.id) === String(value));
             
             // Auto-fill material
             if (product && product.material) {
@@ -424,7 +428,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     <Autocomplete
                         options={partners}
                         getOptionLabel={(option) => option.name || ''}
-                        value={partners.find(p => p.id === formData.partner_id) || null}
+                        isOptionEqualToValue={(option, value) => String(option.id) === String(value?.id)}
+                        value={partners.find(p => String(p.id) === String(formData.partner_id)) || null}
                         onChange={(_, newValue) => setFormData(prev => ({ ...prev, partner_id: newValue ? newValue.id : '' }))}
                         renderInput={(params) => <TextField {...params} label="외주처 검색/선택" size="small" sx={{ minWidth: 250 }} required />}
                         sx={{ flexGrow: 1 }}
@@ -465,8 +470,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     size="small"
                                                     options={products}
                                                     getOptionLabel={getProductLabel}
-                                                    isOptionEqualToValue={(option, value) => option.id === value?.id}
-                                                    value={prod || null}
+                                                    isOptionEqualToValue={(option, value) => String(option.id) === String(value?.id)}
+                                                    value={products.find(p => String(p.id) === String(item.product_id)) || null}
                                                     onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
                                                     renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}
                                                     renderOption={(props, option) => (
