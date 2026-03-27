@@ -38,85 +38,110 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     product_unit: item.product?.unit || "EA",
                     product: item.product // Ensure product object is here
                 })));
+            } else if (order || stockProduction) {
                 // Create Mode
                 setPlanDate(new Date().toISOString().split('T')[0]);
-                const defaultItems = [];
-                const sourceItems = order ? order.items : [{ product: stockProduction.product, quantity: stockProduction.quantity, product_id: stockProduction.product_id }];
                 
-                // Fetch stocks for all products
-                const productIds = sourceItems.map(si => si.product_id);
-                api.get('/inventory/stocks', { params: { product_ids: productIds.join(',') } })
-                    .then(res => {
+                const initCreateMode = async () => {
+                    const sourceItems = order ? order.items : (stockProduction ? [{ 
+                        product: stockProduction.product, 
+                        quantity: stockProduction.quantity, 
+                        product_id: stockProduction.product_id 
+                    }] : []);
+                    
+                    if (sourceItems.length === 0) return;
+
+                    // Fetch fresh product details to ensure we have standard_processes
+                    const productIds = sourceItems.map(si => si.product_id);
+                    const productMap = {};
+                    
+                    try {
+                        await Promise.all(productIds.map(async (pid) => {
+                            const res = await api.get(`/product/products/${pid}`);
+                            productMap[pid] = res.data;
+                        }));
+                    } catch (err) {
+                        console.error("Failed to fetch fresh product details", err);
+                    }
+
+                    // Fetch stocks
+                    try {
+                        const res = await api.get('/inventory/stocks', { params: { product_ids: productIds.join(',') } });
                         const stockMap = {};
                         res.data.forEach(s => { stockMap[s.product_id] = s.current_quantity; });
                         setProductStocks(stockMap);
-                    })
-                    .catch(() => { });
+                    } catch (err) {
+                        console.error("Failed to fetch stocks", err);
+                    }
 
-                const initialStockUse = {};
+                    const defaultItems = [];
+                    const initialStockUse = {};
 
-                sourceItems.forEach(sourceItem => {
-                    const product = sourceItem.product;
-                    const processes = product?.standard_processes || [];
-                    const grossQty = sourceItem.quantity;
-                    
-                    // Default stock use: 0 initially (or can be min(stock, gross))
-                    initialStockUse[sourceItem.product_id] = 0;
+                    sourceItems.forEach(sourceItem => {
+                        const productId = sourceItem.product_id;
+                        const product = productMap[productId] || sourceItem.product;
+                        const processes = product?.standard_processes || [];
+                        const grossQty = sourceItem.quantity;
+                        
+                        initialStockUse[productId] = 0;
 
-                    if (processes.length > 0) {
-                        processes.sort((a, b) => a.sequence - b.sequence).forEach(proc => {
+                        if (processes.length > 0) {
+                            processes.sort((a, b) => a.sequence - b.sequence).forEach(proc => {
+                                defaultItems.push({
+                                    cid: Math.random().toString(36).substr(2, 9),
+                                    product_id: productId,
+                                    product_name: product?.name || "Unknown",
+                                    product_spec: product?.specification || "",
+                                    product_unit: product?.unit || "EA",
+                                    product: product, 
+                                    process_name: proc.process?.name || "Unknown",
+                                    sequence: proc.sequence,
+                                    course_type: proc.process?.course_type || "INTERNAL",
+                                    partner_name: proc.partner_name || "",
+                                    worker_id: null,
+                                    equipment_id: null,
+                                    estimated_time: proc.estimated_time || 0,
+                                    start_date: null,
+                                    end_date: null,
+                                    unit_cost: proc.cost || 0,
+                                    cost: (proc.cost || 0) * grossQty,
+                                    quantity: grossQty,
+                                    gross_quantity: grossQty,
+                                    stock_use_quantity: 0,
+                                    note: ""
+                                });
+                            });
+                        } else {
                             defaultItems.push({
                                 cid: Math.random().toString(36).substr(2, 9),
-                                product_id: sourceItem.product_id,
+                                product_id: productId,
                                 product_name: product?.name || "Unknown",
                                 product_spec: product?.specification || "",
                                 product_unit: product?.unit || "EA",
                                 product: product, 
-                                process_name: proc.process?.name || "Unknown",
-                                sequence: proc.sequence,
-                                course_type: proc.process?.course_type || "INTERNAL",
-                                partner_name: proc.partner_name || "",
+                                process_name: "기본 공정",
+                                sequence: 1,
+                                course_type: "INTERNAL",
+                                partner_name: "",
                                 worker_id: null,
                                 equipment_id: null,
-                                estimated_time: proc.estimated_time || 0,
+                                estimated_time: 0,
                                 start_date: null,
                                 end_date: null,
-                                unit_cost: proc.cost || 0,
-                                cost: (proc.cost || 0) * grossQty,
+                                unit_cost: 0,
+                                cost: 0,
                                 quantity: grossQty,
                                 gross_quantity: grossQty,
                                 stock_use_quantity: 0,
                                 note: ""
                             });
-                        });
-                    } else {
-                        defaultItems.push({
-                            cid: Math.random().toString(36).substr(2, 9),
-                            product_id: sourceItem.product_id,
-                            product_name: product?.name || "Unknown",
-                            product_spec: product?.specification || "",
-                            product_unit: product?.unit || "EA",
-                            product: product, 
-                            process_name: "기본 공정",
-                            sequence: 1,
-                            course_type: "INTERNAL",
-                            partner_name: "",
-                            worker_id: null,
-                            equipment_id: null,
-                            estimated_time: 0,
-                            start_date: null,
-                            end_date: null,
-                            unit_cost: 0,
-                            cost: 0,
-                            quantity: grossQty,
-                            gross_quantity: grossQty,
-                            stock_use_quantity: 0,
-                            note: ""
-                        });
-                    }
-                });
-                setItems(defaultItems);
-                setStockUseQtys(initialStockUse);
+                        }
+                    });
+                    setItems(defaultItems);
+                    setStockUseQtys(initialStockUse);
+                };
+
+                initCreateMode();
             }
         }
     }, [isOpen, order, stockProduction, plan]);
