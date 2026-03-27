@@ -233,6 +233,34 @@ async def read_products(
         
     return enriched_products
 
+@router.get("/products/{product_id}", response_model=ProductResponse)
+async def read_product(
+    product_id: int,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Get a single product by ID.
+    """
+    result = await db.execute(
+        select(Product)
+        .options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items).selectinload(BOM.child_product),
+            joinedload(Product.partner)
+        )
+        .where(Product.id == product_id)
+    )
+    product = result.unique().scalar_one_or_none()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Enrich with latest_price and partner_name
+    p_history = await get_product_price_history(product.id, db)
+    product.latest_price = p_history[0].unit_price if p_history else 0.0
+    product.partner_name = product.partner.name if product.partner else None
+    
+    return product
+
 @router.put("/products/{product_id}", response_model=ProductResponse)
 async def update_product(
     product_id: int,
