@@ -293,22 +293,36 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 display_order_no: displayCode,
                 purchase_type: purchaseType || 'PART',
                 items: (initialItems || []).map(item => {
-                    // 모든 형태의 객체 및 Key값(Camel/Snake case) 절대 방어
-                    const productObj = item?.product || item?.consumable || item?.material || item?.item || item?.part || {};
-                    const productId = item?.product_id || item?.productId || item?.consumable_id || item?.consumableId || item?.item_id || productObj?.id || item?.id || '';
-                    const productName = productObj?.name || item?.product_name || item?.productName || item?.consumable_name || item?.consumableName || item?.name || '';
-                    const spec = productObj?.specification || item?.specification || item?.spec || item?.consumable_spec || item?.remarks || '';
+                    let parsedProductId = '';
+                    let parsedProductName = '';
+                    let parsedSpec = '';
+                    
+                    if (purchaseTypeState === 'CONSUMABLE') {
+                        // [소모품 발주] 소모품 관련 데이터만 철저하게 찾음
+                        const cObj = item?.consumable || item?.product || {};
+                        parsedProductId = item?.consumable_id || item?.consumableId || cObj?.id || '';
+                        parsedProductName = item?.consumable_name || item?.consumableName || cObj?.name || item?.product_name || item?.name || '';
+                        parsedSpec = item?.consumable_spec || cObj?.specification || item?.specification || item?.remarks || '';
+                    } else {
+                        // [부품/자재 발주] 부품 관련 데이터에서 찾음
+                        const pObj = item?.product || item?.material || item?.part || item?.item || {};
+                        parsedProductId = item?.product_id || item?.productId || item?.material_id || item?.part_id || item?.item_id || pObj?.id || '';
+                        parsedProductName = item?.product_name || item?.productName || item?.material_name || item?.part_name || pObj?.name || item?.name || '';
+                        parsedSpec = item?.specification || item?.spec || pObj?.specification || item?.remarks || '';
+                    }
+                    
+                    // 🚨 절대 item.id (대기열 고유번호)를 product_id로 쓰지 않도록 방어!
                     
                     return {
-                        product_id: productId,
-                        product_name: productName,
+                        product_id: parsedProductId,
+                        product_name: parsedProductName,
                         quantity: item?.quantity || item?.shortage_quantity || item?.req_qty || 1,
                         unit_price: item?.unit_price || item?.unitPrice || 0,
                         note: item?.note || item?.remarks || '',
                         production_plan_item_id: item?.production_plan_item_id || null,
                         material_requirement_id: item?.material_requirement_id || (item?.type === 'MRP' ? item?.id : null),
                         consumable_purchase_wait_id: item?.consumable_purchase_wait_id || (purchaseTypeState === 'CONSUMABLE' ? item?.id : null),
-                        specification: spec,
+                        specification: parsedSpec,
                         pricing_type: 'UNIT',
                         total_weight: 0
                     };
