@@ -293,19 +293,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 display_order_no: displayCode,
                 purchase_type: purchaseType || 'PART',
                 items: (initialItems || []).map(item => {
-                    // 대기리스트의 다양한 Key값 완벽 대응 (consumable_id, consumable.name 등)
-                    const productObj = item?.product || item?.consumable || item?.material || item?.item || {};
-                    const productId = item?.product_id || item?.consumable_id || item?.item_id || item?.material_id || productObj?.id || '';
-
-                    // 🚨 누락되었던 consumable_name, consumable_spec 완벽 추가!
-                    const productName = productObj?.name || item?.product_name || item?.consumable_name || item?.product?.name || item?.consumable?.name || item?.name || item?.item_name || '';
-                    const spec = productObj?.specification || item?.specification || item?.consumable_spec || item?.remarks || '';
+                    // 모든 형태의 객체 및 Key값(Camel/Snake case) 절대 방어
+                    const productObj = item?.product || item?.consumable || item?.material || item?.item || item?.part || {};
+                    const productId = item?.product_id || item?.productId || item?.consumable_id || item?.consumableId || item?.item_id || productObj?.id || item?.id || '';
+                    const productName = productObj?.name || item?.product_name || item?.productName || item?.consumable_name || item?.consumableName || item?.name || '';
+                    const spec = productObj?.specification || item?.specification || item?.spec || item?.consumable_spec || item?.remarks || '';
                     
                     return {
                         product_id: productId,
                         product_name: productName,
-                        quantity: item?.quantity || item?.shortage_quantity || 1,
-                        unit_price: item?.unit_price || 0,
+                        quantity: item?.quantity || item?.shortage_quantity || item?.req_qty || 1,
+                        unit_price: item?.unit_price || item?.unitPrice || 0,
                         note: item?.note || item?.remarks || '',
                         production_plan_item_id: item?.production_plan_item_id || null,
                         material_requirement_id: item?.material_requirement_id || (item?.type === 'MRP' ? item?.id : null),
@@ -345,9 +343,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     const fetchProducts = async () => {
         try {
-            const response = await api.get('/product/products');
-            // [절대 주의] 여기서 filter 절대 쓰지 마라! 대기리스트 품목 증발의 1등 공신이다.
-            setProducts(response.data); 
+            // 백엔드가 필터링하지 못하도록 모든 타입을 강제로 다 요청한다!
+            const response = await api.get('/product/products', {
+                params: { item_type: 'PART,CONSUMABLE,RAW_MATERIAL,PRODUCED' }
+            });
+            setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
         }
@@ -624,16 +624,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
                                 // 1. 전체 제품(products) 리스트에서 ID로 확실하게 찾아내기 백업
                                 const matchedProduct = products.find(p => String(p.id) === String(item.product_id));
+                                const finalProductName = matchedProduct?.name || item.product_name || '';
 
-                                // 2. 이름이 정 없으면 에러 방지용으로 '(미확인 품목 ID: x)' 강제 출력!
-                                const displayLabel = matchedProduct?.name || item.product_name || `(미확인 품목 ID: ${item.product_id || '없음'})`;
+                                // 에러 방지용: 이름이 정 없으면 ID라도 띄워서 먹통을 막는다.
+                                const displayLabel = finalProductName || (item.product_id ? `(이름없음 ID:${item.product_id})` : '');
 
-                                // 3. React-Select에 무조건 데이터 꽂아넣기
                                 const selectedOption = itemOptions.find(opt => String(opt.value) === String(item.product_id)) || 
                                                      (item.product_id ? { value: item.product_id, label: displayLabel } : null);
 
-                                // 4. 잠금 조건 (데이터가 없으면 사용자가 수동 검색할 수 있게 유연화)
-                                const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id && matchedProduct?.name));
+                                // 잠금 조건 완화
+                                const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id));
 
                                 return (
                                     <React.Fragment key={index}>
