@@ -749,6 +749,54 @@ async def read_purchase_orders(
     
     return pos
 
+@router.get("/purchase/orders/{order_id}", response_model=schemas.PurchaseOrder)
+async def read_purchase_order(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    Get a single Purchase Order by ID.
+    """
+    # Local import for deep loading
+    from app.models.production import ProductionPlanItem, ProductionPlan
+
+    query = select(PurchaseOrder).options(
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
+            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+            selectinload(Product.bom_items)
+        ),
+        selectinload(PurchaseOrder.partner),
+        selectinload(PurchaseOrder.order).selectinload(SalesOrder.partner),
+        # Load related SO/SP info
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.production_plan_item).selectinload(ProductionPlanItem.plan).options(
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+        ),
+        selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.material_requirement).options(
+            selectinload(MaterialRequirement.order).selectinload(SalesOrder.partner),
+            selectinload(MaterialRequirement.plan).options(
+                selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+            )
+        )
+    ).where(PurchaseOrder.id == order_id)
+    
+    result = await db.execute(query)
+    po = result.unique().scalar_one_or_none()
+    
+    if not po:
+        raise HTTPException(status_code=404, detail="Purchase Order not found")
+        
+    # Enrichment logic similar to read_purchase_orders
+    po.sales_order_number = str(po.related_so_info_attr) if po.related_so_info_attr else None
+    po.related_customer_names = str(po.related_cust_names_attr) if po.related_cust_names_attr else None
+    
+    for item in po.items:
+        if item.production_plan_item:
+            item.process_name = item.production_plan_item.process_name
+            
+    return po
+
 @router.put("/purchase/orders/{order_id}", response_model=schemas.PurchaseOrder)
 async def update_purchase_order(
     order_id: int,
