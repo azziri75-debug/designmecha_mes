@@ -285,15 +285,15 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     };
 
     const handleAddItem = () => {
-        setFormData({
-            ...formData,
-            items: [...formData.items, { product_id: '', quantity: 0, unit_price: 0, note: '', material: '', order_size: '', pricing_type: 'UNIT', total_weight: 0 }]
-        });
+        setFormData(prev => ({
+            ...prev,
+            items: [...prev.items, { product_id: '', quantity: 0, unit_price: 0, note: '', material: '', order_size: '', pricing_type: 'UNIT', total_weight: 0 }]
+        }));
     };
 
     const handleRemoveItem = (index) => {
         const newItems = formData.items.filter((_, i) => i !== index);
-        setFormData({ ...formData, items: newItems });
+        setFormData(prev => ({ ...prev, items: newItems }));
     };
 
     const handleItemChange = async (index, field, value) => {
@@ -328,7 +328,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
             }
         }
 
-        setFormData({ ...formData, items: newItems });
+        setFormData(prev => ({ ...prev, items: newItems }));
     };
 
     const handleSelectProduct = (product) => {
@@ -425,13 +425,13 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         options={partners}
                         getOptionLabel={(option) => option.name || ''}
                         value={partners.find(p => p.id === formData.partner_id) || null}
-                        onChange={(_, newValue) => setFormData({ ...formData, partner_id: newValue ? newValue.id : '' })}
+                        onChange={(_, newValue) => setFormData(prev => ({ ...prev, partner_id: newValue ? newValue.id : '' }))}
                         renderInput={(params) => <TextField {...params} label="외주처 검색/선택" size="small" sx={{ minWidth: 250 }} required />}
                         sx={{ flexGrow: 1 }}
                     />
-                    <TextField label="발주일자" type="date" value={formData.order_date} onChange={(e) => setFormData({ ...formData, order_date: e.target.value })} size="small" InputLabelProps={{ shrink: true }} />
-                    <TextField label="납기일자" type="date" value={formData.delivery_date} onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })} size="small" InputLabelProps={{ shrink: true }} required />
-                    <TextField label="비고" value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} size="small" placeholder="특이사항" sx={{ flexGrow: 2 }} />
+                    <TextField label="발주일자" type="date" value={formData.order_date} onChange={(e) => setFormData(prev => ({ ...prev, order_date: e.target.value }))} size="small" InputLabelProps={{ shrink: true }} />
+                    <TextField label="납기일자" type="date" value={formData.delivery_date} onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))} size="small" InputLabelProps={{ shrink: true }} required />
+                    <TextField label="비고" value={formData.note} onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))} size="small" placeholder="특이사항" sx={{ flexGrow: 2 }} />
                 </Paper>
 
                 <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -473,10 +473,10 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                         <li {...props}>
                                                             <Box>
                                                                 <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                                    [{option.code || option.product_code}] {option.name}
+                                                                    [{option.code || option.product_code || 'N/A'}] {option.name}
                                                                 </Typography>
                                                                 <Typography variant="caption" color="textSecondary">
-                                                                    규격: {option.specification || '-'} | 현재고: {option.current_inventory || 0}
+                                                                    규격: {option.specification || '-'} | 현재고: <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>{option.current_inventory || 0}</span>
                                                                 </Typography>
                                                             </Box>
                                                         </li>
@@ -484,6 +484,11 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     sx={{ width: '100%' }}
                                                     readOnly={!!item.production_plan_item_id}
                                                 />
+                                                {prod && (
+                                                    <Typography variant="caption" sx={{ color: '#d32f2f', fontWeight: 'bold', mt: 0.5, display: 'block' }}>
+                                                        (현재 재고: {prod.current_inventory || 0} EA)
+                                                    </Typography>
+                                                )}
                                             </TableCell>
                                             <TableCell sx={{ width: 120 }}>
                                                 <TextField 
@@ -546,34 +551,18 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                             </TableCell>
                                         </TableRow>
 
-                                        {/* Row 2: Secondary Fields */}
+                                        {/* Row 2: Secondary Fields (Note Only for Outsourcing) */}
                                         <TableRow sx={{ bgcolor: '#fafafa' }}>
-                                            <TableCell colSpan={5} sx={{ pt: 0, pb: 1 }}>
-                                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                                    <TextField
-                                                        size="small"
-                                                        label="재질"
-                                                        value={item.material || ''}
-                                                        onChange={(e) => handleItemChange(index, 'material', e.target.value)}
-                                                        sx={{ width: 180, bgcolor: 'white' }}
-                                                    />
-                                                    <TextField
-                                                        size="small"
-                                                        label="주문사이즈"
-                                                        value={item.order_size || ''}
-                                                        onChange={(e) => handleItemChange(index, 'order_size', e.target.value)}
-                                                        sx={{ width: 180, bgcolor: 'white' }}
-                                                    />
-                                                    <TextField
-                                                        size="small"
-                                                        label="비고"
-                                                        placeholder="비고"
-                                                        fullWidth
-                                                        value={item.note || ''}
-                                                        onChange={(e) => handleItemChange(index, 'note', e.target.value)}
-                                                        sx={{ bgcolor: 'white' }}
-                                                    />
-                                                </Box>
+                                            <TableCell colSpan={5} sx={{ pt: 1, pb: 1 }}>
+                                                <TextField
+                                                    size="small"
+                                                    label="비고"
+                                                    placeholder="상세 내용을 입력하세요."
+                                                    fullWidth
+                                                    value={item.note || ''}
+                                                    onChange={(e) => handleItemChange(index, 'note', e.target.value)}
+                                                    sx={{ bgcolor: 'white' }}
+                                                />
                                             </TableCell>
                                         </TableRow>
                                     </React.Fragment>

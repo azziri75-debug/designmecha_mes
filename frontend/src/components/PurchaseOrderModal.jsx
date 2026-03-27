@@ -396,7 +396,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     const handleRemoveItem = (index) => {
         const newItems = formData.items.filter((_, i) => i !== index);
-        setFormData({ ...formData, items: newItems });
+        setFormData(prev => ({ ...prev, items: newItems }));
     };
 
     const handleItemChange = async (index, field, value) => {
@@ -435,7 +435,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             }
         }
 
-        setFormData({ ...formData, items: newItems });
+        setFormData(prev => ({ ...prev, items: newItems }));
     };
 
     const handleSelectProduct = (product) => {
@@ -544,7 +544,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         getOptionLabel={(option) => option.name || ''}
                         value={partners.find(p => p.id === formData.partner_id) || null}
                         onChange={(_, newValue) => {
-                            setFormData({ ...formData, partner_id: newValue ? newValue.id : '' });
+                            setFormData(prev => ({ ...prev, partner_id: newValue ? newValue.id : '' }));
                         }}
                         renderInput={(params) => (
                             <TextField {...params} label="거래처 검색/선택" size="small" sx={{ minWidth: 250 }} required />
@@ -556,7 +556,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         label="발주일자"
                         type="date"
                         value={formData.order_date}
-                        onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, order_date: e.target.value }))}
                         size="small"
                         InputLabelProps={{ shrink: true }}
                     />
@@ -565,7 +565,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         label="납기일자"
                         type="date"
                         value={formData.delivery_date}
-                        onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
                         size="small"
                         InputLabelProps={{ shrink: true }}
                         required
@@ -574,7 +574,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     <TextField
                         label="비고"
                         value={formData.note}
-                        onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))}
                         size="small"
                         placeholder="특이사항 입력"
                         sx={{ flexGrow: 2 }}
@@ -596,7 +596,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         <TableHead sx={{ bgcolor: '#f4f4f5' }}>
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 'bold', width: 50, textAlign: 'center' }}>No</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>품목명</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>
+                                    품목명
+                                </TableCell>
                                 {purchaseTypeState === 'CONSUMABLE' ? (
                                     <TableCell sx={{ fontWeight: 'bold', width: 150 }}>규격</TableCell>
                                 ) : (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') ? (
@@ -702,7 +704,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                                         [{option.code || option.product_code || 'N/A'}] {option.name}
                                                                     </Typography>
                                                                     <Typography variant="caption" color="textSecondary">
-                                                                        규격: {option.specification || '-'} | 현재고: {option.current_inventory || 0}
+                                                                        규격: {option.specification || '-'} | 현재고: <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>{option.current_inventory || 0}</span>
                                                                     </Typography>
                                                                 </Box>
                                                             )}
