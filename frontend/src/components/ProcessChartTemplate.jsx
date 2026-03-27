@@ -70,61 +70,75 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
     }
 
     return createPortal(
-        <div id="print-overlay-wrapper" className="fixed inset-0 z-[10000] bg-gray-800 flex justify-center overflow-y-auto py-10">
+        <div id="print-overlay-wrapper" className="fixed inset-0 z-[10000] bg-gray-800 flex justify-center py-10 overflow-y-auto">
             <style>{`
+                /* ── [화면 뷰어 모드] ── */
                 @media screen {
                     .no-print { display: flex !important; }
-                    /* 화면 뷰어: A4 세로 비율 강제 고정 (가로 늘어짐 방지) */
-                    #process-chart-printable {
+                    /* 테이블을 감싸는 진짜 A4 규격의 단단한 박스 */
+                    .a4-container {
                         width: 210mm !important;
                         min-height: 297mm !important;
                         background: white;
-                        padding: 15mm;
+                        padding: 15mm !important;
                         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
                         margin: 0 auto;
+                        box-sizing: border-box !important;
                     }
                 }
+                
+                /* ── [인쇄 모드] ── */
                 @media print {
                     @page {
                         size: A4 portrait;
-                        margin: 10mm 15mm !important; 
-                    }
-                    html, body {
-                        height: auto !important;
-                        min-height: auto !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        background: white !important;
+                        margin: 15mm !important; /* 상하좌우 15mm 깔끔한 여백 강제 고정 */
                     }
                     
-                    /* 백지 방지 핵심: 포탈 껍데기(#print-overlay-wrapper)만 살리고 기존 화면(#root) 다 숨김 */
-                    body > :not(#print-overlay-wrapper) { display: none !important; }
-                    .no-print { display: none !important; }
-                    
-                    /* 오버레이 배경 날리고 인쇄 문서 흐름으로 전환 */
-                    #print-overlay-wrapper {
-                        position: relative !important;
-                        background: white !important;
-                        padding: 0 !important;
-                        display: block !important;
+                    /* 1. 백지 방지를 위한 가장 안전한 투명화 (공간 유지, 보이지만 않게) */
+                    body * { visibility: hidden; }
+                    html, body { 
+                        background: white !important; 
+                        height: auto !important; 
+                        margin: 0 !important; 
+                        padding: 0 !important; 
                         overflow: visible !important;
                     }
-
-                    /* 인쇄 시에는 용지 여백에 맞춰 100% 꽉 채움 */
-                    #process-chart-printable {
+                    
+                    /* 2. 오버레이 배경 날리기 */
+                    #print-overlay-wrapper {
+                        position: absolute !important;
+                        left: 0; top: 0;
+                        background: transparent !important;
+                        overflow: visible !important;
+                    }
+                    
+                    /* 3. A4 컨테이너와 그 알맹이들만 다시 부활시키기 */
+                    .a4-container, .a4-container * {
+                        visibility: visible !important;
+                    }
+                    
+                    /* 4. 인쇄 시 컨테이너 크기 최적화 (@page 여백을 쓰므로 내부 패딩은 날림) */
+                    .a4-container {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
                         width: 100% !important;
                         margin: 0 !important;
-                        padding: 0 !important;
+                        padding: 0 !important; 
                         box-shadow: none !important;
+                        background: white !important;
                     }
-
+                    
+                    .no-print, .no-print * { display: none !important; visibility: hidden !important; }
+                    
+                    /* 5. 페이지 넘김 시 헤더(제품정보) 반복 출력 */
                     thead { display: table-header-group !important; }
                     tbody { display: table-row-group !important; }
                     tr { page-break-inside: avoid !important; break-inside: avoid !important; }
                 }
             `}</style>
 
-            {/* Float Controls */}
+            {/* 컨트롤 버튼 영역 (기존 유지) */}
             <div className="fixed top-6 right-10 z-[10001] no-print flex gap-2">
                 <button 
                     onClick={handlePrint}
@@ -140,17 +154,17 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                 </button>
             </div>
 
-            {/* The Actual Document - Using Table for Header Repetition */}
-            <table 
-                id="process-chart-printable"
-                ref={printRef}
-                className="bg-white text-black shadow-2xl border-collapse"
-                style={{
-                    backgroundColor: 'white',
-                    boxSizing: 'border-box',
-                    fontFamily: '"Malgun Gothic", sans-serif'
-                }}
-            >
+            {/* 🚨 핵심 조치: A4 박스로 테이블을 감싼다! */}
+            <div className="a4-container">
+                <table 
+                    id="process-chart-printable"
+                    ref={printRef}
+                    className="w-full bg-white text-black border-collapse"
+                    style={{
+                        fontFamily: '"Malgun Gothic", sans-serif'
+                    }}
+                >
+                    {/* ... (Existing table contents follow) ... */}
                 {/* ── [thead] Repeated Header Section ── */}
                 <thead>
                     <tr>
@@ -315,9 +329,10 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
                     </tr>
                 </tbody>
             </table>
-        </div>,
-        document.body
-    );
+        </div>
+    </div>,
+    document.body
+);
 };
 
 export default ProcessChartTemplate;
