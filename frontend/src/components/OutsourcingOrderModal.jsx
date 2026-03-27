@@ -443,11 +443,12 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 'bold', width: 50, textAlign: 'center' }}>No</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>품목명 / 규격</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 100, textAlign: 'center' }}>수량</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 100, textAlign: 'center' }}>단가기준</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 100, textAlign: 'center' }}>총중량(kg)</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 150, textAlign: 'right' }}>단가</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 150, textAlign: 'right' }}>금액</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 120, textAlign: 'center' }}>단가기준</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 150, textAlign: 'center' }}>
+                                    {formData.items?.[0]?.pricing_type === 'WEIGHT' ? '총중량(kg)' : '총수량(EA)'}
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>단가</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>금액</TableCell>
                                 <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
                             </TableRow>
                         </TableHead>
@@ -484,17 +485,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     readOnly={!!item.production_plan_item_id}
                                                 />
                                             </TableCell>
-                                            <TableCell sx={{ width: 100 }}>
-                                                <TextField 
-                                                    type="number" 
-                                                    size="small" 
-                                                    fullWidth
-                                                    value={item.quantity} 
-                                                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
-                                                    inputProps={{ style: { textAlign: 'center' } }}
-                                                />
-                                            </TableCell>
-                                            <TableCell sx={{ width: 100 }}>
+                                            <TableCell sx={{ width: 120 }}>
                                                 <TextField 
                                                     select
                                                     size="small" 
@@ -503,20 +494,19 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     onChange={(e) => handleItemChange(index, 'pricing_type', e.target.value)} 
                                                     inputProps={{ style: { textAlign: 'center' } }}
                                                 >
-                                                    <MenuItem value="UNIT">수량</MenuItem>
-                                                    <MenuItem value="WEIGHT">중량</MenuItem>
+                                                    <MenuItem value="UNIT">수량 기준 (EA)</MenuItem>
+                                                    <MenuItem value="WEIGHT">중량 기준 (kg)</MenuItem>
                                                 </TextField>
                                             </TableCell>
-                                            <TableCell sx={{ width: 100 }}>
+                                            <TableCell sx={{ width: 150 }}>
                                                 <TextField 
                                                     type="number" 
                                                     size="small" 
                                                     fullWidth
-                                                    disabled={item.pricing_type !== 'WEIGHT'}
-                                                    value={item.total_weight || ''} 
-                                                    onChange={(e) => handleItemChange(index, 'total_weight', e.target.value)} 
+                                                    value={item.pricing_type === 'WEIGHT' ? item.total_weight || '' : item.quantity || ''} 
+                                                    onChange={(e) => handleItemChange(index, item.pricing_type === 'WEIGHT' ? 'total_weight' : 'quantity', e.target.value)} 
                                                     inputProps={{ style: { textAlign: 'center' } }}
-                                                    placeholder={item.pricing_type === 'WEIGHT' ? 'kg' : '-'}
+                                                    placeholder={item.pricing_type === 'WEIGHT' ? 'kg 입력' : '수량 입력'}
                                                 />
                                             </TableCell>
                                             <TableCell sx={{ width: 150 }}>
@@ -558,7 +548,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
                                         {/* Row 2: Secondary Fields */}
                                         <TableRow sx={{ bgcolor: '#fafafa' }}>
-                                            <TableCell colSpan={4} sx={{ pt: 0, pb: 1 }}>
+                                            <TableCell colSpan={5} sx={{ pt: 0, pb: 1 }}>
                                                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                                                     <TextField
                                                         size="small"

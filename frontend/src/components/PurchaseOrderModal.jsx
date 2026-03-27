@@ -204,9 +204,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 purchase_type: order.purchase_type || purchaseType || 'PART',
                 items: order.items.map(item => ({
                     ...item,
-                    product_id: item.product.id,
+                    product_id: item.product?.id || item.product_id,
+                    product_name: item.product?.name || item.product_name || '',
+                    specification: item.product?.specification || item.specification || '',
                     order_size: item.order_size || '',
-                    material: item.material || ''
+                    material: item.material || '',
+                    pricing_type: item.pricing_type || 'UNIT'
                 }))
             });
         }
@@ -307,7 +310,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         quantity: item?.quantity || 1,
                         unit_price: item?.unit_price || 0,
                         note: item?.note || '',
-                        specification: spec
+                        specification: spec,
+                        pricing_type: item?.pricing_type || 'UNIT',
+                        total_weight: item?.total_weight || 0
                     };
                 })
             }));
@@ -594,13 +599,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                 <TableCell sx={{ fontWeight: 'bold' }}>품목명</TableCell>
                                 {purchaseTypeState === 'CONSUMABLE' ? (
                                     <TableCell sx={{ fontWeight: 'bold', width: 150 }}>규격</TableCell>
-                                ) : (
+                                ) : (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') ? (
                                     <>
                                         <TableCell sx={{ fontWeight: 'bold', width: 100 }}>재질</TableCell>
                                         <TableCell sx={{ fontWeight: 'bold', width: 120 }}>주문사이즈</TableCell>
                                     </>
-                                )}
-                                <TableCell sx={{ fontWeight: 'bold', width: 90, textAlign: 'center' }}>수량</TableCell>
+                                ) : null}
+                                <TableCell sx={{ fontWeight: 'bold', width: 90, textAlign: 'center' }}>
+                                    {formData.items?.[0]?.pricing_type === 'WEIGHT' ? '총중량(kg)' : '총수량(EA)'}
+                                </TableCell>
                                 <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>단가</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>금액</TableCell>
                                 <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
@@ -717,7 +724,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                         sx={{ bgcolor: prod ? '#f9f9f9' : 'white' }}
                                                     />
                                                 </TableCell>
-                                            ) : (
+                                            ) : (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') ? (
                                                 <>
                                                     <TableCell sx={{ width: 100 }}>
                                                         <TextField
@@ -740,7 +747,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                         />
                                                     </TableCell>
                                                 </>
-                                            )}
+                                            ) : null}
                                             <TableCell sx={{ width: 100 }}>
                                                 <TextField
                                                     type="number"
@@ -787,7 +794,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
                                         {/* Row 2: Secondary Fields (Hidden for Consumables except for Note) */}
                                             <TableRow sx={{ bgcolor: '#fafafa' }}>
-                                                <TableCell colSpan={purchaseTypeState === 'CONSUMABLE' ? 5 : 6} sx={{ pt: 0, pb: 1 }}>
+                                                <TableCell 
+                                                    colSpan={
+                                                        purchaseTypeState === 'CONSUMABLE' ? 5 : 
+                                                        (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') ? 6 : 4
+                                                    } 
+                                                    sx={{ pt: 0, pb: 1 }}
+                                                >
                                                     <TextField
                                                         size="small"
                                                         label="비고"
