@@ -13,9 +13,65 @@ import { useAuth } from '../contexts/AuthContext';
 import PurchaseOrderTemplate from './PurchaseOrderTemplate';
 import { EditableText, StampOverlay, ResizableTable } from './DocumentUtils';
 import ProductModal from './ProductModal';
+import CreatableSelect from 'react-select/creatable';
 import { createFilterOptions } from '@mui/material/Autocomplete';
 
-const filter = createFilterOptions();
+const filter = (options, { inputValue }) => {
+    return options.filter(option => 
+        option.label.toLowerCase().includes(inputValue.toLowerCase())
+    );
+};
+
+const selectStyles = {
+    control: (base, state) => ({
+        ...base,
+        backgroundColor: 'white',
+        borderColor: state.isFocused ? '#1976d2' : '#e0e0e0',
+        minHeight: '32px',
+        height: '32px',
+        fontSize: '13px',
+        boxShadow: 'none',
+        '&:hover': {
+            borderColor: '#1976d2'
+        }
+    }),
+    valueContainer: (base) => ({
+        ...base,
+        padding: '0 8px',
+        height: '32px',
+    }),
+    input: (base) => ({
+        ...base,
+        margin: '0',
+        padding: '0',
+    }),
+    indicatorsContainer: (base) => ({
+        ...base,
+        height: '32px',
+    }),
+    menu: (base) => ({
+        ...base,
+        zIndex: 9999,
+        fontSize: '13px'
+    }),
+    option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isFocused ? '#f5f5f5' : 'transparent',
+        color: state.isSelected ? '#1976d2' : '#333',
+        padding: '4px 10px',
+        '&:active': {
+            backgroundColor: '#e3f2fd'
+        }
+    }),
+    singleValue: (base) => ({
+        ...base,
+        color: '#333',
+    }),
+    placeholder: (base) => ({
+        ...base,
+        color: '#aaa',
+    })
+};
 
 const ProductSelectionModal = ({ isOpen, onClose, onSelect, products }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -337,7 +393,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const handleAddItem = () => {
         setFormData({
             ...formData,
-            items: [...formData.items, { product_id: '', quantity: 0, unit_price: 0, note: '' }]
+            items: [...formData.items, { product_id: '', product_name: '', quantity: 1, unit_price: 0, note: '' }]
         });
     };
 
@@ -356,6 +412,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             
             // Auto-fill material, specification and inventory if available
             if (product) {
+                newItems[index].product_name = product.name;
                 if (product.material) newItems[index].material = product.material;
                 if (product.specification) newItems[index].specification = product.specification;
                 newItems[index].current_inventory = product.current_inventory || 0;
@@ -566,24 +623,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         </TableHead>
                         <TableBody>
                             {formData.items.map((item, index) => {
-                                const prod = products.find(p => String(p.id) === String(item.product_id));
-                                
-                                // 1. product_id가 없어도(미등록), product_name만 있으면 무조건 화면에 텍스트를 띄우도록 조건 완화!
-                                const displayValue = prod || (item.product_name ? { 
-                                    id: item.product_id || `dummy-${index}`, 
-                                    name: item.product_name,
-                                    specification: item.specification || '',
-                                    isDummy: true 
-                                } : null);
+                                const itemOptions = products.map(p => ({
+                                    value: p.id,
+                                    label: `[${p.code || p.product_code || 'N/A'}] ${p.name || ''}${p.specification ? ` (${p.specification})` : ''}`,
+                                    product: p
+                                }));
 
-                                // 2. MUI Autocomplete가 가짜 객체를 튕겨내지 못하도록 options 배열에 몰래 끼워 넣기
-                                const currentOptions = purchaseTypeState === 'CONSUMABLE' 
-                                    ? [...products.filter(p => p.item_type === 'CONSUMABLE' || p.type === 'CONSUMABLE')]
-                                    : [...products];
+                                const selectedOption = itemOptions.find(opt => String(opt.value) === String(item.product_id)) || 
+                                                     (item.product_name ? { value: item.product_id, label: item.product_name } : null);
 
-                                if (displayValue && displayValue.isDummy && !currentOptions.find(o => String(o.id) === String(displayValue.id))) {
-                                    currentOptions.push(displayValue);
-                                }
+                                const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id));
 
                                 return (
                                     <React.Fragment key={index}>
@@ -591,83 +640,26 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                         <TableRow sx={{ '& > td': { borderBottom: 'none' } }}>
                                             <TableCell rowSpan={2} sx={{ textAlign: 'center', borderRight: '1px solid #eee', bgcolor: '#fafafa' }}>{index + 1}</TableCell>
                                             <TableCell>
-                                                <Autocomplete
-                                                    size="small"
-                                                    value={displayValue}
-                                                    options={currentOptions}
-                                                    isOptionEqualToValue={(option, val) => String(option.id) === String(val?.id)}
-                                                    getOptionLabel={getProductLabel}
-                                                    onChange={(_, newValue) => {
-                                                        if (newValue && (newValue.isNew || newValue.isDummy)) {
-                                                            // isNew이거나 isDummy(미등록)를 클릭하면 무조건 신규 등록 팝업 띄우기!
-                                                            handleOpenNewProductModal(index, newValue.inputValue || newValue.name);
-                                                            return; 
+                                                <CreatableSelect
+                                                    isClearable
+                                                    placeholder="품목 검색/선택"
+                                                    options={itemOptions}
+                                                    value={selectedOption}
+                                                    onChange={(opt) => {
+                                                        handleItemChange(index, 'product_id', opt ? opt.value : '');
+                                                        if (opt && opt.product) {
+                                                            handleItemChange(index, 'product_name', opt.product.name);
                                                         }
-                                                        handleItemChange(index, 'product_id', newValue ? newValue.id : '');
                                                     }}
-                                                    filterOptions={(options, params) => {
-                                                        const filtered = filter(options, params);
-                                                        const { inputValue } = params;
-                                                        // option.isDummy가 아닌 진짜 정식 등록된 품목만 중복 검사!
-                                                        const isExisting = options.some((option) => inputValue === option.name && !option.isDummy);
-                                                        
-                                                        if (inputValue !== '' && !isExisting && purchaseTypeState === 'CONSUMABLE') {
-                                                            filtered.push({
-                                                                inputValue,
-                                                                name: `[신규 등록] "${inputValue}"`,
-                                                                isNew: true
-                                                            });
-                                                        }
-                                                        return filtered;
-                                                    }}
-                                                    renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}
-                                                    renderOption={(props, option) => (
-                                                        <li {...props}>
-                                                            {option.isNew ? (
-                                                                <Box 
-                                                                    sx={{ color: 'primary.main', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}
-                                                                    onMouseDown={(e) => {
-                                                                        e.preventDefault();
-                                                                        e.stopPropagation(); // MUI의 기본 선택/해제 이벤트를 완벽히 차단!
-                                                                        handleOpenNewProductModal(index, option.inputValue);
-                                                                    }}
-                                                                >
-                                                                    <Plus size={16} /> {option.name}
-                                                                </Box>
-                                                            ) : option.isDummy ? ( // 가짜(미등록) 품목 렌더링 (경고 표시)
-                                                                <Box 
-                                                                    sx={{ color: 'error.main', py: 0.5, width: '100%', cursor: 'pointer' }}
-                                                                    onMouseDown={(e) => {
-                                                                        e.preventDefault();
-                                                                        e.stopPropagation(); // 미등록 품목 클릭 시 Deselect 방지 및 강제 팝업!
-                                                                        handleOpenNewProductModal(index, option.name);
-                                                                    }}
-                                                                >
-                                                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                                        ⚠️ [미등록] {option.name} (클릭하여 정식 등록)
-                                                                    </Typography>
-                                                                </Box>
-                                                            ) : ( // 기존 정식 품목 렌더링
-                                                                <Box sx={{ width: '100%' }}>
-                                                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                                        [{option.code || option.product_code || 'N/A'}] {option.name}
-                                                                    </Typography>
-                                                                    <Typography variant="caption" color="textSecondary">
-                                                                        규격: {option.specification || '-'}
-                                                                        {(purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') && !order && option.id && (
-                                                                            <> | 현재고: <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>{option.current_inventory || 0}</span></>
-                                                                        )}
-                                                                    </Typography>
-                                                                </Box>
-                                                            )}
-                                                        </li>
-                                                    )}
-                                                    sx={{ width: '100%' }}
-                                                    readOnly={!!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id))}
+                                                    onCreateOption={(inputValue) => handleOpenNewProductModal(index, inputValue)}
+                                                    isDisabled={isLocked}
+                                                    styles={selectStyles}
+                                                    formatCreateLabel={(inputValue) => `[신규 등록] "${inputValue}"`}
+                                                    noOptionsMessage={() => "검색 결과가 없습니다"}
                                                 />
-                                                {(purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') && !order && item.product_id && prod && (
+                                                {(purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') && !order && item.product_id && selectedOption?.product && (
                                                     <Typography variant="caption" sx={{ color: '#d32f2f', fontWeight: 'bold', mt: 0.5, display: 'block' }}>
-                                                        (현재 재고: {prod.current_inventory || 0} EA)
+                                                        (현재 재고: {selectedOption.product.current_inventory || 0} EA)
                                                     </Typography>
                                                 )}
                                             </TableCell>
@@ -676,11 +668,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     <TextField
                                                         size="small"
                                                         fullWidth
-                                                        value={prod?.specification || item.specification || ''}
+                                                        value={selectedOption?.product?.specification || item.specification || ''}
                                                         onChange={(e) => handleItemChange(index, 'specification', e.target.value)}
                                                         placeholder="규격"
-                                                        readOnly={!!prod}
-                                                        sx={{ bgcolor: prod ? '#f9f9f9' : 'white' }}
+                                                        readOnly={!!selectedOption?.product}
+                                                        sx={{ bgcolor: selectedOption?.product ? '#f9f9f9' : 'white' }}
                                                     />
                                                 </TableCell>
                                             ) : (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') ? (
@@ -786,7 +778,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 </TableContainer>
                 
                 <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-                    {(!initialItems || initialItems.length === 0) && (
+                    {!order && (
                         <Button
                             variant="outlined"
                             startIcon={<AddIcon />}
