@@ -293,33 +293,21 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 display_order_no: displayCode,
                 purchase_type: purchaseType || 'PART',
                 items: (initialItems || []).map(item => {
-                    const productObj = item?.product || item?.material || item?.item || item?.consumable || {};
-                    const productId = item?.product_id || item?.consumable_id || item?.item_id || item?.material_id || productObj?.id || '';
-                    const productName = productObj?.name || item?.product?.name || item?.consumable?.name || item?.name || item?.item_name || '알 수 없는 품목';
+                    // 대기리스트의 다양한 Key값 완벽 대응 (consumable_id, consumable.name 등)
+                    const productObj = item?.product || item?.consumable || item?.material || item?.item || {};
+                    const productId = item?.product_id || item?.consumable_id || productObj?.id || '';
+                    const productName = productObj?.name || item?.product_name || item?.consumable_name || item?.name || '';
                     const spec = productObj?.specification || item?.specification || item?.remarks || '';
-
-                    let unitPrice = item?.unit_price || 0;
-                    const productFound = products.find(p => String(p?.id) === String(productId));
-                    const finalProduct = productObj?.id ? productObj : (productFound || {});
-
-                    if (finalProduct && finalProduct?.standard_processes) {
-                        const standardProc = finalProduct?.standard_processes?.find(sp =>
-                            sp?.process?.name === item?.process_name ||
-                            sp?.course_type?.includes('PURCHASE') ||
-                            sp?.process?.course_type?.includes('PURCHASE')
-                        );
-                        if (standardProc) unitPrice = standardProc?.cost || unitPrice;
-                    }
-
+                    
                     return {
-                        product_id: productId || '',
+                        product_id: productId,
                         product_name: productName,
-                        quantity: item?.quantity || (item?.shortage_quantity !== undefined ? item?.shortage_quantity : 1),
-                        unit_price: unitPrice,
-                        note: item?.note || item?.process_name || (item?.type === 'MRP' ? 'MRP 소요량 기반 발주' : ''),
-                        production_plan_item_id: item?.id || null,
-                        material_requirement_id: item?.type === 'MRP' ? item?.id : null,
-                        consumable_purchase_wait_id: item?.type === 'CONSUMABLE_WAIT' ? item?.id : null,
+                        quantity: item?.quantity || item?.shortage_quantity || 1,
+                        unit_price: item?.unit_price || 0,
+                        note: item?.note || item?.remarks || '',
+                        production_plan_item_id: item?.production_plan_item_id || null,
+                        material_requirement_id: item?.material_requirement_id || (item?.type === 'MRP' ? item?.id : null),
+                        consumable_purchase_wait_id: item?.consumable_purchase_wait_id || (purchaseTypeState === 'CONSUMABLE' ? item?.id : null),
                         specification: spec,
                         pricing_type: 'UNIT',
                         total_weight: 0
@@ -629,10 +617,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                     product: p
                                 }));
 
+                                // 1. selectedOption 수정 (ID와 이름이 확실할 때만 세팅, 아니면 null로 비워서 검색 가능하게)
                                 const selectedOption = itemOptions.find(opt => String(opt.value) === String(item.product_id)) || 
-                                                     (item.product_name ? { value: item.product_id, label: item.product_name } : null);
+                                                     (item.product_id && item.product_name ? { value: item.product_id, label: item.product_name } : null);
 
-                                const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id));
+                                // 2. 잠금 조건 수정 (대기 리스트에서 ID와 이름이 모두 완벽하게 넘어왔을 때만 잠금!)
+                                const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id && item.product_name));
 
                                 return (
                                     <React.Fragment key={index}>
