@@ -295,9 +295,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 items: (initialItems || []).map(item => {
                     // 대기리스트의 다양한 Key값 완벽 대응 (consumable_id, consumable.name 등)
                     const productObj = item?.product || item?.consumable || item?.material || item?.item || {};
-                    const productId = item?.product_id || item?.consumable_id || productObj?.id || '';
-                    const productName = productObj?.name || item?.product_name || item?.consumable_name || item?.name || '';
-                    const spec = productObj?.specification || item?.specification || item?.remarks || '';
+                    const productId = item?.product_id || item?.consumable_id || item?.item_id || item?.material_id || productObj?.id || '';
+
+                    // 🚨 누락되었던 consumable_name, consumable_spec 완벽 추가!
+                    const productName = productObj?.name || item?.product_name || item?.consumable_name || item?.product?.name || item?.consumable?.name || item?.name || item?.item_name || '';
+                    const spec = productObj?.specification || item?.specification || item?.consumable_spec || item?.remarks || '';
                     
                     return {
                         product_id: productId,
@@ -619,7 +621,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
                                 // 1. selectedOption 수정 (ID와 이름이 확실할 때만 세팅, 아니면 null로 비워서 검색 가능하게)
                                 const selectedOption = itemOptions.find(opt => String(opt.value) === String(item.product_id)) || 
-                                                     (item.product_id && item.product_name ? { value: item.product_id, label: item.product_name } : null);
+                                                     (item.product_name ? { value: item.product_id || item.product_name, label: item.product_name } : null);
 
                                 // 2. 잠금 조건 수정 (대기 리스트에서 ID와 이름이 모두 완벽하게 넘어왔을 때만 잠금!)
                                 const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id && item.product_name));
