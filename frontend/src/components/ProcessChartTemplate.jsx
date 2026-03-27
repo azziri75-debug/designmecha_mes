@@ -42,49 +42,57 @@ const ProcessChartTemplate = ({ productId, onClose }) => {
         <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-auto print-overlay">
             <style>
                 {`
-                @media screen {
-                    .no-print { display: flex !important; }
-                }
                 @media print {
-                    /* 1. 불필요한 모든 UI 요소 완벽히 숨김 */
-                    body > :not(.print-overlay) { display: none !important; }
-                    .no-print { display: none !important; }
-                    
-                    /* 2. 모달 배경 해제 및 문서 흐름 정상화 */
-                    .print-overlay {
-                        position: relative !important;
-                        background: none !important;
-                        inset: auto !important;
-                        overflow: visible !important;
-                        display: block !important;
-                        padding: 0 !important;
-                        width: 100% !important;
+                    /* 1. 기본 화면 투명화하되 공간까지 완벽히 소멸시킴 */
+                    body * {
+                        visibility: hidden;
                     }
                     
-                    /* 3. 인쇄 대상 규격 고정 */
+                    /* 2. 최상위 오버레이 고정 해제 (스크롤/잘림 방지) */
+                    .fixed.inset-0 {
+                        position: absolute !important;
+                        background: transparent !important;
+                        overflow: visible !important;
+                    }
+                    
+                    /* 3. 공정도 영역만 보이게 설정 */
+                    #process-chart-printable, #process-chart-printable * {
+                        visibility: visible !important;
+                    }
+                    
+                    /* 4. 공정도를 종이의 최상단 좌측에 강제 고정 (빈 공간 밀림 방지) */
                     #process-chart-printable {
-                        position: relative !important;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
                         width: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         box-shadow: none !important;
-                        break-after: page;
-                        visibility: visible !important;
+                        transform: translate(0, 0) !important;
                     }
                     
-                    @page { 
-                        size: A4 portrait; 
-                        margin: 10mm; 
+                    /* 5. 버튼 등 숨김 처리 */
+                    .no-print, .no-print * {
+                        display: none !important;
+                        visibility: hidden !important;
+                    }
+                    
+                    @page {
+                        size: A4 portrait;
+                        margin: 10mm; /* 브라우저 기본 여백 */
                     }
                 }
 
+                /* 화면(Screen) 스타일 최적화 (오버플로우 방지) */
                 #process-chart-printable {
                     background: white;
                     color: #1a202c;
                     width: 210mm;
-                    min-height: 297mm;
-                    padding: 20mm;
-                    box-shadow: 0 10px 50px rgba(0,0,0,0.8);
+                    /* min-height: 297mm; <-- 2페이지 넘김의 주범이므로 절대 넣지 말 것! */
+                    padding: 10mm; /* 20mm에서 10mm로 줄여서 안전 공간 확보 */
+                    box-sizing: border-box; /* 패딩이 width/height를 오버하지 않게 설정 */
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
                     font-family: 'Inter', 'Noto Sans KR', sans-serif;
                     line-height: 1.5;
                     margin: 20px auto;
