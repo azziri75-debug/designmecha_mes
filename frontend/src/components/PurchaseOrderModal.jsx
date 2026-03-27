@@ -346,13 +346,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const fetchProducts = async () => {
         try {
             const response = await api.get('/product/products');
-            let data = response.data;
-            if (purchaseTypeState === 'CONSUMABLE') {
-                data = data.filter(p => p.item_type === 'CONSUMABLE' || p.type === 'CONSUMABLE');
-            } else if (purchaseTypeState === 'PART') {
-                data = data.filter(p => p.item_type === 'PART' || p.item_type === 'RAW_MATERIAL' || p.type === 'PART' || p.type === 'RAW_MATERIAL');
-            }
-            setProducts(data);
+            // 필터링 절대 하지 말고 전체 데이터 저장! (Stale State 버그 원천 차단)
+            setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
         }
@@ -613,17 +608,28 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         </TableHead>
                         <TableBody>
                             {formData.items.map((item, index) => {
-                                const itemOptions = products.map(p => ({
-                                    value: p.id,
-                                    label: `[${p.code || p.product_code || 'N/A'}] ${p.name || ''}${p.specification ? ` (${p.specification})` : ''}`,
-                                    product: p
-                                }));
+                                const itemOptions = products
+                                    .filter(p => {
+                                        // 이미 대기 리스트에서 넘어온 제품 ID는 무조건 표시
+                                        if (String(p.id) === String(item.product_id)) return true; 
+                                        // 동적 필터링
+                                        if (purchaseTypeState === 'CONSUMABLE') return p.item_type === 'CONSUMABLE' || p.type === 'CONSUMABLE';
+                                        return p.item_type === 'PART' || p.item_type === 'RAW_MATERIAL' || p.type === 'PART' || p.type === 'RAW_MATERIAL';
+                                    })
+                                    .map(p => ({
+                                        value: p.id,
+                                        label: `[${p.code || p.product_code || 'N/A'}] ${p.name || ''}${p.specification ? ` (${p.specification})` : ''}`,
+                                        product: p
+                                    }));
 
-                                // 1. selectedOption 수정 (ID와 이름이 확실할 때만 세팅, 아니면 null로 비워서 검색 가능하게)
+                                // 전체 product 리스트에서 ID로 직접 찾기 (가장 확실한 데이터 백업)
+                                const matchedProduct = products.find(p => String(p.id) === String(item.product_id));
+                                const finalProductName = matchedProduct?.name || item.product_name || '';
+
                                 const selectedOption = itemOptions.find(opt => String(opt.value) === String(item.product_id)) || 
-                                                     (item.product_name ? { value: item.product_id || item.product_name, label: item.product_name } : null);
+                                                     (finalProductName ? { value: item.product_id || finalProductName, label: finalProductName } : null);
 
-                                // 2. 잠금 조건 수정 (대기 리스트에서 ID와 이름이 모두 완벽하게 넘어왔을 때만 잠금!)
+                                // 잠금 조건도 이름이 없으면 수동 입력 가능하도록 유연하게!
                                 const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id && item.product_name));
 
                                 return (
@@ -660,7 +666,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     <TextField
                                                         size="small"
                                                         fullWidth
-                                                        value={selectedOption?.product?.specification || item.specification || ''}
+                                                        value={selectedOption?.product?.specification || matchedProduct?.specification || item.specification || ''}
                                                         onChange={(e) => handleItemChange(index, 'specification', e.target.value)}
                                                         placeholder="규격"
                                                         readOnly={!!selectedOption?.product}
