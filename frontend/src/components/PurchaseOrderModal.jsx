@@ -648,23 +648,41 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                         <TableRow sx={{ '& > td': { borderBottom: 'none' } }}>
                                             <TableCell rowSpan={2} sx={{ textAlign: 'center', borderRight: '1px solid #eee', bgcolor: '#fafafa' }}>{index + 1}</TableCell>
                                             <TableCell>
-                                                <CreatableSelect
-                                                    isClearable
-                                                    placeholder="품목 검색/선택"
-                                                    options={itemOptions}
-                                                    value={selectedOption}
-                                                    onChange={(opt) => {
-                                                        handleItemChange(index, 'product_id', opt ? opt.value : '');
-                                                        if (opt && opt.product) {
-                                                            handleItemChange(index, 'product_name', opt.product.name);
-                                                        }
-                                                    }}
-                                                    onCreateOption={(inputValue) => handleOpenNewProductModal(index, inputValue)}
-                                                    isDisabled={isLocked}
-                                                    styles={selectStyles}
-                                                    formatCreateLabel={(inputValue) => `[신규 등록] "${inputValue}"`}
-                                                    noOptionsMessage={() => "검색 결과가 없습니다"}
-                                                />
+                                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                    <Box sx={{ flexGrow: 1 }}>
+                                                        <CreatableSelect
+                                                            isClearable
+                                                            placeholder="품목 검색/선택"
+                                                            options={itemOptions}
+                                                            value={selectedOption}
+                                                            onChange={(opt) => {
+                                                                handleItemChange(index, 'product_id', opt ? opt.value : '');
+                                                                if (opt && opt.product) {
+                                                                    handleItemChange(index, 'product_name', opt.product.name);
+                                                                }
+                                                            }}
+                                                            onCreateOption={(inputValue) => handleOpenNewProductModal(index, inputValue)}
+                                                            isDisabled={isLocked}
+                                                            styles={selectStyles}
+                                                            formatCreateLabel={(inputValue) => `[신규 등록] "${inputValue}"`}
+                                                            noOptionsMessage={() => "검색 결과가 없습니다"}
+                                                        />
+                                                    </Box>
+                                                    
+                                                    {/* 👇 추가된 로직: 마스터에 없는 자동기입 품목을 위한 다이렉트 신규 등록 버튼 👇 */}
+                                                    {!item.product_id && item.product_name && (
+                                                        <Button
+                                                            variant="outlined"
+                                                            color="warning"
+                                                            size="small"
+                                                            onClick={() => handleOpenNewProductModal(index, item.product_name)}
+                                                            sx={{ whiteSpace: 'nowrap', minWidth: 'fit-content', height: '32px', fontWeight: 'bold' }}
+                                                        >
+                                                            신규 등록
+                                                        </Button>
+                                                    )}
+                                                </Box>
+
                                                 {(purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') && !order && item.product_id && selectedOption?.product && (
                                                     <Typography variant="caption" sx={{ color: '#d32f2f', fontWeight: 'bold', mt: 0.5, display: 'block' }}>
                                                         (현재 재고: {selectedOption.product.current_inventory || 0} EA)
