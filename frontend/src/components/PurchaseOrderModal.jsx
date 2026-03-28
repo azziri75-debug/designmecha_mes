@@ -819,7 +819,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             </DialogContent>
             <DialogActions sx={{ position: 'sticky', bottom: 0, bgcolor: 'background.paper', zIndex: 100, borderTop: '2px solid #ddd', p: 2, boxShadow: '0 -4px 10px rgba(0,0,0,0.1)' }}>
                 <Button onClick={onClose}>취소</Button>
-                <Button onClick={() => window.print()} color="info" startIcon={<Printer />}>인쇄</Button>
+                {/* 👇 소모품(CONSUMABLE)이 아닐 때만 인쇄 버튼 노출 👇 */}
+                {purchaseTypeState !== 'CONSUMABLE' && (
+                    <Button onClick={() => window.print()} color="info" startIcon={<Printer />}>인쇄</Button>
+                )}
                 {canApprove(approvalDoc) && (
                     <>
                         <Button onClick={() => handleProcessApproval('REJECTED')} color="error" variant="outlined">반려</Button>

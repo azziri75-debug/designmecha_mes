@@ -227,7 +227,7 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white shadow-2xl p-[20mm] w-[210mm] min-h-[297mm] flex flex-col text-black font-['Malgun_Gothic']">
+                    <div ref={sheetRef} className="bg-white shadow-2xl px-[20mm] py-[15mm] w-[210mm] min-h-[297mm] flex flex-col text-black font-['Malgun_Gothic']">
                         {/* Header Section */}
                         <div className="flex flex-col items-center mb-10 w-full">
                             <h1 className="text-3xl font-extrabold tracking-[0.5em] mb-12 text-center border-b-[6px] border-black pb-4 w-full">견 적 서</h1>
@@ -318,8 +318,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Bottom Section */}
-                        <div className="mt-8 flex flex-col gap-8">
-                            <div className="border-2 border-black p-4 min-h-[140px] bg-white">
+                        <div className="mt-6 flex flex-col gap-4">
+                            <div className="border-2 border-black p-4 min-h-[100px] bg-white">
                                 <h4 className="font-bold border-b-2 border-black w-20 mb-3 pb-1 italic text-sm">Note.</h4>
                                 <EditableText 
                                     value={metadata.notes} 
@@ -329,8 +329,9 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                 />
                             </div>
 
-                            <div className="text-center font-extrabold text-2xl mt-4 border-t-2 border-black pt-10">
-                                <p className="mb-10 text-xl">위와 같이 견적함.</p>
+                            {/* 👇 쓸데없이 큰 mt-8, pb-10 등을 줄임 👇 */}
+                            <div className="text-center font-extrabold text-2xl mt-4 border-t-2 border-black pt-6 pb-6">
+                                <p className="text-xl">위와 같이 견적함.</p>
                             </div>
                         </div>
                     </div>

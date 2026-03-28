@@ -257,6 +257,8 @@ const ProductionSheetModal = ({ isOpen, onClose, plan, onSave }) => {
         } finally { setSaving(false); }
     };
 
+    pageRefs.current = [];
+
     if (!isOpen || !plan) return null;
 
     return (

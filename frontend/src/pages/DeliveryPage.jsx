@@ -10,6 +10,10 @@ import TransactionStatementModal from '../components/TransactionStatementModal';
 const DeliveryPage = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [hideCompleted, setHideCompleted] = useState(false);
+
+    const displayedOrders = hideCompleted ? orders.filter(o => o.status !== 'COMPLETED') : orders;
+
     const [columnWidths, setColumnWidths] = useState({
         customer: 150,
         order_date: 120,
@@ -203,7 +207,18 @@ const DeliveryPage = () => {
                                 />
                             </div>
                         </Grid>
-                        <Grid item xs={12} md={4} className="flex justify-end gap-3">
+                        <Grid item xs={12} md={4} className="flex justify-end gap-4 items-center">
+                            {/* 👇 체크박스 UI 추가 👇 */}
+                            <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-300 bg-gray-900/50 px-3 py-1.5 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors">
+                                <input 
+                                    type="checkbox" 
+                                    checked={hideCompleted} 
+                                    onChange={(e) => setHideCompleted(e.target.checked)} 
+                                    className="w-4 h-4 rounded border-gray-600 text-blue-500 bg-gray-950 focus:ring-blue-500"
+                                />
+                                납품완료 숨기기
+                            </label>
+                            
                             <Button
                                 variant="contained"
                                 onClick={fetchOrders}
@@ -240,7 +255,7 @@ const DeliveryPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800/50">
-                                    {orders.map((ord) => (
+                                    {displayedOrders.map((ord) => (
                                         <React.Fragment key={ord.id}>
                                             <tr className={`group transition-all duration-300 hover:bg-gray-900/40 ${expandedOrder === ord.id ? 'bg-gray-900/60' : ''}`}>
                                                 <td className="px-6 py-5">
@@ -407,7 +422,7 @@ const DeliveryPage = () => {
                                             )}
                                         </React.Fragment>
                                     ))}
-                                    {orders.length === 0 && (
+                                    {displayedOrders.length === 0 && (
                                         <tr>
                                             <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
                                                 데이터가 없습니다.
