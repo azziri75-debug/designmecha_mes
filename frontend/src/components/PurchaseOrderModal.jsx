@@ -298,14 +298,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     let parsedSpec = '';
                     
                     if (purchaseTypeState === 'CONSUMABLE') {
-                        // [소모품 발주] 대기열의 특수한 데이터 구조(requested_item_name, remarks) 반영
+                        // [소모품 발주] 시놀로지 서버 데이터 구조(requested_item_name, remarks) 최우선 반영
                         const cObj = item?.consumable || item?.product || {};
                         
-                        // 1. 품목명 우선순위: product.name -> consumable.name -> requested_item_name
-                        parsedProductName = cObj?.name || item?.product_name || item?.consumable_name || item?.requested_item_name || item?.name || '';
+                        // 1. 품목명 우선순위: requested_item_name -> product.name -> consumable.name
+                        parsedProductName = item?.requested_item_name || cObj?.name || item?.product_name || item?.consumable_name || item?.name || '';
                         
-                        // 2. 규격 우선순위: product.spec -> item.remarks -> item.specification
-                        parsedSpec = cObj?.specification || item?.remarks || item?.specification || item?.consumable_spec || '';
+                        // 2. 규격 우선순위: remarks -> product.spec -> specification
+                        parsedSpec = item?.remarks || cObj?.specification || item?.specification || item?.consumable_spec || '';
                         
                         // 3. ID 격리: 마스터 DB의 ID가 있을 때만 product_id에 할당
                         parsedProductId = item?.consumable_id || item?.consumableId || cObj?.id || '';
@@ -317,7 +317,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         parsedSpec = pObj?.specification || item?.specification || item?.spec || item?.remarks || '';
                     }
                     
-                    // 🚨 절대 item.id (대기열 행 번호)를 product_id로 쓰지 않도록 방어! (ID Collison 방지)
+                    // 🚨 절대 item.id (대기열 행 번호)를 product_id로 쓰지 않도록 방어! (ID Collison 방치)
                     
                     return {
                         product_id: parsedProductId,
