@@ -272,17 +272,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 }))
             });
         } else if (initialItems && initialItems.length > 0) {
-            // [PRE-FILL MODE]
+            // 1. 공급사 자동 매칭 보강
             const firstItem = initialItems[0];
-            const firstPartnerName = firstItem.partner_name || 
-                                     (firstItem.partner && (typeof firstItem.partner === 'string' ? firstItem.partner : firstItem.partner.name)) ||
-                                     firstItem.supplier_name || '';
-                                     
+            const firstPartnerName = firstItem.partner_name || firstItem.supplier_name || '';
             const foundPartner = partners.find(p => p.name === firstPartnerName);
 
-            const displayCode = firstItem?.sales_order_number ||
-                firstItem?.plan?.order?.order_no ||
-                firstItem?.plan?.stock_production?.production_no || '';
+            // 2. 소모품(CONSUMABLE) 여부 판단 (waitItem 여부로 더 확실하게 체크)
+            const isConsumableOrder = purchaseType === 'CONSUMABLE' || firstItem.type === 'CONSUMABLE_WAIT';
 
             setFormData({
                 partner_id: foundPartner ? foundPartner.id : '',
@@ -290,49 +286,20 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 order_date: new Date().toISOString().split('T')[0],
                 delivery_date: '',
                 note: '',
-                display_order_no: displayCode,
+                display_order_no: firstItem?.sales_order_number || firstItem?.plan?.order?.order_no || firstItem?.plan?.stock_production?.production_no || '',
                 purchase_type: purchaseType || 'PART',
-                items: (initialItems || []).map(item => {
-                    let parsedProductId = '';
-                    let parsedProductName = '';
-                    let parsedSpec = '';
-                    
-                    if (purchaseTypeState === 'CONSUMABLE') {
-                        // [소모품 발주] 시놀로지 서버 데이터 구조(requested_item_name, remarks) 최우선 반영
-                        const cObj = item?.consumable || item?.product || {};
-                        
-                        // 1. 품목명 우선순위: requested_item_name -> product.name -> consumable.name
-                        parsedProductName = item?.requested_item_name || cObj?.name || item?.product_name || item?.consumable_name || item?.name || '';
-                        
-                        // 2. 규격 우선순위: remarks -> product.spec -> specification
-                        parsedSpec = item?.remarks || cObj?.specification || item?.specification || item?.consumable_spec || '';
-                        
-                        // 3. ID 격리: 마스터 DB의 ID가 있을 때만 product_id에 할당
-                        parsedProductId = item?.consumable_id || item?.consumableId || cObj?.id || '';
-                    } else {
-                        // [부품/자재 발주] 부품 관련 데이터에서 찾음
-                        const pObj = item?.product || item?.material || item?.part || item?.item || {};
-                        parsedProductId = item?.product_id || item?.productId || item?.material_id || item?.part_id || item?.item_id || pObj?.id || '';
-                        parsedProductName = pObj?.name || item?.product_name || item?.productName || item?.material_name || item?.part_name || item?.name || '';
-                        parsedSpec = pObj?.specification || item?.specification || item?.spec || item?.remarks || '';
-                    }
-                    
-                    // 🚨 절대 item.id (대기열 행 번호)를 product_id로 쓰지 않도록 방어! (ID Collison 방치)
-                    
-                    return {
-                        product_id: parsedProductId,
-                        product_name: parsedProductName,
-                        quantity: item?.quantity || item?.shortage_quantity || item?.req_qty || 1,
-                        unit_price: item?.unit_price || item?.unitPrice || 0,
-                        note: item?.note || item?.remarks || '',
-                        production_plan_item_id: item?.production_plan_item_id || null,
-                        material_requirement_id: item?.material_requirement_id || (item?.type === 'MRP' ? item?.id : null),
-                        consumable_purchase_wait_id: item?.consumable_purchase_wait_id || (purchaseTypeState === 'CONSUMABLE' ? item?.id : null),
-                        specification: parsedSpec,
-                        pricing_type: 'UNIT',
-                        total_weight: 0
-                    };
-                })
+                items: initialItems.map(item => ({
+                    // 🚨 핵심: 요청 품목명(requested_item_name)을 최우선으로 매핑
+                    product_id: item.product?.id || item.consumable?.id || '',
+                    product_name: item.requested_item_name || item.product?.name || item.name || '',
+                    specification: item.remarks || item.product?.specification || item.specification || '',
+                    quantity: item.quantity || 1,
+                    unit_price: item.unit_price || 0,
+                    note: item.note || item.remarks || '',
+                    consumable_purchase_wait_id: isConsumableOrder ? item.id : null,
+                    material_requirement_id: item.type === 'MRP' ? item.id : null,
+                    pricing_type: 'UNIT'
+                }))
             });
         } else {
             // [NEW MODE]
@@ -347,7 +314,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, partners, initialItems, purchaseTypeState]); 
+    }, [isOpen, initialItems, purchaseType, partners, order]); 
  // Added products/partners back to deps to ensure mapping completes when they load
 
     // Removed separate sync effect to prevent initialization loops
