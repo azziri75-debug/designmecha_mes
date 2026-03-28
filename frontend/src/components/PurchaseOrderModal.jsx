@@ -288,18 +288,37 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 note: '',
                 display_order_no: firstItem?.sales_order_number || firstItem?.plan?.order?.order_no || firstItem?.plan?.stock_production?.production_no || '',
                 purchase_type: purchaseType || 'PART',
-                items: initialItems.map(item => ({
-                    // 🚨 핵심: 요청 품목명(requested_item_name)을 최우선으로 매핑
-                    product_id: item.product?.id || item.consumable?.id || '',
-                    product_name: item.requested_item_name || item.product?.name || item.name || '',
-                    specification: item.remarks || item.product?.specification || item.specification || '',
-                    quantity: item.quantity || 1,
-                    unit_price: item.unit_price || 0,
-                    note: item.note || item.remarks || '',
-                    consumable_purchase_wait_id: isConsumableOrder ? item.id : null,
-                    material_requirement_id: item.type === 'MRP' ? item.id : null,
-                    pricing_type: 'UNIT'
-                }))
+                items: initialItems.map(item => {
+                    let parsedProductId = '';
+                    let parsedProductName = '';
+                    let parsedSpec = '';
+                    
+                    if (purchaseTypeState === 'CONSUMABLE' || isConsumableOrder) {
+                        const cObj = item?.consumable || item?.product || {};
+                        parsedProductId = item?.consumable_id || item?.consumableId || cObj?.id || '';
+                        // 🚨 핵심: requested_item_name 최우선 적용
+                        parsedProductName = item?.requested_item_name || item?.consumable_name || cObj?.name || item?.product_name || item?.name || '';
+                        // 🚨 핵심: remarks 최우선 적용
+                        parsedSpec = item?.remarks || item?.consumable_spec || cObj?.specification || item?.specification || '';
+                    } else {
+                        const pObj = item?.product || item?.material || item?.part || item?.item || {};
+                        parsedProductId = item?.product_id || item?.productId || item?.material_id || item?.part_id || item?.item_id || pObj?.id || '';
+                        parsedProductName = pObj?.name || item?.product_name || item?.productName || item?.material_name || item?.part_name || item?.name || '';
+                        parsedSpec = pObj?.specification || item?.specification || item?.spec || item?.remarks || '';
+                    }
+
+                    return {
+                        product_id: parsedProductId,
+                        product_name: parsedProductName,
+                        specification: parsedSpec,
+                        quantity: item.quantity || 1,
+                        unit_price: item.unit_price || 0,
+                        note: item.note || item.remarks || '',
+                        consumable_purchase_wait_id: isConsumableOrder ? item.id : null,
+                        material_requirement_id: item.type === 'MRP' ? item.id : null,
+                        pricing_type: 'UNIT'
+                    };
+                })
             });
         } else {
             // [NEW MODE]
@@ -617,7 +636,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                 const displayLabel = finalProductName || (item.product_id ? `(이름없음 ID:${item.product_id})` : '');
 
                                 const selectedOption = itemOptions.find(opt => String(opt.value) === String(item.product_id)) || 
-                                                     (item.product_id ? { value: item.product_id, label: displayLabel } : null);
+                                                     (item.product_id ? { value: item.product_id, label: displayLabel } : 
+                                                     (item.product_name ? { value: item.product_name, label: item.product_name } : null));
 
                                 // 잠금 조건 완화
                                 const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id));
