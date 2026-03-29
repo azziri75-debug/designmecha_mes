@@ -214,7 +214,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             setApprovalDoc(null);
             setDefaultSteps([]);
         }
-    }, [isOpen, purchaseType, order, formData.partner_id]);
+    }, [isOpen, purchaseType, order]);
 
     const fetchDefaultLines = async () => {
         try {
