@@ -300,6 +300,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         parsedProductName = item?.requested_item_name || item?.consumable_name || cObj?.name || item?.product_name || item?.name || '';
                         // 🚨 핵심: remarks 최우선 적용
                         parsedSpec = item?.remarks || item?.consumable_spec || cObj?.specification || item?.specification || '';
+
+                        // 👇👇 신규 추가: DB 마스터에 똑같은 이름이 있으면 자동으로 ID 매칭 👇👇
+                        if (!parsedProductId && parsedProductName && products.length > 0) {
+                            const autoMatch = products.find(p => p.name.trim() === parsedProductName.trim());
+                            if (autoMatch) parsedProductId = autoMatch.id;
+                        }
                     } else {
                         const pObj = item?.product || item?.material || item?.part || item?.item || {};
                         parsedProductId = item?.product_id || item?.productId || item?.material_id || item?.part_id || item?.item_id || pObj?.id || '';
@@ -375,10 +381,23 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     };
 
     const handleNewProductSuccess = (newProduct) => {
+        // 1. Race Condition 방지: 백엔드 조회 기다리지 말고 로컬 제품 목록에 즉시 푸시
+        setProducts(prev => [...prev, newProduct]);
+        
         if (activeRowIndex !== null) {
+            // 2. formData에 새 제품의 ID와 이름을 강제로 즉시 맵핑
+            setFormData(prev => {
+                const newItems = [...prev.items];
+                newItems[activeRowIndex].product_id = newProduct.id;
+                newItems[activeRowIndex].product_name = newProduct.name;
+                newItems[activeRowIndex].specification = newProduct.specification || newItems[activeRowIndex].specification;
+                return { ...prev, items: newItems };
+            });
+            // 3. 단가 동기화를 위해 기존 체인 호출
             handleItemChange(activeRowIndex, 'product_id', newProduct.id);
         }
-        fetchProducts();
+        fetchProducts(); // 백그라운드 동기화용
+        setNewProductModalOpen(false);
     };
 
     const handleAddItem = () => {
@@ -624,7 +643,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                     })
                                     .map(p => ({
                                         value: p.id,
-                                        label: `[${p.code || p.product_code || 'N/A'}] ${p.name || ''}${p.specification ? ` (${p.specification})` : ''}`,
+                                        label: `${p.code || p.product_code ? `[${p.code || p.product_code}] ` : ''}${p.name || ''}${p.specification ? ` (${p.specification})` : ''}`,
                                         product: p
                                     }));
 
@@ -639,8 +658,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                      (item.product_id ? { value: item.product_id, label: displayLabel } : 
                                                      (item.product_name ? { value: item.product_name, label: item.product_name } : null));
 
-                                // 잠금 조건 완화
-                                const isLocked = !!(item.production_plan_item_id || item.material_requirement_id || (item.consumable_purchase_wait_id && item.product_id));
+                                // 👇 생산계획, MRP 연동일 때만 잠그고 소모품은 무조건 해제
+                                const isLocked = !!(item.production_plan_item_id || item.material_requirement_id);
 
                                 return (
                                     <React.Fragment key={index}>
