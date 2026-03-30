@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Fab } from '@mui/material';
 
 const SidebarItem = ({ icon: Icon, label, to, active }) => {
     return (
@@ -137,16 +137,6 @@ const Layout = () => {
                         </div>
                     </div>
                     
-                    <div className="mt-auto pt-4 border-t border-gray-800">
-                        <button 
-                            onClick={() => setContactModalOpen(true)}
-                            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-gray-400 hover:text-white hover:bg-gray-800"
-                        >
-                            <Mail className="w-5 h-5 text-blue-400" />
-                            시스템 관리자 문의
-                        </button>
-                    </div>
-
                     <button
                         onClick={handleLogout}
                         className="flex items-center gap-2 px-3 py-2 w-full text-sm text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
@@ -176,6 +166,18 @@ const Layout = () => {
                     </div>
                 </div>
             </main>
+
+            <div style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999 }}>
+                <Fab 
+                    color="error" 
+                    variant="extended" 
+                    onClick={() => setContactModalOpen(true)}
+                    sx={{ fontWeight: 'bold', boxShadow: 3 }}
+                >
+                    <Mail className="w-5 h-5 mr-2" />
+                    시스템 관리자 문의
+                </Fab>
+            </div>
 
             <Dialog open={contactModalOpen} onClose={() => setContactModalOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle sx={{ fontWeight: 'bold', color: '#d32f2f' }}>🛠️ 시스템 관리자 문의</DialogTitle>

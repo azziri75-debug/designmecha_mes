@@ -6,7 +6,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
     const today = new Date();
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
-    const currentType = data.type || data.leave_type || '조퇴';
+    const isOuting = data.leave_type === '외출';
 
     useEffect(() => {
         if (data.leave_time && data.return_time) {
@@ -108,7 +108,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                                     readOnly={isReadOnly}
                                     style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
                                 />
-                                {currentType.includes('조퇴') ? (
+                                {!isOuting ? (
                                     <>
                                         <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '13px' }}>퇴근시간:</Typography>
                                         <input 

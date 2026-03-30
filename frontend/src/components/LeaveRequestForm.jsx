@@ -7,40 +7,40 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
     useEffect(() => {
-        let updates = {};
-        let needsUpdate = false;
+        if (!data.start_date) return;
 
-        // 1. 종료일이 비어있으면 시작일로 자동 세팅
-        if (data.start_date && !data.end_date) {
-            updates.end_date = data.start_date;
-            needsUpdate = true;
+        let newEndDate = data.end_date;
+        let newDays = data.leave_days;
+        let changed = false;
+
+        // 1. 종료일이 비어있으면 시작일로 자동 동기화
+        if (!data.end_date) {
+            newEndDate = data.start_date;
+            changed = true;
         }
 
-        const currentStart = data.start_date;
-        const currentEnd = updates.end_date || data.end_date;
-
-        // 2. 일수(leave_days) 자동 계산
+        // 2. 일수 계산
         const isHalfDay = data.vacation_type && data.vacation_type.includes('반차');
-        
         if (isHalfDay) {
-            if (parseFloat(data.leave_days) !== 0.5) {
-                updates.leave_days = 0.5;
-                needsUpdate = true;
+            if (parseFloat(newDays) !== 0.5) {
+                newDays = 0.5;
+                changed = true;
             }
-        } else if (currentStart && currentEnd) {
-            const start = new Date(currentStart);
-            const end = new Date(currentEnd);
+        } else if (data.start_date && newEndDate) {
+            const start = new Date(data.start_date);
+            const end = new Date(newEndDate);
             if (end >= start) {
                 const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
-                if (parseFloat(data.leave_days) !== diffDays) {
-                    updates.leave_days = diffDays;
-                    needsUpdate = true;
+                if (parseFloat(newDays) !== diffDays) {
+                    newDays = diffDays;
+                    changed = true;
                 }
             }
         }
 
-        if (needsUpdate) {
-            onChange({ ...data, ...updates });
+        // 변경된 부분이 있을 때만 한 번에 업데이트 (무한루프 방지)
+        if (changed) {
+            onChange({ ...data, end_date: newEndDate, leave_days: newDays });
         }
     }, [data.start_date, data.end_date, data.vacation_type]);
 
