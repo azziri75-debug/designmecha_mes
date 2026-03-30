@@ -19,12 +19,44 @@ from app.schemas.hr import (
     AnnualLeaveHistoryResponse,
     AnnualLeaveUpdate
 )
+from app.api.endpoints.approval import create_attendance_record
 from app.models.hr import EmployeeAnnualLeave, AttendanceLog, AttendanceLogType
 
 KST = timezone(timedelta(hours=9))
 
 router = APIRouter()
 
+@router.post("/sync-attendance")
+async def sync_all_attendance_records(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
+):
+    # 시스템 관리자만 실행 가능
+    if not getattr(current_user, 'is_sysadmin', False) and current_user.user_type != 'ADMIN':
+        raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
+        
+    # 1. 결재가 완료된 근태 관련 문서들 모두 색인
+    stmt = select(ApprovalDocument).where(
+        ApprovalDocument.status == ApprovalStatus.COMPLETED,
+        ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"])
+    )
+    res = await db.execute(stmt)
+    approved_docs = res.scalars().all()
+    
+    recovered_count = 0
+    
+    for doc in approved_docs:
+        # 2. 해당 문서(approval_id)로 생성된 근태 기록이 있는지 확인
+        check_stmt = select(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc.id)
+        check_res = await db.execute(check_stmt)
+        existing_records = check_res.scalars().all()
+        
+        # 3. 기록이 아예 없다면 (과거 에러로 유실되었다면) 복구 실행
+        if not existing_records:
+            await create_attendance_record(db, doc)
+            recovered_count += 1
+            
+    return {"message": f"총 {recovered_count}건의 누락된 근태 기록 및 연차 차감이 성공적으로 복구(동기화)되었습니다."}
 
 @router.post("/cleanup-ghost-data")
 async def cleanup_ghost_data(

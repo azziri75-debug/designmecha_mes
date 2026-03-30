@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 import {
@@ -10,6 +10,7 @@ import {
     ExclamationTriangleIcon,
     ClockIcon
 } from '@heroicons/react/24/outline';
+import { RefreshCw } from 'lucide-react';
 
 const AttendancePage = () => {
     const { user } = useAuth();
@@ -176,6 +177,23 @@ const AttendancePage = () => {
         }
     };
 
+    const handleSyncAttendance = async () => {
+        if (!window.confirm("결재는 완료되었으나 누락된 근태/연차 기록을 찾아 복구하시겠습니까?")) return;
+        
+        try {
+            setLoading(true);
+            const res = await api.post('/hr/sync-attendance');
+            alert(res.data.message);
+            // 완료 후 화면 새로고침(데이터 재요청) 함수 호출
+            fetchAttendance(); 
+            fetchSummary();
+        } catch (error) {
+            alert("동기화 중 오류가 발생했습니다: " + (error?.response?.data?.detail || error.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Calendar generation logic
     const renderCalendar = () => {
         const year = currentMonth.getFullYear();
@@ -324,6 +342,18 @@ const AttendancePage = () => {
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap justify-end">
+                        {(user?.is_sysadmin || user?.user_type === 'ADMIN') && (
+                            <Button 
+                                variant="outlined" 
+                                color="warning" 
+                                startIcon={<RefreshCw className="w-4 h-4" />}
+                                onClick={handleSyncAttendance}
+                                disabled={loading}
+                                sx={{ ml: 2, fontWeight: 'bold' }}
+                            >
+                                누락 근태 일괄 동기화 (복구)
+                            </Button>
+                        )}
                         {user?.user_type === 'ADMIN' && selectedStaff && (
                             <button
                                 onClick={handleSyncAnnualLeave}
