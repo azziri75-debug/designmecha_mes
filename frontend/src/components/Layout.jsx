@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import api from '../api';
+import api from '../lib/api';
 import {
     LayoutDashboard,
     Package,
