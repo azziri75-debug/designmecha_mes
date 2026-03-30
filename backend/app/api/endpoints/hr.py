@@ -173,9 +173,7 @@ async def get_attendance_summary(
             ApprovalDocument.author_id == target_id,
             ApprovalDocument.doc_type.in_(TARGET_TYPES),
             ApprovalDocument.status == ApprovalStatus.COMPLETED,
-            ApprovalDocument.deleted_at.is_(None),   # [Fix] 소프트 삭제된 문서 제외
-            ApprovalDocument.created_at >= year_start,
-            ApprovalDocument.created_at <= year_end,
+            ApprovalDocument.deleted_at.is_(None),
         ).order_by(ApprovalDocument.created_at.desc())
     )
     docs = docs_res.scalars().all()
@@ -210,6 +208,11 @@ async def get_attendance_summary(
                     try:
                         s_date = date.fromisoformat(str(start_date_str).split('T')[0])
                         e_date = date.fromisoformat(str(end_date_str).split('T')[0]) if end_date_str else s_date
+                        
+                        # 타겟 연도에 포함되는지 검사
+                        if s_date.year != year and e_date.year != year:
+                            continue
+                            
                         applied_value = float(_business_days_between(s_date, e_date))
                         s_pure = str(start_date_str).split('T')[0]
                         e_pure = str(end_date_str).split('T')[0] if end_date_str else s_pure
@@ -265,6 +268,12 @@ async def get_attendance_summary(
                         delta = work_end_minutes - m_leave
                         if delta > 0:
                             applied_value = round(delta / 60.0, 2)
+                            
+                # 년도 필터 확인
+                raw_pure = str(raw_date).split('T')[0] if raw_date else str(datetime.now().date())
+                check_date = date.fromisoformat(raw_pure)
+                if check_date.year != year:
+                    continue
             except (ValueError, TypeError, AttributeError):
                 applied_value = 0.0
 
@@ -294,6 +303,12 @@ async def get_attendance_summary(
                     if delta < 0:
                         delta += 1440  # 자정 넘어가는 경우
                     applied_value = round(delta / 60.0, 2)
+                    
+                # 년도 필터 확인
+                raw_pure = str(raw_date).split('T')[0] if raw_date else str(datetime.now().date())
+                check_date = date.fromisoformat(raw_pure)
+                if check_date.year != year:
+                    continue
             except (ValueError, TypeError, AttributeError):
                 applied_value = 0.0
 
@@ -553,9 +568,7 @@ async def get_monthly_attendance(
             ApprovalDocument.author_id == staff_id,
             ApprovalDocument.doc_type.in_(TARGET_TYPES),
             ApprovalDocument.status == ApprovalStatus.COMPLETED,
-            ApprovalDocument.deleted_at == None,  # noqa: E711  [Ghost-proof]
-            ApprovalDocument.created_at >= search_start,
-            ApprovalDocument.created_at <= search_end,
+            ApprovalDocument.deleted_at == None,  # noqa: E711
         )
     )
     docs = docs_res.scalars().all()
@@ -779,8 +792,6 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
             ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE", "LEAVE_REQUEST"]),
             ApprovalDocument.status == ApprovalStatus.COMPLETED,
             ApprovalDocument.deleted_at == None,  # [Fix] Explicitly filter out soft-deleted documents
-            ApprovalDocument.created_at >= year_start,
-            ApprovalDocument.created_at <= year_end,
         )
     )
     docs = docs_res.scalars().all()
@@ -805,15 +816,21 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
         if doc.doc_type in ["VACATION", "LEAVE_REQUEST"]:
             v_type = content.get("vacation_type", "연차")
             val = 0.0
-            if "반차" in v_type:
-                val = 0.5
-            else:
-                try:
-                    s_date = date.fromisoformat(str(content.get("start_date")).split('T')[0])
-                    raw_end = content.get("end_date") or content.get("start_date")
-                    e_date = date.fromisoformat(str(raw_end).split('T')[0])
+            
+            try:
+                s_date = date.fromisoformat(str(content.get("start_date")).split('T')[0])
+                raw_end = content.get("end_date") or content.get("start_date")
+                e_date = date.fromisoformat(str(raw_end).split('T')[0])
+                
+                # 년도 필터 확인
+                if s_date.year != year and e_date.year != year:
+                    continue
+                    
+                if "반차" in v_type:
+                    val = 0.5
+                else:
                     val = float(_business_days_between(s_date, e_date))
-                except: val = 1.0
+            except: val = 1.0
             
             if v_type == "병가": s_days += val
             elif v_type == "경조휴가": e_days += val
@@ -821,6 +838,12 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
             
         elif doc.doc_type == "EARLY_LEAVE":
             try:
+                raw_date = content.get("date")
+                if raw_date:
+                    d_date = date.fromisoformat(str(raw_date).split('T')[0])
+                    if d_date.year != year:
+                        continue
+                        
                 t_str = content.get("leave_time") or content.get("time")
                 ret_str = content.get("return_time") or content.get("end_time")
                 if content.get("type") in ("외출", "Outing") and ret_str:
