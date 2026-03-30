@@ -1,10 +1,15 @@
 import smtplib
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 def send_approval_email(to_email: str, doc_title: str, drafter_name: str, reference_id: str):
     if not to_email:
+        logger.warning(f"수신자 이메일이 없어 메일 발송을 취소합니다. (참조문서: {reference_id})")
         return
 
     subject = f"[결재요청] {drafter_name}님의 '{doc_title}' 결재가 대기 중입니다."
@@ -29,14 +34,18 @@ def send_approval_email(to_email: str, doc_title: str, drafter_name: str, refere
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"디자인메카 결재시스템 <{settings.SMTP_USER}>"
+    # 🚨 수정 포인트: 다음 SMTP 스팸 필터를 통과하기 위한 표준 발신자 포맷팅
+    msg["From"] = formataddr(("디자인메카 결재시스템", settings.SMTP_USER))
     msg["To"] = to_email
     msg.attach(MIMEText(html_content, "html"))
 
     try:
-        # Daum SMTP SSL 연결
+        logger.info(f"메일 발송 시도: {to_email}")
         with smtplib.SMTP_SSL(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
+            # server.set_debuglevel(1) # 필요시 주석 해제하여 상세 로그 확인
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+        logger.info(f"메일 발송 성공: {to_email}")
     except Exception as e:
-        print(f"Failed to send email to {to_email}: {str(e)}")
+        # 백그라운드 에러를 확실히 잡기 위해 에러 로그 출력
+        logger.error(f"[SMTP ERROR] 메일 발송 실패 ({to_email}): {str(e)}")
