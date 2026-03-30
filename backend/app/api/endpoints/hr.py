@@ -208,11 +208,15 @@ async def get_attendance_summary(
             else:
                 if start_date_str:
                     try:
-                        s_date = date.fromisoformat(start_date_str)
-                        e_date = date.fromisoformat(end_date_str) if end_date_str else s_date
+                        s_date = date.fromisoformat(str(start_date_str).split('T')[0])
+                        e_date = date.fromisoformat(str(end_date_str).split('T')[0]) if end_date_str else s_date
                         applied_value = float(_business_days_between(s_date, e_date))
-                        if end_date_str and end_date_str != start_date_str:
-                            date_label = f"{start_date_str} ~ {end_date_str}"
+                        s_pure = str(start_date_str).split('T')[0]
+                        e_pure = str(end_date_str).split('T')[0] if end_date_str else s_pure
+                        if e_pure and e_pure != s_pure:
+                            date_label = f"{s_pure} ~ {e_pure}"
+                        else:
+                            date_label = s_pure
                     except (ValueError, TypeError):
                         applied_value = 1.0
 
@@ -236,7 +240,10 @@ async def get_attendance_summary(
 
         elif doc.doc_type == "EARLY_LEAVE":
             leave_type = content.get("type", "조퇴")
-            date_label = content.get("date")
+            # 🚨 타임존 찌꺼기 방어
+            raw_date = content.get("date")
+            date_label = str(raw_date).split('T')[0] if raw_date else raw_date
+            
             applied_value = 0.0
 
             leave_time_str = content.get("leave_time") or content.get("time")
@@ -273,7 +280,8 @@ async def get_attendance_summary(
             ))
 
         elif doc.doc_type == "OVERTIME":
-            date_label = content.get("date")
+            raw_date = content.get("date")
+            date_label = str(raw_date).split('T')[0] if raw_date else raw_date
             start_time_str = content.get("start_time")
             end_time_str = content.get("end_time")
             applied_value = 0.0
@@ -576,14 +584,16 @@ async def get_monthly_attendance(
             if not s_str: continue
             
             try:
-                s_date = date.fromisoformat(s_str)
-                e_date = date.fromisoformat(e_str) if e_str else s_date
+                s_date = date.fromisoformat(str(s_str).split('T')[0])
+                e_date = date.fromisoformat(str(e_str).split('T')[0]) if e_str else s_date
                 
                 # 해당 월에 하루라도 걸쳐 있는지 확인
                 if not (s_date <= end_date and e_date >= start_date):
                     continue
                 
-                doc_date_str = f"{s_str} ~ {e_str}" if s_str != e_str else s_str
+                s_pure = str(s_str).split('T')[0]
+                e_pure = str(e_str).split('T')[0] if e_str else s_pure
+                doc_date_str = f"{s_pure} ~ {e_pure}" if s_pure != e_pure else s_pure
                 v_type = content.get("vacation_type", "")
                 if "반차" in v_type:
                     applied_value = 0.5
@@ -595,9 +605,9 @@ async def get_monthly_attendance(
             d_str = content.get("date")
             if not d_str: continue
             try:
-                d_date = date.fromisoformat(d_str)
+                d_date = date.fromisoformat(str(d_str).split('T')[0])
                 if not (start_date <= d_date <= end_date): continue
-                doc_date_str = d_str
+                doc_date_str = str(d_str).split('T')[0]
                 applied_unit = "시간"
                 
                 t_str = content.get("leave_time") or content.get("time")
@@ -616,9 +626,9 @@ async def get_monthly_attendance(
             d_str = content.get("date")
             if not d_str: continue
             try:
-                d_date = date.fromisoformat(d_str)
+                d_date = date.fromisoformat(str(d_str).split('T')[0])
                 if not (start_date <= d_date <= end_date): continue
-                doc_date_str = d_str
+                doc_date_str = str(d_str).split('T')[0]
                 applied_unit = "시간"
                 
                 s_t = content.get("start_time")
@@ -799,8 +809,9 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
                 val = 0.5
             else:
                 try:
-                    s_date = date.fromisoformat(content.get("start_date"))
-                    e_date = date.fromisoformat(content.get("end_date") or content.get("start_date"))
+                    s_date = date.fromisoformat(str(content.get("start_date")).split('T')[0])
+                    raw_end = content.get("end_date") or content.get("start_date")
+                    e_date = date.fromisoformat(str(raw_end).split('T')[0])
                     val = float(_business_days_between(s_date, e_date))
                 except: val = 1.0
             

@@ -801,7 +801,7 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
         elif doc.doc_type == "OVERTIME":
             date_str = content.get("date")
             if not date_str: return
-            record_date = date.fromisoformat(date_str)
+            record_date = date.fromisoformat(str(date_str).split('T')[0])
             
             start_t = content.get("start_time")
             end_t = content.get("end_time")
