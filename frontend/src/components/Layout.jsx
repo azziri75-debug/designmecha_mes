@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import api from '../api';
 import {
     LayoutDashboard,
     Package,
@@ -22,10 +23,12 @@ import {
     Wrench,
     Blocks,
     Cpu,
-    Plus
+    Plus,
+    Mail, Send
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from '@mui/material';
 
 const SidebarItem = ({ icon: Icon, label, to, active }) => {
     return (
@@ -48,6 +51,20 @@ const Layout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, logout, hasPermission } = useAuth();
+    
+    const [contactModalOpen, setContactModalOpen] = useState(false);
+    const [contactForm, setContactForm] = useState({ subject: '', content: '' });
+
+    const handleSendSysadmin = async () => {
+        try {
+            await api.post('/basics/sysadmin/contact', contactForm);
+            alert('관리자에게 메일이 성공적으로 발송되었습니다.');
+            setContactModalOpen(false);
+            setContactForm({ subject: '', content: '' });
+        } catch (e) {
+            alert('발송 실패: 등록된 관리자 이메일이 없거나 서버 오류입니다.');
+        }
+    };
 
     const navItems = [
         { icon: LayoutDashboard, label: '대시보드', to: '/', menuKey: 'dashboard' },
@@ -119,6 +136,17 @@ const Layout = () => {
                             <div className="text-xs text-gray-500">{user?.user_type === 'ADMIN' ? '관리자' : '사용자'}</div>
                         </div>
                     </div>
+                    
+                    <div className="mt-auto pt-4 border-t border-gray-800">
+                        <button 
+                            onClick={() => setContactModalOpen(true)}
+                            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-gray-400 hover:text-white hover:bg-gray-800"
+                        >
+                            <Mail className="w-5 h-5 text-blue-400" />
+                            시스템 관리자 문의
+                        </button>
+                    </div>
+
                     <button
                         onClick={handleLogout}
                         className="flex items-center gap-2 px-3 py-2 w-full text-sm text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
@@ -148,6 +176,33 @@ const Layout = () => {
                     </div>
                 </div>
             </main>
+
+            <Dialog open={contactModalOpen} onClose={() => setContactModalOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 'bold', color: '#d32f2f' }}>🛠️ 시스템 관리자 문의</DialogTitle>
+                <DialogContent dividers className="flex flex-col gap-4">
+                    <TextField 
+                        label="제목" 
+                        fullWidth 
+                        value={contactForm.subject} 
+                        onChange={e => setContactForm({...contactForm, subject: e.target.value})} 
+                    />
+                    <TextField 
+                        label="문의 내용" 
+                        multiline 
+                        rows={6} 
+                        fullWidth 
+                        placeholder="발생한 오류나 요청사항을 상세히 적어주세요."
+                        value={contactForm.content} 
+                        onChange={e => setContactForm({...contactForm, content: e.target.value})} 
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setContactModalOpen(false)}>취소</Button>
+                    <Button onClick={handleSendSysadmin} variant="contained" color="error" startIcon={<Send className="w-4 h-4"/>}>
+                        메일 발송
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </div>
     );
 };

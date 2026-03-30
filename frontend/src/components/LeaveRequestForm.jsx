@@ -10,39 +10,39 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
         let updates = {};
         let needsUpdate = false;
 
-        // 1. 종료일 자동 세팅
+        // 1. 종료일이 비어있으면 시작일로 자동 세팅
         if (data.start_date && !data.end_date) {
             updates.end_date = data.start_date;
             needsUpdate = true;
         }
+
+        const currentStart = data.start_date;
+        const currentEnd = updates.end_date || data.end_date;
+
+        // 2. 일수(leave_days) 자동 계산
+        const isHalfDay = data.vacation_type && data.vacation_type.includes('반차');
         
-        // 2. 반차 선택 시 0.5일 자동 세팅
-        if (data.vacation_type && data.vacation_type.includes('반차')) {
+        if (isHalfDay) {
             if (parseFloat(data.leave_days) !== 0.5) {
                 updates.leave_days = 0.5;
                 needsUpdate = true;
+            }
+        } else if (currentStart && currentEnd) {
+            const start = new Date(currentStart);
+            const end = new Date(currentEnd);
+            if (end >= start) {
+                const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+                if (parseFloat(data.leave_days) !== diffDays) {
+                    updates.leave_days = diffDays;
+                    needsUpdate = true;
+                }
             }
         }
 
         if (needsUpdate) {
             onChange({ ...data, ...updates });
         }
-    }, [data.start_date, data.vacation_type]);
-
-    useEffect(() => {
-        if (data.start_date && data.end_date) {
-            const start = new Date(data.start_date);
-            const end = new Date(data.end_date);
-            if (end >= start) {
-                // 밀리초를 일(Day)로 변환 (+1일 포함)
-                const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
-                // 기존 입력값이 없거나, 기존 값과 다를 때만 자동 업데이트 (수동 기입 덮어쓰기 방지)
-                if (!data.leave_days || parseFloat(data.leave_days) === diffDays - 1 || parseFloat(data.leave_days) === diffDays) {
-                    onChange({ ...data, leave_days: diffDays });
-                }
-            }
-        }
-    }, [data.start_date, data.end_date]);
+    }, [data.start_date, data.end_date, data.vacation_type]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;

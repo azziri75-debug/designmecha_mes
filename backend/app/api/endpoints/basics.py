@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, BackgroundTasks
 from sqlalchemy import or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -16,6 +16,7 @@ from fastapi import UploadFile, File
 
 from app.api import deps
 get_db = deps.get_db
+from app.api.utils.email import send_sysadmin_email
 from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory, EmployeeTimeRecord, IgnoredPartnerDuplicate
 from app.schemas.basics import (
     PartnerCreate, PartnerResponse, PartnerUpdate,
@@ -798,6 +799,36 @@ async def delete_equipment_history(eq_id: int, h_id: int, db: AsyncSession = Dep
 # --- Form Template Endpoints ---
 
 @router.get("/form-templates/", response_model=List[FormTemplateResponse])
+
+class SysadminEmailRequest(BaseModel):
+    subject: str
+    content: str
+
+@router.post("/sysadmin/contact")
+async def contact_sysadmin(
+    req: SysadminEmailRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: Staff = Depends(deps.get_current_user)
+):
+    # is_sysadmin이 True인 사람 중 이메일이 있는 사람 모두 색인
+    stmt = select(Staff).where(Staff.is_sysadmin == True, Staff.email.isnot(None))
+    res = await db.execute(stmt)
+    admins = res.scalars().all()
+    
+    admin_emails = [a.email for a in admins if a.email]
+    
+    if not admin_emails:
+        raise HTTPException(status_code=404, detail="등록된 시스템 관리자 이메일이 없습니다.")
+        
+    background_tasks.add_task(
+        send_sysadmin_email,
+        to_emails=admin_emails,
+        subject=req.subject,
+        content=req.content,
+        sender_name=current_user.name
+    )
+    return {"message": "관리자에게 메일을 발송했습니다."}
 async def read_form_templates(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(FormTemplate))
     return result.scalars().all()

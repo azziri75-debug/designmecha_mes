@@ -49,3 +49,33 @@ def send_approval_email(to_email: str, doc_title: str, drafter_name: str, refere
     except Exception as e:
         # 백그라운드 에러를 확실히 잡기 위해 에러 로그 출력
         logger.error(f"[SMTP ERROR] 메일 발송 실패 ({to_email}): {str(e)}")
+
+def send_sysadmin_email(to_emails: list, subject: str, content: str, sender_name: str):
+    if not to_emails: return
+    
+    real_subject = f"[MES 시스템 문의] {sender_name}님의 요청: {subject}"
+    html_content = f"""
+    <html>
+        <body style="font-family: sans-serif; color: #333;">
+            <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+                <h2 style="color: #d32f2f;">🛠️ 시스템 관리자 호출</h2>
+                <p><strong>발신자:</strong> {sender_name}</p>
+                <hr />
+                <p style="white-space: pre-wrap;">{content}</p>
+            </div>
+        </body>
+    </html>
+    """
+    
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = real_subject
+    msg["From"] = formataddr(("MES 시스템", settings.SMTP_SENDER))
+    msg["To"] = ", ".join(to_emails)
+    msg.attach(MIMEText(html_content, "html"))
+
+    try:
+        with smtplib.SMTP_SSL(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.sendmail(settings.SMTP_SENDER, to_emails, msg.as_string())
+    except Exception as e:
+        logger.error(f"Sysadmin email failed: {e}")

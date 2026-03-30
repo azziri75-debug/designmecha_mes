@@ -6,6 +6,8 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
     const today = new Date();
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
+    const currentType = data.type || data.leave_type || '조퇴';
+
     useEffect(() => {
         if (data.leave_time && data.return_time) {
             const start = new Date(`2000-01-01T${data.leave_time}`);
@@ -106,15 +108,30 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                                     readOnly={isReadOnly}
                                     style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
                                 />
-                                <input 
-                                    type="time" 
-                                    value={data.leave_time || ''} 
-                                    onChange={(e) => handleChange('leave_time', e.target.value)}
-                                    readOnly={isReadOnly}
-                                    style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                />
-                                {data.leave_type !== '조퇴' && (
+                                {currentType.includes('조퇴') ? (
                                     <>
+                                        <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '13px' }}>퇴근시간:</Typography>
+                                        <input 
+                                            type="time" 
+                                            value={data.leave_time || ''} 
+                                            onChange={(e) => {
+                                                if (isReadOnly || typeof onChange !== 'function') return;
+                                                onChange({ ...data, leave_time: e.target.value, return_time: '' });
+                                            }}
+                                            readOnly={isReadOnly}
+                                            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '13px' }}>외출시간:</Typography>
+                                        <input 
+                                            type="time" 
+                                            value={data.leave_time || ''} 
+                                            onChange={(e) => handleChange('leave_time', e.target.value)}
+                                            readOnly={isReadOnly}
+                                            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
+                                        />
                                         <Typography>~</Typography>
                                         <input 
                                             type="time" 
