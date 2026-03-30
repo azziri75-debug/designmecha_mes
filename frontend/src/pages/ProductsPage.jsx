@@ -2205,6 +2205,39 @@ const ProductsPage = ({ type }) => {
                     onClose={() => setPrintProductId(null)} 
                 />
             )}
+
+            {/* Smart Clone Mode Choice Dialog */}
+            <Dialog open={cloneChoiceModalOpen} onClose={() => setCloneChoiceModalOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center', pt: 3 }}>
+                    어떤 방식으로 복제할까요?
+                </DialogTitle>
+                <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 3 }}>
+                    <Button 
+                        variant="outlined" 
+                        size="large" 
+                        sx={{ py: 2, fontWeight: 'bold', fontSize: '1.1rem' }}
+                        onClick={() => {
+                            setCloneChoiceModalOpen(false);
+                            handleDuplicateProduct(selectedSourceProduct); // 기존 신규등록 모달 호출
+                        }}
+                    >
+                        ✨ 신규 제품으로 복제 (새로 등록)
+                    </Button>
+                    <Button 
+                        variant="contained" 
+                        color="primary" 
+                        size="large" 
+                        sx={{ py: 2, fontWeight: 'bold', fontSize: '1.1rem', bgcolor: '#2563eb' }}
+                        onClick={() => {
+                            setCloneChoiceModalOpen(false);
+                            setIsCloneMode(true);
+                            setTargetProductIds([]);
+                        }}
+                    >
+                        🔄 기존 제품에 덮어쓰기 (공정/BOM)
+                    </Button>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
