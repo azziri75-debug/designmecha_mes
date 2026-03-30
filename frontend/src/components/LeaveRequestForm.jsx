@@ -7,6 +7,29 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
     useEffect(() => {
+        let updates = {};
+        let needsUpdate = false;
+
+        // 1. 종료일 자동 세팅
+        if (data.start_date && !data.end_date) {
+            updates.end_date = data.start_date;
+            needsUpdate = true;
+        }
+        
+        // 2. 반차 선택 시 0.5일 자동 세팅
+        if (data.vacation_type && data.vacation_type.includes('반차')) {
+            if (parseFloat(data.leave_days) !== 0.5) {
+                updates.leave_days = 0.5;
+                needsUpdate = true;
+            }
+        }
+
+        if (needsUpdate) {
+            onChange({ ...data, ...updates });
+        }
+    }, [data.start_date, data.vacation_type]);
+
+    useEffect(() => {
         if (data.start_date && data.end_date) {
             const start = new Date(data.start_date);
             const end = new Date(data.end_date);

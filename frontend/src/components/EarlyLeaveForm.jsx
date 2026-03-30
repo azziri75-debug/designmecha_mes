@@ -1,10 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, FormControlLabel, Radio, Select, MenuItem, FormControl } from '@mui/material';
 import ApprovalGrid from './ApprovalGrid';
 
 const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     const today = new Date();
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+
+    useEffect(() => {
+        if (data.leave_time && data.return_time) {
+            const start = new Date(`2000-01-01T${data.leave_time}`);
+            const end = new Date(`2000-01-01T${data.return_time}`);
+            let diff = (end - start) / (1000 * 60 * 60);
+            if (diff < 0) diff += 24; // 자정을 넘기는 경우 처리
+            
+            // 소수점 1자리까지 표시
+            const calcHours = parseFloat(diff.toFixed(1));
+            if (data.hours !== calcHours) {
+                onChange({ ...data, hours: calcHours });
+            }
+        }
+    }, [data.leave_time, data.return_time]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
@@ -110,6 +125,9 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                                         />
                                     </>
                                 )}
+                                <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '14px', color: '#1976d2' }}>
+                                    총: {data.hours || 0} 시간
+                                </Typography>
                             </Box>
                         </td>
                     </TableRow>

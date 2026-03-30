@@ -1,10 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, FormControlLabel, Radio } from '@mui/material';
 import ApprovalGrid from './ApprovalGrid';
 
 const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     const today = new Date();
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+
+    useEffect(() => {
+        if (data.start_time && data.end_time) {
+            const start = new Date(`2000-01-01T${data.start_time}`);
+            const end = new Date(`2000-01-01T${data.end_time}`);
+            let diff = (end - start) / (1000 * 60 * 60);
+            if (diff < 0) diff += 24; // 자정을 넘기는 특근(철야) 처리
+            
+            const calcHours = parseFloat(diff.toFixed(1));
+            if (data.hours !== calcHours) {
+                onChange({ ...data, hours: calcHours });
+            }
+        }
+    }, [data.start_time, data.end_time]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
@@ -95,6 +109,9 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                                     readOnly={isReadOnly}
                                     style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
                                 />
+                                <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '14px', color: '#1976d2' }}>
+                                    총: {data.hours || 0} 시간
+                                </Typography>
                             </Box>
                         </td>
                     </TableRow>
