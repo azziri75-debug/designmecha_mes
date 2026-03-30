@@ -1,5 +1,5 @@
 from typing import AsyncGenerator
-from fastapi import Header, HTTPException, Depends
+from fastapi import Header, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import select
 from app.core.config import settings
@@ -13,6 +13,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 async def get_current_user(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     x_user_id: str = Header(None, alias="X-User-ID")
 ) -> Staff:
@@ -56,4 +57,29 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
+    # 🚨 [신규] 매 요청마다 IP 검사 및 외부망 차단 로직 추가 🚨
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        client_ip = request.headers.get("X-Real-IP") or request.client.host
+
+    def is_internal(ip: str) -> bool:
+        if not ip: return False
+        return (
+            ip.startswith("192.168.") or 
+            ip.startswith("127.0.0.1") or 
+            ip.startswith("172.")
+        )
+
+    is_external = not is_internal(client_ip)
+    is_authorized = user.is_sysadmin or user.can_access_external
+
+    if is_external and not is_authorized:
+        # 403 Forbidden 반환하여 프론트엔드가 즉시 로그아웃 처리하도록 유도
+        raise HTTPException(
+            status_code=403, 
+            detail="사내 네트워크(와이파이)를 벗어나 접근이 차단되었습니다."
+        )
+
     return user
