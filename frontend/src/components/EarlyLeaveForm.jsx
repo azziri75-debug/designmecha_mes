@@ -13,7 +13,9 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         
         // 1. 초기값 강제 셋업 (이게 있어야 UI가 꼬이지 않음)
         if (!data.leave_type) updates.leave_type = '조퇴';
-        if (!data.date) updates.date = new Date().toISOString().split('T')[0];
+        const offset = new Date().getTimezoneOffset() * 60000;
+        const todayStr = new Date(Date.now() - offset).toISOString().split('T')[0];
+        if (!data.date) updates.date = todayStr;
 
         // 2. 시간 계산
         if (data.leave_time && data.return_time) {
@@ -22,7 +24,8 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
             let diff = (end - start) / (1000 * 60 * 60);
             if (diff < 0) diff += 24;
             
-            const calcHours = parseFloat(diff.toFixed(1));
+            // 🚨 NaN 방어
+            const calcHours = isNaN(diff) ? 0 : parseFloat(diff.toFixed(1));
             if (data.hours !== calcHours) {
                 updates.hours = calcHours;
             }

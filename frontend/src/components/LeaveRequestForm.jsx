@@ -7,7 +7,8 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
     useEffect(() => {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const offset = new Date().getTimezoneOffset() * 60000;
+        const todayStr = new Date(Date.now() - offset).toISOString().split('T')[0];
         const currentStart = data.start_date || todayStr;
         const currentEnd = data.end_date || currentStart;
         const vType = data.vacation_type || '연차';

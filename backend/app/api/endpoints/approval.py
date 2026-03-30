@@ -689,8 +689,10 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             start_date_str = content.get("start_date")
             end_date_str = content.get("end_date")
             if not start_date_str: return
-            start_date = date.fromisoformat(start_date_str)
-            end_date = date.fromisoformat(end_date_str) if end_date_str else start_date
+            
+            # 🚨 수정: 시간/타임존 찌꺼기가 묻어와도 무조건 YYYY-MM-DD만 파싱하도록 방어
+            start_date = date.fromisoformat(str(start_date_str).split('T')[0])
+            end_date = date.fromisoformat(str(end_date_str).split('T')[0]) if end_date_str else start_date
             v_type = content.get("vacation_type", "연차")
             
             # 연차 레코드 조회/생성
@@ -729,7 +731,8 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
         elif doc.doc_type == "EARLY_LEAVE":
             date_str = content.get("date")
             if not date_str: return
-            record_date = date.fromisoformat(date_str)
+            # 🚨 수정: 날짜 찌꺼기 방어
+            record_date = date.fromisoformat(str(date_str).split('T')[0])
             e_type = content.get("type", content.get("leave_type", "조퇴"))
             
             # 연차 레코드 조회/생성
@@ -773,8 +776,14 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             except Exception as e:
                 print(f"Error calculating duration: {e}")
             
-            # 조퇴/외출은 연차(시간)에서 차감
-            leave_record.used_leave_hours += float(hours)
+            # 🚨 수정: 프론트에서 넘어온 hours가 없거나 NaN일 경우를 철저히 대비
+            raw_hours = content.get("hours", 0)
+            try:
+                hours = float(raw_hours) if raw_hours else 0.0
+            except ValueError:
+                hours = 0.0
+                
+            leave_record.used_leave_hours += hours
             
             from app.models.basics import EmployeeTimeRecord
             record = EmployeeTimeRecord(
@@ -819,7 +828,9 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             
         await db.flush()
     except Exception as e:
-        print(f"Error creating attendance record: {e}")
+        # 에러 로그를 명확히 남겨서 추적 가능하게 함
+        import logging
+        logging.error(f"[ATTENDANCE ERROR] Failed to create attendance for Doc {doc.id}: {str(e)}")
 
 async def is_editable(doc: ApprovalDocument, user: Staff = None) -> bool:
     """문서가 수정/삭제 가능한 상태인지 확인 (PENDING, REJECTED 또는 자동 승인만 된 IN_PROGRESS)"""
