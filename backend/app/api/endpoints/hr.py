@@ -19,7 +19,6 @@ from app.schemas.hr import (
     AnnualLeaveHistoryResponse,
     AnnualLeaveUpdate
 )
-from app.api.endpoints.approval import create_attendance_record
 from app.models.hr import EmployeeAnnualLeave, AttendanceLog, AttendanceLogType
 
 KST = timezone(timedelta(hours=9))
@@ -34,6 +33,9 @@ async def sync_all_attendance_records(
     # 시스템 관리자만 실행 가능
     if not getattr(current_user, 'is_sysadmin', False) and current_user.user_type != 'ADMIN':
         raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
+        
+    # 👇👇 [핵심 픽스] 순환 참조를 피하기 위해 함수 내부에서 지역적으로 import 할 것 👇👇
+    from app.api.endpoints.approval import create_attendance_record
         
     # 1. 결재가 완료된 근태 관련 문서들 모두 색인
     stmt = select(ApprovalDocument).where(
