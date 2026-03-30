@@ -11,15 +11,16 @@ body.resizing {
   user-select: none;
 }
 
-/* Global Table Shrink-to-Fit for Screen View */
+/* Global Table Shrink-to-Fit for Screen View (Data Tables Only) */
 @media screen {
-  table {
+  .overflow-x-auto table {
     width: 100% !important;
     max-width: 100% !important;
     table-layout: auto;
   }
   
-  td {
+  .overflow-x-auto table td,
+  .overflow-x-auto table th {
     /* Break long alphanumeric part numbers, but keep Korean words intact if possible */
     overflow-wrap: anywhere;
     word-break: keep-all;
@@ -27,7 +28,8 @@ body.resizing {
   }
 
   /* Exclude strictly truncated cells to preserve design intent */
-  td.truncate {
+  .overflow-x-auto table td.truncate,
+  .overflow-x-auto table th.truncate {
     white-space: nowrap !important;
     word-break: normal !important;
     overflow: hidden !important;
