@@ -1785,7 +1785,7 @@ const ProductsPage = ({ type }) => {
                                             className="flex-1 bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
                                         >
                                             <option value="">하위 품목 선택...</option>
-                                            {allParts.filter(p => p.id !== productFormData.id).map(p => (
+                                            {allParts.filter(p => p.id !== productFormData.id && p.item_type !== 'CONSUMABLE').map(p => (
                                                 <option key={p.id} value={p.id}>
                                                     [{ITEM_TYPES[p.item_type] || p.item_type || '-'}] {p.name} {p.specification ? `(${p.specification})` : ''}
                                                 </option>
