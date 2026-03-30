@@ -22,11 +22,13 @@ import EarlyLeaveForm from './EarlyLeaveForm';
 import LeaveRequestForm from './LeaveRequestForm';
 import OvertimeWorkForm from './OvertimeWorkForm';
 import PurchaseOrderForm from './PurchaseOrderForm';
+import BusinessTripExpenseForm from './BusinessTripExpenseForm';
 import ApprovalGrid from './ApprovalGrid';
 
 const DOC_TYPES = [
     { value: 'INTERNAL_DRAFT', label: '내부기안' },
     { value: 'EXPENSE_REPORT', label: '지출결의서' },
+    { value: 'BUSINESS_TRIP', label: '출장여비정산서' },
     { value: 'LEAVE_REQUEST', label: '휴가원' },
     { value: 'EARLY_LEAVE', label: '조퇴/외출원' },
     { value: 'CONSUMABLES_PURCHASE', label: '소모품 구매신청서' },
@@ -248,6 +250,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
 
         switch (docType) {
             case 'EXPENSE_REPORT': return <ExpenseReportForm {...commonProps} />;
+            case 'BUSINESS_TRIP': return <BusinessTripExpenseForm {...commonProps} />;
             case 'CONSUMABLES_PURCHASE': return <ConsumablesPurchaseForm {...commonProps} />;
             case 'EARLY_LEAVE': return <EarlyLeaveForm {...commonProps} />;
             case 'LEAVE_REQUEST': return <LeaveRequestForm {...commonProps} />;

@@ -22,10 +22,12 @@ import EarlyLeaveForm from '../components/EarlyLeaveForm';
 import LeaveRequestForm from '../components/LeaveRequestForm';
 import OvertimeWorkForm from '../components/OvertimeWorkForm';
 import PurchaseOrderForm from '../components/PurchaseOrderForm';
+import BusinessTripExpenseForm from '../components/BusinessTripExpenseForm';
 
 const DOC_TYPES = {
     INTERNAL_DRAFT: { label: '내부기안', color: 'blue' },
     EXPENSE_REPORT: { label: '지출결의서', color: 'indigo' },
+    BUSINESS_TRIP: { label: '출장여비정산서', color: 'rose' },
     LEAVE_REQUEST: { label: '휴가신청서', color: 'teal' },
     EARLY_LEAVE: { label: '조퇴/외출서', color: 'purple' },
     CONSUMABLES_PURCHASE: { label: '소모품 구매신청서', color: 'cyan' },
@@ -655,6 +657,15 @@ const ApprovalPage = () => {
                                     )}
                                     {selectedDoc.doc_type === 'EXPENSE_REPORT' && (
                                         <ExpenseReportForm 
+                                            data={selectedDoc.content || {}} 
+                                            onChange={() => {}} 
+                                            isReadOnly={true} 
+                                            documentData={selectedDoc}
+                                            currentUser={currentUser}
+                                        />
+                                    )}
+                                    {selectedDoc.doc_type === 'BUSINESS_TRIP' && (
+                                        <BusinessTripExpenseForm 
                                             data={selectedDoc.content || {}} 
                                             onChange={() => {}} 
                                             isReadOnly={true} 
