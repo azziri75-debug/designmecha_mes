@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from app.api.utils.email import send_approval_email
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -215,6 +216,7 @@ async def get_document_by_reference(
 @router.post("/documents", response_model=ApprovalDocumentResponse)
 async def create_document(
     doc_in: ApprovalDocumentCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ):
@@ -386,6 +388,28 @@ async def create_document(
 
         await db.commit()
 
+        # 🚨 신규 로직: 1차(또는 다음) 결재권자 이메일 발송
+        if db_doc.status in [ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS]:
+            next_step_res = await db.execute(
+                select(ApprovalStep)
+                .options(selectinload(ApprovalStep.approver))
+                .where(
+                    ApprovalStep.document_id == db_doc.id,
+                    ApprovalStep.status == "PENDING"
+                ).order_by(ApprovalStep.sequence.asc())
+            )
+            next_step = next_step_res.scalars().first()
+            if next_step and getattr(next_step, "approver", None):
+                approver_email = next_step.approver.email
+                if approver_email:
+                    background_tasks.add_task(
+                        send_approval_email,
+                        to_email=approver_email,
+                        doc_title=db_doc.title,
+                        drafter_name=current_user.name,
+                        reference_id=str(db_doc.id)
+                    )
+
     except HTTPException:
         await db.rollback()
         raise
@@ -438,6 +462,7 @@ async def get_document(
 async def process_approval(
     doc_id: int,
     action: ApprovalAction,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ):
@@ -504,6 +529,20 @@ async def process_approval(
         if next_step:
             doc.current_sequence += 1
             doc.status = ApprovalStatus.IN_PROGRESS
+            
+            # 🚨 신규 로직: 다음 결재권자 이메일 발송
+            next_step_approver_res = await db.execute(
+                select(Staff).where(Staff.id == next_step.approver_id)
+            )
+            next_approver = next_step_approver_res.scalars().first()
+            if next_approver and next_approver.email:
+                background_tasks.add_task(
+                    send_approval_email,
+                    to_email=next_approver.email,
+                    doc_title=doc.title,
+                    drafter_name=doc.author.name if doc.author else "기안자",
+                    reference_id=str(doc.id)
+                )
         else:
             doc.status = ApprovalStatus.COMPLETED
             print(f"[DEBUG] Document {doc.id} completed via process_approval. Type: {doc.doc_type}")

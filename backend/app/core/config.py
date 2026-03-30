@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "mes_erp"
     POSTGRES_PORT: int = 5432
     
+    # Email (Daum SMTP)
+    SMTP_SERVER: str = "smtp.daum.net"
+    SMTP_PORT: int = 465
+    SMTP_USER: str = "no-reply@designmecha.co.kr"
+    SMTP_PASSWORD: str = "ntsyulnwlpqlqbgd"
+    
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
