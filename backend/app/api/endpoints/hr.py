@@ -162,8 +162,8 @@ async def get_attendance_summary(
         elif isinstance(company.work_end_time, time_type):
             work_end_minutes = _time_obj_to_minutes(company.work_end_time)
 
-    # 해당 연도의 COMPLETED 결재 문서 조회 (VACATION, EARLY_LEAVE, OVERTIME)
-    TARGET_TYPES = ["VACATION", "EARLY_LEAVE", "OVERTIME"]
+    # 해당 연도의 COMPLETED 결재 문서 조회 (VACATION, EARLY_LEAVE, OVERTIME, LEAVE_REQUEST)
+    TARGET_TYPES = ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]
 
     year_start = datetime(year, 1, 1)
     year_end = datetime(year, 12, 31, 23, 59, 59)
@@ -193,7 +193,7 @@ async def get_attendance_summary(
     for doc in docs:
         content = doc.content or {}
 
-        if doc.doc_type == "VACATION":
+        if doc.doc_type in ["VACATION", "LEAVE_REQUEST"]:
             vacation_type = content.get("vacation_type", "연차")
             start_date_str = content.get("start_date")
             end_date_str = content.get("end_date") or start_date_str
@@ -558,8 +558,8 @@ async def get_monthly_attendance(
     records = records_res.scalars().all()
 
 
-    # 해당 월의 승인된 결재 문서 조회 (VACATION, EARLY_LEAVE, OVERTIME) - 소프트 삭제 제외
-    TARGET_TYPES = ["VACATION", "EARLY_LEAVE", "OVERTIME"]
+    # 해당 월의 승인된 결재 문서 조회 (VACATION, EARLY_LEAVE, OVERTIME, LEAVE_REQUEST) - 소프트 삭제 제외
+    TARGET_TYPES = ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]
     search_start = datetime.combine(start_date - timedelta(days=7), time_type.min)
     search_end = datetime.combine(end_date + timedelta(days=7), time_type.max)
 
@@ -591,7 +591,7 @@ async def get_monthly_attendance(
         applied_value = 0.0
         applied_unit = "일"
 
-        if doc.doc_type == "VACATION":
+        if doc.doc_type in ["VACATION", "LEAVE_REQUEST"]:
             s_str = content.get("start_date")
             e_str = content.get("end_date") or s_str
             if not s_str: continue

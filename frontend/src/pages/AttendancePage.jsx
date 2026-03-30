@@ -75,18 +75,26 @@ const AttendancePage = () => {
             // Map approvals by day
             const mappedApprovals = {};
             res.data.approval_items.forEach(doc => {
-                // date can be "YYYY-MM-DD" or "YYYY-MM-DD ~ YYYY-MM-DD"
                 if (!doc?.date || typeof doc.date !== 'string') return;
                 const parts = (doc.date || '').toString().split('~');
                 const startStr = parts[0].trim();
                 const endStr = (parts[1] || parts[0]).trim();
 
-                const startIdx = new Date(startStr).getDate();
-                const endIdx = new Date(endStr).getDate();
+                const [sY, sM, sD] = startStr.split('-').map(Number);
+                const [eY, eM, eD] = endStr.split('-').map(Number);
+                
+                if (!sY || !sM || !sD || !eY || !eM || !eD) return;
 
-                for (let i = startIdx; i <= endIdx; i++) {
-                    if (!mappedApprovals[i]) mappedApprovals[i] = [];
-                    mappedApprovals[i].push(doc);
+                let d = new Date(sY, sM - 1, sD);
+                const e = new Date(eY, eM - 1, eD);
+
+                while (d <= e) {
+                    if (d.getFullYear() === year && d.getMonth() + 1 === month) {
+                        const day = d.getDate();
+                        if (!mappedApprovals[day]) mappedApprovals[day] = [];
+                        mappedApprovals[day].push(doc);
+                    }
+                    d.setDate(d.getDate() + 1);
                 }
             });
             setApprovalData(mappedApprovals);
