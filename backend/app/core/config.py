@@ -15,8 +15,9 @@ class Settings(BaseSettings):
     # Email (Daum SMTP)
     SMTP_SERVER: str = "smtp.daum.net"
     SMTP_PORT: int = 465
-    SMTP_USER: str = "no-reply@designmecha.co.kr"
+    SMTP_USER: str = "azziri@daum.net"
     SMTP_PASSWORD: str = "ntsyulnwlpqlqbgd"
+    SMTP_SENDER: str = "no-reply@designmecha.co.kr"
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [

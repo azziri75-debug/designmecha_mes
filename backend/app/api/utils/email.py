@@ -35,7 +35,7 @@ def send_approval_email(to_email: str, doc_title: str, drafter_name: str, refere
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     # 🚨 수정 포인트: 다음 SMTP 스팸 필터를 통과하기 위한 표준 발신자 포맷팅
-    msg["From"] = formataddr(("디자인메카 결재시스템", settings.SMTP_USER))
+    msg["From"] = formataddr(("디자인메카 결재시스템", settings.SMTP_SENDER))
     msg["To"] = to_email
     msg.attach(MIMEText(html_content, "html"))
 
@@ -44,7 +44,7 @@ def send_approval_email(to_email: str, doc_title: str, drafter_name: str, refere
         with smtplib.SMTP_SSL(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
             # server.set_debuglevel(1) # 필요시 주석 해제하여 상세 로그 확인
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+            server.sendmail(settings.SMTP_SENDER, to_email, msg.as_string())
         logger.info(f"메일 발송 성공: {to_email}")
     except Exception as e:
         # 백그라운드 에러를 확실히 잡기 위해 에러 로그 출력
