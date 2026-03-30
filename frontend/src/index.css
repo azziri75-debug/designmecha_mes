@@ -11,6 +11,30 @@ body.resizing {
   user-select: none;
 }
 
+/* Global Table Shrink-to-Fit for Screen View */
+@media screen {
+  table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: auto;
+  }
+  
+  td {
+    /* Break long alphanumeric part numbers, but keep Korean words intact if possible */
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+    white-space: normal;
+  }
+
+  /* Exclude strictly truncated cells to preserve design intent */
+  td.truncate {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
 .table-header-resizable {
   position: relative;
 }
