@@ -10,9 +10,10 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
     // Initialize default data items
     useEffect(() => {
         let updates = {};
-        if (!data.items || data.items.length === 0) {
-            updates.items = Array(5).fill({ date: '', round_trip: '', local_transport: '', lodging: '', meals: '', parking: '', other: '' });
-        }
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (!data.start_date) updates.start_date = todayStr;
+        if (!data.end_date) updates.end_date = todayStr;
         
         // Auto-fill author info if draft
         if (!data.dept) updates.dept = documentData?.author?.department || currentUser?.department || '';
@@ -24,6 +25,47 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
             onChange({ ...data, ...updates });
         }
     }, []);
+
+    // Dynamically adjust item rows based on date range
+    useEffect(() => {
+        if (isReadOnly || typeof onChange !== 'function') return;
+        if (!data.start_date || !data.end_date) return;
+        
+        const start = new Date(data.start_date);
+        const end = new Date(data.end_date);
+        const diffTime = end.getTime() - start.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        if (diffDays > 0 && diffDays <= 60) {
+            let itemsChanged = false;
+            const currentItems = data.items || [];
+            
+            if (currentItems.length !== diffDays) itemsChanged = true;
+            
+            const newItems = [];
+            for (let i = 0; i < diffDays; i++) {
+                const currentDate = new Date(start);
+                currentDate.setDate(start.getDate() + i);
+                const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`; // "3/10"
+                
+                const existingItem = currentItems[i] || { 
+                    round_trip: '', local_transport: '', lodging: '', meals: '', parking: '', other: '' 
+                };
+                
+                if (existingItem.date !== dateStr) itemsChanged = true;
+                
+                newItems.push({ ...existingItem, date: dateStr });
+            }
+            
+            let updates = {};
+            if (data.days !== diffDays) updates.days = diffDays;
+            if (itemsChanged) updates.items = newItems;
+
+            if (Object.keys(updates).length > 0) {
+                onChange({ ...data, ...updates });
+            }
+        }
+    }, [data.start_date, data.end_date, isReadOnly]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
@@ -38,7 +80,7 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
     };
 
     // Derived calculations
-    const items = data.items || Array(5).fill({});
+    const items = data.items || [];
     
     const calculateRowTotal = (item) => {
         const sum = ['round_trip', 'local_transport', 'lodging', 'meals', 'parking', 'other']
