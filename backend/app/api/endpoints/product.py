@@ -14,7 +14,7 @@ from app.schemas.product import (
     ProductCreate, ProductResponse, ProcessCreate, ProcessResponse, 
     ProductUpdate, ProcessUpdate, ProductGroupCreate, ProductGroupResponse, 
     ProductGroupUpdate, ProductPriceHistory, ProcessCostHistory, ProcessQuickCreate,
-    BOMItemCreate, BOMItemResponse
+    BOMItemCreate, BOMItemResponse, CloneToTargetsRequest
 )
 
 router = APIRouter()
@@ -649,3 +649,71 @@ async def delete_bom_item(
         raise HTTPException(status_code=500, detail=f"BOM 삭제 실패: {str(e)}")
 
     return {"message": "BOM item deleted successfully"}
+
+@router.post("/products/{product_id}/clone-to-targets")
+async def clone_product_to_targets(
+    product_id: int,
+    request: CloneToTargetsRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    원본 제품의 공정 및 BOM 정보를 여러 대상 제품에 덮어쓰기
+    """
+    # 1. Fetch source product
+    source_result = await db.execute(
+        select(Product)
+        .options(selectinload(Product.standard_processes), selectinload(Product.bom_items))
+        .where(Product.id == product_id)
+    )
+    source_product = source_result.scalar_one_or_none()
+    if not source_product:
+        raise HTTPException(status_code=404, detail="Source product not found")
+
+    if not request.target_product_ids:
+        raise HTTPException(status_code=400, detail="No target products specified")
+
+    try:
+        # For each target product
+        for target_id in request.target_product_ids:
+            if target_id == product_id:
+                continue # Skip self
+
+            # 2. Delete existing routing processes
+            await db.execute(delete(ProductProcess).where(ProductProcess.product_id == target_id))
+            
+            # 3. Delete existing BOM items
+            await db.execute(delete(BOM).where(BOM.parent_product_id == target_id))
+            
+            # 4. Insert new processes from source
+            for pp in source_product.standard_processes:
+                new_pp = ProductProcess(
+                    product_id=target_id,
+                    process_id=pp.process_id,
+                    sequence=pp.sequence,
+                    estimated_time=pp.estimated_time,
+                    notes=pp.notes,
+                    partner_name=pp.partner_name,
+                    equipment_name=pp.equipment_name,
+                    attachment_file=pp.attachment_file,
+                    course_type=pp.course_type,
+                    cost=pp.cost
+                )
+                db.add(new_pp)
+            
+            # 5. Insert new BOM items from source
+            for bom in source_product.bom_items:
+                if bom.child_product_id == target_id:
+                    continue # Prevent self-referencing
+                new_bom = BOM(
+                    parent_product_id=target_id,
+                    child_product_id=bom.child_product_id,
+                    required_quantity=bom.required_quantity
+                )
+                db.add(new_bom)
+
+        await db.commit()
+        return {"message": "Success", "cloned_to": request.target_product_ids}
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Clone failed: {str(e)}")

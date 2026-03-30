@@ -155,3 +155,6 @@ class ProcessCostHistory(BaseModel):
     partner_name: Optional[str] = None
     unit_price: float
     source: str # "PURCHASE" or "OUTSOURCING"
+
+class CloneToTargetsRequest(BaseModel):
+    target_product_ids: List[int]

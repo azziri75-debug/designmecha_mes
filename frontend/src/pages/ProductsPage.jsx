@@ -3,6 +3,7 @@ import api from '../lib/api';
 import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt, Copy, Printer } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
+import { Box, Typography, Button, Checkbox, Dialog, DialogTitle, DialogContent } from '@mui/material';
 import { cn, safeParseJSON } from '../lib/utils';
 import FileViewerModal from '../components/FileViewerModal';
 import ProcessGroupManager from '../components/ProcessGroupManager';
@@ -76,6 +77,12 @@ const ProductsPage = ({ type }) => {
 
     // Print State
     const [printProductId, setPrintProductId] = useState(null);
+
+    // Clone System Refactoring State
+    const [cloneChoiceModalOpen, setCloneChoiceModalOpen] = useState(false);
+    const [selectedSourceProduct, setSelectedSourceProduct] = useState(null);
+    const [isCloneMode, setIsCloneMode] = useState(false); // 리스트 체크박스 모드 활성화 여부
+    const [targetProductIds, setTargetProductIds] = useState([]);
 
     const ITEM_TYPES = {
         PRODUCED: '생산제품',
@@ -409,6 +416,28 @@ const ProductsPage = ({ type }) => {
         });
         setDetailSubTab('info');
         setShowProductModal(true);
+    };
+
+    const handleCloneClick = (product) => {
+        setSelectedSourceProduct(product);
+        setCloneChoiceModalOpen(true);
+    };
+
+    const handleExecuteOverwrite = async () => {
+        if (window.confirm("선택한 제품들에 덮어쓰기를 진행할까요?\n(고객사, 품명, 규격 등 기존 정보는 유지되며, 공정과 BOM만 원본과 동일하게 덮어씌워집니다.)")) {
+            try {
+                // The endpoint is /product/products/:id/clone-to-targets
+                await api.post(`/product/products/${selectedSourceProduct.id}/clone-to-targets`, { 
+                    target_product_ids: targetProductIds 
+                });
+                alert('성공적으로 공정과 BOM이 덮어씌워졌습니다.');
+                setIsCloneMode(false);
+                setTargetProductIds([]);
+                fetchProducts();
+            } catch (e) {
+                alert('복제 중 오류가 발생했습니다: ' + (e.response?.data?.detail || e.message));
+            }
+        }
     };
 
     const handleDeleteProduct = async (id) => {
@@ -887,10 +916,27 @@ const ProductsPage = ({ type }) => {
                         />
                     </div>
 
+                    {isCloneMode && (
+                        <Box sx={{ p: 2, mb: 0, borderBottom: '1px solid #374151', bgcolor: '#fff3cd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography sx={{ color: '#856404', fontWeight: 'bold' }}>
+                                🔄 [원본: {selectedSourceProduct?.name}] - 덮어씌울 대상 제품을 아래 리스트에서 체크해주세요.
+                            </Typography>
+                            <Box>
+                                <Button variant="outlined" color="inherit" onClick={() => { setIsCloneMode(false); setTargetProductIds([]); }} sx={{ mr: 1, bgcolor: 'white', borderColor: '#ccc' }}>
+                                    취소
+                                </Button>
+                                <Button variant="contained" color="error" onClick={handleExecuteOverwrite} disabled={targetProductIds.length === 0} sx={{ fontWeight: 'bold' }}>
+                                    선택한 제품에 덮어쓰기 ({targetProductIds.length}건)
+                                </Button>
+                            </Box>
+                        </Box>
+                    )}
+
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-gray-400">
                             <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
+                                    {isCloneMode && <th className="px-3 py-3 w-10 text-center">선택</th>}
                                     <ResizableTh className="px-6 py-3">{type === 'PART' ? '구입처' : '거래처'}</ResizableTh>
                                     {type !== 'CONSUMABLE' && <ResizableTh className="px-6 py-3">{type === 'PART' ? '부품 그룹' : '제품 그룹'}</ResizableTh>}
                                     <ResizableTh className="px-6 py-3">{type === 'PART' ? '부품명' : '품명'}</ResizableTh>
@@ -935,10 +981,23 @@ const ProductsPage = ({ type }) => {
                                     return sorted.length > 0 ? sorted.map((product) => (
                                         <React.Fragment key={product.id}>
                                             <tr
-                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer group"
+                                                className={cn("hover:bg-gray-700/50 transition-colors cursor-pointer group", isCloneMode && targetProductIds.includes(product.id) ? "bg-blue-900/30" : "")}
                                                 onClick={() => toggleExpand(product.id)}
                                                 onDoubleClick={() => handleEditProduct(product)}
                                             >
+                                                {isCloneMode && (
+                                                    <td className="px-3 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                                        <Checkbox
+                                                            checked={targetProductIds.includes(product.id)}
+                                                            disabled={product.id === selectedSourceProduct?.id}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) setTargetProductIds([...targetProductIds, product.id]);
+                                                                else setTargetProductIds(targetProductIds.filter(id => id !== product.id));
+                                                            }}
+                                                            sx={{ color: 'gray', '&.Mui-checked': { color: '#3b82f6' } }}
+                                                        />
+                                                    </td>
+                                                )}
                                                 <td className="px-6 py-4">
                                                     {partners.find(p => p.id === product.partner_id)?.name || '-'}
                                                 </td>
@@ -1013,9 +1072,13 @@ const ProductsPage = ({ type }) => {
                                                         <Printer className="w-4 h-4" />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDuplicateProduct(product)}
-                                                        className="text-gray-400 hover:text-emerald-400"
-                                                        title="복사"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCloneClick(product);
+                                                        }}
+                                                        className={cn("text-gray-400 hover:text-emerald-400", isCloneMode && "opacity-30 cursor-not-allowed")}
+                                                        disabled={isCloneMode}
+                                                        title="복제"
                                                     >
                                                         <Copy className="w-4 h-4" />
                                                     </button>
