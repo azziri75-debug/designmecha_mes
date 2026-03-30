@@ -7,41 +7,37 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
     useEffect(() => {
-        if (!data.start_date) return;
+        const todayStr = new Date().toISOString().split('T')[0];
+        const currentStart = data.start_date || todayStr;
+        const currentEnd = data.end_date || currentStart;
+        const vType = data.vacation_type || '연차';
 
-        let newEndDate = data.end_date;
-        let newDays = data.leave_days;
-        let changed = false;
+        let updates = {};
 
-        // 1. 종료일이 비어있으면 시작일로 자동 동기화
-        if (!data.end_date) {
-            newEndDate = data.start_date;
-            changed = true;
-        }
+        // 1. 초기 상태가 텅 비어있다면 무조건 기본값을 꽂아 넣음
+        if (!data.start_date) updates.start_date = currentStart;
+        if (!data.end_date) updates.end_date = currentEnd;
+        if (!data.vacation_type) updates.vacation_type = vType;
 
-        // 2. 일수 계산
-        const isHalfDay = data.vacation_type && data.vacation_type.includes('반차');
-        if (isHalfDay) {
-            if (parseFloat(newDays) !== 0.5) {
-                newDays = 0.5;
-                changed = true;
-            }
-        } else if (data.start_date && newEndDate) {
-            const start = new Date(data.start_date);
-            const end = new Date(newEndDate);
+        let calcDays = data.leave_days;
+
+        // 2. 날짜 계산
+        if (vType.includes('반차')) {
+            if (parseFloat(calcDays) !== 0.5) updates.leave_days = 0.5;
+        } else {
+            const start = new Date(currentStart);
+            const end = new Date(currentEnd);
             if (end >= start) {
                 const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
-                if (parseFloat(newDays) !== diffDays) {
-                    newDays = diffDays;
-                    changed = true;
-                }
+                if (parseFloat(calcDays) !== diffDays) updates.leave_days = diffDays;
             }
         }
 
-        // 변경된 부분이 있을 때만 한 번에 업데이트 (무한루프 방지)
-        if (changed) {
-            onChange({ ...data, end_date: newEndDate, leave_days: newDays });
+        // 3. 업데이트 사항이 있을 때만 부모 state 변경
+        if (Object.keys(updates).length > 0) {
+            onChange({ ...data, ...updates });
         }
+    // 🚨 수동 기입 덮어쓰기 방지를 위해 data.leave_days는 의존성 배열에서 제외할 것
     }, [data.start_date, data.end_date, data.vacation_type]);
 
     const handleChange = (field, value) => {

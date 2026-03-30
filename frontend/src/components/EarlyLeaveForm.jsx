@@ -9,19 +9,29 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
     const isOuting = data.leave_type === '외출';
 
     useEffect(() => {
+        let updates = {};
+        
+        // 1. 초기값 강제 셋업 (이게 있어야 UI가 꼬이지 않음)
+        if (!data.leave_type) updates.leave_type = '조퇴';
+        if (!data.date) updates.date = new Date().toISOString().split('T')[0];
+
+        // 2. 시간 계산
         if (data.leave_time && data.return_time) {
             const start = new Date(`2000-01-01T${data.leave_time}`);
             const end = new Date(`2000-01-01T${data.return_time}`);
             let diff = (end - start) / (1000 * 60 * 60);
-            if (diff < 0) diff += 24; // 자정을 넘기는 경우 처리
+            if (diff < 0) diff += 24;
             
-            // 소수점 1자리까지 표시
             const calcHours = parseFloat(diff.toFixed(1));
             if (data.hours !== calcHours) {
-                onChange({ ...data, hours: calcHours });
+                updates.hours = calcHours;
             }
         }
-    }, [data.leave_time, data.return_time]);
+
+        if (Object.keys(updates).length > 0) {
+            onChange({ ...data, ...updates });
+        }
+    }, [data.leave_type, data.date, data.leave_time, data.return_time]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
