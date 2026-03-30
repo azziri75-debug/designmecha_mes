@@ -619,8 +619,10 @@ const ApprovalPage = () => {
                                 </div>
                             )}
 
-                            <div className={cn(
-                                "bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner overflow-x-auto a4-paper-container print-safe-area",
+                            <div 
+                                style={{ overflowX: 'auto' }}
+                                className={cn(
+                                "bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner a4-paper-container print-safe-area",
                                 selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 rounded-none border-0 shadow-none"
                             )}>
                                 <Box sx={{ 
