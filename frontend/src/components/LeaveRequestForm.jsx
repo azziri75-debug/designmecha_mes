@@ -1,8 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, FormControlLabel, Radio, Checkbox, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import ApprovalGrid from './ApprovalGrid';
 
 const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
+    const today = new Date();
+    const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+
+    useEffect(() => {
+        if (data.start_date && data.end_date) {
+            const start = new Date(data.start_date);
+            const end = new Date(data.end_date);
+            if (end >= start) {
+                // 밀리초를 일(Day)로 변환 (+1일 포함)
+                const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+                // 기존 입력값이 없거나, 기존 값과 다를 때만 자동 업데이트 (수동 기입 덮어쓰기 방지)
+                if (!data.leave_days || parseFloat(data.leave_days) === diffDays - 1 || parseFloat(data.leave_days) === diffDays) {
+                    onChange({ ...data, leave_days: diffDays });
+                }
+            }
+        }
+    }, [data.start_date, data.end_date]);
+
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
         
@@ -117,7 +135,17 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                                     readOnly={isReadOnly}
                                     style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
                                 />
-                                <Typography sx={{ ml: 2 }}>(&nbsp;&nbsp;&nbsp;&nbsp;)일간</Typography>
+                                <Typography sx={{ ml: 2 }}>(&nbsp;</Typography>
+                                <input 
+                                    type="number" 
+                                    step="0.5" 
+                                    value={data.leave_days || ''}
+                                    onChange={(e) => handleChange('leave_days', e.target.value)}
+                                    placeholder="일수"
+                                    readOnly={isReadOnly}
+                                    style={{ width: '50px', border: 'none', borderBottom: '1px solid #ccc', outline: 'none', textAlign: 'center' }}
+                                />
+                                <Typography className="text-sm">)일간</Typography>
                             </Box>
                             {data.vacation_type === '반차' && (
                                 <Box sx={{ mt: 1, p: 1, border: '1px dashed #ccc', borderRadius: 1, bgcolor: '#fffde7' }}>
@@ -150,9 +178,9 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                     상기 사유와 같이 휴가원을 제출하오니 허가하여 주시기 바랍니다.
                 </Typography>
                 
-                <Typography sx={{ mb: 6 }}>
-                    20&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;년&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;일
-                </Typography>
+                <div className="text-center mt-10 mb-6 font-bold text-lg">
+                    {formattedDate}
+                </div>
                 
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mb: 4 }}>
                     <Typography sx={{ fontWeight: 'bold' }}>신청인 :</Typography>

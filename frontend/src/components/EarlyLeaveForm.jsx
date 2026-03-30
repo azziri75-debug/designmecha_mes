@@ -3,6 +3,9 @@ import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, For
 import ApprovalGrid from './ApprovalGrid';
 
 const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
+    const today = new Date();
+    const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
         
@@ -130,9 +133,9 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                     상기 사유와 같이 조퇴 · 외출원을 제출하오니 허가하여 주시기 바랍니다.
                 </Typography>
                 
-                <Typography sx={{ mb: 6 }}>
-                    20&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;년&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;일
-                </Typography>
+                <div className="text-center mt-10 mb-6 font-bold text-lg">
+                    {formattedDate}
+                </div>
                 
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mb: 4 }}>
                     <Typography sx={{ fontWeight: 'bold' }}>신청인 :</Typography>
