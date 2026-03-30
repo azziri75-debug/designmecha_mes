@@ -1634,7 +1634,9 @@ const ProductsPage = ({ type }) => {
                                                             <div className="col-span-4">
                                                                 <CreatableSelect
                                                                     isClearable
-                                                                    options={processes.map(proc => ({ value: proc.id, label: proc.name }))}
+                                                                    options={processes
+                                                                        .filter(proc => !proc.group_id || String(proc.group_id) === String(productFormData.group_id))
+                                                                        .map(proc => ({ value: proc.id, label: proc.name }))}
                                                                     value={processes.find(pr => pr.id == p.process_id) ? { value: p.process_id, label: processes.find(pr => pr.id == p.process_id).name } : null}
                                                                     onChange={(selected) => {
                                                                         updateRoutingProcess(index, 'process_id', selected ? selected.value : "");
