@@ -161,7 +161,7 @@ const Layout = () => {
                 </header>
 
                 <div className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-                    <div className="max-w-7xl mx-auto space-y-6">
+                    <div className="w-full mx-auto space-y-6">
                         <Outlet />
                     </div>
                 </div>

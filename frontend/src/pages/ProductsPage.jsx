@@ -973,7 +973,6 @@ const ProductsPage = ({ type }) => {
                                                 <td className="px-6 py-4 font-medium text-blue-400">
                                                     {product.recent_price ? `₩${product.recent_price.toLocaleString()}` : '-'}
                                                 </td>
-                                                <td className="px-6 py-4 text-gray-500 truncate max-w-xs" title={product.note}>{product.note || '-'}</td>
                                                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                                     {(() => {
                                                         let fileList = [];
@@ -1001,6 +1000,7 @@ const ProductsPage = ({ type }) => {
                                                         return <span className="text-gray-600 text-xs">-</span>;
                                                     })()}
                                                 </td>
+                                                <td className="px-6 py-4 text-gray-500 truncate max-w-xs" title={product.note}>{product.note || '-'}</td>
                                                 <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                                     <button
                                                         onClick={(e) => {
