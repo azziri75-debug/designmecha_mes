@@ -78,7 +78,9 @@ const ProductionPage = () => {
 
     const fetchOrders = async () => {
         try {
-            const response = await api.get('/sales/orders/'); // Fetch all to include PENDING
+            const params = {};
+            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
+            const response = await api.get('/sales/orders/', { params }); // Fetch all to include PENDING
             setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch orders", error);
@@ -132,7 +134,9 @@ const ProductionPage = () => {
 
     const fetchStockProductions = async () => {
         try {
-            const response = await api.get('/inventory/productions/?status=PENDING');
+            const params = { status: 'PENDING' };
+            if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
+            const response = await api.get('/inventory/productions', { params });
             setStockProductions(response.data);
         } catch (error) {
             console.error("Failed to fetch stock productions", error);
@@ -178,6 +182,8 @@ const ProductionPage = () => {
 
     useEffect(() => {
         fetchPlans();
+        fetchOrders();
+        fetchStockProductions();
     }, [startDate, endDate, filterPartner, searchQuery, selectedMajorGroupId]);
 
 
@@ -711,17 +717,6 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
             unplannedOrders = unplannedOrders.filter(o => o.partner_id === parseInt(filterPartner));
             unplannedStockProductions = []; // No partner links for stock production usually
         }
-    }
-
-    // Business Unit Filtering (New)
-    if (selectedMajorGroupId) {
-        const buId = parseInt(selectedMajorGroupId);
-        unplannedOrders = unplannedOrders.filter(o => 
-            o.items?.some(it => it.product?.group_id === buId || it.product?.group?.parent_id === buId)
-        );
-        unplannedStockProductions = unplannedStockProductions.filter(sp => 
-            sp.product?.group_id === buId || sp.product?.group?.parent_id === buId
-        );
     }
 
     return (

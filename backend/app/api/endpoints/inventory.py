@@ -431,7 +431,7 @@ async def read_stock_productions(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     partner_id: Optional[int] = None,
-    product_name: Optional[str] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
     query = select(StockProduction).join(Product).options(
@@ -448,6 +448,12 @@ async def read_stock_productions(
         query = query.where(StockProduction.partner_id == partner_id)
     if product_name:
         query = query.where(Product.name.ilike(f"%{product_name}%"))
+        
+    if major_group_id:
+        from app.models.product import ProductGroup
+        subquery = select(StockProduction.id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+        query = query.where(StockProduction.id.in_(subquery))
 
     
     result = await db.execute(query)
