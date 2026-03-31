@@ -89,6 +89,7 @@ const ApprovalPage = () => {
     // Modal states
     const [showDocDetail, setShowDocDetail] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState(null);
+    const [approvalComment, setApprovalComment] = useState('');
 
     // Settings states
     const [isPrinting, setIsPrinting] = React.useState(false);
@@ -192,16 +193,21 @@ const ApprovalPage = () => {
     };
 
     const canApprove = (doc) => {
-        if (!doc || !currentUser || !doc.steps) return false;
-        const myId = String(currentUser?.id || "");
-        const pendingApprovers = doc.steps.filter(a => a.status === 'PENDING');
-        const currentApproverToSign = pendingApprovers.length > 0 ? pendingApprovers[0] : null;
-        if (!currentApproverToSign) return false;
-        const approverId = String(currentApproverToSign.approver_id || "");
-        const result = (approverId === myId);
-        if (result) console.log("결재 권한 확인 성공:", { myId, approverId });
-        return result;
+        if (!doc || !currentUser) return false;
+        const steps = Array.isArray(doc.steps) ? doc.steps : [];
+        if (steps.length === 0) return false;
+        const myId = Number(currentUser?.id);
+        const currentSeq = doc.current_sequence ?? 1;
+        // Must match the exact current_sequence AND be PENDING
+        const myStep = steps.find(
+            s => Number(s.sequence) === Number(currentSeq) &&
+                 Number(s.approver_id) === myId &&
+                 s.status === 'PENDING'
+        );
+        if (myStep) console.log("결재 권한 확인 성공:", { myId, sequence: currentSeq });
+        return !!myStep;
     };
+
 
     const handleSaveLines = async (type) => {
         try {
@@ -815,40 +821,41 @@ const ApprovalPage = () => {
                         </div>
 
                         {canApprove(selectedDoc) && (
-                            <div className="p-6 border-t border-gray-600 bg-gray-900 sticky bottom-0 z-[100] shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
-                                <div className="max-w-4xl mx-auto space-y-4">
+                            <div className="p-4 md:p-6 border-t border-gray-600 bg-gray-900 flex-shrink-0 z-[100] shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+                                <div className="max-w-4xl mx-auto space-y-3">
                                     <div className="flex flex-col gap-2">
                                         <label className="text-sm font-medium text-gray-400">결재 의견 / 반려 사유 (필요 시)</label>
                                         <textarea
-                                            id="comment"
-                                            className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 min-h-[60px]"
+                                            value={approvalComment}
+                                            onChange={e => setApprovalComment(e.target.value)}
+                                            className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 min-h-[60px] text-sm"
                                             placeholder="반려 시에는 사유를 명확히 적어주세요"
                                         />
                                     </div>
-                                    <div className="flex gap-4">
+                                    <div className="flex gap-3">
                                         <button
                                             onClick={() => {
-                                                const comment = document.getElementById('comment').value;
-                                                if (!comment) {
+                                                if (!approvalComment.trim()) {
                                                     alert('반려 사유를 입력해주세요.');
                                                     return;
                                                 }
-                                                handleProcess(selectedDoc.id, 'REJECTED', comment);
+                                                handleProcess(selectedDoc.id, 'REJECTED', approvalComment);
+                                                setApprovalComment('');
                                             }}
-                                            className="flex-1 px-4 py-3 bg-red-900/40 hover:bg-red-900/60 text-red-400 rounded-xl transition-all font-bold border border-red-800/50 flex items-center justify-center gap-2"
+                                            className="flex-1 px-4 py-3 bg-red-900/40 hover:bg-red-900/60 text-red-400 rounded-xl transition-all font-bold border border-red-800/50 flex items-center justify-center gap-2 text-sm"
                                         >
-                                            <X className="w-5 h-5" />
-                                            반려하기
+                                            <X className="w-4 h-4" />
+                                            반려
                                         </button>
                                         <button
                                             onClick={() => {
-                                                const comment = document.getElementById('comment').value;
-                                                handleProcess(selectedDoc.id, 'APPROVED', comment);
+                                                handleProcess(selectedDoc.id, 'APPROVED', approvalComment);
+                                                setApprovalComment('');
                                             }}
-                                            className="flex-[2] px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-lg shadow-emerald-900/20 font-bold flex items-center justify-center gap-2"
+                                            className="flex-[2] px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-lg shadow-emerald-900/20 font-bold flex items-center justify-center gap-2 text-sm"
                                         >
-                                            <CheckCircle2 className="w-5 h-5" />
-                                            승인/서명하기
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            승인하기
                                         </button>
                                     </div>
                                 </div>
