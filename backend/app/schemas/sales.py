@@ -81,7 +81,7 @@ class SalesOrderItemUpdate(BaseModel):
 class SalesOrderItemSimple(SalesOrderItemBase):
     id: int
     order_id: int
-    delivered_quantity: int
+    delivered_quantity: float = 0
     status: str
     product: Optional[ProductSimple] = None
 
@@ -91,7 +91,7 @@ class SalesOrderItemSimple(SalesOrderItemBase):
 class SalesOrderItem(SalesOrderItemBase):
     id: int
     order_id: int
-    delivered_quantity: int
+    delivered_quantity: float = 0
     status: str
     product: Optional[Product] = None
 
