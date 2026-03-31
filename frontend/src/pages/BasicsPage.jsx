@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { Plus, Search, Building2, User, MoreHorizontal, X, UserPlus, Phone, Mail, Pencil, Trash, Smartphone, Upload, FileText, MapPin, Factory } from 'lucide-react';
 import { cn, getImageUrl, safeParseJSON } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 
 import FileViewerModal from '../components/FileViewerModal';
 import Card from '../components/Card';
@@ -67,13 +68,10 @@ const autoHyphen = (value, type) => {
 
 const BasicsPageContent = () => {
     const [activeTab, setActiveTab] = useState('partners');
-    const [user] = useState(() => {
-        const saved = localStorage.getItem('mes_user') || localStorage.getItem('user');
-        const parsed = safeParseJSON(saved, {});
-        // Force is_sysadmin for admin login_id as a fallback
-        if (parsed.login_id === 'admin') parsed.is_sysadmin = true;
-        return parsed;
-    });
+    const { user: authUser } = useAuth();
+
+    // Always use live AuthContext user so re-login reflects immediately
+    const user = authUser || safeParseJSON(localStorage.getItem('mes_user') || localStorage.getItem('user'), {});
 
     // System Admin: ONLY users with is_sysadmin toggle OR the master 'admin' login
     // Regular ADMIN users without the toggle cannot edit staff/company info
