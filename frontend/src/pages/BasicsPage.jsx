@@ -1899,7 +1899,7 @@ const BasicsPageContent = () => {
                                                 <span className="text-[11px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">관리자 전용 설정</span>
                                             </div>
 
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-blue-600/5 border border-blue-500/20 p-4 rounded-xl">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-600/5 border border-blue-500/20 p-4 rounded-xl">
                                                 <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
                                                     <div className="flex flex-col">
                                                         <span className="text-xs font-semibold text-white">시스템 관리자</span>
@@ -1913,6 +1913,21 @@ const BasicsPageContent = () => {
                                                             className="sr-only peer"
                                                         />
                                                         <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                    </div>
+                                                </label>
+                                                <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-semibold text-white">회계 담당자</span>
+                                                        <span className="text-[10px] text-amber-500">결재 완료 시 메일 수신</span>
+                                                    </div>
+                                                    <div className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.is_accounting === true} 
+                                                            onChange={(e) => setFormData(prev => ({ ...prev, is_accounting: e.target.checked }))} 
+                                                            className="sr-only peer"
+                                                        />
+                                                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-amber-600"></div>
                                                     </div>
                                                 </label>
                                                 <label className="flex items-center justify-between p-2 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-blue-500/50 transition-colors">
