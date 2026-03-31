@@ -75,6 +75,10 @@ const ProductsPage = ({ type }) => {
     const [bomNewRow, setBomNewRow] = useState({ child_product_id: '', required_quantity: 1 }); // 새 BOM 항목 입력용
     const [loadingBom, setLoadingBom] = useState(false);
 
+    // Quick Part Registration State (Sub-modal for BOM)
+    const [showQuickPartModal, setShowQuickPartModal] = useState(false);
+    const [quickPartData, setQuickPartData] = useState({ name: "", specification: "", unit: "EA", partner_id: "", major_group_id: "", group_id: "" });
+
     // Print State
     const [printProductId, setPrintProductId] = useState(null);
 
@@ -611,6 +615,32 @@ const ProductsPage = ({ type }) => {
         } catch (error) {
             console.error("Quick process creation failed", error);
             alert("공정 등록 실패");
+        }
+    };
+
+    const handleQuickCreatePart = async (e) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...quickPartData,
+                item_type: 'PART',
+                unit: quickPartData.unit || 'EA'
+            };
+            
+            const res = await api.post('/product/products/', payload);
+            const newPart = res.data;
+
+            // Add to allParts list for immediate selection
+            setAllParts(prev => [...prev, newPart]);
+
+            // Automatically select in BOM new row
+            setBomNewRow(prev => ({ ...prev, child_product_id: newPart.id }));
+
+            setShowQuickPartModal(false);
+            alert("부품이 등록되었으며 BOM 선택창에 자동 적용되었습니다.");
+        } catch (error) {
+            console.error("Quick part creation failed", error);
+            alert("부품 등록 실패: " + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -1779,18 +1809,38 @@ const ProductsPage = ({ type }) => {
 
                                     {/* BOM \ud56d\ubaa9 \uc785\ub825 */}
                                     <div className="flex items-center gap-2 bg-gray-900/50 border border-gray-700 rounded-lg p-3">
-                                        <select
-                                            value={bomNewRow.child_product_id}
-                                            onChange={(e) => setBomNewRow(prev => ({ ...prev, child_product_id: e.target.value }))}
-                                            className="flex-1 bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
-                                        >
-                                            <option value="">하위 품목 선택...</option>
-                                            {allParts.filter(p => p.id !== productFormData.id && p.item_type !== 'CONSUMABLE').map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    [{ITEM_TYPES[p.item_type] || p.item_type || '-'}] {p.name} {p.specification ? `(${p.specification})` : ''}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="flex-1">
+                                            <CreatableSelect
+                                                isClearable
+                                                options={allParts
+                                                    .filter(p => p.id !== productFormData.id && p.item_type !== 'CONSUMABLE')
+                                                    .map(p => ({ 
+                                                        value: p.id, 
+                                                        label: `[${ITEM_TYPES[p.item_type] || p.item_type || '-'}] ${p.name} ${p.specification ? `(${p.specification})` : ''}` 
+                                                    }))}
+                                                value={allParts.find(p => p.id == bomNewRow.child_product_id) ? { 
+                                                    value: bomNewRow.child_product_id, 
+                                                    label: `[${ITEM_TYPES[allParts.find(p => p.id == bomNewRow.child_product_id).item_type] || '-'}] ${allParts.find(p => p.id == bomNewRow.child_product_id).name} ${allParts.find(p => p.id == bomNewRow.child_product_id).specification ? `(${allParts.find(p => p.id == bomNewRow.child_product_id).specification})` : ''}`
+                                                } : null}
+                                                onChange={(selected) => {
+                                                    setBomNewRow(prev => ({ ...prev, child_product_id: selected ? selected.value : "" }));
+                                                }}
+                                                onCreateOption={(inputValue) => {
+                                                    setQuickPartData({
+                                                        name: inputValue,
+                                                        specification: "",
+                                                        unit: "EA",
+                                                        partner_id: "",
+                                                        major_group_id: productFormData.major_group_id || "",
+                                                        group_id: productFormData.group_id || ""
+                                                    });
+                                                    setShowQuickPartModal(true);
+                                                }}
+                                                styles={selectStyles}
+                                                placeholder="하위 품목 검색 및 신규 등록..."
+                                                formatCreateLabel={(inputValue) => `"${inputValue}" 신규 등록`}
+                                            />
+                                        </div>
                                         <div className="flex items-center gap-1">
                                             <input
                                                 type="number"
@@ -2240,6 +2290,106 @@ const ProductsPage = ({ type }) => {
                     </Button>
                 </DialogContent>
             </Dialog>
+
+            {/* Quick Part Registration Modal (Sub-modal for BOM) */}
+            {showQuickPartModal && (
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg shadow-2xl overflow-hidden animation-fade-in">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Plus className="w-5 h-5 text-blue-500" />
+                                신규 부품 등록 (BOM 전용)
+                            </h3>
+                            <button onClick={() => setShowQuickPartModal(false)} className="text-gray-400 hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleQuickCreatePart} className="p-6 space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-300">부품명 (자동입력)</label>
+                                <input
+                                    value={quickPartData.name}
+                                    readOnly
+                                    className="w-full bg-gray-900 border border-gray-700 text-gray-400 rounded-lg px-3 py-2 outline-none text-sm"
+                                />
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-300">규격/사양</label>
+                                <input
+                                    value={quickPartData.specification}
+                                    onChange={(e) => setQuickPartData(prev => ({ ...prev, specification: e.target.value }))}
+                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                    placeholder="규격을 입력하세요"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-300">단위</label>
+                                    <input
+                                        value={quickPartData.unit}
+                                        onChange={(e) => setQuickPartData(prev => ({ ...prev, unit: e.target.value }))}
+                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                        placeholder="EA"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-300">거래처 (선택)</label>
+                                    <select
+                                        value={quickPartData.partner_id}
+                                        onChange={(e) => setQuickPartData(prev => ({ ...prev, partner_id: e.target.value }))}
+                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                    >
+                                        <option value="">거래처 선택</option>
+                                        {partners.filter(p => {
+                                            const types = Array.isArray(p.partner_type) ? p.partner_type : safeParseJSON(p.partner_type, []);
+                                            return types.includes('SUPPLIER') || types.includes('BOTH');
+                                        }).map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-300">대그룹 (Major)</label>
+                                    <select
+                                        value={quickPartData.major_group_id}
+                                        onChange={(e) => setQuickPartData(prev => ({ ...prev, major_group_id: e.target.value, group_id: "" }))}
+                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                    >
+                                        <option value="">대그룹 선택</option>
+                                        {groups.filter(g => g.type === 'MAJOR').map(g => (
+                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-300">소그룹 (Minor)</label>
+                                    <select
+                                        value={quickPartData.group_id}
+                                        onChange={(e) => setQuickPartData(prev => ({ ...prev, group_id: e.target.value }))}
+                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                                        disabled={!quickPartData.major_group_id}
+                                    >
+                                        <option value="">소그룹 선택</option>
+                                        {groups.filter(g => g.parent_id === parseInt(quickPartData.major_group_id)).map(g => (
+                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex justify-end gap-3 border-t border-gray-700 mt-6">
+                                <button type="button" onClick={() => setShowQuickPartModal(false)} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">취소</button>
+                                <button type="submit" className="px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40">등록 및 추가</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
