@@ -1875,16 +1875,6 @@ const BasicsPageContent = () => {
                                                     />
                                                     <label htmlFor="staff_is_active" className="text-sm font-medium text-gray-300 cursor-pointer">재직 중 (시스템 접속 가능)</label>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <label className="text-sm font-medium text-gray-300">MAC 주소</label>
-                                                        <input name="mac_address" value={formData.mac_address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" placeholder="AA:BB:CC..." />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-sm font-medium text-gray-300">IP 주소</label>
-                                                        <input name="ip_address" value={formData.ip_address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" placeholder="192.168..." />
-                                                    </div>
-                                                </div>
                                             </div>
                                         </div>
 

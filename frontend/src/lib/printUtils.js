@@ -6,7 +6,7 @@
  *
  * 해결: 요소를 A4 픽셀 사이즈에 맞춰 캡처한 후, A4 단위로 페이지를 분할 삽입.
  */
-import { toPng } from 'html-to-image';
+import { toPng, toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 
 /**
@@ -53,7 +53,7 @@ export async function generateA4PDF(element, options = {}) {
     fileName = `document_${Date.now()}.pdf`,
     orientation = 'portrait',
     action = 'download',
-    pixelRatio = 3,
+    pixelRatio = 2, // Reduced from 3 to 2 for size optimization
     marginMm = 0,
     multiPage = false,
   } = options;
@@ -100,9 +100,10 @@ export async function generateA4PDF(element, options = {}) {
   const scrollW = element.scrollWidth;
   const scrollH = element.scrollHeight;
 
-  const dataUrl = await toPng(element, {
+  const dataUrl = await toJpeg(element, {
     cacheBust: true,
-    backgroundColor: null,
+    backgroundColor: '#ffffff', // JPEG needs solid background
+    quality: 0.95, // High quality but much smaller than PNG
     pixelRatio,
     filter: oklchFilter,
     width: scrollW,
@@ -128,6 +129,7 @@ export async function generateA4PDF(element, options = {}) {
     orientation: isLandscape ? 'landscape' : 'portrait',
     unit: 'mm',
     format: 'a4',
+    compress: true,
   });
 
   const pageWidthMm = pdf.internal.pageSize.getWidth();
@@ -171,14 +173,14 @@ export async function generateA4PDF(element, options = {}) {
       canvas.height = sliceHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, -yOffset, imgWidthPx, imgHeightPx);
-      const sliceDataUrl = canvas.toDataURL('image/png');
-      pdf.addImage(sliceDataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scale, sliceHeight * scale);
+      const sliceDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      pdf.addImage(sliceDataUrl, 'JPEG', marginMm, marginMm, imgWidthPx * scale, sliceHeight * scale, undefined, 'FAST');
       yOffset += pageImgHeightPx;
       pageNum++;
     }
   } else {
     // 단일 페이지 (A4 높이에 맞게 조절, 잘리지 않도록)
-    pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scale, imgHeightPx * scale);
+    pdf.addImage(dataUrl, 'JPEG', marginMm, marginMm, imgWidthPx * scale, imgHeightPx * scale, undefined, 'FAST');
   }
 
   if (action === 'download') {
@@ -197,7 +199,7 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
     fileName = `document_${Date.now()}.pdf`,
     orientation = 'portrait',
     action = 'download',
-    pixelRatio = 3,
+    pixelRatio = 2,
     marginMm = 0,
   } = options;
 
@@ -208,6 +210,7 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
     orientation: isLandscape ? 'landscape' : 'portrait',
     unit: 'mm',
     format: 'a4',
+    compress: true,
   });
 
   const pageWidthMm = pdf.internal.pageSize.getWidth();
@@ -238,9 +241,10 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
 
     await new Promise(r => setTimeout(r, 150));
 
-    const dataUrl = await toPng(el, {
+    const dataUrl = await toJpeg(el, {
       cacheBust: true,
-      backgroundColor: null,
+      backgroundColor: '#ffffff',
+      quality: 0.95,
       pixelRatio,
       filter: oklchFilter,
       width: el.scrollWidth,
@@ -260,7 +264,7 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
     await imgLoaded;
 
     const scale = usableWidthMm / img.naturalWidth;
-    pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, usableWidthMm, img.naturalHeight * scale);
+    pdf.addImage(dataUrl, 'JPEG', marginMm, marginMm, usableWidthMm, img.naturalHeight * scale, undefined, 'FAST');
   }
 
   if (action === 'download') {
@@ -277,7 +281,7 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
 export async function printAsImage(element, options = {}) {
   const {
     orientation = 'portrait',
-    pixelRatio = 3,
+    pixelRatio = 2,
     title = '문서 인쇄',
   } = options;
 
@@ -362,7 +366,7 @@ export async function printAsImage(element, options = {}) {
 export async function printMultiPageAsImage(elements, options = {}) {
   const {
     orientation = 'portrait',
-    pixelRatio = 3,
+    pixelRatio = 2,
     title = '문서 인쇄',
   } = options;
 

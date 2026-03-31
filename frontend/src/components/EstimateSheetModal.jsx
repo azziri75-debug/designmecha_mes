@@ -67,8 +67,11 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
 
     useEffect(() => {
         if (isOpen && estimate) {
-            fetchCompany();
-            initializeMetadata();
+            const init = async () => {
+                const companyData = await fetchCompany();
+                initializeMetadata(companyData);
+            };
+            init();
         }
     }, [isOpen, estimate]);
 
@@ -76,10 +79,14 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
         try {
             const res = await api.get('/basics/company');
             setCompany(res.data);
-        } catch (err) { console.error('Failed to fetch company', err); }
+            return res.data;
+        } catch (err) { 
+            console.error('Failed to fetch company', err);
+            return null;
+        }
     };
 
-    const initializeMetadata = () => {
+    const initializeMetadata = (comp = company) => {
         if (!estimate) return;
         const items = (estimate.items || []).map((item, idx) => ({
             idx: idx + 1,
@@ -115,11 +122,11 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
             estimate_date: estimate.estimate_date || new Date().toISOString().split('T')[0].replace(/-/g, '. '),
             total_amount_text: numberToKorean(total),
             notes: estimate.note || "1) 납기 : 발주 후 15일 이내",
-            company_reg_no: company?.business_no || "312-81-38446",
-            company_name: company?.name || "디자인메카",
-            company_ceo: company?.ceo_name || "조인호",
-            company_address: (company?.address || "충남 아산시 음봉면 월암로 336-39") + (company?.website ? `\n(${company.website})` : "\n(www.designmecha.co.kr)"),
-            company_contact: `TEL : ${company?.phone || '041-544-6220'}\nFAX : ${company?.fax || '041-544-6207'}\n(Email : ${company?.email || 'juno@designmecha.co.kr'})`,
+            company_reg_no: comp?.business_no || "312-81-38446",
+            company_name: comp?.name || "디자인메카",
+            company_ceo: comp?.ceo_name || "조인호",
+            company_address: (comp?.address || "충남 아산시 음봉면 월암로 336-39") + (comp?.website ? `\n(${comp.website})` : "\n(www.designmecha.co.kr)"),
+            company_contact: `TEL : ${comp?.phone || '041-544-6220'}\nFAX : ${comp?.fax || '041-544-6207'}\n(Email : ${comp?.email || 'juno@designmecha.co.kr'})`,
             colWidths: savedColWidths || defaultWidths,
             items: items.map(i => ({
                 ...i,
