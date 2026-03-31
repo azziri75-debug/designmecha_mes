@@ -30,6 +30,9 @@ async def ensure_staff_columns(db: AsyncSession, error: Exception) -> bool:
     from sqlalchemy import text
     error_str = str(error).lower()
     if "column" in error_str and ("no such" in error_str or "not found" in error_str or "does not exist" in error_str):
+        # [PG FIX] Rollback the current aborted transaction to allow DDL execution
+        await db.rollback()
+        
         for col_name, col_def in STAFF_COLUMNS:
             if col_name.lower() in error_str:
                 try:
@@ -39,6 +42,9 @@ async def ensure_staff_columns(db: AsyncSession, error: Exception) -> bool:
                     return True
                 except Exception as ex:
                     print(f"❌ [AUTO-MIGRATION FAILED] staff.{col_name}: {ex}")
+                    # If column already exists (race condition), treat as success
+                    if "already exists" in str(ex).lower():
+                        return True
                     return False
     return False
 # -------------------------------
