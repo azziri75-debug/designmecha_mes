@@ -805,6 +805,35 @@ async def startup_event():
                 await db.execute(text("UPDATE approval_documents SET doc_type = 'LEAVE_REQUEST' WHERE doc_type = 'VACATION'"))
                 await db.execute(text("UPDATE approval_lines SET doc_type = 'CONSUMABLES_PURCHASE' WHERE doc_type = 'SUPPLIES'"))
                 await db.execute(text("UPDATE approval_lines SET doc_type = 'LEAVE_REQUEST' WHERE doc_type = 'VACATION'"))
+
+                # [NEW] Cleanup: Remove CEO from routine approvals (Legacy mobile bug fix)
+                # Identify CEO ID and remove from steps for routine request types
+                ceo_res = await db.execute(text("SELECT id FROM staff WHERE role = '대표이사' LIMIT 1"))
+                ceo_id = ceo_res.scalar()
+                if ceo_id:
+                    # Delete CEO steps for routine docs that are still pending/in_progress
+                    await db.execute(text(f"""
+                        DELETE FROM approval_steps 
+                        WHERE approver_id = {ceo_id}
+                        AND document_id IN (
+                            SELECT id FROM approval_documents 
+                            WHERE doc_type IN ('CONSUMABLES_PURCHASE', 'LEAVE_REQUEST')
+                            AND status IN ('PENDING', 'IN_PROGRESS')
+                        )
+                    """))
+                    
+                    # Synchronize document status: mark as COMPLETED if no pending steps remain
+                    await db.execute(text("""
+                        UPDATE approval_documents
+                        SET status = 'COMPLETED'
+                        WHERE doc_type IN ('CONSUMABLES_PURCHASE', 'LEAVE_REQUEST')
+                        AND status IN ('PENDING', 'IN_PROGRESS')
+                        AND id NOT IN (
+                            SELECT DISTINCT document_id FROM approval_steps WHERE status = 'PENDING'
+                        )
+                    """))
+                    print("Startup: Cleaned up legacy CEO approval steps for routine requests")
+
                 print("Startup: Unified approval document types (Global)")
 
                 await db.commit()
