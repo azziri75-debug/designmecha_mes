@@ -193,22 +193,27 @@ const ApprovalPage = () => {
     };
 
     const canApprove = (doc) => {
-        if (!doc || !currentUser) {
-            console.log('[canApprove] FAIL: doc or currentUser missing', { doc: !!doc, currentUser: !!currentUser });
-            return false;
-        }
+        if (!doc || !currentUser) return false;
         const steps = Array.isArray(doc.steps) ? doc.steps : [];
         const myId = Number(currentUser?.id);
         const currentSeq = doc.current_sequence;
-        console.log('[canApprove] checking:', { myId, currentSeq, stepCount: steps.length, status: doc.status, steps: steps.map(s => ({ seq: s.sequence, approverId: s.approver_id, status: s.status })) });
+        // Log each step explicitly
+        steps.forEach((s, i) => console.log(`[canApprove] step[${i}]:`, {
+            sequence: s.sequence, seqType: typeof s.sequence,
+            approver_id: s.approver_id, approverIdType: typeof s.approver_id,
+            status: s.status,
+            matchSeq: Number(s.sequence) === Number(currentSeq),
+            matchId: Number(s.approver_id) === myId,
+            matchStatus: s.status === 'PENDING'
+        }));
+        console.log('[canApprove]', { myId, myIdType: typeof myId, currentSeq, seqType: typeof currentSeq });
         if (steps.length === 0 || currentSeq == null) return false;
-        // Must match the exact current_sequence AND be PENDING
         const myStep = steps.find(
             s => Number(s.sequence) === Number(currentSeq) &&
                  Number(s.approver_id) === myId &&
                  s.status === 'PENDING'
         );
-        if (myStep) console.log('[canApprove] SUCCESS: user can approve');
+        if (myStep) console.log('[canApprove] SUCCESS');
         else console.log('[canApprove] FAIL: no matching step');
         return !!myStep;
     };
