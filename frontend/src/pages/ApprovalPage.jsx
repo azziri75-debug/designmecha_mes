@@ -196,26 +196,26 @@ const ApprovalPage = () => {
         if (!doc || !currentUser) return false;
         const steps = Array.isArray(doc.steps) ? doc.steps : [];
         const myId = Number(currentUser?.id);
-        const currentSeq = doc.current_sequence;
-        // Log each step explicitly
-        steps.forEach((s, i) => console.log(`[canApprove] step[${i}]:`, {
-            sequence: s.sequence, seqType: typeof s.sequence,
-            approver_id: s.approver_id, approverIdType: typeof s.approver_id,
-            status: s.status,
-            matchSeq: Number(s.sequence) === Number(currentSeq),
-            matchId: Number(s.approver_id) === myId,
-            matchStatus: s.status === 'PENDING'
-        }));
-        console.log('[canApprove]', { myId, myIdType: typeof myId, currentSeq, seqType: typeof currentSeq });
-        if (steps.length === 0 || currentSeq == null) return false;
-        const myStep = steps.find(
-            s => Number(s.sequence) === Number(currentSeq) &&
-                 Number(s.approver_id) === myId &&
-                 s.status === 'PENDING'
-        );
-        if (myStep) console.log('[canApprove] SUCCESS');
-        else console.log('[canApprove] FAIL: no matching step');
-        return !!myStep;
+        const currentSeq = Number(doc.current_sequence);
+        
+        if (steps.length === 0 || isNaN(currentSeq)) return false;
+
+        // Robust matching: check both snake_case and camelCase, and handle types
+        const myStep = steps.find(s => {
+            const sSeq = Number(s.sequence ?? s.Sequence ?? 0);
+            const sApproverId = Number(s.approver_id ?? s.approverId ?? s.ApproverId ?? 0);
+            const sStatus = String(s.status ?? s.Status ?? "").toUpperCase();
+            
+            return sSeq === currentSeq && sApproverId === myId && sStatus === 'PENDING';
+        });
+
+        if (myStep) {
+            console.log('[canApprove] Success match found');
+            return true;
+        }
+
+        // Admin fallback log (will be shown in debug panel)
+        return false;
     };
 
     const openDocDetail = async (doc) => {
@@ -835,6 +835,23 @@ const ApprovalPage = () => {
                                     <div>
                                         <p className="text-red-400 text-sm font-bold">반려 사유</p>
                                         <p className="text-red-300/80 text-sm mt-1">{selectedDoc.rejection_reason}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Admin Debug Panel */}
+                            {currentUser?.id === 1 && (
+                                <div className="mt-8 p-4 bg-black/40 rounded-xl border border-gray-700 text-[10px] font-mono text-gray-500">
+                                    <p className="font-bold text-gray-400 mb-2">[DEBUG INFO - ADMIN ONLY]</p>
+                                    <p>My ID: {currentUser.id} (Type: {typeof currentUser.id})</p>
+                                    <p>Doc Current Seq: {selectedDoc.current_sequence} (Type: {typeof selectedDoc.current_sequence})</p>
+                                    <p>Doc Status: {selectedDoc.status}</p>
+                                    <div className="mt-2 space-y-1">
+                                        {selectedDoc.steps?.map((s, idx) => (
+                                            <p key={idx} className={s.sequence === selectedDoc.current_sequence ? "text-yellow-500" : ""}>
+                                                Step {idx}: Seq={s.sequence}({typeof s.sequence}), ApproverID={s.approver_id}({typeof s.approver_id}), Status={s.status}
+                                            </p>
+                                        ))}
                                     </div>
                                 </div>
                             )}
