@@ -44,6 +44,7 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
             color: '#9CA3AF'
         })
     };
+
     // Form State
     const [formData, setFormData] = useState({
         partner_id: '',
@@ -51,7 +52,7 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
         valid_until: '',
         items: [],
         note: '',
-        attachment_file: [] // List of files
+        attachment_file: []
     });
 
     const [partnerProducts, setPartnerProducts] = useState([]);
@@ -63,9 +64,6 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [historyTargetIndex, setHistoryTargetIndex] = useState(null);
 
-    // Product Selection Modal State
-    const [showProductSelect, setShowProductSelect] = useState(false);
-
     // History Selection Modal States
     const [showOrderSelect, setShowOrderSelect] = useState(false);
     const [showEstimateSelect, setShowEstimateSelect] = useState(false);
@@ -73,19 +71,19 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
     useEffect(() => {
         if (isOpen) {
             if (estimateToEdit) {
-                // Populate for Edit
                 setFormData({
                     partner_id: estimateToEdit.partner_id,
                     estimate_date: estimateToEdit.estimate_date,
                     valid_until: estimateToEdit.valid_until || '',
                     items: estimateToEdit.items.map(item => ({
                         product_id: item.product_id,
-                        product_name: item.product?.name || 'Unknown',
+                        product_name: item.product_name || item.product?.name || 'Unknown',
                         product_spec: item.product?.specification || '',
                         unit: item.product?.unit || 'EA',
                         quantity: item.quantity,
                         unit_price: item.unit_price,
-                        note: item.note || ''
+                        note: item.note || '',
+                        is_discount: !item.product_id && item.product_name === '할인금액'
                     })),
                     note: estimateToEdit.note || '',
                     attachment_file: (() => {
@@ -95,7 +93,6 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                     })()
                 });
             } else {
-                // Reset for New
                 setFormData({
                     partner_id: '',
                     estimate_date: new Date().toISOString().split('T')[0],
@@ -109,7 +106,6 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
         }
     }, [isOpen, estimateToEdit]);
 
-    // Fetch products when partner changes
     useEffect(() => {
         if (formData.partner_id) {
             fetchPartnerProducts(formData.partner_id);
@@ -130,14 +126,37 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
         }
     };
 
-    const handleProductSelect = async (product) => {
-        // Check if already added
-        if (formData.items.some(item => item.product_id === product.id)) {
-            alert("이미 추가된 품목입니다.");
-            return;
-        }
+    const addItem = () => {
+        if (!formData.partner_id) return alert("먼저 거래처를 선택해주세요.");
+        const newItem = {
+            product_id: null,
+            product_name: '',
+            product_spec: '',
+            unit: 'EA',
+            quantity: 1,
+            unit_price: 0,
+            note: '',
+            is_new: true
+        };
+        setFormData(prev => ({ ...prev, items: [...prev.items, newItem] }));
+    };
 
-        // Fetch recent price
+    const addDiscount = () => {
+        if (!formData.partner_id) return alert("먼저 거래처를 선택해주세요.");
+        const newItem = {
+            product_id: null,
+            product_name: '할인금액',
+            product_spec: '할인',
+            unit: '-',
+            quantity: 1,
+            unit_price: 0,
+            note: '',
+            is_discount: true
+        };
+        setFormData(prev => ({ ...prev, items: [...prev.items, newItem] }));
+    };
+
+    const handleProductSelect = async (index, product) => {
         let recentPrice = 0;
         try {
             const res = await api.get('/sales/history/price', {
@@ -146,21 +165,17 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
             recentPrice = res.data.price || 0;
         } catch (e) { console.error(e); }
 
-        const newItem = {
+        const newItems = [...formData.items];
+        newItems[index] = {
+            ...newItems[index],
             product_id: product.id,
             product_name: product.name,
             product_spec: product.specification,
             unit: product.unit,
-            quantity: 1,
             unit_price: recentPrice,
-            note: ''
+            is_new: false
         };
-
-        setFormData(prev => ({
-            ...prev,
-            items: [...prev.items, newItem]
-        }));
-        setShowProductSelect(false);
+        setFormData(prev => ({ ...prev, items: newItems }));
     };
 
     const updateItem = (index, field, value) => {
@@ -192,7 +207,6 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                 alert(`${file.name} 업로드 실패`);
             }
         }
-
         setFormData(prev => ({
             ...prev,
             attachment_file: [...prev.attachment_file, ...newAttachments]
@@ -226,12 +240,13 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
             ...prev,
             items: ord.items.map(item => ({
                 product_id: item.product_id,
-                product_name: item.product?.name || 'Unknown',
+                product_name: item.product_name || item.product?.name || 'Unknown',
                 product_spec: item.product?.specification || '',
                 unit: item.product?.unit || 'EA',
                 quantity: item.quantity,
                 unit_price: item.unit_price,
-                note: item.note || ''
+                note: item.note || '',
+                is_discount: !item.product_id && item.product_name === '할인금액'
             }))
         }));
         setShowOrderSelect(false);
@@ -242,12 +257,13 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
             ...prev,
             items: est.items.map(item => ({
                 product_id: item.product_id,
-                product_name: item.product?.name || 'Unknown',
+                product_name: item.product_name || item.product?.name || 'Unknown',
                 product_spec: item.product?.specification || '',
                 unit: item.product?.unit || 'EA',
                 quantity: item.quantity,
                 unit_price: item.unit_price,
-                note: item.note || ''
+                note: item.note || '',
+                is_discount: !item.product_id && item.product_name === '할인금액'
             }))
         }));
         setShowEstimateSelect(false);
@@ -257,14 +273,20 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
         if (!formData.partner_id) return alert("거래처를 선택해주세요.");
         if (formData.items.length === 0) return alert("품목을 최소 1개 이상 추가해주세요.");
 
-        // Calculate Total
-        const total_amount = formData.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+        const total_amount = formData.items.reduce((sum, item) => {
+            const price = item.is_discount ? -Math.abs(item.unit_price) : item.unit_price;
+            return sum + (item.quantity * price);
+        }, 0);
 
         const payload = {
             ...formData,
             valid_until: formData.valid_until || null,
             total_amount,
-            attachment_file: formData.attachment_file
+            attachment_file: formData.attachment_file,
+            items: formData.items.map(item => ({
+                ...item,
+                unit_price: item.is_discount ? -Math.abs(item.unit_price) : item.unit_price
+            }))
         };
 
         try {
@@ -314,7 +336,6 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {/* Header Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">거래처 (고객사)</label>
@@ -329,41 +350,23 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">견적일자</label>
-                            <input
-                                type="date"
-                                value={formData.estimate_date}
-                                onChange={(e) => setFormData({ ...formData, estimate_date: e.target.value })}
-                                className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5"
-                            />
+                            <input type="date" value={formData.estimate_date} onChange={(e) => setFormData({ ...formData, estimate_date: e.target.value })} className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">유효기간</label>
-                            <input
-                                type="date"
-                                value={formData.valid_until}
-                                onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
-                                className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5"
-                            />
+                            <input type="date" value={formData.valid_until} onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })} className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">비고</label>
-                            <input
-                                type="text"
-                                value={formData.note}
-                                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                                className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5"
-                                placeholder="특이사항 입력"
-                            />
+                            <input type="text" value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} className="w-full bg-gray-700 border-gray-600 rounded-lg text-white p-2.5" placeholder="특이사항 입력" />
                         </div>
                     </div>
 
-                    {/* File Attachment */}
                     <div>
                         <div className="flex justify-between items-center mb-2">
                             <label className="text-sm font-medium text-gray-400">파일 첨부 (도면/의뢰서)</label>
                             <label className="cursor-pointer bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-600 flex items-center gap-2">
-                                <Upload className="w-3 h-3" />
-                                파일 선택
+                                <Upload className="w-3 h-3" /> 파일 선택
                                 <input type="file" multiple className="hidden" onChange={handleFileUpload} />
                             </label>
                         </div>
@@ -373,28 +376,20 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                                     <div key={idx} className="flex items-center gap-2 bg-gray-900 px-3 py-1 rounded-full border border-gray-700 text-sm text-gray-300">
                                         <FileText className="w-3 h-3" />
                                         <span className="truncate max-w-[150px]">{file.name}</span>
-                                        <button onClick={() => removeFile(idx)} className="text-gray-500 hover:text-red-400">
-                                            <X className="w-3 h-3" />
-                                        </button>
+                                        <button onClick={() => removeFile(idx)} className="text-gray-500 hover:text-red-400"><X className="w-3 h-3" /></button>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    {/* Items Table */}
                     <div>
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-lg font-semibold text-white">견적 품목</h3>
-                            <button
-                                onClick={() => {
-                                    if (!formData.partner_id) return alert("먼저 거래처를 선택해주세요.");
-                                    setShowProductSelect(true);
-                                }}
-                                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 flex items-center gap-1"
-                            >
-                                <Plus className="w-3 h-3" /> 품목 추가
-                            </button>
+                            <div className="flex gap-2">
+                                <button onClick={addDiscount} className="px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-500 flex items-center gap-1"><Plus className="w-3 h-3" /> 할인 추가</button>
+                                <button onClick={addItem} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 flex items-center gap-1"><Plus className="w-3 h-3" /> 품목 추가</button>
+                            </div>
                         </div>
 
                         <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
@@ -412,57 +407,50 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
                                     {formData.items.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="7" className="px-4 py-8 text-center text-gray-600">
-                                                등록된 품목이 없습니다.
-                                            </td>
-                                        </tr>
+                                        <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-600">등록된 품목이 없습니다.</td></tr>
                                     ) : (
                                         formData.items.map((item, index) => (
-                                            <tr key={index}>
-                                                <td className="px-4 py-2 text-white">{item.product_name}</td>
+                                            <tr key={index} className={item.is_discount ? "bg-amber-900/10" : ""}>
+                                                <td className="px-4 py-2 text-white">
+                                                    {item.is_discount ? (
+                                                        <span className="font-bold text-amber-400">할인금액</span>
+                                                    ) : (
+                                                        <Select
+                                                            options={partnerProducts.map(p => ({ value: p, label: p.name }))}
+                                                            value={item.product_id ? { value: item, label: item.product_name } : null}
+                                                            onChange={(opt) => handleProductSelect(index, opt.value)}
+                                                            styles={{
+                                                                ...selectStyles,
+                                                                control: (base) => ({ ...base, minHeight: '30px', height: '30px', backgroundColor: '#1F2937' }),
+                                                                valueContainer: (base) => ({ ...base, padding: '0 8px' }),
+                                                                indicatorsContainer: (base) => ({ ...base, height: '30px' })
+                                                            }}
+                                                            placeholder="품목 검색..."
+                                                            isSearchable
+                                                        />
+                                                    )}
+                                                </td>
                                                 <td className="px-4 py-2">{item.product_spec}</td>
                                                 <td className="px-4 py-2">
-                                                    <input
-                                                        type="number"
-                                                        value={item.quantity}
-                                                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                                                        className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white"
-                                                    />
+                                                    <input type="number" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)} disabled={item.is_discount} className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white disabled:opacity-50" />
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <div className="flex items-center gap-1">
-                                                        <input
-                                                            type="number"
-                                                            value={item.unit_price}
-                                                            onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                                                            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => openPriceHistory(index, item.product_id)}
-                                                            className="p-1 text-gray-400 hover:text-blue-400 transition-colors"
-                                                            title="과거 단가 이력"
-                                                        >
-                                                            <History className="w-4 h-4" />
-                                                        </button>
+                                                        <span className={item.is_discount ? "text-amber-400" : ""}>{item.is_discount ? "-" : ""}</span>
+                                                        <input type="number" value={item.unit_price} onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)} className={cn("w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white", item.is_discount && "text-amber-400")} />
+                                                        {!item.is_discount && (
+                                                            <button type="button" onClick={() => openPriceHistory(index, item.product_id)} className="p-1 text-gray-400 hover:text-blue-400 transition-colors" title="과거 단가 이력"><History className="w-4 h-4" /></button>
+                                                        )}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-2 text-right font-medium text-blue-400">
-                                                    {(item.quantity * item.unit_price).toLocaleString()}
+                                                <td className={cn("px-4 py-2 text-right font-medium", item.is_discount ? "text-amber-400" : "text-blue-400")}>
+                                                    {(item.is_discount ? -Math.abs(item.unit_price) : (item.quantity * item.unit_price)).toLocaleString()}
                                                 </td>
                                                 <td className="px-4 py-2">
-                                                    <input
-                                                        type="text"
-                                                        value={item.note || ''}
-                                                        onChange={(e) => updateItem(index, 'note', e.target.value)}
-                                                        className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white"
-                                                    />
+                                                    <input type="text" value={item.note || ''} onChange={(e) => updateItem(index, 'note', e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white" />
                                                 </td>
                                                 <td className="px-4 py-2 text-center">
-                                                    <button onClick={() => removeItem(index)} className="text-gray-500 hover:text-red-400">
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    <button onClick={() => removeItem(index)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                                                 </td>
                                             </tr>
                                         ))
@@ -473,7 +461,10 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                                         <tr>
                                             <td colSpan="4" className="px-4 py-2 text-right">합계</td>
                                             <td className="px-4 py-2 text-right text-blue-400">
-                                                {formData.items.reduce((sum, i) => sum + (i.quantity * i.unit_price), 0).toLocaleString()}
+                                                {formData.items.reduce((sum, i) => {
+                                                    const price = i.is_discount ? -Math.abs(i.unit_price) : i.unit_price;
+                                                    return sum + (i.quantity * price);
+                                                }, 0).toLocaleString()}
                                             </td>
                                             <td colSpan="2"></td>
                                         </tr>
@@ -490,73 +481,16 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                 </div>
             </div>
 
-            {/* Product Selection Sub-Modal */}
-            {showProductSelect && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60]">
-                    <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
-                        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-white">품목 선택 ({partnerProducts.length})</h3>
-                            <button onClick={() => setShowProductSelect(false)} className="text-gray-400 hover:text-white">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {loadingProducts ? (
-                                <div className="text-center py-8 text-gray-500">로딩 중...</div>
-                            ) : partnerProducts.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">해당 거래처의 등록된 제품이 없습니다.</div>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-2">
-                                    {partnerProducts.map(prod => (
-                                        <button
-                                            key={prod.id}
-                                            onClick={() => handleProductSelect(prod)}
-                                            className="flex items-center justify-between p-3 rounded bg-gray-700 hover:bg-gray-600 text-left transition-colors"
-                                        >
-                                            <div>
-                                                <div className="font-medium text-white">{prod.name}</div>
-                                                <div className="text-sm text-gray-400">{prod.specification} | {prod.material}</div>
-                                            </div>
-                                            <Plus className="w-4 h-4 text-blue-400" />
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            <OrderHistoryModal isOpen={showOrderSelect} onClose={() => setShowOrderSelect(false)} onSelect={handleOrderSelect} partnerId={formData.partner_id} />
+            <QuotationHistoryModal isOpen={showEstimateSelect} onClose={() => setShowEstimateSelect(false)} onSelect={handleEstimateSelect} partnerId={formData.partner_id} />
 
-            {/* Order Selection Modal (History) */}
-            <OrderHistoryModal 
-                isOpen={showOrderSelect}
-                onClose={() => setShowOrderSelect(false)}
-                onSelect={handleOrderSelect}
-                partnerId={formData.partner_id}
-            />
-
-            {/* Estimate Selection Modal (History) */}
-            <QuotationHistoryModal 
-                isOpen={showEstimateSelect}
-                onClose={() => setShowEstimateSelect(false)}
-                onSelect={handleEstimateSelect}
-                partnerId={formData.partner_id}
-            />
-
-            {/* Price History Sub-Modal */}
             {showPriceHistory && (
                 <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
                     <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-lg shadow-2xl flex flex-col max-h-[70vh]">
                         <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900/40">
-                            <h3 className="text-white font-bold flex items-center gap-2">
-                                <History className="w-4 h-4 text-blue-400" />
-                                과거 단가 이력 조회
-                            </h3>
-                            <button onClick={() => setShowPriceHistory(false)} className="text-gray-500 hover:text-white transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
+                            <h3 className="text-white font-bold flex items-center gap-2"><History className="w-4 h-4 text-blue-400" /> 과거 단가 이력 조회</h3>
+                            <button onClick={() => setShowPriceHistory(false)} className="text-gray-500 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
                         </div>
-
                         <div className="p-4 overflow-y-auto">
                             {loadingHistory ? (
                                 <div className="text-center py-8 text-gray-500">로딩 중...</div>
@@ -576,37 +510,21 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                                             <tr key={i} className="hover:bg-gray-700/50">
                                                 <td className="px-3 py-2">{h.date}</td>
                                                 <td className="px-3 py-2 text-center">
-                                                    <span className={cn(
-                                                        "text-[9px] px-1 rounded border",
-                                                        h.type === 'QUOTATION' ? "bg-amber-900/30 border-amber-800 text-amber-300" : "bg-emerald-900/30 border-emerald-800 text-emerald-300"
-                                                    )}>
-                                                        {h.type === 'QUOTATION' ? '견적' : '수주'}
-                                                    </span>
+                                                    <span className={cn("text-[9px] px-1 rounded border", h.type === 'QUOTATION' ? "bg-amber-900/30 border-amber-800 text-amber-300" : "bg-emerald-900/30 border-emerald-800 text-emerald-300")}>{h.type === 'QUOTATION' ? '견적' : '수주'}</span>
                                                 </td>
                                                 <td className="px-3 py-2">{h.partner_name}</td>
                                                 <td className="px-3 py-2 text-right text-blue-400 font-medium">₩{h.unit_price.toLocaleString()}</td>
                                                 <td className="px-3 py-2 text-center">
-                                                    <button
-                                                        onClick={() => {
-                                                            updateItem(historyTargetIndex, 'unit_price', h.unit_price);
-                                                            setShowPriceHistory(false);
-                                                        }}
-                                                        className="text-[10px] bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 px-1.5 py-0.5 rounded border border-blue-600/30"
-                                                    >
-                                                        적용
-                                                    </button>
+                                                    <button onClick={() => { updateItem(historyTargetIndex, 'unit_price', h.unit_price); setShowPriceHistory(false); }} className="text-[10px] bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 px-1.5 py-0.5 rounded border border-blue-600/30">적용</button>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             ) : (
-                                <div className="text-center py-10 text-gray-500">
-                                    과거 거래 이력이 없습니다.
-                                </div>
+                                <div className="text-center py-10 text-gray-500">과거 거래 이력이 없습니다.</div>
                             )}
                         </div>
-
                         <div className="p-3 border-t border-gray-700 flex justify-end bg-gray-900/20">
                             <button onClick={() => setShowPriceHistory(false)} className="px-4 py-1.5 bg-gray-700 text-white rounded text-sm hover:bg-gray-600 transition-colors">닫기</button>
                         </div>

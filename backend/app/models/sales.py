@@ -42,7 +42,8 @@ class EstimateItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     estimate_id = Column(Integer, ForeignKey("estimates.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
+    product_name = Column(String, nullable=True) # Manual input or Discount
     unit_price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
     note = Column(Text, nullable=True)
@@ -82,7 +83,8 @@ class SalesOrderItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
+    product_name = Column(String, nullable=True)
     unit_price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
     delivered_quantity = Column(Integer, default=0)

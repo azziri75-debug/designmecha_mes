@@ -61,7 +61,6 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
     const [loadingProducts, setLoadingProducts] = useState(false);
 
     // States for Sub-modals
-    const [showProductSelect, setShowProductSelect] = useState(false);
     const [showEstimateSelect, setShowEstimateSelect] = useState(false);
     const [showOrderSelect, setShowOrderSelect] = useState(false);
     const [partnerEstimates, setPartnerEstimates] = useState([]);
@@ -166,47 +165,40 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
         }
     };
 
-    // Handler for Product Select
-    const handleProductSelect = (product) => {
+    const addItem = () => {
+        if (!formData.partner_id) return alert("먼저 거래처를 선택해주세요.");
         const newItem = {
-            product_id: product.id,
-            product_name: product.name,
-            product_spec: product.specification,
-            unit: product.unit,
+            product_id: null,
+            product_name: '',
+            product_spec: '',
+            unit: 'EA',
             quantity: 0,
             unit_price: 0,
             note: ''
         };
-        // Try to fetch recent price
-        api.get('/sales/history/price', {
-            params: { product_id: product.id, partner_id: formData.partner_id }
-        }).then(res => {
-            if (res.data.price) {
-                newItem.unit_price = res.data.price;
-                // Force update
-                setFormData(prev => {
-                    const newItems = [...prev.items];
-                    // Find the item we just added? No, we haven't added it yet.
-                    // We need to add it with price.
-                    // Actually handleProductSelect adds it.
-                    // Let's just add it with 0 then update?
-                    // Better wait for price? No, async UX is tricky.
-                    // Let's add with price if fast, or update later.
-                    // Simple: Add then update.
-                    return prev;
-                });
-                // Actually, let's just use the response to set initial price before adding if possible?
-                // Or just update the item in the list after adding.
-                // Let's simplistic approach: Add first, then update if price found.
-                updateItem(formData.items.length, 'unit_price', res.data.price);
-            }
-        });
+        setFormData(prev => ({ ...prev, items: [...prev.items, newItem] }));
+    };
 
-        setFormData(prev => ({
-            ...prev,
-            items: [...prev.items, newItem]
-        }));
-        setShowProductSelect(false);
+    const handleProductSelect = async (index, product) => {
+        // Fetch recent price
+        let recentPrice = 0;
+        try {
+            const res = await api.get('/sales/history/price', {
+                params: { product_id: product.id, partner_id: formData.partner_id }
+            });
+            recentPrice = res.data.price || 0;
+        } catch (e) { console.error(e); }
+
+        const newItems = [...formData.items];
+        newItems[index] = {
+            ...newItems[index],
+            product_id: product.id,
+            product_name: product.name,
+            product_spec: product.specification,
+            unit: product.unit,
+            unit_price: recentPrice
+        };
+        setFormData(prev => ({ ...prev, items: newItems }));
     };
 
     // Handler for Estimate Select
@@ -471,10 +463,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-lg font-semibold text-white">수주 품목</h3>
                             <button
-                                onClick={() => {
-                                    if (!formData.partner_id) return alert("먼저 거래처를 선택해주세요.");
-                                    setShowProductSelect(true);
-                                }}
+                                onClick={addItem}
                                 className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 flex items-center gap-1"
                             >
                                 <Plus className="w-3 h-3" /> 품목 추가
@@ -504,7 +493,21 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                     ) : (
                                         formData.items.map((item, index) => (
                                             <tr key={index}>
-                                                <td className="px-4 py-2 text-white">{item.product_name}</td>
+                                                <td className="px-4 py-2 text-white">
+                                                    <Select
+                                                        options={partnerProducts.map(p => ({ value: p, label: p.name }))}
+                                                        value={item.product_id ? { value: item, label: item.product_name } : null}
+                                                        onChange={(opt) => handleProductSelect(index, opt.value)}
+                                                        styles={{
+                                                            ...selectStyles,
+                                                            control: (base) => ({ ...base, minHeight: '30px', height: '30px', backgroundColor: '#1F2937' }),
+                                                            valueContainer: (base) => ({ ...base, padding: '0 8px' }),
+                                                            indicatorsContainer: (base) => ({ ...base, height: '30px' })
+                                                        }}
+                                                        placeholder="품목 검색..."
+                                                        isSearchable
+                                                    />
+                                                </td>
                                                 <td className="px-4 py-2">{item.product_spec}</td>
                                                 <td className="px-4 py-2">
                                                     <input
@@ -574,40 +577,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                 </div>
             </div>
 
-            {/* Product Selection Sub-Modal */}
-            {showProductSelect && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60]">
-                    <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
-                        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-white">품목 선택 ({partnerProducts.length})</h3>
-                            <button onClick={() => setShowProductSelect(false)} className="text-gray-400 hover:text-white">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {partnerProducts.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">등록된 제품이 없습니다.</div>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-2">
-                                    {partnerProducts.map(prod => (
-                                        <button
-                                            key={prod.id}
-                                            onClick={() => handleProductSelect(prod)}
-                                            className="flex items-center justify-between p-3 rounded bg-gray-700 hover:bg-gray-600 text-left transition-colors"
-                                        >
-                                            <div>
-                                                <div className="font-medium text-white">{prod.name}</div>
-                                                <div className="text-sm text-gray-400">{prod.specification}</div>
-                                            </div>
-                                            <Plus className="w-4 h-4 text-blue-400" />
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* History Selection Modal (History) */}
 
             {/* Order Selection Modal (History) */}
             <OrderHistoryModal 

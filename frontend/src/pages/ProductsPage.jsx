@@ -9,6 +9,7 @@ import FileViewerModal from '../components/FileViewerModal';
 import ProcessGroupManager from '../components/ProcessGroupManager';
 import ResizableTh from '../components/ResizableTh';
 import ProcessChartTemplate from '../components/ProcessChartTemplate';
+import ProductModal from '../components/ProductModal';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -618,30 +619,13 @@ const ProductsPage = ({ type }) => {
         }
     };
 
-    const handleQuickCreatePart = async (e) => {
-        e.preventDefault();
-        try {
-            const payload = {
-                ...quickPartData,
-                item_type: 'PART',
-                unit: quickPartData.unit || 'EA'
-            };
-            
-            const res = await api.post('/product/products/', payload);
-            const newPart = res.data;
+    const handleQuickPartSuccess = (newPart) => {
+        // Add to allParts list for immediate selection
+        setAllParts(prev => [...prev, newPart]);
 
-            // Add to allParts list for immediate selection
-            setAllParts(prev => [...prev, newPart]);
-
-            // Automatically select in BOM new row
-            setBomNewRow(prev => ({ ...prev, child_product_id: newPart.id }));
-
-            setShowQuickPartModal(false);
-            alert("부품이 등록되었으며 BOM 선택창에 자동 적용되었습니다.");
-        } catch (error) {
-            console.error("Quick part creation failed", error);
-            alert("부품 등록 실패: " + (error.response?.data?.detail || error.message));
-        }
+        // Automatically select in BOM new row
+        setBomNewRow(prev => ({ ...prev, child_product_id: newPart.id }));
+        alert("부품이 등록되었으며 BOM 선택창에 자동 적용되었습니다.");
     };
 
     // Custom styles for react-select
@@ -2292,104 +2276,13 @@ const ProductsPage = ({ type }) => {
             </Dialog>
 
             {/* Quick Part Registration Modal (Sub-modal for BOM) */}
-            {showQuickPartModal && (
-                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg shadow-2xl overflow-hidden animation-fade-in">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Plus className="w-5 h-5 text-blue-500" />
-                                신규 부품 등록 (BOM 전용)
-                            </h3>
-                            <button onClick={() => setShowQuickPartModal(false)} className="text-gray-400 hover:text-white transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleQuickCreatePart} className="p-6 space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">부품명 (자동입력)</label>
-                                <input
-                                    value={quickPartData.name}
-                                    readOnly
-                                    className="w-full bg-gray-900 border border-gray-700 text-gray-400 rounded-lg px-3 py-2 outline-none text-sm"
-                                />
-                            </div>
-                            
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">규격/사양</label>
-                                <input
-                                    value={quickPartData.specification}
-                                    onChange={(e) => setQuickPartData(prev => ({ ...prev, specification: e.target.value }))}
-                                    className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                                    placeholder="규격을 입력하세요"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-300">단위</label>
-                                    <input
-                                        value={quickPartData.unit}
-                                        onChange={(e) => setQuickPartData(prev => ({ ...prev, unit: e.target.value }))}
-                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                                        placeholder="EA"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-300">거래처 (선택)</label>
-                                    <select
-                                        value={quickPartData.partner_id}
-                                        onChange={(e) => setQuickPartData(prev => ({ ...prev, partner_id: e.target.value }))}
-                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                                    >
-                                        <option value="">거래처 선택</option>
-                                        {partners.filter(p => {
-                                            const types = Array.isArray(p.partner_type) ? p.partner_type : safeParseJSON(p.partner_type, []);
-                                            return types.includes('SUPPLIER') || types.includes('BOTH');
-                                        }).map(p => (
-                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-300">대그룹 (Major)</label>
-                                    <select
-                                        value={quickPartData.major_group_id}
-                                        onChange={(e) => setQuickPartData(prev => ({ ...prev, major_group_id: e.target.value, group_id: "" }))}
-                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                                    >
-                                        <option value="">대그룹 선택</option>
-                                        {groups.filter(g => g.type === 'MAJOR').map(g => (
-                                            <option key={g.id} value={g.id}>{g.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-300">소그룹 (Minor)</label>
-                                    <select
-                                        value={quickPartData.group_id}
-                                        onChange={(e) => setQuickPartData(prev => ({ ...prev, group_id: e.target.value }))}
-                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                                        disabled={!quickPartData.major_group_id}
-                                    >
-                                        <option value="">소그룹 선택</option>
-                                        {groups.filter(g => g.parent_id === parseInt(quickPartData.major_group_id)).map(g => (
-                                            <option key={g.id} value={g.id}>{g.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 flex justify-end gap-3 border-t border-gray-700 mt-6">
-                                <button type="button" onClick={() => setShowQuickPartModal(false)} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">취소</button>
-                                <button type="submit" className="px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40">등록 및 추가</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <ProductModal
+                isOpen={showQuickPartModal}
+                onClose={() => setShowQuickPartModal(false)}
+                onSuccess={handleQuickPartSuccess}
+                initialData={quickPartData}
+                type="PART"
+            />
         </div>
     );
 };

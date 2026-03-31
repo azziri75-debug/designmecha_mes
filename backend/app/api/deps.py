@@ -26,6 +26,11 @@ STAFF_COLUMNS = [
     ("join_date", "DATE")
 ]
 
+SALES_ITEM_COLUMNS = [
+    ("estimate_items", "product_name", "VARCHAR"),
+    ("sales_order_items", "product_name", "VARCHAR")
+]
+
 async def ensure_staff_columns(db: AsyncSession, error: Exception) -> bool:
     from sqlalchemy import text
     error_str = str(error).lower()
@@ -46,6 +51,23 @@ async def ensure_staff_columns(db: AsyncSession, error: Exception) -> bool:
                     if "already exists" in str(ex).lower():
                         return True
                     return False
+    
+    # [NEW] Check for other tables (sales items)
+    for table_name, col_name, col_def in SALES_ITEM_COLUMNS:
+        if table_name in error_str and col_name in error_str:
+            await db.rollback()
+            try:
+                await db.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def}"))
+                # Also make product_id nullable while we are at it if the table matches
+                await db.execute(text(f"ALTER TABLE {table_name} ALTER COLUMN product_id DROP NOT NULL"))
+                await db.commit()
+                print(f"✅ [AUTO-MIGRATED] {table_name}.{col_name} and product_id NULLABLE")
+                return True
+            except Exception as ex:
+                print(f"❌ [AUTO-MIGRATION FAILED] {table_name}.{col_name}: {ex}")
+                if "already exists" in str(ex).lower(): return True
+                return False
+
     return False
 # -------------------------------
 

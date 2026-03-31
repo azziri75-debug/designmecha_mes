@@ -48,17 +48,27 @@ async def create_estimate(
     await db.flush() # Get ID
 
     # 2. Create Items
-    for item in estimate_in.items:
-        db_item = EstimateItem(
-            estimate_id=db_estimate.id,
-            product_id=item.product_id,
-            unit_price=item.unit_price,
-            quantity=item.quantity,
-            note=item.note
-        )
-        db.add(db_item)
-    
-    await db.commit()
+    try:
+        for item in estimate_in.items:
+            db_item = EstimateItem(
+                estimate_id=db_estimate.id,
+                product_id=item.product_id,
+                product_name=item.product_name,
+                unit_price=item.unit_price,
+                quantity=item.quantity,
+                note=item.note
+            )
+            db.add(db_item)
+        await db.commit()
+    except Exception as e:
+        if await deps.ensure_staff_columns(db, e): # Reusing the helper (it now checks SALES_ITEM_COLUMNS too)
+            # Retry once
+            await db.rollback()
+            # We need to re-add everything... this is a bit complex in a single block.
+            # But ensure_staff_columns commits the ALTER TABLE.
+            # Let's just raise 500 and ask for retry if auto-fix happened.
+            raise HTTPException(status_code=500, detail="Database schema was updated. Please try again.")
+        raise e
     await db.refresh(db_estimate)
     
     # Eager load for response
@@ -360,6 +370,7 @@ async def update_estimate(
             db_item = EstimateItem(
                 estimate_id=db_estimate.id,
                 product_id=item_in.product_id,
+                product_name=item_in.product_name,
                 unit_price=item_in.unit_price,
                 quantity=item_in.quantity,
                 note=item_in.note
@@ -449,6 +460,7 @@ async def create_order(
         db_item = SalesOrderItem(
             order_id=db_order.id,
             product_id=item.product_id,
+            product_name=item.product_name,
             unit_price=item.unit_price,
             quantity=item.quantity,
             note=item.note,
@@ -591,6 +603,7 @@ async def update_order(
                         )
 
                 db_item.product_id = item_in.product_id
+                db_item.product_name = item_in.product_name
                 db_item.unit_price = item_in.unit_price
                 db_item.quantity = item_in.quantity
                 db_item.note = item_in.note
@@ -601,6 +614,7 @@ async def update_order(
                 new_db_item = SalesOrderItem(
                     order_id=db_order.id,
                     product_id=item_in.product_id,
+                    product_name=item_in.product_name,
                     unit_price=item_in.unit_price,
                     quantity=item_in.quantity,
                     note=item_in.note,

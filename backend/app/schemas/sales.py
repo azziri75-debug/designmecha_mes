@@ -7,9 +7,10 @@ from app.schemas.product import ProductResponse as Product, ProductSimple
 # --- Estimate Schemas ---
 
 class EstimateItemBase(BaseModel):
-    product_id: int
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
     unit_price: float
-    quantity: int
+    quantity: float
     note: Optional[str] = None
 
 class EstimateItemCreate(EstimateItemBase):
@@ -58,10 +59,11 @@ class Estimate(EstimateBase):
 # --- Sales Order Schemas ---
 
 class SalesOrderItemBase(BaseModel):
-    product_id: int
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
     unit_price: float
-    quantity: int
-    delivered_quantity: int = 0
+    quantity: float
+    delivered_quantity: float = 0
     note: Optional[str] = None
 
 class SalesOrderItemCreate(SalesOrderItemBase):
@@ -70,9 +72,10 @@ class SalesOrderItemCreate(SalesOrderItemBase):
 class SalesOrderItemUpdate(BaseModel):
     id: Optional[int] = None # existing item ID
     product_id: Optional[int] = None
+    product_name: Optional[str] = None
     unit_price: Optional[float] = None
-    quantity: Optional[int] = None
-    delivered_quantity: Optional[int] = 0
+    quantity: Optional[float] = None
+    delivered_quantity: Optional[float] = 0
     note: Optional[str] = None
 
 class SalesOrderItemSimple(SalesOrderItemBase):
