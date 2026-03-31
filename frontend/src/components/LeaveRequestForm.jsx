@@ -41,7 +41,7 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
             onChange({ ...data, ...updates });
         }
     // 🚨 수동 기입 덮어쓰기 방지를 위해 data.leave_days는 의존성 배열에서 제외할 것
-    }, [data.start_date, data.end_date, data.vacation_type]);
+    }, [data.start_date, data.end_date, data.vacation_type, currentUser]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;

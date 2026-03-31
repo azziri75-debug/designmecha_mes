@@ -36,7 +36,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         if (Object.keys(updates).length > 0) {
             onChange({ ...data, ...updates });
         }
-    }, [data.leave_type, data.date, data.leave_time, data.return_time]);
+    }, [data.leave_type, data.date, data.leave_time, data.return_time, currentUser]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;

@@ -53,6 +53,7 @@ async def login(
             "role": "시스템 관리자",
             "user_type": "ADMIN",
             "is_sysadmin": True,
+            "login_id": "admin",
             "can_access_external": True,
             "can_view_others": True,
             "menu_permissions": {
@@ -159,6 +160,7 @@ async def login(
         "role": staff.role,
         "user_type": staff.user_type or "USER",
         "is_sysadmin": staff.is_sysadmin,
+        "login_id": staff.login_id,
         "can_access_external": staff.can_access_external,
         "can_view_others": staff.can_view_others,
         "menu_permissions": staff.menu_permissions or [],

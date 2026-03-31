@@ -100,8 +100,7 @@ class Staff(Base):
     mac_address = Column(String, nullable=True)
     ip_address = Column(String, nullable=True)
     
-    # New Permission Fields
-    is_sysadmin = Column(Boolean, default=False)
+    # Permission Fields
     can_access_external = Column(Boolean, default=False)
     can_view_others = Column(Boolean, default=False)
 

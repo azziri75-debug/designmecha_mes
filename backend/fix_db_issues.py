@@ -88,5 +88,21 @@ async def main():
         except Exception as e:
             print(f"Failed to refactor consumable_purchase_waits: {e}")
 
+        # 4. Add staff_no column to staff table
+        try:
+            if dialect == 'sqlite':
+                res = await conn.execute(text("PRAGMA table_info(staff)"))
+                columns = [row[1] for row in res.fetchall()]
+                if 'staff_no' not in columns:
+                    await conn.execute(text("ALTER TABLE staff ADD COLUMN staff_no VARCHAR(50);"))
+                    print("Added 'staff_no' column to 'staff' (SQLite).")
+                else:
+                    print("'staff_no' column already exists in 'staff'.")
+            elif dialect == 'postgresql':
+                await conn.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS staff_no VARCHAR(50);"))
+                print("Added 'staff_no' column to 'staff' (PostgreSQL).")
+        except Exception as e:
+            print(f"Failed to add staff_no to staff table: {e}")
+
 if __name__ == "__main__":
     asyncio.run(main())

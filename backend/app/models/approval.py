@@ -13,6 +13,7 @@ class DocumentType(str, enum.Enum):
     CONSUMABLES_PURCHASE = "CONSUMABLES_PURCHASE" # 소모품 구매 신청서
     LEAVE_REQUEST = "LEAVE_REQUEST" # 휴가원 (New version)
     PURCHASE_ORDER = "PURCHASE_ORDER" # 구매발주서
+    BUSINESS_TRIP = "BUSINESS_TRIP" # 출장여비정산서
 
 class ApprovalStatus(str, enum.Enum):
     PENDING = "PENDING"

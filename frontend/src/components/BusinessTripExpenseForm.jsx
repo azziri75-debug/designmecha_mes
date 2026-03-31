@@ -24,7 +24,7 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
         if (Object.keys(updates).length > 0) {
             onChange({ ...data, ...updates });
         }
-    }, []);
+    }, [currentUser]);
 
     // Dynamically adjust item rows based on date range
     useEffect(() => {

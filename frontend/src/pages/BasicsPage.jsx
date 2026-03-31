@@ -76,7 +76,11 @@ const BasicsPageContent = () => {
     });
 
     // Absolute power condition for system administrator
-    const isSystemAdmin = user?.login_id === 'admin' || user?.is_sysadmin === true || user?.user_type === 'ADMIN' || user?.role === '대표이사';
+    const isSystemAdmin = 
+        user?.login_id?.toLowerCase() === 'admin' || 
+        user?.is_sysadmin === true || 
+        user?.user_type?.toUpperCase() === 'ADMIN' || 
+        user?.role?.includes('대표');
 
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
