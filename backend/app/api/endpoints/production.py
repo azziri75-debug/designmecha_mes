@@ -1453,9 +1453,11 @@ async def read_work_logs(
     if major_group_id:
         from app.models.product import ProductGroup
         from sqlalchemy import or_
-        stmt = stmt.join(WorkLogItem).join(ProductionPlanItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                   .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
-                   .distinct()
+        from app.models.production import WorkLogItem, ProductionPlanItem
+        from app.models.product import Product
+        subquery = select(WorkLogItem.work_log_id).join(ProductionPlanItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+        stmt = stmt.where(WorkLog.id.in_(subquery))
 
     result = await db.execute(
         stmt

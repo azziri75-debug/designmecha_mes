@@ -40,11 +40,11 @@ async def read_defects(
         from app.models.product import Product, ProductGroup
         from app.models.production import ProductionPlanItem
         from sqlalchemy import or_
-        query = query.join(ProductionPlanItem, QualityDefect.plan_item_id == ProductionPlanItem.id)\
+        subquery = select(QualityDefect.id).join(ProductionPlanItem, QualityDefect.plan_item_id == ProductionPlanItem.id)\
                      .join(Product, ProductionPlanItem.product_id == Product.id)\
                      .join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
-                     .distinct()
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+        query = query.where(QualityDefect.id.in_(subquery))
 
     query = query.order_by(desc(QualityDefect.defect_date)).offset(skip).limit(limit)
     res = await db.execute(query)
@@ -182,11 +182,11 @@ async def read_complaints(
         from app.models.sales import SalesOrderItem
         from sqlalchemy import or_
         # Join via SalesOrder -> SalesOrderItem -> Product
-        query = query.join(SalesOrderItem, CustomerComplaint.order_id == SalesOrderItem.order_id)\
+        subquery = select(CustomerComplaint.id).join(SalesOrderItem, CustomerComplaint.order_id == SalesOrderItem.order_id)\
                      .join(Product, SalesOrderItem.product_id == Product.id)\
                      .join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
-                     .distinct()
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+        query = query.where(CustomerComplaint.id.in_(subquery))
         
     query = query.order_by(desc(CustomerComplaint.receipt_date)).offset(skip).limit(limit)
     res = await db.execute(query)

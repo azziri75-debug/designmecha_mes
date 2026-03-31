@@ -30,9 +30,6 @@ async def get_unordered_requirements(
     """
     기록된 미발주 소요량(MRP) 리스트 조회 API
     """
-    """
-    기록된 미발주 소요량(MRP) 리스트 조회 API
-    """
     query = select(MaterialRequirement).where(MaterialRequirement.status == status)\
         .options(
             selectinload(MaterialRequirement.product),
@@ -43,9 +40,9 @@ async def get_unordered_requirements(
     if major_group_id and str(major_group_id).isdigit():
         major_group_id_int = int(major_group_id)
         from app.models.product import ProductGroup
-        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
-                     .distinct()
+        subquery = select(MaterialRequirement.id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))
+        query = query.where(MaterialRequirement.id.in_(subquery))
     
     result = await db.execute(query)
     requirements = result.scalars().all()
@@ -99,9 +96,9 @@ async def get_consumable_waits(
     if major_group_id and str(major_group_id).isdigit():
         major_group_id_int = int(major_group_id)
         from app.models.product import ProductGroup
-        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
-                     .distinct()
+        subquery = select(ConsumablePurchaseWait.id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))
+        query = query.where(ConsumablePurchaseWait.id.in_(subquery))
     
     result = await db.execute(query)
     waits = result.scalars().all()

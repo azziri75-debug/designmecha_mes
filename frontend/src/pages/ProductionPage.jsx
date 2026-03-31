@@ -21,6 +21,7 @@ const ProductionPage = () => {
     const [orders, setOrders] = useState([]);
     const [stockProductions, setStockProductions] = useState([]);
     const [plans, setPlans] = useState([]);
+    const [allPlannedIds, setAllPlannedIds] = useState({ orders: [], stocks: [] });
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -92,10 +93,6 @@ const ProductionPage = () => {
             if (filterPartner !== 'all') {
                 if (filterPartner === 'internal') {
                     // How to filter internal plans? 
-                    // Backend logic for partner_id: 
-                    // if partner_id: stmt = stmt.where(or_(SalesOrder.partner_id == partner_id, StockProduction.partner_id == partner_id))
-                    // For 'internal', maybe we need a special check or just 0? 
-                    // Let's assume partner_id filter on backend handles IDs.
                 } else {
                     params.partner_id = filterPartner;
                 }
@@ -105,8 +102,30 @@ const ProductionPage = () => {
 
             const response = await api.get('/production/plans/', { params });
             setPlans(response.data);
+
+            // Update planned IDs if no BU filter is applied (to get comprehensive list)
+            // Or better, fetch a separate comprehensive list when needed
+            if (!selectedMajorGroupId && !searchQuery && !startDate && !endDate && filterPartner === 'all') {
+                setAllPlannedIds({
+                    orders: response.data.map(p => p.order_id).filter(id => id != null),
+                    stocks: response.data.map(p => p.stock_production_id).filter(id => id != null)
+                });
+            }
         } catch (error) {
             console.error("Failed to fetch plans", error);
+        }
+    };
+
+    const fetchAllPlannedIds = async () => {
+        try {
+            // Fetch without filters but with high limit to get all planned IDs for exclusion logic
+            const response = await api.get('/production/plans/', { params: { limit: 2000 } });
+            setAllPlannedIds({
+                orders: response.data.map(p => p.order_id).filter(id => id != null),
+                stocks: response.data.map(p => p.stock_production_id).filter(id => id != null)
+            });
+        } catch (error) {
+            console.error("Failed to fetch all planned IDs", error);
         }
     };
 
@@ -154,6 +173,7 @@ const ProductionPage = () => {
         fetchPartners();
         fetchDefects();
         fetchGroups();
+        fetchAllPlannedIds();
     }, []);
 
     useEffect(() => {
@@ -196,6 +216,7 @@ const ProductionPage = () => {
             alert("삭제되었습니다.");
             fetchPlans();
             fetchOrders();
+            fetchAllPlannedIds();
         } catch (error) {
             console.error("Delete failed", error);
             alert("삭제 실패: " + (error.response?.data?.detail || error.message));
@@ -314,6 +335,7 @@ const ProductionPage = () => {
         fetchOrders();
         fetchStockProductions();
         fetchPlans();
+        fetchAllPlannedIds();
         if (tabIndex === 0) setTabIndex(1);
     };
 
@@ -473,10 +495,12 @@ const ProductionPage = () => {
                         <UnplannedOrdersTable
                             orders={orders}
                             stockProductions={stockProductions}
-                            plans={plans}
+                            plannedIds={allPlannedIds}
                             onCreatePlan={handleCreateClick}
                             searchQuery={searchQuery}
                             filterPartner={filterPartner}
+                            selectedMajorGroupId={selectedMajorGroupId}
+                            groups={groups}
                         />
                     )}
                     {tabIndex === 1 && (
@@ -651,9 +675,9 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
     );
 };
 
-const UnplannedOrdersTable = ({ orders, stockProductions, plans, onCreatePlan, searchQuery, filterPartner }) => {
-    const planOrderIds = plans.map(p => p.order_id);
-    const planStockProdIds = plans.map(p => p.stock_production_id);
+const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePlan, searchQuery, filterPartner, selectedMajorGroupId, groups }) => {
+    const planOrderIds = plannedIds?.orders || [];
+    const planStockProdIds = plannedIds?.stocks || [];
 
     // Filter out planned orders AND filter by status (PENDING or CONFIRMED)
     let unplannedOrders = orders.filter(o =>
@@ -687,6 +711,17 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plans, onCreatePlan, s
             unplannedOrders = unplannedOrders.filter(o => o.partner_id === parseInt(filterPartner));
             unplannedStockProductions = []; // No partner links for stock production usually
         }
+    }
+
+    // Business Unit Filtering (New)
+    if (selectedMajorGroupId) {
+        const buId = parseInt(selectedMajorGroupId);
+        unplannedOrders = unplannedOrders.filter(o => 
+            o.items?.some(it => it.product?.group_id === buId || it.product?.group?.parent_id === buId)
+        );
+        unplannedStockProductions = unplannedStockProductions.filter(sp => 
+            sp.product?.group_id === buId || sp.product?.group?.parent_id === buId
+        );
     }
 
     return (

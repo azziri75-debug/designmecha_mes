@@ -1113,10 +1113,13 @@ async def batch_complete_order(
 
     # 생산계획(PlanItem)을 통해 연결된 PO
     if plan_ids:
+        subquery = select(PurchaseOrderItem.id).where(
+            PurchaseOrderItem.production_plan_item_id.in_(plan_item_ids)
+        )
         sub_po_query = select(PurchaseOrder).join(PurchaseOrderItem).where(
-            PurchaseOrderItem.production_plan_item_id.in_(plan_item_ids),
+            PurchaseOrderItem.id.in_(subquery),
             PurchaseOrder.status.in_(["PENDING", "ORDERED", "PARTIAL"])
-        ).distinct()
+        )
         sub_po_res = await db.execute(sub_po_query)
         for po in sub_po_res.scalars().all():
             po.status = PurchaseStatus.COMPLETED
@@ -1124,10 +1127,13 @@ async def batch_complete_order(
 
     # 4. 관련 외주 발주(OutsourcingOrder) COMPLETED
     if plan_ids:
+        subquery = select(OutsourcingOrderItem.id).where(
+            OutsourcingOrderItem.production_plan_item_id.in_(plan_item_ids)
+        )
         os_query = select(OutsourcingOrder).join(OutsourcingOrderItem).where(
-            OutsourcingOrderItem.production_plan_item_id.in_(plan_item_ids),
+            OutsourcingOrderItem.id.in_(subquery),
             OutsourcingOrder.status.in_(["PENDING", "ORDERED"])
-        ).distinct()
+        )
         os_res = await db.execute(os_query)
         for os_card in os_res.scalars().all():
             os_card.status = OutsourcingStatus.COMPLETED
@@ -1177,9 +1183,9 @@ async def read_delivery_status(
         query = query.join(Partner).where(Partner.name.ilike(f"%{partner_name}%"))
     if major_group_id:
         from app.models.product import ProductGroup
-        query = query.join(SalesOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
-                     .distinct()
+        subquery = select(SalesOrderItem.order_id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+        query = query.where(SalesOrder.id.in_(subquery))
     if status and status != 'ALL':
         query = query.where(SalesOrder.status == status)
 
