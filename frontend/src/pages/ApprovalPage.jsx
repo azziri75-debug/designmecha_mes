@@ -138,8 +138,8 @@ const ApprovalPage = () => {
                 api.get('/basics/staff/'),
                 api.get('/approval/documents', { params })
             ]);
-            setStaff(staffRes.data);
-            setDocuments(docRes.data);
+            setStaff(Array.isArray(staffRes.data) ? staffRes.data : []);
+            setDocuments(Array.isArray(docRes.data) ? docRes.data : []);
 
             if (activeTab === 'settings') {
                 const types = Object.keys(DOC_TYPES);
