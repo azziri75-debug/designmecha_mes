@@ -14,7 +14,7 @@ const DeliveryPage = () => {
 
     // 👇 [수정할 코드] 상태값을 DELIVERY_COMPLETED 로 정확히 타겟팅 👇
     const displayedOrders = hideCompleted 
-        ? orders.filter(o => o.status !== 'DELIVERY_COMPLETED' && o.status !== 'COMPLETED') 
+        ? orders.filter(o => o.status !== 'DELIVERY_COMPLETED' && o.status !== 'DELIVERED' && o.status !== 'COMPLETED') 
         : orders;
 
     const [columnWidths, setColumnWidths] = useState({
@@ -279,11 +279,14 @@ const DeliveryPage = () => {
                                                 <td className="px-6 py-5">
                                                     {/* 👇 상태 렌더링 배지 로직도 DELIVERY_COMPLETED를 인식하도록 수정 👇 */}
                                                     <div className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-black italic tracking-tighter ${
-                                                        (ord.status === 'COMPLETED' || ord.status === 'DELIVERY_COMPLETED') ? 'bg-green-500/10 text-green-500' :
-                                                        ord.status === 'IN_PROGRESS' ? 'bg-blue-500/10 text-blue-500' :
+                                                        (ord.status === 'COMPLETED' || ord.status === 'DELIVERY_COMPLETED' || ord.status === 'DELIVERED') ? 'bg-green-500/10 text-green-500' :
+                                                        (ord.status === 'PARTIALLY_DELIVERED' || ord.status === 'PRODUCTION_COMPLETED' || ord.status === 'CONFIRMED') ? 'bg-blue-500/10 text-blue-500' :
                                                         'bg-gray-800 text-gray-500'
                                                     }`}>
-                                                        {ord.status === 'DELIVERY_COMPLETED' ? '납품완료' : ord.status}
+                                                        { (ord.status === 'DELIVERY_COMPLETED' || ord.status === 'DELIVERED') ? '납품완료' : 
+                                                          ord.status === 'PARTIALLY_DELIVERED' ? '부분납품' :
+                                                          ord.status === 'PRODUCTION_COMPLETED' ? '생산완료' :
+                                                          ord.status === 'CONFIRMED' ? '확정' : ord.status}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-5 text-center">

@@ -531,7 +531,10 @@ async def read_orders(
         query = query.where(SalesOrder.id.in_(subquery))
 
     if status:
-        query = query.where(SalesOrder.status == status)
+        if status == OrderStatus.DELIVERED or status == "DELIVERED":
+            query = query.where(SalesOrder.status.in_([OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED]))
+        else:
+            query = query.where(SalesOrder.status == status)
 
     if start_date:
         if date_type == "delivery":
@@ -1197,7 +1200,10 @@ async def read_delivery_status(
                      .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         query = query.where(SalesOrder.id.in_(subquery))
     if status and status != 'ALL':
-        query = query.where(SalesOrder.status == status)
+        if status == OrderStatus.DELIVERED or status == "DELIVERED":
+            query = query.where(SalesOrder.status.in_([OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED]))
+        else:
+            query = query.where(SalesOrder.status == status)
 
     result = await db.execute(query)
     orders = result.scalars().unique().all()

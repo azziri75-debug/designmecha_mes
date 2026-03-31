@@ -525,13 +525,16 @@ const SalesPage = () => {
                                                     <span className={cn(
                                                         "px-2 py-0.5 rounded text-xs font-medium",
                                                         ord.status === 'PENDING' ? "bg-yellow-900/50 text-yellow-400 border border-yellow-700" :
-                                                            ord.status === 'CONFIRMED' ? "bg-blue-900/50 text-blue-400 border border-blue-700" :
+                                                            (ord.status === 'CONFIRMED' || ord.status === 'PRODUCTION_COMPLETED') ? "bg-blue-900/50 text-blue-400 border border-blue-700" :
                                                                 ord.status === 'PARTIALLY_DELIVERED' ? "bg-orange-900/50 text-orange-400 border border-orange-700" :
-                                                                    ord.status === 'DELIVERED' ? "bg-green-900/50 text-green-400 border border-green-700" :
+                                                                    (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? "bg-green-900/50 text-green-400 border border-green-700" :
                                                                         "bg-gray-800 text-gray-400"
                                                     )}>
                                                         {ord.status === 'PARTIALLY_DELIVERED' ? '부분납품' :
-                                                            ord.status === 'DELIVERED' ? '납품완료' : ord.status}
+                                                            (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? '납품완료' : 
+                                                            ord.status === 'PRODUCTION_COMPLETED' ? '생산완료' :
+                                                            ord.status === 'PENDING' ? '대기' :
+                                                            ord.status === 'CONFIRMED' ? '확정' : ord.status}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4">{ord.total_amount?.toLocaleString()} 원</td>
