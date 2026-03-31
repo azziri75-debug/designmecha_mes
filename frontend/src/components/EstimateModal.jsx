@@ -416,8 +416,8 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                                                         <span className="font-bold text-amber-400">할인금액</span>
                                                     ) : (
                                                         <Select
-                                                            options={partnerProducts.map(p => ({ value: p, label: p.name }))}
-                                                            value={item.product_id ? { value: item, label: item.product_name } : null}
+                                                            options={partnerProducts.map(p => ({ value: p, label: p.specification ? `${p.name} (${p.specification})` : p.name }))}
+                                                            value={item.product_id ? { value: item, label: item.product_spec ? `${item.product_name} (${item.product_spec})` : item.product_name } : null}
                                                             onChange={(opt) => handleProductSelect(index, opt.value)}
                                                             styles={{
                                                                 ...selectStyles,
