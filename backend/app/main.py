@@ -837,6 +837,28 @@ async def startup_event():
                 print(f"Startup: Raw SQL migration failed: {e}")
                 await db.rollback()
             # -----------------------------------------------------
+
+            # --- [NEW] Sales Item Columns Migration (Postgres) ---
+            # estimate_items: add product_name, make product_id nullable
+            try:
+                await db.execute(text("ALTER TABLE estimate_items ADD COLUMN IF NOT EXISTS product_name VARCHAR;"))
+                await db.execute(text("ALTER TABLE estimate_items ALTER COLUMN product_id DROP NOT NULL;"))
+                await db.commit()
+                print("Startup: estimate_items.product_name added / product_id nullable (Postgres)")
+            except Exception as e:
+                print(f"Startup: estimate_items migration failed: {e}")
+                await db.rollback()
+
+            # sales_order_items: add product_name, make product_id nullable
+            try:
+                await db.execute(text("ALTER TABLE sales_order_items ADD COLUMN IF NOT EXISTS product_name VARCHAR;"))
+                await db.execute(text("ALTER TABLE sales_order_items ALTER COLUMN product_id DROP NOT NULL;"))
+                await db.commit()
+                print("Startup: sales_order_items.product_name added / product_id nullable (Postgres)")
+            except Exception as e:
+                print(f"Startup: sales_order_items migration failed: {e}")
+                await db.rollback()
+            # -------------------------------------------------------
             
             # 7. [EMERGENCY] Initialize Admin User via Raw SQL (Bypassing ORM constraints)
             try:
