@@ -77,6 +77,7 @@ class StaffBase(BaseModel):
     is_sysadmin: bool = False
     can_access_external: bool = False
     can_view_others: bool = False
+    staff_no: Optional[str] = None
 class StaffSimple(StaffBase):
     id: int
     class Config:

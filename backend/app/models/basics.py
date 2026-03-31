@@ -83,7 +83,10 @@ class Staff(Base):
     main_duty = Column(String, nullable=True) # 주업무 (생산, 관리 등)
     phone = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
-    user_type = Column(String, default="USER") # ADMIN or USER
+    user_type = Column(String(20), nullable=False) # 'ADMIN', 'USER'
+    is_sysadmin = Column(Boolean, default=False)   # NEW: True if the user is a system administrator
+    staff_no = Column(String(50), nullable=True)   # NEW: Employee Number
+    
     password = Column(String, nullable=True) # Login password
     menu_permissions = Column(JSON, default=[]) # List of allowed menu keys
     stamp_image = Column(JSON, nullable=True) # {name, url}

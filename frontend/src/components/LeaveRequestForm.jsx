@@ -19,6 +19,8 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
         if (!data.start_date) updates.start_date = currentStart;
         if (!data.end_date) updates.end_date = currentEnd;
         if (!data.vacation_type) updates.vacation_type = vType;
+        if (!data.staff_no && currentUser?.staff_no) updates.staff_no = currentUser.staff_no;
+        if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
 
         let calcDays = data.leave_days;
 

@@ -662,14 +662,26 @@ const BasicsPageContent = () => {
                         측정기 관리
                     </button>
                 </div>
-                <button
-                    type="button"
-                    onClick={openCreateModal}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20"
-                >
-                    <Plus className="w-4 h-4" />
-                    <span>신규 등록</span>
-                </button>
+                {(!isSystemAdmin && (activeTab === 'company' || activeTab === 'staff')) ? (
+                    <button
+                        type="button"
+                        disabled
+                        className="flex items-center gap-2 bg-gray-700 text-gray-400 px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed opacity-50"
+                        title="시스템 관리자만 등록할 수 있습니다."
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>권한 없음</span>
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={openCreateModal}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>신규 등록</span>
+                    </button>
+                )}
             </div>
             {activeTab === 'partners' && duplicateGroups.length > 0 && (
                 <div className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border border-yellow-500/30 rounded-xl p-5 flex items-center justify-between shadow-xl shadow-yellow-900/20 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -739,8 +751,18 @@ const BasicsPageContent = () => {
 
                 {activeTab === 'company' ? (
                     <div className="p-8">
+                        {!isSystemAdmin && (
+                            <div className="mb-6 bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-start gap-3 w-full max-w-4xl mx-auto">
+                                <div className="p-2 bg-red-500/20 rounded-lg"><Smartphone className="w-5 h-5 text-red-400" /></div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-red-400">읽기 전용 (시스템 관리자 전용)</h4>
+                                    <p className="text-xs text-gray-400 mt-1">회사 정보는 시스템 관리자만 수정할 수 있습니다.</p>
+                                </div>
+                            </div>
+                        )}
                         <form onSubmit={async (e) => {
                             e.preventDefault();
+                            if (!isSystemAdmin) return;
                             try {
                                 await api.post('/basics/company', formData);
                                 alert("저장되었습니다.");
@@ -749,7 +771,7 @@ const BasicsPageContent = () => {
                                 console.error("Save failed", error);
                                 alert("저장 실패");
                             }
-                        }} className="max-w-4xl mx-auto space-y-8">
+                        }} className={cn("max-w-4xl mx-auto space-y-8", !isSystemAdmin && "pointer-events-none opacity-80")}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">기본 정보</h3>
@@ -920,14 +942,24 @@ const BasicsPageContent = () => {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end pt-4 border-t border-gray-700">
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
-                                >
-                                    <Smartphone className="w-4 h-4" /> {/* Just reuse icon or Save icon */}
-                                    <span>정보 저장</span>
-                                </button>
+                            <div className="flex justify-end pt-4 border-t border-gray-700 pointer-events-auto">
+                                {isSystemAdmin ? (
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
+                                    >
+                                        <Smartphone className="w-4 h-4" />
+                                        <span>정보 저장</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        disabled
+                                        className="px-6 py-2.5 bg-gray-700 text-gray-500 font-medium rounded-lg transition-colors flex items-center gap-2 cursor-not-allowed border border-gray-600"
+                                    >
+                                        <span>수정 권한 없음</span>
+                                    </button>
+                                )}
                             </div>
                         </form>
                     </div>
@@ -948,6 +980,7 @@ const BasicsPageContent = () => {
                                         </>
                                     ) : activeTab === 'staff' ? (
                                         <>
+                                            <ResizableTh className="px-6 py-3 w-28 text-center text-gray-500">사원번호</ResizableTh>
                                             <ResizableTh className="px-6 py-3">이름</ResizableTh>
                                             <ResizableTh className="px-6 py-3">구분</ResizableTh>
                                             <ResizableTh className="px-6 py-3">부서/직책</ResizableTh>
@@ -1125,6 +1158,9 @@ const BasicsPageContent = () => {
                                 ) : activeTab === 'staff' ? (
                                     filteredStaff.length > 0 ? filteredStaff.map((member) => (
                                         <tr key={member.id} className="hover:bg-gray-700/50 transition-colors cursor-pointer" onDoubleClick={() => openEditStaffModal(member)}>
+                                            <td className="px-6 py-4 text-center font-mono text-sm text-gray-400">
+                                                {member.staff_no || '-'}
+                                            </td>
                                             <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
                                                     <User className="w-4 h-4 text-purple-400" />
@@ -1160,12 +1196,14 @@ const BasicsPageContent = () => {
                                                 >
                                                     <Pencil className="w-4 h-4" />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleDeleteStaff(member.id)}
-                                                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                                                >
-                                                    <Trash className="w-4 h-4" />
-                                                </button>
+                                                {isSystemAdmin && (
+                                                    <button
+                                                        onClick={() => handleDeleteStaff(member.id)}
+                                                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                    >
+                                                        <Trash className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     )) : (
@@ -1685,7 +1723,8 @@ const BasicsPageContent = () => {
                                                                     step="0.5"
                                                                     defaultValue={leave.adjustment_days}
                                                                     onBlur={(e) => handleUpdateLeave(leave.id, 'adjustment_days', e.target.value)}
-                                                                    className="w-16 bg-blue-900/20 border border-blue-500/30 text-blue-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
+                                                                    disabled={!isSystemAdmin}
+                                                                    className={cn("w-16 bg-blue-900/20 border border-blue-500/30 text-blue-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500", !isSystemAdmin && "opacity-50 cursor-not-allowed")}
                                                                 />
                                                             </td>
                                                             <td className="px-4 py-3">
@@ -1694,7 +1733,8 @@ const BasicsPageContent = () => {
                                                                     step="0.1"
                                                                     defaultValue={leave.used_leave_hours}
                                                                     onBlur={(e) => handleUpdateLeave(leave.id, 'used_leave_hours', e.target.value)}
-                                                                    className="w-16 bg-red-900/20 border border-red-500/30 text-red-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-red-500"
+                                                                    disabled={!isSystemAdmin}
+                                                                    className={cn("w-16 bg-red-900/20 border border-red-500/30 text-red-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-red-500", !isSystemAdmin && "opacity-50 cursor-not-allowed")}
                                                                 />
                                                             </td>
                                                             <td className="px-4 py-3 text-gray-500">{(leave.used_leave_hours / 8).toFixed(2)}일</td>
@@ -1705,7 +1745,8 @@ const BasicsPageContent = () => {
                                                                     step="0.5"
                                                                     defaultValue={leave.sick_leave_days}
                                                                     onBlur={(e) => handleUpdateLeave(leave.id, 'sick_leave_days', e.target.value)}
-                                                                    className="w-14 bg-gray-800 border border-gray-700 text-gray-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
+                                                                    disabled={!isSystemAdmin}
+                                                                    className={cn("w-14 bg-gray-800 border border-gray-700 text-gray-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500", !isSystemAdmin && "opacity-50 cursor-not-allowed")}
                                                                 />
                                                             </td>
                                                             <td className="px-4 py-3">
@@ -1714,7 +1755,8 @@ const BasicsPageContent = () => {
                                                                     step="1"
                                                                     defaultValue={leave.event_leave_days}
                                                                     onBlur={(e) => handleUpdateLeave(leave.id, 'event_leave_days', e.target.value)}
-                                                                    className="w-14 bg-gray-800 border border-gray-700 text-gray-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
+                                                                    disabled={!isSystemAdmin}
+                                                                    className={cn("w-14 bg-gray-800 border border-gray-700 text-gray-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500", !isSystemAdmin && "opacity-50 cursor-not-allowed")}
                                                                 />
                                                             </td>
                                                         </tr>
@@ -1726,13 +1768,19 @@ const BasicsPageContent = () => {
                                 )}
 
                                 {(modalType === 'create_staff' || (modalType === 'edit_staff' && staffTab === 'info')) && (
-                                    <>
+                                    <div className={cn(!isSystemAdmin && "pointer-events-none opacity-90")}>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             {/* Left Column */}
                                             <div className="space-y-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-gray-300">이름 <span className="text-red-500">*</span></label>
-                                                    <input name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-gray-300">사원번호</label>
+                                                        <input name="staff_no" value={formData.staff_no || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono" placeholder="예: A000" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-gray-300">이름 <span className="text-red-500">*</span></label>
+                                                        <input name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-medium text-gray-300">로그인 아이디 <span className="text-red-500">*</span></label>
@@ -2036,7 +2084,7 @@ const BasicsPageContent = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                        </>
+                                        </div>
                                     )}
 
                                 {/* Equipment Forms */}
@@ -2215,20 +2263,22 @@ const BasicsPageContent = () => {
                                     </>
                                 )}
 
-                                <div className="pt-4 flex justify-end gap-3 border-t border-gray-700 mt-6">
+                                <div className="pt-4 flex justify-end gap-3 border-t border-gray-700 mt-6 relative z-10 pointer-events-auto">
                                     <button
                                         type="button"
                                         onClick={() => setShowModal(false)}
                                         className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                                     >
-                                        취소
+                                        {(!isSystemAdmin && modalType.includes('staff')) ? '닫기' : '취소'}
                                     </button>
-                                    <button
-                                        type="submit"
-                                        className="px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40"
-                                    >
-                                        {modalType === 'create' || modalType === 'add_contact' || modalType === 'create_staff' || modalType === 'create_equipment' || modalType === 'create_instrument' || modalType === 'add_inst_history' || modalType === 'add_eq_history' ? '등록완료' : '수정완료'}
-                                    </button>
+                                    {(!isSystemAdmin && modalType.includes('staff')) ? null : (
+                                        <button
+                                            type="submit"
+                                            className="px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40"
+                                        >
+                                            {modalType === 'create' || modalType === 'add_contact' || modalType === 'create_staff' || modalType === 'create_equipment' || modalType === 'create_instrument' || modalType === 'add_inst_history' || modalType === 'add_eq_history' ? '등록완료' : '수정완료'}
+                                        </button>
+                                    )}
                                 </div>
                             </form>
                         </div >

@@ -16,6 +16,8 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         const offset = new Date().getTimezoneOffset() * 60000;
         const todayStr = new Date(Date.now() - offset).toISOString().split('T')[0];
         if (!data.date) updates.date = todayStr;
+        if (!data.staff_no && currentUser?.staff_no) updates.staff_no = currentUser.staff_no;
+        if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
 
         // 2. 시간 계산
         if (data.leave_time && data.return_time) {

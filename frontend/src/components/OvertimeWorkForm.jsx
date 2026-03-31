@@ -7,6 +7,10 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
     useEffect(() => {
+        let updates = {};
+        if (!data.staff_no && currentUser?.staff_no) updates.staff_no = currentUser.staff_no;
+        if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
+
         if (data.start_time && data.end_time) {
             const start = new Date(`2000-01-01T${data.start_time}`);
             const end = new Date(`2000-01-01T${data.end_time}`);
@@ -15,10 +19,14 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
             
             const calcHours = parseFloat(diff.toFixed(1));
             if (data.hours !== calcHours) {
-                onChange({ ...data, hours: calcHours });
+                updates.hours = calcHours;
             }
         }
-    }, [data.start_time, data.end_time]);
+
+        if (Object.keys(updates).length > 0) {
+            onChange({ ...data, ...updates });
+        }
+    }, [data.start_time, data.end_time, currentUser]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
