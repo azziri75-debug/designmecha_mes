@@ -394,9 +394,9 @@ async def read_pending_purchase_items(
     if major_group_id and str(major_group_id).isdigit():
         major_group_id_int = int(major_group_id)
         from app.models.product import ProductGroup
-        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
-                     .distinct()
+        subquery = select(ProductionPlanItem.id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))
+        query = query.where(ProductionPlanItem.id.in_(subquery))
         
     # Debug: Print Query
     # print(f"[DEBUG] Query: {query}")
@@ -437,7 +437,7 @@ async def read_pending_outsourcing_items(
                 selectinload(Product.bom_items)
             ),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrderItem.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
             selectinload(ProductionPlanItem.purchase_items),
@@ -458,9 +458,9 @@ async def read_pending_outsourcing_items(
     if major_group_id and str(major_group_id).isdigit():
         major_group_id_int = int(major_group_id)
         from app.models.product import ProductGroup
-        query = query.join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
-                     .distinct()
+        subquery = select(ProductionPlanItem.id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))
+        query = query.where(ProductionPlanItem.id.in_(subquery))
         
     result = await db.execute(query)
     items = result.scalars().all()
@@ -772,9 +772,9 @@ async def read_purchase_orders(
         major_group_id_int = int(major_group_id)
         from app.models.product import ProductGroup
         from sqlalchemy import or_
-        query = query.join(PurchaseOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
-                     .distinct()
+        subquery = select(PurchaseOrderItem.purchase_order_id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))
+        query = query.where(PurchaseOrder.id.in_(subquery))
 
     query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit or 2000)
 
@@ -1165,9 +1165,9 @@ async def read_outsourcing_orders(
             major_group_id_int = int(major_group_id)
             from app.models.product import ProductGroup
             from sqlalchemy import or_
-            query = query.join(OutsourcingOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                         .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
-                         .distinct()
+            subquery = select(OutsourcingOrderItem.outsourcing_order_id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                         .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))
+            query = query.where(OutsourcingOrder.id.in_(subquery))
 
         query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit or 2000)
 

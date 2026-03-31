@@ -382,6 +382,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         try {
             const payload = {
                 ...formData,
+                partner_id: formData.partner_id || null,
+                order_id: formData.order_id || null,
                 items: formData.items.map(item => ({
                     product_id: item.product_id,
                     quantity: parseInt(item.quantity) || 0,

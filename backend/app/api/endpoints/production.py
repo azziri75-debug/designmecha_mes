@@ -149,7 +149,8 @@ async def read_production_plans(
     stmt = select(ProductionPlan).outerjoin(SalesOrder).outerjoin(StockProduction)
     
     if worker_id:
-        stmt = stmt.join(ProductionPlanItem).where(ProductionPlanItem.worker_id == worker_id).distinct()
+        subquery = select(ProductionPlanItem.plan_id).where(ProductionPlanItem.worker_id == worker_id)
+        stmt = stmt.where(ProductionPlan.id.in_(subquery))
     
     if status:
         stmt = stmt.where(ProductionPlan.status == status)
@@ -165,13 +166,14 @@ async def read_production_plans(
     if customer_id:
         stmt = stmt.where(SalesOrder.partner_id == customer_id)
     if product_name:
-        stmt = stmt.join(ProductionPlanItem).join(Product).where(Product.name.ilike(f"%{product_name}%")).distinct()
+        subquery = select(ProductionPlanItem.plan_id).join(Product).where(Product.name.ilike(f"%{product_name}%"))
+        stmt = stmt.where(ProductionPlan.id.in_(subquery))
     if major_group_id:
         from app.models.product import ProductGroup
         from sqlalchemy import or_
-        stmt = stmt.join(ProductionPlanItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                   .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
-                   .distinct()
+        subquery = select(ProductionPlanItem.plan_id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                   .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+        stmt = stmt.where(ProductionPlan.id.in_(subquery))
 
     result = await db.execute(
         stmt

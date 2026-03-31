@@ -106,16 +106,16 @@ async def read_estimates(
         query = query.where(Estimate.partner_id == partner_id)
     
     if major_group_id or product_name:
-        query = query.join(EstimateItem).join(Product)
+        subquery = select(EstimateItem.estimate_id).join(Product)
         if major_group_id:
             from app.models.product import ProductGroup
-            query = query.join(ProductGroup, Product.group_id == ProductGroup.id)\
-                         .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+            subquery = subquery.join(ProductGroup, Product.group_id == ProductGroup.id)\
+                               .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         if product_name:
-            query = query.where(
+            subquery = subquery.where(
                 or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
             )
-        query = query.distinct()
+        query = query.where(Estimate.id.in_(subquery))
 
     if start_date:
         query = query.where(Estimate.estimate_date >= start_date)
@@ -514,16 +514,16 @@ async def read_orders(
         query = query.where(SalesOrder.partner_id == partner_id)
     
     if major_group_id or product_name:
-        query = query.join(SalesOrderItem).join(Product)
+        subquery = select(SalesOrderItem.order_id).join(Product)
         if major_group_id:
             from app.models.product import ProductGroup
-            query = query.join(ProductGroup, Product.group_id == ProductGroup.id)\
-                         .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+            subquery = subquery.join(ProductGroup, Product.group_id == ProductGroup.id)\
+                               .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         if product_name:
-            query = query.where(
+            subquery = subquery.where(
                 or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
             )
-        query = query.distinct()
+        query = query.where(SalesOrder.id.in_(subquery))
 
     if status:
         query = query.where(SalesOrder.status == status)
