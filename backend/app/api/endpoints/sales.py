@@ -1412,14 +1412,17 @@ async def delete_delivery_history(
         has_deliveries = remaining_histories.scalars().first() is not None
 
         if not has_deliveries:
-            order.status = OrderStatus.CONFIRMED
+            # 전체 납품 이력이 삭제되면 '생산 완료'로 변경 (사용자 요청 반영)
+            order.status = OrderStatus.PRODUCTION_COMPLETED
         else:
             total_qty = sum(it.quantity for it in order.items)
             delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
             if delivered_qty >= total_qty:
                 order.status = OrderStatus.DELIVERY_COMPLETED
-            else:
+            elif delivered_qty > 0:
                 order.status = OrderStatus.PARTIALLY_DELIVERED
+            else:
+                order.status = OrderStatus.PRODUCTION_COMPLETED
 
     await db.commit()
     return {"status": "ok", "message": f"DeliveryHistory {history_id} deleted and quantities reverted"}

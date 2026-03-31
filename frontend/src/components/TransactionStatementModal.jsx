@@ -176,7 +176,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         setIsGeneratingPdf(true);
         try {
             const partnerName = data.partner?.name || '고객사';
-            const firstItemName = items[0]?.product?.name || items[0]?.item_name || '품명';
+            const firstItemName = items[0]?.product?.name || items[0]?.product_name || items[0]?.item_name || '품명';
             const extraCount = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
             const deliveryDate = data.delivery_date || '날짜';
             const fileName = `거래명세서-${partnerName}-${firstItemName}${extraCount}-${deliveryDate}.pdf`;
@@ -344,7 +344,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             {items.map((item, idx) => (
                                 <tr key={idx} style={{ height: ROW_H }}>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{(item.date || '').slice(5)}</td>
-                                    <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all', textOverflow: 'clip' }), fontWeight: 'bold', fontSize: '11.5px' }}>{item.product?.name || item.item_name || ''}</td>
+                                    <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all', textOverflow: 'clip' }), fontWeight: 'bold', fontSize: '11.5px' }}>{item.product?.name || item.product_name || item.item_name || ''}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{item.specification || item.product?.specification || ''}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11.5px' }}>{formatNumber(item.quantity)}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '11.5px' }}>{formatNumber(item.unit_price)}</td>
