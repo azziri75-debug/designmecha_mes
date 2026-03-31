@@ -81,6 +81,36 @@ app.include_router(quality.router, prefix=f"{settings.API_V1_STR}/quality", tags
 async def root():
     return {"status": "ok", "message": "MES ERP Backend is running"}
 
+@app.get("/api/v1/force-fix-db")
+async def force_fix_db():
+    """강제로 사원 테이블의 누락된 모든 컬럼을 추가합니다. (최상위 경로)"""
+    from app.api.deps import AsyncSessionLocal, STAFF_COLUMNS
+    from sqlalchemy import text
+    
+    results = []
+    async with AsyncSessionLocal() as db:
+        # 트랜잭션을 확실히 초기화
+        await db.rollback()
+        
+        for col_name, col_def in STAFF_COLUMNS:
+            try:
+                await db.execute(text(f"ALTER TABLE staff ADD COLUMN {col_name} {col_def}"))
+                await db.commit()
+                results.append(f"✅ {col_name}: 성공")
+            except Exception as e:
+                await db.rollback()
+                error_str = str(e).lower()
+                if "already exists" in error_str or "이미 존재" in error_str:
+                    results.append(f"ℹ️ {col_name}: 이미 존재함")
+                else:
+                    results.append(f"❌ {col_name}: 오류 ({str(e)})")
+                
+    return {
+        "message": "사원 테이블 강제 마이그레이션 결과 (Top-level)",
+        "details": results,
+        "hint": "모든 항목이 성공 또는 이미 존재함으로 나오면, 사원 관리 페이지를 새로고침해 보세요."
+    }
+
 @app.on_event("startup")
 async def startup_event():
     """Database migrations and initialization tasks on startup"""
