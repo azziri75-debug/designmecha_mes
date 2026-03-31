@@ -74,9 +74,9 @@ class StaffBase(BaseModel):
     stamp_image: Optional[dict] = None # {name, url}
     mac_address: Optional[str] = None
     ip_address: Optional[str] = None
-    is_sysadmin: bool = False
-    can_access_external: bool = False
-    can_view_others: bool = False
+    is_sysadmin: Optional[bool] = False
+    can_access_external: Optional[bool] = False
+    can_view_others: Optional[bool] = False
     staff_no: Optional[str] = None
 class StaffSimple(StaffBase):
     id: int
