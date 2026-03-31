@@ -75,12 +75,11 @@ const BasicsPageContent = () => {
         return parsed;
     });
 
-    // Absolute power condition for system administrator
+    // System Admin: ONLY users with is_sysadmin toggle OR the master 'admin' login
+    // Regular ADMIN users without the toggle cannot edit staff/company info
     const isSystemAdmin = 
         user?.login_id?.toLowerCase() === 'admin' || 
-        user?.is_sysadmin === true || 
-        user?.user_type?.toUpperCase() === 'ADMIN' || 
-        user?.role?.includes('대표');
+        user?.is_sysadmin === true;
 
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
