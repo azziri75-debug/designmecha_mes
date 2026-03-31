@@ -223,10 +223,14 @@ async def create_document(
     """새 결재 문서 생성 (기안)"""
     try:
         # 0. Log Payload for Debugging
-        logger.info(f"[APPROVAL] Creating document for user {current_user.id}. Type: {doc_in.doc_type}")
-        
-        # 1. Duplicate Check for Attendance
-        if doc_in.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME"]:
+        # 1. Uniform Doc Type (SUPPLIES -> CONSUMABLES_PURCHASE, VACATION -> LEAVE_REQUEST)
+        if doc_in.doc_type == "SUPPLIES":
+            doc_in.doc_type = "CONSUMABLES_PURCHASE"
+        elif doc_in.doc_type == "VACATION":
+            doc_in.doc_type = "LEAVE_REQUEST"
+
+        # 2. Duplicate Check for Attendance
+        if doc_in.doc_type in ["LEAVE_REQUEST", "EARLY_LEAVE", "OVERTIME"]:
             content = doc_in.content or {}
             target_dates = []
             if doc_in.doc_type == "VACATION":
@@ -378,9 +382,9 @@ async def create_document(
             print(f"[DEBUG] Document {db_doc.id} auto-completed. Type: {db_doc.doc_type}")
             # [NEW] 회계 담당자 알림
             await notify_accounting_managers(db, db_doc, background_tasks)
-            if db_doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
+            if db_doc.doc_type in ["EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
                 await create_attendance_record(db, db_doc)
-            elif db_doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
+            elif db_doc.doc_type == "CONSUMABLES_PURCHASE":
                 print(f"[DEBUG] Triggering process_consumables for auto-approved doc {db_doc.id}")
                 await process_consumables(db, db_doc)
             
@@ -560,9 +564,9 @@ async def process_approval(
             # [NEW] 회계 담당자 알림
             await notify_accounting_managers(db, doc, background_tasks)
             # 최종 승인 시 처리 (Attendance, Consumables 등)
-            if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
+            if doc.doc_type in ["EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
                 await create_attendance_record(db, doc)
-            elif doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
+            elif doc.doc_type == "CONSUMABLES_PURCHASE":
                 print(f"[DEBUG] Triggering process_consumables for approved doc {doc.id}")
                 await process_consumables(db, doc)
             
@@ -693,12 +697,12 @@ async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
 async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
     """결재 완료된 문서 기반 근태 기록 자동 생성 및 연차 차감"""
     try:
-        if doc.doc_type not in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
+        if doc.doc_type not in ["EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
             return
 
         content = doc.content or {}
         
-        if doc.doc_type in ["VACATION", "LEAVE_REQUEST"]:
+        if doc.doc_type == "LEAVE_REQUEST":
             start_date_str = content.get("start_date")
             end_date_str = content.get("end_date")
             if not start_date_str: return

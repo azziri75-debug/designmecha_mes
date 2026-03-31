@@ -797,6 +797,16 @@ async def startup_event():
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plan_items' AND column_name='attachment_file'"))
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN attachment_file JSONB"))
+
+                # [Unify Approval Doc Types]
+                # SUPPLIES -> CONSUMABLES_PURCHASE, VACATION -> LEAVE_REQUEST
+                # Unified migration for both SQLite & Postgres
+                await db.execute(text("UPDATE approval_documents SET doc_type = 'CONSUMABLES_PURCHASE' WHERE doc_type = 'SUPPLIES'"))
+                await db.execute(text("UPDATE approval_documents SET doc_type = 'LEAVE_REQUEST' WHERE doc_type = 'VACATION'"))
+                await db.execute(text("UPDATE approval_lines SET doc_type = 'CONSUMABLES_PURCHASE' WHERE doc_type = 'SUPPLIES'"))
+                await db.execute(text("UPDATE approval_lines SET doc_type = 'LEAVE_REQUEST' WHERE doc_type = 'VACATION'"))
+                print("Startup: Unified approval document types (Global)")
+
                 await db.commit()
             except Exception as e:
                 print(f"Startup: Alter table failed: {e}")

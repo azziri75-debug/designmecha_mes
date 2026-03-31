@@ -121,7 +121,7 @@ const MobileWorkLogPage = () => {
     const [viewMode, setViewMode] = useState('ALL'); // Filters: ALL, MY_DRAFTS, MY_APPROVALS
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);
-    const [selectedDocType, setSelectedDocType] = useState('VACATION');
+    const [selectedDocType, setSelectedDocType] = useState('LEAVE_REQUEST');
     const [docFormData, setDocFormData] = useState({});
     const [selectedDoc, setSelectedDoc] = useState(null);
 
@@ -160,9 +160,9 @@ const MobileWorkLogPage = () => {
     };
 
     const DOC_TYPES = {
-        VACATION: { label: '휴가원', color: '#3b82f6' },
+        LEAVE_REQUEST: { label: '휴가원', color: '#3b82f6' },
         EARLY_LEAVE: { label: '조퇴/외출원', color: '#a855f7' },
-        SUPPLIES: { label: '소모품 신청서', color: '#10b981' },
+        CONSUMABLES_PURCHASE: { label: '소모품 신청서', color: '#10b981' },
         OVERTIME: { label: '야근/특근신청서', color: '#f97316' },
         INTERNAL_DRAFT: { label: '내부기안', color: '#3b82f6' },
         EXPENSE_REPORT: { label: '지출결의서', color: '#6366f1' },
@@ -374,7 +374,7 @@ const MobileWorkLogPage = () => {
     };
 
     const handleCreateApproval = async () => {
-        if (!docFormData.reason && !docFormData.items && selectedDocType !== 'SUPPLIES') {
+        if (!docFormData.reason && !docFormData.items && selectedDocType !== 'CONSUMABLES_PURCHASE') {
             alert("필수 항목을 입력해주세요.");
             return;
         }
@@ -1020,7 +1020,7 @@ const MobileWorkLogPage = () => {
                             fullWidth
                             variant="contained"
                             startIcon={<AddIcon />}
-                            onClick={() => { setSelectedDocType('VACATION'); setDocFormData({}); setEditingDocId(null); setShowCreateModal(true); }}
+                            onClick={() => { setSelectedDocType('LEAVE_REQUEST'); setDocFormData({}); setEditingDocId(null); setShowCreateModal(true); }}
                             sx={{ mb: 2, borderRadius: 2, py: 1.5, fontWeight: 'bold' }}
                         >
                             신규 문서 기안
@@ -1259,7 +1259,7 @@ const MobileWorkLogPage = () => {
                     )}
 
                     <Paper sx={{ p: 2, borderRadius: 2 }}>
-                        {selectedDocType === 'VACATION' && (
+                        {selectedDocType === 'LEAVE_REQUEST' && (
                             <Stack spacing={2}>
                                 <TextField label="시작일" type="date" fullWidth size="small" value={docFormData.start_date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, start_date: e.target.value })} />
                                 <TextField label="종료일" type="date" fullWidth size="small" value={docFormData.end_date || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_date: e.target.value })} />
@@ -1318,7 +1318,7 @@ const MobileWorkLogPage = () => {
                                 <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.reason || ''} onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
                             </Stack>
                         )}
-                        {selectedDocType === 'SUPPLIES' && (
+                        {selectedDocType === 'CONSUMABLES_PURCHASE' && (
                             <Stack spacing={2}>
                                 {(() => {
                                     const items = Array.isArray(docFormData.items) ? docFormData.items : [{ product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, remarks: '' }];
@@ -1466,7 +1466,7 @@ const MobileWorkLogPage = () => {
                                             <Typography variant="body2"><b>사유:</b> {selectedDoc.content.reason}</Typography>
                                         </Stack>
                                     )}
-                                    {selectedDoc.doc_type === 'SUPPLIES' && (
+                                    {selectedDoc.doc_type === 'CONSUMABLES_PURCHASE' && (
                                         <Stack spacing={1}>
                                             <Typography variant="body2" component="div">
                                                 <b>품목:</b>
