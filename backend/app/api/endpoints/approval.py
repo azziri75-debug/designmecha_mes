@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
-from app.api.utils.email import send_approval_email
+from app.api.utils.email import send_approval_email, send_accounting_completion_email
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -376,6 +376,8 @@ async def create_document(
         if all_auto_approved:
             db_doc.status = ApprovalStatus.COMPLETED
             print(f"[DEBUG] Document {db_doc.id} auto-completed. Type: {db_doc.doc_type}")
+            # [NEW] 회계 담당자 알림
+            await notify_accounting_managers(db, db_doc, background_tasks)
             if db_doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
                 await create_attendance_record(db, db_doc)
             elif db_doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
@@ -555,6 +557,8 @@ async def process_approval(
         else:
             doc.status = ApprovalStatus.COMPLETED
             print(f"[DEBUG] Document {doc.id} completed via process_approval. Type: {doc.doc_type}")
+            # [NEW] 회계 담당자 알림
+            await notify_accounting_managers(db, doc, background_tasks)
             # 최종 승인 시 처리 (Attendance, Consumables 등)
             if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
                 await create_attendance_record(db, doc)
@@ -863,6 +867,40 @@ async def is_editable(doc: ApprovalDocument, user: Staff = None) -> bool:
     
     return False
 
+async def notify_accounting_managers(db: AsyncSession, doc: ApprovalDocument, background_tasks: BackgroundTasks):
+    """결재 완료 시 회계 담당자들에게 알림 메일 발송"""
+    try:
+        # 회계 담당자(is_accounting=True)이면서 활성 상태인 사원 조회
+        stmt = select(Staff).where(Staff.is_accounting == True, Staff.is_active == True)
+        res = await db.execute(stmt)
+        managers = res.scalars().all()
+        
+        if not managers:
+            logger.info(f"[NOTIFY] 회계 담당자가 지정되지 않아 알림을 건너뜁니다. (Doc ID: {doc.id})")
+            return
+
+        # 기안자 정보 확인
+        drafter_name = "기안자"
+        if doc.author:
+            drafter_name = doc.author.name
+        else:
+             author_res = await db.get(Staff, doc.author_id)
+             if author_res:
+                 drafter_name = author_res.name
+
+        for manager in managers:
+            if manager.email:
+                background_tasks.add_task(
+                    send_accounting_completion_email,
+                    to_email=manager.email,
+                    doc_title=doc.title,
+                    drafter_name=drafter_name,
+                    doc_id=doc.id
+                )
+                logger.info(f"[NOTIFY] 회계 담당자({manager.name})에게 완료 알림 메일 등록 (Doc ID: {doc.id})")
+    except Exception as e:
+        logger.error(f"[NOTIFY ERROR] 회계 담당자 알림 실패: {str(e)}")
+
 async def sync_attachments_to_reference(db: AsyncSession, doc: ApprovalDocument):
     """결재 문서의 첨부파일을 연동된 원본 객체(PO/OO)의 attachment_file 필드에 동기화 (1:N 대응)"""
     if not doc.reference_id or not doc.reference_type:
@@ -1019,6 +1057,8 @@ async def update_document(
             if all_auto_approved:
                 doc.status = ApprovalStatus.COMPLETED
                 print(f"[DEBUG] Document {doc.id} auto-completed after update. Type: {doc.doc_type}")
+                # [NEW] 회계 담당자 알림
+                await notify_accounting_managers(db, doc, background_tasks)
                 if doc.doc_type in ["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]:
                     await create_attendance_record(db, doc)
                 elif doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:

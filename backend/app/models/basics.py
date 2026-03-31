@@ -103,6 +103,7 @@ class Staff(Base):
     # Permission Fields
     can_access_external = Column(Boolean, default=False)
     can_view_others = Column(Boolean, default=False)
+    is_accounting = Column(Boolean, default=False) # NEW: 회계 담당 여부
 
 class EmployeeTimeRecord(Base):
     """사원 근태/HR 기록 (전자결재 승인 시 자동 생성 및 수동 관리)"""

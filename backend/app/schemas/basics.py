@@ -78,6 +78,7 @@ class StaffBase(BaseModel):
     can_access_external: Optional[bool] = False
     can_view_others: Optional[bool] = False
     staff_no: Optional[str] = None
+    is_accounting: Optional[bool] = False # NEW: 회계 담당 여부
 class StaffSimple(StaffBase):
     id: int
     class Config:
