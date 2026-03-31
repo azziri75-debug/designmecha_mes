@@ -650,6 +650,51 @@ async def complete_purchase_order(
     await db.commit()
     return {"message": "발주 완료 및 정상 입고 처리되었습니다.", "order_no": order.order_no}
 
+@router.post("/outsourcing/orders/{order_id}/complete")
+async def complete_outsourcing_order(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Any = Depends(deps.get_current_user)
+):
+    """외주 발주서 완료 처리 (입고 반영)"""
+    from app.models.purchasing import OutsourcingOrder, OutsourcingStatus, OutsourcingOrderItem
+    from app.models.inventory import TransactionType
+    from app.api.utils.inventory import handle_stock_movement
+    from app.models.production import ProductionPlanItem, ProductionStatus
+
+    query = select(OutsourcingOrder).options(selectinload(OutsourcingOrder.items)).where(OutsourcingOrder.id == order_id)
+    res = await db.execute(query)
+    order = res.scalars().first()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="외주 발주서를 찾을 수 없습니다.")
+    if order.status == OutsourcingStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="이미 완료된 외주건입니다.")
+        
+    order.status = OutsourcingStatus.COMPLETED
+    order.actual_delivery_date = datetime.now().date()
+    
+    for item in order.items:
+        # 1. Update related production plan item if exists
+        if item.production_plan_item_id:
+            plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+            if plan_item and plan_item.status != ProductionStatus.COMPLETED:
+                plan_item.status = ProductionStatus.COMPLETED
+                db.add(plan_item)
+        
+        # 2. Stock movement (IN)
+        if item.product_id:
+            await handle_stock_movement(
+                db=db,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                transaction_type=TransactionType.IN,
+                reference=f"OS: {order.order_no}"
+            )
+
+    await db.commit()
+    return {"message": "외주 완료 및 정상 입고 처리되었습니다.", "order_no": order.order_no}
+
 @router.get("/fix-consumable-types")
 async def trigger_fix_consumable_types(
     db: AsyncSession = Depends(deps.get_db)
@@ -731,7 +776,7 @@ async def read_purchase_orders(
                      .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
                      .distinct()
 
-    query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit)
+    query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit or 2000)
 
     result = await db.execute(query)
     pos = result.scalars().all()
@@ -1124,7 +1169,7 @@ async def read_outsourcing_orders(
                          .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))\
                          .distinct()
 
-        query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit)
+        query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit or 2000)
 
         result = await db.execute(query)
         oos = result.scalars().all()

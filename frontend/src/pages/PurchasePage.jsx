@@ -274,7 +274,7 @@ const PurchasePage = ({ type }) => {
     };
 
     const handleCompleteOrder = async (orderId) => {
-        if (!window.confirm("이 발주건을 발주 완료(입고) 처리하시겠습니까?\n관련 소모품 재고가 자동으로 업데이트됩니다.")) return;
+        if (!window.confirm("이 발주건을 발주 완료(입고) 처리하시겠습니까?\n품목 재고가 자동으로 업데이트됩니다.")) return;
         try {
             await api.post(`/purchasing/purchase/orders/${orderId}/complete`);
             alert("완료(입고) 처리되었습니다.");
@@ -898,7 +898,7 @@ const PurchasePage = ({ type }) => {
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}
-                                                    {type === 'CONSUMABLE' && order.status !== 'COMPLETED' && (
+                                                    {order.status !== 'COMPLETED' && (
                                                         <Tooltip title="발주 완료(입고)">
                                                             <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); handleCompleteOrder(order.id); }}>
                                                                 <CheckCircleIcon fontSize="small" />

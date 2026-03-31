@@ -87,32 +87,33 @@ async def read_estimates(
     Retrieve estimates with advanced filtering.
     """
     query = select(Estimate).options(
-        selectinload(Estimate.items).selectinload(EstimateItem.product).options(
-            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items).selectinload(BOM.child_product)
-        ),
+        selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.bom_items).selectinload(BOM.child_product),
         selectinload(Estimate.partner)
     )
 
     if partner_id:
         query = query.where(Estimate.partner_id == partner_id)
-    if major_group_id:
-        from app.models.product import ProductGroup
-        query = query.join(EstimateItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
-                     .distinct()
+    
+    if major_group_id or product_name:
+        query = query.join(EstimateItem).join(Product)
+        if major_group_id:
+            from app.models.product import ProductGroup
+            query = query.join(ProductGroup, Product.group_id == ProductGroup.id)\
+                         .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+        if product_name:
+            query = query.where(
+                or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
+            )
+        query = query.distinct()
+
     if start_date:
         query = query.where(Estimate.estimate_date >= start_date)
     if end_date:
         query = query.where(Estimate.estimate_date <= end_date)
-    if product_name:
-        query = query.join(EstimateItem).join(Product).where(
-            or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
-        ).distinct()
 
-    query = query.order_by(desc(Estimate.estimate_date)).offset(skip).limit(limit)
+    query = query.order_by(desc(Estimate.estimate_date)).offset(skip).limit(limit or 2000)
 
-    
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -491,27 +492,29 @@ async def read_orders(
     Retrieve sales orders with advanced filtering.
     """
     query = select(SalesOrder).options(
-        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
-            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-            selectinload(Product.bom_items).selectinload(BOM.child_product)
-        ),
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.bom_items).selectinload(BOM.child_product),
         selectinload(SalesOrder.partner),
         selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items)
     )
 
     if partner_id:
         query = query.where(SalesOrder.partner_id == partner_id)
-    if major_group_id:
-        from app.models.product import ProductGroup
-        query = query.join(SalesOrderItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
-                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))\
-                     .distinct()
+    
+    if major_group_id or product_name:
+        query = query.join(SalesOrderItem).join(Product)
+        if major_group_id:
+            from app.models.product import ProductGroup
+            query = query.join(ProductGroup, Product.group_id == ProductGroup.id)\
+                         .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+        if product_name:
+            query = query.where(
+                or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
+            )
+        query = query.distinct()
+
     if status:
         query = query.where(SalesOrder.status == status)
-    if product_name:
-        query = query.join(SalesOrderItem).join(Product).where(
-            or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
-        ).distinct()
 
     if start_date:
         if date_type == "delivery":
@@ -525,9 +528,9 @@ async def read_orders(
             query = query.where(SalesOrder.order_date <= end_date)
 
     if date_type == "delivery":
-        query = query.order_by(desc(SalesOrder.delivery_date)).offset(skip).limit(limit)
+        query = query.order_by(desc(SalesOrder.delivery_date)).offset(skip).limit(limit or 2000)
     else:
-        query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit)
+        query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit or 2000)
     
     result = await db.execute(query)
     return result.scalars().all()

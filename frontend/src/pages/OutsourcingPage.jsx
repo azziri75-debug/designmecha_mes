@@ -4,7 +4,11 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon } from '@mui/icons-material';
+import { 
+    Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, 
+    Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon,
+    CheckCircle as CheckCircleIcon
+} from '@mui/icons-material';
 import api from '../lib/api';
 import { cn, safeParseJSON } from '../lib/utils';
 import OutsourcingOrderModal from '../components/OutsourcingOrderModal';
@@ -240,6 +244,18 @@ const OutsourcingPage = () => {
         } catch (error) {
             console.error("Delete failed", error);
             alert("삭제 실패: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const handleCompleteOrder = async (orderId) => {
+        if (!window.confirm("이 외주건을 완료(입고) 처리하시겠습니까?\n품목 재고가 자동으로 업데이트됩니다.")) return;
+        try {
+            await api.post(`/purchasing/outsourcing/orders/${orderId}/complete`);
+            alert("완료(입고) 처리되었습니다.");
+            handleSuccess();
+        } catch (error) {
+            console.error("Complete failed", error);
+            alert("처리 실패: " + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -612,10 +628,17 @@ const OutsourcingPage = () => {
                                                             <PrintIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
-                                                    {order.status === 'PENDING' && (
+                                                    {(order.status === 'PENDING' || order.status === 'ORDERED') && (
                                                         <Tooltip title="결재요청">
                                                             <IconButton size="small" color="primary" onClick={() => handleApprovalSubmit(order)}>
                                                                 <SendIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
+                                                    {order.status !== 'COMPLETED' && (
+                                                        <Tooltip title="외주 완료(입고)">
+                                                            <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); handleCompleteOrder(order.id); }}>
+                                                                <CheckCircleIcon fontSize="small" />
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}

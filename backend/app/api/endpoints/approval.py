@@ -868,12 +868,27 @@ async def is_editable(doc: ApprovalDocument, user: Staff = None) -> bool:
     return False
 
 async def notify_accounting_managers(db: AsyncSession, doc: ApprovalDocument, background_tasks: BackgroundTasks):
-    """결재 완료 시 회계 담당자들에게 알림 메일 발송"""
     try:
         # 회계 담당자(is_accounting=True)이면서 활성 상태인 사원 조회
-        stmt = select(Staff).where(Staff.is_accounting == True, Staff.is_active == True)
-        res = await db.execute(stmt)
-        managers = res.scalars().all()
+        try:
+            stmt = select(Staff).where(Staff.is_accounting == True, Staff.is_active == True)
+            res = await db.execute(stmt)
+            managers = res.scalars().all()
+        except Exception as query_error:
+            if "is_accounting" in str(query_error):
+                try:
+                    from sqlalchemy import text
+                    await db.execute(text("ALTER TABLE staff ADD COLUMN is_accounting BOOLEAN DEFAULT FALSE"))
+                    await db.commit()
+                    # Retry
+                    stmt = select(Staff).where(Staff.is_accounting == True, Staff.is_active == True)
+                    res = await db.execute(stmt)
+                    managers = res.scalars().all()
+                except Exception as migration_error:
+                    logger.error(f"[NOTIFY] Auto-migration failed: {migration_error}")
+                    return # Exit if we still can't query it
+            else:
+                raise query_error
         
         if not managers:
             logger.info(f"[NOTIFY] 회계 담당자가 지정되지 않아 알림을 건너뜁니다. (Doc ID: {doc.id})")

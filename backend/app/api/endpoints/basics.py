@@ -548,6 +548,19 @@ async def read_staff(
         staff_list = result.scalars().all()
         return staff_list
     except Exception as e:
+        # [AUTO-MIGRATION] if is_accounting column is missing
+        if "is_accounting" in str(e):
+            try:
+                from sqlalchemy import text
+                # Try simple ALTER TABLE (works for SQLite and PostgreSQL)
+                await db.execute(text("ALTER TABLE staff ADD COLUMN is_accounting BOOLEAN DEFAULT FALSE"))
+                await db.commit()
+                # Retry the query once
+                result = await db.execute(select(Staff).offset(skip).limit(limit))
+                return result.scalars().all()
+            except Exception as migrate_error:
+                print(f"Auto-migration failed for is_accounting: {migrate_error}")
+
         import traceback
         import logging
         error_msg = f"Error fetching staff list: {str(e)}\n{traceback.format_exc()}"
