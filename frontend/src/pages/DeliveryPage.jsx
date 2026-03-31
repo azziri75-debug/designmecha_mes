@@ -319,6 +319,7 @@ const DeliveryPage = () => {
                                                                     <thead>
                                                                         <tr className="border-b border-gray-800 text-gray-500">
                                                                             <th className="py-2 text-left">품목명</th>
+                                                                            <th className="py-2 text-left">규격</th>
                                                                             <th className="py-2 text-right">수주량</th>
                                                                             <th className="py-2 text-right">기납품</th>
                                                                             <th className="py-2 text-right text-orange-400">잔량</th>
@@ -329,6 +330,9 @@ const DeliveryPage = () => {
                                                                             <tr key={it.id}>
                                                                                 <td className="py-2.5 font-medium text-gray-300">
                                                                                     {it.product?.name}
+                                                                                </td>
+                                                                                <td className="py-2.5 text-gray-400">
+                                                                                    {it.specification || it.product?.specification || "-"}
                                                                                 </td>
                                                                                 <td className="py-2.5 text-right">{it.quantity?.toLocaleString()}</td>
                                                                                 <td className="py-2.5 text-right text-green-500">{(it.delivered_quantity || 0).toLocaleString()}</td>

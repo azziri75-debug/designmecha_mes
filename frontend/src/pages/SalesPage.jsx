@@ -481,6 +481,7 @@ const SalesPage = () => {
                                                                 <thead>
                                                                     <tr className="border-b border-gray-700">
                                                                         <th className="py-2 text-left">품목명</th>
+                                                                        <th className="py-2 text-left">규격</th>
                                                                         <th className="py-2 text-right">수량</th>
                                                                         <th className="py-2 text-right">단가</th>
                                                                         <th className="py-2 text-right">공급가액</th>
@@ -490,6 +491,7 @@ const SalesPage = () => {
                                                                     {est.items?.map((item, idx) => (
                                                                         <tr key={idx}>
                                                                             <td className="py-2">{item.product?.name || item.product_name || item.name}</td>
+                                                                            <td className="py-2">{item.specification || item.product?.specification || "-"}</td>
                                                                             <td className="py-2 text-right">{item.quantity}</td>
                                                                             <td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td>
                                                                             <td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>
@@ -586,6 +588,7 @@ const SalesPage = () => {
                                                                 <thead>
                                                                     <tr className="border-b border-gray-700">
                                                                         <th className="py-2 text-left">품목명</th>
+                                                                        <th className="py-2 text-left">규격</th>
                                                                         <th className="py-2 text-right">수량</th>
                                                                         <th className="py-2 text-right">단가</th>
                                                                         <th className="py-2 text-right">공급가액</th>
@@ -595,6 +598,7 @@ const SalesPage = () => {
                                                                     {ord.items?.map((item, idx) => (
                                                                         <tr key={idx}>
                                                                             <td className="py-2">{item.product?.name || item.product_name || item.name}</td>
+                                                                            <td className="py-2">{item.specification || item.product?.specification || "-"}</td>
                                                                             <td className="py-2 text-right">{item.quantity}</td>
                                                                             <td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td>
                                                                             <td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>

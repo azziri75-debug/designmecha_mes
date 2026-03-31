@@ -12,6 +12,7 @@ class EstimateItemBase(BaseModel):
     unit_price: float
     quantity: float
     note: Optional[str] = None
+    specification: Optional[str] = None
 
 class EstimateItemCreate(EstimateItemBase):
     pass
@@ -65,6 +66,7 @@ class SalesOrderItemBase(BaseModel):
     quantity: float
     delivered_quantity: float = 0
     note: Optional[str] = None
+    specification: Optional[str] = None
 
 class SalesOrderItemCreate(SalesOrderItemBase):
     pass
@@ -229,6 +231,7 @@ class SalesOrderItemForStatus(BaseModel):
     status: str
     note: Optional[str] = None
     product: Optional[ProductSimple] = None
+    specification: Optional[str] = None
 
     class Config:
         from_attributes = True

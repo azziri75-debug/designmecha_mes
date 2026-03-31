@@ -125,7 +125,12 @@ async def read_estimates(
     query = query.order_by(desc(Estimate.estimate_date)).offset(skip).limit(limit or 2000)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    estimates = result.scalars().all()
+    for est in estimates:
+        for item in est.items:
+            if item.product:
+                item.specification = item.product.specification
+    return estimates
 
 @router.get("/estimates/{estimate_id}", response_model=schemas.Estimate)
 async def read_estimate(
@@ -544,8 +549,12 @@ async def read_orders(
     else:
         query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit or 2000)
     
-    result = await db.execute(query)
-    return result.scalars().all()
+    orders = result.scalars().all()
+    for order in orders:
+        for item in order.items:
+            if item.product:
+                item.specification = item.product.specification
+    return orders
 
 @router.put("/orders/{order_id}", response_model=schemas.SalesOrder)
 async def update_order(
@@ -1189,8 +1198,12 @@ async def read_delivery_status(
     if status and status != 'ALL':
         query = query.where(SalesOrder.status == status)
 
-    result = await db.execute(query)
-    return result.scalars().unique().all()
+    orders = result.scalars().unique().all()
+    for order in orders:
+        for item in order.items:
+            if item.product:
+                item.specification = item.product.specification
+    return orders
 
 
 # ─────────────────────────────────────────────────────────────
