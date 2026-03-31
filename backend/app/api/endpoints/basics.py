@@ -161,6 +161,8 @@ async def login(
         "user_type": staff.user_type or "USER",
         "is_sysadmin": staff.is_sysadmin,
         "login_id": staff.login_id,
+        "staff_no": staff.staff_no,
+        "department": staff.department,
         "can_access_external": staff.can_access_external,
         "can_view_others": staff.can_view_others,
         "menu_permissions": staff.menu_permissions or [],
