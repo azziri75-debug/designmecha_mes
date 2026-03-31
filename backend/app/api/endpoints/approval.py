@@ -955,9 +955,12 @@ async def update_document(
         # ADMIN이 수정하는 경우 상태를 유지하거나 필요시 변경함
         was_completed = doc.status == ApprovalStatus.COMPLETED
     
-        if current_user.user_type != "ADMIN":
+        # [FIX] 반려된 상태에서 수정하는 경우 무조건 상태 초기화 (관리자도 재청구 가능해야 함)
+        is_rejected = doc.status == ApprovalStatus.REJECTED
+        should_reset_status = (current_user.user_type != "ADMIN") or is_rejected
+    
+        if should_reset_status:
             doc.status = ApprovalStatus.PENDING
-            doc.current_sequence = 1
             doc.rejection_reason = None
             
             # Delete existing steps before regenerating (Avoid duplicates on partial update)
@@ -984,7 +987,8 @@ async def update_document(
                         lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
             
             author_rank = get_staff_rank(current_user.role)
-            current_seq = 1
+            # [FIX] 하드코딩된 1 대신 결재선의 최소 순번부터 시작하도록 수정 (순번 어긋남 방지)
+            current_seq = min([l["sequence"] for l in lines_to_process]) if lines_to_process else 1
             all_auto_approved = True
             
             if lines_to_process:
