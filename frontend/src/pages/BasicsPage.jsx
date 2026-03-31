@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Plus, Search, Building2, User, MoreHorizontal, X, UserPlus, Phone, Mail, Pencil, Trash, Smartphone, Upload, FileText, MapPin, Factory } from 'lucide-react';
+import { Plus, Search, Building2, User, MoreHorizontal, X, UserPlus, Phone, Mail, Pencil, Trash, Smartphone, Upload, FileText, MapPin, Factory, Eye, EyeOff } from 'lucide-react';
 import { cn, getImageUrl, safeParseJSON } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -78,6 +78,7 @@ const BasicsPageContent = () => {
     const isSystemAdmin = 
         user?.login_id?.toLowerCase() === 'admin' || 
         user?.is_sysadmin === true;
+    const [showStaffPassword, setShowStaffPassword] = useState(false);
 
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
@@ -1789,15 +1790,27 @@ const BasicsPageContent = () => {
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-medium text-gray-300">로그인 비밀번호</label>
-                                                    <input
-                                                        type="password"
-                                                        name="password"
-                                                        value={formData.password || ''}
-                                                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
-                                                        placeholder={modalType === 'edit_staff' ? "변경할 때만 입력" : "비밀번호 입력"}
-                                                        autoComplete="new-password"
-                                                    />
+                                                    <div className="relative">
+                                                        <input
+                                                            type={showStaffPassword ? 'text' : 'password'}
+                                                            name="password"
+                                                            value={formData.password || ''}
+                                                            onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                                                            className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                                                            placeholder={modalType === 'edit_staff' ? "변경할 때만 입력" : "비밀번호 입력"}
+                                                            autoComplete="new-password"
+                                                        />
+                                                        {isSystemAdmin && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowStaffPassword(v => !v)}
+                                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-400 transition-colors"
+                                                                title={showStaffPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                                                            >
+                                                                {showStaffPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-medium text-gray-300">부서</label>
