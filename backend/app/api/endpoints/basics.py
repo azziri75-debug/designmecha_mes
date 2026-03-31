@@ -204,12 +204,12 @@ async def create_partner(
 @router.get("/partners/", response_model=List[PartnerResponse])
 async def read_partners(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 2000,
     type: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
     from sqlalchemy import String, func
-    query = select(Partner).options(selectinload(Partner.contacts))
+    query = select(Partner).options(selectinload(Partner.contacts)).order_by(Partner.name.asc())
     
     if type:
         # JSON list contains check. Using cast to string and contains for flexibility
