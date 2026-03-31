@@ -344,7 +344,8 @@ async def create_document(
                 pass 
         
         author_rank = get_staff_rank(current_user.role)
-        current_seq = 1
+        # [FIX] 하드코딩된 1 대신 결재선의 최소 순번부터 시작하도록 수정
+        current_seq = min([l["sequence"] for l in lines_to_process]) if lines_to_process else 1
         all_auto_approved = True
         
         if lines_to_process:
@@ -473,17 +474,25 @@ async def process_approval(
     if not doc:
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
     
-    # 현재 내 순서의 단계인지 확인
-    step_res = await db.execute(
+    # [HOTFIX] 현재 진행되어야 할 실제 결재 단계(Sequence) 찾기
+    pending_steps_res = await db.execute(
         select(ApprovalStep)
-        .where(
-            ApprovalStep.document_id == doc_id,
-            ApprovalStep.approver_id == current_user.id,
-            ApprovalStep.sequence == doc.current_sequence,
-            ApprovalStep.status == "PENDING"
-        )
+        .where(ApprovalStep.document_id == doc_id, ApprovalStep.status == "PENDING")
+        .order_by(ApprovalStep.sequence.asc())
     )
-    my_step = step_res.scalars().first()
+    all_pending = pending_steps_res.scalars().all()
+    if not all_pending:
+        raise HTTPException(status_code=400, detail="이미 결재가 완료된 문서입니다.")
+    
+    true_current_seq = all_pending[0].sequence
+    
+    # 문서의 current_sequence가 어긋나 있다면 동기화 (기존 데이터 복구용)
+    if doc.current_sequence != true_current_seq:
+        print(f"[APPROVAL_FIX] Syncing Doc {doc.id} sequence from {doc.current_sequence} to {true_current_seq}")
+        doc.current_sequence = true_current_seq
+
+    # 현재 내 순서의 단계인지 확인
+    my_step = next((s for s in all_pending if s.approver_id == current_user.id and s.sequence == true_current_seq), None)
     
     if not my_step:
         raise HTTPException(status_code=403, detail="결재 권한이 없거나 현재 결재 순서가 아닙니다.")

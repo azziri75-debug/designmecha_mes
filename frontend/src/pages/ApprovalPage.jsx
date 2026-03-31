@@ -195,26 +195,26 @@ const ApprovalPage = () => {
     const canApprove = (doc) => {
         if (!doc || !currentUser) return false;
         const steps = Array.isArray(doc.steps) ? doc.steps : [];
-        const myId = Number(currentUser?.id);
-        const currentSeq = Number(doc.current_sequence);
+        const pendingSteps = steps.filter(s => s.status === 'PENDING');
         
-        if (steps.length === 0 || isNaN(currentSeq)) return false;
+        if (pendingSteps.length === 0) return false;
 
-        // Robust matching: check both snake_case and camelCase, and handle types
-        const myStep = steps.find(s => {
-            const sSeq = Number(s.sequence ?? s.Sequence ?? 0);
-            const sApproverId = Number(s.approver_id ?? s.approverId ?? s.ApproverId ?? 0);
-            const sStatus = String(s.status ?? s.Status ?? "").toUpperCase();
-            
-            return sSeq === currentSeq && sApproverId === myId && sStatus === 'PENDING';
-        });
+        const myId = Number(currentUser?.id);
+        
+        // Find the "true" current sequence (the first available sequence that is still PENDING)
+        const trueCurrentSeq = Math.min(...pendingSteps.map(s => Number(s.sequence)));
+        
+        // Must match the exact trueCurrentSeq AND be the current user
+        const myStep = pendingSteps.find(
+            s => Number(s.sequence) === trueCurrentSeq &&
+                 Number(s.approver_id ?? s.approverId ?? 0) === myId
+        );
 
         if (myStep) {
-            console.log('[canApprove] Success match found');
+            console.log('[canApprove] Success match with trueCurrentSeq:', trueCurrentSeq);
             return true;
         }
 
-        // Admin fallback log (will be shown in debug panel)
         return false;
     };
 
