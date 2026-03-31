@@ -549,6 +549,7 @@ async def read_orders(
     else:
         query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit or 2000)
     
+    result = await db.execute(query)
     orders = result.scalars().all()
     for order in orders:
         for item in order.items:
@@ -1198,6 +1199,7 @@ async def read_delivery_status(
     if status and status != 'ALL':
         query = query.where(SalesOrder.status == status)
 
+    result = await db.execute(query)
     orders = result.scalars().unique().all()
     for order in orders:
         for item in order.items:
