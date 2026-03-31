@@ -8,6 +8,41 @@ from app.models.basics import Staff
 engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, echo=True)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+# --- [AUTO-MIGRATION HELPER] ---
+STAFF_COLUMNS = [
+    ("is_sysadmin", "BOOLEAN DEFAULT FALSE"),
+    ("staff_no", "VARCHAR(50)"),
+    ("mac_address", "VARCHAR"),
+    ("ip_address", "VARCHAR"),
+    ("can_access_external", "BOOLEAN DEFAULT FALSE"),
+    ("can_view_others", "BOOLEAN DEFAULT FALSE"),
+    ("is_accounting", "BOOLEAN DEFAULT FALSE"),
+    ("password", "VARCHAR"),
+    ("menu_permissions", "JSON"),
+    ("stamp_image", "JSON"),
+    ("login_id", "VARCHAR"),
+    ("department", "VARCHAR"),
+    ("email", "VARCHAR"),
+    ("join_date", "DATE")
+]
+
+async def ensure_staff_columns(db: AsyncSession, error: Exception) -> bool:
+    from sqlalchemy import text
+    error_str = str(error).lower()
+    if "column" in error_str and ("no such" in error_str or "not found" in error_str or "does not exist" in error_str):
+        for col_name, col_def in STAFF_COLUMNS:
+            if col_name.lower() in error_str:
+                try:
+                    await db.execute(text(f"ALTER TABLE staff ADD COLUMN {col_name} {col_def}"))
+                    await db.commit()
+                    print(f"✅ [AUTO-MIGRATED] staff.{col_name}")
+                    return True
+                except Exception as ex:
+                    print(f"❌ [AUTO-MIGRATION FAILED] staff.{col_name}: {ex}")
+                    return False
+    return False
+# -------------------------------
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
@@ -51,9 +86,21 @@ async def get_current_user(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid X-User-ID format")
         
-    result = await db.execute(select(Staff).where(Staff.id == user_id))
-    user = result.scalar_one_or_none()
-    
+    # Retry loop with auto-migration for missing columns
+    user = None
+    for _ in range(10):
+        try:
+            result = await db.execute(select(Staff).where(Staff.id == user_id))
+            user = result.scalar_one_or_none()
+            break
+        except Exception as e:
+            if not await ensure_staff_columns(db, e):
+                import traceback
+                print(f"Final error in get_current_user: {e}\n{traceback.format_exc()}")
+                raise HTTPException(status_code=500, detail=f"Database error in get_current_user: {str(e)}")
+    else:
+         raise HTTPException(status_code=500, detail="Too many missing columns in staff table.")
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         

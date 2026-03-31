@@ -543,30 +543,24 @@ async def read_staff(
     limit: int = 100,
     db: AsyncSession = Depends(get_db)
 ):
-    try:
-        result = await db.execute(select(Staff).offset(skip).limit(limit))
-        staff_list = result.scalars().all()
-        return staff_list
-    except Exception as e:
-        # [AUTO-MIGRATION] if is_accounting column is missing
-        if "is_accounting" in str(e):
-            try:
-                from sqlalchemy import text
-                # Try simple ALTER TABLE (works for SQLite and PostgreSQL)
-                await db.execute(text("ALTER TABLE staff ADD COLUMN is_accounting BOOLEAN DEFAULT FALSE"))
-                await db.commit()
-                # Retry the query once
-                result = await db.execute(select(Staff).offset(skip).limit(limit))
-                return result.scalars().all()
-            except Exception as migrate_error:
-                print(f"Auto-migration failed for is_accounting: {migrate_error}")
-
-        import traceback
-        import logging
-        error_msg = f"Error fetching staff list: {str(e)}\n{traceback.format_exc()}"
-        logging.error(error_msg)
-        print(error_msg)
-        raise HTTPException(status_code=500, detail="Internal Server Error while fetching staff.")
+    # Comprehensive Auto-migration for Staff Table using helper
+    from app.api.deps import ensure_staff_columns
+    
+    for attempt in range(10): # Try up to 10 iterations for missing columns
+        try:
+            result = await db.execute(select(Staff).offset(skip).limit(limit))
+            staff_list = result.scalars().all()
+            return staff_list
+        except Exception as e:
+            if not await ensure_staff_columns(db, e):
+                import traceback
+                import logging
+                error_msg = f"Error fetching staff list: {str(e)}\n{traceback.format_exc()}"
+                logging.error(error_msg)
+                print(error_msg)
+                raise HTTPException(status_code=500, detail=f"Internal Server Error while fetching staff: {str(e)}")
+    
+    raise HTTPException(status_code=500, detail="Internal Server Error: Too many missing columns to auto-migrate.")
 
 @router.put("/staff/{staff_id}", response_model=StaffResponse)
 async def update_staff(

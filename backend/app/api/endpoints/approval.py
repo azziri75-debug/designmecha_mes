@@ -870,25 +870,18 @@ async def is_editable(doc: ApprovalDocument, user: Staff = None) -> bool:
 async def notify_accounting_managers(db: AsyncSession, doc: ApprovalDocument, background_tasks: BackgroundTasks):
     try:
         # 회계 담당자(is_accounting=True)이면서 활성 상태인 사원 조회
-        try:
-            stmt = select(Staff).where(Staff.is_accounting == True, Staff.is_active == True)
-            res = await db.execute(stmt)
-            managers = res.scalars().all()
-        except Exception as query_error:
-            if "is_accounting" in str(query_error):
-                try:
-                    from sqlalchemy import text
-                    await db.execute(text("ALTER TABLE staff ADD COLUMN is_accounting BOOLEAN DEFAULT FALSE"))
-                    await db.commit()
-                    # Retry
-                    stmt = select(Staff).where(Staff.is_accounting == True, Staff.is_active == True)
-                    res = await db.execute(stmt)
-                    managers = res.scalars().all()
-                except Exception as migration_error:
-                    logger.error(f"[NOTIFY] Auto-migration failed: {migration_error}")
-                    return # Exit if we still can't query it
-            else:
-                raise query_error
+        from app.api.deps import ensure_staff_columns
+        managers = []
+        for _ in range(5):
+            try:
+                stmt = select(Staff).where(Staff.is_accounting == True, Staff.is_active == True)
+                res = await db.execute(stmt)
+                managers = res.scalars().all()
+                break
+            except Exception as e:
+                if not await ensure_staff_columns(db, e):
+                    logger.error(f"[NOTIFY] Database error retrieving accounting managers: {e}")
+                    return # Exit if we can't fix it
         
         if not managers:
             logger.info(f"[NOTIFY] 회계 담당자가 지정되지 않아 알림을 건너뜁니다. (Doc ID: {doc.id})")
