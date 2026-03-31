@@ -537,6 +537,33 @@ async def create_staff(
     await db.refresh(new_staff)
     return new_staff
 
+@router.get("/staff/fix-db")
+async def fix_staff_db(db: AsyncSession = Depends(get_db)):
+    """강제로 사원 테이블의 누락된 모든 컬럼을 추가합니다."""
+    from sqlalchemy import text
+    from app.api.deps import STAFF_COLUMNS
+    
+    results = []
+    # 트랜잭션을 확실히 초기화
+    await db.rollback()
+    
+    for col_name, col_def in STAFF_COLUMNS:
+        try:
+            await db.execute(text(f"ALTER TABLE staff ADD COLUMN {col_name} {col_def}"))
+            await db.commit()
+            results.append(f"✅ {col_name}: 성공")
+        except Exception as e:
+            await db.rollback()
+            if "already exists" in str(e).lower():
+                results.append(f"ℹ️ {col_name}: 이미 존재함")
+            else:
+                results.append(f"❌ {col_name}: 오류 ({str(e)})")
+                
+    return {
+        "message": "사원 테이블 마이그레이션이 완료되었습니다.",
+        "details": results
+    }
+
 @router.get("/staff/", response_model=List[StaffResponse])
 async def read_staff(
     skip: int = 0,
@@ -546,19 +573,26 @@ async def read_staff(
     # Comprehensive Auto-migration for Staff Table using helper
     from app.api.deps import ensure_staff_columns
     
-    for attempt in range(10): # Try up to 10 iterations for missing columns
+    for attempt in range(15): # Increase retries for safety
         try:
             result = await db.execute(select(Staff).offset(skip).limit(limit))
             staff_list = result.scalars().all()
             return staff_list
         except Exception as e:
+            error_str = str(e).lower()
+            
+            # [PG FIX] If we catch InFailedSQLTransactionError, rollback and retry IMMEDIATELY without counting as a column migration attempt
+            if "current transaction is aborted" in error_str or "infailedsqltransactionerror" in error_str:
+                await db.rollback()
+                continue # Retry this iteration
+                
             if not await ensure_staff_columns(db, e):
                 import traceback
                 import logging
-                error_msg = f"Error fetching staff list: {str(e)}\n{traceback.format_exc()}"
+                error_msg = f"Error fetching staff list (Final): {str(e)}\n{traceback.format_exc()}"
                 logging.error(error_msg)
                 print(error_msg)
-                raise HTTPException(status_code=500, detail=f"Internal Server Error while fetching staff: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Internal Server Error while fetching staff (DB fix needed): {str(e)}")
     
     raise HTTPException(status_code=500, detail="Internal Server Error: Too many missing columns to auto-migrate.")
 

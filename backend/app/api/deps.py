@@ -94,16 +94,22 @@ async def get_current_user(
         
     # Retry loop with auto-migration for missing columns
     user = None
-    for _ in range(10):
+    for attempt in range(15):
         try:
             result = await db.execute(select(Staff).where(Staff.id == user_id))
             user = result.scalar_one_or_none()
             break
         except Exception as e:
+            error_str = str(e).lower()
+            # [PG FIX] If transaction is aborted, rollback and retry this iteration
+            if "current transaction is aborted" in error_str or "infailedsqltransactionerror" in error_str:
+                await db.rollback()
+                continue
+
             if not await ensure_staff_columns(db, e):
                 import traceback
                 print(f"Final error in get_current_user: {e}\n{traceback.format_exc()}")
-                raise HTTPException(status_code=500, detail=f"Database error in get_current_user: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Database error in get_current_user (DB fix needed): {str(e)}")
     else:
          raise HTTPException(status_code=500, detail="Too many missing columns in staff table.")
 

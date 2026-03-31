@@ -872,13 +872,19 @@ async def notify_accounting_managers(db: AsyncSession, doc: ApprovalDocument, ba
         # 회계 담당자(is_accounting=True)이면서 활성 상태인 사원 조회
         from app.api.deps import ensure_staff_columns
         managers = []
-        for _ in range(5):
+        for _ in range(15):
             try:
                 stmt = select(Staff).where(Staff.is_accounting == True, Staff.is_active == True)
                 res = await db.execute(stmt)
                 managers = res.scalars().all()
                 break
             except Exception as e:
+                error_str = str(e).lower()
+                # [PG FIX] If transaction is aborted, rollback and retry
+                if "current transaction is aborted" in error_str or "infailedsqltransactionerror" in error_str:
+                    await db.rollback()
+                    continue
+
                 if not await ensure_staff_columns(db, e):
                     logger.error(f"[NOTIFY] Database error retrieving accounting managers: {e}")
                     return # Exit if we can't fix it
