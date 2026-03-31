@@ -221,10 +221,11 @@ class SalesOrderItemForStatus(BaseModel):
     """납품 현황 목록 전용 수주 항목 슬림 스키마"""
     id: int
     order_id: int
-    product_id: int
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
     unit_price: float
-    quantity: int
-    delivered_quantity: int = 0
+    quantity: float
+    delivered_quantity: float = 0
     status: str
     note: Optional[str] = None
     product: Optional[ProductSimple] = None
