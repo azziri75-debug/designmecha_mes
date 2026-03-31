@@ -511,7 +511,10 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                                             ...selectStyles,
                                                             control: (base) => ({ ...base, minHeight: '34px', backgroundColor: '#1F2937', fontSize: '13px' }),
                                                             valueContainer: (base) => ({ ...base, padding: '0 8px' }),
+                                                            menuPortal: (base) => ({ ...base, zIndex: 10050 }),
                                                         }}
+                                                        menuPortalTarget={document.body}
+                                                        menuPosition="fixed"
                                                         placeholder="품목 검색..."
                                                         isSearchable
                                                     />
