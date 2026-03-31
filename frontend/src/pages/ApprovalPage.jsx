@@ -646,78 +646,113 @@ const ApprovalPage = () => {
                                         overflow: 'visible !important'
                                     }
                                 }}>
-                                    {selectedDoc.doc_type === 'INTERNAL_DRAFT' && (
+                                    {selectedDoc.doc_type === 'INTERNAL_DRAFT' && (() => {
+                                        const c = selectedDoc.content || {};
+                                        const safeC = { ...c, items: Array.isArray(c.items) ? c.items : [] };
+                                        return (
                                         <InternalDraftForm 
-                                            data={selectedDoc.content || {}} 
+                                            data={safeC} 
                                             onChange={() => {}} 
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
                                         />
-                                    )}
-                                    {selectedDoc.doc_type === 'EXPENSE_REPORT' && (
+                                        );
+                                    })()}
+                                    {selectedDoc.doc_type === 'EXPENSE_REPORT' && (() => {
+                                        const c = selectedDoc.content || {};
+                                        const safeC = { ...c, items: Array.isArray(c.items) ? c.items : [] };
+                                        return (
                                         <ExpenseReportForm 
-                                            data={selectedDoc.content || {}} 
+                                            data={safeC} 
                                             onChange={() => {}} 
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
                                         />
-                                    )}
-                                    {selectedDoc.doc_type === 'BUSINESS_TRIP' && (
+                                        );
+                                    })()}
+                                    {selectedDoc.doc_type === 'BUSINESS_TRIP' && (() => {
+                                        const c = selectedDoc.content || {};
+                                        const safeC = { ...c, items: Array.isArray(c.items) ? c.items : [] };
+                                        return (
                                         <BusinessTripExpenseForm 
-                                            data={selectedDoc.content || {}} 
+                                            data={safeC} 
                                             onChange={() => {}} 
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
                                         />
-                                    )}
-                                    {(selectedDoc.doc_type === 'LEAVE_REQUEST' || selectedDoc.doc_type === 'VACATION') && (
+                                        );
+                                    })()}
+                                    {(selectedDoc.doc_type === 'LEAVE_REQUEST' || selectedDoc.doc_type === 'VACATION') && (() => {
+                                        const c = selectedDoc.content || {};
+                                        const safeC = selectedDoc.doc_type === 'VACATION'
+                                            ? { ...c, vacation_type: c.vacation_type, start_date: c.start_date, end_date: c.end_date, vacation_reason: c.reason, items: [] }
+                                            : { ...c, items: Array.isArray(c.items) ? c.items : [] };
+                                        return (
                                         <LeaveRequestForm 
-                                            data={selectedDoc.doc_type === 'VACATION' ? {...(selectedDoc.content || {}), vacation_type: selectedDoc.content?.vacation_type, start_date: selectedDoc.content?.start_date, end_date: selectedDoc.content?.end_date, vacation_reason: selectedDoc.content?.reason} : (selectedDoc.content || {})} 
+                                            data={safeC}
                                             onChange={() => {}} 
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
                                         />
-                                    )}
-                                    {selectedDoc.doc_type === 'EARLY_LEAVE' && (
+                                        );
+                                    })()}
+                                    {selectedDoc.doc_type === 'EARLY_LEAVE' && (() => {
+                                        const c = selectedDoc.content || {};
+                                        const safeC = { ...c, items: Array.isArray(c.items) ? c.items : [] };
+                                        return (
                                         <EarlyLeaveForm 
-                                            data={selectedDoc.content || {}} 
+                                            data={safeC} 
                                             onChange={() => {}} 
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
                                         />
-                                    )}
-                                    {(selectedDoc.doc_type === 'CONSUMABLES_PURCHASE' || selectedDoc.doc_type === 'SUPPLIES') && (
+                                        );
+                                    })()}
+                                    {(selectedDoc.doc_type === 'CONSUMABLES_PURCHASE' || selectedDoc.doc_type === 'SUPPLIES') && (() => {
+                                        const c = selectedDoc.content || {};
+                                        const safeC = { ...c, items: Array.isArray(c.items) ? c.items : [] };
+                                        return (
                                         <ConsumablesPurchaseForm 
-                                            data={selectedDoc.content || {}} 
+                                            data={safeC} 
                                             onChange={() => {}} 
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
                                         />
-                                    )}
-                                    {selectedDoc.doc_type === 'OVERTIME' && (
+                                        );
+                                    })()}
+                                    {selectedDoc.doc_type === 'OVERTIME' && (() => {
+                                        const c = selectedDoc.content || {};
+                                        const safeC = { ...c, items: Array.isArray(c.items) ? c.items : [] };
+                                        return (
                                         <OvertimeWorkForm 
-                                            data={selectedDoc.content || {}} 
+                                            data={safeC} 
                                             onChange={() => {}} 
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
                                         />
-                                    )}
-                                    {selectedDoc.doc_type === 'PURCHASE_ORDER' && (
+                                        );
+                                    })()}
+                                    {selectedDoc.doc_type === 'PURCHASE_ORDER' && (() => {
+                                        const c = selectedDoc.content || {};
+                                        const safeC = { ...c, items: Array.isArray(c.items) ? c.items : [] };
+                                        return (
                                         <PurchaseOrderForm 
-                                            data={selectedDoc.content || {}} 
+                                            data={safeC} 
                                             onChange={() => {}} 
                                             isReadOnly={true} 
                                             documentData={selectedDoc}
                                             currentUser={currentUser}
                                         />
-                                    )}
+                                        );
+                                    })()}
+
 
                                     {/* Attachment Section */}
                                     {selectedDoc.attachments && selectedDoc.attachments.length > 0 && (
