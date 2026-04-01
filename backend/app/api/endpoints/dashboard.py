@@ -7,12 +7,13 @@ from typing import Dict, Any
 
 from app.api.deps import get_db
 from app.models.sales import SalesOrder, OrderStatus
+from app.core.timezone import now_kst
 
 router = APIRouter()
 
 @router.get("/stats")
 async def get_dashboard_stats(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
-    now = datetime.now()
+    now = now_kst()
     this_month_start = datetime(now.year, now.month, 1)
     
     # 1. Total Order Amount (All non-cancelled)

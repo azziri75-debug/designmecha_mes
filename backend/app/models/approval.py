@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, JSON, Date, DateTime, Text, Float, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
+from app.core.timezone import now_kst
 import enum
 
 class DocumentType(str, enum.Enum):
@@ -55,8 +56,8 @@ class ApprovalDocument(Base):
     rejection_reason = Column(Text, nullable=True)
     attachment_file = Column(JSON, nullable=True) # [Legacy] List of {name, url}
     
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    created_at = Column(DateTime, default=now_kst)
+    updated_at = Column(DateTime, default=now_kst, onupdate=now_kst)
     deleted_at = Column(DateTime, nullable=True) # Soft delete
 
     author = relationship("Staff", foreign_keys=[author_id], lazy="selectin")
@@ -71,7 +72,7 @@ class ApprovalAttachment(Base):
     document_id = Column(Integer, ForeignKey("approval_documents.id"), nullable=False)
     filename = Column(String, nullable=False)
     url = Column(String, nullable=False)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     document = relationship("ApprovalDocument", back_populates="attachments")
 

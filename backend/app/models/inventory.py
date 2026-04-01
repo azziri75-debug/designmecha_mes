@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTim
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base import Base
+from app.core.timezone import now_kst
 import enum
 
 class StockProductionStatus(str, enum.Enum):
@@ -21,7 +22,7 @@ class Stock(Base):
     in_production_quantity = Column(Integer, default=0) # 현재 생산 중인 수량
     
     location = Column(String, nullable=True) # 창고 위치 등
-    updated_at = Column(DateTime, onupdate=func.now())
+    updated_at = Column(DateTime, default=now_kst, onupdate=now_kst)
 
     product = relationship("Product")
 
@@ -36,13 +37,13 @@ class StockProduction(Base):
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True) # 보충 요청 거래처
     quantity = Column(Integer, nullable=False) # 요청 수량
     
-    request_date = Column(Date, default=func.now()) # 등록일
+    request_date = Column(Date, default=now_kst) # 등록일
     target_date = Column(Date, nullable=True)      # 완공 목표일
     
     status = Column(SqEnum(StockProductionStatus, native_enum=False), default=StockProductionStatus.PENDING)
     note = Column(Text, nullable=True)
     
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     product = relationship("Product")
     partner = relationship("app.models.basics.Partner") # Use string reference to avoid circularities
@@ -64,6 +65,6 @@ class StockTransaction(Base):
     transaction_type = Column(SqEnum(TransactionType, native_enum=False), nullable=False)
     
     reference = Column(String, nullable=True) # 구매번호, 수주번호, 작업지시번호 등
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     stock = relationship("Stock", backref="transactions")

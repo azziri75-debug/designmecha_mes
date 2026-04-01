@@ -22,7 +22,7 @@ class InspectionResult(Base):
     id = Column(Integer, primary_key=True, index=True)
     work_order_id = Column(Integer, ForeignKey("work_orders.id"), unique=True)
     inspector_name = Column(String, nullable=True) # 검사원
-    inspection_date = Column(DateTime, default=func.now())
+    inspection_date = Column(DateTime, default=now_kst)
     
     # Simplified result storage. For detailed per-item results, another table might be needed.
     # Here assuming JSON text or summary for simplicity as per requirements.
@@ -41,7 +41,7 @@ class Attachment(Base):
     file_name = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
     file_type = Column(String, nullable=True) # IMAGE, PDF etc.
-    upload_date = Column(DateTime, default=func.now())
+    upload_date = Column(DateTime, default=now_kst)
 
 class DefectStatus(str, enum.Enum):
     OCCURRED = "OCCURRED"   # 발생
@@ -58,7 +58,7 @@ class QualityDefect(Base):
     plan_id = Column(Integer, ForeignKey("production_plans.id", ondelete="CASCADE"), nullable=False)
     plan_item_id = Column(Integer, ForeignKey("production_plan_items.id", ondelete="CASCADE"), nullable=False) # 공정
     
-    defect_date = Column(DateTime, default=func.now())
+    defect_date = Column(DateTime, default=now_kst)
     defect_reason = Column(String, nullable=False) # 불량 내용/사유
     quantity = Column(Integer, default=0) # 불량 수량
     amount = Column(Float, default=0.0) # 불량 금액 (손실액)
@@ -70,7 +70,7 @@ class QualityDefect(Base):
     resolution_date = Column(DateTime, nullable=True)
     resolution_note = Column(Text, nullable=True) # 처리 내용
     
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     # Relationships
     order = relationship("SalesOrder")
@@ -91,15 +91,15 @@ class CustomerComplaint(Base):
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True) # 관련 수주
     delivery_history_id = Column(Integer, ForeignKey("delivery_histories.id"), nullable=True) # 관련 납품
     
-    receipt_date = Column(Date, default=func.now())
+    receipt_date = Column(Date, default=now_kst)
     content = Column(Text, nullable=False)     # 불만 내용
     action_note = Column(Text, nullable=True)  # 조치 내용
     status = Column(SqEnum(ComplaintStatus), default=ComplaintStatus.RECEIVED)
     
     attachment_files = Column(JSON, nullable=True) # [{name, url}]
     
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    created_at = Column(DateTime, default=now_kst)
+    updated_at = Column(DateTime, default=now_kst, onupdate=now_kst)
 
     partner = relationship("Partner")
     order = relationship("SalesOrder")

@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTim
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from app.db.base import Base
+from app.core.timezone import now_kst
 import enum
 
 class OrderStatus(str, enum.Enum):
@@ -25,13 +26,13 @@ class Estimate(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)
-    estimate_date = Column(Date, default=func.now())
+    estimate_date = Column(Date, default=now_kst)
     valid_until = Column(Date, nullable=True) # 유효기간
     total_amount = Column(Float, default=0.0) # 총 견적 금액
     note = Column(Text, nullable=True)
     attachment_file = Column(JSON, nullable=True) # 첨부파일 (JSON List of {name, url})
     sheet_metadata = Column(JSON, nullable=True) # 견적서 편집 상태 저장 (JSON)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     partner = relationship("Partner")
     items = relationship("EstimateItem", back_populates="estimate", cascade="all, delete-orphan")
@@ -58,7 +59,7 @@ class SalesOrder(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_no = Column(String, unique=True, index=True)
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)
-    order_date = Column(Date, default=func.now())
+    order_date = Column(Date, default=now_kst)
     delivery_date = Column(Date, nullable=True)
     actual_delivery_date = Column(Date, nullable=True)
     delivery_method = Column(String, nullable=True)
@@ -67,7 +68,7 @@ class SalesOrder(Base):
     note = Column(Text, nullable=True)
     status = Column(SqEnum(OrderStatus), default=OrderStatus.PENDING)
     attachment_file = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     partner = relationship("Partner")
     items = relationship("SalesOrderItem", back_populates="order", cascade="all, delete-orphan")
@@ -100,13 +101,13 @@ class DeliveryHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=False)
-    delivery_date = Column(Date, default=func.now())
+    delivery_date = Column(Date, default=now_kst)
     delivery_no = Column(String, unique=True, index=True)
     note = Column(Text, nullable=True)
     attachment_files = Column(JSON, nullable=True)
     statement_json = Column(JSON, nullable=True)
     supplier_info = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     order = relationship("SalesOrder", back_populates="delivery_histories")
     items = relationship("DeliveryHistoryItem", back_populates="delivery_history", cascade="all, delete-orphan")

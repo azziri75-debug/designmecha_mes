@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from app.core.config import settings
 from app.models import Staff, AttendanceLog, AttendanceLogType
+from app.core.timezone import now_kst
 
 # Database Engine 설정
 engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI)
@@ -43,7 +44,7 @@ async def scan_and_log_wifi():
     2. 각 기기의 온라인 여부 확인 (Ping 또는 ARP 테이블 조회).
     3. 접속이 확인되면 AttendanceLog에 기록.
     """
-    print(f"[{datetime.now()}] Starting Wi-Fi detection scan...")
+    print(f"[{now_kst()}] Starting Wi-Fi detection scan...")
     
     async with AsyncSessionLocal() as db:
         # MAC 또는 IP 주소가 등록된 활성 사원 조회
@@ -64,14 +65,14 @@ async def scan_and_log_wifi():
                 # 여기서는 원시 데이터를 최대한 남기는 뼈대만 작성
                 new_log = AttendanceLog(
                     staff_id=staff.id,
-                    log_time=datetime.now(),
+                    log_time=now_kst(),
                     log_type=AttendanceLogType.WIFI_DETECTED
                 )
                 db.add(new_log)
         
         await db.commit()
     
-    print(f"[{datetime.now()}] Scan completed.")
+    print(f"[{now_kst()}] Scan completed.")
 
 async def main():
     """

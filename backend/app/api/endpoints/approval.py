@@ -13,6 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from app.api import deps
+from app.core.timezone import now_kst
 from app.models.approval import ApprovalDocument, ApprovalLine, ApprovalStep, ApprovalStatus, ApprovalAttachment
 from app.models.basics import Staff, EmployeeTimeRecord, Company
 from app.models.purchasing import (
@@ -247,7 +248,7 @@ async def create_document(
                 # Check for existing non-rejected documents of the same type or other attendance types on the same date
                 # To keep it simple and DB agnostic, we fetch recent docs for the user and filter in Python
                 # Usually only a handful of docs per user per month
-                recent_limit = datetime.now() - timedelta(days=60)
+                recent_limit = now_kst() - timedelta(days=60)
                 stmt = select(ApprovalDocument).where(
                     ApprovalDocument.author_id == current_user.id,
                     ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]),
@@ -363,7 +364,7 @@ async def create_document(
                     approver_id=lp["approver_id"],
                     sequence=lp["sequence"],
                     status="APPROVED" if is_auto else "PENDING",
-                    processed_at=datetime.now() if is_auto else None,
+                    processed_at=now_kst() if is_auto else None,
                     comment="기안자 자동 승인" if (lp["approver_id"] == current_user.id) else ("기안자 직급에 따른 자동 승인" if is_auto else None)
                 )
                 db.add(step)
@@ -506,7 +507,7 @@ async def process_approval(
     # 2. 상태 업데이트
     my_step.status = action.status # APPROVED or REJECTED
     my_step.comment = action.comment
-    my_step.processed_at = datetime.now()
+    my_step.processed_at = now_kst()
     
     if action.status == "REJECTED":
         doc.status = ApprovalStatus.REJECTED
@@ -1058,7 +1059,7 @@ async def update_document(
                         approver_id=lp["approver_id"],
                         sequence=lp["sequence"],
                         status="APPROVED" if is_auto else "PENDING",
-                        processed_at=datetime.now() if is_auto else None,
+                        processed_at=now_kst() if is_auto else None,
                         comment="기안자 자동 승인" if (lp["approver_id"] == current_user.id) else ("기안자 직급에 따른 자동 승인" if is_auto else None)
                     )
                     db.add(step)
@@ -1163,7 +1164,7 @@ async def delete_document(
             if waits:
                 await db.execute(delete(ConsumablePurchaseWait).where(ConsumablePurchaseWait.approval_id == doc_id))
             # Bug 3 Fix: Use Soft Delete
-            doc.deleted_at = datetime.now()
+            doc.deleted_at = now_kst()
             
             # Trigger leave sync if relevant
             if doc.doc_type in ["VACATION", "EARLY_LEAVE"]:
@@ -1195,7 +1196,7 @@ async def delete_document(
             return {"message": "이미 발주가 진행된 항목이 있어 삭제 대신 기안과 발주 상태를 '취소'로 변경했습니다."}
 
     # 일반 문서(휴가 등)의 경우 Soft Delete 처리 및 연계 기록 삭제
-    doc.deleted_at = datetime.now()
+    doc.deleted_at = now_kst()
     
     # [Fix] 전자결재 문서와 연계된 Attendance 기록 물리적 삭제 (찌꺼기 제거)
     # EmployeeTimeRecord is imported at top of file from app.models.basics

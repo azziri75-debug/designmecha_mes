@@ -11,6 +11,7 @@ from app.models.sales import SalesOrder, SalesOrderItem
 from app.models.production import ProductionPlan, ProductionPlanItem
 from app.models.product import Product
 from app.models.basics import Partner
+from app.core.timezone import now_kst
 
 router = APIRouter()
 
@@ -58,7 +59,7 @@ async def export_production_excel(
         df.to_excel(writer, index=False, sheet_name='Production')
     
     output.seek(0)
-    filename = f"production_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    filename = f"production_{now_kst().strftime('%Y%m%d')}.xlsx"
     return Response(
         content=output.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -97,7 +98,7 @@ async def export_stats_excel(
         summary.to_excel(writer, index=False, sheet_name='MonthlyStats')
     
     output.seek(0)
-    filename = f"stats_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    filename = f"stats_{now_kst().strftime('%Y%m%d')}.xlsx"
     return Response(
         content=output.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

@@ -12,6 +12,7 @@ import numpy as np
 from datetime import datetime
 
 from app.api import deps
+from app.core.timezone import now_kst
 from app.models.basics import Partner, Staff, Equipment
 from app.models.product import Product
 from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
@@ -177,7 +178,7 @@ async def get_template(table_name: str):
             df.to_excel(writer, index=False, sheet_name='Template')
         
         data = output.getvalue()
-        filename = f"template_{table_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        filename = f"template_{table_name}_{now_kst().strftime('%Y%m%d')}.xlsx"
         
         return Response(
             content=data,
@@ -305,7 +306,7 @@ async def confirm_orders(
 ):
     try:
         from sqlalchemy import func
-        today = datetime.now().date()
+        today = now_kst().date()
         date_str = today.strftime("%Y%m%d")
         
         # 1. Create New Partners

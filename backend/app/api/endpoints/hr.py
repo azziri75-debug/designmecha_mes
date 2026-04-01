@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import date, datetime, timedelta, time as time_type, timezone
 
 from app.api import deps
+from app.core.timezone import now_kst, KST
 from app.models.approval import ApprovalDocument, ApprovalStatus
 from app.models import Staff, Company, EmployeeTimeRecord, AttendanceStatus
 from app.schemas.hr import (
@@ -270,7 +271,7 @@ async def get_attendance_summary(
                             applied_value = round(delta / 60.0, 2)
                             
                 # 년도 필터 확인
-                raw_pure = str(raw_date).split('T')[0] if raw_date else str(datetime.now().date())
+                raw_pure = str(raw_date).split('T')[0] if raw_date else str(now_kst().date())
                 check_date = date.fromisoformat(raw_pure)
                 if check_date.year != year:
                     continue
@@ -305,7 +306,7 @@ async def get_attendance_summary(
                     applied_value = round(delta / 60.0, 2)
                     
                 # 년도 필터 확인
-                raw_pure = str(raw_date).split('T')[0] if raw_date else str(datetime.now().date())
+                raw_pure = str(raw_date).split('T')[0] if raw_date else str(now_kst().date())
                 check_date = date.fromisoformat(raw_pure)
                 if check_date.year != year:
                     continue
@@ -717,7 +718,7 @@ async def get_annual_leave_history(
     if current_user.user_type != "ADMIN" and current_user.id != staff_id:
         raise HTTPException(status_code=403, detail="조회 권한이 없습니다.")
     
-    current_year = datetime.now().year
+    current_year = now_kst().year
     years = [current_year, current_year - 1, current_year - 2, current_year - 3]
     
     history_records = []

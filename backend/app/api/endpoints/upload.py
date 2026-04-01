@@ -7,6 +7,8 @@ from fastapi.responses import FileResponse
 import urllib.parse
 import mimetypes
 
+from app.core.timezone import now_kst
+
 router = APIRouter()
 
 # Use absolute path based on project root to avoid CWD issues
@@ -23,7 +25,7 @@ async def upload_file(file: UploadFile = File(...)):
         # Generate unique filename
         file_ext = os.path.splitext(file.filename)[1]
         unique_filename = f"{uuid.uuid4()}{file_ext}"
-        current_date = datetime.now().strftime("%Y%m%d")
+        current_date = now_kst().strftime("%Y%m%d")
         
         # Create date-based subdirectory
         save_dir = os.path.join(UPLOAD_DIR, current_date)

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, date
 
 from app.api import deps
+from app.core.timezone import now_kst
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus, MaterialRequirement
 from app.models.production import ProductionPlanItem, ProductionPlan, ProductionStatus
 from app.models.inventory import StockProduction
@@ -487,7 +488,7 @@ async def create_purchase_order(
     Create a new Purchase Order.
     """
     # Generate Order No
-    date_str = datetime.now().strftime("%Y%m%d")
+    date_str = now_kst().strftime("%Y%m%d")
     from sqlalchemy import func
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem # Import here to avoid circular dependency
     
@@ -622,7 +623,7 @@ async def complete_purchase_order(
         raise HTTPException(status_code=400, detail="이미 완료(입고)된 발주건입니다.")
         
     order.status = PurchaseStatus.COMPLETED
-    order.actual_delivery_date = datetime.now().date()
+    order.actual_delivery_date = now_kst().date()
     
     for item in order.items:
         qty = item.quantity - item.received_quantity
@@ -669,7 +670,7 @@ async def complete_outsourcing_order(
         raise HTTPException(status_code=400, detail="이미 완료된 외주건입니다.")
         
     order.status = OutsourcingStatus.COMPLETED
-    order.actual_delivery_date = datetime.now().date()
+    order.actual_delivery_date = now_kst().date()
     
     for item in order.items:
         # 1. Update related production plan item if exists
@@ -937,7 +938,7 @@ async def update_purchase_order(
     if db_order.status == PurchaseStatus.COMPLETED:
         from app.models.production import ProductionPlanItem, ProductionStatus
         if old_status != PurchaseStatus.COMPLETED:
-            db_order.actual_delivery_date = datetime.now().date()
+            db_order.actual_delivery_date = now_kst().date()
         for item in db_order.items:
             if item.production_plan_item_id:
                 plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
@@ -1043,7 +1044,7 @@ async def create_outsourcing_order(
     Create a new Outsourcing Order.
     """
     # Generate Order No
-    date_str = datetime.now().strftime("%Y%m%d")
+    date_str = now_kst().strftime("%Y%m%d")
     from sqlalchemy import func
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem # Import here
     
@@ -1272,7 +1273,7 @@ async def update_outsourcing_order(
     if db_order.status == OutsourcingStatus.COMPLETED:
         from app.models.production import ProductionPlanItem, ProductionStatus
         if old_status != OutsourcingStatus.COMPLETED:
-            db_order.actual_delivery_date = datetime.now().date()
+            db_order.actual_delivery_date = now_kst().date()
         for item in db_order.items:
             if item.production_plan_item_id:
                 plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)

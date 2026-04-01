@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, Date, D
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base import Base
+from app.core.timezone import now_kst
 import enum
 
 from app.models.inventory import StockProduction
@@ -30,8 +31,8 @@ class ProductionPlan(Base):
     attachment_file = Column(JSON, nullable=True) # 생산관리시트 PDF 파일
     sheet_metadata = Column(JSON, nullable=True) # 폼 저장 상태
     
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime, default=now_kst)
+    updated_at = Column(DateTime, default=now_kst, onupdate=now_kst)
     
     # Relationships
     order = relationship("SalesOrder")
@@ -107,7 +108,7 @@ class WorkOrder(Base):
     good_quantity = Column(Integer, default=0)
     bad_quantity = Column(Integer, default=0)
     
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime, default=now_kst)
     
     # Relationships
     plan_item = relationship("ProductionPlanItem", back_populates="work_orders")
@@ -127,8 +128,8 @@ class WorkLog(Base):
     
     attachment_file = Column(JSON, nullable=True)
     
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime, default=now_kst)
+    updated_at = Column(DateTime, default=now_kst, onupdate=now_kst)
 
     # Relationships
     worker = relationship("Staff", foreign_keys=[worker_id])

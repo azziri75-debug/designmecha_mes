@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api import deps
+from app.core.timezone import now_kst
 from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus, WorkLog, WorkLogItem
 from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
 from app.models.product import Product, ProductProcess, Process, BOM
@@ -849,7 +850,7 @@ async def export_production_plan_excel(
     upload_dir = "uploads/production"
     os.makedirs(upload_dir, exist_ok=True)
     
-    filename = f"ProductionSheet_{plan.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = f"ProductionSheet_{plan.id}_{now_kst().strftime('%Y%m%d_%H%M%S')}.xlsx"
     file_path = os.path.join(upload_dir, filename)
     wb.save(file_path)
 
@@ -1143,7 +1144,7 @@ async def update_production_plan_status(
                     all_received = all(i.received_quantity >= i.quantity for i in po.items)
                     if all_received:
                         po.status = PurchaseStatus.COMPLETED
-                        po.delivery_date = datetime.now().date() # Set actual delivery date?
+                        po.delivery_date = now_kst().date() # Set actual delivery date?
                         db.add(po)
 
             # 4. Check and Complete Outsourcing Orders
@@ -1157,7 +1158,7 @@ async def update_production_plan_status(
                     all_completed = all(i.status == OutsourcingStatus.COMPLETED for i in oo.items)
                     if all_completed:
                         oo.status = OutsourcingStatus.COMPLETED
-                        oo.delivery_date = datetime.now().date()
+                        oo.delivery_date = now_kst().date()
                         db.add(oo)
 
         # Sync with Sales Order or Stock Production
@@ -1397,14 +1398,14 @@ async def update_production_plan_item(
             for pi in item.purchase_items:
                 if pi.purchase_order and pi.purchase_order.status != PurchaseStatus.COMPLETED:
                     pi.purchase_order.status = PurchaseStatus.COMPLETED
-                    pi.purchase_order.actual_delivery_date = datetime.now().date()
+                    pi.purchase_order.actual_delivery_date = now_kst().date()
                     db.add(pi.purchase_order)
             await db.commit()
         elif item.course_type == "OUTSOURCING":
             for oi in item.outsourcing_items:
                 if oi.outsourcing_order and oi.outsourcing_order.status != OutsourcingStatus.COMPLETED:
                     oi.outsourcing_order.status = OutsourcingStatus.COMPLETED
-                    oi.outsourcing_order.actual_delivery_date = datetime.now().date()
+                    oi.outsourcing_order.actual_delivery_date = now_kst().date()
                     db.add(oi.outsourcing_order)
             await db.commit()
     
@@ -1453,7 +1454,6 @@ async def read_work_logs(
     if major_group_id:
         from app.models.product import ProductGroup
         from sqlalchemy import or_
-        from app.models.production import WorkLogItem, ProductionPlanItem
         from app.models.product import Product
         subquery = select(WorkLogItem.work_log_id).join(ProductionPlanItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
                      .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))

@@ -12,6 +12,7 @@ from app.api import deps
 from app.models.quality import CustomerComplaint, ComplaintStatus, QualityDefect
 from app.schemas import quality as schemas
 from datetime import datetime
+from app.core.timezone import now_kst
 
 router = APIRouter()
 
@@ -57,7 +58,7 @@ async def create_defect(
 ):
     db_defect = QualityDefect(**defect_in.model_dump())
     if not db_defect.defect_date:
-        db_defect.defect_date = datetime.now()
+        db_defect.defect_date = now_kst()
         
     db.add(db_defect)
     await db.commit()
@@ -121,7 +122,7 @@ async def upload_quality_file(file: UploadFile = File(...)):
         # Generate unique filename
         file_ext = os.path.splitext(file.filename)[1]
         unique_filename = f"{uuid.uuid4()}{file_ext}"
-        current_date = datetime.now().strftime("%Y%m%d")
+        current_date = now_kst().strftime("%Y%m%d")
         
         # Create date-based subdirectory
         save_dir = os.path.join(UPLOAD_DIR, current_date)

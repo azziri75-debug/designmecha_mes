@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, JSON, Date, DateTime, Text, Float, Time, Enum, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
+from app.core.timezone import now_kst
 import enum
 
 class PartnerType(str, enum.Enum):
@@ -48,7 +49,7 @@ class IgnoredPartnerDuplicate(Base):
     id = Column(Integer, primary_key=True, index=True)
     partner_id_1 = Column(Integer, ForeignKey("partners.id", ondelete="CASCADE"), nullable=False)
     partner_id_2 = Column(Integer, ForeignKey("partners.id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
 class Company(Base):
     __tablename__ = "companies"
@@ -137,7 +138,7 @@ class EmployeeTimeRecord(Base):
     # [Fix] 전자결재 문서와 명시적으로 연결을 위한 컬럼 추가
     approval_id = Column(Integer, ForeignKey("approval_documents.id", ondelete="CASCADE"), nullable=True)
     
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     staff = relationship("Staff", foreign_keys=[staff_id])
     author = relationship("Staff", foreign_keys=[author_id])
@@ -167,7 +168,7 @@ class EquipmentHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
     equipment_id = Column(Integer, ForeignKey("equipments.id"), nullable=False)
     
-    history_date = Column(Date, default=func.now())
+    history_date = Column(Date, default=now_kst)
     history_type = Column(String, nullable=False) # FAILURE, REPAIR, INSPECTION
     
     description = Column(Text, nullable=False) # 상세 내용
@@ -176,7 +177,7 @@ class EquipmentHistory(Base):
     
     attachment_file = Column(JSON, nullable=True) # 증빙 서류/사진 (list of {name, url})
     
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     equipment = relationship("Equipment", back_populates="history")
 
@@ -190,7 +191,7 @@ class FormTemplate(Base):
     
     layout_data = Column(JSON, nullable=False) # 레이아웃/스타일 설정
     is_active = Column(Boolean, default=True)
-    updated_at = Column(DateTime, onupdate=func.now())
+    updated_at = Column(DateTime, default=now_kst, onupdate=now_kst)
 
 class MeasuringInstrument(Base):
     """측정기 (계측기) Master Data"""
@@ -216,7 +217,7 @@ class MeasurementHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
     instrument_id = Column(Integer, ForeignKey("measuring_instruments.id"), nullable=False)
     
-    history_date = Column(Date, default=func.now())
+    history_date = Column(Date, default=now_kst)
     history_type = Column(String, nullable=False) # CALIBRATION, REPAIR, ETC
     
     description = Column(Text, nullable=False) # 상세 내용
@@ -225,7 +226,7 @@ class MeasurementHistory(Base):
     
     attachment_file = Column(JSON, nullable=True) # 성적서 등 증빙 파일
     
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     instrument = relationship("MeasuringInstrument", back_populates="history")
 

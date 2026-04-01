@@ -6,6 +6,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import delete
 from app.api import deps
+from app.core.timezone import now_kst
 from app.models.sales import (
     Estimate, EstimateItem, SalesOrder, SalesOrderItem, OrderStatus,
     DeliveryHistory, DeliveryHistoryItem
@@ -38,7 +39,7 @@ async def create_estimate(
     # 1. Create Estimate Header
     db_estimate = Estimate(
         partner_id=estimate_in.partner_id,
-        estimate_date=estimate_in.estimate_date or datetime.now().date(),
+        estimate_date=estimate_in.estimate_date or now_kst().date(),
         valid_until=estimate_in.valid_until,
         total_amount=estimate_in.total_amount,
         note=estimate_in.note,
@@ -292,7 +293,7 @@ async def export_estimate_excel(
         ws[f'B{row_idx}'].alignment = left_align
         style_range(ws, f'A{row_idx}:H{row_idx+1}')
 
-        filename = f"Estimate_{estimate.partner.name if estimate.partner else 'Unk'}_{estimate.estimate_date}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        filename = f"Estimate_{estimate.partner.name if estimate.partner else 'Unk'}_{estimate.estimate_date}_{now_kst().strftime('%Y%m%d_%H%M%S')}.xlsx"
         
         upload_dir = "uploads/estimates"
         os.makedirs(upload_dir, exist_ok=True)
@@ -427,7 +428,7 @@ async def create_order(
     db: AsyncSession = Depends(deps.get_db)
 ):
     # Generate Order No
-    date_str = datetime.now().strftime("%Y%m%d")
+    date_str = now_kst().strftime("%Y%m%d")
     
     # Robust numbering: get the max order_no for today and increment its sequence
     query = select(SalesOrder.order_no).filter(SalesOrder.order_no.like(f"SO-{date_str}-%")).order_by(desc(SalesOrder.order_no)).limit(1)
@@ -448,7 +449,7 @@ async def create_order(
     db_order = SalesOrder(
         order_no=order_no,
         partner_id=order_in.partner_id,
-        order_date=order_in.order_date or datetime.now().date(),
+        order_date=order_in.order_date or now_kst().date(),
         delivery_date=order_in.delivery_date,
         actual_delivery_date=order_in.actual_delivery_date,
         delivery_method=order_in.delivery_method,
@@ -901,7 +902,7 @@ async def create_delivery(
         raise HTTPException(status_code=404, detail="Order not found")
 
     # Generate Delivery No
-    date_str = datetime.now().strftime("%Y%m%d")
+    date_str = now_kst().strftime("%Y%m%d")
     dh_query = select(DeliveryHistory.delivery_no).where(DeliveryHistory.delivery_no.like(f"DH-{date_str}-%")).order_by(desc(DeliveryHistory.delivery_no)).limit(1)
     dh_res = await db.execute(dh_query)
     last_dh_no = dh_res.scalar()
@@ -914,7 +915,7 @@ async def create_delivery(
     # Create Delivery History Header
     db_delivery = DeliveryHistory(
         order_id=order_id,
-        delivery_date=delivery_in.delivery_date or datetime.now().date(),
+        delivery_date=delivery_in.delivery_date or now_kst().date(),
         delivery_no=delivery_no,
         note=delivery_in.note,
         attachment_files=delivery_in.attachment_files,
@@ -1236,7 +1237,7 @@ async def attach_statement_to_delivery_history(
     save_dir = os.path.join(_BASE_DIR, "uploads", "statements")
     os.makedirs(save_dir, exist_ok=True)
 
-    filename = f"statement_{history_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+    filename = f"statement_{history_id}_{now_kst().strftime('%Y%m%d%H%M%S')}.pdf"
     file_path = os.path.join(save_dir, filename)
     content = await file.read()
     with open(file_path, "wb") as f:
@@ -1254,7 +1255,7 @@ async def attach_statement_to_delivery_history(
         except Exception:
             existing = {}
     existing["pdf_url"] = file_url
-    existing["attached_at"] = datetime.now().isoformat()
+    existing["attached_at"] = now_kst().isoformat()
     history.statement_json = existing
 
     await db.commit()

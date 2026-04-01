@@ -343,7 +343,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         <tbody>
                             {items.map((item, idx) => (
                                 <tr key={idx} style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{(item.date || '').slice(5)}</td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{(item.date || data.delivery_date || '').slice(5)}</td>
                                     <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all', textOverflow: 'clip' }), fontWeight: 'bold', fontSize: '11.5px' }}>{item.product?.name || item.product_name || item.item_name || ''}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{item.specification || item.product?.specification || ''}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11.5px' }}>{formatNumber(item.quantity)}</td>

@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 from app.db.base import Base
+from app.core.timezone import now_kst
 
 class PurchaseStatus(str, enum.Enum):
     PENDING = "PENDING"     # 발주 대기
@@ -196,7 +197,7 @@ class MaterialRequirement(Base):
     shortage_quantity = Column(Integer, nullable=False) # 실제 부족분 (계산 결과)
     
     status = Column(String, default="PENDING") # PENDING, ORDERED, CANCELLED
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
     
     product = relationship("Product")
     order = relationship("SalesOrder")
@@ -219,7 +220,7 @@ class ConsumablePurchaseWait(Base):
     department = Column(String, nullable=True)
     
     status = Column(String, default="PENDING") # PENDING 발주 대기, ORDERED 발주 완료, CANCELLED 취소됨
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=now_kst)
 
     # Relationships
     product = relationship("Product")

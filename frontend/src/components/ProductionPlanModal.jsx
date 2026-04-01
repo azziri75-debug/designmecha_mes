@@ -315,9 +315,11 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                 order_id: order ? order.id : undefined,
                 stock_production_id: stockProduction ? stockProduction.id : undefined,
                 plan_date: planDate,
-                items: items.map((item) => ({
-                    id: item.id,
-                    product_id: item.product_id,
+                items: items
+                    .filter(item => item.product_id && !isNaN(parseInt(item.product_id)))
+                    .map((item) => ({
+                        id: item.id,
+                        product_id: parseInt(item.product_id),
                     process_name: item.process_name,
                     sequence: item.sequence,
                     course_type: item.course_type,
