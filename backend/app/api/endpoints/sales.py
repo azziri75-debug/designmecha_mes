@@ -1171,6 +1171,7 @@ async def read_delivery_status(
     partner_name: Optional[str] = None,
     major_group_id: Optional[int] = None,
     status: Optional[str] = None,
+    date_type: Optional[str] = "order", # order or delivery
     db: AsyncSession = Depends(deps.get_db)
 ):
     """
@@ -1187,12 +1188,19 @@ async def read_delivery_status(
         ).selectinload(
             DeliveryHistoryItem.order_item
         ).selectinload(SalesOrderItem.product),
-    ).order_by(desc(SalesOrder.order_date))
+    )
 
+    # 1. Date Type Filtering
+    target_date_col = SalesOrder.delivery_date if date_type == "delivery" else SalesOrder.order_date
+    
     if start_date:
-        query = query.where(SalesOrder.order_date >= start_date)
+        query = query.where(target_date_col >= start_date)
     if end_date:
-        query = query.where(SalesOrder.order_date <= end_date)
+        query = query.where(target_date_col <= end_date)
+        
+    # 2. Ordering
+    query = query.order_by(desc(target_date_col))
+
     if partner_name:
         query = query.join(Partner).where(Partner.name.ilike(f"%{partner_name}%"))
     if major_group_id:

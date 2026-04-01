@@ -49,6 +49,7 @@ const DeliveryPage = () => {
 
     // Filters
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [dateType, setDateType] = useState('order'); // 'order' or 'delivery'
     const [partnerFilter, setPartnerFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
@@ -60,6 +61,7 @@ const DeliveryPage = () => {
             const params = new URLSearchParams();
             if (dateRange.start) params.append('start_date', dateRange.start);
             if (dateRange.end) params.append('end_date', dateRange.end);
+            params.append('date_type', dateType);
             if (partnerFilter) params.append('partner_name', partnerFilter);
             if (statusFilter !== 'ALL') params.append('status', statusFilter);
             if (selectedMajorGroupId) params.append('major_group_id', selectedMajorGroupId);
@@ -193,6 +195,14 @@ const DeliveryPage = () => {
                         </Grid>
                         <Grid item xs={12} md={5}>
                             <div className="flex items-center gap-3">
+                                <select
+                                    value={dateType}
+                                    onChange={(e) => setDateType(e.target.value)}
+                                    className="bg-gray-900 border border-gray-800 rounded-xl px-2 py-2 text-xs text-gray-400 focus:outline-none focus:border-blue-500 transition-all font-bold"
+                                >
+                                    <option value="order">수주일 기준</option>
+                                    <option value="delivery">납품일 기준</option>
+                                </select>
                                 <TextField
                                     type="date"
                                     size="small"
