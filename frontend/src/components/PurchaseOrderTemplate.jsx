@@ -233,7 +233,7 @@ const PurchaseOrderTemplate = ({
                     <div className="space-y-1 text-[10px] text-gray-500">
                         <p>TEL : <span className="text-black">{data.partner_phone || '-'}</span></p>
                         <p>FAX : <span className="text-black">{data.partner_fax || '-'}</span></p>
-                        <p className="pt-2">발주일 : <span className="text-black font-bold">{data.order_date || '-'}</span></p>
+                        <p className="pt-2">{isEstimate ? '요청일' : '발주일'} : <span className="text-black font-bold">{data.order_date || '-'}</span></p>
                     </div>
                 </div>
                 <div className="text-left md:text-right w-full md:w-[220px]">

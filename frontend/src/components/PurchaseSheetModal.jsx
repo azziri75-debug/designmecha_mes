@@ -100,6 +100,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
             partner_name: order.partner?.name || "",
             partner_phone: order.partner?.phone || "",
             partner_fax: order.partner?.fax || "",
+            order_date: order.order_date || '',
             delivery_date: order.delivery_date || '',
             special_notes: order.note || "",
             colWidths: savedColWidths || defaultWidths,

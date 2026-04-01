@@ -74,6 +74,7 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                 title: "구 매 발 주 서",
                 note: "아래와 같이 발주합니다.",
                 special_notes: order.note || "",
+                order_date: order.order_date || "",
                 delivery_date: order.delivery_date || "",
                 delivery_place: "(주)디자인메카",
                 valid_until: "",
