@@ -1,15 +1,16 @@
 from typing import Any, List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select, cast, String, text
+from sqlalchemy import select, cast, String, text, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import MultipleResultsFound
 
 from app.api import deps
 from app.core.timezone import now_kst
 from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus, WorkLog, WorkLogItem
 from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
-from app.models.product import Product, ProductProcess, Process, BOM
+from app.models.product import Product, ProductProcess, Process, BOM, ProductGroup
 from app.models.purchasing import (
     PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, 
     PurchaseStatus, OutsourcingStatus, MaterialRequirement
@@ -67,7 +68,6 @@ async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
     """
     모든 공정이 완료되었는지 확인하고, 그렇다면 생산 계획을 완료 처리합니다.
     """
-    from sqlalchemy.orm import selectinload
     result = await db.execute(
         select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id)
     )
@@ -113,7 +113,6 @@ async def sync_plan_item_cost(db: AsyncSession, plan_item: ProductionPlanItem):
     Uses case-insensitive and trimmed matching for process names for robustness.
     """
     if plan_item.course_type == "INTERNAL" and plan_item.product_id and plan_item.process_name:
-        from sqlalchemy import func
         # Find corresponding ProductProcess
         stmt = (
             select(ProductProcess.cost)
@@ -170,15 +169,12 @@ async def read_production_plans(
         subquery = select(ProductionPlanItem.plan_id).join(Product).where(Product.name.ilike(f"%{product_name}%"))
         stmt = stmt.where(ProductionPlan.id.in_(subquery))
     if major_group_id:
-        from app.models.product import ProductGroup
-        from sqlalchemy import or_
         subquery = select(ProductionPlanItem.plan_id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
                    .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         stmt = stmt.where(ProductionPlan.id.in_(subquery))
 
     result = await db.execute(
         stmt
-
         .options(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
                 selectinload(Product.standard_processes).selectinload(ProductProcess.process),
@@ -1452,9 +1448,6 @@ async def read_work_logs(
         stmt = stmt.where(WorkLog.worker_id == current_user.id)
         
     if major_group_id:
-        from app.models.product import ProductGroup
-        from sqlalchemy import or_
-        from app.models.product import Product
         subquery = select(WorkLogItem.work_log_id).join(ProductionPlanItem).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
                      .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         stmt = stmt.where(WorkLog.id.in_(subquery))

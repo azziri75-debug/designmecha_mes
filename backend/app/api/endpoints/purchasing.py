@@ -435,7 +435,7 @@ async def read_pending_outsourcing_items(
                 selectinload(Product.bom_items)
             ),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrderItem.product),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
             selectinload(ProductionPlanItem.purchase_items),
