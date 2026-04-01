@@ -1307,7 +1307,7 @@ const MobileWorkLogPage = () => {
                                         </Box>
                                     </RadioGroup>
                                 </Box>
-                                <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.reason || ''} onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
+                                <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.vacation_reason || ''} onChange={e => setDocFormData({ ...docFormData, vacation_reason: e.target.value })} />
                             </Stack>
                         )}
                         {selectedDocType === 'EARLY_LEAVE' && (
@@ -1317,18 +1317,18 @@ const MobileWorkLogPage = () => {
                                     <Typography variant="caption" color="textSecondary" fontWeight="bold">구분</Typography>
                                     <RadioGroup 
                                         row
-                                        value={docFormData.type || '조퇴'} 
-                                        onChange={e => setDocFormData({ ...docFormData, type: e.target.value })}
+                                        value={docFormData.leave_type || '조퇴'} 
+                                        onChange={e => setDocFormData({ ...docFormData, leave_type: e.target.value })}
                                     >
                                         <FormControlLabel value="조퇴" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>조퇴</Typography>} />
                                         <FormControlLabel value="외출" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '13px' }}>외출</Typography>} />
                                     </RadioGroup>
                                 </Box>
-                                <TextField label={docFormData.type === '외출' ? '시작 시간' : '나가는 시간'} type="time" fullWidth size="small" value={docFormData.time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, time: e.target.value })} />
-                                {docFormData.type === '외출' && (
-                                    <TextField label="종료(복귀) 시간" type="time" fullWidth size="small" value={docFormData.end_time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, end_time: e.target.value })} />
+                                <TextField label={docFormData.leave_type === '외출' ? '시작 시간' : '나가는 시간'} type="time" fullWidth size="small" value={docFormData.leave_time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, leave_time: e.target.value })} />
+                                {docFormData.leave_type === '외출' && (
+                                    <TextField label="종료(복귀) 시간" type="time" fullWidth size="small" value={docFormData.return_time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, return_time: e.target.value })} />
                                 )}
-                                <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.reason || ''} onChange={e => setDocFormData({ ...docFormData, reason: e.target.value })} />
+                                <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.leave_reason || ''} onChange={e => setDocFormData({ ...docFormData, leave_reason: e.target.value })} />
                             </Stack>
                         )}
                         {selectedDocType === 'CONSUMABLES_PURCHASE' && (
@@ -1470,13 +1470,13 @@ const MobileWorkLogPage = () => {
                                     {selectedDoc.doc_type === 'VACATION' && (
                                         <Stack spacing={1}>
                                             <Typography variant="body2"><b>기간:</b> {selectedDoc.content.start_date} ~ {selectedDoc.content.end_date} ({selectedDoc.content.vacation_type}{selectedDoc.content.half_day_type ? ` - ${selectedDoc.content.half_day_type}` : ''})</Typography>
-                                            <Typography variant="body2"><b>사유:</b> {selectedDoc.content.reason}</Typography>
+                                            <Typography variant="body2"><b>사유:</b> {selectedDoc.content.vacation_reason || selectedDoc.content.reason}</Typography>
                                         </Stack>
                                     )}
                                     {selectedDoc.doc_type === 'EARLY_LEAVE' && (
                                         <Stack spacing={1}>
-                                            <Typography variant="body2"><b>일시:</b> {selectedDoc.content.date} {selectedDoc.content.time}{selectedDoc.content.end_time ? ` ~ ${selectedDoc.content.end_time}` : ''} ({selectedDoc.content.type})</Typography>
-                                            <Typography variant="body2"><b>사유:</b> {selectedDoc.content.reason}</Typography>
+                                            <Typography variant="body2"><b>일시:</b> {selectedDoc.content.date} {selectedDoc.content.leave_time || selectedDoc.content.time}{(selectedDoc.content.return_time || selectedDoc.content.end_time) ? ` ~ ${selectedDoc.content.return_time || selectedDoc.content.end_time}` : ''} ({selectedDoc.content.leave_type || selectedDoc.content.type})</Typography>
+                                            <Typography variant="body2"><b>사유:</b> {selectedDoc.content.leave_reason || selectedDoc.content.reason}</Typography>
                                         </Stack>
                                     )}
                                     {selectedDoc.doc_type === 'CONSUMABLES_PURCHASE' && (

@@ -15,10 +15,11 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
 
         let updates = {};
 
-        // 1. 초기 상태가 텅 비어있다면 무조건 기본값을 꽂아 넣음
+        // 1. 초기 상태가 텅 비어있다면 무조건 기본값을 꽂아 넣음 (레거시 data.reason 호환 포함)
         if (!data.start_date) updates.start_date = currentStart;
         if (!data.end_date) updates.end_date = currentEnd;
         if (!data.vacation_type) updates.vacation_type = vType;
+        if (!data.vacation_reason && data.reason) updates.vacation_reason = data.reason;
         if (!data.staff_no && currentUser?.staff_no) updates.staff_no = currentUser.staff_no;
         if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
 

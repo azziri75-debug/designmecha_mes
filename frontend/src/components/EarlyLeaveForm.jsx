@@ -11,8 +11,12 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
     useEffect(() => {
         let updates = {};
         
-        // 1. 초기값 강제 셋업 (이게 있어야 UI가 꼬이지 않음)
-        if (!data.leave_type) updates.leave_type = '조퇴';
+        // 1. 초기값 강제 셋업 및 레거시 데이터 호환성 (모바일 기안 대응)
+        if (!data.leave_type) updates.leave_type = data.type || '조퇴';
+        if (!data.leave_time && data.time) updates.leave_time = data.time;
+        if (!data.return_time && data.end_time) updates.return_time = data.end_time;
+        if (!data.leave_reason && data.reason) updates.leave_reason = data.reason;
+        
         const offset = new Date().getTimezoneOffset() * 60000;
         const todayStr = new Date(Date.now() - offset).toISOString().split('T')[0];
         if (!data.date) updates.date = todayStr;
