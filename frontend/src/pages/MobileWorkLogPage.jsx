@@ -640,6 +640,11 @@ const MobileWorkLogPage = () => {
                                                                 <Typography variant="subtitle1" fontWeight="bold">
                                                                     {productName}
                                                                 </Typography>
+                                                                {plan.items?.[0]?.product?.specification && (
+                                                                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: -0.5, mb: 0.5 }}>
+                                                                        규격: {plan.items[0].product.specification}
+                                                                    </Typography>
+                                                                )}
                                                                 <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                                                                     <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
                                                                         고객사: {plan.order?.partner?.name || '-'}
@@ -705,6 +710,11 @@ const MobileWorkLogPage = () => {
                                         <Typography variant="caption" color="textSecondary" fontWeight="bold">선택 공정</Typography>
                                         <Typography variant="subtitle1" fontWeight="bold">{selectedItem.process_name}</Typography>
                                         <Typography variant="body2" color="textSecondary">{selectedItem.product?.name}</Typography>
+                                        {selectedItem.product?.specification && (
+                                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
+                                                규격: {selectedItem.product.specification}
+                                            </Typography>
+                                        )}
                                     </Box>
 
                                     <TextField
@@ -908,7 +918,9 @@ const MobileWorkLogPage = () => {
                                                                                 {item.plan_item?.process_name}
                                                                             </Typography>
                                                                             <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
-                                                                                {item.plan_item?.product?.name} • {item.good_quantity}개
+                                                                                {item.plan_item?.product?.name}
+                                                                                {item.plan_item?.product?.specification && ` (${item.plan_item.product.specification})`}
+                                                                                • {item.good_quantity}개
                                                                             </Typography>
                                                                         </Box>
                                                                     ))}
@@ -965,6 +977,7 @@ const MobileWorkLogPage = () => {
                                                                     <Typography variant="body2" fontWeight="bold">{item.plan_item?.process_name}</Typography>
                                                                     <Typography variant="caption" display="block" color="textSecondary">
                                                                         {item.plan_item?.product?.name}
+                                                                        {item.plan_item?.product?.specification && ` (${item.plan_item.product.specification})`}
                                                                     </Typography>
                                                                     <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
                                                                         <Typography variant="caption">
