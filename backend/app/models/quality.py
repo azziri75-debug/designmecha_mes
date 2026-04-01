@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boo
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base import Base
+from app.core.timezone import now_kst
 import enum
 
 class InspectionProcess(Base):
