@@ -15,7 +15,7 @@ from app.models.purchasing import (
     PurchaseOrderItem, OutsourcingOrderItem, PurchaseOrder, OutsourcingOrder, 
     PurchaseStatus, OutsourcingStatus, MaterialRequirement
 )
-from app.models.basics import Partner
+from app.models.basics import Partner, Staff, Equipment
 from app.models.inventory import StockProduction, Stock, StockProductionStatus, TransactionType
 from app.api.utils.inventory import handle_stock_movement, handle_backflush
 from app.schemas import production as schemas
@@ -1778,10 +1778,7 @@ async def get_worker_performance(
     current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
     """
-    Get aggregated performance by worker with optional date and worker filtering.
-    """
     from sqlalchemy import func, distinct, case
-    from app.models.basics import Staff
     
     # Cost with fallback: if WorkLogItem.unit_price is 0 or null, try (PlanItem.cost / PlanItem.quantity)
     # Using CASE to handle potential division by zero

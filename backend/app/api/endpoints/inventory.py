@@ -431,6 +431,7 @@ async def read_stock_productions(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     partner_id: Optional[int] = None,
+    product_name: Optional[str] = None,
     major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
