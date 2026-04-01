@@ -728,7 +728,14 @@ const ApprovalPage = () => {
                                     })()}
                                     {selectedDoc.doc_type === 'EARLY_LEAVE' && (() => {
                                         const c = selectedDoc.content || {};
-                                        const safeC = { ...c, items: Array.isArray(c.items) ? c.items : [] };
+                                        const safeC = { 
+                                            ...c, 
+                                            leave_type: c.leave_type || c.type,
+                                            leave_time: c.leave_time || c.time,
+                                            return_time: c.return_time || c.end_time,
+                                            leave_reason: c.leave_reason || c.reason,
+                                            items: Array.isArray(c.items) ? c.items : [] 
+                                        };
                                         return (
                                         <EarlyLeaveForm 
                                             data={safeC} 

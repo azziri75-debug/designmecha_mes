@@ -185,7 +185,7 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>휴가사유</Box>
                         <td colSpan={4} style={{ height: '150px', verticalAlign: 'top' }}>
                             <textarea 
-                                value={data.vacation_reason || ''} 
+                                value={data.vacation_reason || data.reason || ''} 
                                 onChange={(e) => handleChange('vacation_reason', e.target.value)}
                                 readOnly={isReadOnly}
                                 rows={6}

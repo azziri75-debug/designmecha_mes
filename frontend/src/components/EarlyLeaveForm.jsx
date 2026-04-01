@@ -132,7 +132,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                                         <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '13px' }}>퇴근시간:</Typography>
                                         <input 
                                             type="time" 
-                                            value={data.leave_time || ''} 
+                                            value={data.leave_time || data.time || ''} 
                                             onChange={(e) => {
                                                 if (isReadOnly || typeof onChange !== 'function') return;
                                                 onChange({ ...data, leave_time: e.target.value, return_time: '' });
@@ -146,7 +146,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                                         <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '13px' }}>외출시간:</Typography>
                                         <input 
                                             type="time" 
-                                            value={data.leave_time || ''} 
+                                            value={data.leave_time || data.time || ''} 
                                             onChange={(e) => handleChange('leave_time', e.target.value)}
                                             readOnly={isReadOnly}
                                             style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
@@ -154,7 +154,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                                         <Typography>~</Typography>
                                         <input 
                                             type="time" 
-                                            value={data.return_time || ''} 
+                                            value={data.return_time || data.end_time || ''} 
                                             onChange={(e) => handleChange('return_time', e.target.value)}
                                             readOnly={isReadOnly}
                                             style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
@@ -171,7 +171,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>사 유</Box>
                         <td colSpan={4} style={{ height: '200px', verticalAlign: 'top' }}>
                             <textarea 
-                                value={data.leave_reason || ''} 
+                                value={data.leave_reason || data.reason || ''} 
                                 onChange={(e) => handleChange('leave_reason', e.target.value)}
                                 readOnly={isReadOnly}
                                 rows={8}
