@@ -24,9 +24,12 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
 
         // 2. 시간 계산
-        if (data.leave_time && data.return_time) {
-            const start = new Date(`2000-01-01T${data.leave_time}`);
-            const end = new Date(`2000-01-01T${data.return_time}`);
+        const startTime = data.leave_time || data.time;
+        const endTime = data.return_time || data.end_time;
+        
+        if (startTime && endTime) {
+            const start = new Date(`2000-01-01T${startTime}`);
+            const end = new Date(`2000-01-01T${endTime}`);
             let diff = (end - start) / (1000 * 60 * 60);
             if (diff < 0) diff += 24;
             
@@ -40,7 +43,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         if (Object.keys(updates).length > 0) {
             onChange({ ...data, ...updates });
         }
-    }, [data.leave_type, data.date, data.leave_time, data.return_time, currentUser]);
+    }, [data.leave_type, data.date, data.leave_time, data.time, data.return_time, data.end_time, currentUser]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;

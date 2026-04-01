@@ -8,12 +8,17 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
 
     useEffect(() => {
         let updates = {};
+        // 1. 초기값 및 레거시 데이터 호환성
         if (!data.staff_no && currentUser?.staff_no) updates.staff_no = currentUser.staff_no;
         if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
+        if (!data.start_time && data.time) updates.start_time = data.time;
 
-        if (data.start_time && data.end_time) {
-            const start = new Date(`2000-01-01T${data.start_time}`);
-            const end = new Date(`2000-01-01T${data.end_time}`);
+        const startTime = data.start_time || data.time;
+        const endTime = data.end_time; // 종료 시간은 end_time으로 동일했다고 가정
+        
+        if (startTime && endTime) {
+            const start = new Date(`2000-01-01T${startTime}`);
+            const end = new Date(`2000-01-01T${endTime}`);
             let diff = (end - start) / (1000 * 60 * 60);
             if (diff < 0) diff += 24; // 자정을 넘기는 특근(철야) 처리
             
@@ -26,7 +31,7 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
         if (Object.keys(updates).length > 0) {
             onChange({ ...data, ...updates });
         }
-    }, [data.start_time, data.end_time, currentUser]);
+    }, [data.start_time, data.time, data.end_time, currentUser]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
@@ -104,7 +109,7 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                                 />
                                 <input 
                                     type="time" 
-                                    value={data.start_time || '18:00'} 
+                                    value={data.start_time || data.time || '18:00'} 
                                     onChange={(e) => handleChange('start_time', e.target.value)}
                                     readOnly={isReadOnly}
                                     style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
