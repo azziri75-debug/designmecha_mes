@@ -647,7 +647,7 @@ const MobileWorkLogPage = () => {
                                                                 )}
                                                                 <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                                                                     <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
-                                                                        고객사: {plan.order?.partner?.name || '-'}
+                                                                        고객사: {plan.order?.partner?.name || plan.stock_production?.partner?.name || '-'}
                                                                     </Typography>
                                                                     {plan.order?.order_date && (
                                                                         <Box sx={{ display: 'flex', gap: 1 }}>

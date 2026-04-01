@@ -86,7 +86,7 @@ class ProductionPlanSimple(ProductionPlanBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
-    stock_production: Optional[StockProductionSimple] = None
+    stock_production: Optional[StockProductionResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -135,7 +135,7 @@ class ProductionPlan(ProductionPlanBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
-    stock_production: Optional[StockProductionSimple] = None
+    stock_production: Optional[StockProductionResponse] = None
     items: List[ProductionPlanItem] = []
 
     model_config = ConfigDict(from_attributes=True)

@@ -194,7 +194,10 @@ async def read_production_plans(
             ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).options(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                selectinload(ProductionPlan.stock_production).options(
+                    selectinload(StockProduction.product),
+                    selectinload(StockProduction.partner)
+                )
             ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items).options(
                 selectinload(WorkLogItem.work_log).selectinload(WorkLog.worker),
