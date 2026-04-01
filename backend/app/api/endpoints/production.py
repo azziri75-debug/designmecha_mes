@@ -1778,6 +1778,8 @@ async def get_worker_performance(
     current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
     """
+    Get aggregated performance by worker with optional date and worker filtering.
+    """
     from sqlalchemy import func, distinct, case
     
     # Cost with fallback: if WorkLogItem.unit_price is 0 or null, try (PlanItem.cost / PlanItem.quantity)
