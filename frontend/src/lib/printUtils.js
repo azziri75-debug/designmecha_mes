@@ -22,14 +22,22 @@ export const A4 = {
 };
 
 /**
- * oklch 컬러를 hex로 변환하는 DOM 필터 (Tailwind v4 대응)
+ * oklch 컬러를 hex로 변환하거나 인쇄 제외 요소를 필터링하는 DOM 필터
  */
-const oklchFilter = (node) => {
+const printFilter = (node) => {
+  // 1. 인쇄 제외 클래스 체크
+  if (node.classList && (node.classList.contains('no-print') || node.classList.contains('idf-no-print'))) {
+    return false;
+  }
+  
+  // 2. oklch 컬러 변환 (html-to-image/canvg 이슈 대응)
   try {
     if (node.style) {
       if (node.style.color?.includes('oklch')) node.style.color = '#000000';
       if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
       if (node.style.borderColor?.includes('oklch')) node.style.borderColor = '#d1d5db';
+      // 그림자 제거 (선택 사항이나 캡처 시엔 안전하게)
+      if (node.style.boxShadow) node.style.boxShadow = 'none';
     }
   } catch (_) {}
   return true;
@@ -105,13 +113,14 @@ export async function generateA4PDF(element, options = {}) {
     backgroundColor: '#ffffff', // JPEG needs solid background
     quality: 0.95, // High quality but much smaller than PNG
     pixelRatio,
-    filter: oklchFilter,
+    filter: printFilter,
     width: scrollW,
     height: scrollH,
     style: {
       transform: 'scale(1)',
       left: '0',
-      top: '0'
+      top: '0',
+      boxShadow: 'none'
     }
   });
 
@@ -246,9 +255,10 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
       backgroundColor: '#ffffff',
       quality: 0.95,
       pixelRatio,
-      filter: oklchFilter,
+      filter: printFilter,
       width: el.scrollWidth,
-      height: el.scrollHeight
+      height: el.scrollHeight,
+      style: { boxShadow: 'none' }
     });
 
     el.style.transform = origT;
@@ -311,9 +321,10 @@ export async function printAsImage(element, options = {}) {
     cacheBust: true,
     backgroundColor: null,
     pixelRatio,
-    filter: oklchFilter,
+    filter: printFilter,
     width: element.scrollWidth,
     height: element.scrollHeight,
+    style: { boxShadow: 'none' }
   });
 
   element.style.transform = origT;
@@ -397,9 +408,10 @@ export async function printMultiPageAsImage(elements, options = {}) {
       cacheBust: true,
       backgroundColor: null,
       pixelRatio,
-      filter: oklchFilter,
+      filter: printFilter,
       width: el.scrollWidth,
       height: el.scrollHeight,
+      style: { boxShadow: 'none' }
     });
 
     el.style.transform = origT;

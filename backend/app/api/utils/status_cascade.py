@@ -131,6 +131,9 @@ async def on_production_item_completed(
             # Derive order_id from plan
             plan = await db.get(ProductionPlan, item.plan_id)
             order_id = plan.order_id if plan else None
+            
+            # [LOG] Start auto-creation
+            print(f"[status_cascade] Auto-creating PO for item {item.id}, Plan {item.plan_id}, Partner {partner_id}, Order {order_id}")
 
             new_po = PurchaseOrder(
                 order_no=new_order_no,
@@ -158,6 +161,8 @@ async def on_production_item_completed(
             # 재고 이력 (입고+투입 상쇄)
             await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Auto-Receipt ({new_order_no})")
             await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.OUT, f"Auto-Consumption ({new_order_no})")
+            print(f"[status_cascade] Created PO ID: {new_po.id}")
+
 
     # 1-B. 외주 발주 처리 (OUTSOURCING)
     if "OUTSOURCING" in (item.course_type or "").upper() or "외주" in (item.course_type or ""):
