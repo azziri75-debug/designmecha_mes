@@ -243,3 +243,15 @@ body.resizing {
     position: relative;
     color: black;
 }
+
+/* [NEW] 캡처 전용 스타일 (그림자/외곽선 완전 제거) */
+.is-capturing,
+.is-capturing *,
+.is-capturing .a4-wrapper,
+.is-capturing .a4-paper-container {
+    box-shadow: none !important;
+    border: none !important;
+    outline: none !important;
+    background-image: none !important;
+    text-shadow: none !important;
+}

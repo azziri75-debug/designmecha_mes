@@ -214,12 +214,8 @@ const PurchaseOrderTemplate = ({
                         {data.title || '구 매 발 주 서'}
                     </div>
                 </div>
-                <div className="w-full md:w-[200px] idf-no-print order-3">
-                    {!hideApprovalGrid && !isEstimate && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
-                </div>
-                {/* Print-only approval grid placeholder or simplified view if needed */}
-                <div className="hidden print:block w-[200px] idf-header-approval">
-                     {!hideApprovalGrid && !isEstimate && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
+                <div className="w-full md:w-[200px] order-3">
+                    {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
                 </div>
             </div>
 

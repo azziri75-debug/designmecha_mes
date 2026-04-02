@@ -36,8 +36,15 @@ const printFilter = (node) => {
       if (node.style.color?.includes('oklch')) node.style.color = '#000000';
       if (node.style.backgroundColor?.includes('oklch')) node.style.backgroundColor = '#ffffff';
       if (node.style.borderColor?.includes('oklch')) node.style.borderColor = '#d1d5db';
-      // 그림자 제거 (선택 사항이나 캡처 시엔 안전하게)
-      if (node.style.boxShadow) node.style.boxShadow = 'none';
+      // 그림자 및 테두리 제거 (캡처 시 깨끗한 용지 보장)
+      node.style.boxShadow = 'none';
+      node.style.border = node.style.border === 'none' ? 'none' : node.style.border; // Preserve document borders but remove UI ones?
+      // Actually, for a4-wrapper, we want it clean.
+      if (node.classList && (node.classList.contains('a4-wrapper') || node.classList.contains('a4-paper-container'))) {
+        node.style.boxShadow = 'none';
+        node.style.border = 'none';
+        node.style.borderRadius = '0';
+      }
     }
   } catch (_) {}
   return true;
@@ -91,6 +98,9 @@ export async function generateA4PDF(element, options = {}) {
   const origMinHeight = element.style.minHeight;
   const origOverflow = element.style.overflow;
   const origPosition = element.style.position;
+  
+  // 캡처 전용 유틸리티 클래스 주입 (그림자 제거 등)
+  element.classList.add('is-capturing');
 
   // 캡처를 위한 강제 스타일 주입 (A4 규격 강제)
   const targetWidthMM = isLandscape ? A4.W_MM_LAND : A4.W_MM;
@@ -120,7 +130,8 @@ export async function generateA4PDF(element, options = {}) {
       transform: 'scale(1)',
       left: '0',
       top: '0',
-      boxShadow: 'none'
+      boxShadow: 'none',
+      border: 'none'
     }
   });
 
@@ -132,6 +143,7 @@ export async function generateA4PDF(element, options = {}) {
   element.style.minHeight = origMinHeight;
   element.style.overflow = origOverflow;
   element.style.position = origPosition;
+  element.classList.remove('is-capturing');
 
   // 3. PDF 생성
   const pdf = new jsPDF({
@@ -240,6 +252,9 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
     const origW = el.style.width;
     const origH = el.style.minHeight;
     const origO = el.style.overflow;
+    
+    // 캡처 전용 유틸리티 클래스 주입 (그림자 제거 등)
+    el.classList.add('is-capturing');
 
     el.style.transform = 'scale(1)';
     el.style.margin = '0';
@@ -267,6 +282,8 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
     el.style.width = origW;
     el.style.minHeight = origH;
     el.style.overflow = origO;
+    el.classList.remove('is-capturing');
+
 
     const img = new window.Image();
     const imgLoaded = new Promise(res => { img.onload = res; img.onerror = res; });
@@ -308,12 +325,19 @@ export async function printAsImage(element, options = {}) {
   const origH = element.style.minHeight;
   const origO = element.style.overflow;
 
+  // 캡처 전용 유틸리티 클래스 주입 (그림자 제거 등)
+  element.classList.add('is-capturing');
+
   element.style.transform = 'scale(1)';
   element.style.margin = '0';
+  element.style.border = 'none';
+  element.style.boxShadow = 'none';
+  element.style.outline = 'none';
   element.style.transformOrigin = 'top left';
   element.style.width = `${targetWidthMM}mm`;
   element.style.minHeight = 'auto';
   element.style.overflow = 'visible';
+  element.style.position = 'relative';
 
   await new Promise(r => setTimeout(r, 200));
 
@@ -333,6 +357,7 @@ export async function printAsImage(element, options = {}) {
   element.style.width = origW;
   element.style.minHeight = origH;
   element.style.overflow = origO;
+  element.classList.remove('is-capturing');
 
   // 2. 팝업 창 인쇄 (이미지 로드 완료 보장)
   const printWin = window.open('', '_blank', 'width=900,height=1100');
@@ -402,6 +427,9 @@ export async function printMultiPageAsImage(elements, options = {}) {
     el.style.minHeight = 'auto';
     el.style.overflow = 'visible';
 
+    // 캡처 전용 유틸리티 클래스 주입 (그림자 제거 등)
+    el.classList.add('is-capturing');
+
     await new Promise(r => setTimeout(r, 200));
 
     const url = await toPng(el, {
@@ -420,6 +448,8 @@ export async function printMultiPageAsImage(elements, options = {}) {
     el.style.width = origW;
     el.style.minHeight = origH;
     el.style.overflow = origO;
+    el.classList.remove('is-capturing');
+
     return url;
   }));
 
