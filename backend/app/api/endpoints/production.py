@@ -555,61 +555,20 @@ async def update_production_plan(
 
     # 2. Update Header
     update_data = plan_in.model_dump(exclude_unset=True)
+    
+    # [보강] 이미 COMPLETED인 경우 '계획 확정' 등으로 인한 상태 역행 방지
+    if plan.status == ProductionStatus.COMPLETED and update_data.get("status") == ProductionStatus.CONFIRMED:
+        update_data["status"] = ProductionStatus.COMPLETED
+        print(f"Update: Prevented status reversion from COMPLETED to CONFIRMED for Plan #{plan_id}")
+
     items_data = update_data.pop("items", None)
     
     for field, value in update_data.items():
         setattr(plan, field, value)
-        
-    # 3. Update Items (Preserve Strategy)
-    if items_data is not None:
-        existing_items_map = {item.id: item for item in plan.items}
-        new_items = []
-        
-        for item_in in items_data:
-            item_id = item_in.get("id")
-            
-            # Map input to model data
-            item_data = {
-                "product_id": item_in.get("product_id") or item_in.get("product", {}).get("id"),
-                "process_name": item_in.get("process_name"),
-                "sequence": item_in.get("sequence"),
-                "course_type": item_in.get("course_type", "INTERNAL"),
-                "partner_name": item_in.get("partner_name"),
-                "work_center": item_in.get("work_center"),
-                "estimated_time": item_in.get("estimated_time"),
-                "start_date": item_in.get("start_date"),
-                "end_date": item_in.get("end_date"),
-                "worker_id": item_in.get("worker_id"),
-                "equipment_id": item_in.get("equipment_id"),
-                "note": item_in.get("note"),
-                "status": item_in.get("status", ProductionStatus.PLANNED),
-                "attachment_file": item_in.get("attachment_file"),
-                "quantity": item_in.get("quantity", 1),
-                "gross_quantity": item_in.get("gross_quantity"),
-                "stock_use_quantity": item_in.get("stock_use_quantity"),
-                "cost": item_in.get("cost", 0.0)
-            }
 
-            if item_id and item_id in existing_items_map:
-                # Update existing item
-                existing_item = existing_items_map[item_id]
-                for k, v in item_data.items():
-                    setattr(existing_item, k, v)
-                await sync_plan_item_cost(db, existing_item)
-                new_items.append(existing_item)
-                del existing_items_map[item_id]
-            else:
-                # Create new item
-                new_item = ProductionPlanItem(plan_id=plan.id, **item_data)
-                db.add(new_item)
-                await sync_plan_item_cost(db, new_item)
-                new_items.append(new_item)
-        
-        # Items remaining in existing_items_map are removed (delete-orphan)
-        plan.items = new_items
-
-    # --- [NEW] 만약 생산 계획 헤더가 COMPLETED로 변경되었다면 하위 모든 공정도 완료 처리 ---
+    # --- [NEW] 만약 생산 계획 헤더가 COMPLETED로 변경되었다면 하위 모든 공정도 완료 처리 및 날짜 기록 ---
     if update_data.get("status") == ProductionStatus.COMPLETED:
+        plan.actual_completion_date = now_kst().date()
         for item in plan.items:
             if item.status != ProductionStatus.COMPLETED:
                 await on_production_item_completed(db, item, reference=f"Manual Plan Completion (Plan #{plan_id})")

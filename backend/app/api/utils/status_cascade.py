@@ -9,6 +9,10 @@ async def complete_production_for_order(db: AsyncSession, order_id: int, referen
     """
     수주가 납품 완료(DELIVERY_COMPLETED)되었을 때, 연관된 모든 생산 계획을 완료 처리합니다.
     """
+    from app.models.sales import SalesOrder
+    so = await db.get(SalesOrder, order_id)
+    delivery_date = so.actual_delivery_date if so else None
+
     plans_query = select(ProductionPlan).where(
         ProductionPlan.order_id == order_id,
         ProductionPlan.status != ProductionStatus.COMPLETED
@@ -18,6 +22,7 @@ async def complete_production_for_order(db: AsyncSession, order_id: int, referen
     
     for plan in plans:
         plan.status = ProductionStatus.COMPLETED
+        plan.actual_completion_date = delivery_date or now_kst().date()
         db.add(plan)
         
         # 하위 모든 공정 완료 처리
@@ -29,11 +34,22 @@ async def complete_production_for_order(db: AsyncSession, order_id: int, referen
         items = ppi_res.scalars().all()
         
         for item in items:
-            await on_production_item_completed(db, item, reference=f"{reference} (SO#{order_id})", auto_delivery=True)
+            await on_production_item_completed(
+                db, item, 
+                reference=f"{reference} (SO#{order_id})", 
+                auto_delivery=True,
+                completion_date=delivery_date
+            )
 
     await db.flush()
 
-async def on_production_item_completed(db: AsyncSession, item: ProductionPlanItem, reference: str = None, auto_delivery: bool = False):
+async def on_production_item_completed(
+    db: AsyncSession, 
+    item: ProductionPlanItem, 
+    reference: str = None, 
+    auto_delivery: bool = False,
+    completion_date = None
+):
     """
     생산 상세 공정(ProductionPlanItem)이 완료되었을 때 실행되는 로직.
     1. 상태를 COMPLETED로 변경.
@@ -64,10 +80,15 @@ async def on_production_item_completed(db: AsyncSession, item: ProductionPlanIte
             for po_item in po_items:
                 po = await db.get(PurchaseOrder, po_item.purchase_order_id)
                 if po and po.status != PurchaseStatus.COMPLETED:
+                    # [보강] 입고 완료 데이터 세부 기록 (날짜 동기화)
+                    po.status = PurchaseStatus.COMPLETED
+                    po.actual_delivery_date = completion_date or now_kst().date()
+                    po_item.received_quantity = po_item.quantity
+                    
                     await handle_stock_movement(db, po_item.product_id, po_item.quantity, TransactionType.IN, f"Auto-Receipt ({reference or 'Production'})")
                     await handle_stock_movement(db, po_item.product_id, -po_item.quantity, TransactionType.OUT, f"Auto-Consumption ({reference or 'Production'})")
-                    po.status = PurchaseStatus.COMPLETED
                     db.add(po)
+                    db.add(po_item)
                 
                 # 소요량/소모품 대기 항목 동기화
                 from app.models.purchasing import MaterialRequirement, ConsumablePurchaseWait
@@ -98,7 +119,9 @@ async def on_production_item_completed(db: AsyncSession, item: ProductionPlanIte
             new_po = PurchaseOrder(
                 order_no=new_order_no,
                 partner_id=partner_id,
+                order_id=order_id,
                 order_date=now_kst().date(),
+                actual_delivery_date=completion_date or now_kst().date(),
                 status=PurchaseStatus.COMPLETED,
                 purchase_type="PART",
                 note=f"공정 완료에 의한 자동 생성 ({reference or item.id})"
@@ -110,6 +133,7 @@ async def on_production_item_completed(db: AsyncSession, item: ProductionPlanIte
                 purchase_order_id=new_po.id,
                 product_id=item.product_id,
                 quantity=item.quantity,
+                received_quantity=item.quantity,
                 production_plan_item_id=item.id
             )
             db.add(new_po_item)
@@ -128,9 +152,11 @@ async def on_production_item_completed(db: AsyncSession, item: ProductionPlanIte
             for os_item in os_items:
                 os_order = await db.get(OutsourcingOrder, os_item.outsourcing_order_id)
                 if os_order and os_order.status != OutsourcingStatus.COMPLETED:
+                    os_order.status = OutsourcingStatus.COMPLETED
+                    os_order.actual_delivery_date = completion_date or now_kst().date()
+                    
                     await handle_stock_movement(db, os_item.product_id, os_item.quantity, TransactionType.IN, f"Auto-OS-Receipt ({reference or 'Production'})")
                     await handle_stock_movement(db, os_item.product_id, -os_item.quantity, TransactionType.OUT, f"Auto-OS-Consumption ({reference or 'Production'})")
-                    os_order.status = OutsourcingStatus.COMPLETED
                     db.add(os_order)
         else:
             # [NEW] 외주 발주서 자동 생성
@@ -151,7 +177,9 @@ async def on_production_item_completed(db: AsyncSession, item: ProductionPlanIte
             new_os = OutsourcingOrder(
                 order_no=new_order_no,
                 partner_id=partner_id,
+                order_id=order_id,
                 order_date=now_kst().date(),
+                actual_delivery_date=completion_date or now_kst().date(),
                 status=OutsourcingStatus.COMPLETED,
                 note=f"공정 완료에 의한 자동 생성 ({reference or item.id})"
             )
@@ -162,13 +190,28 @@ async def on_production_item_completed(db: AsyncSession, item: ProductionPlanIte
                 outsourcing_order_id=new_os.id,
                 product_id=item.product_id,
                 quantity=item.quantity,
-                production_plan_item_id=item.id
+                production_plan_item_id=item.id,
+                status=OutsourcingStatus.COMPLETED
             )
             db.add(new_os_item)
             
             # 재고 이력
             await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Auto-OS-Receipt ({new_order_no})")
             await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.OUT, f"Auto-OS-Consumption ({new_order_no})")
+
+    # --- 1-C. [NEW] 헤더 상태 업데이트 및 완료일 기록 ---
+    # 상세 공정 완료 시 헤더가 모두 완료되었는지 확인
+    plan = await db.get(ProductionPlan, item.plan_id)
+    if plan and plan.status != ProductionStatus.COMPLETED:
+        pending_stmt = select(func.count(ProductionPlanItem.id)).where(
+            ProductionPlanItem.plan_id == plan.id,
+            ProductionPlanItem.status != ProductionStatus.COMPLETED
+        )
+        p_res = await db.execute(pending_stmt)
+        if p_res.scalar() == 0:
+            plan.status = ProductionStatus.COMPLETED
+            plan.actual_completion_date = completion_date or now_kst().date()
+            db.add(plan)
 
     # --- 2. 사내 생산(INTERNAL)이고 마지막 공정일 경우 완제품 입고 및 BOM 차감 ---
     max_seq_stmt = select(func.max(ProductionPlanItem.sequence)).where(ProductionPlanItem.plan_id == item.plan_id)

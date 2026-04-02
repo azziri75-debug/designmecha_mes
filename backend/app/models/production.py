@@ -27,6 +27,7 @@ class ProductionPlan(Base):
     plan_date = Column(Date, nullable=False) # 계획 수립일
     
     status = Column(Enum(ProductionStatus), default=ProductionStatus.PLANNED)
+    actual_completion_date = Column(Date, nullable=True) # 생산 완료일
     
     attachment_file = Column(JSON, nullable=True) # 생산관리시트 PDF 파일
     sheet_metadata = Column(JSON, nullable=True) # 폼 저장 상태

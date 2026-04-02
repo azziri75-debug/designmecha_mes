@@ -998,6 +998,45 @@ async def startup_event():
                              await db.execute(text(f"ALTER TABLE {table} ADD CONSTRAINT {table}_process_id_fkey FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE SET NULL"))
                         await db.commit()
                     except Exception as e: print(f"Startup: {table} FK update failed: {e}")
+
+                # 10. [AUTO-FIX] Status Cascade Sync (SO -> Plan -> PO)
+                try:
+                    from app.api.utils.status_cascade import complete_production_for_order, on_production_item_completed
+                    from app.models.sales import SalesOrder, OrderStatus
+                    from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
+                    
+                    # A. 납품 완료된 수주 조사 및 연계
+                    so_stmt = select(SalesOrder).where(SalesOrder.status == OrderStatus.DELIVERY_COMPLETED)
+                    so_res = await db.execute(so_stmt)
+                    for so in so_res.scalars().all():
+                        await complete_production_for_order(db, order_id=so.id, reference="Startup-Fix")
+                        
+                    # B. 생산 완료된 계획 조사 및 연계 (미발주 건 자동 생성 및 날짜 동기화)
+                    plan_stmt = select(ProductionPlan).where(ProductionPlan.status == ProductionStatus.COMPLETED)
+                    plan_res = await db.execute(plan_stmt)
+                    for plan in plan_res.scalars().all():
+                        # [보강] 수주가 있는 경우 수주의 날짜를, 없으면 당일 날짜를 완료일로 설정
+                        comp_date = plan.actual_completion_date or now_kst().date()
+                        if plan.order:
+                            comp_date = plan.order.actual_delivery_date or comp_date
+                        
+                        if not plan.actual_completion_date:
+                            plan.actual_completion_date = comp_date
+                            db.add(plan)
+
+                        ppi_stmt = select(ProductionPlanItem).where(
+                            ProductionPlanItem.plan_id == plan.id,
+                            ProductionPlanItem.status == ProductionStatus.COMPLETED
+                        )
+                        ppi_res = await db.execute(ppi_stmt)
+                        for item in ppi_res.scalars().all():
+                            await on_production_item_completed(db, item, reference="Startup-Fix", completion_date=comp_date)
+                    
+                    await db.commit()
+                    print("✅ [STARTUP] Status cascade synchronization completed successfully!")
+                except Exception as e:
+                    await db.rollback()
+                    print(f"❌ [STARTUP] Status cascade synchronization failed: {e}")
             # 10. Fix Companies Table Missing Columns (Auto-Patch)
             try:
                 if is_sqlite:
