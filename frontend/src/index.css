@@ -244,14 +244,23 @@ body.resizing {
     color: black;
 }
 
-/* [NEW] 캡처 전용 스타일 (그림자/외곽선 완전 제거) */
-.is-capturing,
-.is-capturing *,
-.is-capturing .a4-wrapper,
-.is-capturing .a4-paper-container {
+/* [NEW] 캡처 전용 스타일 (그림자/외곽선 완전 제거, 표 선 등 문서 내부 선은 유지) */
+.is-capturing {
     box-shadow: none !important;
     border: none !important;
     outline: none !important;
-    background-image: none !important;
+}
+
+.is-capturing .a4-wrapper,
+.is-capturing .a4-paper-container {
+    box-shadow: none !important;
+    border: none !important; /* 문서 최외곽 테두리만 제거 */
+    outline: none !important;
+    border-radius: 0 !important;
+}
+
+.is-capturing * {
+    box-shadow: none !important; /* 모든 요소의 그림자 제거 */
     text-shadow: none !important;
+    /* border: none !important; 를 여기서 제거하여 표 선은 살립니다. */
 }
