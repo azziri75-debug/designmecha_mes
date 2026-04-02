@@ -111,57 +111,83 @@ async def on_production_item_completed(
                     cw = await db.get(ConsumablePurchaseWait, po_item.consumable_purchase_wait_id)
                     if cw: cw.status = "COMPLETED"; db.add(cw)
         else:
-            # [NEW] 발주서가 없는 경우 자동 생성 (이력 관리용)
-            date_str = now_kst().strftime("%Y%m%d")
-            # 자동 채번 (APO-YYYYMMDD-XXX)
-            prefix = f"APO-{date_str}-"
-            last_stmt = select(PurchaseOrder.order_no).where(PurchaseOrder.order_no.like(f"{prefix}%")).order_by(func.desc(PurchaseOrder.order_no)).limit(1)
-            last_res = await db.execute(last_stmt)
-            last_no = last_res.scalar()
-            new_seq = (int(last_no.split("-")[-1]) + 1) if last_no else 1
-            new_order_no = f"{prefix}{new_seq:03d}"
+            # [Case 2] [NEW] No PO exists yet? Search for orphaned item first (to handle status flip)
+            from app.models.purchasing import MaterialRequirement, ConsumablePurchaseWait
             
-            # 파트너 매칭
-            partner_id = None
-            if item.partner_name:
-                p_stmt = select(Partner.id).where(Partner.name == item.partner_name).limit(1)
-                p_res = await db.execute(p_stmt)
-                partner_id = p_res.scalar()
+            existing_item_stmt = select(PurchaseOrderItem).where(PurchaseOrderItem.production_plan_item_id == item.id).limit(1)
+            existing_item_res = await db.execute(existing_item_stmt)
+            existing_item = existing_item_res.scalar()
             
-            # Derive order_id from plan
-            plan = await db.get(ProductionPlan, item.plan_id)
-            order_id = plan.order_id if plan else None
-            
-            # [LOG] Start auto-creation
-            print(f"[status_cascade] Auto-creating PO for item {item.id}, Plan {item.plan_id}, Partner {partner_id}, Order {order_id}")
+            if existing_item:
+                # If item exists but PO wasn't found in Case 1 (rare but possible), update it
+                po = await db.get(PurchaseOrder, existing_item.purchase_order_id)
+                if po and po.status != PurchaseStatus.COMPLETED:
+                    po.status = PurchaseStatus.COMPLETED
+                    po.actual_delivery_date = completion_date or now_kst().date()
+                    existing_item.received_quantity = existing_item.quantity
+                    db.add(po); db.add(existing_item)
+                
+                # Ensure requirement is also completed
+                mr_stmt = select(MaterialRequirement).where(MaterialRequirement.plan_id == item.plan_id, MaterialRequirement.product_id == item.product_id).limit(1)
+                mr_res = await db.execute(mr_stmt)
+                mr = mr_res.scalar()
+                if mr: mr.status = "COMPLETED"; db.add(mr)
+            else:
+                # [Case 3] Truly new auto-creation (Waiting for Order -> Completion)
+                date_str = now_kst().strftime("%Y%m%d")
+                prefix = f"APO-{date_str}-"
+                last_stmt = select(PurchaseOrder.order_no).where(PurchaseOrder.order_no.like(f"{prefix}%")).order_by(desc(PurchaseOrder.order_no)).limit(1)
+                last_res = await db.execute(last_stmt)
+                last_no = last_res.scalar()
+                new_seq = (int(last_no.split("-")[-1]) + 1) if last_no else 1
+                new_order_no = f"{prefix}{new_seq:03d}"
+                
+                partner_id = None
+                if item.partner_name:
+                    p_stmt = select(Partner.id).where(Partner.name == item.partner_name).limit(1)
+                    p_res = await db.execute(p_stmt)
+                    partner_id = p_res.scalar()
+                
+                plan = await db.get(ProductionPlan, item.plan_id)
+                order_id = plan.order_id if plan else None
+                
+                # Find matching requirement to link
+                mr_stmt = select(MaterialRequirement).where(MaterialRequirement.plan_id == item.plan_id, MaterialRequirement.product_id == item.product_id).limit(1)
+                mr_res = await db.execute(mr_stmt)
+                mr = mr_res.scalar()
+                mr_id = mr.id if mr else None
 
-            new_po = PurchaseOrder(
-                order_no=new_order_no,
-                partner_id=partner_id,
-                order_id=order_id,
-                order_date=now_kst().date(),
-                actual_delivery_date=completion_date or now_kst().date(),
-                status=PurchaseStatus.COMPLETED,
-                purchase_type="PART",
-                note=f"공정 완료에 의한 자동 생성 ({reference or item.id})"
-            )
+                print(f"[status_cascade] Auto-creating PO for Waiting Item {item.id}, MR {mr_id}")
 
-            db.add(new_po)
-            await db.flush()
-            
-            new_po_item = PurchaseOrderItem(
-                purchase_order_id=new_po.id,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                received_quantity=item.quantity,
-                production_plan_item_id=item.id
-            )
-            db.add(new_po_item)
-            
-            # 재고 이력 (입고+투입 상쇄)
-            await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Auto-Receipt ({new_order_no})")
-            await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.OUT, f"Auto-Consumption ({new_order_no})")
-            print(f"[status_cascade] Created PO ID: {new_po.id}")
+                new_po = PurchaseOrder(
+                    order_no=new_order_no,
+                    partner_id=partner_id,
+                    order_id=order_id,
+                    order_date=now_kst().date(),
+                    actual_delivery_date=completion_date or now_kst().date(),
+                    status=PurchaseStatus.COMPLETED,
+                    purchase_type="PART",
+                    note=f"공정 완료에 의한 자동 생성 ({reference or item.id})"
+                )
+
+                db.add(new_po)
+                await db.flush()
+                
+                new_po_item = PurchaseOrderItem(
+                    purchase_order_id=new_po.id,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    received_quantity=item.quantity,
+                    production_plan_item_id=item.id,
+                    material_requirement_id=mr_id
+                )
+                db.add(new_po_item)
+                
+                if mr: mr.status = "COMPLETED"; db.add(mr)
+                
+                await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Auto-Receipt ({new_order_no})")
+                await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.OUT, f"Auto-Consumption ({new_order_no})")
+                print(f"[status_cascade] Created PO ID: {new_po.id}")
 
 
     # 1-B. 외주 발주 처리 (OUTSOURCING)
@@ -195,50 +221,61 @@ async def on_production_item_completed(
                     await handle_stock_movement(db, os_item.product_id, -os_item.quantity, TransactionType.OUT, f"Auto-OS-Consumption ({reference or 'Production'})")
                     db.add(os_order)
         else:
-            # [NEW] 외주 발주서 자동 생성
-            date_str = now_kst().strftime("%Y%m%d")
-            prefix = f"AOS-{date_str}-"
-            last_stmt = select(OutsourcingOrder.order_no).where(OutsourcingOrder.order_no.like(f"{prefix}%")).order_by(func.desc(OutsourcingOrder.order_no)).limit(1)
-            last_res = await db.execute(last_stmt)
-            last_no = last_res.scalar()
-            new_seq = (int(last_no.split("-")[-1]) + 1) if last_no else 1
-            new_order_no = f"{prefix}{new_seq:03d}"
+            # [NEW] 외주 발주서 자동 생성 (중복 체크 포함)
+            existing_os_stmt = select(OutsourcingOrderItem).where(OutsourcingOrderItem.production_plan_item_id == item.id).limit(1)
+            existing_os_res = await db.execute(existing_os_stmt)
+            existing_os_item = existing_os_res.scalar()
             
-            partner_id = None
-            if item.partner_name:
-                p_stmt = select(Partner.id).where(Partner.name == item.partner_name).limit(1)
-                p_res = await db.execute(p_stmt)
-                partner_id = p_res.scalar()
+            if existing_os_item:
+                os_order = await db.get(OutsourcingOrder, existing_os_item.outsourcing_order_id)
+                if os_order and os_order.status != OutsourcingStatus.COMPLETED:
+                    os_order.status = OutsourcingStatus.COMPLETED
+                    os_order.actual_delivery_date = completion_date or now_kst().date()
+                    db.add(os_order)
+            else:
+                date_str = now_kst().strftime("%Y%m%d")
+                prefix = f"AOS-{date_str}-"
+                last_stmt = select(OutsourcingOrder.order_no).where(OutsourcingOrder.order_no.like(f"{prefix}%")).order_by(desc(OutsourcingOrder.order_no)).limit(1)
+                last_res = await db.execute(last_stmt)
+                last_no = last_res.scalar()
+                new_seq = (int(last_no.split("-")[-1]) + 1) if last_no else 1
+                new_order_no = f"{prefix}{new_seq:03d}"
                 
-            # Derive order_id from plan
-            plan = await db.get(ProductionPlan, item.plan_id)
-            order_id = plan.order_id if plan else None
+                partner_id = None
+                if item.partner_name:
+                    p_stmt = select(Partner.id).where(Partner.name == item.partner_name).limit(1)
+                    p_res = await db.execute(p_stmt)
+                    partner_id = p_res.scalar()
+                    
+                plan = await db.get(ProductionPlan, item.plan_id)
+                order_id = plan.order_id if plan else None
 
-            new_os = OutsourcingOrder(
-                order_no=new_order_no,
-                partner_id=partner_id,
-                order_id=order_id,
-                order_date=now_kst().date(),
-                actual_delivery_date=completion_date or now_kst().date(),
-                status=OutsourcingStatus.COMPLETED,
-                note=f"공정 완료에 의한 자동 생성 ({reference or item.id})"
-            )
+                print(f"[status_cascade] Auto-creating OO for item {item.id}, Plan {item.plan_id}")
 
-            db.add(new_os)
-            await db.flush()
-            
-            new_os_item = OutsourcingOrderItem(
-                outsourcing_order_id=new_os.id,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                production_plan_item_id=item.id,
-                status=OutsourcingStatus.COMPLETED
-            )
-            db.add(new_os_item)
-            
-            # 재고 이력
-            await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Auto-OS-Receipt ({new_order_no})")
-            await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.OUT, f"Auto-OS-Consumption ({new_order_no})")
+                new_os = OutsourcingOrder(
+                    order_no=new_order_no,
+                    partner_id=partner_id,
+                    order_id=order_id,
+                    order_date=now_kst().date(),
+                    actual_delivery_date=completion_date or now_kst().date(),
+                    status=OutsourcingStatus.COMPLETED,
+                    note=f"공정 완료에 의한 자동 생성 ({reference or item.id})"
+                )
+
+                db.add(new_os)
+                await db.flush()
+                
+                new_os_item = OutsourcingOrderItem(
+                    outsourcing_order_id=new_os.id,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    production_plan_item_id=item.id,
+                    status=OutsourcingStatus.COMPLETED
+                )
+                db.add(new_os_item)
+                
+                await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Auto-OS-Receipt ({new_order_no})")
+                await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.OUT, f"Auto-OS-Consumption ({new_order_no})")
 
     # --- 1-C. [NEW] 헤더 상태 업데이트 및 완료일 기록 ---
     # 상세 공정 완료 시 헤더가 모두 완료되었는지 확인
