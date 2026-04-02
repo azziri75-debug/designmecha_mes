@@ -1018,6 +1018,11 @@ async def delete_production_plan(
         for wo in wo_res.scalars().all():
             await db.delete(wo)
 
+    # Update linked sales order status (rollback to CONFIRMED)
+    if plan.order:
+        plan.order.status = OrderStatus.CONFIRMED
+        db.add(plan.order)
+
     # Finally, delete the plan itself
     await db.delete(plan)
     await db.commit()

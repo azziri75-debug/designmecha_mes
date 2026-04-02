@@ -1082,6 +1082,23 @@ async def startup_event():
                 print(f"Startup: ProductionPlans auto-patch failed: {e}")
                 await db.rollback()
 
+            # 10.3 Fix Orphaned Sales Orders (Completed status without a plan)
+            try:
+                # Identifying orders that are marked as completed but have no associated production plan.
+                # This ensures they reappear in the planning list for correction.
+                patch_stmt = text("""
+                    UPDATE sales_orders 
+                    SET status = 'CONFIRMED' 
+                    WHERE status IN ('PRODUCTION_COMPLETED', 'DELIVERY_COMPLETED')
+                    AND id NOT IN (SELECT order_id FROM production_plans WHERE order_id IS NOT NULL)
+                """)
+                await db.execute(patch_stmt)
+                await db.commit()
+                print("Startup: Reset status for orphaned Completed Sales Orders.")
+            except Exception as e:
+                print(f"Startup: Orphaned Sales Orders patch failed: {e}")
+                await db.rollback()
+
             # 11. Fix EmployeeTimeRecord Missing Columns (Hours Breakdown)
             try:
                 new_cols = ["hours", "extension_hours", "night_hours", "holiday_hours", "holiday_night_hours"]
