@@ -18,6 +18,7 @@ from app.models.purchasing import (
 from app.models.basics import Partner, Staff, Equipment
 from app.models.inventory import StockProduction, Stock, StockProductionStatus, TransactionType
 from app.api.utils.inventory import handle_stock_movement, handle_backflush
+from app.api.utils.status_cascade import on_production_item_completed
 from app.schemas import production as schemas
 from datetime import datetime, date
 import uuid
@@ -48,17 +49,15 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
         return
 
     if total_good >= plan_item.quantity:
-        plan_item.status = ProductionStatus.COMPLETED
+        # [NEW] 상태 연계 유틸리티 호출 (발주 완료 및 재고 반영 포함)
+        await on_production_item_completed(db, plan_item, reference=f"WorkLog (PI#{plan_item_id})")
     elif total_good > 0:
         plan_item.status = ProductionStatus.IN_PROGRESS
-    # Do not revert to PLANNED here as it might be 'ORDERED' or manually set.
-    # But if the user wants it to be 'PLANNED' if 0, we can add that.
-    # The requirement says "if 0 then 대기(PLANNED) OR if there is quantity then 진행중(IN_PROGRESS)".
+        db.add(plan_item)
     elif total_good == 0 and plan_item.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.COMPLETED]:
-         # Only revert if it was automatically moved to progress/completed
-         plan_item.status = ProductionStatus.PLANNED
-
-    db.add(plan_item)
+        plan_item.status = ProductionStatus.PLANNED
+        db.add(plan_item)
+    
     await db.flush()
     
     # --- Auto-Complete Check for Parent Plan ---
@@ -608,6 +607,12 @@ async def update_production_plan(
         
         # Items remaining in existing_items_map are removed (delete-orphan)
         plan.items = new_items
+
+    # --- [NEW] 만약 생산 계획 헤더가 COMPLETED로 변경되었다면 하위 모든 공정도 완료 처리 ---
+    if update_data.get("status") == ProductionStatus.COMPLETED:
+        for item in plan.items:
+            if item.status != ProductionStatus.COMPLETED:
+                await on_production_item_completed(db, item, reference=f"Manual Plan Completion (Plan #{plan_id})")
 
     await db.commit()
     

@@ -17,6 +17,7 @@ from app.models.basics import Partner
 from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder
 from app.models.quality import InspectionResult, QualityDefect
 from app.models.purchasing import PurchaseOrder, PurchaseStatus, PurchaseOrderItem, OutsourcingOrder, OutsourcingStatus, OutsourcingOrderItem, MaterialRequirement
+from app.api.utils.status_cascade import complete_production_for_order
 
 import uuid
 from datetime import datetime, date
@@ -971,32 +972,12 @@ async def create_delivery(
     else:
         db_order.status = OrderStatus.PARTIALLY_DELIVERED
 
-    # [Fix] 납품 완료 시 연관 생산계획 자동 완료 처리
-    try:
-        if all_completed:
-            plans_res = await db.execute(
-                select(ProductionPlan).where(
-                    ProductionPlan.order_id == order_id,
-                    ProductionPlan.status != 'COMPLETED'
-                )
-            )
-            pending_plans = plans_res.scalars().all()
-            if pending_plans:
-                pending_plan_ids = [p.id for p in pending_plans]
-                for plan in pending_plans:
-                    plan.status = 'COMPLETED'
-                    db.add(plan)
-                ppi_res = await db.execute(
-                    select(ProductionPlanItem).where(
-                        ProductionPlanItem.plan_id.in_(pending_plan_ids),
-                        ProductionPlanItem.status != 'COMPLETED'
-                    )
-                )
-                for ppi in ppi_res.scalars().all():
-                    ppi.status = 'COMPLETED'
-                    db.add(ppi)
-    except Exception as e:
-        print(f'[create_delivery] Auto-complete production plan failed: {e}')
+    # [Fix] 납품 완료 시 연관 생산계획 자동 완료 처리 및 재고 로직 반영
+    if all_completed:
+        try:
+            await complete_production_for_order(db, order_id=order_id, reference=delivery_no)
+        except Exception as e:
+            print(f'[create_delivery] Auto-complete production plan failed: {e}')
 
     await db.commit()
     await db.refresh(db_delivery)
@@ -1344,6 +1325,11 @@ async def update_delivery_history(
             if delivered_qty >= total_qty:
                 order.status = OrderStatus.DELIVERY_COMPLETED
                 order.actual_delivery_date = history.delivery_date
+                # [NEW] 납품 완료 시 생산 계획 자동 완료 처리
+                try:
+                    await complete_production_for_order(db, order_id=order.id, reference=history.delivery_no)
+                except Exception as e:
+                    print(f'[update_delivery_history] Auto-complete production plan failed: {e}')
             elif delivered_qty > 0:
                 order.status = OrderStatus.PARTIALLY_DELIVERED
             else:
