@@ -1464,3 +1464,39 @@ async def fix_mismatched_plans_in_db(db: AsyncSession = Depends(deps.get_db)):
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+@router.get("/fix-completed-status-cascades")
+async def fix_completed_status_cascades(db: AsyncSession = Depends(deps.get_db)):
+    """
+    과거 완료된 데이터(수주/생산)를 전수 조사하여 상태 연계 로직을 소급 적용합니다.
+    """
+    from app.api.utils.status_cascade import complete_production_for_order, on_production_item_completed
+    from app.models.sales import SalesOrder, OrderStatus
+    from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
+    
+    try:
+        # 1. 납품 완료된 수주 조사
+        so_stmt = select(SalesOrder.id).where(SalesOrder.status == OrderStatus.DELIVERY_COMPLETED)
+        so_res = await db.execute(so_stmt)
+        for so_id in so_res.scalars().all():
+            await complete_production_for_order(db, order_id=so_id, reference="Migration-SO")
+            
+        # 2. 생산 완료된 계획 조사
+        plan_stmt = select(ProductionPlan).where(ProductionPlan.status == ProductionStatus.COMPLETED)
+        plan_res = await db.execute(plan_stmt)
+        for plan in plan_res.scalars().all():
+            # 하위 모든 공정 완료 처리 및 발주 연계
+            ppi_stmt = select(ProductionPlanItem).where(
+                ProductionPlanItem.plan_id == plan.id,
+                ProductionPlanItem.status == ProductionStatus.COMPLETED
+            )
+            ppi_res = await db.execute(ppi_stmt)
+            for item in ppi_res.scalars().all():
+                # 이미 완료된 건이라도 발주 연계가 안 된 경우를 위해 재호출 (이미 완료 시 로직 건너뜀)
+                await on_production_item_completed(db, item, reference="Migration-Plan")
+        
+        await db.commit()
+        return {"status": "success", "message": "과거 완료된 데이터의 상태 동기화가 완료되었습니다."}
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        return {"status": "error", "message": str(e), "trace": traceback.format_exc()}

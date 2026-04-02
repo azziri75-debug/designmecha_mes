@@ -387,6 +387,7 @@ async def read_pending_purchase_items(
                 PurchaseOrderItem.purchase_order.has(PurchaseOrder.status != PurchaseStatus.CANCELED)
             )
         )\
+        .where(ProductionPlanItem.status != ProductionStatus.COMPLETED)\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
         
     if major_group_id and str(major_group_id).isdigit():
@@ -451,6 +452,7 @@ async def read_pending_outsourcing_items(
                 OutsourcingOrderItem.outsourcing_order.has(OutsourcingOrder.status != OutsourcingStatus.CANCELED)
             )
         )\
+        .where(ProductionPlanItem.status != ProductionStatus.COMPLETED)\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
         
     if major_group_id and str(major_group_id).isdigit():

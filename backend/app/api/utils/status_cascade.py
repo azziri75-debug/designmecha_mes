@@ -65,6 +65,15 @@ async def on_production_item_completed(db: AsyncSession, item: ProductionPlanIte
             po.status = PurchaseStatus.COMPLETED
             db.add(po)
 
+        # [NEW] 소요량/소모품 대기 항목 동기화
+        from app.models.purchasing import MaterialRequirement, ConsumablePurchaseWait
+        if po_item.material_requirement_id:
+            mr = await db.get(MaterialRequirement, po_item.material_requirement_id)
+            if mr: mr.status = "COMPLETED"; db.add(mr)
+        if po_item.consumable_purchase_wait_id:
+            cw = await db.get(ConsumablePurchaseWait, po_item.consumable_purchase_wait_id)
+            if cw: cw.status = "COMPLETED"; db.add(cw)
+
     # 외주 발주 처리 (ProductionPlanItem -> OutsourcingOrderItem)
     os_items_stmt = select(OutsourcingOrderItem).where(OutsourcingOrderItem.production_plan_item_id == item.id)
     os_items_res = await db.execute(os_items_stmt)
