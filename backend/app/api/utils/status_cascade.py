@@ -82,6 +82,7 @@ async def on_production_item_completed(
                 if po and po.status != PurchaseStatus.COMPLETED:
                     # [보강] 입고 완료 데이터 세부 기록 (날짜 동기화)
                     po.status = PurchaseStatus.COMPLETED
+                    po.purchase_type = "PART"  # Ensure production-related POs are categorized correctly
                     po.actual_delivery_date = completion_date or now_kst().date()
                     # [보강] 발주서 내의 모든 품목에 대해 입고 완료 처리 (UI 리스트 노출용)
                     from sqlalchemy import update

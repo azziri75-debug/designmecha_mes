@@ -1110,6 +1110,14 @@ async def startup_event():
                 """)
                 await db.execute(po_patch)
                 
+                # PO Header Fix: Fill missing types and dates for COMPLETED orders
+                po_header_patch = text("""
+                    UPDATE purchase_orders
+                    SET purchase_type = 'PART', actual_delivery_date = CURRENT_DATE
+                    WHERE status = 'COMPLETED' AND (purchase_type IS NULL OR actual_delivery_date IS NULL)
+                """)
+                await db.execute(po_header_patch)
+                
                 # OO Items: Set status = 'COMPLETED' for COMPLETED OOs
                 oo_patch = text("""
                     UPDATE outsourcing_order_items 

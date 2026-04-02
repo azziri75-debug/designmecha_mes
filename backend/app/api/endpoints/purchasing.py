@@ -735,7 +735,7 @@ async def read_purchase_orders(
     # Local import for deep loading
     from app.models.production import ProductionPlanItem, ProductionPlan
 
-    query = select(PurchaseOrder).outerjoin(SalesOrder).options(
+    query = select(PurchaseOrder).outerjoin(PurchaseOrder.order).options(
         selectinload(PurchaseOrder.items).selectinload(PurchaseOrderItem.product).options(
             selectinload(Product.standard_processes).selectinload(ProductProcess.process),
             selectinload(Product.bom_items)
