@@ -160,6 +160,17 @@ body.resizing {
         white-space: normal !important;
     }
 
+    /* 6.5. Force remove all UI shadows/borders for image capture */
+    .print-safe-area, 
+    .print-safe-area *,
+    .a4-wrapper,
+    .a4-paper-container {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+
     /* 7. MUI 모달/다이얼로그 오버레이 완전 해방 */
     .MuiDialog-root,
     .MuiDialog-container,

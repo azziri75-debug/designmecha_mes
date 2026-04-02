@@ -221,8 +221,9 @@ const PurchaseOrderSheetModal = ({ isOpen, onClose, order, onSave }) => {
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white shadow-2xl">
+                    <div ref={sheetRef} className="bg-white">
                         <PurchaseOrderTemplate
+
                             data={metadata}
                             onChange={handleMetadataChange}
                             isReadOnly={true}

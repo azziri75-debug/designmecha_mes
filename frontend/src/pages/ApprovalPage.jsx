@@ -650,8 +650,8 @@ const ApprovalPage = () => {
                             <div 
                                 style={{ overflowX: 'auto' }}
                                 className={cn(
-                                "bg-white p-6 md:p-12 rounded-xl border border-gray-200 shadow-inner a4-paper-container print-safe-area",
-                                selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 rounded-none border-0 shadow-none"
+                                "bg-white p-6 md:p-12 a4-paper-container print-safe-area",
+                                selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0"
                             )}>
                                 <Box sx={{ 
                                     width: '100%',
@@ -662,7 +662,7 @@ const ApprovalPage = () => {
                                     flexDirection: 'column',
                                     bgcolor: '#ffffff',
                                     p: selectedDoc.doc_type === 'PURCHASE_ORDER' ? '0' : { xs: '20px', md: '40px' },
-                                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                    boxShadow: 'none', // Removed for clean print capture
                                     color: '#000000',
                                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' },
                                     '& td, & th, & div, & span': { 
@@ -672,6 +672,7 @@ const ApprovalPage = () => {
                                         overflow: 'visible !important'
                                     }
                                 }}>
+                                    {/* ... document form cases ... */}
                                     {selectedDoc.doc_type === 'INTERNAL_DRAFT' && (() => {
                                         const c = selectedDoc.content || {};
                                         const safeC = { ...c, items: Array.isArray(c.items) ? c.items : [] };
@@ -789,7 +790,7 @@ const ApprovalPage = () => {
 
                                     {/* Attachment Section */}
                                     {selectedDoc.attachments && selectedDoc.attachments.length > 0 && (
-                                        <Box sx={{ mt: 2, pt: 4, px: 4, pb: 4, borderTop: '2px solid #eee' }}>
+                                        <Box className="no-print" sx={{ mt: 2, pt: 4, px: 4, pb: 4, borderTop: '2px solid #eee' }}>
                                             <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, fontWeight: 'bold', color: '#374151' }}>
                                                 <Paperclip size={16} /> 관련 첨부파일 ({selectedDoc.attachments.length})
                                             </Typography>
@@ -833,6 +834,7 @@ const ApprovalPage = () => {
                                             </Box>
                                         </Box>
                                     )}
+
                                 </Box>
                             </div>
 
