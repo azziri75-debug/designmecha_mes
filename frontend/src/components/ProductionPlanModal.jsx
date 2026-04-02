@@ -36,7 +36,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     unit_cost: item.cost && item.quantity ? Math.round(item.cost / item.quantity) : 0,
                     product_spec: item.product?.specification || "",
                     product_unit: item.product?.unit || "EA",
-                    product: item.product // Ensure product object is here
+                    product: item.product, // Ensure product object is here
+                    gross_quantity: item.gross_quantity || (item.quantity + (item.stock_use_quantity || 0))
                 })));
 
                 // [FIX] Initialize stock use quantities in edit mode
@@ -170,7 +171,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
         const currentStock = productStocks[productId] || 0;
         
         // Find first item to get gross qty
-        const firstItem = items.find(i => i.product_id === productId);
+        const firstItem = items.find(i => Number(i.product_id) === Number(productId));
         if (!firstItem) return;
         const grossQty = firstItem.gross_quantity || firstItem.quantity;
 
@@ -182,7 +183,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
 
         // Update all processes for this product
         const newItems = items.map(item => {
-            if (item.product_id === productId) {
+            if (Number(item.product_id) === Number(productId)) {
                 return {
                     ...item,
                     stock_use_quantity: safeStockUse,
