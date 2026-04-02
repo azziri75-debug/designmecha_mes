@@ -85,6 +85,11 @@ async def on_production_item_completed(
                     po.actual_delivery_date = completion_date or now_kst().date()
                     po_item.received_quantity = po_item.quantity
                     
+                    # [보강] 상위 수주 연결이 안 되어 있는 경우 연동
+                    if not po.order_id:
+                        plan = await db.get(ProductionPlan, item.plan_id)
+                        if plan: po.order_id = plan.order_id
+                    
                     await handle_stock_movement(db, po_item.product_id, po_item.quantity, TransactionType.IN, f"Auto-Receipt ({reference or 'Production'})")
                     await handle_stock_movement(db, po_item.product_id, -po_item.quantity, TransactionType.OUT, f"Auto-Consumption ({reference or 'Production'})")
                     db.add(po)
@@ -155,9 +160,18 @@ async def on_production_item_completed(
                     os_order.status = OutsourcingStatus.COMPLETED
                     os_order.actual_delivery_date = completion_date or now_kst().date()
                     
+                    # [보강] 개별 품목 상태도 완료로 변경
+                    os_item.status = OutsourcingStatus.COMPLETED
+                    
+                    # [보강] 상위 수주 연결 연동
+                    if not os_order.order_id:
+                        plan = await db.get(ProductionPlan, item.plan_id)
+                        if plan: os_order.order_id = plan.order_id
+                        
                     await handle_stock_movement(db, os_item.product_id, os_item.quantity, TransactionType.IN, f"Auto-OS-Receipt ({reference or 'Production'})")
                     await handle_stock_movement(db, os_item.product_id, -os_item.quantity, TransactionType.OUT, f"Auto-OS-Consumption ({reference or 'Production'})")
                     db.add(os_order)
+                    db.add(os_item)
         else:
             # [NEW] 외주 발주서 자동 생성
             date_str = now_kst().strftime("%Y%m%d")
