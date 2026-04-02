@@ -83,9 +83,16 @@ async def on_production_item_completed(
                     # [보강] 입고 완료 데이터 세부 기록 (날짜 동기화)
                     po.status = PurchaseStatus.COMPLETED
                     po.actual_delivery_date = completion_date or now_kst().date()
-                    po_item.received_quantity = po_item.quantity
+                    # [보강] 발주서 내의 모든 품목에 대해 입고 완료 처리 (UI 리스트 노출용)
+                    from sqlalchemy import update
+                    item_update_stmt = (
+                        update(PurchaseOrderItem)
+                        .where(PurchaseOrderItem.purchase_order_id == po.id)
+                        .values(received_quantity=PurchaseOrderItem.quantity)
+                    )
+                    await db.execute(item_update_stmt)
                     
-                    # [보강] 상위 수주 연결이 안 되어 있는 경우 연동
+                    # [보강] 상위 수주 연결 및 재고 기록
                     if not po.order_id:
                         plan = await db.get(ProductionPlan, item.plan_id)
                         if plan: po.order_id = plan.order_id
@@ -93,7 +100,6 @@ async def on_production_item_completed(
                     await handle_stock_movement(db, po_item.product_id, po_item.quantity, TransactionType.IN, f"Auto-Receipt ({reference or 'Production'})")
                     await handle_stock_movement(db, po_item.product_id, -po_item.quantity, TransactionType.OUT, f"Auto-Consumption ({reference or 'Production'})")
                     db.add(po)
-                    db.add(po_item)
                 
                 # 소요량/소모품 대기 항목 동기화
                 from app.models.purchasing import MaterialRequirement, ConsumablePurchaseWait
@@ -160,9 +166,15 @@ async def on_production_item_completed(
                     os_order.status = OutsourcingStatus.COMPLETED
                     os_order.actual_delivery_date = completion_date or now_kst().date()
                     
-                    # [보강] 개별 품목 상태도 완료로 변경
-                    os_item.status = OutsourcingStatus.COMPLETED
-                    
+                    # [보강] 외주 발주서 내 모든 품목 상태 완료로 변경
+                    from sqlalchemy import update
+                    os_item_update_stmt = (
+                        update(OutsourcingOrderItem)
+                        .where(OutsourcingOrderItem.outsourcing_order_id == os_order.id)
+                        .values(status=OutsourcingStatus.COMPLETED)
+                    )
+                    await db.execute(os_item_update_stmt)
+
                     # [보강] 상위 수주 연결 연동
                     if not os_order.order_id:
                         plan = await db.get(ProductionPlan, item.plan_id)
@@ -171,7 +183,6 @@ async def on_production_item_completed(
                     await handle_stock_movement(db, os_item.product_id, os_item.quantity, TransactionType.IN, f"Auto-OS-Receipt ({reference or 'Production'})")
                     await handle_stock_movement(db, os_item.product_id, -os_item.quantity, TransactionType.OUT, f"Auto-OS-Consumption ({reference or 'Production'})")
                     db.add(os_order)
-                    db.add(os_item)
         else:
             # [NEW] 외주 발주서 자동 생성
             date_str = now_kst().strftime("%Y%m%d")

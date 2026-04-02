@@ -1099,6 +1099,32 @@ async def startup_event():
                 print(f"Startup: Orphaned Sales Orders patch failed: {e}")
                 await db.rollback()
 
+            # 10.4 Fix Inconsistent Purchase/Outsourcing Status (Header COMPLETED vs Items)
+            try:
+                # PO Items: Set received_quantity = quantity for COMPLETED POs
+                po_patch = text("""
+                    UPDATE purchase_order_items 
+                    SET received_quantity = quantity
+                    WHERE purchase_order_id IN (SELECT id FROM purchase_orders WHERE status = 'COMPLETED')
+                    AND received_quantity < quantity
+                """)
+                await db.execute(po_patch)
+                
+                # OO Items: Set status = 'COMPLETED' for COMPLETED OOs
+                oo_patch = text("""
+                    UPDATE outsourcing_order_items 
+                    SET status = 'COMPLETED'
+                    WHERE outsourcing_order_id IN (SELECT id FROM outsourcing_orders WHERE status = 'COMPLETED')
+                    AND status != 'COMPLETED'
+                """)
+                await db.execute(oo_patch)
+                
+                await db.commit()
+                print("Startup: Fixed status inconsistencies for Completed PO/OO Items.")
+            except Exception as e:
+                print(f"Startup: PO/OO Item status patch failed: {e}")
+                await db.rollback()
+
             # 11. Fix EmployeeTimeRecord Missing Columns (Hours Breakdown)
             try:
                 new_cols = ["hours", "extension_hours", "night_hours", "holiday_hours", "holiday_night_hours"]
