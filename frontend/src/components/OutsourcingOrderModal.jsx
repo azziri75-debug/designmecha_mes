@@ -195,7 +195,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
             const displayCode = firstItem?.sales_order_number ||
                 firstItem?.plan?.order?.order_no ||
-                firstItem?.plan?.stock_production?.production_no || '';
+                firstItem?.plan?.stock_production?.production_no || 
+                (firstItem ? "재고용 (외주)" : "직접발주");
 
             setFormData({
                 partner_id: foundPartner ? foundPartner.id : '',
@@ -225,6 +226,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     }
 
                     return {
+                        ...item,
                         product_id: productId || '',
                         product_name: productName,
                         quantity: item?.quantity || 1,
@@ -232,8 +234,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         note: item?.note || item?.process_name || '',
                         production_plan_item_id: item?.id || null,
                         specification: spec,
-                        pricing_type: 'UNIT',
-                        total_weight: 0
+                        pricing_type: item?.pricing_type || 'UNIT',
+                        total_weight: item?.total_weight || 0
                     };
                 })
             });

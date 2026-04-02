@@ -282,11 +282,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
             setFormData({
                 partner_id: foundPartner ? foundPartner.id : '',
-                order_id: firstItem?.plan?.order_id || '',
+                order_id: (firstItem?.type === 'MRP' ? (firstItem?.order_id || firstItem?.plan?.order_id) : firstItem?.plan?.order_id) || '',
                 order_date: new Date().toISOString().split('T')[0],
                 delivery_date: '',
                 note: '',
-                display_order_no: firstItem?.sales_order_number || firstItem?.plan?.order?.order_no || firstItem?.plan?.stock_production?.production_no || '',
+                display_order_no: (firstItem?.sales_order_number || 
+                                  firstItem?.plan?.order?.order_no || 
+                                  firstItem?.plan?.stock_production?.production_no) || 
+                                  (firstItem?.type === 'MRP' ? "재고용 (MRP)" : 
+                                   firstItem?.type === 'PENDING' ? "재고용 (생산)" : "직접발주"),
                 purchase_type: purchaseType || 'PART',
                 items: initialItems.map(item => {
                     let parsedProductId = '';
@@ -296,12 +300,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     if (purchaseTypeState === 'CONSUMABLE' || isConsumableOrder) {
                         const cObj = item?.consumable || item?.product || {};
                         parsedProductId = item?.consumable_id || item?.consumableId || cObj?.id || '';
-                        // 🚨 핵심: requested_item_name 최우선 적용
                         parsedProductName = item?.requested_item_name || item?.consumable_name || cObj?.name || item?.product_name || item?.name || '';
-                        // 🚨 핵심: remarks 최우선 적용
                         parsedSpec = item?.remarks || item?.consumable_spec || cObj?.specification || item?.specification || '';
 
-                        // 👇👇 신규 추가: DB 마스터에 똑같은 이름이 있으면 자동으로 ID 매칭 👇👇
                         if (!parsedProductId && parsedProductName && products.length > 0) {
                             const autoMatch = products.find(p => p.name.trim() === parsedProductName.trim());
                             if (autoMatch) parsedProductId = autoMatch.id;
@@ -314,15 +315,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     }
 
                     return {
+                        ...item,
                         product_id: parsedProductId,
                         product_name: parsedProductName,
                         specification: parsedSpec,
                         quantity: item.quantity || 1,
                         unit_price: item.unit_price || 0,
                         note: item.note || item.remarks || '',
-                        consumable_purchase_wait_id: isConsumableOrder ? item.id : null,
-                        material_requirement_id: item.type === 'MRP' ? item.id : null,
-                        pricing_type: 'UNIT'
+                        production_plan_item_id: item.type === 'PENDING' ? item.id : (item.production_plan_item_id || null),
+                        consumable_purchase_wait_id: isConsumableOrder ? item.id : (item.consumable_purchase_wait_id || null),
+                        material_requirement_id: item.type === 'MRP' ? item.id : (item.material_requirement_id || null),
+                        pricing_type: item.pricing_type || 'UNIT'
                     };
                 })
             });
