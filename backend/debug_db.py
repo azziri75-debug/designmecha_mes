@@ -1,27 +1,26 @@
-import sqlite3
+import asyncio
+from sqlalchemy import select, text
+from app.db.session import async_session
+from app.models.purchasing import PurchaseOrder, PurchaseStatus
 
-try:
-    conn = sqlite3.connect('mes_erp.db')
-    cursor = conn.cursor()
-    
-    print("--- Tables ---")
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
-    for table in tables:
-        print(table[0])
+async def debug_completed_pos():
+    async with async_session() as db:
+        print("Checking completed POs in database...")
         
-    print("\n--- Partners Schema ---")
-    cursor.execute("PRAGMA table_info(partners);")
-    columns = cursor.fetchall()
-    for col in columns:
-        print(col)
+        # 1. Check all completed POs
+        stmt = select(PurchaseOrder).where(PurchaseOrder.status == PurchaseStatus.COMPLETED)
+        res = await db.execute(stmt)
+        pos = res.scalars().all()
+        print(f"Total COMPLETED POs: {len(pos)}")
+        
+        for po in pos:
+            print(f"ID: {po.id}, No: {po.order_no}, Type: {po.purchase_type}, ActualDate: {po.actual_delivery_date}")
+            
+        # 2. Check POs where status is COMPLETED and type is PART
+        stmt2 = select(PurchaseOrder).where(PurchaseOrder.status == PurchaseStatus.COMPLETED).where(PurchaseOrder.purchase_type == 'PART')
+        res2 = await db.execute(stmt2)
+        pos2 = res2.scalars().all()
+        print(f"Total COMPLETED PART POs: {len(pos2)}")
 
-    print("\n--- Products Schema ---")
-    cursor.execute("PRAGMA table_info(products);")
-    columns = cursor.fetchall()
-    for col in columns:
-        print(col)
-        
-    conn.close()
-except Exception as e:
-    print(f"Error: {e}")
+if __name__ == "__main__":
+    asyncio.run(debug_completed_pos())

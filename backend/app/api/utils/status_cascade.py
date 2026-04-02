@@ -128,6 +128,10 @@ async def on_production_item_completed(
                 p_res = await db.execute(p_stmt)
                 partner_id = p_res.scalar()
             
+            # Derive order_id from plan
+            plan = await db.get(ProductionPlan, item.plan_id)
+            order_id = plan.order_id if plan else None
+
             new_po = PurchaseOrder(
                 order_no=new_order_no,
                 partner_id=partner_id,
@@ -138,6 +142,7 @@ async def on_production_item_completed(
                 purchase_type="PART",
                 note=f"공정 완료에 의한 자동 생성 ({reference or item.id})"
             )
+
             db.add(new_po)
             await db.flush()
             
@@ -200,6 +205,10 @@ async def on_production_item_completed(
                 p_res = await db.execute(p_stmt)
                 partner_id = p_res.scalar()
                 
+            # Derive order_id from plan
+            plan = await db.get(ProductionPlan, item.plan_id)
+            order_id = plan.order_id if plan else None
+
             new_os = OutsourcingOrder(
                 order_no=new_order_no,
                 partner_id=partner_id,
@@ -209,6 +218,7 @@ async def on_production_item_completed(
                 status=OutsourcingStatus.COMPLETED,
                 note=f"공정 완료에 의한 자동 생성 ({reference or item.id})"
             )
+
             db.add(new_os)
             await db.flush()
             

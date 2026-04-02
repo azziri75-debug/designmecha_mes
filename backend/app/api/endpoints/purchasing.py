@@ -785,7 +785,7 @@ async def read_purchase_orders(
     query = query.order_by(desc(PurchaseOrder.order_date)).offset(skip).limit(limit or 2000)
 
     result = await db.execute(query)
-    pos = result.scalars().all()
+    pos = result.unique().scalars().all()
     
     # Calculate related info and process names
     for po in pos:
@@ -1184,7 +1184,7 @@ async def read_outsourcing_orders(
         query = query.order_by(desc(OutsourcingOrder.order_date)).offset(skip).limit(limit or 2000)
 
         result = await db.execute(query)
-        oos = result.scalars().all()
+        oos = result.unique().scalars().all()
         
         for oo in oos:
             # Manually extract string to avoid Pydantic serialization of SalesOrder object

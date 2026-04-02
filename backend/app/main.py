@@ -1139,10 +1139,17 @@ async def startup_event():
                         WHERE soi.delivered_quantity < soi.quantity
                     )
                 """)
-                await db.execute(order_fix_patch)
-                
+                # 10.6 Fix missing actual_delivery_date for completed OutsourcingOrders
+                oo_header_patch = text("""
+                    UPDATE outsourcing_orders
+                    SET actual_delivery_date = order_date
+                    WHERE status = 'COMPLETED' AND actual_delivery_date IS NULL
+                """)
+                await db.execute(oo_header_patch)
+
                 await db.commit()
-                print("Startup: Fixed status inconsistencies and reverted SalesOrder statuses.")
+                print("Startup: Fixed status inconsistencies and backfilled missing dates (v10.6).")
+
             except Exception as e:
                 print(f"Startup: Status patch failed: {e}")
                 await db.rollback()
