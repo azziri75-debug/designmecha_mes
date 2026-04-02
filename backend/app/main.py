@@ -1064,6 +1064,24 @@ async def startup_event():
                 print(f"Startup: Companies auto-patch failed: {e}")
                 await db.rollback()
 
+            # 10.2 Fix ProductionPlans Missing actual_completion_date
+            try:
+                if is_sqlite:
+                    p_res = await db.execute(text("PRAGMA table_info(production_plans)"))
+                    p_cols = [c[1] for c in p_res.fetchall()]
+                    if "actual_completion_date" not in p_cols:
+                        await db.execute(text("ALTER TABLE production_plans ADD COLUMN actual_completion_date DATE"))
+                        print("Startup: Added actual_completion_date to production_plans (SQLite)")
+                else:
+                    p_res = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plans' AND column_name='actual_completion_date'"))
+                    if not p_res.scalar():
+                        await db.execute(text("ALTER TABLE production_plans ADD COLUMN actual_completion_date DATE"))
+                        print("Startup: Added actual_completion_date to production_plans (Postgres)")
+                await db.commit()
+            except Exception as e:
+                print(f"Startup: ProductionPlans auto-patch failed: {e}")
+                await db.rollback()
+
             # 11. Fix EmployeeTimeRecord Missing Columns (Hours Breakdown)
             try:
                 new_cols = ["hours", "extension_hours", "night_hours", "holiday_hours", "holiday_night_hours"]
