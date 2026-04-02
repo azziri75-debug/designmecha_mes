@@ -1069,6 +1069,9 @@ async def update_production_plan_status(
         # 0. CONFIRMED Trigger: Calculate MRP directly inline
         if status == ProductionStatus.CONFIRMED and old_status != ProductionStatus.CONFIRMED:
             print(f"MRP Generation Started for Plan {plan_id}")
+            # [FIX] Deduct stock use quantity from inventory
+            await process_stock_deduction(db, plan_id=plan_id)
+            
             from app.api.utils.mrp import calculate_and_record_mrp
             await calculate_and_record_mrp(db, plan_id=plan_id)
             print(f"MRP Generation Completed for Plan {plan_id}")

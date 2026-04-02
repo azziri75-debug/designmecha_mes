@@ -38,6 +38,24 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     product_unit: item.product?.unit || "EA",
                     product: item.product // Ensure product object is here
                 })));
+
+                // [FIX] Initialize stock use quantities in edit mode
+                const initialStockUse = {};
+                plan.items.forEach(item => {
+                    if (item.product_id) {
+                        initialStockUse[item.product_id] = item.stock_use_quantity || 0;
+                    }
+                });
+                setStockUseQtys(initialStockUse);
+                
+                // Fetch stocks for the existing products
+                const productIds = [...new Set(plan.items.map(i => i.product_id))];
+                api.get('/inventory/stocks', { params: { product_ids: productIds.join(',') } })
+                    .then(res => {
+                        const stockMap = {};
+                        res.data.forEach(s => { stockMap[s.product_id] = s.current_quantity; });
+                        setProductStocks(stockMap);
+                    }).catch(() => { });
             } else if (order || stockProduction) {
                 // Create Mode
                 setPlanDate(new Date().toISOString().split('T')[0]);
