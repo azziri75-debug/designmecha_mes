@@ -826,7 +826,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
                     <Chip label="재고생산" size="small" sx={{ mr: 1, bgcolor: '#e8f5e9', color: '#2e7d32' }} />
                     {stockProduction.production_no}
                 </TableCell>
-                <TableCell>사내 (자체 생산)</TableCell>
+                <TableCell>{stockProduction.partner?.name || '사내 (자체 생산)'}</TableCell>
                 <TableCell>{stockProduction.request_date}</TableCell>
                 <TableCell>{stockProduction.target_date || '-'}</TableCell>
                 <TableCell sx={{ color: '#666', fontStyle: 'italic' }}>-</TableCell>
@@ -1247,7 +1247,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                     ) : '-'}
                 </TableCell>
                 <TableCell>
-                    {plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내 생산(재고)'}
+                    {plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내 (자체 생산)'}
                 </TableCell>
                 <TableCell>{order?.delivery_date || '-'}</TableCell>
                 <TableCell>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
