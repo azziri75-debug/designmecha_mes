@@ -762,9 +762,15 @@ async def read_purchase_orders(
     if partner_id:
         query = query.where(PurchaseOrder.partner_id == partner_id)
     if start_date:
-        query = query.where(PurchaseOrder.order_date >= start_date)
+        if status == PurchaseStatus.COMPLETED or status == "COMPLETED":
+            query = query.where(PurchaseOrder.actual_delivery_date >= start_date)
+        else:
+            query = query.where(PurchaseOrder.order_date >= start_date)
     if end_date:
-        query = query.where(PurchaseOrder.order_date <= end_date)
+        if status == PurchaseStatus.COMPLETED or status == "COMPLETED":
+            query = query.where(PurchaseOrder.actual_delivery_date <= end_date)
+        else:
+            query = query.where(PurchaseOrder.order_date <= end_date)
     if customer_id:
         query = query.where(SalesOrder.partner_id == customer_id)
         
@@ -1155,9 +1161,15 @@ async def read_outsourcing_orders(
         if partner_id:
             query = query.where(OutsourcingOrder.partner_id == partner_id)
         if start_date:
-            query = query.where(OutsourcingOrder.order_date >= start_date)
+            if status == OutsourcingStatus.COMPLETED or status == "COMPLETED":
+                query = query.where(OutsourcingOrder.actual_delivery_date >= start_date)
+            else:
+                query = query.where(OutsourcingOrder.order_date >= start_date)
         if end_date:
-            query = query.where(OutsourcingOrder.order_date <= end_date)
+            if status == OutsourcingStatus.COMPLETED or status == "COMPLETED":
+                query = query.where(OutsourcingOrder.actual_delivery_date <= end_date)
+            else:
+                query = query.where(OutsourcingOrder.order_date <= end_date)
         if customer_id:
             query = query.where(SalesOrder.partner_id == customer_id)
             
