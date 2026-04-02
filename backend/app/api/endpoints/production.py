@@ -1186,9 +1186,10 @@ async def update_production_plan_status(
                     if stock and stock.in_production_quantity >= item.quantity:
                         stock.in_production_quantity -= item.quantity
                 
-                # Sync Sales Order status
-                plan.order.status = OrderStatus.PRODUCTION_COMPLETED
-                db.add(plan.order)
+                # Sync Sales Order status (Only if not already delivered or partially delivered)
+                if plan.order.status not in [OrderStatus.DELIVERY_COMPLETED, OrderStatus.PARTIALLY_DELIVERED, "DELIVERED"]:
+                    plan.order.status = OrderStatus.PRODUCTION_COMPLETED
+                    db.add(plan.order)
                 
         # Rollback Logic (COMPLETED -> NOT COMPLETED)
         elif old_status == ProductionStatus.COMPLETED and status != ProductionStatus.COMPLETED:

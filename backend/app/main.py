@@ -1127,10 +1127,24 @@ async def startup_event():
                 """)
                 await db.execute(oo_patch)
                 
+                # 10.5 Fix SalesOrder status reversion (Stuck in PRODUCTION_COMPLETED but has DH)
+                order_fix_patch = text("""
+                    UPDATE sales_orders
+                    SET status = 'DELIVERY_COMPLETED'
+                    WHERE status = 'PRODUCTION_COMPLETED'
+                    AND id IN (SELECT order_id FROM delivery_histories)
+                    AND id NOT IN (
+                        SELECT soi.order_id 
+                        FROM sales_order_items soi 
+                        WHERE soi.delivered_quantity < soi.quantity
+                    )
+                """)
+                await db.execute(order_fix_patch)
+                
                 await db.commit()
-                print("Startup: Fixed status inconsistencies for Completed PO/OO Items.")
+                print("Startup: Fixed status inconsistencies and reverted SalesOrder statuses.")
             except Exception as e:
-                print(f"Startup: PO/OO Item status patch failed: {e}")
+                print(f"Startup: Status patch failed: {e}")
                 await db.rollback()
 
             # 11. Fix EmployeeTimeRecord Missing Columns (Hours Breakdown)
