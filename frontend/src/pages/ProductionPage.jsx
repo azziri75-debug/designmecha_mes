@@ -1356,7 +1356,13 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                                             규격: {group.product_spec || '-'}
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary" display="inline" sx={{ mr: 2 }}>
-                                            수량: {group.items.length > 0 ? group.items[0].quantity : 0} {group.product_unit}
+                                            생산목표(Gross): {group.items[0]?.gross_quantity || ((group.items[0]?.quantity || 0) + (group.items[0]?.stock_use_quantity || 0))} {group.product_unit}
+                                        </Typography>
+                                        <Typography variant="body2" color="textSecondary" display="inline" sx={{ mr: 2 }}>
+                                            재고소진: {group.items[0]?.stock_use_quantity || 0} {group.product_unit}
+                                        </Typography>
+                                        <Typography variant="body2" fontWeight="bold" display="inline" sx={{ mr: 2, color: '#d32f2f' }}>
+                                            실생산량(Net): {group.items[0]?.quantity || 0} {group.product_unit}
                                         </Typography>
                                         <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#c62828', bgcolor: '#ffebee', px: 1, py: 0.5, borderRadius: 1, display: 'inline-block', mr: 2 }}>
                                             총 공정 비용: {group.items.reduce((sum, item) => sum + (item.cost || 0), 0).toLocaleString()} 원

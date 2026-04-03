@@ -165,6 +165,35 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
         }
     }, [isOpen, order, stockProduction, plan]);
 
+    // Handle Gross Qty Change (New Production Target)
+    const handleGrossQtyChange = (productId, value) => {
+        const newGross = parseInt(value) || 0;
+        const currentStockUse = stockUseQtys[productId] || 0;
+        const currentStock = productStocks[productId] || 0;
+        
+        // Re-validate stock use (cannot exceed new gross or current stock)
+        const safeStockUse = Math.max(0, Math.min(currentStockUse, newGross, currentStock));
+        const netQty = Math.max(0, newGross - safeStockUse);
+
+        if (safeStockUse !== currentStockUse) {
+            setStockUseQtys(prev => ({ ...prev, [productId]: safeStockUse }));
+        }
+
+        const newItems = items.map(item => {
+            if (Number(item.product_id) === Number(productId)) {
+                return {
+                    ...item,
+                    gross_quantity: newGross,
+                    stock_use_quantity: safeStockUse,
+                    quantity: netQty,
+                    cost: (item.unit_cost || 0) * netQty
+                };
+            }
+            return item;
+        });
+        setItems(newItems);
+    };
+
     // Handle Stock Use Change
     const handleStockUseChange = (productId, value) => {
         const stockUse = parseInt(value) || 0;
@@ -173,11 +202,11 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
         // Find first item to get gross qty
         const firstItem = items.find(i => Number(i.product_id) === Number(productId));
         if (!firstItem) return;
-        const grossQty = firstItem.gross_quantity || firstItem.quantity;
+        const grossQty = firstItem.gross_quantity || firstItem.quantity || 0;
 
         // Validation
         const safeStockUse = Math.max(0, Math.min(stockUse, currentStock, grossQty));
-        const netQty = grossQty - safeStockUse;
+        const netQty = Math.max(0, grossQty - safeStockUse);
 
         setStockUseQtys(prev => ({ ...prev, [productId]: safeStockUse }));
 
@@ -446,8 +475,27 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                             {/* Net Requirement Calculator */}
                             <Box sx={{ p: 1.5, mb: 2, bgcolor: '#f1f5f9', borderRadius: 1, border: '1px solid #e2e8f0', display: 'flex', gap: 3, alignItems: 'center' }}>
                                 <Box>
-                                    <Typography variant="caption" color="textSecondary" display="block">총 수주(Gross)</Typography>
-                                    <Typography variant="body1" fontWeight="bold">{(group.items[0]?.gross_quantity || group.items[0]?.quantity || 0).toLocaleString()}</Typography>
+                                    <Typography variant="caption" color="textSecondary" display="block">수주량 (Order)</Typography>
+                                    <Typography variant="body1" sx={{ color: '#64748b' }}>
+                                        {(() => {
+                                            const sourceQty = order ? order.items.find(i => i.product_id === parseInt(productId))?.quantity :
+                                                              stockProduction ? stockProduction.quantity : 0;
+                                            return (sourceQty || 0).toLocaleString();
+                                        })()}
+                                    </Typography>
+                                </Box>
+                                <Typography variant="h6" color="textSecondary">|</Typography>
+                                <Box sx={{ minWidth: 100 }}>
+                                    <Typography variant="caption" color="textSecondary" display="block">생산목표 (Gross)</Typography>
+                                    <TextField
+                                        size="small"
+                                        type="number"
+                                        value={group.items[0]?.gross_quantity || 0}
+                                        onChange={(e) => handleGrossQtyChange(productId, e.target.value)}
+                                        inputProps={{ min: 0 }}
+                                        variant="outlined"
+                                        sx={{ bgcolor: 'white', '& .MuiInputBase-input': { fontWeight: 'bold' } }}
+                                    />
                                 </Box>
                                 <Typography variant="h6" color="textSecondary">-</Typography>
                                 <Box>
