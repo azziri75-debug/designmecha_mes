@@ -963,7 +963,7 @@ const ProductsPage = ({ type }) => {
                                     {type !== 'PART' && type !== 'CONSUMABLE' && <ResizableTh initialWidth={80} className="px-6 py-3">공정 수</ResizableTh>}
                                     <ResizableTh initialWidth={120} className="px-6 py-3">최근 단가</ResizableTh>
                                     <ResizableTh initialWidth={80} className="px-6 py-3">첨부파일</ResizableTh>
-                                    <ResizableTh className="px-6 py-3">비고</ResizableTh>
+                                    <ResizableTh initialWidth={120} className="px-6 py-3">비고</ResizableTh>
                                     <ResizableTh initialWidth={120} className="px-6 py-3 text-right">관리</ResizableTh>
                                 </tr>
                             </thead>
@@ -1076,7 +1076,7 @@ const ProductsPage = ({ type }) => {
                                                         return <span className="text-gray-600 text-xs">-</span>;
                                                     })()}
                                                 </td>
-                                                <td className="px-6 py-4 text-gray-500 truncate max-w-xs" title={product.note}>{product.note || '-'}</td>
+                                                <td className="px-6 py-4 text-gray-500 whitespace-normal break-all" title={product.note}>{product.note || '-'}</td>
                                                 <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                                     <button
                                                         onClick={(e) => {
