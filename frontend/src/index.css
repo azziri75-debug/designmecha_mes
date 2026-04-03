@@ -93,10 +93,10 @@ body.resizing {
 
 /* Print Styles - Scoped to avoid polluting non-A4 pages */
 @media print {
-    /* 1. A4 용지 크기 정확히 명시 */
+    /* 1. A4 용지 크기 및 마진 최소화 (브라우저 마진을 제거하고 CSS 패딩으로 제어) */
     @page {
         size: A4 portrait;
-        margin: 10mm;
+        margin: 0;
     }
 
     /* 2. 모든 UI 요소(사이드바, 헤더, 버튼 등) 숨김 */
@@ -118,9 +118,9 @@ body.resizing {
         margin: 5mm;
     }
 
-    /* 4. 인쇄 영역 레이아웃 */
+    /* 4. 인쇄 영역 레이아웃 - 전체 화면 점유 */
     .print-safe-area {
-        position: fixed !important;
+        position: absolute !important;
         left: 0 !important;
         top: 0 !important;
         width: 100% !important;
@@ -135,18 +135,29 @@ body.resizing {
         overflow: visible !important;
     }
 
-    /* 5. A4 wrapper - 인쇄 시 전체 너비 */
+    /* [NEW] 인쇄 시 헤더 등 Flex 항목 가로 고정 (반응형 무시) */
+    .idf-print-flex-row {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 1rem !important;
+    }
+    .idf-header-no { width: 140px !important; }
+    .idf-header-title { flex: 1 !important; }
+
+    /* 5. A4 wrapper - 미리보기와 동일하게 210mm 유지하여 축소 방지 */
     .print-safe-area .a4-wrapper,
     .print-safe-area [class*="w-[210mm]"],
     .print-safe-area [class*="h-[297mm]"] {
-        width: 100% !important;
-        max-width: 100% !important;
-        height: auto !important;
-        min-height: 0 !important;
-        margin: 0 !important;
-        padding: 5mm !important;
+        width: 210mm !important;
+        max-width: 210mm !important;
+        height: 297mm !important;
+        min-height: 297mm !important;
+        margin: 0 auto !important;
+        padding: 10mm !important; /* 미리보기와 동일한 10mm 부여 */
         box-shadow: none !important;
         border: none !important;
+        box-sizing: border-box !important;
     }
 
     /* 6. 테이블 너비 보정 */
@@ -156,7 +167,8 @@ body.resizing {
         max-width: 100% !important;
     }
     .print-safe-area th, .print-safe-area td {
-        word-break: break-all !important;
+        word-break: keep-all !important; /* 한국어 단어 유지 */
+        overflow-wrap: break-word !important; /* 필요시만 분리 */
         white-space: normal !important;
     }
 
