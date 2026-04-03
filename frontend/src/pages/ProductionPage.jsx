@@ -578,6 +578,7 @@ const ProductionPage = () => {
                 order={selectedOrder}
                 stockProduction={selectedStockProduction}
                 plan={selectedPlan}
+                tabIndex={tabIndex}
             />
 
             <ProductionSheetModal

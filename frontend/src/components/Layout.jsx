@@ -138,6 +138,14 @@ const Layout = () => {
                     </div>
                     
                     <button
+                        onClick={() => setContactModalOpen(true)}
+                        className="flex items-center gap-2 px-3 py-2 w-full text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-md transition-colors"
+                    >
+                        <Mail className="w-4 h-4" />
+                        <span>시스템 관리자 문의</span>
+                    </button>
+
+                    <button
                         onClick={handleLogout}
                         className="flex items-center gap-2 px-3 py-2 w-full text-sm text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
                     >
@@ -167,17 +175,6 @@ const Layout = () => {
                 </div>
             </main>
 
-            <div style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999 }}>
-                <Fab 
-                    color="error" 
-                    variant="extended" 
-                    onClick={() => setContactModalOpen(true)}
-                    sx={{ fontWeight: 'bold', boxShadow: 3 }}
-                >
-                    <Mail className="w-5 h-5 mr-2" />
-                    시스템 관리자 문의
-                </Fab>
-            </div>
 
             <Dialog open={contactModalOpen} onClose={() => setContactModalOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle sx={{ fontWeight: 'bold', color: '#d32f2f' }}>🛠️ 시스템 관리자 문의</DialogTitle>

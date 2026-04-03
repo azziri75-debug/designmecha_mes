@@ -7,7 +7,8 @@ import {
 import { Delete as DeleteIcon, Add as AddIcon, DragIndicator } from '@mui/icons-material';
 import api from '../lib/api';
 
-const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProduction, plan }) => {
+const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProduction, plan, tabIndex }) => {
+    const isCompleted = plan?.status === 'COMPLETED';
     const [items, setItems] = useState([]);
     const [planDate, setPlanDate] = useState(new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
@@ -453,7 +454,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="xl" fullWidth>
             <DialogTitle>
-                {plan ? "생산 계획 수정" : "생산 계획 수립"}
+                {isCompleted ? "생산 내역 수정 (완료됨)" : (plan ? "생산 계획 수정" : "생산 계획 수립")}
             </DialogTitle>
             <DialogContent>
                 <Box sx={{ mb: 2, mt: 1 }}>
@@ -484,13 +485,15 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                         수량: {group.items.length > 0 ? group.items[0].quantity : 0} {group.product_unit || 'EA'}
                                     </Typography>
                                 </Box>
-                                <Button
-                                    size="small"
-                                    startIcon={<AddIcon />}
-                                    onClick={() => handleAddProcessToProduct(parseInt(productId), group.product_name, group.product_spec, group.product_unit)}
-                                >
-                                    공정 추가
-                                </Button>
+                                {!isCompleted && (
+                                    <Button
+                                        size="small"
+                                        startIcon={<AddIcon />}
+                                        onClick={() => handleAddProcessToProduct(parseInt(productId), group.product_name, group.product_spec, group.product_unit)}
+                                    >
+                                        공정 추가
+                                    </Button>
+                                )}
                             </Box>
 
                             {/* Net Requirement Calculator */}
@@ -515,7 +518,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                         onChange={(e) => handleGrossQtyChange(productId, e.target.value)}
                                         inputProps={{ min: 0 }}
                                         variant="outlined"
-                                        sx={{ bgcolor: 'white', '& .MuiInputBase-input': { fontWeight: 'bold' } }}
+                                        disabled={isCompleted}
+                                        sx={{ bgcolor: isCompleted ? '#f8fafc' : 'white', '& .MuiInputBase-input': { fontWeight: 'bold' } }}
                                     />
                                 </Box>
                                 <Typography variant="h6" color="textSecondary">-</Typography>
@@ -533,7 +537,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                         onChange={(e) => handleStockUseChange(productId, e.target.value)}
                                         inputProps={{ min: 0, max: Math.min(productStocks[productId] || 0, group.items[0]?.gross_quantity || group.items[0]?.quantity || 0) }}
                                         variant="outlined"
-                                        sx={{ bgcolor: 'white' }}
+                                        disabled={isCompleted}
+                                        sx={{ bgcolor: isCompleted ? '#f8fafc' : 'white' }}
                                     />
                                 </Box>
                                 <Typography variant="h6" color="textSecondary">=</Typography>
@@ -576,15 +581,13 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                         {group.items.map((item, index) => (
                                             <TableRow
                                                 key={item.cid}
-                                                draggable
-                                                onDragStart={(e) => handleDragStart(e, parseInt(productId), index)}
-                                                onDragEnter={(e) => handleDragEnter(e, parseInt(productId), index)}
                                                 onDragEnd={handleDragEnd}
                                                 onDragOver={(e) => e.preventDefault()}
+                                                draggable={!isCompleted}
                                                 sx={{
-                                                    cursor: 'move',
+                                                    cursor: isCompleted ? 'default' : 'move',
                                                     backgroundColor: 'inherit',
-                                                    '&:active': { backgroundColor: '#f0f0f0' }
+                                                    '&:active': { backgroundColor: isCompleted ? 'inherit' : '#f0f0f0' }
                                                 }}
                                             >
                                                 <TableCell align="center">
@@ -607,6 +610,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
+                                                        disabled={isCompleted}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
@@ -616,6 +620,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
+                                                        disabled={isCompleted}
                                                     >
                                                         <MenuItem value="INTERNAL">사내</MenuItem>
                                                         <MenuItem value="OUTSOURCING">외주</MenuItem>
@@ -633,6 +638,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                             fullWidth
                                                             variant="standard"
                                                             displayEmpty
+                                                            disabled={isCompleted}
                                                         >
                                                             <MenuItem value=""><em>작업자 선택</em></MenuItem>
                                                             {staffList.filter(s => s.is_active).map(s => (
@@ -649,6 +655,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                             fullWidth
                                                             variant="standard"
                                                             displayEmpty
+                                                            disabled={isCompleted}
                                                         >
                                                             <MenuItem value=""><em>{item.course_type === 'OUTSOURCING' ? '외주처 선택' : '공급사 선택'}</em></MenuItem>
                                                             {partners.filter(p => {
@@ -671,6 +678,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                             fullWidth
                                                             variant="standard"
                                                             displayEmpty
+                                                            disabled={isCompleted}
                                                         >
                                                             <MenuItem value=""><em>장비 선택</em></MenuItem>
                                                             {equipments.filter(eq => eq.is_active).map(eq => (
@@ -700,6 +708,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                         fullWidth
                                                         variant="standard"
                                                         InputLabelProps={{ shrink: true }}
+                                                        disabled={isCompleted}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
@@ -711,6 +720,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                         fullWidth
                                                         variant="standard"
                                                         InputLabelProps={{ shrink: true }}
+                                                        disabled={isCompleted}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
@@ -734,12 +744,15 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                         size="small"
                                                         fullWidth
                                                         variant="standard"
+                                                        disabled={isCompleted}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <IconButton size="small" color="error" onClick={() => handleDeleteItem(item.originalIndex)}>
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
+                                                    {!isCompleted && (
+                                                        <IconButton size="small" color="error" onClick={() => handleDeleteItem(item.originalIndex)}>
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -753,7 +766,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
             <DialogActions>
                 <Button onClick={onClose}>취소</Button>
                 <Button onClick={handleSubmit} variant="contained" disabled={loading} color="secondary">
-                    {loading ? "저장 중..." : "계획 확정 (Confirm & MRP)"}
+                    {loading ? "저장 중..." : (tabIndex === 0 ? "생산계획확정 (Confirm & MRP)" : "생산계획 수정 (Sync)")}
                 </Button>
             </DialogActions>
         </Dialog>
