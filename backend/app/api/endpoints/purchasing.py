@@ -454,6 +454,7 @@ async def read_pending_outsourcing_items(
             )
         )\
         .where(ProductionPlanItem.status != ProductionStatus.COMPLETED)\
+        .where(ProductionPlanItem.quantity > 0)\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
         
     if major_group_id and str(major_group_id).isdigit():
