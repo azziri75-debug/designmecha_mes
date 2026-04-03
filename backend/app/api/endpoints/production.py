@@ -81,6 +81,7 @@ async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
 async def process_stock_deduction(db: AsyncSession, plan_id: int):
     """
     생산 계획 확정 시, 사용하기로 한 재고(stock_use_quantity)를 실제 창고에서 차감합니다.
+    공정별로 중복 차감되지 않도록 품목별로 합산하여 한 번만 차감합니다.
     """
     result = await db.execute(
         select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id)
@@ -89,20 +90,138 @@ async def process_stock_deduction(db: AsyncSession, plan_id: int):
     if not plan:
         return
 
+    # 1. 품목별 차감 수량 집계 (중복 방지)
+    deductions = {} # {product_id: stock_use_quantity}
+    items_to_mark = []
+    
     for item in plan.items:
         if (item.stock_use_quantity or 0) > 0 and not item.stock_deducted:
-            from app.api.utils.inventory import handle_stock_movement
-            from app.models.inventory import TransactionType
+            # 모든 공정에서 동일한 stock_use_quantity를 가지므로 덮어쓰기 방식으로 집계 가능
+            deductions[item.product_id] = item.stock_use_quantity
+            items_to_mark.append(item)
+
+    if not deductions:
+        return
+
+    from app.api.utils.inventory import handle_stock_movement
+    from app.models.inventory import TransactionType
+
+    # 2. 실제 재고 차감 실행
+    for pid, qty in deductions.items():
+        await handle_stock_movement(
+            db=db,
+            product_id=pid,
+            quantity=-qty,
+            transaction_type=TransactionType.OUT,
+            reference=f"생산계획 확정 재고소진 (Plan #{plan.id})"
+        )
+
+    # 3. 모든 관련 품목에 대해 차감 완료 표시
+    for item in items_to_mark:
+        item.stock_deducted = True
+        db.add(item)
+    
+    await db.flush()
+
+async def _handle_production_completion_effects(db: AsyncSession, plan: ProductionPlan):
+    """
+    생산 계획 완료 시 발생하는 부수 효과(수주 동기화, 재고 입고, 백플러시 등)를 처리합니다.
+    """
+    from app.api.utils.inventory import handle_stock_movement, handle_backflush
+    from app.models.inventory import TransactionType
+    from app.models.purchasing import PurchaseOrder, PurchaseStatus, OutsourcingOrder, OutsourcingStatus
+    from app.models.sales import OrderStatus
+
+    # 1. 하위 구매/외주 품목도 자동으로 '완료' 처리 (만약 미완료 상태라면)
+    affected_po_ids = set()
+    affected_oo_ids = set()
+    for item in plan.items:
+        # 1. Update Purchase Items
+        for po_item in item.purchase_items:
+            if po_item.quantity > po_item.received_quantity:
+                po_item.received_quantity = po_item.quantity
+                db.add(po_item)
+            affected_po_ids.add(po_item.purchase_order_id)
             
+        # 2. Update Outsourcing Items
+        for oo_item in item.outsourcing_items:
+            if oo_item.status != OutsourcingStatus.COMPLETED:
+                oo_item.status = OutsourcingStatus.COMPLETED
+                db.add(oo_item)
+            affected_oo_ids.add(oo_item.outsourcing_order_id)
+    
+    await db.flush()
+    
+    # 2. Check and Complete Purchase Orders
+    for po_id in affected_po_ids:
+        po_query = select(PurchaseOrder).options(selectinload(PurchaseOrder.items)).where(PurchaseOrder.id == po_id)
+        po_result = await db.execute(po_query)
+        po = po_result.scalars().first()
+        if po:
+            all_received = all(i.received_quantity >= i.quantity for i in po.items)
+            if all_received:
+                po.status = PurchaseStatus.COMPLETED
+                po.delivery_date = now_kst().date()
+                db.add(po)
+
+    # 3. Check and Complete Outsourcing Orders
+    for oo_id in affected_oo_ids:
+        oo_query = select(OutsourcingOrder).options(selectinload(OutsourcingOrder.items)).where(OutsourcingOrder.id == oo_id)
+        oo_result = await db.execute(oo_query)
+        oo = oo_result.scalars().first()
+        if oo:
+            all_completed = all(i.status == OutsourcingStatus.COMPLETED for i in oo.items)
+            if all_completed:
+                oo.status = OutsourcingStatus.COMPLETED
+                oo.delivery_date = now_kst().date()
+                db.add(oo)
+
+    # 4. Aggregate Net Production Quantities from Plan Items
+    net_quantities = {} # {product_id: net_qty}
+    for item in plan.items:
+        net_quantities[item.product_id] = item.quantity or 0
+
+    # 5. Stock Movement & Backflush Hook
+    if plan.stock_production:
+        sp = plan.stock_production
+        prod_qty = net_quantities.get(sp.product_id, sp.quantity)
+        
+        await handle_stock_movement(
+            db=db, product_id=sp.product_id, quantity=prod_qty,
+            transaction_type=TransactionType.IN, reference=sp.production_no
+        )
+        await handle_backflush(
+            db=db, parent_product_id=sp.product_id, produced_quantity=prod_qty, reference=sp.production_no
+        )
+
+        stock_query = select(Stock).where(Stock.product_id == sp.product_id)
+        s_res = await db.execute(stock_query)
+        stock = s_res.scalars().first()
+        if stock and stock.in_production_quantity >= prod_qty:
+            stock.in_production_quantity -= prod_qty
+        
+        sp.status = StockProductionStatus.COMPLETED
+        db.add(sp)
+        
+    elif plan.order:
+        for pid, qty in net_quantities.items():
             await handle_stock_movement(
-                db=db,
-                product_id=item.product_id,
-                quantity=-(item.stock_use_quantity),
-                transaction_type=TransactionType.OUT,
-                reference=f"생산계획 확정 재고소진 (Plan #{plan.id})"
+                db=db, product_id=pid, quantity=qty,
+                transaction_type=TransactionType.IN, reference=plan.order.order_no
             )
-            item.stock_deducted = True
-            db.add(item)
+            await handle_backflush(
+                db=db, parent_product_id=pid, produced_quantity=qty, reference=plan.order.order_no
+            )
+
+            stock_query = select(Stock).where(Stock.product_id == pid)
+            s_res = await db.execute(stock_query)
+            stock = s_res.scalars().first()
+            if stock and stock.in_production_quantity >= qty:
+                stock.in_production_quantity -= qty
+        
+        if plan.order.status not in [OrderStatus.DELIVERY_COMPLETED, OrderStatus.PARTIALLY_DELIVERED, "DELIVERED"]:
+            plan.order.status = OrderStatus.PRODUCTION_COMPLETED
+            db.add(plan.order)
     
     await db.flush()
 
@@ -332,8 +451,29 @@ async def create_production_plan(
             
             await db.flush()
             
-            # 5. Trigger MRP if status is CONFIRMED
-            if plan.status == ProductionStatus.CONFIRMED:
+            # [FIX] Check for Auto-Completion (Fully satisfied by stock)
+            is_fully_stock_satisfied = all((item.quantity or 0) == 0 for item in plan_in.items) if plan_in.items else False
+            if is_fully_stock_satisfied:
+                plan.status = ProductionStatus.COMPLETED
+            elif plan.status == ProductionStatus.IN_PROGRESS: 
+                plan.status = ProductionStatus.CONFIRMED
+
+            await db.commit()
+
+            # 5. Trigger side effects based on status
+            if plan.status == ProductionStatus.COMPLETED:
+                await process_stock_deduction(db, plan_id=plan.id)
+                # Re-fetch with needed relationships for effects
+                res = await db.execute(select(ProductionPlan).options(
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items),
+                    selectinload(ProductionPlan.order),
+                    selectinload(ProductionPlan.stock_production)
+                ).where(ProductionPlan.id == plan.id))
+                refetched_plan = res.scalars().first()
+                await _handle_production_completion_effects(db, refetched_plan)
+                await db.commit()
+            elif plan.status == ProductionStatus.CONFIRMED:
                 await process_stock_deduction(db, plan_id=plan.id)
                 from app.api.utils.mrp import calculate_and_record_mrp
                 await calculate_and_record_mrp(db, plan_id=plan.id)
@@ -575,12 +715,25 @@ async def update_production_plan(
 
     await db.commit()
     
-    # --- Trigger MRP and Stock Deduction if status changed to CONFIRMED ---
-    is_now_confirmed = getattr(plan, 'status', None) == ProductionStatus.CONFIRMED
-    if update_data.get('status') == ProductionStatus.CONFIRMED or is_now_confirmed:
-        # Stock deduction happens here
+    # --- Trigger Side Effects ---
+    # [FIX] Check for Auto-Completion if items were updated
+    if items_data and all((i.get('quantity') or 0) == 0 for i in items_data):
+        plan.status = ProductionStatus.COMPLETED
+
+    if plan.status == ProductionStatus.COMPLETED:
         await process_stock_deduction(db, plan_id=plan.id)
-        # MRP (Material Requirements Planning) calculation
+        # Re-fetch with needed relationships for effects
+        res = await db.execute(select(ProductionPlan).options(
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items),
+            selectinload(ProductionPlan.order),
+            selectinload(ProductionPlan.stock_production)
+        ).where(ProductionPlan.id == plan.id))
+        refetched_plan = res.scalars().first()
+        await _handle_production_completion_effects(db, refetched_plan)
+        await db.commit()
+    elif plan.status == ProductionStatus.CONFIRMED:
+        await process_stock_deduction(db, plan_id=plan.id)
         from app.api.utils.mrp import calculate_and_record_mrp
         await calculate_and_record_mrp(db, plan_id=plan.id)
     
@@ -1132,67 +1285,8 @@ async def update_production_plan_status(
                         oo.delivery_date = now_kst().date()
                         db.add(oo)
 
-        # Sync with Sales Order or Stock Production
-        if status == ProductionStatus.COMPLETED and old_status != ProductionStatus.COMPLETED:
-            # --- Stock Movement & Backflush Hook ---
-            if plan.stock_production:
-                sp = plan.stock_production
-                # 1. 완제품 입고 처리
-                await handle_stock_movement(
-                    db=db,
-                    product_id=sp.product_id,
-                    quantity=sp.quantity,
-                    transaction_type=TransactionType.IN,
-                    reference=sp.production_no
-                )
-                # 2. 하위 부품 Backflush (출고) 처리
-                await handle_backflush(
-                    db=db,
-                    parent_product_id=sp.product_id,
-                    produced_quantity=sp.quantity,
-                    reference=sp.production_no
-                )
-
-                # 3. 생산 중 수량 차감
-                stock_query = select(Stock).where(Stock.product_id == sp.product_id)
-                s_res = await db.execute(stock_query)
-                stock = s_res.scalars().first()
-                if stock and stock.in_production_quantity >= sp.quantity:
-                    stock.in_production_quantity -= sp.quantity
-                
-                # Sync StockProduction status
-                sp.status = StockProductionStatus.COMPLETED
-                db.add(sp)
-                
-            elif plan.order:
-                for item in plan.order.items:
-                    # 1. 완제품 입고 처리
-                    await handle_stock_movement(
-                        db=db,
-                        product_id=item.product_id,
-                        quantity=item.quantity,
-                        transaction_type=TransactionType.IN,
-                        reference=plan.order.order_no
-                    )
-                    # 2. 하위 부품 Backflush (출고) 처리
-                    await handle_backflush(
-                        db=db,
-                        parent_product_id=item.product_id,
-                        produced_quantity=item.quantity,
-                        reference=plan.order.order_no
-                    )
-
-                    # 3. 생산 중 수량 차감
-                    stock_query = select(Stock).where(Stock.product_id == item.product_id)
-                    s_res = await db.execute(stock_query)
-                    stock = s_res.scalars().first()
-                    if stock and stock.in_production_quantity >= item.quantity:
-                        stock.in_production_quantity -= item.quantity
-                
-                # Sync Sales Order status (Only if not already delivered or partially delivered)
-                if plan.order.status not in [OrderStatus.DELIVERY_COMPLETED, OrderStatus.PARTIALLY_DELIVERED, "DELIVERED"]:
-                    plan.order.status = OrderStatus.PRODUCTION_COMPLETED
-                    db.add(plan.order)
+            await process_stock_deduction(db, plan_id=plan_id)
+            await _handle_production_completion_effects(db, plan)
                 
         # Rollback Logic (COMPLETED -> NOT COMPLETED)
         elif old_status == ProductionStatus.COMPLETED and status != ProductionStatus.COMPLETED:
