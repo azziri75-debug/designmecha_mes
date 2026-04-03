@@ -321,7 +321,9 @@ const MobileWorkLogPage = () => {
                 formData.append('file', file);
 
                 // Remove explicit Content-Type to let browser handle boundary
-                const uploadRes = await api.post('/upload', formData);
+                const uploadRes = await api.post('/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
                 uploadedPhotos.push({
                     name: uploadRes.data.filename,
                     url: uploadRes.data.url
