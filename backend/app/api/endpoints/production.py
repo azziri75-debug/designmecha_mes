@@ -457,6 +457,9 @@ async def create_production_plan(
             is_fully_stock_satisfied = all((item.quantity or 0) == 0 for item in plan_in.items) if plan_in.items else False
             if is_fully_stock_satisfied:
                 plan.status = ProductionStatus.COMPLETED
+                # [FIX] 하위 모든 공정도 함께 완료 처리 (발주 대기 목록 노출 방지)
+                for itm in plan.items:
+                    itm.status = ProductionStatus.COMPLETED
             elif plan.status == ProductionStatus.IN_PROGRESS: 
                 plan.status = ProductionStatus.CONFIRMED
 
