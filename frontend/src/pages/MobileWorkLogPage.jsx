@@ -470,7 +470,13 @@ const MobileWorkLogPage = () => {
 
     const filteredPlans = allPlans.filter(p => {
         const isCompleted = p.status === 'COMPLETED';
-        if (isCompleted) return false;
+        const isCanceled = p.status === 'CANCELED';
+        if (isCanceled) return false;
+
+        // [USER REQUEST] Hide if delivery is also complete (납품완료 건은 표시 안함)
+        const orderStatus = p.order?.status;
+        const isDelivered = orderStatus === 'DELIVERY_COMPLETED' || orderStatus === 'DELIVERED';
+        if (isDelivered) return false;
 
         const orderNo = p.order?.order_no || p.stock_production?.production_no || '';
         const productName = p.items?.[0]?.product?.name || '';
@@ -628,7 +634,9 @@ const MobileWorkLogPage = () => {
                                                         <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                             <Box sx={{ flex: 1 }}>
                                                                 <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
-                                                                    {plan.order?.order_no ? (
+                                                                    {plan.status === 'COMPLETED' ? (
+                                                                        <Chip label="생산완료" size="small" sx={{ height: 18, fontSize: '10px', bgcolor: '#64748b', color: '#fff', fontWeight: 'bold' }} />
+                                                                    ) : plan.order?.order_no ? (
                                                                         <Chip label="수주" size="small" sx={{ height: 18, fontSize: '10px', bgcolor: '#3b82f6', color: '#fff', fontWeight: 'bold' }} />
                                                                     ) : (
                                                                         <Chip label="재고" size="small" sx={{ height: 18, fontSize: '10px', bgcolor: '#10b981', color: '#fff', fontWeight: 'bold' }} />
@@ -681,7 +689,7 @@ const MobileWorkLogPage = () => {
                                 </Typography>
                                 <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
                                     <List disablePadding>
-                                        {selectedPlan.items.filter(item => item.status !== 'COMPLETED').map((item, idx, arr) => (
+                                        {selectedPlan.items.map((item, idx, arr) => (
                                             <React.Fragment key={item.id}>
                                                 <ListItemButton onClick={() => setSelectedItem(item)}>
                                                     <ListItemText
@@ -780,11 +788,17 @@ const MobileWorkLogPage = () => {
                                         startIcon={<SaveIcon />}
                                         fullWidth
                                         onClick={() => handleSaveLog()}
-                                        disabled={loading}
+                                        disabled={loading || selectedItem?.status === 'COMPLETED'}
                                         sx={{ py: 1.5, borderRadius: 2, fontWeight: 'bold' }}
                                     >
-                                        {loading ? "처리 중..." : "실적 제출하기"}
+                                        {loading ? "처리 중..." : selectedItem?.status === 'COMPLETED' ? "작업 완료됨" : "실적 제출하기"}
                                     </Button>
+
+                                    {selectedItem?.status === 'COMPLETED' && (
+                                        <Alert severity="success" sx={{ mt: 2, borderRadius: 2 }}>
+                                            이 공정은 이미 완료되었습니다. 실적을 추가할 수 없습니다.
+                                        </Alert>
+                                    )}
                                 </Stack>
                             </Box>
                         )}
