@@ -646,6 +646,7 @@ const ProductsPage = ({ type }) => {
         }),
         input: (base) => ({ ...base, color: 'white' }),
         menu: (base) => ({ ...base, backgroundColor: '#111827', border: '1px solid #4b5563', zIndex: 9999 }),
+        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
         option: (base, { isFocused, isSelected }) => ({
             ...base,
             backgroundColor: isSelected ? '#2563eb' : isFocused ? '#1f2937' : '#111827',
@@ -918,6 +919,7 @@ const ProductsPage = ({ type }) => {
                             onChange={(opt) => setSelectedMajorGroupId(opt ? opt.value : "")}
                             styles={selectStyles}
                             className="min-w-[150px]"
+                            menuPortalTarget={document.body}
                         />
                         <Select
                             isClearable
@@ -927,6 +929,7 @@ const ProductsPage = ({ type }) => {
                             onChange={(opt) => setSelectedPartnerId(opt ? opt.value : "")}
                             styles={selectStyles}
                             className="min-w-[150px]"
+                            menuPortalTarget={document.body}
                         />
                     </div>
 
@@ -947,21 +950,21 @@ const ProductsPage = ({ type }) => {
                     )}
 
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-gray-400">
+                        <table className="w-full table-fixed text-left text-sm text-gray-400">
                             <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
                                     {isCloneMode && <th className="px-3 py-3 w-10 text-center">선택</th>}
-                                    <ResizableTh className="px-6 py-3">{type === 'PART' ? '구입처' : '거래처'}</ResizableTh>
-                                    {type !== 'CONSUMABLE' && <ResizableTh className="px-6 py-3">{type === 'PART' ? '부품 그룹' : '제품 그룹'}</ResizableTh>}
-                                    <ResizableTh className="px-6 py-3">{type === 'PART' ? '부품명' : '품명'}</ResizableTh>
-                                    <ResizableTh className="px-6 py-3">규격</ResizableTh>
-                                    {type !== 'CONSUMABLE' && <ResizableTh className="px-6 py-3">재질</ResizableTh>}
-                                    <ResizableTh className="px-6 py-3">단위</ResizableTh>
-                                    {type !== 'PART' && type !== 'CONSUMABLE' && <ResizableTh className="px-6 py-3">공정 수</ResizableTh>}
-                                    <ResizableTh className="px-6 py-3">최근 단가</ResizableTh>
-                                    <ResizableTh className="px-6 py-3">첨부파일</ResizableTh>
+                                    <ResizableTh initialWidth={120} className="px-6 py-3">{type === 'PART' ? '구입처' : '거래처'}</ResizableTh>
+                                    {type !== 'CONSUMABLE' && <ResizableTh initialWidth={150} className="px-6 py-3">{type === 'PART' ? '부품 그룹' : '제품 그룹'}</ResizableTh>}
+                                    <ResizableTh initialWidth={200} className="px-6 py-3">{type === 'PART' ? '부품명' : '품명'}</ResizableTh>
+                                    <ResizableTh initialWidth={120} className="px-6 py-3">규격</ResizableTh>
+                                    {type !== 'CONSUMABLE' && <ResizableTh initialWidth={100} className="px-6 py-3">재질</ResizableTh>}
+                                    <ResizableTh initialWidth={80} className="px-6 py-3">단위</ResizableTh>
+                                    {type !== 'PART' && type !== 'CONSUMABLE' && <ResizableTh initialWidth={80} className="px-6 py-3">공정 수</ResizableTh>}
+                                    <ResizableTh initialWidth={120} className="px-6 py-3">최근 단가</ResizableTh>
+                                    <ResizableTh initialWidth={80} className="px-6 py-3">첨부파일</ResizableTh>
                                     <ResizableTh className="px-6 py-3">비고</ResizableTh>
-                                    <ResizableTh className="px-6 py-3 text-right">관리</ResizableTh>
+                                    <ResizableTh initialWidth={120} className="px-6 py-3 text-right">관리</ResizableTh>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">
@@ -1449,6 +1452,7 @@ const ProductsPage = ({ type }) => {
                                                     placeholder="거래처 검색 또는 신규 입력"
                                                     noOptionsMessage={() => "검색 결과가 없습니다"}
                                                     formatCreateLabel={(inputValue) => `"${inputValue}" 신규 등록`}
+                                                    menuPortalTarget={document.body}
                                                     className="text-sm"
                                                     styles={{
                                                         control: (base) => ({
@@ -1667,6 +1671,7 @@ const ProductsPage = ({ type }) => {
                                                                     }}
                                                                     styles={selectStyles}
                                                                     placeholder="(공정 선택 및 입력)"
+                                                                    menuPortalTarget={document.body}
                                                                     formatCreateLabel={(inputValue) => `"${inputValue}" 신규 등록`}
                                                                 />
                                                             </div>
@@ -1822,6 +1827,7 @@ const ProductsPage = ({ type }) => {
                                                 }}
                                                 styles={selectStyles}
                                                 placeholder="하위 품목 검색 및 신규 등록..."
+                                                menuPortalTarget={document.body}
                                                 formatCreateLabel={(inputValue) => `"${inputValue}" 신규 등록`}
                                             />
                                         </div>

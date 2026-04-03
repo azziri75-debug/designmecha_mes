@@ -182,6 +182,7 @@ const ProductModal = ({
                                         onCreateOption={handleCreatePartner}
                                         placeholder="거래처 검색 또는 신규 입력"
                                         className="text-sm"
+                                        menuPortalTarget={document.body}
                                         styles={{
                                             control: (base) => ({
                                                 ...base,
@@ -206,7 +207,8 @@ const ProductModal = ({
                                             }),
                                             singleValue: (base) => ({ ...base, color: 'white' }),
                                             input: (base) => ({ ...base, color: 'white' }),
-                                            placeholder: (base) => ({ ...base, color: 'rgb(156, 163, 175)' })
+                                            placeholder: (base) => ({ ...base, color: 'rgb(156, 163, 175)' }),
+                                            menuPortal: (base) => ({ ...base, zIndex: 9999 })
                                         }}
                                     />
                                 </div>

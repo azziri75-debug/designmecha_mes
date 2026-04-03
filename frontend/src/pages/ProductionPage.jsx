@@ -882,7 +882,7 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
                 <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold', bgcolor: '#f8f9fa' } }}>
                     <TableRow>
                         <TableCell style={{ width: '40px' }} />
-                        <TableCell style={{ width: '150px' }}>수주/재고번호</TableCell>
+                        <TableCell>수주/재고번호</TableCell>
                         <TableCell style={{ width: '150px' }}>거래처</TableCell>
                         <TableCell style={{ width: '100px' }}>납기일</TableCell>
                         <TableCell style={{ width: '100px' }}>금액</TableCell>
@@ -1377,7 +1377,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                                                 <ResizableTableCell width={colWidths.type} onResize={handleResize('type')}>구분</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>외주/구매/작업자</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.equip} onResize={handleResize('equip')}>배정 장비</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.note} onResize={handleResize('note')}>작업내용</ResizableTableCell>
+                                                <ResizableTableCell onResize={handleResize('note')}>작업내용</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.period} onResize={handleResize('period')}>작업기간</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.progress} onResize={handleResize('progress')}>진행상황</ResizableTableCell>
                                                 <ResizableTableCell width={colWidths.cost} onResize={handleResize('cost')}>공정비용</ResizableTableCell>

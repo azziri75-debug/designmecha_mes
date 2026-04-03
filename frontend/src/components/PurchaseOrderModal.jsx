@@ -70,7 +70,8 @@ const selectStyles = {
     placeholder: (base) => ({
         ...base,
         color: '#aaa',
-    })
+    }),
+    menuPortal: (base) => ({ ...base, zIndex: 10000 })
 };
 
 const ProductSelectionModal = ({ isOpen, onClose, onSelect, products }) => {
@@ -686,6 +687,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                             onCreateOption={(inputValue) => handleOpenNewProductModal(index, inputValue)}
                                                             isDisabled={isLocked}
                                                             styles={selectStyles}
+                                                            menuPortalTarget={document.body}
                                                             formatCreateLabel={(inputValue) => `[신규 등록] "${inputValue}"`}
                                                             noOptionsMessage={() => "검색 결과가 없습니다"}
                                                         />
