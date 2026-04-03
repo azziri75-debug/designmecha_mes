@@ -73,6 +73,10 @@ class ProductProcess(Base):
     product = relationship("Product", back_populates="standard_processes")
     process = relationship("Process")
 
+    __table_args__ = (
+        UniqueConstraint("product_id", "sequence", name="uq_product_process_sequence"),
+    )
+
 class Inventory(Base):
     __tablename__ = "inventory"
 

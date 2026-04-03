@@ -133,19 +133,21 @@ const ProductsPage = ({ type }) => {
                 fetchPriceHistory(productFormData);
             } else if (detailSubTab === 'routing') {
                 const p = productFormData;
-                const existing = (p.standard_processes || []).map(proc => ({
-                    process_id: proc.process_id,
-                    sequence: proc.sequence,
-                    estimated_time: proc.estimated_time,
-                    notes: proc.notes,
-                    partner_name: proc.partner_name,
-                    equipment_name: proc.equipment_name,
-                    attachment_file: proc.attachment_file,
-                    cost: proc.cost || 0,
-                    _tempId: Math.random()
-                }));
-                setRoutingProcesses(existing);
-                setSelectedProduct(p);
+                if (!routingProcesses || routingProcesses.length === 0) {
+                    const existing = (p.standard_processes || []).map(proc => ({
+                        process_id: proc.process_id,
+                        sequence: proc.sequence,
+                        estimated_time: proc.estimated_time,
+                        notes: proc.notes,
+                        partner_name: proc.partner_name,
+                        equipment_name: proc.equipment_name,
+                        attachment_file: proc.attachment_file,
+                        cost: proc.cost || 0,
+                        _tempId: Math.random()
+                    }));
+                    setRoutingProcesses(existing);
+                    setSelectedProduct(p);
+                }
             } else if (detailSubTab === 'bom') {
                 fetchBomItems(productFormData.id);
             }
@@ -344,6 +346,7 @@ const ProductsPage = ({ type }) => {
                 payload.item_type = 'PRODUCED'; // Default fallback
             }
 
+            setLoading(true);
             if (productFormData.id) {
                 await api.put(`/product/products/${productFormData.id}`, payload);
                 alert("수정되었습니다.");
@@ -362,6 +365,8 @@ const ProductsPage = ({ type }) => {
         } catch (error) {
             console.error("Failed to save product", error);
             alert("저장 실패: " + (error.response?.data?.detail || error.message));
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -582,13 +587,16 @@ const ProductsPage = ({ type }) => {
                 }))
             };
 
+            setLoading(true);
             await api.put(`/product/products/${selectedProduct.id}`, payload);
             alert("공정 설정이 저장되었습니다.");
             setShowProductModal(false);
-            fetchProducts(); // Refresh list to update any view if needed
+            fetchProducts();
         } catch (error) {
             console.error("Failed to save routing", error);
             alert("저장 실패: " + (error.response?.data?.detail || error.message));
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -786,6 +794,7 @@ const ProductsPage = ({ type }) => {
 
     const handleSaveBom = async () => {
         if (!productFormData.id) return;
+        setLoading(true);
         try {
             const payload = bomItems.map(item => ({
                 child_product_id: item.child_product_id,
@@ -797,6 +806,8 @@ const ProductsPage = ({ type }) => {
         } catch (error) {
             console.error('Failed to save BOM', error);
             alert('저장 실패: ' + (error.response?.data?.detail || error.message));
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -1931,28 +1942,40 @@ const ProductsPage = ({ type }) => {
                                 <button
                                     type="submit"
                                     form="productForm"
-                                    className="px-6 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-900/40"
+                                    disabled={loading}
+                                    className={cn(
+                                        "px-6 py-2 rounded-lg text-sm font-medium text-white transition-all shadow-lg flex items-center gap-2",
+                                        loading ? "bg-gray-600" : "bg-blue-600 hover:bg-blue-500 shadow-blue-900/40"
+                                    )}
                                 >
-                                    {productFormData.id ? "기본 정보 수정" : "제품 등록"}
+                                    {loading ? "처리 중..." : (productFormData.id ? "기본 정보 수정" : "제품 등록")}
                                 </button>
                             )}
                             {detailSubTab === 'routing' && productFormData.id && (
                                 <button
                                     onClick={handleSaveRouting}
-                                    className="px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-lg shadow-emerald-900/40 flex items-center gap-2"
+                                    disabled={loading}
+                                    className={cn(
+                                        "px-6 py-2 rounded-lg text-sm font-medium text-white transition-all shadow-lg flex items-center gap-2",
+                                        loading ? "bg-gray-600" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/40"
+                                    )}
                                 >
                                     <Save className="w-4 h-4" />
-                                    공정 설정 저장
+                                    {loading ? "저장 중..." : "공정 설정 저장"}
                                 </button>
                             )}
                             {detailSubTab === 'bom' && productFormData.id && (
                                 <button
                                     type="button"
                                     onClick={handleSaveBom}
-                                    className="px-6 py-2 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-lg shadow-purple-900/40 flex items-center gap-2"
+                                    disabled={loading}
+                                    className={cn(
+                                        "px-6 py-2 rounded-lg text-sm font-medium text-white transition-all shadow-lg flex items-center gap-2",
+                                        loading ? "bg-gray-600" : "bg-purple-600 hover:bg-purple-500 shadow-purple-900/40"
+                                    )}
                                 >
                                     <Save className="w-4 h-4" />
-                                    BOM 저장
+                                    {loading ? "저장 중..." : "BOM 저장"}
                                 </button>
                             )}
                         </div>

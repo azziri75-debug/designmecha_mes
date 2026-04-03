@@ -220,7 +220,7 @@ async def read_products(
         
     
     result = await db.execute(query.offset(skip).limit(limit))
-    products = result.scalars().all()
+    products = result.unique().scalars().all()
     
     # Enrich with latest_price
     enriched_products = []
