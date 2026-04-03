@@ -58,14 +58,21 @@ async def calculate_and_record_mrp(
             return
         
         # 1.1 Clear existing records strictly for idempotency
-        # Fetch them first to delete via session to avoid any sync issues
-        existing_stmt = select(MaterialRequirement).where(MaterialRequirement.plan_id == plan_id)
+        # [FIX] Also clear requirements linked to the parent order that don't have a plan_id yet
+        # to prevent duplication in the 'Waiting List'
+        conditions = [MaterialRequirement.plan_id == plan_id]
+        if plan.order_id:
+            conditions.append(
+                (MaterialRequirement.order_id == plan.order_id) & (MaterialRequirement.plan_id == None)
+            )
+        
+        existing_stmt = select(MaterialRequirement).where(or_(*conditions))
         existing_res = await db.execute(existing_stmt)
         for mr in existing_res.scalars().all():
             await db.delete(mr)
         
         await db.flush() # Ensure deletions are processed
-        print(f"[MRP] Cleared existing records for Plan {plan_id} for refresh.")
+        print(f"[MRP] Cleared existing records (Plan {plan_id} and Parent Order {plan.order_id}) for refresh.")
 
         # 2. Collect targets from plan items
         # Aggregate quantities by product_id to handle potential duplicates in the plan itself

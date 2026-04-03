@@ -65,6 +65,12 @@ async def on_production_item_completed(
         item.status = ProductionStatus.COMPLETED
         db.add(item)
 
+    # [FIX] 실생산 수량(Net Quantity)이 0 이하인 경우 (재고 전량 대체 시나리오)
+    # 부족분이 없어 발주를 낼 필요가 없으므로 자동 발주 생성 로직 등을 건너뜁니다.
+    if (item.quantity or 0) <= 0:
+        logger.info(f"[CASCADE] Skipping auto-creation/completion for Item {item.id} (Net Quantity is 0)")
+        return
+
     # --- 1. 연관 발주/외주일 경우 자동 완료 처리 및 미발주시 자동 생성 ---
     from app.models.basics import Partner
     from app.core.timezone import now_kst

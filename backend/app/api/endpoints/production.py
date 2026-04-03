@@ -177,9 +177,11 @@ async def _handle_production_completion_effects(db: AsyncSession, plan: Producti
                 db.add(oo)
 
     # 4. Aggregate Net Production Quantities from Plan Items
+    # [FIX] Use max() to handle potential inconsistency across processes of the same product
     net_quantities = {} # {product_id: net_qty}
     for item in plan.items:
-        net_quantities[item.product_id] = item.quantity or 0
+        current_max = net_quantities.get(item.product_id, 0)
+        net_quantities[item.product_id] = max(current_max, item.quantity or 0)
 
     # 5. Stock Movement & Backflush Hook
     if plan.stock_production:

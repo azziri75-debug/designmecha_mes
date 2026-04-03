@@ -226,33 +226,54 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
     };
 
     const handleItemChange = (index, field, value) => {
+        const item = items[index];
+        const productId = item.product_id;
         const newItems = [...items];
-        newItems[index][field] = value;
-
-        // Auto-lookup cost for INTERNAL processes
-        if ((field === 'course_type' && value === 'INTERNAL') ||
-            (field === 'process_name' && newItems[index].course_type === 'INTERNAL')) {
-            const item = newItems[index];
-            const productName = item.process_name?.toLowerCase().trim();
-            const stdProcs = item.product?.standard_processes || [];
-            const match = stdProcs.find(p => p.process?.name?.toLowerCase().trim() === productName);
-
-            if (match) {
-                const qty = parseInt(item.quantity) || 1;
-                newItems[index].unit_cost = match.cost || 0;
-                newItems[index].cost = (match.cost || 0) * qty;
+        
+        // Sync these fields across ALL processes of the same product
+        const syncFields = ['quantity', 'gross_quantity', 'stock_use_quantity'];
+        
+        if (syncFields.includes(field)) {
+            const val = parseInt(value) || 0;
+            newItems.forEach((it, idx) => {
+                if (Number(it.product_id) === Number(productId)) {
+                    newItems[idx][field] = val;
+                    
+                    // If quantity changed, recalculate cost for this item (based on its own unit_cost)
+                    if (field === 'quantity') {
+                        const unitCost = it.unit_cost || 0;
+                        newItems[idx].cost = unitCost * val;
+                    }
+                }
+            });
+            
+            // Special Case: Update stockUseQtys state if stock_use_quantity changed
+            if (field === 'stock_use_quantity') {
+                setStockUseQtys(prev => ({ ...prev, [productId]: parseInt(value) || 0 }));
             }
-        }
+        } else {
+            // Standard single-item update
+            newItems[index][field] = value;
 
-        if (field === 'quantity') {
-            const qty = parseInt(value) || 0;
-            const unitCost = newItems[index].unit_cost || 0;
-            newItems[index].cost = unitCost * qty;
-        }
+            // Auto-lookup cost for INTERNAL processes
+            if ((field === 'course_type' && value === 'INTERNAL') ||
+                (field === 'process_name' && newItems[index].course_type === 'INTERNAL')) {
+                const targetItem = newItems[index];
+                const productName = targetItem.process_name?.toLowerCase().trim();
+                const stdProcs = targetItem.product?.standard_processes || [];
+                const match = stdProcs.find(p => p.process?.name?.toLowerCase().trim() === productName);
 
-        if (field === 'cost') {
-            const qty = parseInt(newItems[index].quantity) || 1;
-            newItems[index].unit_cost = parseFloat(value) / qty;
+                if (match) {
+                    const qty = parseInt(targetItem.quantity) || 1;
+                    newItems[index].unit_cost = match.cost || 0;
+                    newItems[index].cost = (match.cost || 0) * qty;
+                }
+            }
+
+            if (field === 'cost') {
+                const qty = parseInt(newItems[index].quantity) || 1;
+                newItems[index].unit_cost = parseFloat(value) / qty;
+            }
         }
 
         setItems(newItems);
