@@ -110,6 +110,7 @@ const MobileWorkLogPage = () => {
     const [goodQty, setGoodQty] = useState('');
     const [badQty, setBadQty] = useState('0');
     const [note, setNote] = useState('');
+    const [workDate, setWorkDate] = useState(new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', ''));
     const [photos, setPhotos] = useState([]);
 
     // Conflict Dialog
@@ -327,13 +328,6 @@ const MobileWorkLogPage = () => {
                 });
             }
 
-            // Local Date handling
-            const localDate = new Date();
-            const year = localDate.getFullYear();
-            const month = String(localDate.getMonth() + 1).padStart(2, '0');
-            const day = String(localDate.getDate()).padStart(2, '0');
-            const workDate = `${year}-${month}-${day}`;
-
             const payload = {
                 work_date: workDate,
                 worker_id: user.id,
@@ -358,6 +352,7 @@ const MobileWorkLogPage = () => {
             setBadQty('0');
             setNote('');
             setPhotos([]);
+            setWorkDate(new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', ''));
             setTab(0);
             setConflictOpen(false);
             fetchAllPlans();
@@ -724,6 +719,17 @@ const MobileWorkLogPage = () => {
                                             </Typography>
                                         )}
                                     </Box>
+
+                                    <TextField
+                                        label="등록일"
+                                        type="date"
+                                        value={workDate}
+                                        onChange={e => setWorkDate(e.target.value)}
+                                        fullWidth
+                                        variant="outlined"
+                                        size="small"
+                                        InputLabelProps={{ shrink: true }}
+                                    />
 
                                     <TextField
                                         label="양품 수량"
