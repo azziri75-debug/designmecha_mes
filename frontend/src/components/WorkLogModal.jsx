@@ -469,7 +469,7 @@ const ListPlans = ({ plans, onSelectPlan }) => {
 const ListPlanItems = ({ plan, onSelect }) => {
     const items = plan.items.filter(pi =>
         pi.course_type === 'INTERNAL' &&
-        (pi.status === 'PLANNED' || pi.status === 'IN_PROGRESS')
+        (pi.status === 'PLANNED' || pi.status === 'IN_PROGRESS' || pi.status === 'COMPLETED')
     );
 
     return (
