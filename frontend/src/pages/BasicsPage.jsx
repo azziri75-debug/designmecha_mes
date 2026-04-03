@@ -1696,7 +1696,7 @@ const BasicsPageContent = () => {
                                             <p className="text-xs text-blue-400 leading-relaxed">
                                                 💡 <b>[연차 관리 안내]</b><br />
                                                 - 시스템 발생: 근로기준법(1년 미만 월 1일, 1년 이상 15~25일)에 따라 자동 계산된 일수입니다.<br />
-                                                - 관리자 조정: 과거 잔여 연차 이관이나 포상/차감 시 사용하며 <b>0.5 단위</b>로 입력 가능합니다.<br />
+                                                - 관리자 조정: 과거 잔여 연차 이관이나 포상/차감 시 사용하며 <b>0.1 단위</b>로 입력 가능합니다.<br />
                                                 - 사용 시간: 전자결재(휴가원/외출/조퇴) 승격 시 실시간으로 합산됩니다.
                                             </p>
                                         </div>
@@ -1722,7 +1722,7 @@ const BasicsPageContent = () => {
                                                             <td className="px-4 py-3">
                                                                 <input
                                                                     type="number"
-                                                                    step="0.5"
+                                                                    step="0.1"
                                                                     defaultValue={leave.adjustment_days}
                                                                     onBlur={(e) => handleUpdateLeave(leave.id, 'adjustment_days', e.target.value)}
                                                                     disabled={!isSystemAdmin}
