@@ -54,16 +54,14 @@ const tblStyle = (c) => ({
 });
 const td = (c, extra = {}) => ({
     border: `0.7px solid ${c}`,
-    padding: '4px !important',
-    fontSize: '11px !important',
+    padding: '3px 6px !important',
+    fontSize: '10.5px !important',
     color: `${c} !important`,
     verticalAlign: 'middle',
     wordBreak: 'keep-all',
     overflow: 'hidden',
     textOverflow: 'clip',
-    lineHeight: '1.1',
-    padding: '3px !important',
-    fontSize: '10.5px !important',
+    lineHeight: '1.2',
     ...extra,
 });
 
@@ -427,10 +425,10 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                 <input value={formatNumber(footerInfo.paid_amount)} onChange={e => setFooterInfo(p => ({ ...p, paid_amount: Number(e.target.value.replace(/,/g, '')) || 0 }))} style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: C, fontSize: '11px', background: 'transparent', fontWeight: 'bold' }} />
                             </td>
                             <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '11px' }}>잔금</td>
-                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '13px', paddingRight: '12px', borderRight: 'none', whiteSpace: 'nowrap' }}>
+                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '13px', paddingRight: '15px', borderRight: 'none', whiteSpace: 'nowrap' }}>
                                 ￦{formatNumber(balance)}
                                 <span style={{ fontSize: '10px', marginLeft: '12px', fontWeight: 'bold' }}>인수자&nbsp;</span>
-                                <input value={footerInfo.receiver_name} onChange={e => setFooterInfo(p => ({ ...p, receiver_name: e.target.value }))} placeholder="성함" style={{ border: 'none', width: '60px', outline: 'none', color: C, fontSize: '11px', background: 'transparent', borderBottom: `0.5px solid ${C}`, textAlign: 'center' }} />
+                                <input value={footerInfo.receiver_name} onChange={e => setFooterInfo(p => ({ ...p, receiver_name: e.target.value }))} placeholder="성함" style={{ border: 'none', width: '60px', outline: 'none', color: C, fontSize: '11px', background: 'transparent', borderBottom: `0.5px solid ${C}`, textAlign: 'center', padding: '0 4px' }} />
                                 <span style={{ fontSize: '11px', marginLeft: '6px', fontWeight: 'bold' }}>(인)</span>
                             </td>
                         </tr>
