@@ -103,12 +103,20 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const resizingCol = useRef(null);
     const startX = useRef(0);
     const startWidth = useRef(0);
+    const startNextWidth = useRef(0);
+    const colOrder = ['date', 'name', 'spec', 'qty', 'price', 'supply', 'tax'];
 
     const onResizerMouseDown = (col, e) => {
         e.preventDefault();
         resizingCol.current = col;
         startX.current = e.pageX;
         startWidth.current = colWidths[col];
+        
+        const nextIdx = colOrder.indexOf(col) + 1;
+        if (nextIdx < colOrder.length) {
+            startNextWidth.current = colWidths[colOrder[nextIdx]];
+        }
+
         document.addEventListener('mousemove', onResizerMouseMove);
         document.addEventListener('mouseup', onResizerMouseUp);
         document.body.style.cursor = 'col-resize';
@@ -117,10 +125,28 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const onResizerMouseMove = useCallback((e) => {
         if (!resizingCol.current) return;
         const diff = e.pageX - startX.current;
-        const newWidth = Math.max(30, startWidth.current + diff);
+        const nextIdx = colOrder.indexOf(resizingCol.current) + 1;
+        if (nextIdx >= colOrder.length) return;
+
+        const nextCol = colOrder[nextIdx];
+        
+        // Calculate potential new widths
+        let newWidth = startWidth.current + diff;
+        let newNextWidth = startNextWidth.current - diff;
+
+        // Apply minimum width constraints (30px)
+        if (newWidth < 30) {
+            newWidth = 30;
+            newNextWidth = startWidth.current + startNextWidth.current - 30;
+        } else if (newNextWidth < 30) {
+            newNextWidth = 30;
+            newWidth = startWidth.current + startNextWidth.current - 30;
+        }
+
         setColWidths(prev => ({
             ...prev,
-            [resizingCol.current]: newWidth
+            [resizingCol.current]: newWidth,
+            [nextCol]: newNextWidth
         }));
     }, []);
 
