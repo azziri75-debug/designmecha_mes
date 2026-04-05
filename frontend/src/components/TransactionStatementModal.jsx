@@ -53,7 +53,7 @@ const tblStyle = (c) => ({
     tableLayout: 'fixed',
 });
 const td = (c, extra = {}) => ({
-    border: `0.7px solid ${c}`,
+    border: `1.1px solid ${c}`,
     padding: '3px 6px !important',
     fontSize: '10.5px !important',
     color: `${c} !important`,
@@ -259,6 +259,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     }
                     .tsm-form-paper td, .tsm-form-paper th {
                         border-color: var(--statement-color) !important;
+                        border-style: solid !important;
+                        border-width: 1.1px !important;
                         color: var(--statement-color) !important;
                         background-color: white !important;
                     }
@@ -358,7 +360,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     { key: 'supply', label: '공급가액' },
                                     { key: 'tax', label: '세  액' }
                                 ].map((h, i) => (
-                                    <th key={h.key} style={{ ...td(C, { textOverflow: 'ellipsis' }), width: colWidths[h.key], textAlign: 'center', fontWeight: '900', fontSize: '12px', borderRight: i === 6 ? 'none' : `0.8px solid ${C}`, position: 'relative', overflow: 'hidden' }}>
+                                    <th key={h.key} style={{ ...td(C, { textOverflow: 'ellipsis' }), width: colWidths[h.key], textAlign: 'center', fontWeight: '900', fontSize: '12px', borderRight: i === 6 ? 'none' : `1.1px solid ${C}`, position: 'relative', overflow: 'hidden' }}>
                                         {h.label}
                                         {i < 6 && (
                                             <div onMouseDown={(e) => onResizerMouseDown(h.key, e)} className="tsm-no-print" style={{ position: 'absolute', right: -3, top: 0, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 10 }} />
