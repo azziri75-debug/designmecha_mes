@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     Modal, Box, Button, IconButton,
-    CircularProgress, Alert
+    CircularProgress, Alert, Checkbox, FormControlLabel
 } from '@mui/material';
 import { X, Printer, FileDown, CheckCircle2 } from 'lucide-react';
 import { formatNumber, toKoreanCurrency, getImageUrl } from '../lib/utils';
@@ -83,6 +83,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         paid_amount: data.paid_amount || 0,
         receiver_name: data.receiver_name || '',
     });
+    const [showRecipient, setShowRecipient] = useState(true);
+    const [showSupplier, setShowSupplier] = useState(true);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [pdfStatus, setPdfStatus] = useState(null);
     const [companyStampUrl, setCompanyStampUrl] = useState(null); // DB 직인 이미지 URL
@@ -228,7 +230,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     // ════════════════════════════════════════
     // 단일 양식 (blue / red)
     // ════════════════════════════════════════
-    const StatementForm = ({ color }) => {
+    const StatementForm = ({ color, typeLabel }) => {
         const C = color === 'blue' ? '#003AC1' : '#C10000';
         const sealSrc = companyStampUrl || makeSealURI(supplierInfo.company_name);
 
@@ -269,6 +271,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     }
                 `}</style>
                 {/* ── 상단: No/일자 + 거래명세표 타이틀 + 공급자 테이블 ── */}
+                <div style={{ padding: '2px 8px', fontSize: '10px', fontWeight: '900', color: C, textAlign: 'left' }}>{typeLabel}</div>
                 <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: `1.2px solid ${C}` }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', height: '22px', borderBottom: `0.8px solid ${C}` }}>
@@ -464,10 +467,26 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     {pdfStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
                     {pdfStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
                     <div ref={printRef} className="tsm-print-container print-safe-area" style={{ width: '297mm', height: '210mm', minWidth: '297mm', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', transform: `scale(${scale})`, transformOrigin: 'top center', marginBottom: `calc(210mm * ${scale} - 210mm)`, display: 'flex', flexDirection: 'row', gap: '12mm', boxShadow: '0 12px 60px rgba(0,0,0,0.5)', padding: '12mm 10mm' }}>
-                        <div style={{ position: 'absolute', left: '50%', top: '5mm', bottom: '5mm', borderRight: '1.5px dashed #999', pointerEvents: 'none', zIndex: 1, transform: 'translateX(-50%)' }} className="tsm-no-print" />
-                        <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="blue" /></div>
-                        <div style={{ flex: 1, minWidth: 0 }}><StatementForm color="red" /></div>
+                        <div style={{ position: 'absolute', left: '50%', top: '5mm', bottom: '5mm', borderRight: '1.5px dashed #999', pointerEvents: 'none', zIndex: 1, transform: 'translateX(-50%)', display: (showRecipient && showSupplier) ? 'block' : 'none' }} className="tsm-no-print" />
+                        <div style={{ flex: 1, minWidth: 0, visibility: showRecipient ? 'visible' : 'hidden' }}><StatementForm color="blue" typeLabel="<공급받는자용>" /></div>
+                        <div style={{ flex: 1, minWidth: 0, visibility: showSupplier ? 'visible' : 'hidden' }}><StatementForm color="red" typeLabel="<공급자용>" /></div>
                     </div>
+                </Box>
+                <Box className="tsm-no-print" sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'center', gap: 3, borderTop: '1px solid #e2e8f0', bgcolor: '#f1f5f9' }}>
+                    <FormControlLabel
+                        control={<Checkbox checked={showRecipient} onChange={(e) => {
+                            if (!e.target.checked && !showSupplier) return;
+                            setShowRecipient(e.target.checked);
+                        }} color="primary" />}
+                        label={<span style={{ fontSize: '14px', fontWeight: 'bold' }}>공급받는자용 (좌)</span>}
+                    />
+                    <FormControlLabel
+                        control={<Checkbox checked={showSupplier} onChange={(e) => {
+                            if (!e.target.checked && !showRecipient) return;
+                            setShowSupplier(e.target.checked);
+                        }} color="error" />}
+                        label={<span style={{ fontSize: '14px', fontWeight: 'bold' }}>공급자용 (우)</span>}
+                    />
                 </Box>
                 <Box className="tsm-no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#f8fafc', flexShrink: 0 }}>
                     <Button variant="contained" size="large" startIcon={isGeneratingPdf ? <CircularProgress size={16} color="inherit" /> : <FileDown />} onClick={handleDownloadPDF} disabled={isGeneratingPdf} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>PDF 다운로드</Button>
