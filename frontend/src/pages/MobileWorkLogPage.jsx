@@ -684,28 +684,54 @@ const MobileWorkLogPage = () => {
                                 <Typography variant="subtitle2" sx={{ mb: 2, px: 1, color: 'textSecondary' }}>
                                     {selectedPlan.order?.order_no || selectedPlan.stock_production?.production_no} 상세 공정
                                 </Typography>
-                                <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
-                                    <List disablePadding>
-                                        {selectedPlan.items.map((item, idx, arr) => (
-                                            <React.Fragment key={item.id}>
-                                                <ListItemButton onClick={() => setSelectedItem(item)}>
-                                                    <ListItemText
-                                                        primary={item.process_name}
-                                                        secondary={`실적: ${item.completed_quantity || 0} / ${item.quantity}`}
-                                                        primaryTypographyProps={{ fontWeight: 500 }}
-                                                    />
-                                                    <Chip
-                                                        size="small"
-                                                        label={item.status}
-                                                        color={item.status === 'COMPLETED' ? 'success' : 'default'}
-                                                        variant="outlined"
-                                                    />
-                                                </ListItemButton>
-                                                {idx < arr.length - 1 && <Divider />}
-                                            </React.Fragment>
-                                        ))}
-                                    </List>
-                                </Paper>
+                                {(() => {
+                                    const grouped = (selectedPlan.items || []).reduce((acc, item) => {
+                                        const pId = item.product_id || 'unknown';
+                                        if (!acc[pId]) {
+                                            acc[pId] = {
+                                                product: item.product,
+                                                items: []
+                                            };
+                                        }
+                                        acc[pId].items.push(item);
+                                        return acc;
+                                    }, {});
+
+                                    return Object.values(grouped).map((group, groupIdx) => (
+                                        <Box key={`group-${groupIdx}`} sx={{ mb: 2 }}>
+                                            <Typography variant="body2" fontWeight="bold" color="primary" sx={{ px: 1, mb: 1, display: 'flex', alignItems: 'center' }}>
+                                                <div style={{ width: 4, height: 14, backgroundColor: '#1976d2', marginRight: 8, borderRadius: 2 }} />
+                                                품명: {group.product?.name || '미지정'} 
+                                                {group.product?.specification ? ` (${group.product?.specification})` : ''}
+                                            </Typography>
+                                            <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
+                                                <List disablePadding>
+                                                    {group.items.sort((a,b) => a.sequence - b.sequence).map((item, idx, arr) => (
+                                                        <React.Fragment key={item.id}>
+                                                            <ListItemButton onClick={() => setSelectedItem(item)}>
+                                                                <ListItemText
+                                                                    primary={<>
+                                                                        <Typography variant="caption" sx={{ color: '#666', mr: 1, fontSize: '0.7rem' }}>[{item.sequence}]</Typography>
+                                                                        {item.process_name}
+                                                                    </>}
+                                                                    secondary={`실적: ${item.completed_quantity || 0} / ${item.quantity}`}
+                                                                    primaryTypographyProps={{ fontWeight: 500 }}
+                                                                />
+                                                                <Chip
+                                                                    size="small"
+                                                                    label={item.status}
+                                                                    color={item.status === 'COMPLETED' ? 'success' : 'default'}
+                                                                    variant="outlined"
+                                                                />
+                                                            </ListItemButton>
+                                                            {idx < arr.length - 1 && <Divider />}
+                                                        </React.Fragment>
+                                                    ))}
+                                                </List>
+                                            </Paper>
+                                        </Box>
+                                    ));
+                                })()}
                             </Box>
                         ) : (
                             /* Step 3: Registration Form */
