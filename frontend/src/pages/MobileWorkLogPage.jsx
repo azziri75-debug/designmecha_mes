@@ -623,7 +623,25 @@ const MobileWorkLogPage = () => {
                                     <Stack spacing={1.5}>
                                         {filteredPlans.map(plan => {
                                             const orderNo = plan.order?.order_no || plan.stock_production?.production_no || '-';
-                                            const productName = plan.items?.[0]?.product?.name || '-';
+                                            
+                                            const uniqueProducts = [];
+                                            plan.items?.forEach(item => {
+                                                const pName = item.product?.name || item.product_name;
+                                                if (pName && !uniqueProducts.includes(pName)) uniqueProducts.push(pName);
+                                            });
+                                            if (plan.order && plan.order.items) {
+                                                plan.order.items.forEach(item => {
+                                                    const pName = item.product?.name || item.product_name;
+                                                    if (pName && !uniqueProducts.includes(pName)) uniqueProducts.push(pName);
+                                                });
+                                            } else if (plan.stock_production) {
+                                                const pName = plan.stock_production.product?.name;
+                                                if (pName && !uniqueProducts.includes(pName)) uniqueProducts.push(pName);
+                                            }
+                                            
+                                            const firstProd = uniqueProducts[0] || '-';
+                                            const cnt = uniqueProducts.length - 1;
+                                            const productNameStr = cnt > 0 ? `${firstProd} 외 ${cnt}건` : firstProd;
 
                                             return (
                                                 <Card key={plan.id} sx={{ borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedPlan(plan)}>
@@ -643,7 +661,7 @@ const MobileWorkLogPage = () => {
                                                                     </Typography>
                                                                 </Stack>
                                                                 <Typography variant="subtitle1" fontWeight="bold">
-                                                                    {productName}
+                                                                    {productNameStr}
                                                                 </Typography>
                                                                 {plan.items?.[0]?.product?.specification && (
                                                                     <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: -0.5, mb: 0.5 }}>
