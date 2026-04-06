@@ -6,7 +6,7 @@
  *
  * 해결: 요소를 A4 픽셀 사이즈에 맞춰 캡처한 후, A4 단위로 페이지를 분할 삽입.
  */
-import { toPng, toJpeg } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 /**
@@ -119,21 +119,19 @@ export async function generateA4PDF(element, options = {}) {
   const scrollH = element.scrollHeight;
 
   try {
-    const dataUrl = await toPng(element, {
-      cacheBust: true,
+    const canvas = await html2canvas(element, {
+      scale: pixelRatio || 2,
+      useCORS: true,
       backgroundColor: '#ffffff',
-      pixelRatio,
-      filter: printFilter,
-      width: scrollW,
-      height: scrollH,
-      style: {
-        transform: 'scale(1)',
-        left: '0',
-        top: '0',
-        boxShadow: 'none',
-        border: 'none'
+      width: element.scrollWidth,
+      height: element.scrollHeight,
+      windowWidth: element.scrollWidth,
+      onclone: (doc) => {
+        const els = doc.querySelectorAll('.no-print, .idf-no-print');
+        els.forEach(e => { e.style.display = 'none'; });
       }
     });
+    const dataUrl = canvas.toDataURL('image/png');
 
     // 3. PDF 생성
     const pdf = new jsPDF({
@@ -267,16 +265,19 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
 
     await new Promise(r => setTimeout(r, 150));
 
-    const dataUrl = await toJpeg(el, {
-      cacheBust: true,
+    const canvas = await html2canvas(el, {
+      scale: pixelRatio || 2,
+      useCORS: true,
       backgroundColor: '#ffffff',
-      quality: 0.95,
-      pixelRatio,
-      filter: printFilter,
       width: el.scrollWidth,
       height: el.scrollHeight,
-      style: { boxShadow: 'none' }
+      windowWidth: el.scrollWidth,
+      onclone: (doc) => {
+        const els = doc.querySelectorAll('.no-print, .idf-no-print');
+        els.forEach(e => { e.style.display = 'none'; });
+      }
     });
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
 
     el.style.transform = origT;
     el.style.margin = origM;
@@ -344,15 +345,19 @@ export async function printAsImage(element, options = {}) {
   await new Promise(r => setTimeout(r, 200));
 
   try {
-    const dataUrl = await toPng(element, {
-      cacheBust: true,
+    const canvas = await html2canvas(element, {
+      scale: pixelRatio || 2,
+      useCORS: true,
       backgroundColor: null,
-      pixelRatio,
-      filter: printFilter,
       width: element.scrollWidth,
       height: element.scrollHeight,
-      style: { boxShadow: 'none' }
+      windowWidth: element.scrollWidth,
+      onclone: (doc) => {
+        const els = doc.querySelectorAll('.no-print, .idf-no-print');
+        els.forEach(e => { e.style.display = 'none'; });
+      }
     });
+    const dataUrl = canvas.toDataURL('image/png');
 
     // 2. 팝업 창 인쇄 (이미지 로드 완료 보장)
     const printWin = window.open('', '_blank', 'width=900,height=1100');
@@ -436,15 +441,19 @@ export async function printMultiPageAsImage(elements, options = {}) {
 
     await new Promise(r => setTimeout(r, 200));
 
-    const url = await toPng(el, {
-      cacheBust: true,
+    const canvas = await html2canvas(el, {
+      scale: pixelRatio || 2,
+      useCORS: true,
       backgroundColor: null,
-      pixelRatio,
-      filter: printFilter,
       width: el.scrollWidth,
       height: el.scrollHeight,
-      style: { boxShadow: 'none' }
+      windowWidth: el.scrollWidth,
+      onclone: (doc) => {
+        const els = doc.querySelectorAll('.no-print, .idf-no-print');
+        els.forEach(e => { e.style.display = 'none'; });
+      }
     });
+    const url = canvas.toDataURL('image/png');
 
     el.style.transform = origT;
     el.style.margin = origM;

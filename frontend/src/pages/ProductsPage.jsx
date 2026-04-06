@@ -1455,8 +1455,10 @@ const ProductsPage = ({ type }) => {
                                                     noOptionsMessage={() => "검색 결과가 없습니다"}
                                                     formatCreateLabel={(inputValue) => `"${inputValue}" 신규 등록`}
                                                     menuPosition="fixed"
+                                                    menuPortalTarget={document.body}
                                                     className="text-sm"
                                                     styles={{
+                                                        menuPortal: base => ({ ...base, zIndex: 99999 }),
                                                         control: (base) => ({
                                                             ...base,
                                                             backgroundColor: 'rgba(17, 24, 39, 0.5)',

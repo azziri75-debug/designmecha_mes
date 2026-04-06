@@ -184,7 +184,9 @@ const ProductModal = ({
                                         placeholder="거래처 검색 또는 신규 입력"
                                         className="text-sm"
                                         menuPosition="fixed"
+                                        menuPortalTarget={document.body}
                                         styles={{
+                                            menuPortal: base => ({ ...base, zIndex: 99999 }),
                                             control: (base) => ({
                                                 ...base,
                                                 backgroundColor: 'rgba(17, 24, 39, 0.5)',
