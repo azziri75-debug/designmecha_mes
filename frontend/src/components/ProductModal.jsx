@@ -198,7 +198,7 @@ const ProductModal = ({
                                                 ...base,
                                                 backgroundColor: 'rgb(31, 41, 55)',
                                                 border: '1px solid rgb(55, 65, 81)',
-                                                zIndex: 9999
+                                                zIndex: 10500
                                             }),
                                             option: (base, state) => ({
                                                 ...base,
@@ -208,7 +208,7 @@ const ProductModal = ({
                                             singleValue: (base) => ({ ...base, color: 'white' }),
                                             input: (base) => ({ ...base, color: 'white' }),
                                             placeholder: (base) => ({ ...base, color: 'rgb(156, 163, 175)' }),
-                                            menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                                            menuPortal: (base) => ({ ...base, zIndex: 10500 })
                                         }}
                                     />
                                 </div>
