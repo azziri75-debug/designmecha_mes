@@ -22,6 +22,7 @@ const DeliveryPage = () => {
         product: 200,
         order_date: 120,
         due_date: 120,
+        note: 150,
         total_items: 100,
         order_amount: 150,
         deliv_amount: 150,
@@ -261,6 +262,7 @@ const DeliveryPage = () => {
                                         <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Product Name</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.order_date} onResize={(w) => handleResize('order_date', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Date</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.due_date} onResize={(w) => handleResize('due_date', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Due Date</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.note} onResize={(w) => handleResize('note', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Note</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.total_items} onResize={(w) => handleResize('total_items', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Total Items</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.order_amount} onResize={(w) => handleResize('order_amount', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Amount</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.deliv_amount} onResize={(w) => handleResize('deliv_amount', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] text-blue-400">Deliv. Amount</ResizableTableCell>
@@ -288,6 +290,7 @@ const DeliveryPage = () => {
                                                 </td>
                                                 <td className="px-6 py-5 text-sm font-mono text-gray-400">{ord.order_date}</td>
                                                 <td className="px-6 py-5 text-sm font-mono text-blue-400 font-bold">{ord.delivery_date || '-'}</td>
+                                                <td className="px-6 py-5 text-sm max-w-[150px] truncate text-gray-400" title={ord.note}>{ord.note || '-'}</td>
                                                 <td className="px-6 py-5 text-sm text-gray-400">{ord.items?.length || 0}</td>
                                                 <td className="px-6 py-5">
                                                     <span className="text-sm font-black text-white">{(ord.total_amount || 0).toLocaleString()}</span>
@@ -332,7 +335,7 @@ const DeliveryPage = () => {
                                             {/* Expanded Detail Panel */}
                                             {expandedOrder === ord.id && (
                                                 <tr>
-                                                    <td colSpan="10" className="px-8 py-0 bg-gray-950/30">
+                                                    <td colSpan="11" className="px-8 py-0 bg-gray-950/30">
                                                         <div className="py-6 grid grid-cols-2 gap-8 border-t border-gray-800/50">
                                                             {/* Items Detail Table */}
                                                             <div className="bg-gray-950/50 rounded-xl border border-gray-700 p-4 shadow-xl">
@@ -457,7 +460,7 @@ const DeliveryPage = () => {
                                     ))}
                                     {displayedOrders.length === 0 && (
                                         <tr>
-                                            <td colSpan="10" className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan="11" className="px-6 py-12 text-center text-gray-500">
                                                 데이터가 없습니다.
                                             </td>
                                         </tr>
