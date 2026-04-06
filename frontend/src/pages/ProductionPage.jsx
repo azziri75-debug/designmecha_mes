@@ -683,6 +683,19 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
 };
 
 const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePlan, searchQuery, filterPartner, selectedMajorGroupId, groups }) => {
+    const [colWidths, setColWidths] = useState({
+        no: 150,
+        partner: 150,
+        product: 250,
+        date: 120,
+        delivery: 120,
+        amount: 120,
+        action: 120
+    });
+
+    const handleResize = (colKey) => (newWidth) => {
+        setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
+    };
     const planOrderIds = plannedIds?.orders || [];
     const planStockProdIds = plannedIds?.stocks || [];
 
@@ -722,20 +735,21 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
 
     return (
         <TableContainer>
-            <Table>
-                <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold' } }}>
+            <Table sx={{ tableLayout: 'fixed', minWidth: 1000 }}>
+                <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold', bgcolor: '#f8f9fa' } }}>
                     <TableRow>
-                        <TableCell>수주번호</TableCell>
-                        <TableCell>거래처</TableCell>
-                        <TableCell>수주일</TableCell>
-                        <TableCell>납기일</TableCell>
-                        <TableCell>금액</TableCell>
-                        <TableCell>작업</TableCell>
+                        <ResizableTableCell width={colWidths.no} onResize={handleResize('no')}>수주/재고번호</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>거래처</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.product} onResize={handleResize('product')}>품명</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.date} onResize={handleResize('date')}>등록일</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.delivery} onResize={handleResize('delivery')}>납기일</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.amount} onResize={handleResize('amount')}>금액</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.action} onResize={handleResize('action')}>작업</ResizableTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {unplannedOrders.length === 0 && unplannedStockProductions.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} align="center">생산 대기 중인 항목이 없습니다.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} align="center">생산 대기 중인 항목이 없습니다.</TableCell></TableRow>
                     ) : (
                         <>
                             {unplannedOrders.map((order) => (
@@ -762,14 +776,21 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
                 onClick={() => setOpen(!open)}
                 onDoubleClick={() => onCreatePlan(order)}
             >
-                <TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     <Chip label="수주" size="small" variant="outlined" sx={{ mr: 1 }} />
                     {order.order_no}
                 </TableCell>
-                <TableCell>{order.partner?.name}</TableCell>
-                <TableCell>{order.order_date}</TableCell>
-                <TableCell>{order.delivery_date}</TableCell>
-                <TableCell>{order.total_amount?.toLocaleString()}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order.partner?.name}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    {(() => {
+                        const first = order.items?.[0]?.product?.name || '';
+                        const cnt = (order.items?.length || 1) - 1;
+                        return cnt > 0 ? `${first} 외 ${cnt}건` : first;
+                    })()}
+                </TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order.order_date}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order.delivery_date}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order.total_amount?.toLocaleString()}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order)}>
                         계획 수립
@@ -777,7 +798,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
                             <Typography variant="h6" gutterBottom component="div">
@@ -823,14 +844,15 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
                 onClick={() => setOpen(!open)}
                 onDoubleClick={() => onCreatePlan(null, stockProduction)}
             >
-                <TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     <Chip label="재고생산" size="small" sx={{ mr: 1, bgcolor: '#e8f5e9', color: '#2e7d32' }} />
                     {stockProduction.production_no}
                 </TableCell>
-                <TableCell>{stockProduction.partner?.name || '사내 (자체 생산)'}</TableCell>
-                <TableCell>{stockProduction.request_date}</TableCell>
-                <TableCell>{stockProduction.target_date || '-'}</TableCell>
-                <TableCell sx={{ color: '#666', fontStyle: 'italic' }}>-</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{stockProduction.partner?.name || '사내 (자체 생산)'}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{stockProduction.product?.name || ''}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{stockProduction.request_date}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{stockProduction.target_date || '-'}</TableCell>
+                <TableCell sx={{ color: '#666', fontStyle: 'italic', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>-</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     <Button
                         variant="outlined"
@@ -844,7 +866,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
                             <Typography variant="h6" gutterBottom component="div">
@@ -876,28 +898,48 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onDeleteAttachment, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, onRefresh }) => {
+const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onDeleteAttachment, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, onRefresh, readonly }) => {
+    const [colWidths, setColWidths] = useState({
+        arrow: 40,
+        no: 200,
+        partner: 130,
+        product: 250,
+        delivery: 100,
+        amount: 100,
+        status: 100,
+        defect: 50,
+        processCount: 70,
+        cost: 110,
+        attach: 70,
+        manage: 180
+    });
+
+    const handleResize = (colKey) => (newWidth) => {
+        setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
+    };
+
     return (
         <TableContainer sx={{ boxShadow: 'none' }}>
-            <Table sx={{ tableLayout: 'fixed' }}>
+            <Table sx={{ tableLayout: 'fixed', minWidth: 1200 }}>
                 <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold', bgcolor: '#f8f9fa' } }}>
                     <TableRow>
-                        <TableCell style={{ width: '40px' }} />
-                        <TableCell>수주/재고번호</TableCell>
-                        <TableCell style={{ width: '150px' }}>거래처</TableCell>
-                        <TableCell style={{ width: '100px' }}>납기일</TableCell>
-                        <TableCell style={{ width: '100px' }}>금액</TableCell>
-                        <TableCell style={{ width: '100px' }}>상태</TableCell>
-                        <TableCell style={{ width: '50px' }}>불량</TableCell>
-                        <TableCell style={{ width: '70px' }}>공정수</TableCell>
-                        <TableCell style={{ width: '120px' }}>총 공정 비용</TableCell>
-                        <TableCell style={{ width: '80px' }}>첨부파일</TableCell>
-                        <TableCell style={{ width: '120px' }}>관리</TableCell>
+                        <ResizableTableCell width={colWidths.arrow} onResize={handleResize('arrow')} />
+                        <ResizableTableCell width={colWidths.no} onResize={handleResize('no')}>수주/재고번호</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>거래처</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.product} onResize={handleResize('product')}>품명</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.delivery} onResize={handleResize('delivery')}>납기일</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.amount} onResize={handleResize('amount')}>금액</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.status} onResize={handleResize('status')}>상태</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.defect} onResize={handleResize('defect')}>불량</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.processCount} onResize={handleResize('processCount')}>공정수</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.cost} onResize={handleResize('cost')}>총 공정 비용</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.attach} onResize={handleResize('attach')}>첨부파일</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.manage} onResize={handleResize('manage')}>관리</ResizableTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {plans.length === 0 ? (
-                        <TableRow><TableCell colSpan={11} align="center">데이터가 없습니다.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={12} align="center">데이터가 없습니다.</TableCell></TableRow>
                     ) : (
                         plans.map((plan) => (
                             <Row
@@ -1080,7 +1122,7 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0, border: 'none' }} colSpan={11}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0, border: 'none' }} colSpan={12}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1.5, p: 2, bgcolor: '#ffffff', borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '1px solid #e3f2fd' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -1247,12 +1289,38 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                         </Box>
                     ) : '-'}
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     {plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내 (자체 생산)'}
                 </TableCell>
-                <TableCell>{order?.delivery_date || '-'}</TableCell>
-                <TableCell>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
-                <TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    {(() => {
+                        const uniqueProducts = [];
+                        plan.items?.forEach(item => {
+                            const pName = item.product?.name || item.product_name;
+                            if (pName && !uniqueProducts.includes(pName)) {
+                                uniqueProducts.push(pName);
+                            }
+                        });
+                        if (plan.order && plan.order.items) {
+                            plan.order.items.forEach(item => {
+                                const pName = item.product?.name || item.product_name;
+                                if (pName && !uniqueProducts.includes(pName)) {
+                                    uniqueProducts.push(pName);
+                                }
+                            });
+                        } else if (plan.stock_production) {
+                            const pName = plan.stock_production.product?.name;
+                            if (pName && !uniqueProducts.includes(pName)) uniqueProducts.push(pName);
+                        }
+                        
+                        const first = uniqueProducts[0] || '';
+                        const cnt = uniqueProducts.length - 1;
+                        return cnt > 0 ? `${first} 외 ${cnt}건` : first;
+                    })()}
+                </TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order?.delivery_date || '-'}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     <Chip
                         label={plan.status}
                         color={plan.status === 'COMPLETED' ? "success" : plan.status === 'CONFIRMED' ? "secondary" : "primary"}
@@ -1270,8 +1338,8 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                     </IconButton>
                 )}
                 </TableCell>
-                <TableCell>{plan.items?.length || 0}</TableCell>
-                <TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{plan.items?.length || 0}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     {(() => {
                         const totalCost = plan.items?.reduce((sum, item) => {
                             return sum + (item.cost || 0);
@@ -1340,7 +1408,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={11}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={12}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
                             <Typography variant="h6" gutterBottom component="div" sx={{ color: '#1a237e', fontWeight: 'bold' }}>
