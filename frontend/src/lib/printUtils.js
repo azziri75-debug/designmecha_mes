@@ -6,7 +6,7 @@
  *
  * 해결: 요소를 A4 픽셀 사이즈에 맞춰 캡처한 후, A4 단위로 페이지를 분할 삽입.
  */
-import html2canvas from 'html2canvas';
+import { toPng, toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 
 /**
@@ -109,29 +109,31 @@ export async function generateA4PDF(element, options = {}) {
   element.style.transformOrigin = 'top left';
   element.style.width = `${targetWidthMM}mm`;
   element.style.minHeight = 'auto';
-  element.style.overflow = 'visible';
+  element.style.overflow = 'hidden';
   element.style.position = 'relative';
 
   // reflow 대기 (정합성을 위해 300ms로 상향)
   await new Promise(r => setTimeout(r, 300));
 
-  const scrollW = element.scrollWidth;
-  const scrollH = element.scrollHeight;
+  const scrollW = element.clientWidth || element.offsetWidth;
+  const scrollH = element.clientHeight || element.offsetHeight;
 
   try {
-    const canvas = await html2canvas(element, {
-      scale: pixelRatio || 2,
-      useCORS: true,
+    const dataUrl = await toPng(element, {
+      cacheBust: true,
       backgroundColor: '#ffffff',
-      width: element.scrollWidth,
-      height: element.scrollHeight,
-      windowWidth: element.scrollWidth,
-      onclone: (doc) => {
-        const els = doc.querySelectorAll('.no-print, .idf-no-print');
-        els.forEach(e => { e.style.display = 'none'; });
+      pixelRatio,
+      filter: printFilter,
+      width: scrollW,
+      height: scrollH,
+      style: {
+        transform: 'scale(1)',
+        left: '0',
+        top: '0',
+        boxShadow: 'none',
+        border: 'none'
       }
     });
-    const dataUrl = canvas.toDataURL('image/png');
 
     // 3. PDF 생성
     const pdf = new jsPDF({
@@ -261,23 +263,23 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
     el.style.transformOrigin = 'top left';
     el.style.width = `${targetWidthMM}mm`;
     el.style.minHeight = 'auto';
-    el.style.overflow = 'visible';
+    el.style.overflow = 'hidden';
 
     await new Promise(r => setTimeout(r, 150));
 
-    const canvas = await html2canvas(el, {
-      scale: pixelRatio || 2,
-      useCORS: true,
+    const targetW = el.clientWidth || el.offsetWidth;
+    const targetH = el.clientHeight || el.offsetHeight;
+
+    const dataUrl = await toJpeg(el, {
+      cacheBust: true,
       backgroundColor: '#ffffff',
-      width: el.scrollWidth,
-      height: el.scrollHeight,
-      windowWidth: el.scrollWidth,
-      onclone: (doc) => {
-        const els = doc.querySelectorAll('.no-print, .idf-no-print');
-        els.forEach(e => { e.style.display = 'none'; });
-      }
+      quality: 0.95,
+      pixelRatio,
+      filter: printFilter,
+      width: targetW,
+      height: targetH,
+      style: { boxShadow: 'none' }
     });
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
 
     el.style.transform = origT;
     el.style.margin = origM;
@@ -339,25 +341,24 @@ export async function printAsImage(element, options = {}) {
   element.style.transformOrigin = 'top left';
   element.style.width = `${targetWidthMM}mm`;
   element.style.minHeight = 'auto';
-  element.style.overflow = 'visible';
+  element.style.overflow = 'hidden';
   element.style.position = 'relative';
 
   await new Promise(r => setTimeout(r, 200));
 
+  const targetW = element.clientWidth || element.offsetWidth;
+  const targetH = element.clientHeight || element.offsetHeight;
+
   try {
-    const canvas = await html2canvas(element, {
-      scale: pixelRatio || 2,
-      useCORS: true,
+    const dataUrl = await toPng(element, {
+      cacheBust: true,
       backgroundColor: null,
-      width: element.scrollWidth,
-      height: element.scrollHeight,
-      windowWidth: element.scrollWidth,
-      onclone: (doc) => {
-        const els = doc.querySelectorAll('.no-print, .idf-no-print');
-        els.forEach(e => { e.style.display = 'none'; });
-      }
+      pixelRatio,
+      filter: printFilter,
+      width: targetW,
+      height: targetH,
+      style: { boxShadow: 'none' }
     });
-    const dataUrl = canvas.toDataURL('image/png');
 
     // 2. 팝업 창 인쇄 (이미지 로드 완료 보장)
     const printWin = window.open('', '_blank', 'width=900,height=1100');
@@ -434,26 +435,25 @@ export async function printMultiPageAsImage(elements, options = {}) {
     el.style.transformOrigin = 'top left';
     el.style.width = `${targetWidthMM}mm`;
     el.style.minHeight = 'auto';
-    el.style.overflow = 'visible';
+    el.style.overflow = 'hidden';
 
     // 캡처 전용 유틸리티 클래스 주입 (그림자 제거 등)
     el.classList.add('is-capturing');
 
     await new Promise(r => setTimeout(r, 200));
 
-    const canvas = await html2canvas(el, {
-      scale: pixelRatio || 2,
-      useCORS: true,
+    const targetW = el.clientWidth || el.offsetWidth;
+    const targetH = el.clientHeight || el.offsetHeight;
+
+    const url = await toPng(el, {
+      cacheBust: true,
       backgroundColor: null,
-      width: el.scrollWidth,
-      height: el.scrollHeight,
-      windowWidth: el.scrollWidth,
-      onclone: (doc) => {
-        const els = doc.querySelectorAll('.no-print, .idf-no-print');
-        els.forEach(e => { e.style.display = 'none'; });
-      }
+      pixelRatio,
+      filter: printFilter,
+      width: targetW,
+      height: targetH,
+      style: { boxShadow: 'none' }
     });
-    const url = canvas.toDataURL('image/png');
 
     el.style.transform = origT;
     el.style.margin = origM;
