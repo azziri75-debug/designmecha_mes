@@ -54,10 +54,10 @@ const tblStyle = (c) => ({
 });
 const td = (c, extra = {}) => ({
     border: `1.4px solid ${c}`,
-    padding: '3px 6px !important',
-    fontSize: '10.5px !important',
-    color: `${c} !important`,
-    borderStyle: 'solid !important',
+    padding: '3px 6px',
+    fontSize: '10.5px',
+    color: c,
+    borderStyle: 'solid',
     verticalAlign: 'middle',
     wordBreak: 'keep-all',
     overflow: 'hidden',
@@ -275,6 +275,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             <div style={{ width: '40px', borderRight: `0.8px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', color: C }}>일자</div>
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '12px', color: C }}>{data.delivery_date || ''}</div>
                         </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0 6px' }}>
+                            <span style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '8px', borderBottom: `3px double ${C}`, color: C, lineHeight: 1.1, whiteSpace: 'nowrap', wordBreak: 'keep-all' }}>거래명세표</span>
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '12px', paddingBottom: '8px', gap: '8px', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', minWidth: '150px', alignItems: 'center' }}>
                                 <div style={{ 
@@ -384,19 +387,19 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             ))}
                             {emptyCount > 0 && (
                                 <tr style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), textAlign: 'center', borderBottom: `0.8px dotted ${C}` }} />
-                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', borderBottom: `0.8px dotted ${C}`, borderRight: 'none', textAlign: 'center' }}>= 이하여백 =</td>
+                                    <td style={{ ...td(C), textAlign: 'center', borderBottom: `0.8px solid ${C}` }} />
+                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', borderBottom: `0.8px solid ${C}`, borderRight: 'none', textAlign: 'center' }}>= 이하여백 =</td>
                                 </tr>
                             )}
                             {Array(Math.max(0, emptyCount - 1)).fill(null).map((_, i) => (
                                 <tr key={i} style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px dotted ${C}`, borderRight: 'none' }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px solid ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px solid ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px solid ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px solid ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px solid ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px solid ${C}` }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `0.8px solid ${C}`, borderRight: 'none' }} />
                                 </tr>
                             ))}
                             <tr style={{ height: '60px' }}>
