@@ -276,7 +276,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '12px', color: C }}>{data.delivery_date || ''}</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0 6px' }}>
-                            <span style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '8px', borderBottom: `3px double ${C}`, color: C, lineHeight: 1.1, whiteSpace: 'nowrap', wordBreak: 'keep-all' }}>거래명세표</span>
+                            <span style={{ fontSize: '16px', fontWeight: '900', borderBottom: `3px double ${C}`, color: C, lineHeight: 1.1, whiteSpace: 'nowrap', wordBreak: 'keep-all' }}>{"거\u00A0\u00A0\u00A0래\u00A0\u00A0\u00A0명\u00A0\u00A0\u00A0세\u00A0\u00A0\u00A0표"}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '12px', paddingBottom: '8px', gap: '8px', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', minWidth: '150px', alignItems: 'center' }}>
@@ -308,9 +308,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             </colgroup>
                             <tbody>
                                 <tr style={{ height: '26px' }}>
-                                    <td rowSpan={4} style={{ ...td(C), textAlign: 'center', padding: '0', writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: '4px', fontSize: '11px', fontWeight: 'bold', width: '18px', borderLeft: 'none' }}>공급자</td>
+                                    <td rowSpan={4} style={{ ...td(C), textAlign: 'center', padding: '0', writingMode: 'vertical-rl', textOrientation: 'upright', fontSize: '11px', fontWeight: 'bold', width: '18px', borderLeft: 'none' }}>{"공\u00A0\u00A0급\u00A0\u00A0자"}</td>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>등록번호</td>
-                                    <td colSpan={3} style={{ ...td(C), textAlign: 'center', fontSize: '18px', fontWeight: '900', letterSpacing: '1.5px' }}>{supplierInfo.biz_no}</td>
+                                    <td colSpan={3} style={{ ...td(C), textAlign: 'center', fontSize: '18px', fontWeight: '900' }}>{supplierInfo.biz_no}</td>
                                 </tr>
                                 <tr style={{ height: '30px' }}>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>상호</td>
