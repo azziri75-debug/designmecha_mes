@@ -755,10 +755,10 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
                     ) : (
                         <>
                             {unplannedOrders.map((order) => (
-                                <UnplannedOrderRow key={`order-${order.id}`} order={order} onCreatePlan={onCreatePlan} />
+                                <UnplannedOrderRow key={`order-${order.id}`} order={order} onCreatePlan={onCreatePlan} colWidths={colWidths} />
                             ))}
                             {unplannedStockProductions.map((sp) => (
-                                <UnplannedStockProductionRow key={`sp-${sp.id}`} stockProduction={sp} onCreatePlan={onCreatePlan} />
+                                <UnplannedStockProductionRow key={`sp-${sp.id}`} stockProduction={sp} onCreatePlan={onCreatePlan} colWidths={colWidths} />
                             ))}
                         </>
                     )}
@@ -768,7 +768,7 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
     );
 };
 
-const UnplannedOrderRow = ({ order, onCreatePlan }) => {
+const UnplannedOrderRow = ({ order, onCreatePlan, colWidths }) => {
     const [open, setOpen] = useState(false);
 
     return (
@@ -837,7 +837,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
     );
 };
 
-const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
+const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan, colWidths }) => {
     const [open, setOpen] = useState(false);
 
     return (
@@ -964,6 +964,7 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
                                 onShowStock={onShowStock}
                                 onRefresh={onRefresh}
                                 onConfirm={onConfirm}
+                                parentColWidths={colWidths}
                             />
                         ))
                     )}
@@ -1216,7 +1217,7 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
     );
 };
 
-const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, readonly, onRefresh }) => {
+const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onShowOrder, onShowStock, readonly, onRefresh, parentColWidths }) => {
     const [open, setOpen] = useState(false);
     const [colWidths, setColWidths] = useState({
         seq: 50,
@@ -1326,7 +1327,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 </TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order?.delivery_date || '-'}</TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
-                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: colWidths?.note || 150 }} title={order?.note || sp?.note}>{order?.note || sp?.note || '-'}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: parentColWidths?.note || 150 }} title={order?.note || sp?.note}>{order?.note || sp?.note || '-'}</TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     <Chip
                         label={plan.status}
