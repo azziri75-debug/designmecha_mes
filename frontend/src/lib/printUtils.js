@@ -108,8 +108,9 @@ export async function generateA4PDF(element, options = {}) {
   element.style.margin = '0';
   element.style.transformOrigin = 'top left';
   element.style.width = `${targetWidthMM}mm`;
-  element.style.minHeight = 'auto';
-  element.style.overflow = 'hidden';
+  element.style.minHeight = 'max-content';
+  element.style.height = 'max-content';
+  element.style.overflow = 'visible';
   element.style.position = 'relative';
 
   // reflow 대기 (정합성을 위해 300ms로 상향)
@@ -262,8 +263,9 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
     el.style.margin = '0';
     el.style.transformOrigin = 'top left';
     el.style.width = `${targetWidthMM}mm`;
-    el.style.minHeight = 'auto';
-    el.style.overflow = 'hidden';
+    el.style.minHeight = 'max-content';
+    el.style.height = 'max-content';
+    el.style.overflow = 'visible';
 
     await new Promise(r => setTimeout(r, 150));
 
@@ -340,8 +342,9 @@ export async function printAsImage(element, options = {}) {
   element.style.outline = 'none';
   element.style.transformOrigin = 'top left';
   element.style.width = `${targetWidthMM}mm`;
-  element.style.minHeight = 'auto';
-  element.style.overflow = 'hidden';
+  element.style.minHeight = 'max-content';
+  element.style.height = 'max-content';
+  element.style.overflow = 'visible';
   element.style.position = 'relative';
 
   await new Promise(r => setTimeout(r, 200));
