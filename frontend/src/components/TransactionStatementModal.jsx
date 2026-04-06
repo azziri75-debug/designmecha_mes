@@ -262,6 +262,13 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
+                    /* fix: prevent background layer from bleeding over collapsed SVG borders during capture */
+                    .tsm-form-paper table {
+                        border-collapse: collapse !important;
+                    }
+                    .tsm-form-paper td, .tsm-form-paper th {
+                        background-clip: padding-box !important;
+                    }
                 `}</style>
                 {/* ── 상단: No/일자 + 거래명세표 타이틀 + 공급자 테이블 ── */}
                 <div style={{ padding: '2px 8px', fontSize: '10px', fontWeight: '900', color: C, textAlign: 'left' }}>{typeLabel}</div>
