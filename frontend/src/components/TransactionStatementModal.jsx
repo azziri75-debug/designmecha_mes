@@ -53,10 +53,11 @@ const tblStyle = (c) => ({
     tableLayout: 'fixed',
 });
 const td = (c, extra = {}) => ({
-    border: `1.2px solid ${c}`,
+    border: `1.4px solid ${c}`,
     padding: '3px 6px !important',
     fontSize: '10.5px !important',
     color: `${c} !important`,
+    borderStyle: 'solid !important',
     verticalAlign: 'middle',
     wordBreak: 'keep-all',
     overflow: 'hidden',
@@ -250,28 +251,16 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 boxSizing: 'border-box',
                 padding: '15px !important',
                 overflow: 'hidden',
-                '--statement-color': C
+                WebkitPrintColorAdjust: 'exact',
+                printColorAdjust: 'exact',
             }}>
                 <style>{`
                     .tsm-form-paper, .tsm-form-paper * {
                         background-color: white !important;
-                        color: black !important;
                     }
-                    .tsm-form-paper td, .tsm-form-paper th, .tsm-form-paper span {
-                        border-color: var(--statement-color) !important;
-                        border-style: solid !important;
-                        color: var(--statement-color) !important;
-                        background-color: white !important;
-                    }
-                    .tsm-form-paper td, .tsm-form-paper th {
-                        border-width: 1.2px !important;
-                    }
-                    .tsm-form-paper .colored-text {
-                        color: var(--statement-color) !important;
-                    }
-                    .tsm-form-paper input, .tsm-form-paper textarea {
-                        background-color: transparent !important;
-                        color: var(--statement-color) !important;
+                    .tsm-form-paper td, .tsm-form-paper th, .tsm-form-paper span, .tsm-form-paper div {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
                 `}</style>
                 {/* ── 상단: No/일자 + 거래명세표 타이틀 + 공급자 테이블 ── */}
@@ -286,24 +275,21 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             <div style={{ width: '40px', borderRight: `0.8px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', color: C }}>일자</div>
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '12px', color: C }}>{data.delivery_date || ''}</div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0 6px' }}>
-                            <span style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '8px', borderBottom: `3px double ${C}`, color: C, lineHeight: 1.1, whiteSpace: 'nowrap', wordBreak: 'keep-all' }}>거래명세표</span>
-                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '12px', paddingBottom: '8px', gap: '8px', whiteSpace: 'nowrap' }}>
-                            <span style={{ 
-                                display: 'inline-block', 
-                                fontSize: '14px', 
-                                fontWeight: '900', 
-                                color: C, 
-                                borderBottom: `2.2px solid ${C}`, 
-                                minWidth: '150px', 
-                                textAlign: 'center', 
-                                whiteSpace: 'nowrap',
-                                paddingBottom: '2px',
-                                lineHeight: '1.2'
-                            }}>
-                                {data.partner?.name || ''}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: '150px', alignItems: 'center' }}>
+                                <div style={{ 
+                                    fontSize: '14px', 
+                                    fontWeight: '900', 
+                                    color: C, 
+                                    textAlign: 'center', 
+                                    whiteSpace: 'nowrap',
+                                    paddingBottom: '2px',
+                                    lineHeight: '1.2'
+                                }}>
+                                    {data.partner?.name || ''}
+                                </div>
+                                <div style={{ width: '100%', height: '2.5px', backgroundColor: C, marginTop: '-1px' }} />
+                            </div>
                             <span style={{ fontSize: '12px', fontWeight: '900', color: C }}>귀하</span>
                         </div>
                     </div>
@@ -486,9 +472,16 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     <div ref={printRef} className="tsm-print-container print-safe-area" style={{ width: '297mm', height: '210mm', minWidth: '297mm', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', transform: `scale(${scale})`, transformOrigin: 'top center', marginBottom: `calc(210mm * ${scale} - 210mm)`, display: 'flex', flexDirection: 'row', boxShadow: '0 12px 60px rgba(0,0,0,0.5)', padding: '12mm 10mm' }}>
                         <div style={{ flex: 1, minWidth: 0, visibility: showRecipient ? 'visible' : 'hidden' }}><StatementForm color="blue" typeLabel="<공급받는자용>" /></div>
                         
-                        {/* 중앙 절개선 (고정 간격 방식) */}
+                        {/* 중앙 절개선 (고정 간격 + 그라디언트 점선 방식) */}
                         <div style={{ width: '12mm', flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'stretch', visibility: (showRecipient && showSupplier) ? 'visible' : 'hidden' }}>
-                            <div style={{ borderRight: '2px dashed #666', height: '100%', width: '1px' }} />
+                            <div style={{ 
+                                width: '2px', 
+                                height: '100%', 
+                                backgroundImage: `linear-gradient(to bottom, #666 40%, rgba(255,255,255,0) 0%)`,
+                                backgroundSize: '2px 10px',
+                                backgroundRepeat: 'repeat-y',
+                                backgroundPosition: 'center'
+                            }} />
                         </div>
 
                         <div style={{ flex: 1, minWidth: 0, visibility: showSupplier ? 'visible' : 'hidden' }}><StatementForm color="red" typeLabel="<공급자용>" /></div>
