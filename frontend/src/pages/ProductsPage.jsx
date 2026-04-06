@@ -268,16 +268,7 @@ const ProductsPage = ({ type }) => {
         }
     };
 
-    const partnerOptions = partners.filter(p => {
-        const types = Array.isArray(p.partner_type) ? p.partner_type :
-            safeParseJSON(p.partner_type, []);
-        const currentItemType = productFormData.item_type || type;
-        if (currentItemType === 'PRODUCED') {
-            return types.includes('CUSTOMER');
-        } else {
-            return types.includes('SUPPLIER') || types.includes('BOTH');
-        }
-    }).map(p => ({ value: p.id, label: p.name }));
+    const partnerOptions = partners.map(p => ({ value: p.id, label: p.name }));
 
     console.log('[DEBUG] Partner options count:', partnerOptions.length);
 
@@ -1463,7 +1454,7 @@ const ProductsPage = ({ type }) => {
                                                     placeholder="거래처 검색 또는 신규 입력"
                                                     noOptionsMessage={() => "검색 결과가 없습니다"}
                                                     formatCreateLabel={(inputValue) => `"${inputValue}" 신규 등록`}
-                                                    menuPortalTarget={document.body}
+                                                    menuPosition="fixed"
                                                     className="text-sm"
                                                     styles={{
                                                         control: (base) => ({
@@ -1482,7 +1473,7 @@ const ProductsPage = ({ type }) => {
                                                             ...base,
                                                             backgroundColor: 'rgb(31, 41, 55)',
                                                             border: '1px solid rgb(55, 65, 81)',
-                                                            zIndex: 9999
+                                                            zIndex: 10500
                                                         }),
                                                         option: (base, state) => ({
                                                             ...base,

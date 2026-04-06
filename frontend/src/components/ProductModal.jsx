@@ -38,8 +38,9 @@ const ProductModal = ({
 
     const fetchPartners = async () => {
         try {
-            const partnerType = (type === 'PART' || type === 'CONSUMABLE') ? 'SUPPLIER' : 'CUSTOMER';
-            const res = await api.get('/basics/partners/', { params: { type: partnerType } });
+            // 거래처 타입(CUSTOMER, SUPPLIER 등) 필터링 해제: 
+            // 실무상 사용자들이 거래처를 등록할 때 유형을 정확히 지정하지 않거나 복합적인 경우가 많아 검색 실패를 유발함.
+            const res = await api.get('/basics/partners/');
             setPartners(res.data);
         } catch (error) {
             console.error("Failed to fetch partners", error);
@@ -182,7 +183,7 @@ const ProductModal = ({
                                         onCreateOption={handleCreatePartner}
                                         placeholder="거래처 검색 또는 신규 입력"
                                         className="text-sm"
-                                        menuPortalTarget={document.body}
+                                        menuPosition="fixed"
                                         styles={{
                                             control: (base) => ({
                                                 ...base,
