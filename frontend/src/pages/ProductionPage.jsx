@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import Select from 'react-select';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon, Description as DescIcon } from '@mui/icons-material';
@@ -205,39 +205,39 @@ const ProductionPage = () => {
         const plan = plans.find(p => p.id === planId);
 
         if (plan && plan.status === 'COMPLETED') {
-            if (!window.confirm("생산 완료된 내역입니다. 삭제 시 완제품 재고가 차감되고 연계 발주가 '대기'로 복원됩니다. 계속하시겠습니까?")) return;
+            if (!window.confirm("?앹궛 ?꾨즺???댁뿭?낅땲?? ??젣 ???꾩젣???ш퀬媛 李④컧?섍퀬 ?곌퀎 諛쒖＜媛 '?湲?濡?蹂듭썝?⑸땲?? 怨꾩냽?섏떆寃좎뒿?덇퉴?")) return;
         } else {
-            if (!window.confirm("정말로 이 생산 계획을 삭제하시겠습니까? 관련 수주는 대기 상태로 복원됩니다.")) return;
+            if (!window.confirm("?뺣쭚濡????앹궛 怨꾪쉷????젣?섏떆寃좎뒿?덇퉴? 愿???섏＜???湲??곹깭濡?蹂듭썝?⑸땲??")) return;
         }
 
         // Ask whether to also delete related orders
         const deleteRelated = window.confirm(
-            "연관된 자재발주/외주발주 내역이 있을 수 있습니다.\n\n" +
-            "[확인] → 연관 발주 내역도 함께 삭제\n" +
-            "[취소] → 생산 계획만 삭제 (발주 내역 유지)"
+            "?곌????먯옱諛쒖＜/?몄＜諛쒖＜ ?댁뿭???덉쓣 ???덉뒿?덈떎.\n\n" +
+            "[?뺤씤] ???곌? 諛쒖＜ ?댁뿭???④퍡 ??젣\n" +
+            "[痍⑥냼] ???앹궛 怨꾪쉷留???젣 (諛쒖＜ ?댁뿭 ?좎?)"
         );
 
         try {
             await api.delete(`/production/plans/${planId}?delete_related_orders=${deleteRelated}`);
-            alert("삭제되었습니다.");
+            alert("??젣?섏뿀?듬땲??");
             fetchPlans();
             fetchOrders();
             fetchAllPlannedIds();
         } catch (error) {
             console.error("Delete failed", error);
-            alert("삭제 실패: " + (error.response?.data?.detail || error.message));
+            alert("??젣 ?ㅽ뙣: " + (error.response?.data?.detail || error.message));
         }
     };
 
     const handleConfirmPlan = async (planId) => {
-        if (!window.confirm("생산 계획을 확정하시겠습니까? 확정 시 자동으로 자재 소요량(MRP)이 산출되고 미발주 목록에 등록됩니다.")) return;
+        if (!window.confirm("?앹궛 怨꾪쉷???뺤젙?섏떆寃좎뒿?덇퉴? ?뺤젙 ???먮룞?쇰줈 ?먯옱 ?뚯슂??MRP)???곗텧?섍퀬 誘몃컻二?紐⑸줉???깅줉?⑸땲??")) return;
         try {
             await api.patch(`/production/plans/${planId}/status?status=CONFIRMED`);
-            alert("계획이 확정되었습니다. 자재구매관리에서 MRP 리스트를 확인해 주세요.");
+            alert("怨꾪쉷???뺤젙?섏뿀?듬땲?? ?먯옱援щℓ愿由ъ뿉??MRP 由ъ뒪?몃? ?뺤씤??二쇱꽭??");
             fetchPlans();
         } catch (error) {
             console.error("Confirm failed", error);
-            alert("확정 처리 실패");
+            alert("?뺤젙 泥섎━ ?ㅽ뙣");
         }
     };
 
@@ -258,7 +258,7 @@ const ProductionPage = () => {
                     // Backend PurchaseOrder status: PENDING, ORDERED, PARTIAL, COMPLETED.
                     if (incompletePurchase) {
                         hasIncompleteDependencies = true;
-                        warningMessage += `- [구매] ${item.product?.name || '품목'}의 자재 발주가 완료되지 않았습니다.\n`;
+                        warningMessage += `- [援щℓ] ${item.product?.name || '?덈ぉ'}???먯옱 諛쒖＜媛 ?꾨즺?섏? ?딆븯?듬땲??\n`;
                     }
                 }
                 // Check Outsourcing Items
@@ -266,31 +266,31 @@ const ProductionPage = () => {
                     const incompleteOutsourcing = item.outsourcing_items.some(oi => oi.outsourcing_order?.status !== 'COMPLETED');
                     if (incompleteOutsourcing) {
                         hasIncompleteDependencies = true;
-                        warningMessage += `- [외주] ${item.product?.name || '품목'}의 외주 발주가 완료되지 않았습니다.\n`;
+                        warningMessage += `- [?몄＜] ${item.product?.name || '?덈ぉ'}???몄＜ 諛쒖＜媛 ?꾨즺?섏? ?딆븯?듬땲??\n`;
                     }
                 }
             }
         }
 
-        let confirmMessage = "이 계획을 '완료' 처리하시겠습니까?";
+        let confirmMessage = "??怨꾪쉷??'?꾨즺' 泥섎━?섏떆寃좎뒿?덇퉴?";
         if (hasIncompleteDependencies) {
-            confirmMessage = "다음 항목의 발주/외주가 완료되지 않았습니다:\n\n" + warningMessage + "\n그래도 완료하시겠습니까?";
+            confirmMessage = "?ㅼ쓬 ??ぉ??諛쒖＜/?몄＜媛 ?꾨즺?섏? ?딆븯?듬땲??\n\n" + warningMessage + "\n洹몃옒???꾨즺?섏떆寃좎뒿?덇퉴?";
         }
 
         if (!window.confirm(confirmMessage)) return;
 
         try {
             await api.patch(`/production/plans/${planId}/status?status=COMPLETED`);
-            alert("완료 처리되었습니다.");
+            alert("?꾨즺 泥섎━?섏뿀?듬땲??");
             fetchPlans();
         } catch (error) {
             console.error("Complete failed", error);
-            alert("완료 처리 실패");
+            alert("?꾨즺 泥섎━ ?ㅽ뙣");
         }
     };
 
     const handleDeleteAttachment = async (plan, idxToRemove) => {
-        if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
+        if (!window.confirm("?뺣쭚濡???泥⑤??뚯씪????젣?섏떆寃좎뒿?덇퉴? (???묒뾽? ?섎룎由????놁뒿?덈떎)")) return;
 
         try {
             const files = safeParseJSON(plan.attachment_file, []);
@@ -304,16 +304,16 @@ const ProductionPage = () => {
             setViewingFiles(newFiles);
             if (newFiles.length === 0) setShowFileModal(false);
 
-            alert("첨부파일이 삭제되었습니다.");
+            alert("泥⑤??뚯씪????젣?섏뿀?듬땲??");
             fetchPlans(); // Refresh the list
         } catch (e) {
             console.error("Delete attachment failed", e);
-            alert("첨부파일 삭제 실패");
+            alert("泥⑤??뚯씪 ??젣 ?ㅽ뙣");
         }
     };
 
     const handleDeleteItemAttachment = async (item, idxToRemove) => {
-        if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
+        if (!window.confirm("?뺣쭚濡???泥⑤??뚯씪????젣?섏떆寃좎뒿?덇퉴? (???묒뾽? ?섎룎由????놁뒿?덈떎)")) return;
 
         try {
             const files = safeParseJSON(item.attachment_file, []);
@@ -327,11 +327,11 @@ const ProductionPage = () => {
             setViewingFiles(newFiles);
             if (newFiles.length === 0) setShowFileModal(false);
 
-            alert("첨부파일이 삭제되었습니다.");
+            alert("泥⑤??뚯씪????젣?섏뿀?듬땲??");
             fetchPlans();
         } catch (e) {
             console.error("Delete item attachment failed", e);
-            alert("첨부파일 삭제 실패");
+            alert("泥⑤??뚯씪 ??젣 ?ㅽ뙣");
         }
     };
 
@@ -392,7 +392,7 @@ const ProductionPage = () => {
     return (
         <Box sx={{ width: '100%' }}>
             <Typography variant="h4" gutterBottom component="div" sx={{ mb: 4, fontWeight: 'bold', color: '#1a237e' }} className="no-print">
-                생산 관리
+                ?앹궛 愿由?
             </Typography>
 
             <Paper sx={{ width: '100%', mb: 2 }} className="print-safe-area">
@@ -406,14 +406,14 @@ const ProductionPage = () => {
                         '& .Mui-selected': { color: '#000 !important' },
                     }}
                 >
-                    <Tab label="생산 대기 수주" />
-                    <Tab label="생산현황" />
-                    <Tab label="생산 완료" />
+                    <Tab label="?앹궛 ?湲??섏＜" />
+                    <Tab label="?앹궛?꾪솴" />
+                    <Tab label="?앹궛 ?꾨즺" />
                 </Tabs>
 
                 <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: '#fcfcfc' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" color="textSecondary">기간:</Typography>
+                        <Typography variant="body2" color="textSecondary">湲곌컙:</Typography>
                         <input
                             type="date"
                             value={startDate}
@@ -429,11 +429,11 @@ const ProductionPage = () => {
                         />
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 150 }}>
-                        <Typography variant="body2" color="textSecondary">사업부:</Typography>
+                        <Typography variant="body2" color="textSecondary">?ъ뾽遺:</Typography>
                         <div style={{ flex: 1 }}>
                             <Select
                                 isClearable
-                                placeholder="전체 사업부"
+                                placeholder="?꾩껜 ?ъ뾽遺"
                                 options={groups.filter(g => g.type === 'MAJOR').map(g => ({ value: g.id.toString(), label: g.name }))}
                                 value={groups.find(g => g.id.toString() === selectedMajorGroupId) ? { value: selectedMajorGroupId, label: groups.find(g => g.id.toString() === selectedMajorGroupId).name } : null}
                                 onChange={(opt) => setSelectedMajorGroupId(opt ? opt.value : '')}
@@ -447,18 +447,18 @@ const ProductionPage = () => {
                         </div>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
-                        <Typography variant="body2" color="textSecondary">거래처:</Typography>
+                        <Typography variant="body2" color="textSecondary">嫄곕옒泥?</Typography>
                         <div style={{ flex: 1 }}>
                             <Select
                                 isClearable
-                                placeholder="전체 거래처"
+                                placeholder="?꾩껜 嫄곕옒泥?
                                 options={[
-                                    { value: 'all', label: '전체 거래처' },
-                                    { value: 'internal', label: '사내(재고)' },
+                                    { value: 'all', label: '?꾩껜 嫄곕옒泥? },
+                                    { value: 'internal', label: '?щ궡(?ш퀬)' },
                                     ...partners.map(p => ({ value: p.id.toString(), label: p.name }))
                                 ]}
-                                value={filterPartner === 'all' ? { value: 'all', label: '전체 거래처' } :
-                                    filterPartner === 'internal' ? { value: 'internal', label: '사내(재고)' } :
+                                value={filterPartner === 'all' ? { value: 'all', label: '?꾩껜 嫄곕옒泥? } :
+                                    filterPartner === 'internal' ? { value: 'internal', label: '?щ궡(?ш퀬)' } :
                                         partners.find(p => p.id.toString() === filterPartner) ? { value: filterPartner, label: partners.find(p => p.id.toString() === filterPartner).name } : null}
                                 onChange={(opt) => setFilterPartner(opt ? opt.value : 'all')}
                                 styles={{
@@ -471,10 +471,10 @@ const ProductionPage = () => {
                         </div>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" color="textSecondary">품명/품번:</Typography>
+                        <Typography variant="body2" color="textSecondary">?덈챸/?덈쾲:</Typography>
                         <input
                             type="text"
-                            placeholder="검색어 입력..."
+                            placeholder="寃?됱뼱 ?낅젰..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '150px' }}
@@ -492,7 +492,7 @@ const ProductionPage = () => {
                             setSelectedMajorGroupId('');
                         }}
                     >
-                        필터 초기화
+                        ?꾪꽣 珥덇린??
                     </Button>
                 </Box>
 
@@ -522,7 +522,7 @@ const ProductionPage = () => {
                             onDeleteAttachment={handleDeleteAttachment}
                             onOpenFiles={(files, plan) => {
                                 setViewingFiles(files);
-                                setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
+                                setViewingFileTitle(plan?.order?.order_no || '泥⑤? ?뚯씪');
                                 setOnDeleteFile(() => (idx) => handleDeleteAttachment(plan, idx));
                                 setShowFileModal(true);
                             }}
@@ -551,7 +551,7 @@ const ProductionPage = () => {
                             onDeleteAttachment={handleDeleteAttachment}
                             onOpenFiles={(files, plan) => {
                                 setViewingFiles(files);
-                                setViewingFileTitle(plan?.order?.order_no || '첨부 파일');
+                                setViewingFileTitle(plan?.order?.order_no || '泥⑤? ?뚯씪');
                                 setOnDeleteFile(() => (idx) => handleDeleteAttachment(plan, idx));
                                 setShowFileModal(true);
                             }}
@@ -643,22 +643,22 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
         <FileViewerModal
             isOpen={isOpen}
             onClose={onClose}
-            title="불량 발생 내역"
+            title="遺덈웾 諛쒖깮 ?댁뿭"
             files={[]} // Not used but required by FileViewerModal structural similarity if I were to use it, but better use a simple Box/Paper
         >
             <Box sx={{ p: 2, minWidth: 400 }}>
                 <Typography variant="h6" color="error" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <AlertCircle /> 불량 내역 ({defects.length}건)
+                    <AlertCircle /> 遺덈웾 ?댁뿭 ({defects.length}嫄?
                 </Typography>
                 <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                         <TableHead sx={{ bgcolor: '#fff5f5', '& th': { color: '#000000 !important', fontWeight: 'bold' } }}>
                             <TableRow>
-                                <TableCell>발생일</TableCell>
-                                <TableCell>사유</TableCell>
-                                <TableCell align="right">수량</TableCell>
-                                <TableCell align="right">손실 비용</TableCell>
-                                <TableCell>상태</TableCell>
+                                <TableCell>諛쒖깮??/TableCell>
+                                <TableCell>?ъ쑀</TableCell>
+                                <TableCell align="right">?섎웾</TableCell>
+                                <TableCell align="right">?먯떎 鍮꾩슜</TableCell>
+                                <TableCell>?곹깭</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -667,7 +667,7 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
                                     <TableCell>{new Date(d.defect_date).toLocaleDateString()}</TableCell>
                                     <TableCell>{d.defect_reason}</TableCell>
                                     <TableCell align="right">{d.quantity} EA</TableCell>
-                                    <TableCell align="right" sx={{ color: '#d32f2f' }}>{d.amount.toLocaleString()} 원</TableCell>
+                                    <TableCell align="right" sx={{ color: '#d32f2f' }}>{d.amount.toLocaleString()} ??/TableCell>
                                     <TableCell><Chip label={d.status} size="small" color={d.status === 'RESOLVED' ? 'success' : 'error'} variant="outlined" /></TableCell>
                                 </TableRow>
                             ))}
@@ -675,7 +675,7 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
                     </Table>
                 </TableContainer>
                 <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                    <Button onClick={onClose} variant="outlined">닫기</Button>
+                    <Button onClick={onClose} variant="outlined">?リ린</Button>
                 </Box>
             </Box>
         </FileViewerModal>
@@ -689,6 +689,7 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
         product: 250,
         date: 120,
         delivery: 120,
+        note: 200,
         amount: 120,
         action: 120
     });
@@ -738,18 +739,19 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
             <Table sx={{ tableLayout: 'fixed', minWidth: 1000 }}>
                 <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold', bgcolor: '#f8f9fa' } }}>
                     <TableRow>
-                        <ResizableTableCell width={colWidths.no} onResize={handleResize('no')}>수주/재고번호</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>거래처</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.product} onResize={handleResize('product')}>품명</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.date} onResize={handleResize('date')}>등록일</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.delivery} onResize={handleResize('delivery')}>납기일</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.amount} onResize={handleResize('amount')}>금액</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.action} onResize={handleResize('action')}>작업</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.no} onResize={handleResize('no')}>?섏＜/?ш퀬踰덊샇</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>嫄곕옒泥?/ResizableTableCell>
+                        <ResizableTableCell width={colWidths.product} onResize={handleResize('product')}>?덈챸</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.date} onResize={handleResize('date')}>?깅줉??/ResizableTableCell>
+                        <ResizableTableCell width={colWidths.delivery} onResize={handleResize('delivery')}>?⑷린??/ResizableTableCell>
+                        <ResizableTableCell width={colWidths.note} onResize={handleResize('note')}>鍮꾧퀬</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.amount} onResize={handleResize('amount')}>湲덉븸</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.action} onResize={handleResize('action')}>?묒뾽</ResizableTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {unplannedOrders.length === 0 && unplannedStockProductions.length === 0 ? (
-                        <TableRow><TableCell colSpan={7} align="center">생산 대기 중인 항목이 없습니다.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} align="center">?앹궛 ?湲?以묒씤 ??ぉ???놁뒿?덈떎.</TableCell></TableRow>
                     ) : (
                         <>
                             {unplannedOrders.map((order) => (
@@ -777,7 +779,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
                 onDoubleClick={() => onCreatePlan(order)}
             >
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                    <Chip label="수주" size="small" variant="outlined" sx={{ mr: 1 }} />
+                    <Chip label="?섏＜" size="small" variant="outlined" sx={{ mr: 1 }} />
                     {order.order_no}
                 </TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order.partner?.name}</TableCell>
@@ -785,33 +787,34 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
                     {(() => {
                         const first = order.items?.[0]?.product?.name || '';
                         const cnt = (order.items?.length || 1) - 1;
-                        return cnt > 0 ? `${first} 외 ${cnt}건` : first;
+                        return cnt > 0 ? `${first} ??${cnt}嫄? : first;
                     })()}
                 </TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order.order_date}</TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order.delivery_date}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: colWidths?.note || 200 }} title={order.note}>{order.note || '-'}</TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order.total_amount?.toLocaleString()}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order)}>
-                        계획 수립
+                        怨꾪쉷 ?섎┰
                     </Button>
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
                             <Typography variant="h6" gutterBottom component="div">
-                                수주 품목 목록
+                                ?섏＜ ?덈ぉ 紐⑸줉
                             </Typography>
                             <Table size="small" aria-label="purchases">
                                 <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold' } }}>
                                     <TableRow>
-                                        <TableCell>품명</TableCell>
-                                        <TableCell>규격</TableCell>
-                                        <TableCell>단위</TableCell>
-                                        <TableCell>수량</TableCell>
-                                        <TableCell>비고</TableCell>
+                                        <TableCell>?덈챸</TableCell>
+                                        <TableCell>洹쒓꺽</TableCell>
+                                        <TableCell>?⑥쐞</TableCell>
+                                        <TableCell>?섎웾</TableCell>
+                                        <TableCell>鍮꾧퀬</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -845,13 +848,14 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
                 onDoubleClick={() => onCreatePlan(null, stockProduction)}
             >
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                    <Chip label="재고생산" size="small" sx={{ mr: 1, bgcolor: '#e8f5e9', color: '#2e7d32' }} />
+                    <Chip label="?ш퀬?앹궛" size="small" sx={{ mr: 1, bgcolor: '#e8f5e9', color: '#2e7d32' }} />
                     {stockProduction.production_no}
                 </TableCell>
-                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{stockProduction.partner?.name || '사내 (자체 생산)'}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{stockProduction.partner?.name || '?щ궡 (?먯껜 ?앹궛)'}</TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{stockProduction.product?.name || ''}</TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{stockProduction.request_date}</TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{stockProduction.target_date || '-'}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: colWidths?.note || 200 }} title={stockProduction.note}>{stockProduction.note || '-'}</TableCell>
                 <TableCell sx={{ color: '#666', fontStyle: 'italic', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>-</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     <Button
@@ -861,24 +865,24 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
                         startIcon={<AddIcon />}
                         onClick={() => onCreatePlan(null, stockProduction)}
                     >
-                        계획 수립
+                        怨꾪쉷 ?섎┰
                     </Button>
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
                             <Typography variant="h6" gutterBottom component="div">
-                                재고 생산 품목 상세
+                                ?ш퀬 ?앹궛 ?덈ぉ ?곸꽭
                             </Typography>
                             <Table size="small">
                                 <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold' } }}>
                                     <TableRow>
-                                        <TableCell>품명</TableCell>
-                                        <TableCell>규격</TableCell>
-                                        <TableCell>단위</TableCell>
-                                        <TableCell>수량</TableCell>
+                                        <TableCell>?덈챸</TableCell>
+                                        <TableCell>洹쒓꺽</TableCell>
+                                        <TableCell>?⑥쐞</TableCell>
+                                        <TableCell>?섎웾</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -906,6 +910,7 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
         product: 250,
         delivery: 100,
         amount: 100,
+        note: 150,
         status: 100,
         defect: 50,
         processCount: 70,
@@ -924,22 +929,23 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
                 <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold', bgcolor: '#f8f9fa' } }}>
                     <TableRow>
                         <ResizableTableCell width={colWidths.arrow} onResize={handleResize('arrow')} />
-                        <ResizableTableCell width={colWidths.no} onResize={handleResize('no')}>수주/재고번호</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>거래처</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.product} onResize={handleResize('product')}>품명</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.delivery} onResize={handleResize('delivery')}>납기일</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.amount} onResize={handleResize('amount')}>금액</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.status} onResize={handleResize('status')}>상태</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.defect} onResize={handleResize('defect')}>불량</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.processCount} onResize={handleResize('processCount')}>공정수</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.cost} onResize={handleResize('cost')}>총 공정 비용</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.attach} onResize={handleResize('attach')}>첨부파일</ResizableTableCell>
-                        <ResizableTableCell width={colWidths.manage} onResize={handleResize('manage')}>관리</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.no} onResize={handleResize('no')}>?섏＜/?ш퀬踰덊샇</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>嫄곕옒泥?/ResizableTableCell>
+                        <ResizableTableCell width={colWidths.product} onResize={handleResize('product')}>?덈챸</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.delivery} onResize={handleResize('delivery')}>?⑷린??/ResizableTableCell>
+                        <ResizableTableCell width={colWidths.amount} onResize={handleResize('amount')}>湲덉븸</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.note} onResize={handleResize('note')}>鍮꾧퀬</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.status} onResize={handleResize('status')}>?곹깭</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.defect} onResize={handleResize('defect')}>遺덈웾</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.processCount} onResize={handleResize('processCount')}>怨듭젙??/ResizableTableCell>
+                        <ResizableTableCell width={colWidths.cost} onResize={handleResize('cost')}>珥?怨듭젙 鍮꾩슜</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.attach} onResize={handleResize('attach')}>泥⑤??뚯씪</ResizableTableCell>
+                        <ResizableTableCell width={colWidths.manage} onResize={handleResize('manage')}>愿由?/ResizableTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {plans.length === 0 ? (
-                        <TableRow><TableCell colSpan={12} align="center">데이터가 없습니다.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={13} align="center">?곗씠?곌? ?놁뒿?덈떎.</TableCell></TableRow>
                     ) : (
                         plans.map((plan) => (
                             <Row
@@ -1012,7 +1018,7 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                 </TableCell>
                 <TableCell>
                     {item.course_type === 'INTERNAL' ? (
-                        item.worker?.name || <span className="text-gray-400 italic">미배정</span>
+                        item.worker?.name || <span className="text-gray-400 italic">誘몃같??/span>
                     ) : (
                         item.partner_name || '-'
                     )
@@ -1020,9 +1026,9 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                 </TableCell>
                 <TableCell>
                     {item.course_type === 'INTERNAL' ? (
-                        item.equipment?.name || <span className="text-gray-400 italic">미배정</span>
+                        item.equipment?.name || <span className="text-gray-400 italic">誘몃같??/span>
                     ) : (
-                        <span className="text-gray-500 font-light">사외</span>
+                        <span className="text-gray-500 font-light">?ъ쇅</span>
                     )}
                 </TableCell>
                 <TableCell>{item.note}</TableCell>
@@ -1057,7 +1063,7 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                         onChange={async (e) => {
                             const newStatus = e.target.value;
                             if (newStatus === 'COMPLETED' && (item.course_type === 'PURCHASE' || item.course_type === 'OUTSOURCING')) {
-                                if (!window.confirm(`'${item.process_name}' 공정을 완료 처리하시겠습니까?\n이 작업과 연결된 발주/외주 발주가 함께 '처리완료' 상태로 변경될 수 있습니다.`)) {
+                                if (!window.confirm(`'${item.process_name}' 怨듭젙???꾨즺 泥섎━?섏떆寃좎뒿?덇퉴?\n???묒뾽怨??곌껐??諛쒖＜/?몄＜ 諛쒖＜媛 ?④퍡 '泥섎━?꾨즺' ?곹깭濡?蹂寃쎈맆 ???덉뒿?덈떎.`)) {
                                     return;
                                 }
                             }
@@ -1066,7 +1072,7 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                                 if (onRefresh) onRefresh();
                             } catch (err) {
                                 console.error("Status update error", err);
-                                alert("상태 변경 중 오류가 발생했습니다.");
+                                alert("?곹깭 蹂寃?以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.");
                             }
                         }}
                         style={{
@@ -1078,24 +1084,24 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                             cursor: 'pointer'
                         }}
                     >
-                        <option value="PLANNED">계획</option>
-                        <option value="IN_PROGRESS">진행중</option>
-                        <option value="COMPLETED">완료</option>
+                        <option value="PLANNED">怨꾪쉷</option>
+                        <option value="IN_PROGRESS">吏꾪뻾以?/option>
+                        <option value="COMPLETED">?꾨즺</option>
                     </select>
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {(() => {
                             let localFiles = safeParseJSON(item.attachment_file, []);
-                            localFiles = localFiles.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== ''))).map(f => typeof f === 'string' ? { name: f.split?.('/')?.pop() || '파일', url: f } : f);
+                            localFiles = localFiles.filter(f => f && (typeof f === 'object' || (typeof f === 'string' && f.trim() !== ''))).map(f => typeof f === 'string' ? { name: f.split?.('/')?.pop() || '?뚯씪', url: f } : f);
 
                             let externalFiles = [];
                             if (item.course_type === 'PURCHASE' && item.purchase_items?.length > 0 && item.purchase_items[0].purchase_order?.attachment_file) {
                                 const poFiles = safeParseJSON(item.purchase_items[0].purchase_order.attachment_file);
-                                externalFiles = poFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[구매] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
+                                externalFiles = poFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '?뚯씪' } : f), name: `[援щℓ] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '?뚯씪' : f.name)}`, isExternal: true }));
                             } else if (item.course_type === 'OUTSOURCING' && item.outsourcing_items?.length > 0 && item.outsourcing_items[0].outsourcing_order?.attachment_file) {
                                 const outFiles = safeParseJSON(item.outsourcing_items[0].outsourcing_order.attachment_file);
-                                externalFiles = outFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '파일' } : f), name: `[외주] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '파일' : f.name)}`, isExternal: true }));
+                                externalFiles = outFiles.filter(f => f).map(f => ({ ...(typeof f === 'string' ? { url: f, name: f.split?.('/')?.pop() || '?뚯씪' } : f), name: `[?몄＜] ${(typeof f === 'string' ? f.split?.('/')?.pop() || '?뚯씪' : f.name)}`, isExternal: true }));
                             }
 
                             const allFiles = [...externalFiles, ...localFiles];
@@ -1108,7 +1114,7 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                                             color="primary"
                                             onClick={() => {
                                                 if (onOpenProcessFiles) {
-                                                    onOpenProcessFiles(allFiles, `${item.process_name} 첨부 파일`);
+                                                    onOpenProcessFiles(allFiles, `${item.process_name} 泥⑤? ?뚯씪`);
                                                 }
                                             }}
                                         >
@@ -1127,23 +1133,23 @@ const ProcessRow = ({ item, colWidths, defects, typeMap, onShowDefects, onRefres
                         <Box sx={{ margin: 1.5, p: 2, bgcolor: '#ffffff', borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '1px solid #e3f2fd' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1976d2', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <DescIcon fontSize="small" /> 작업 실적 및 상세 로그
+                                    <DescIcon fontSize="small" /> ?묒뾽 ?ㅼ쟻 諛??곸꽭 濡쒓렇
                                 </Typography>
                             </Box>
 
                             {!item.work_log_items || item.work_log_items.length === 0 ? (
                                 <Typography variant="body2" color="textSecondary" sx={{ py: 2, textAlign: 'center', fontStyle: 'italic' }}>
-                                    등록된 작업 실적이 없습니다.
+                                    ?깅줉???묒뾽 ?ㅼ쟻???놁뒿?덈떎.
                                 </Typography>
                             ) : (
                                 <Table size="small">
                                     <TableHead>
                                         <TableRow sx={{ bgcolor: '#f1f8ff' }}>
-                                            <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>작업자</TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold', width: '20%' }}>작업 일시</TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold', width: '15%' }} align="right">수량 (양품/불량)</TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold', width: '35%' }}>작업 내용</TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>첨부파일</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>?묒뾽??/TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '20%' }}>?묒뾽 ?쇱떆</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '15%' }} align="right">?섎웾 (?묓뭹/遺덈웾)</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '35%' }}>?묒뾽 ?댁슜</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>泥⑤??뚯씪</TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -1248,9 +1254,9 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
     }, {}) || {};
 
     const typeMap = {
-        'INTERNAL': '사내',
-        'PURCHASE': '구매',
-        'OUTSOURCING': '외주'
+        'INTERNAL': '?щ궡',
+        'PURCHASE': '援щℓ',
+        'OUTSOURCING': '?몄＜'
     };
 
     return (
@@ -1269,7 +1275,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 <TableCell>
                     {order ? (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Chip label="수주" size="small" sx={{ height: 20, fontSize: '0.65rem', backgroundColor: '#e3f2fd', color: '#1976d2', border: 'none' }} />
+                            <Chip label="?섏＜" size="small" sx={{ height: 20, fontSize: '0.65rem', backgroundColor: '#e3f2fd', color: '#1976d2', border: 'none' }} />
                             <Typography
                                 variant="body2"
                                 color="primary"
@@ -1279,7 +1285,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                         </Box>
                     ) : sp ? (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Chip label="재고" size="small" sx={{ height: 20, fontSize: '0.65rem', backgroundColor: '#f3e5f5', color: '#7b1fa2', border: 'none' }} />
+                            <Chip label="?ш퀬" size="small" sx={{ height: 20, fontSize: '0.65rem', backgroundColor: '#f3e5f5', color: '#7b1fa2', border: 'none' }} />
                             <Typography
                                 variant="body2"
                                 color="secondary"
@@ -1290,7 +1296,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                     ) : '-'}
                 </TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                    {plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내 (자체 생산)'}
+                    {plan.order?.partner?.name || plan.stock_production?.partner?.name || '?щ궡 (?먯껜 ?앹궛)'}
                 </TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     {(() => {
@@ -1315,11 +1321,14 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                         
                         const first = uniqueProducts[0] || '';
                         const cnt = uniqueProducts.length - 1;
-                        return cnt > 0 ? `${first} 외 ${cnt}건` : first;
+                        return cnt > 0 ? `${first} ??${cnt}嫄? : first;
                     })()}
                 </TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order?.delivery_date || '-'}</TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{order?.total_amount?.toLocaleString() || '0'}</TableCell>
+                <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: colWidths?.note || 150 }} title={order?.note || sp?.note}>
+                    {order?.note || sp?.note || '-'}
+                </TableCell>
                 <TableCell sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     <Chip
                         label={plan.status}
@@ -1332,7 +1341,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                         size="small"
                         color="error"
                         onClick={(e) => { e.stopPropagation(); onShowDefects(defects); }}
-                        title="불량 내역 보기"
+                        title="遺덈웾 ?댁뿭 蹂닿린"
                     >
                         <AlertCircle className="w-5 h-5" />
                     </IconButton>
@@ -1348,7 +1357,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                         return (
                             <Box>
                                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>
-                                    {totalCost.toLocaleString()} 원
+                                    {totalCost.toLocaleString()} ??
                                 </Typography>
                             </Box>
                         );
@@ -1365,10 +1374,10 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                                         onOpenFiles(fileList, plan);
                                     }}
                                     className="flex items-center gap-1.5 text-blue-500 hover:text-blue-400 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors"
-                                    title="첨부파일 보기/다운로드"
+                                    title="泥⑤??뚯씪 蹂닿린/?ㅼ슫濡쒕뱶"
                                 >
                                     <FileText className="w-3 h-3" />
-                                    {fileList.length}개
+                                    {fileList.length}媛?
                                 </button>
                             );
                         }
@@ -1380,26 +1389,26 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                         <>
                             {plan.status !== 'COMPLETED' ? (
                                 <>
-                                    <IconButton size="small" color="primary" onClick={() => onPrint(plan, 'PRODUCTION')} title="생산관리시트출력">
+                                    <IconButton size="small" color="primary" onClick={() => onPrint(plan, 'PRODUCTION')} title="?앹궛愿由ъ떆?몄텧??>
                                         <PrintIcon fontSize="small" />
                                     </IconButton>
-                                    <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="수정">
+                                    <IconButton size="small" color="primary" onClick={() => onEdit(plan)} title="?섏젙">
                                         <EditIcon />
                                     </IconButton>
-                                    <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="삭제">
+                                    <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="??젣">
                                         <DeleteIcon />
                                     </IconButton>
                                     {plan.status === 'PLANNED' && (
-                                        <IconButton size="small" color="secondary" onClick={() => onConfirm(plan.id)} title="계획 확정 (MRP 실행)">
+                                        <IconButton size="small" color="secondary" onClick={() => onConfirm(plan.id)} title="怨꾪쉷 ?뺤젙 (MRP ?ㅽ뻾)">
                                             <CheckIcon />
                                         </IconButton>
                                     )}
-                                    <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="생산 완료">
+                                    <IconButton size="small" color="success" onClick={() => onComplete(plan.id)} title="?앹궛 ?꾨즺">
                                         <CheckIcon />
                                     </IconButton>
                                 </>
                             ) : (
-                                <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="생산 완료 취소 (삭제)">
+                                <IconButton size="small" color="error" onClick={() => onDelete(plan.id)} title="?앹궛 ?꾨즺 痍⑥냼 (??젣)">
                                     <DeleteIcon />
                                 </IconButton>
                             )}
@@ -1408,50 +1417,50 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={12}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={13}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
                             <Typography variant="h6" gutterBottom component="div" sx={{ color: '#1a237e', fontWeight: 'bold' }}>
-                                생산 공정 상세
+                                ?앹궛 怨듭젙 ?곸꽭
                             </Typography>
 
                             {Object.entries(groupedItems).map(([productId, group]) => (
                                 <Paper key={productId} variant="outlined" sx={{ mb: 2, p: 2, backgroundColor: '#fafafa' }}>
                                     <Box sx={{ mb: 1 }}>
                                         <Typography variant="subtitle1" fontWeight="bold" display="inline" sx={{ mr: 2, color: '#1565c0' }}>
-                                            품명: {group.product_name}
+                                            ?덈챸: {group.product_name}
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary" display="inline" sx={{ mr: 2 }}>
-                                            규격: {group.product_spec || '-'}
+                                            洹쒓꺽: {group.product_spec || '-'}
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary" display="inline" sx={{ mr: 2 }}>
-                                            생산목표(Gross): {group.items[0]?.gross_quantity || ((group.items[0]?.quantity || 0) + (group.items[0]?.stock_use_quantity || 0))} {group.product_unit}
+                                            ?앹궛紐⑺몴(Gross): {group.items[0]?.gross_quantity || ((group.items[0]?.quantity || 0) + (group.items[0]?.stock_use_quantity || 0))} {group.product_unit}
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary" display="inline" sx={{ mr: 2 }}>
-                                            재고소진: {group.items[0]?.stock_use_quantity || 0} {group.product_unit}
+                                            ?ш퀬?뚯쭊: {group.items[0]?.stock_use_quantity || 0} {group.product_unit}
                                         </Typography>
                                         <Typography variant="body2" fontWeight="bold" display="inline" sx={{ mr: 2, color: '#d32f2f' }}>
-                                            실생산량(Net): {group.items[0]?.quantity || 0} {group.product_unit}
+                                            ?ㅼ깮?곕웾(Net): {group.items[0]?.quantity || 0} {group.product_unit}
                                         </Typography>
                                         <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#c62828', bgcolor: '#ffebee', px: 1, py: 0.5, borderRadius: 1, display: 'inline-block', mr: 2 }}>
-                                            총 공정 비용: {group.items.reduce((sum, item) => sum + (item.cost || 0), 0).toLocaleString()} 원
+                                            珥?怨듭젙 鍮꾩슜: {group.items.reduce((sum, item) => sum + (item.cost || 0), 0).toLocaleString()} ??
                                         </Typography>
                                     </Box>
 
                                     <Table size="small" aria-label="process-list" sx={{ tableLayout: 'fixed' }}>
                                         <TableHead sx={{ '& th': { color: '#000000 !important', fontWeight: 'bold' } }}>
                                             <TableRow>
-                                                <ResizableTableCell width={colWidths.seq} onResize={handleResize('seq')}>순번</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.process} onResize={handleResize('process')}>공정명</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.type} onResize={handleResize('type')}>구분</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>외주/구매/작업자</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.equip} onResize={handleResize('equip')}>배정 장비</ResizableTableCell>
-                                                <ResizableTableCell onResize={handleResize('note')}>작업내용</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.period} onResize={handleResize('period')}>작업기간</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.progress} onResize={handleResize('progress')}>진행상황</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.cost} onResize={handleResize('cost')}>공정비용</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.status} onResize={handleResize('status')}>상태</ResizableTableCell>
-                                                <ResizableTableCell width={colWidths.attach} onResize={handleResize('attach')}>첨부</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.seq} onResize={handleResize('seq')}>?쒕쾲</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.process} onResize={handleResize('process')}>怨듭젙紐?/ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.type} onResize={handleResize('type')}>援щ텇</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.partner} onResize={handleResize('partner')}>?몄＜/援щℓ/?묒뾽??/ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.equip} onResize={handleResize('equip')}>諛곗젙 ?λ퉬</ResizableTableCell>
+                                                <ResizableTableCell onResize={handleResize('note')}>?묒뾽?댁슜</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.period} onResize={handleResize('period')}>?묒뾽湲곌컙</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.progress} onResize={handleResize('progress')}>吏꾪뻾?곹솴</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.cost} onResize={handleResize('cost')}>怨듭젙鍮꾩슜</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.status} onResize={handleResize('status')}>?곹깭</ResizableTableCell>
+                                                <ResizableTableCell width={colWidths.attach} onResize={handleResize('attach')}>泥⑤?</ResizableTableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
