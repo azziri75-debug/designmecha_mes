@@ -255,7 +255,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 printColorAdjust: 'exact',
             }}>
                 <style>{`
-                    .tsm-form-paper, .tsm-form-paper * {
+                    .tsm-form-paper {
                         background-color: white !important;
                     }
                     .tsm-form-paper td, .tsm-form-paper th, .tsm-form-paper span, .tsm-form-paper div {
@@ -296,7 +296,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                 }}>
                                     {data.partner?.name || ''}
                                 </div>
-                                <div style={{ width: '100%', height: '2.5px', backgroundColor: C, marginTop: '-1px' }} />
+                                <div style={{ width: '100%', height: '2.5px', backgroundColor: C, marginTop: '-1px' }} className="tsm-no-bg-override" />
                             </div>
                             <span style={{ fontSize: '12px', fontWeight: '900', color: C }}>귀하</span>
                         </div>
@@ -313,7 +313,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             </colgroup>
                             <tbody>
                                 <tr style={{ height: '26px' }}>
-                                    <td rowSpan={4} style={{ ...td(C), textAlign: 'center', padding: '0', writingMode: 'vertical-rl', textOrientation: 'upright', fontSize: '11px', fontWeight: 'bold', width: '18px', borderLeft: 'none' }}>{"공\u00A0\u00A0급\u00A0\u00A0자"}</td>
+                                    <td rowSpan={4} style={{ ...td(C), textAlign: 'center', padding: '0', writingMode: 'vertical-rl', textOrientation: 'upright', fontSize: '11px', fontWeight: 'bold', width: '18px' }}>{"공\u00A0\u00A0급\u00A0\u00A0자"}</td>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>등록번호</td>
                                     <td colSpan={3} style={{ ...td(C), textAlign: 'center', fontSize: '18px', fontWeight: '900' }}>{supplierInfo.biz_no}</td>
                                 </tr>
@@ -334,7 +334,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '10px' }}>업태</td>
                                     <td style={{ ...td(C), fontSize: '10px' }}>{supplierInfo.biz_type}</td>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '10px' }}>종목</td>
-                                    <td style={{ ...td(C), fontSize: '10px', borderRight: 'none' }}>{supplierInfo.biz_item}</td>
+                                    <td style={{ ...td(C), fontSize: '10px' }}>{supplierInfo.biz_item}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -369,7 +369,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     { key: 'supply', label: '공급가액' },
                                     { key: 'tax', label: '세액' }
                                 ].map((h, i) => (
-                                    <th key={h.key} style={{ ...td(C, { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }), width: colWidths[h.key], textAlign: 'center', fontWeight: '900', fontSize: '12px', borderRight: i === 6 ? 'none' : `1.5px solid ${C}`, position: 'relative', overflow: 'hidden' }}>
+                                    <th key={h.key} style={{ ...td(C, { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }), width: colWidths[h.key], textAlign: 'center', fontWeight: '900', fontSize: '12px', borderRight: `1.5px solid ${C}`, position: 'relative', overflow: 'hidden' }}>
                                         {h.label}
                                         {i < 6 && (
                                             <div onMouseDown={(e) => onResizerMouseDown(h.key, e)} className="tsm-no-print" style={{ position: 'absolute', right: -3, top: 0, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 10 }} />
@@ -387,28 +387,28 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11.5px' }}>{formatNumber(item.quantity)}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '11.5px' }}>{formatNumber(item.unit_price)}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{formatNumber((item.quantity || 0) * (item.unit_price || 0))}</td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '12px', borderRight: 'none' }}>{formatNumber(Math.floor((item.quantity || 0) * (item.unit_price || 0) * 0.1))}</td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '12px' }}>{formatNumber(Math.floor((item.quantity || 0) * (item.unit_price || 0) * 0.1))}</td>
                                 </tr>
                             ))}
                             {emptyCount > 0 && (
                                 <tr style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), textAlign: 'center', borderBottom: `1.5px solid ${C}` }}>{"\u00A0"}</td>
-                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', borderBottom: `1.5px solid ${C}`, borderRight: 'none', textAlign: 'center' }}>= 이하여백 =</td>
+                                    <td style={{ ...td(C), textAlign: 'center' }}>{"\u00A0"}</td>
+                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', textAlign: 'center' }}>= 이하여백 =</td>
                                 </tr>
                             )}
                             {Array(Math.max(0, emptyCount - 1)).fill(null).map((_, i) => (
                                 <tr key={i} style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}`, borderRight: 'none' }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
                                 </tr>
                             ))}
                             <tr style={{ height: '60px' }}>
-                                <td colSpan={7} style={{ ...td(C), borderTop: `1.5px solid ${C}`, borderRight: 'none', padding: '4px 8px', verticalAlign: 'top' }}>
+                                <td colSpan={7} style={{ ...td(C), padding: '4px 8px', verticalAlign: 'top' }}>
                                     <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '2px' }}>비고:</div>
                                     <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="비고 사항을 입력하세요..." style={{ width: '100%', height: '35px', border: 'none', resize: 'none', background: 'transparent', fontSize: '11px', color: C, outline: 'none', padding: '0', fontFamily: 'inherit' }} className="tsm-remarks-textarea" />
                                 </td>
@@ -431,7 +431,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                 <input value={formatNumber(footerInfo.prev_balance)} onChange={e => setFooterInfo(p => ({ ...p, prev_balance: Number(e.target.value.replace(/,/g, '')) || 0 }))} style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: C, fontSize: '11px', background: 'transparent', fontWeight: 'bold' }} />
                             </td>
                             <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '11px' }}>합계</td>
-                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '13px', paddingRight: '12px', borderRight: 'none', whiteSpace: 'nowrap' }}>￦{formatNumber(totalAmount)}</td>
+                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '13px', paddingRight: '12px', whiteSpace: 'nowrap' }}>￦{formatNumber(totalAmount)}</td>
                         </tr>
                         <tr style={{ height: '22px' }}>
                             <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '11px' }}>입금</td>
@@ -439,7 +439,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                 <input value={formatNumber(footerInfo.paid_amount)} onChange={e => setFooterInfo(p => ({ ...p, paid_amount: Number(e.target.value.replace(/,/g, '')) || 0 }))} style={{ border: 'none', width: '100%', textAlign: 'right', outline: 'none', color: C, fontSize: '11px', background: 'transparent', fontWeight: 'bold' }} />
                             </td>
                             <td style={{ ...td(C), textAlign: 'center', fontWeight: 'bold', fontSize: '11px' }}>잔금</td>
-                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '13px', paddingRight: '15px', borderRight: 'none', whiteSpace: 'nowrap' }}>
+                            <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '13px', paddingRight: '15px', whiteSpace: 'nowrap' }}>
                                 ￦{formatNumber(balance)}
                                 <span style={{ fontSize: '10px', marginLeft: '12px', fontWeight: 'bold' }}>인수자&nbsp;</span>
                                 <input value={footerInfo.receiver_name} onChange={e => setFooterInfo(p => ({ ...p, receiver_name: e.target.value }))} placeholder="성함" style={{ border: 'none', width: '60px', outline: 'none', color: C, fontSize: '11px', background: 'transparent', borderBottom: `1px solid ${C}`, textAlign: 'center', padding: '0 4px' }} />
