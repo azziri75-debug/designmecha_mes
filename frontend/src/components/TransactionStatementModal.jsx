@@ -46,14 +46,17 @@ const makeSealURI = (companyName = '(주)디자인메카') =>
 // 공통 table CSS
 // ────────────────────────────────────────────
 const tblStyle = (c) => ({
-    borderCollapse: 'collapse',
+    borderCollapse: 'separate',
+    borderSpacing: 0,
     width: '100%',
     fontFamily: '"Malgun Gothic","맑은 고딕",sans-serif',
     color: c,
     tableLayout: 'fixed',
+    border: `1.8px solid ${c}`
 });
 const td = (c, extra = {}) => ({
-    border: `1px solid ${c}`,
+    borderRight: `1px solid ${c}`,
+    borderBottom: `1px solid ${c}`,
     padding: '2px 3px',
     fontSize: '10.5px',
     color: c,
@@ -262,12 +265,13 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
-                    /* fix: prevent background layer from bleeding over collapsed SVG borders during capture */
-                    .tsm-form-paper table {
-                        border-collapse: collapse !important;
+                    /* fix: use border-collapse: separate with non-doubling borders */
+                    .tsm-form-paper table tr:last-child > td {
+                        border-bottom: none !important;
                     }
-                    .tsm-form-paper td, .tsm-form-paper th {
-                        background-clip: padding-box !important;
+                    .tsm-form-paper table tr > td:last-child,
+                    .tsm-form-paper table tr > th:last-child {
+                        border-right: none !important;
                     }
                 `}</style>
                 {/* ── 상단: No/일자 + 거래명세표 타이틀 + 공급자 테이블 ── */}
