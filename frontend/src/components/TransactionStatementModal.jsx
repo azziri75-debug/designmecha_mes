@@ -262,6 +262,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
+                    /* fix: prevent html-to-image SVG culling on mathematically empty cells */
+                    .tsm-form-paper td:empty::before { 
+                        content: "\\00a0"; 
+                        visibility: hidden; 
+                    }
                 `}</style>
                 {/* ── 상단: No/일자 + 거래명세표 타이틀 + 공급자 테이블 ── */}
                 <div style={{ padding: '2px 8px', fontSize: '10px', fontWeight: '900', color: C, textAlign: 'left' }}>{typeLabel}</div>
@@ -387,19 +392,19 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             ))}
                             {emptyCount > 0 && (
                                 <tr style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), textAlign: 'center', borderBottom: `1.5px solid ${C}` }} />
+                                    <td style={{ ...td(C), textAlign: 'center', borderBottom: `1.5px solid ${C}` }}>{"\u00A0"}</td>
                                     <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', borderBottom: `1.5px solid ${C}`, borderRight: 'none', textAlign: 'center' }}>= 이하여백 =</td>
                                 </tr>
                             )}
                             {Array(Math.max(0, emptyCount - 1)).fill(null).map((_, i) => (
                                 <tr key={i} style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }} />
-                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}`, borderRight: 'none' }} />
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}` }}>{"\u00A0"}</td>
+                                    <td style={{ ...td(C), borderBottom: i === emptyCount - 2 ? 'none' : `1.5px solid ${C}`, borderRight: 'none' }}>{"\u00A0"}</td>
                                 </tr>
                             ))}
                             <tr style={{ height: '60px' }}>
