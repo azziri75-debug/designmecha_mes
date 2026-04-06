@@ -280,8 +280,8 @@ const PurchaseOrderTemplate = ({
             </div>
 
             {/* Footer */}
-            <div className="mt-8 text-[10px]">
-                <div className="border border-black p-4 mb-4 min-h-[100px]">
+            <div className="mt-4 text-[10px]">
+                <div className="border border-black p-3 mb-3 min-h-[70px]">
                     <h4 className="font-bold border-b border-black w-20 mb-2 pb-1 italic">Note.</h4>
                     <EditableText
                         value={data.special_notes}
