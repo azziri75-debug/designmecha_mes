@@ -19,6 +19,7 @@ const DeliveryPage = () => {
 
     const [columnWidths, setColumnWidths] = useState({
         customer: 150,
+        product: 200,
         order_date: 120,
         due_date: 120,
         total_items: 100,
@@ -257,6 +258,7 @@ const DeliveryPage = () => {
                                 <thead>
                                     <tr className="bg-gray-900/50 border-b border-gray-800">
                                         <ResizableTableCell width={columnWidths.customer} onResize={(w) => handleResize('customer', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Customer</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Product Name</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.order_date} onResize={(w) => handleResize('order_date', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Order Date</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.due_date} onResize={(w) => handleResize('due_date', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Due Date</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.total_items} onResize={(w) => handleResize('total_items', w)} className="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Total Items</ResizableTableCell>
@@ -274,6 +276,15 @@ const DeliveryPage = () => {
                                                 <td className="px-6 py-5">
                                                     <div className="font-bold text-gray-200">{ord.partner?.name}</div>
                                                     <div className="text-[10px] text-gray-600 font-mono mt-0.5">{ord.order_no}</div>
+                                                </td>
+                                                <td className="px-6 py-5 text-sm font-bold text-gray-300">
+                                                    {(() => {
+                                                        const pNames = ord.items?.map(it => it.product?.name).filter(Boolean);
+                                                        if (!pNames || pNames.length === 0) return '-';
+                                                        const first = pNames[0];
+                                                        const cnt = pNames.length - 1;
+                                                        return cnt > 0 ? `${first} 외 ${cnt}건` : first;
+                                                    })()}
                                                 </td>
                                                 <td className="px-6 py-5 text-sm font-mono text-gray-400">{ord.order_date}</td>
                                                 <td className="px-6 py-5 text-sm font-mono text-blue-400 font-bold">{ord.delivery_date || '-'}</td>
@@ -321,7 +332,7 @@ const DeliveryPage = () => {
                                             {/* Expanded Detail Panel */}
                                             {expandedOrder === ord.id && (
                                                 <tr>
-                                                    <td colSpan="9" className="px-8 py-0 bg-gray-950/30">
+                                                    <td colSpan="10" className="px-8 py-0 bg-gray-950/30">
                                                         <div className="py-6 grid grid-cols-2 gap-8 border-t border-gray-800/50">
                                                             {/* Items Detail Table */}
                                                             <div className="bg-gray-950/50 rounded-xl border border-gray-700 p-4 shadow-xl">
@@ -446,7 +457,7 @@ const DeliveryPage = () => {
                                     ))}
                                     {displayedOrders.length === 0 && (
                                         <tr>
-                                            <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan="10" className="px-6 py-12 text-center text-gray-500">
                                                 데이터가 없습니다.
                                             </td>
                                         </tr>
