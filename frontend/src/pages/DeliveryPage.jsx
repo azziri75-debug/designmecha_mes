@@ -272,7 +272,7 @@ const DeliveryPage = () => {
                                 <tbody className="divide-y divide-gray-800/50">
                                     {displayedOrders.map((ord) => (
                                         <React.Fragment key={ord.id}>
-                                            <tr className={`group transition-all duration-300 hover:bg-gray-900/40 ${expandedOrder === ord.id ? 'bg-gray-900/60' : ''}`}>
+                                            <tr onClick={() => handleExpandToggle(ord.id)} className={`cursor-pointer group transition-all duration-300 hover:bg-gray-900/40 ${expandedOrder === ord.id ? 'bg-gray-900/60' : ''}`}>
                                                 <td className="px-6 py-5">
                                                     <div className="font-bold text-gray-200">{ord.partner?.name}</div>
                                                     <div className="text-[10px] text-gray-600 font-mono mt-0.5">{ord.order_no}</div>
@@ -312,7 +312,7 @@ const DeliveryPage = () => {
                                                 </td>
                                                 <td className="px-6 py-5 text-center">
                                                     <button
-                                                        onClick={() => handleDeliveryClick(ord)}
+                                                        onClick={(e) => { e.stopPropagation(); handleDeliveryClick(ord); }}
                                                         className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black italic shadow-lg shadow-blue-900/20 active:scale-95 transition-all"
                                                     >
                                                         DELIVERY
@@ -321,7 +321,7 @@ const DeliveryPage = () => {
                                                 <td className="px-6 py-5 text-right">
                                                     <IconButton
                                                         size="small"
-                                                        onClick={() => handleExpandToggle(ord.id)}
+                                                        onClick={(e) => { e.stopPropagation(); handleExpandToggle(ord.id); }}
                                                         sx={{ color: expandedOrder === ord.id ? '#3b82f6' : '#555' }}
                                                     >
                                                         {expandedOrder === ord.id ? <ChevronDown /> : <ChevronRight />}
