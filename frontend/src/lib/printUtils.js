@@ -398,42 +398,6 @@ export async function printAsImage(element, options = {}) {
     element.style.overflow = origO;
     element.classList.remove('is-capturing');
   }
-
-  // 2. 팝업 창 인쇄 (이미지 로드 완료 보장)
-  const printWin = window.open('', '_blank', 'width=900,height=1100');
-  if (!printWin) { alert('팝업 차단을 해제해 주세요.'); return; }
-
-  printWin.document.write(`<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>${title}</title>
-<style>
-  @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; background: white; overflow: hidden; }
-  img { 
-    display: block; 
-    width: 100%; 
-    height: 100%; 
-    object-fit: contain;
-    page-break-inside: avoid;
-  }
-</style>
-</head>
-<body>
-<img id="print-img" src="${dataUrl}" alt="인쇄 내용" />
-<script>
-  const img = document.getElementById('print-img');
-  function doPrint() {
-    setTimeout(() => { window.print(); window.close(); }, 500);
-  }
-  if (img.complete) { doPrint(); } 
-  else { img.onload = doPrint; img.onerror = () => window.close(); }
-</script>
-</body>
-</html>`);
-  printWin.document.close();
 }
 
 /**
