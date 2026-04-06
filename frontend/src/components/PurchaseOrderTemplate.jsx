@@ -222,7 +222,7 @@ const PurchaseOrderTemplate = ({
             {/* Info Section */}
             <div className="flex flex-col md:flex-row idf-print-flex-row justify-between mb-4 md:mb-6 text-xs items-start gap-4">
                 <div className="space-y-4 flex-1 w-full">
-                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 w-fit max-w-full">
+                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 w-fit max-w-full whitespace-nowrap">
                         <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="w-auto" />
                         <span className="text-sm pb-1 font-normal">귀하</span>
                     </div>
@@ -344,7 +344,7 @@ const PurchaseOrderTemplate = ({
                                             )}
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-1 font-bold text-lg relative mt-1">
+                                    <div className="flex items-center gap-1 font-bold text-lg relative mt-1 whitespace-nowrap">
                                         <span>{company?.name || '주식회사 디자인메카'}</span>
                                         <span className="text-red-500 relative ml-1 text-sm font-normal">
                                             (인)

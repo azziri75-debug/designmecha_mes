@@ -381,6 +381,7 @@ export async function printAsImage(element, options = {}) {
       width: 100%; 
       height: 100%; 
       object-fit: contain;
+      padding: 4mm;
       page-break-inside: avoid;
     }
   </style>
