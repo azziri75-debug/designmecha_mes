@@ -257,12 +257,14 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         background-color: white !important;
                         color: black !important;
                     }
-                    .tsm-form-paper td, .tsm-form-paper th {
+                    .tsm-form-paper td, .tsm-form-paper th, .tsm-form-paper span {
                         border-color: var(--statement-color) !important;
                         border-style: solid !important;
-                        border-width: 1.2px !important;
                         color: var(--statement-color) !important;
                         background-color: white !important;
+                    }
+                    .tsm-form-paper td, .tsm-form-paper th {
+                        border-width: 1.2px !important;
                     }
                     .tsm-form-paper .colored-text {
                         color: var(--statement-color) !important;
@@ -288,7 +290,20 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             <span style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '8px', borderBottom: `3px double ${C}`, color: C, lineHeight: 1.1, whiteSpace: 'nowrap', wordBreak: 'keep-all' }}>거래명세표</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '12px', paddingBottom: '8px', gap: '8px', whiteSpace: 'nowrap' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '900', color: C, borderBottom: `1.5px solid ${C}`, minWidth: '120px', textAlign: 'center', whiteSpace: 'nowrap' }}>{data.partner?.name || ''}</span>
+                            <span style={{ 
+                                display: 'inline-block', 
+                                fontSize: '14px', 
+                                fontWeight: '900', 
+                                color: C, 
+                                borderBottom: `2.2px solid ${C}`, 
+                                minWidth: '150px', 
+                                textAlign: 'center', 
+                                whiteSpace: 'nowrap',
+                                paddingBottom: '2px',
+                                lineHeight: '1.2'
+                            }}>
+                                {data.partner?.name || ''}
+                            </span>
                             <span style={{ fontSize: '12px', fontWeight: '900', color: C }}>귀하</span>
                         </div>
                     </div>
@@ -468,9 +483,14 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#ffffff !important', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     {pdfStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
                     {pdfStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
-                    <div ref={printRef} className="tsm-print-container print-safe-area" style={{ width: '297mm', height: '210mm', minWidth: '297mm', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', transform: `scale(${scale})`, transformOrigin: 'top center', marginBottom: `calc(210mm * ${scale} - 210mm)`, display: 'flex', flexDirection: 'row', gap: '12mm', boxShadow: '0 12px 60px rgba(0,0,0,0.5)', padding: '12mm 10mm' }}>
-                        <div style={{ position: 'absolute', left: '50%', top: '5mm', bottom: '5mm', borderRight: '2px dashed #666', pointerEvents: 'none', zIndex: 1, transform: 'translateX(-50%)', display: (showRecipient && showSupplier) ? 'block' : 'none' }} />
+                    <div ref={printRef} className="tsm-print-container print-safe-area" style={{ width: '297mm', height: '210mm', minWidth: '297mm', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', transform: `scale(${scale})`, transformOrigin: 'top center', marginBottom: `calc(210mm * ${scale} - 210mm)`, display: 'flex', flexDirection: 'row', boxShadow: '0 12px 60px rgba(0,0,0,0.5)', padding: '12mm 10mm' }}>
                         <div style={{ flex: 1, minWidth: 0, visibility: showRecipient ? 'visible' : 'hidden' }}><StatementForm color="blue" typeLabel="<공급받는자용>" /></div>
+                        
+                        {/* 중앙 절개선 (고정 간격 방식) */}
+                        <div style={{ width: '12mm', flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'stretch', visibility: (showRecipient && showSupplier) ? 'visible' : 'hidden' }}>
+                            <div style={{ borderRight: '2px dashed #666', height: '100%', width: '1px' }} />
+                        </div>
+
                         <div style={{ flex: 1, minWidth: 0, visibility: showSupplier ? 'visible' : 'hidden' }}><StatementForm color="red" typeLabel="<공급자용>" /></div>
                     </div>
                 </Box>
