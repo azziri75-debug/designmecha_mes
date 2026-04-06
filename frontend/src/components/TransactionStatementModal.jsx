@@ -53,8 +53,8 @@ const tblStyle = (c) => ({
     tableLayout: 'fixed',
 });
 const td = (c, extra = {}) => ({
-    border: `1.4px solid ${c}`,
-    padding: '3px 6px',
+    border: `1px solid ${c}`,
+    padding: '2px 3px',
     fontSize: '10.5px',
     color: c,
     borderStyle: 'solid',
@@ -357,14 +357,14 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             <tr style={{ backgroundColor: 'rgba(0,0,0,0.03)', height: '24px' }}>
                                 {[
                                     { key: 'date', label: '월/일' },
-                                    { key: 'name', label: '내  역' },
-                                    { key: 'spec', label: '규  격' },
+                                    { key: 'name', label: '내역' },
+                                    { key: 'spec', label: '규격' },
                                     { key: 'qty', label: '수량' },
-                                    { key: 'price', label: '단  가' },
+                                    { key: 'price', label: '단가' },
                                     { key: 'supply', label: '공급가액' },
-                                    { key: 'tax', label: '세  액' }
+                                    { key: 'tax', label: '세액' }
                                 ].map((h, i) => (
-                                    <th key={h.key} style={{ ...td(C, { textOverflow: 'ellipsis' }), width: colWidths[h.key], textAlign: 'center', fontWeight: '900', fontSize: '12px', borderRight: i === 6 ? 'none' : `1.2px solid ${C}`, position: 'relative', overflow: 'hidden' }}>
+                                    <th key={h.key} style={{ ...td(C, { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }), width: colWidths[h.key], textAlign: 'center', fontWeight: '900', fontSize: '12px', borderRight: i === 6 ? 'none' : `1px solid ${C}`, position: 'relative', overflow: 'hidden' }}>
                                         {h.label}
                                         {i < 6 && (
                                             <div onMouseDown={(e) => onResizerMouseDown(h.key, e)} className="tsm-no-print" style={{ position: 'absolute', right: -3, top: 0, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 10 }} />

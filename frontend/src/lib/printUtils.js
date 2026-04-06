@@ -118,98 +118,101 @@ export async function generateA4PDF(element, options = {}) {
   const scrollW = element.scrollWidth;
   const scrollH = element.scrollHeight;
 
-  const dataUrl = await toPng(element, {
-    cacheBust: true,
-    backgroundColor: '#ffffff',
-    pixelRatio,
-    filter: printFilter,
-    width: scrollW,
-    height: scrollH,
-    style: {
-      transform: 'scale(1)',
-      left: '0',
-      top: '0',
-      boxShadow: 'none',
-      border: 'none'
+  try {
+    const dataUrl = await toPng(element, {
+      cacheBust: true,
+      backgroundColor: '#ffffff',
+      pixelRatio,
+      filter: printFilter,
+      width: scrollW,
+      height: scrollH,
+      style: {
+        transform: 'scale(1)',
+        left: '0',
+        top: '0',
+        boxShadow: 'none',
+        border: 'none'
+      }
+    });
+
+    // 3. PDF 생성
+    const pdf = new jsPDF({
+      orientation: isLandscape ? 'landscape' : 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    const pageWidthMm = pdf.internal.pageSize.getWidth();
+    const pageHeightMm = pdf.internal.pageSize.getHeight();
+    const usableWidthMm = pageWidthMm - marginMm * 2;
+    const usableHeightMm = pageHeightMm - marginMm * 2;
+
+    // 이미지 실제 픽셀 크기 → mm 비율 변환
+    const img = new window.Image();
+    const imgLoaded = new Promise((res) => { img.onload = res; img.onerror = res; });
+    img.src = dataUrl;
+    await imgLoaded;
+
+    const imgWidthPx = img.naturalWidth || scrollW;
+    const imgHeightPx = img.naturalHeight || scrollH;
+
+    // 이미지의 전체 높이를 mm 단위로 계산 (비율 유지)
+    let scalePdf = usableWidthMm / imgWidthPx;
+    let imgTotalHeightMm = imgHeightPx * scalePdf;
+
+    // [최적화] 단일 페이지 선호 시 높이가 아주 미세하게 넘어가면 강제 축소
+    if (!multiPage || imgTotalHeightMm <= usableHeightMm * 1.05) {
+      if (imgTotalHeightMm > usableHeightMm) {
+        // 너비 기준 스케일보다 높이 기준 스케일이 더 작아야 함 (더 많이 축소)
+        scalePdf = Math.min(usableWidthMm / imgWidthPx, usableHeightMm / imgHeightPx);
+        imgTotalHeightMm = imgHeightPx * scalePdf;
+      }
     }
-  });
 
-  // 원복
-  element.style.transform = origTransform;
-  element.style.margin = origMargin;
-  element.style.transformOrigin = origTransformOrigin;
-  element.style.width = origWidth;
-  element.style.minHeight = origMinHeight;
-  element.style.overflow = origOverflow;
-  element.style.position = origPosition;
-  element.classList.remove('is-capturing');
+    if (multiPage && imgTotalHeightMm > usableHeightMm) {
+      // 여러 페이지로 분할 (이미 축소 처리를 거쳤음에도 여전히 큰 경우)
+      const pageImgHeightPx = usableHeightMm / scalePdf;
+      let yOffset = 0;
+      let pageNum = 0;
 
-  // 3. PDF 생성
-  const pdf = new jsPDF({
-    orientation: isLandscape ? 'landscape' : 'portrait',
-    unit: 'mm',
-    format: 'a4',
-    compress: true,
-  });
-
-  const pageWidthMm = pdf.internal.pageSize.getWidth();
-  const pageHeightMm = pdf.internal.pageSize.getHeight();
-  const usableWidthMm = pageWidthMm - marginMm * 2;
-  const usableHeightMm = pageHeightMm - marginMm * 2;
-
-  // 이미지 실제 픽셀 크기 → mm 비율 변환
-  const img = new window.Image();
-  const imgLoaded = new Promise((res) => { img.onload = res; img.onerror = res; });
-  img.src = dataUrl;
-  await imgLoaded;
-
-  const imgWidthPx = img.naturalWidth || scrollW;
-  const imgHeightPx = img.naturalHeight || scrollH;
-
-  // 이미지의 전체 높이를 mm 단위로 계산 (비율 유지)
-  let scale = usableWidthMm / imgWidthPx;
-  let imgTotalHeightMm = imgHeightPx * scale;
-
-  // [최적화] 단일 페이지 선호 시 높이가 아주 미세하게 넘어가면 강제 축소
-  if (!multiPage || imgTotalHeightMm <= usableHeightMm * 1.05) {
-    if (imgTotalHeightMm > usableHeightMm) {
-      // 너비 기준 스케일보다 높이 기준 스케일이 더 작아야 함 (더 많이 축소)
-      scale = Math.min(usableWidthMm / imgWidthPx, usableHeightMm / imgHeightPx);
-      imgTotalHeightMm = imgHeightPx * scale;
+      while (yOffset < imgHeightPx) {
+        if (pageNum > 0) pdf.addPage();
+        const canvas = document.createElement('canvas');
+        const sliceHeight = Math.min(pageImgHeightPx, imgHeightPx - yOffset);
+        canvas.width = imgWidthPx;
+        canvas.height = sliceHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, -yOffset, imgWidthPx, imgHeightPx);
+        const sliceDataUrl = canvas.toDataURL('image/png'); // Using PNG
+        pdf.addImage(sliceDataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scalePdf, sliceHeight * scalePdf, undefined, 'FAST');
+        yOffset += pageImgHeightPx;
+        pageNum++;
+      }
+    } else {
+      // 단일 페이지 (A4 높이에 맞게 조절, 잘리지 않도록)
+      pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scalePdf, imgHeightPx * scalePdf, undefined, 'FAST');
     }
-  }
 
-  if (multiPage && imgTotalHeightMm > usableHeightMm) {
-    // 여러 페이지로 분할 (이미 축소 처리를 거쳤음에도 여전히 큰 경우)
-    const pageImgHeightPx = usableHeightMm / scale;
-    let yOffset = 0;
-    let pageNum = 0;
-
-    while (yOffset < imgHeightPx) {
-      if (pageNum > 0) pdf.addPage();
-      const canvas = document.createElement('canvas');
-      const sliceHeight = Math.min(pageImgHeightPx, imgHeightPx - yOffset);
-      canvas.width = imgWidthPx;
-      canvas.height = sliceHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, -yOffset, imgWidthPx, imgHeightPx);
-      const sliceDataUrl = canvas.toDataURL('image/png'); // Using PNG
-      pdf.addImage(sliceDataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scale, sliceHeight * scale, undefined, 'FAST');
-      yOffset += pageImgHeightPx;
-      pageNum++;
+    if (action === 'download') {
+      pdf.save(fileName);
+      return;
+    } else if (action === 'blob') {
+      return pdf.output('blob');
     }
-  } else {
-    // 단일 페이지 (A4 높이에 맞게 조절, 잘리지 않도록)
-    pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scale, imgHeightPx * scale, undefined, 'FAST');
-  }
-
-  if (action === 'download') {
-    pdf.save(fileName);
-    return;
-  } else if (action === 'blob') {
-    return pdf.output('blob');
+  } finally {
+    // 원복
+    element.style.transform = origTransform;
+    element.style.margin = origMargin;
+    element.style.transformOrigin = origTransformOrigin;
+    element.style.width = origWidth;
+    element.style.minHeight = origMinHeight;
+    element.style.overflow = origOverflow;
+    element.style.position = origPosition;
+    element.classList.remove('is-capturing');
   }
 }
+
 
 /**
  * ✅ 다중 요소를 하나의 PDF로 병합하여 생성
@@ -340,23 +343,61 @@ export async function printAsImage(element, options = {}) {
 
   await new Promise(r => setTimeout(r, 200));
 
-  const dataUrl = await toPng(element, {
-    cacheBust: true,
-    backgroundColor: null,
-    pixelRatio,
-    filter: printFilter,
-    width: element.scrollWidth,
-    height: element.scrollHeight,
-    style: { boxShadow: 'none' }
-  });
+  try {
+    const dataUrl = await toPng(element, {
+      cacheBust: true,
+      backgroundColor: null,
+      pixelRatio,
+      filter: printFilter,
+      width: element.scrollWidth,
+      height: element.scrollHeight,
+      style: { boxShadow: 'none' }
+    });
 
-  element.style.transform = origT;
-  element.style.margin = origM;
-  element.style.transformOrigin = origTO;
-  element.style.width = origW;
-  element.style.minHeight = origH;
-  element.style.overflow = origO;
-  element.classList.remove('is-capturing');
+    // 2. 팝업 창 인쇄 (이미지 로드 완료 보장)
+    const printWin = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWin) { alert('팝업 차단을 해제해 주세요.'); return; }
+
+    printWin.document.write(`<!DOCTYPE html>
+  <html lang="ko">
+  <head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: white; overflow: hidden; }
+    img { 
+      display: block; 
+      width: 100%; 
+      height: 100%; 
+      object-fit: contain;
+      page-break-inside: avoid;
+    }
+  </style>
+  </head>
+  <body>
+  <img id="print-img" src="${dataUrl}" alt="인쇄 내용" />
+  <script>
+    const img = document.getElementById('print-img');
+    function doPrint() {
+      setTimeout(() => { window.print(); window.close(); }, 500);
+    }
+    if (img.complete) { doPrint(); } 
+    else { img.onload = doPrint; img.onerror = () => window.close(); }
+  </script>
+  </body>
+  </html>`);
+    printWin.document.close();
+  } finally {
+    element.style.transform = origT;
+    element.style.margin = origM;
+    element.style.transformOrigin = origTO;
+    element.style.width = origW;
+    element.style.minHeight = origH;
+    element.style.overflow = origO;
+    element.classList.remove('is-capturing');
+  }
 
   // 2. 팝업 창 인쇄 (이미지 로드 완료 보장)
   const printWin = window.open('', '_blank', 'width=900,height=1100');
