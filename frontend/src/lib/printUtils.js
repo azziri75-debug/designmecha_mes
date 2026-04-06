@@ -112,16 +112,15 @@ export async function generateA4PDF(element, options = {}) {
   element.style.overflow = 'visible';
   element.style.position = 'relative';
 
-  // reflow 대기
-  await new Promise(r => setTimeout(r, 200));
+  // reflow 대기 (정합성을 위해 300ms로 상향)
+  await new Promise(r => setTimeout(r, 300));
 
   const scrollW = element.scrollWidth;
   const scrollH = element.scrollHeight;
 
-  const dataUrl = await toJpeg(element, {
+  const dataUrl = await toPng(element, {
     cacheBust: true,
-    backgroundColor: '#ffffff', // JPEG needs solid background
-    quality: 0.95, // High quality but much smaller than PNG
+    backgroundColor: '#ffffff',
     pixelRatio,
     filter: printFilter,
     width: scrollW,
@@ -194,14 +193,14 @@ export async function generateA4PDF(element, options = {}) {
       canvas.height = sliceHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, -yOffset, imgWidthPx, imgHeightPx);
-      const sliceDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-      pdf.addImage(sliceDataUrl, 'JPEG', marginMm, marginMm, imgWidthPx * scale, sliceHeight * scale, undefined, 'FAST');
+      const sliceDataUrl = canvas.toDataURL('image/png'); // Using PNG
+      pdf.addImage(sliceDataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scale, sliceHeight * scale, undefined, 'FAST');
       yOffset += pageImgHeightPx;
       pageNum++;
     }
   } else {
     // 단일 페이지 (A4 높이에 맞게 조절, 잘리지 않도록)
-    pdf.addImage(dataUrl, 'JPEG', marginMm, marginMm, imgWidthPx * scale, imgHeightPx * scale, undefined, 'FAST');
+    pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, imgWidthPx * scale, imgHeightPx * scale, undefined, 'FAST');
   }
 
   if (action === 'download') {

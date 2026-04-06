@@ -169,6 +169,7 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                 <thead className="bg-gray-800 text-gray-400">
                                     <tr>
                                         <th className="px-4 py-3 text-left">품목명</th>
+                                        <th className="px-4 py-3 text-left">규격</th>
                                         <th className="px-4 py-3 text-right">총 수량</th>
                                         <th className="px-4 py-3 text-right">기 납품</th>
                                         <th className="px-4 py-3 text-right">잔량</th>
@@ -181,6 +182,7 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                     {formData.items.map((item, idx) => (
                                         <tr key={idx} className="hover:bg-gray-800/50">
                                             <td className="px-4 py-3 font-medium">{item.product?.name || item.product_name || '품목명 없음'}</td>
+                                            <td className="px-4 py-3 text-gray-400 text-xs">{item.product?.specification || item.specification || '-'}</td>
                                             <td className="px-4 py-3 text-right text-gray-500">{item.quantity}</td>
                                             <td className="px-4 py-3 text-right text-green-500">{item.delivered_quantity || 0}</td>
                                             <td className="px-4 py-3 text-right font-bold">{item.remaining_quantity}</td>

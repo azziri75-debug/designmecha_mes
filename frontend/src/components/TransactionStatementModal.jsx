@@ -53,7 +53,7 @@ const tblStyle = (c) => ({
     tableLayout: 'fixed',
 });
 const td = (c, extra = {}) => ({
-    border: `1.1px solid ${c}`,
+    border: `1.2px solid ${c}`,
     padding: '3px 6px !important',
     fontSize: '10.5px !important',
     color: `${c} !important`,
@@ -260,7 +260,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     .tsm-form-paper td, .tsm-form-paper th {
                         border-color: var(--statement-color) !important;
                         border-style: solid !important;
-                        border-width: 1.1px !important;
+                        border-width: 1.2px !important;
                         color: var(--statement-color) !important;
                         background-color: white !important;
                     }
@@ -276,8 +276,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 <div style={{ padding: '2px 8px', fontSize: '10px', fontWeight: '900', color: C, textAlign: 'left' }}>{typeLabel}</div>
                 <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: `1.2px solid ${C}` }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', height: '22px', borderBottom: `0.8px solid ${C}` }}>
-                            <div style={{ width: '40px', borderRight: `0.8px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', fontStyle: 'italic', color: C }}>No.</div>
+                        <div style={{ display: 'flex', height: '22px', borderBottom: `1.2px solid ${C}` }}>
+                            <div style={{ width: '40px', borderRight: `1.2px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', fontStyle: 'italic', color: C }}>No.</div>
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '13px', fontWeight: 'bold', color: C }}>{data.delivery_no?.slice(-8) || '00000000'}</div>
                         </div>
                         <div style={{ display: 'flex', height: '22px', borderBottom: `0.8px solid ${C}` }}>
@@ -360,7 +360,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     { key: 'supply', label: '공급가액' },
                                     { key: 'tax', label: '세  액' }
                                 ].map((h, i) => (
-                                    <th key={h.key} style={{ ...td(C, { textOverflow: 'ellipsis' }), width: colWidths[h.key], textAlign: 'center', fontWeight: '900', fontSize: '12px', borderRight: i === 6 ? 'none' : `1.1px solid ${C}`, position: 'relative', overflow: 'hidden' }}>
+                                    <th key={h.key} style={{ ...td(C, { textOverflow: 'ellipsis' }), width: colWidths[h.key], textAlign: 'center', fontWeight: '900', fontSize: '12px', borderRight: i === 6 ? 'none' : `1.2px solid ${C}`, position: 'relative', overflow: 'hidden' }}>
                                         {h.label}
                                         {i < 6 && (
                                             <div onMouseDown={(e) => onResizerMouseDown(h.key, e)} className="tsm-no-print" style={{ position: 'absolute', right: -3, top: 0, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 10 }} />
@@ -469,7 +469,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     {pdfStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
                     {pdfStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
                     <div ref={printRef} className="tsm-print-container print-safe-area" style={{ width: '297mm', height: '210mm', minWidth: '297mm', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', transform: `scale(${scale})`, transformOrigin: 'top center', marginBottom: `calc(210mm * ${scale} - 210mm)`, display: 'flex', flexDirection: 'row', gap: '12mm', boxShadow: '0 12px 60px rgba(0,0,0,0.5)', padding: '12mm 10mm' }}>
-                        <div style={{ position: 'absolute', left: '50%', top: '5mm', bottom: '5mm', borderRight: '1.5px dashed #999', pointerEvents: 'none', zIndex: 1, transform: 'translateX(-50%)', display: (showRecipient && showSupplier) ? 'block' : 'none' }} />
+                        <div style={{ position: 'absolute', left: '50%', top: '5mm', bottom: '5mm', borderRight: '2px dashed #666', pointerEvents: 'none', zIndex: 1, transform: 'translateX(-50%)', display: (showRecipient && showSupplier) ? 'block' : 'none' }} />
                         <div style={{ flex: 1, minWidth: 0, visibility: showRecipient ? 'visible' : 'hidden' }}><StatementForm color="blue" typeLabel="<공급받는자용>" /></div>
                         <div style={{ flex: 1, minWidth: 0, visibility: showSupplier ? 'visible' : 'hidden' }}><StatementForm color="red" typeLabel="<공급자용>" /></div>
                     </div>
