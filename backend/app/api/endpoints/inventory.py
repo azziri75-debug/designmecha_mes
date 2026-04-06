@@ -22,6 +22,7 @@ async def read_stocks(
     item_type: Optional[str] = None,
     partner_id: Optional[int] = None,
     product_name: Optional[str] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
     from app.models.production import ProductionPlan, ProductionPlanItem
@@ -124,6 +125,11 @@ async def read_stocks(
                 Product.specification.ilike(f"%{product_name}%")
             )
         )
+    if major_group_id:
+        from app.models.product import ProductGroup
+        subquery = select(Product.id).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                     .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
+        query = query.where(Product.id.in_(subquery))
 
     # Bug 2 Fix: Exclude CONSUMABLE items but handle NULL item_type safely
     query = query.where(or_(Product.item_type != 'CONSUMABLE', Product.item_type.is_(None)))

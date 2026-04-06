@@ -11,7 +11,8 @@ import {
     ArrowUpRight,
     ArrowDownLeft,
     Pencil,
-    Trash2
+    Trash2,
+    Layers
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -58,7 +59,9 @@ const InventoryPage = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [statusFilter, setStatusFilter] = useState(''); // For productions
+    const [majorGroupId, setMajorGroupId] = useState('');
     const [partners, setPartners] = useState([]);
+    const [groups, setGroups] = useState([]);
 
     const [showProdModal, setShowProdModal] = useState(false);
     const [showStockEditModal, setShowStockEditModal] = useState(false);
@@ -69,11 +72,21 @@ const InventoryPage = () => {
 
     useEffect(() => {
         fetchPartners();
+        fetchGroups();
     }, []);
 
     useEffect(() => {
         fetchData();
-    }, [activeTab, searchTerm, itemType, selectedPartnerId, startDate, endDate, statusFilter]);
+    }, [activeTab, searchTerm, itemType, selectedPartnerId, startDate, endDate, statusFilter, majorGroupId]);
+
+    const fetchGroups = async () => {
+        try {
+            const res = await api.get('/product/groups/');
+            setGroups(res.data.filter(g => g.type === 'MAJOR') || []);
+        } catch (err) {
+            console.error("Fetch groups failed", err);
+        }
+    };
 
 
     const fetchPartners = async () => {
@@ -91,6 +104,7 @@ const InventoryPage = () => {
             const params = {};
             if (searchTerm) params.product_name = searchTerm;
             if (selectedPartnerId) params.partner_id = selectedPartnerId;
+            if (majorGroupId) params.major_group_id = majorGroupId;
 
             if (activeTab === 'status') {
                 if (itemType) params.item_type = itemType;
@@ -260,6 +274,23 @@ const InventoryPage = () => {
                         </div>
                     </div>
 
+                    <div className="w-48">
+                        <label className="text-xs text-gray-500 mb-1 block">사업부</label>
+                        <div className="relative">
+                            <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                            <select
+                                className="w-full bg-gray-950 border-gray-800 rounded-md text-sm pl-10 pr-3 py-2 text-white h-10 focus:ring-blue-500 appearance-none"
+                                value={majorGroupId}
+                                onChange={(e) => setMajorGroupId(e.target.value)}
+                            >
+                                <option value="">전체 사업부</option>
+                                {groups.map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
                     {activeTab === 'status' && (
                         <div className="w-40">
                             <label className="text-xs text-gray-500 mb-1 block">구분</label>
@@ -353,6 +384,7 @@ const InventoryPage = () => {
                                 setStartDate('');
                                 setEndDate('');
                                 setStatusFilter('');
+                                setMajorGroupId('');
                                 setHideEmpty(false);
                             }}
                         >
