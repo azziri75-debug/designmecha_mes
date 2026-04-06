@@ -469,7 +469,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     {pdfStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
                     {pdfStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
                     <div ref={printRef} className="tsm-print-container print-safe-area" style={{ width: '297mm', height: '210mm', minWidth: '297mm', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', transform: `scale(${scale})`, transformOrigin: 'top center', marginBottom: `calc(210mm * ${scale} - 210mm)`, display: 'flex', flexDirection: 'row', gap: '12mm', boxShadow: '0 12px 60px rgba(0,0,0,0.5)', padding: '12mm 10mm' }}>
-                        <div style={{ position: 'absolute', left: '50%', top: '5mm', bottom: '5mm', borderRight: '1.5px dashed #999', pointerEvents: 'none', zIndex: 1, transform: 'translateX(-50%)', display: (showRecipient && showSupplier) ? 'block' : 'none' }} className="tsm-no-print" />
+                        <div style={{ position: 'absolute', left: '50%', top: '5mm', bottom: '5mm', borderRight: '1.5px dashed #999', pointerEvents: 'none', zIndex: 1, transform: 'translateX(-50%)', display: (showRecipient && showSupplier) ? 'block' : 'none' }} />
                         <div style={{ flex: 1, minWidth: 0, visibility: showRecipient ? 'visible' : 'hidden' }}><StatementForm color="blue" typeLabel="<공급받는자용>" /></div>
                         <div style={{ flex: 1, minWidth: 0, visibility: showSupplier ? 'visible' : 'hidden' }}><StatementForm color="red" typeLabel="<공급자용>" /></div>
                     </div>
