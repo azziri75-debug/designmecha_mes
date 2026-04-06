@@ -196,7 +196,7 @@ const PurchaseOrderTemplate = ({
     return (
         <div className="flex flex-col w-full h-full">
 
-            <div className={cn("bg-white text-black relative flex flex-col a4-wrapper print-safe-area", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+            <div className={cn("bg-white text-black relative flex flex-col a4-wrapper print-safe-area pt-6 px-6 pb-10", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
             <div className="flex flex-col md:flex-row idf-print-flex-row justify-between items-start mb-4 md:mb-8 px-2 gap-4">
                 <div className="w-full md:w-[200px] text-[9px] space-y-0.5 pt-0 md:pt-8 order-2 md:order-1 idf-header-no">
