@@ -111,6 +111,55 @@ async def force_fix_db():
         "hint": "모든 항목이 성공 또는 이미 존재함으로 나오면, 사원 관리 페이지를 새로고침해 보세요."
     }
 
+@app.get("/api/v1/fix-orphaned-mrp")
+async def fix_orphaned_mrp():
+    """납품/생산 완료 후에도 미발주 리스트에 남아있는 데이터를 강제로 정리합니다."""
+    from app.api.deps import AsyncSessionLocal
+    from sqlalchemy import select, or_
+    from app.models.purchasing import MaterialRequirement
+    from app.models.production import ProductionPlan, ProductionStatus
+    from app.models.sales import SalesOrder, OrderStatus
+    
+    count = 0
+    async with AsyncSessionLocal() as db:
+        # 1. 생산 계획이 완료된 것들
+        stmt1 = (
+            select(MaterialRequirement)
+            .join(ProductionPlan, MaterialRequirement.plan_id == ProductionPlan.id)
+            .where(
+                MaterialRequirement.status == "PENDING",
+                ProductionPlan.status == ProductionStatus.COMPLETED
+            )
+        )
+        
+        # 2. 수주 자체가 생산완료/납품완료인 것들
+        stmt2 = (
+            select(MaterialRequirement)
+            .join(SalesOrder, MaterialRequirement.order_id == SalesOrder.id)
+            .where(
+                MaterialRequirement.status == "PENDING",
+                or_(
+                    SalesOrder.status == OrderStatus.DELIVERY_COMPLETED,
+                    SalesOrder.status == OrderStatus.PRODUCTION_COMPLETED
+                )
+            )
+        )
+        
+        res1 = await db.execute(stmt1)
+        res2 = await db.execute(stmt2)
+        
+        all_to_fix = {mr.id: mr for mr in list(res1.scalars().all()) + list(res2.scalars().all())}
+        
+        for mr_id, mr in all_to_fix.items():
+            mr.status = "COMPLETED"
+            db.add(mr)
+            count += 1
+            
+        if count > 0:
+            await db.commit()
+            
+    return {"message": f"성공적으로 {count}건의 미결 데이터를 종결 처리했습니다."}
+
 @app.on_event("startup")
 async def startup_event():
     """Database migrations and initialization tasks on startup"""
