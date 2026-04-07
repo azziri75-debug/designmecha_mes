@@ -389,27 +389,23 @@ export async function printAsImage(element, options = {}) {
   <style>
     @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; background: white; overflow-x: hidden; }
+    html, body { width: 100%; height: 100%; background: white; overflow: hidden; }
     img { 
       display: block; 
       width: 100% !important; 
-      max-height: 100% !important; 
+      max-height: 99.7% !important; 
       object-fit: contain !important;
-      page-break-inside: avoid;
     }
   </style>
   </head>
-  <body>
-  <img id="print-img" src="${dataUrl}" alt="인쇄 내용" />
-  <script>
+  <body><img id="print-img" src="${dataUrl}" alt="인쇄 내용" /><script>
     const img = document.getElementById('print-img');
     function doPrint() {
       setTimeout(() => { window.print(); window.close(); }, 500);
     }
     if (img.complete) { doPrint(); } 
     else { img.onload = doPrint; img.onerror = () => window.close(); }
-  </script>
-  </body>
+  </script></body>
   </html>`);
     printWin.document.close();
   } finally {
