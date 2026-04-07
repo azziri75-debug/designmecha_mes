@@ -584,72 +584,12 @@ const ApprovalPage = () => {
                             </div>
                         </div>
 
-                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto flex-1 bg-[#eee] print:p-0 print:space-y-0", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
-                            {!['PURCHASE_ORDER', 'EXPENSE_REPORT'].includes(selectedDoc.doc_type) && (
-                                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-300 pb-8 max-w-[210mm] mx-auto print-hide">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2">
-                                            <span className={cn(
-                                                "px-2 py-1 rounded text-[10px] font-bold uppercase",
-                                                `bg-${DOC_TYPES[selectedDoc.doc_type]?.color}-900/40 text-${DOC_TYPES[selectedDoc.doc_type]?.color}-400`
-                                            )}>
-                                                {DOC_TYPES[selectedDoc.doc_type]?.label}
-                                            </span>
-                                            <span className={cn(
-                                                "px-2 py-1 rounded-full text-[10px] font-bold",
-                                                STATUS_MAP[selectedDoc.status]?.bg,
-                                                STATUS_MAP[selectedDoc.status]?.text
-                                            )}>
-                                                {STATUS_MAP[selectedDoc.status]?.label}
-                                            </span>
-                                        </div>
-                                        <h2 className="text-2xl font-bold text-gray-800">{selectedDoc.title}</h2>
-                                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                                            <div className="flex items-center gap-1.5 bg-white shadow-sm px-3 py-1 rounded-full border border-gray-200">
-                                                <User className="w-3.5 h-3.5" />
-                                                {selectedDoc.author?.name} {selectedDoc.author?.role}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-3">
-                                        {(selectedDoc.steps || []).map((step, idx) => (
-                                            <div key={idx} className="flex flex-col items-center gap-1.5 w-20">
-                                                <div className="text-[10px] font-bold text-gray-400 uppercase">{step.approver?.role || (step.sequence === 1 ? '부장' : step.sequence === 2 ? '이사' : '대표이사')}</div>
-                                                <div className="w-16 h-16 bg-white rounded border border-gray-200 shadow-sm flex items-center justify-center relative overflow-hidden group">
-                                                    {step.status === 'APPROVED' ? (
-                                                        step.approver?.stamp_image ? (
-                                                            <img 
-                                                                src={getImageUrl(step.approver?.stamp_image.url || step.approver?.stamp_image)} 
-                                                                alt="Sign" 
-                                                                className="w-full h-full object-contain p-1" 
-                                                                onError={(e) => { e.target.style.display = 'none'; }}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-[11px] text-emerald-600 font-bold border-2 border-emerald-500 px-1 rounded -rotate-12 uppercase">Approved</span>
-                                                        )
-                                                    ) : step.status === 'REJECTED' ? (
-                                                        <span className="text-[11px] text-red-600 font-bold border-2 border-red-500 px-1 rounded -rotate-12 uppercase">Rejected</span>
-                                                    ) : (
-                                                        <>
-                                                            <div className="text-[10px] text-gray-300">대기중</div>
-                                                            <div className="absolute inset-0 bg-gray-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                                <div className="text-[9px] text-gray-600 font-medium text-center px-1">{step.approver?.name}</div>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                                <div className="text-[9px] text-gray-400">{step.processed_at ? format(new Date(step.processed_at), 'MM-dd') : '---'}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div 
-                                className={cn(
-                                "a4-wrapper no-shadow-on-print"
-                            )}>
+                        <div className="p-0 overflow-y-auto flex-1 bg-[#eee] flex flex-col print:p-0">
+                            <div className="py-8 flex flex-col items-center">
+                                <div 
+                                    className={cn(
+                                    "a4-wrapper no-shadow-on-print"
+                                )}>
                                 <Box sx={{ 
                                     width: '100%',
                                     // Removed maxWidth/minHeight here because a4-wrapper handles it
@@ -844,22 +784,6 @@ const ApprovalPage = () => {
                                 </div>
                             )}
 
-                            {/* Admin Debug Panel */}
-                            {currentUser?.id === 1 && (
-                                <div className="mt-8 p-4 bg-black/40 rounded-xl border border-gray-700 text-[10px] font-mono text-gray-500">
-                                    <p className="font-bold text-gray-400 mb-2">[DEBUG INFO - ADMIN ONLY]</p>
-                                    <p>My ID: {currentUser.id} (Type: {typeof currentUser.id})</p>
-                                    <p>Doc Current Seq: {selectedDoc.current_sequence} (Type: {typeof selectedDoc.current_sequence})</p>
-                                    <p>Doc Status: {selectedDoc.status}</p>
-                                    <div className="mt-2 space-y-1">
-                                        {selectedDoc.steps?.map((s, idx) => (
-                                            <p key={idx} className={s.sequence === selectedDoc.current_sequence ? "text-yellow-500" : ""}>
-                                                Step {idx}: Seq={s.sequence}({typeof s.sequence}), ApproverID={s.approver_id}({typeof s.approver_id}), Status={s.status}
-                                            </p>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {canApprove(selectedDoc) && (
