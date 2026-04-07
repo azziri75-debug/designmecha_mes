@@ -464,9 +464,6 @@ export async function printMultiPageAsImage(elements, options = {}) {
     const targetW = el.clientWidth || el.offsetWidth;
     const targetH = el.clientHeight || el.offsetHeight;
 
-    const a4WidthPx = Math.floor(targetWidthMM * 3.7795);
-    const a4HeightPx = Math.floor((isLandscape ? A4.H_MM_LAND : A4.H_MM) * 3.7795);
-
     const url = await toPng(el, {
       cacheBust: true,
       backgroundColor: '#ffffff',
