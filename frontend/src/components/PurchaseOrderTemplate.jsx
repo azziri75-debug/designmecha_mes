@@ -201,18 +201,18 @@ const PurchaseOrderTemplate = ({
             {/* Header */}
             <div className="flex items-start justify-between mb-6 w-full idf-header-container">
                 {/* Left: NO */}
-                <div className="text-[10px] pt-8 idf-header-no" style={{ minWidth: '160px' }}>
+                <div className="text-[9px] pt-8 idf-header-no" style={{ minWidth: '120px' }}>
                     <p className="font-bold whitespace-nowrap">
-                        NO : <EditableText value={data.order_no} placeholder="" onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="inline-block border-b border-gray-100" style={{ minWidth: '80px' }} />
+                        NO : <EditableText value={data.order_no} placeholder="" onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="inline-block border-b border-gray-100" style={{ minWidth: '60px' }} />
                     </p>
                 </div>
 
                 {/* Center: Title */}
-                <div className="flex flex-col items-center idf-header-title text-center flex-1 px-2">
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px', letterSpacing: '1px' }}>주식회사 디자인메카</Typography>
-                    <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold text-center leading-none" style={{ 
-                        letterSpacing: '10px', 
-                        textIndent: '10px',
+                <div className="flex flex-col items-center idf-header-title text-center flex-1 px-4 min-w-[240px]">
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '13px', letterSpacing: '1px' }}>주식회사 디자인메카</Typography>
+                    <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold text-center leading-none" style={{ 
+                        letterSpacing: '8.5px', 
+                        textIndent: '8.5px',
                         whiteSpace: 'nowrap'
                     }}>
                         {data.title || '구 매 발 주 서'}
@@ -220,7 +220,7 @@ const PurchaseOrderTemplate = ({
                 </div>
 
                 {/* Right: Approval Grid */}
-                <div className="idf-header-approval" style={{ minWidth: '160px', display: 'flex', justifyContent: 'flex-end' }}>
+                <div className="idf-header-approval" style={{ minWidth: '140px', display: 'flex', justifyContent: 'flex-end' }}>
                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
                 </div>
             </div>

@@ -304,8 +304,12 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-auto bg-[#525659] p-8 flex justify-center">
-                    <div ref={sheetRef} className="bg-white shadow-2xl">
+                <div className="flex-1 overflow-auto bg-gray-100 p-8 flex justify-center no-print">
+                    <div 
+                        ref={sheetRef} 
+                        className="bg-white shadow-2xl min-w-[794px] min-h-[1123px]"
+                        style={{ padding: '15mm', boxSizing: 'border-box' }}
+                    >
                         <PurchaseOrderTemplate
                             data={metadata}
                             onChange={handleMetaChange}

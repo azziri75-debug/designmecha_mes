@@ -98,8 +98,8 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
                                 width: '100%', 
                                 height: '100%', 
                                 objectFit: 'contain', 
-                                maxWidth: '60px',
-                                maxHeight: '60px',
+                                maxWidth: '48px',
+                                maxHeight: '48px',
                                 mixBlendMode: 'multiply'
                             }} 
                             onError={(e) => { e.target.style.display = 'none'; }}
@@ -123,8 +123,8 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
                                 width: '100%', 
                                 height: '100%', 
                                 objectFit: 'contain', 
-                                maxWidth: '60px',
-                                maxHeight: '60px',
+                                maxWidth: '48px',
+                                maxHeight: '48px',
                                 mixBlendMode: 'multiply'
                             }} 
                             onError={(e) => { e.target.style.display = 'none'; }}
@@ -134,10 +134,10 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
                             <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '11px', zIndex: 1 }}>승인</Typography>
                             <Box sx={{ 
                                 position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                                width: '45px', height: '45px', border: '1.5px solid rgba(0,0,255,0.3)', borderRadius: '50%',
+                                width: '38px', height: '38px', border: '1.2px solid rgba(0,0,255,0.3)', borderRadius: '50%',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5
                             }}>
-                                <Typography sx={{ color: 'blue', fontSize: '12px', fontWeight: 'bold' }}>인</Typography>
+                                <Typography sx={{ color: 'blue', fontSize: '10px', fontWeight: 'bold' }}>인</Typography>
                             </Box>
                         </>
                     )}
@@ -167,8 +167,8 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
 
     // Calculate columns: 1 (Author) + N (Steps)
     const totalCols = steps.length + 1;
-    // Shrink width to fit margins (e.g., 65px per column)
-    const gridWidth = 65 * totalCols; 
+    // Reduced width per column (e.g., 55px per column)
+    const gridWidth = 55 * totalCols; 
 
     return (
         <Table size="small" sx={{ 
@@ -181,17 +181,17 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
         }}>
             <TableBody>
                 {/* 1. Header Row (Roles) */}
-                <TableRow sx={{ height: '26px' }}>
-                    <Box component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold' }}>기안자</Box>
+                <TableRow sx={{ height: '22px' }}>
+                    <Box component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold', fontSize: '10px' }}>기안자</Box>
                     {steps.map((step, i) => (
-                        <Box key={i} component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold' }}>
+                        <Box key={i} component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold', fontSize: '10px' }}>
                             {step.approver?.role || step.role || ''}
                         </Box>
                     ))}
                 </TableRow>
 
                 {/* 2. Stamp/Signature Row */}
-                <TableRow sx={{ height: '80px' }}>
+                <TableRow sx={{ height: '65px' }}>
                     <Box component="td">{getStatusMarker(null, true)}</Box>
                     {steps.map((step, i) => (
                         <Box key={i} component="td">{getStatusMarker(step)}</Box>
@@ -199,10 +199,10 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
                 </TableRow>
 
                 {/* 3. Date Row */}
-                <TableRow sx={{ height: '22px' }}>
-                    <Box component="td" sx={{ fontSize: '9px !important' }}>{formatDate(createdAt)}</Box>
+                <TableRow sx={{ height: '20px' }}>
+                    <Box component="td" sx={{ fontSize: '8px !important' }}>{formatDate(createdAt)}</Box>
                     {steps.map((step, i) => (
-                        <Box key={i} component="td" sx={{ fontSize: '9px !important' }}>
+                        <Box key={i} component="td" sx={{ fontSize: '8px !important' }}>
                             {step.status === 'APPROVED' ? formatDate(step.processed_at) : ''}
                         </Box>
                     ))}
