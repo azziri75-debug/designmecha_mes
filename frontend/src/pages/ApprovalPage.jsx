@@ -585,9 +585,9 @@ const ApprovalPage = () => {
                             </div>
                         </div>
 
-                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto flex-1 bg-[#eee]", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
+                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto flex-1 bg-[#eee] print:p-0 print:space-y-0", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
                             {!['PURCHASE_ORDER', 'EXPENSE_REPORT'].includes(selectedDoc.doc_type) && (
-                                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-300 pb-8 max-w-[210mm] mx-auto">
+                                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-300 pb-8 max-w-[210mm] mx-auto print-hide">
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2">
                                             <span className={cn(

@@ -276,12 +276,24 @@ body.resizing {
     .a4-print-mode .doc-detail-modal {
         position: static !important;
         width: 100% !important;
-        height: auto !important;
+        max-width: none !important; /* 7xl 제한 해제 */
+        margin: 0 !important;
+        padding: 0 !important; /* 외부 공백 완전 제거 */
         overflow: visible !important;
         background-color: white !important;
+        box-shadow: none !important;
+        border: none !important;
     }
     .a4-print-mode .print-hide {
         display: none !important;
+    }
+    /* 인쇄 시 스크롤바 영역 등이 공간을 차지하지 않도록 처리 */
+    .a4-print-mode {
+        overflow: visible !important;
+        background-color: white !important;
+    }
+    .a4-print-mode body {
+        overflow: visible !important;
     }
 }
 
