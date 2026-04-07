@@ -259,7 +259,10 @@ body.resizing {
 /* [NEW] 인쇄 시 여백 및 그림자 강제 제거 */
 @media print {
     .a4-wrapper {
+        width: 100% !important; /* 고정 210mm 해제하여 브라우저 여백에 맞춤 */
+        max-width: 100% !important;
         margin: 0 !important;
+        padding: 10mm !important; /* 내부 여백 유지 */
         box-shadow: none !important;
         border: none !important;
         animation: none !important;
@@ -268,6 +271,17 @@ body.resizing {
     /* 인쇄 시 마진 최소화로 짤림 방지 */
     @page {
         margin: 0;
+    }
+    /* 모달의 fixed 포지션을 인쇄 시 해제하여 전체 내용 출력 보장 */
+    .a4-print-mode .doc-detail-modal {
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        background-color: white !important;
+    }
+    .a4-print-mode .print-hide {
+        display: none !important;
     }
 }
 

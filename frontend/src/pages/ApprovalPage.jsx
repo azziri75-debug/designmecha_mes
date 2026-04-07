@@ -557,8 +557,8 @@ const ApprovalPage = () => {
 
             {showDocDetail && selectedDoc && createPortal(
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-200/90 backdrop-blur-sm p-4 approval-modal-overlay no-print">
-                    <div className="bg-white rounded-2xl border border-gray-300 w-full max-w-7xl h-full max-h-[95vh] shadow-2xl animation-fade-in my-auto flex flex-col overflow-hidden">
-                        <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-white">
+                    <div className="bg-white rounded-2xl border border-gray-300 w-full max-w-7xl h-full max-h-[95vh] shadow-2xl animation-fade-in my-auto flex flex-col overflow-hidden doc-detail-modal">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-white print-hide">
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-blue-500" />
@@ -865,7 +865,7 @@ const ApprovalPage = () => {
                         </div>
 
                         {canApprove(selectedDoc) && (
-                            <div className="p-4 md:p-6 border-t border-gray-200 bg-white flex-shrink-0 z-[100] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+                            <div className="p-4 md:p-6 border-t border-gray-200 bg-white flex-shrink-0 z-[100] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] print-hide">
                                 <div className="max-w-4xl mx-auto space-y-4">
                                     <div className="flex flex-col gap-2">
                                         <label className="text-sm font-semibold text-gray-700">결재 의견 / 반려 사유 (필요 시)</label>
