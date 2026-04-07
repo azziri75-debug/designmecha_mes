@@ -379,7 +379,8 @@ export async function printAsImage(element, options = {}) {
     img { 
       display: block; 
       width: 100% !important; 
-      height: auto !important; 
+      max-height: 100% !important; 
+      object-fit: contain !important;
       page-break-inside: avoid;
     }
   </style>
