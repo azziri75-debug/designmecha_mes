@@ -198,29 +198,31 @@ const PurchaseOrderTemplate = ({
 
             <div className={cn("bg-white text-black relative flex flex-col", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
-            <div className="grid grid-cols-[25%_50%_25%] items-start mb-6 px-1 w-full idf-header-grid">
-                {/* Left: NO */}
-                <div className="text-[10px] space-y-0.5 pt-8 idf-header-no overflow-hidden">
-                    <p className="whitespace-nowrap overflow-hidden text-ellipsis font-bold">
-                        NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="inline-block border-b border-gray-100 min-w-[80px]" />
+            {/* Header: Absolute Centering Layout */}
+            <div className="relative flex justify-between items-start mb-10 px-1 w-full idf-header-container min-h-[100px]">
+                {/* Left: NO (Fixed width to avoid title overlap) */}
+                <div className="z-10 text-[10px] pt-8 idf-header-no min-w-[120px]">
+                    <p className="font-bold flex items-center gap-1">
+                        NO : <EditableText value={data.order_no} placeholder="자동생성" onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="inline-block border-b border-gray-100 min-w-[80px]" />
                     </p>
                 </div>
 
-                {/* Center: Title */}
-                <div className="flex flex-col items-center idf-header-title text-center px-2">
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px', letterSpacing: '1px' }}>주식회사 디자인메카</Typography>
-                    <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold text-center leading-none inline-block shadow-[4px_4px_0_rgba(0,0,0,0.05)]" style={{ 
+                {/* Center: Title (Absolute position to ensure geometric center) */}
+                <div className="absolute left-1/2 -translate-x-1/2 top-0 flex flex-col items-center idf-header-title text-center z-0 w-full pointer-events-none">
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px', letterSpacing: '1px', pointerEvents: 'auto' }}>주식회사 디자인메카</Typography>
+                    <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold text-center leading-none inline-block shadow-[4px_4px_0_rgba(0,0,0,0.05)] pointer-events-auto" style={{ 
                         letterSpacing: '10px', 
                         textIndent: '10px',
                         wordBreak: 'keep-all',
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        backgroundColor: 'white'
                     }}>
                         {data.title || '구 매 발 주 서'}
                     </div>
                 </div>
 
-                {/* Right: Approval Grid */}
-                <div className="flex justify-end idf-header-approval pt-1">
+                {/* Right: Approval Grid (Fixed position) */}
+                <div className="z-10 flex justify-end idf-header-approval pt-1 min-w-[120px]">
                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
                 </div>
             </div>
