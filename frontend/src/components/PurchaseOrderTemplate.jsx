@@ -201,9 +201,9 @@ const PurchaseOrderTemplate = ({
             {/* Header */}
             <div className="flex items-start justify-between mb-6 w-full idf-header-container">
                 {/* Left: NO */}
-                <div className="text-[9px] pt-8 idf-header-no" style={{ minWidth: '120px' }}>
+                <div className="text-[8px] pt-8 idf-header-no" style={{ minWidth: '100px' }}>
                     <p className="font-bold whitespace-nowrap">
-                        NO : <EditableText value={data.order_no} placeholder="" onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="inline-block border-b border-gray-100" style={{ minWidth: '60px' }} />
+                        NO : <EditableText value={data.order_no} placeholder="" onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="inline-block border-b border-gray-100" style={{ minWidth: '50px' }} />
                     </p>
                 </div>
 
@@ -248,8 +248,8 @@ const PurchaseOrderTemplate = ({
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="flex-1">
+            {/* Table Area */}
+            <div className="w-full">
                 <ResizableTable
                     columns={columns}
                     data={formattedItems}
@@ -286,9 +286,9 @@ const PurchaseOrderTemplate = ({
             </div>
 
             {/* Footer */}
-            <div className="mt-4 text-[10px]">
-                <div className="border border-black p-3 mb-3 min-h-[70px]">
-                    <h4 className="font-bold border-b border-black w-20 mb-2 pb-1 italic">Note.</h4>
+            <div className="mt-2 text-[10px]">
+                <div className="border border-black p-2 mb-2 min-h-[50px]">
+                    <h4 className="font-bold border-b border-black w-16 mb-1 pb-1 italic">Note.</h4>
                     <EditableText
                         value={data.special_notes}
                         onChange={(v) => handleMetaChange('special_notes', v)}
@@ -304,21 +304,21 @@ const PurchaseOrderTemplate = ({
                         <div className="md:block mr-2 md:mr-0">발주</div><div>조건</div>
                     </div>
                     <div className="flex-1 text-[11px] flex flex-col">
-                        <div className="border-b border-black p-1.5 flex items-center gap-2">
+                        <div className="border-b border-black p-1 flex items-center gap-2">
                             <span className="font-bold w-20">◆ 납기기한 :</span>
-                            <EditableText value={data.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
+                            <EditableText value={data.delivery_date} onChange={(v) => handleMetaChange('delivery_date', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[11px]" />
                         </div>
-                        <div className="border-b border-black p-1.5 flex items-center gap-2">
+                        <div className="border-b border-black p-1 flex items-center gap-2">
                             <span className="font-bold w-20">◆ 납품장소 :</span>
-                            <EditableText value={data.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
+                            <EditableText value={data.delivery_place} onChange={(v) => handleMetaChange('delivery_place', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[11px]" />
                         </div>
-                        <div className="border-b border-black p-1.5 flex items-center gap-2">
+                        <div className="border-b border-black p-1 flex items-center gap-2">
                             <span className="font-bold w-20">◆ 유효기간 :</span>
-                            <EditableText value={data.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
+                            <EditableText value={data.valid_until} onChange={(v) => handleMetaChange('valid_until', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[11px]" />
                         </div>
-                        <div className="p-1.5 flex items-center gap-2">
+                        <div className="p-1 flex items-center gap-2">
                             <span className="font-bold w-20">◆ 결제조건 :</span>
-                            <EditableText value={data.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[12px]" />
+                            <EditableText value={data.payment_terms} onChange={(v) => handleMetaChange('payment_terms', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-50 min-h-0 text-[11px]" />
                         </div>
                     </div>
                     {/* Stamp / Seal Area */}
