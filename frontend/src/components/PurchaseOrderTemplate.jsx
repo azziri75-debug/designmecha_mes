@@ -199,22 +199,22 @@ const PurchaseOrderTemplate = ({
             <div className={cn("bg-white text-black relative flex flex-col", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
             <div className="flex flex-col md:flex-row idf-print-flex-row justify-between items-start mb-4 md:mb-8 px-2 gap-4">
-                <div className="w-full md:w-[200px] text-[9px] space-y-0.5 pt-0 md:pt-8 order-2 md:order-1 idf-header-no">
-                    <p className="flex items-center gap-1 whitespace-nowrap">NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="flex-1 border-b border-gray-100 min-h-0" /></p>
+                <div className="flex-shrink-0 w-auto text-[9px] space-y-0.5 pt-8 idf-header-no">
+                    <p className="flex items-center gap-1 whitespace-nowrap overflow-visible">
+                        NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="w-auto border-b border-gray-100 min-w-[100px]" />
+                    </p>
                 </div>
-                <div className="flex-1 flex flex-col items-center px-0 md:px-6 order-1 md:order-2 w-full idf-header-title text-center">
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '12px', md: '14px' } }}>주식회사 디자인메카</Typography>
-                    <div className="border-[3px] border-black px-4 md:px-8 py-2 text-xl md:text-2xl font-bold text-center leading-none w-full md:w-auto" style={{ 
-                        letterSpacing: { xs: '2px', md: '10px' }, 
-                        textIndent: { xs: '2px', md: '10px' },
-                        display: 'inline-block',
-                        minWidth: 'max-content',
+                <div className="flex-1 flex flex-col items-center px-4 idf-header-title text-center">
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px' }}>주식회사 디자인메카</Typography>
+                    <div className="border-[3px] border-black px-8 py-2 text-2xl font-bold text-center leading-none inline-block min-w-max" style={{ 
+                        letterSpacing: '10px', 
+                        textIndent: '10px',
                         wordBreak: 'keep-all'
                     }}>
                         {data.title || '구 매 발 주 서'}
                     </div>
                 </div>
-                <div className="w-full md:w-[200px] order-3">
+                <div className="flex-shrink-0 w-auto idf-header-approval">
                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
                 </div>
             </div>
