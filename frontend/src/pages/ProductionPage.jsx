@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Select from 'react-select';
-import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse } from '@mui/material';
+import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, IconButton, Collapse, CircularProgress } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon, Description as DescIcon } from '@mui/icons-material';
 import { X, FileText, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
@@ -21,7 +21,7 @@ const ProductionPage = () => {
     const [orders, setOrders] = useState([]);
     const [stockProductions, setStockProductions] = useState([]);
     const [plans, setPlans] = useState([]);
-    const [allPlannedIds, setAllPlannedIds] = useState({ orders: [], stocks: [] });
+    const [allPlannedIds, setAllPlannedIds] = useState(null);
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -693,6 +693,14 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
         amount: 120,
         action: 120
     });
+
+    if (!plannedIds) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     const handleResize = (colKey) => (newWidth) => {
         setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
