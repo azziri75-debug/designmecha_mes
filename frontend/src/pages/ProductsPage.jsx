@@ -1561,6 +1561,19 @@ const ProductsPage = ({ type }) => {
                                                 </div>
                                             </div>
 
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-emerald-400 font-bold uppercase tracking-wider">최근 단가 (₩)</label>
+                                                <input 
+                                                    name="recent_price" 
+                                                    type="number"
+                                                    value={productFormData.recent_price || 0} 
+                                                    onChange={handleProductInputChange} 
+                                                    className="w-full bg-emerald-900/10 border border-emerald-500/30 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium" 
+                                                    placeholder="0" 
+                                                />
+                                            </div>
+
+
                                             {/* Item Type selection removed as requested - auto-assigned from background */}
 
                                             <div className="space-y-2">
