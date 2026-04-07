@@ -256,7 +256,19 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             case 'LEAVE_REQUEST': return <LeaveRequestForm {...commonProps} />;
             case 'OVERTIME': return <OvertimeWorkForm {...commonProps} />;
             case 'PURCHASE_ORDER': return <PurchaseOrderForm {...commonProps} />;
-            cas            {/* Header / Tabs Container */}
+            case 'INTERNAL_DRAFT':
+            default:
+                return (
+                    <Box sx={{ pt: 2 }}>
+                        <InternalDraftForm {...commonProps} />
+                    </Box>
+                );
+        }
+    };
+
+    return (
+        <Box sx={{ bgcolor: '#eee', minHeight: '100vh', py: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {/* Header / Tabs Container */}
             <Paper elevation={1} sx={{ width: '100%', maxWidth: '1100px', mb: 3, borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 100, bgcolor: 'white' }}>
                 <div className="flex items-center justify-between p-5 bg-white">
                     <div>
@@ -319,23 +331,6 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                         ))}
                     </Tabs>
                 )}
-            </Paper>on onClick={() => navigate('/approval')}><X /></IconButton>
-                    </Box>
-                </Box>
-
-                {!isReadOnly && !documentData?.id && (
-                    <Tabs 
-                        value={docType} 
-                        onChange={(_, val) => setDocType(val)} 
-                        variant="fullWidth"
-                        sx={{ borderBottom: 1, borderColor: 'divider' }}
-                    >
-                        {DOC_TYPES.map(type => (
-                            <Tab key={type.value} label={type.label} value={type.value} />
-                        ))}
-                    </Tabs>
-                )}
-                
             </Paper>
 
             {/* A4 Paper */}
