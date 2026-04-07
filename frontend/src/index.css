@@ -73,7 +73,7 @@ body.resizing {
     height: 297mm !important;
     min-height: 297mm !important;
     margin: 0 auto !important;
-    padding: 15mm;
+    padding: 0;
     background-color: white !important;
     box-shadow: 0px 0px 15px rgba(0,0,0,0.2) !important;
     box-sizing: border-box;

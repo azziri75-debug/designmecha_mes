@@ -339,7 +339,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 className="a4-paper-root print-safe-area"
                 sx={{
                     width: '210mm',
-                    minHeight: '297mm',
+                    height: '297mm',
                     p: '15mm',
                     mb: 4,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
@@ -347,7 +347,6 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     fontFamily: '"Malgun Gothic", "Dotum", sans-serif',
                     position: 'relative',
                     color: '#000000',
-                    height: '297mm', // Fixed A4 height
                     boxSizing: 'border-box',
                     overflow: 'hidden',
                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' } 
