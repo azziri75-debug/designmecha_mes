@@ -146,6 +146,8 @@ body.resizing {
     background-color: white !important;
 }
 
+.a4-wrapper.is-capturing,
+.a4-paper-container.is-capturing,
 .is-capturing .a4-wrapper,
 .is-capturing .a4-paper-container {
     width: 210mm !important;
