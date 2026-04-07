@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, insert, func, desc, or_
+from sqlalchemy import select, update, insert, func, desc, or_, exists
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date
 
 from app.api.deps import get_db
 from app.models.inventory import Stock, StockProduction, StockProductionStatus
-from app.models.product import Product, ProductProcess
+from app.models.product import Product, ProductProcess, BOM
 from app.schemas.inventory import (
     StockResponse, StockUpdate,
     StockProductionResponse, StockProductionCreate, StockProductionUpdate
@@ -102,6 +102,8 @@ async def read_stocks(
         .where(active_plan_product_qty.c.stock_production_id.is_not(None))\
         .scalar_subquery()
 
+    has_bom_subq = exists().where(BOM.parent_id == Product.id).scalar_subquery()
+
     from sqlalchemy import or_
     # Final query: Start from Product to include items with NO stock record yet (9 items vs 6 items bug fix)
     query = select(
@@ -110,7 +112,8 @@ async def read_stocks(
         so_wait_subq.label("so_wait"),
         so_active_subq.label("so_active"),
         sp_wait_subq.label("sp_wait"),
-        sp_active_subq.label("sp_active")
+        sp_active_subq.label("sp_active"),
+        has_bom_subq.label("has_bom")
     ).outerjoin(Stock, Stock.product_id == Product.id)
 
     # Apply Filters to the Unified Query
@@ -158,7 +161,8 @@ async def read_stocks(
             "product": product, # Product object serializes to ProductSimple correctly
             "producing_total": producing_total,
             "producing_so": producing_so,
-            "producing_sp": producing_sp
+            "producing_sp": producing_sp,
+            "has_bom": row[6] # Reference the Seventh element (Product, Stock, 4 WIP subqs, has_bom)
         }
         final_stocks.append(stock_data)
         

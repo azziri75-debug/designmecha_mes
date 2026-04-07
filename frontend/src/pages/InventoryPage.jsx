@@ -446,7 +446,11 @@ const InventoryPage = () => {
                                 <tbody className="divide-y divide-gray-800">
                                     {filteredStocks.map((stock) => (
                                         <React.Fragment key={stock.product_id}>
-                                            <tr className="hover:bg-gray-800/30 transition-colors cursor-pointer" onDoubleClick={() => handleStockEdit(stock)}>
+                                            <tr 
+                                                className="hover:bg-gray-800/30 transition-colors cursor-pointer" 
+                                                onDoubleClick={() => handleStockEdit(stock)}
+                                                onClick={() => toggleBOM(stock.product_id)}
+                                            >
                                                 <td className="px-6 py-4">
                                                     <Badge variant="outline" className="bg-gray-800 text-gray-300 border-gray-700">
                                                         {stock.product?.item_type === 'PRODUCED' || stock.product?.item_type === 'PRODUCT' ? '제품' : 
@@ -499,7 +503,7 @@ const InventoryPage = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        {(stock.product?.item_type === 'PRODUCED' || stock.product?.item_type === 'PRODUCT') && (
+                                                        {stock.has_bom && (stock.product?.item_type === 'PRODUCED' || stock.product?.item_type === 'PRODUCT') && (
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
