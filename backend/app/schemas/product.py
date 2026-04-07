@@ -123,6 +123,7 @@ class ProductUpdate(BaseModel):
     note: Optional[str] = None
     item_type: Optional[str] = None
     standard_processes: Optional[List[ProductProcessCreate]] = None
+    recent_price: Optional[float] = None
 
 class ProductSimple(ProductBase):
     id: int
@@ -137,6 +138,20 @@ class ProductResponse(ProductBase):
     current_inventory: int = 0 # Computed field
     latest_price: float = 0.0 # Latest quotation/order price
     partner_name: Optional[str] = None
+    price_history: List["ProductPriceHistoryResponse"] = []
+
+    class Config:
+        from_attributes = True
+
+class ProductPriceHistoryCreate(BaseModel):
+    product_id: int
+    price: float
+    note: Optional[str] = None
+    type: str = "MANUAL"
+
+class ProductPriceHistoryResponse(ProductPriceHistoryCreate):
+    id: int
+    date: str
 
     class Config:
         from_attributes = True

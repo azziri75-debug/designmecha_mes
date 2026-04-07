@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, UniqueConstraint, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from app.db.base import Base
+from app.core.timezone import now_kst
 
 class ProductGroup(Base):
     __tablename__ = "product_groups"
@@ -37,6 +39,7 @@ class Product(Base):
     inventory = relationship("Inventory", back_populates="product", uselist=False)
     standard_processes = relationship("ProductProcess", back_populates="product", order_by="ProductProcess.sequence", lazy="selectin")
     bom_items = relationship("BOM", foreign_keys="BOM.parent_product_id", back_populates="parent_product", cascade="all, delete-orphan", lazy="selectin")
+    price_history = relationship("ProductPriceHistory", back_populates="product", cascade="all, delete-orphan", order_by="ProductPriceHistory.date.desc()")
 
 class Process(Base):
     __tablename__ = "processes"
@@ -103,3 +106,18 @@ class BOM(Base):
     # Relationships
     parent_product = relationship("Product", foreign_keys=[parent_product_id], back_populates="bom_items")
     child_product = relationship("Product", foreign_keys=[child_product_id], lazy="selectin")
+
+class ProductPriceHistory(Base):
+    """
+    제품/부품 단가 이력 (수동 입력 및 자동 기록)
+    """
+    __tablename__ = "product_price_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    price = Column(Float, nullable=False)
+    date = Column(DateTime, default=now_kst)
+    note = Column(String, nullable=True)
+    type = Column(String, default="MANUAL") # MANUAL, PURCHASE, SALES 등
+
+    product = relationship("Product", back_populates="price_history")

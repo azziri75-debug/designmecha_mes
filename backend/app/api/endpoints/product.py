@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload, joinedload
 from typing import List, Optional, Any
 
 from app.api.deps import get_db
-from app.models.product import Product, Process, ProductProcess, ProductGroup, BOM
+from app.models.product import Product, Process, ProductProcess, ProductGroup, BOM, ProductPriceHistory as ProductPriceHistoryModel
 from app.models.sales import Estimate, EstimateItem, SalesOrder, SalesOrderItem
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, OutsourcingOrder, OutsourcingOrderItem
 from app.models.basics import Partner
@@ -145,6 +145,16 @@ async def create_product(
     new_product = Product(**product_data)
     db.add(new_product)
     await db.flush() # ID generation
+
+    # 1.1 Record initial Price History if provided
+    if product.recent_price and product.recent_price > 0:
+        price_rec = ProductPriceHistoryModel(
+            product_id=new_product.id,
+            price=product.recent_price,
+            type="MANUAL",
+            note="초기 등록"
+        )
+        db.add(price_rec)
 
     # Auto-initialize Stock with 0 quantity
     from app.models.inventory import Stock
@@ -304,10 +314,25 @@ async def update_product(
             )
             db.add(new_pp)
             
-    # Update other fields
+    # Update other fields and check price change
+    price_changed = False
+    if "recent_price" in update_data:
+        new_price = update_data.get("recent_price")
+        if new_price != product.recent_price:
+            price_changed = True
+            
     for key, value in update_data.items():
         setattr(product, key, value)
         
+    if price_changed:
+        price_rec = ProductPriceHistoryModel(
+            product_id=product.id,
+            price=product.recent_price,
+            type="MANUAL",
+            note="수동 수정"
+        )
+        db.add(price_rec)
+
     await db.commit()
     await db.refresh(product)
     
@@ -436,9 +461,25 @@ async def get_product_purchase_history(
             partner_name=partner.name,
             quantity=item.quantity,
             unit_price=item.unit_price,
-            total_amount=item.quantity * item.unit_price,
+            total_amount=(item.quantity or 0) * (item.unit_price or 0),
             order_no=order.order_no
         ))
+    
+    # [NEW] Add Manual History
+    manual_stmt = select(ProductPriceHistoryModel).where(ProductPriceHistoryModel.product_id == product_id).order_by(ProductPriceHistoryModel.date.desc())
+    m_res = await db.execute(manual_stmt)
+    for m in m_res.scalars().all():
+        history.append(ProductPriceHistory(
+            date=m.date.strftime("%Y-%m-%d"),
+            type="MANUAL",
+            partner_name="-",
+            quantity=0,
+            unit_price=m.price,
+            total_amount=0,
+            order_no=m.note or "수동 입력"
+        ))
+
+    history.sort(key=lambda x: x.date, reverse=True)
     return history
 
 @router.get("/{product_id}/sales-history", response_model=List[ProductPriceHistory])
