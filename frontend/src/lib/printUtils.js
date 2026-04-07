@@ -375,13 +375,11 @@ export async function printAsImage(element, options = {}) {
   <style>
     @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; background: white; overflow: hidden; }
+    html, body { width: 100%; background: white; overflow-x: hidden; }
     img { 
       display: block; 
-      width: 100%; 
-      height: 100%; 
-      object-fit: contain;
-      padding: 4mm;
+      width: 100% !important; 
+      height: auto !important; 
       page-break-inside: avoid;
     }
   </style>
