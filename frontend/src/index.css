@@ -21,13 +21,11 @@ body.resizing {
   
   .overflow-x-auto table td,
   .overflow-x-auto table th {
-    /* Break long alphanumeric part numbers, but keep Korean words intact if possible */
     overflow-wrap: anywhere;
     word-break: keep-all;
     white-space: normal;
   }
 
-  /* Exclude strictly truncated cells to preserve design intent */
   .overflow-x-auto table td.truncate,
   .overflow-x-auto table th.truncate {
     white-space: nowrap !important;
@@ -54,212 +52,49 @@ body.resizing {
 }
 
 .table-header-resizer:hover, .table-header-resizer.active {
-  background-color: #60a5fa; /* Tailwind blue-400 */
+  background-color: #60a5fa;
 }
 
-/* Fix for html2canvas oklch error in Tailwind v4 */
+/* Color Variables for html2canvas compatibility */
 :root {
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --blue-50: #eff6ff;
-  --blue-600: #2563eb;
-  --blue-700: #1d4ed8;
-  --blue-900: #1e3a8a;
-  --slate-900: #0f172a;
-
-  /* Tailwind v4 exact variable names override */
-  --color-gray-50: #f9fafb !important;
-  --color-gray-100: #f3f4f6 !important;
-  --color-gray-200: #e5e7eb !important;
-  --color-gray-300: #d1d5db !important;
-  --color-gray-400: #9ca3af !important;
-  --color-gray-500: #6b7280 !important;
-  --color-blue-50: #eff6ff !important;
-  --color-blue-600: #2563eb !important;
-  --color-blue-700: #1d4ed8 !important;
-  --color-blue-900: #1e3a8a !important;
-  --color-slate-900: #0f172a !important;
-  --color-emerald-500: #10b981 !important;
-  --color-emerald-600: #059669 !important;
-  --color-red-500: #ef4444 !important;
-  --color-red-600: #dc2626 !important;
-  --color-orange-500: #f97316 !important;
+  --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+  --blue-50: #eff6ff; --blue-600: #2563eb; --blue-700: #1d4ed8; --blue-900: #1e3a8a; --slate-900: #0f172a;
+  --color-gray-50: #f9fafb !important; --color-gray-100: #f3f4f6 !important; --color-gray-200: #e5e7eb !important; --color-gray-300: #d1d5db !important;
+  --color-gray-400: #9ca3af !important; --color-gray-500: #6b7280 !important; --color-blue-50: #eff6ff !important; --color-blue-600: #2563eb !important;
+  --color-blue-700: #1d4ed8 !important; --color-blue-900: #1e3a8a !important; --color-slate-900: #0f172a !important; --color-emerald-500: #10b981 !important;
+  --color-emerald-600: #059669 !important; --color-red-500: #ef4444 !important; --color-red-600: #dc2626 !important; --color-orange-500: #f97316 !important;
   --color-orange-600: #ea580c !important;
 }
-
-/* Print Styles - Scoped to avoid polluting non-A4 pages */
-@media print {
-    /* 1. A4 용지 크기 및 마진 최소화 (브라우저 마진을 제거하고 CSS 패딩으로 제어) */
-    @page {
-        size: A4 portrait;
-        margin: 0;
-    }
-
-    /* 2. 모든 UI 요소(사이드바, 헤더, 버튼 등) 숨김 */
-    body * {
-        visibility: hidden;
-    }
-
-    /* 3. 인쇄 영역 노출 */
-    .print-safe-area, .print-safe-area * {
-        visibility: visible !important;
-    }
-
-    /* A4 가로 인쇄용 (거래명세서 등) */
-    .print-landscape {
-        page: landscape-page;
-    }
-    @page landscape-page {
-        size: A4 landscape;
-        margin: 5mm;
-    }
-
-    /* 4. 인쇄 영역 레이아웃 - 전체 화면 점유 */
-    .print-safe-area {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        display: block !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        box-shadow: none !important;
-        border: none !important;
-        background: white !important;
-        z-index: 99999 !important;
-        overflow: visible !important;
-    }
-
-    /* [NEW] 인쇄 시 헤더 등 Flex 항목 가로 고정 (반응형 무시) */
-    .idf-print-flex-row {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 1rem !important;
-    }
-    .idf-header-no { width: 140px !important; }
-    .idf-header-title { flex: 1 !important; }
-
-    /* 5. A4 wrapper - 미리보기와 동일하게 210mm 유지하여 축소 방지 */
-    .print-safe-area .a4-wrapper,
-    .print-safe-area [class*="w-[210mm]"],
-    .print-safe-area [class*="h-[297mm]"] {
-        width: 210mm !important;
-        max-width: 210mm !important;
-        height: 297mm !important;
-        min-height: 297mm !important;
-        margin: 0 auto !important;
-        padding: 10mm !important; /* 미리보기와 동일한 10mm 부여 */
-        box-shadow: none !important;
-        border: none !important;
-        box-sizing: border-box !important;
-    }
-
-    /* 6. 테이블 너비 보정 */
-    .print-safe-area table {
-        table-layout: fixed !important;
-        width: 100% !important;
-        max-width: 100% !important;
-    }
-    .print-safe-area th, .print-safe-area td {
-        word-break: keep-all !important; /* 한국어 단어 유지 */
-        overflow-wrap: break-word !important; /* 필요시만 분리 */
-        white-space: normal !important;
-    }
-
-    /* 6.5. Force remove all UI shadows/borders for image capture */
-    .print-safe-area, 
-    .print-safe-area *,
-    .a4-wrapper,
-    .a4-paper-container {
-        box-shadow: none !important;
-        text-shadow: none !important;
-        border-radius: 0 !important;
-    }
-
-
-    /* 7. MUI 모달/다이얼로그 오버레이 완전 해방 */
-    .MuiDialog-root,
-    .MuiDialog-container,
-    .MuiDialog-paper,
-    .MuiDialogContent-root,
-    .MuiModal-root,
-    [role="dialog"] {
-        position: static !important;
-        display: block !important;
-        overflow: visible !important;
-        height: auto !important;
-        max-height: none !important;
-        transform: none !important;
-        box-shadow: none !important;
-        background-color: transparent !important;
-    }
-
-    /* Fixed 포지션 모달 오버레이 처리 */
-    .fixed.inset-0 {
-        position: static !important;
-        background: transparent !important;
-        backdrop-filter: none !important;
-    }
-
-    /* 8. 불필요한 레이어 완전 제거 */
-    .MuiBackdrop-root,
-    .no-print,
-    button:not(.print-safe-area button),
-    [class*="bg-black"],
-    [class*="backdrop"],
-    nav, header, aside {
-        display: none !important;
-    }
-
-    /* 9. html/body 초기화 */
-    html, body, #root {
-        height: auto !important;
-        min-height: auto !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: visible !important;
-        background-color: white !important;
-    }
-
-    /* 10. 배경색/이미지 강제 출력 */
-    * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-
-    /* 11. 인쇄 시 페이지 나눔 방지 */
-    .print-safe-area tr, .print-safe-area img, .print-safe-area .no-break {
-        page-break-inside: avoid;
-        break-inside: avoid;
-    }
-}
-
 
 /* User-requested A4 Wrapper for Screen View */
 .a4-wrapper {
     width: 210mm !important;
     max-width: 210mm !important;
     min-height: 297mm !important;
-    margin: 20px auto !important; /* 화면 가운데 정렬 및 상하 여백 */
+    margin: 20px auto !important;
     padding: 10mm;
     background-color: white !important;
-    box-shadow: 0px 0px 15px rgba(0,0,0,0.2) !important; /* 진짜 종이처럼 보이게 그림자 추가 */
+    box-shadow: 0px 0px 15px rgba(0,0,0,0.2) !important;
     box-sizing: border-box;
     flex-shrink: 0;
     position: relative;
     color: black;
 }
 
-/* [NEW] 인쇄 시 여백 및 그림자 강제 제거 */
+/* [FINAL] Print Rules */
 @media print {
-    /* 모달의 포지션을 즉시 해제하여 브라우저 인쇄 엔진이 전체 레이아웃 인식 */
-    /* 부모 클래스(.a4-print-mode) 없이도 직접 타격 */
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+
+    /* Hide everything by default (except specified areas) */
+    body * { visibility: hidden; }
+    .print-safe-area, .print-safe-area *, .doc-detail-modal, .doc-detail-modal * {
+        visibility: visible !important;
+    }
+
+    /* Standardize Modal for Print */
     .doc-detail-modal {
         position: static !important;
         display: block !important;
@@ -279,43 +114,58 @@ body.resizing {
         margin: 0 !important;
         padding: 10mm !important;
         background-color: white !important;
-        box-shadow: none !important;
         border: none !important;
+        box-shadow: none !important;
         box-sizing: border-box !important;
+    }
+
+    /* Utility to hide elements in print */
+    .print-hide, .no-print, .idf-no-print {
+        display: none !important;
+        height: 0 !important;
+    }
+
+    /* Base cleanup */
+    html, body, #root {
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        background-color: white !important;
     }
 
     * {
         box-sizing: border-box !important;
-    }
-
-    /* 모든 인쇄 제외 클래스 즉시 숨김 */
-    .print-hide, .no-print {
-        display: none !important;
-    }
-
-    @page {
-        margin: 0;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 }
 
-/* [NEW] 캡처 전용 스타일 (그림자/외곽선 완전 제거, 표 선 등 문서 내부 선은 유지) */
+/* [FINAL] Capture Rules (for printAsImage) */
 .is-capturing {
-    box-shadow: none !important;
-    border: none !important;
-    outline: none !important;
+    background-color: white !important;
 }
 
 .is-capturing .a4-wrapper,
 .is-capturing .a4-paper-container {
+    width: 210mm !important;
+    min-width: 210mm !important;
     margin: 0 !important;
+    padding: 10mm !important;
     box-shadow: none !important;
-    border: none !important; /* 문서 최외곽 테두리만 제거 */
+    border: none !important;
     outline: none !important;
     border-radius: 0 !important;
+    box-sizing: border-box !important;
+    transform: none !important;
 }
 
 .is-capturing * {
-    box-shadow: none !important; /* 모든 요소의 그림자 제거 */
+    box-shadow: none !important;
     text-shadow: none !important;
-    /* border: none !important; 를 여기서 제거하여 표 선은 살립니다. */
+}
+
+.is-capturing .print-hide,
+.is-capturing .no-print {
+    display: none !important;
 }
