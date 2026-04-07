@@ -103,15 +103,19 @@ export async function generateA4PDF(element, options = {}) {
   element.classList.add('is-capturing');
 
   // 캡처를 위한 강제 스타일 주입 (A4 규격 강제)
-  const targetWidthMM = isLandscape ? A4.W_MM_LAND : A4.W_MM;
+  const a4WidthPx = Math.floor(A4.W_MM * 3.7795);
+  const a4HeightPx = Math.floor(A4.H_MM * 3.7795);
+  
   element.style.transform = 'scale(1)';
   element.style.margin = '0';
   element.style.transformOrigin = 'top left';
-  element.style.width = `${targetWidthMM}mm`;
-  element.style.minHeight = 'max-content';
-  element.style.height = 'max-content';
+  element.style.width = `${a4WidthPx}px`;
+  element.style.height = `${a4HeightPx}px`;
+  element.style.minHeight = `${a4HeightPx}px`;
   element.style.overflow = 'visible';
   element.style.position = 'relative';
+  element.style.display = 'flex';
+  element.style.flexDirection = 'column';
 
   // reflow 대기 (정합성을 위해 300ms로 상향)
   await new Promise(r => setTimeout(r, 300));
@@ -353,14 +357,8 @@ export async function printAsImage(element, options = {}) {
   const targetH = element.clientHeight || element.offsetHeight;
 
   try {
-    const a4WidthPx = Math.floor(A4.W_MM * 3.7795); // 210mm to px
-    const a4HeightPx = Math.floor(A4.H_MM * 3.7795); // 297mm to px
-    let scale = 1;
-    
-    // 내용이 A4 높이를 초과하면 축소 비율 계산 (가로 폭은 a4WidthPx에 맞춤)
-    if (targetH > a4HeightPx) {
-      scale = a4HeightPx / targetH;
-    }
+    const a4WidthPx = Math.floor(A4.W_MM * 3.7795);
+    const a4HeightPx = Math.floor(A4.H_MM * 3.7795);
 
     const dataUrl = await toPng(element, {
       cacheBust: true,
@@ -371,11 +369,11 @@ export async function printAsImage(element, options = {}) {
       height: a4HeightPx,
       style: { 
         boxShadow: 'none',
-        transform: `scale(${scale})`,
+        transform: 'none',
         transformOrigin: 'top left',
-        width: `${targetW}px`,
-        height: `${targetH}px`,
-        overflow: 'hidden' // 캡처 시 스크롤바 제거
+        width: `${a4WidthPx}px`,
+        height: `${a4HeightPx}px`,
+        overflow: 'hidden'
       }
     });
 
@@ -396,9 +394,7 @@ export async function printAsImage(element, options = {}) {
       display: block; 
       width: 210mm !important; 
       height: 297mm !important;
-      max-width: 100% !important;
-      max-height: 100% !important; 
-      object-fit: contain !important;
+      margin: 0 auto;
     }
   </style>
   </head>
@@ -447,12 +443,18 @@ export async function printMultiPageAsImage(elements, options = {}) {
     const origH = el.style.minHeight;
     const origO = el.style.overflow;
 
+    const a4WidthPx = Math.floor(targetWidthMM * 3.7795);
+    const a4HeightPx = Math.floor((isLandscape ? A4.H_MM_LAND : A4.H_MM) * 3.7795);
+
     el.style.transform = 'scale(1)';
     el.style.margin = '0';
     el.style.transformOrigin = 'top left';
-    el.style.width = `${targetWidthMM}mm`;
-    el.style.minHeight = 'auto';
+    el.style.width = `${a4WidthPx}px`;
+    el.style.height = `${a4HeightPx}px`;
+    el.style.minHeight = `${a4HeightPx}px`;
     el.style.overflow = 'hidden';
+    el.style.display = 'flex';
+    el.style.flexDirection = 'column';
 
     // 캡처 전용 유틸리티 클래스 주입 (그림자 제거 등)
     el.classList.add('is-capturing');
