@@ -346,10 +346,12 @@ export async function printAsImage(element, options = {}) {
   element.style.outline = 'none';
   element.style.transformOrigin = 'top left';
   element.style.width = `${targetWidthMM}mm`;
-  element.style.minHeight = 'max-content';
-  element.style.height = 'max-content';
+  element.style.minHeight = '297mm';
+  element.style.height = '297mm';
   element.style.overflow = 'visible';
   element.style.position = 'relative';
+  element.style.display = 'flex';
+  element.style.flexDirection = 'column';
 
   await new Promise(r => setTimeout(r, 200));
 
