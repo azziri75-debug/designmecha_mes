@@ -97,6 +97,23 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
 
     return (
         <Box className="a4-form-container print-safe-area" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+            <style>
+                {`
+                    .settlement-table {
+                        border-collapse: collapse !important;
+                        border: 2px solid #000 !important;
+                    }
+                    .settlement-table td {
+                        border: 1px solid #000 !important;
+                        padding: 4px !important;
+                    }
+                    @media print {
+                        .settlement-table td {
+                            border: 1px solid #000 !important;
+                        }
+                    }
+                `}
+            </style>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                 <Box sx={{ flex: 1, pt: 4 }}>
                     <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '8px' }}>
@@ -106,30 +123,30 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                 <ApprovalGrid documentData={documentData} currentUser={currentUser} docType="BUSINESS_TRIP" />
             </Box>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #000', fontSize: '13px', textAlign: 'center', tableLayout: 'fixed' }}>
+            <table className="settlement-table" style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #000', fontSize: '13px', textAlign: 'center', tableLayout: 'fixed' }}>
                 <tbody>
-                    <tr style={{ height: '40px', borderBottom: '1px solid #000' }}>
-                        <td style={{ width: '10%', borderRight: '1px solid #000', backgroundColor: '#f9fafb' }}>소 속</td>
-                        <td style={{ width: '15%', borderRight: '1px solid #000' }}>
+                    <tr style={{ height: '40px' }}>
+                        <td style={{ width: '10%', backgroundColor: '#f9fafb' }}>소 속</td>
+                        <td style={{ width: '15%' }}>
                             <input value={data.dept || ''} onChange={(e) => handleChange('dept', e.target.value)} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'center' }} />
                         </td>
-                        <td style={{ width: '10%', borderRight: '1px solid #000', backgroundColor: '#f9fafb' }}>직 위</td>
-                        <td style={{ width: '15%', borderRight: '1px solid #000' }}>
+                        <td style={{ width: '10%', backgroundColor: '#f9fafb' }}>직 위</td>
+                        <td style={{ width: '15%' }}>
                             <input value={data.role || ''} onChange={(e) => handleChange('role', e.target.value)} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'center' }} />
                         </td>
-                        <td style={{ width: '12%', borderRight: '1px solid #000', backgroundColor: '#f9fafb', fontSize: '12px' }}>사원번호</td>
-                        <td style={{ width: '13%', borderRight: '1px solid #000' }}>
+                        <td style={{ width: '12%', backgroundColor: '#f9fafb', fontSize: '12px' }}>사원번호</td>
+                        <td style={{ width: '13%' }}>
                             <input value={data.staff_no || ''} onChange={(e) => handleChange('staff_no', e.target.value)} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'center' }} />
                         </td>
-                        <td style={{ width: '10%', borderRight: '1px solid #000', backgroundColor: '#f9fafb' }}>성 명</td>
+                        <td style={{ width: '10%', backgroundColor: '#f9fafb' }}>성 명</td>
                         <td style={{ width: '15%' }}>
                             <input value={data.name || ''} onChange={(e) => handleChange('name', e.target.value)} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'center' }} />
                         </td>
                     </tr>
                     
-                    <tr style={{ height: '50px', borderBottom: '1px solid #000' }}>
-                        <td style={{ borderRight: '1px solid #000', backgroundColor: '#f9fafb' }}>기 간</td>
-                        <td colSpan={5} style={{ borderRight: '1px solid #000', textAlign: 'left', paddingLeft: '10px' }}>
+                    <tr style={{ height: '50px' }}>
+                        <td style={{ backgroundColor: '#f9fafb' }}>기 간</td>
+                        <td colSpan={5} style={{ textAlign: 'left', paddingLeft: '10px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                 <input type="date" value={data.start_date || ''} onChange={(e) => handleChange('start_date', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', outline: 'none', fontFamily: 'inherit' }} />
                                 <span>~</span>
@@ -139,62 +156,62 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                                 <span>일)</span>
                             </div>
                         </td>
-                        <td style={{ borderRight: '1px solid #000', backgroundColor: '#f9fafb' }}>출장지역</td>
+                        <td style={{ backgroundColor: '#f9fafb' }}>출장지역</td>
                         <td>
                             <input value={data.destination || ''} onChange={(e) => handleChange('destination', e.target.value)} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'center' }} />
                         </td>
                     </tr>
 
-                    <tr style={{ height: '40px', borderBottom: '1px solid #000' }}>
+                    <tr style={{ height: '40px' }}>
                         <td colSpan={8} style={{ textAlign: 'left', paddingLeft: '10px' }}>
                             출장목적 : <input value={data.purpose || ''} onChange={(e) => handleChange('purpose', e.target.value)} readOnly={isReadOnly} style={{ width: '80%', border: 'none', outline: 'none' }} />
                         </td>
                     </tr>
                     
-                    <tr style={{ height: '40px', borderBottom: '1px solid #000' }}>
+                    <tr style={{ height: '40px' }}>
                         <td colSpan={8} style={{ textAlign: 'left', paddingLeft: '10px' }}>
                             출장자 : <input value={data.traveler || ''} onChange={(e) => handleChange('traveler', e.target.value)} readOnly={isReadOnly} style={{ width: '85%', border: 'none', outline: 'none' }} />
                         </td>
                     </tr>
 
-                    <tr style={{ height: '40px', borderBottom: '1px solid #000', backgroundColor: '#f9fafb' }}>
+                    <tr style={{ height: '40px', backgroundColor: '#f9fafb' }}>
                         <td colSpan={8} style={{ fontWeight: 'bold', fontSize: '15px', letterSpacing: '4px' }}>일 정 및 여 비 정 산</td>
                     </tr>
 
-                    <tr style={{ height: '40px', borderBottom: '1px solid #000', backgroundColor: '#f9fafb', fontSize: '12px' }}>
-                        <td style={{ borderRight: '1px solid #000' }}>월/일</td>
-                        <td style={{ borderRight: '1px solid #000' }}>왕복교통비</td>
-                        <td style={{ borderRight: '1px solid #000' }}>현지교통비</td>
-                        <td style={{ borderRight: '1px solid #000' }}>숙 박 비</td>
-                        <td style={{ borderRight: '1px solid #000' }}>식 대</td>
-                        <td style={{ borderRight: '1px solid #000' }}>주 차 료</td>
-                        <td style={{ borderRight: '1px solid #000', fontSize: '10px' }}>기 타<br/>(유류대등)</td>
-                        <td style={{  }}>합 계</td>
+                    <tr style={{ height: '40px', backgroundColor: '#f9fafb', fontSize: '12px' }}>
+                        <td>월/일</td>
+                        <td>왕복교통비</td>
+                        <td>현지교통비</td>
+                        <td>숙 박 비</td>
+                        <td>식 대</td>
+                        <td>주 차 료</td>
+                        <td style={{ fontSize: '10px' }}>기 타<br/>(유류대등)</td>
+                        <td>합 계</td>
                     </tr>
 
                     {items.map((item, idx) => {
                         const rowTotal = calculateRowTotal(item);
                         return (
-                            <tr key={idx} style={{ height: '30px', borderBottom: '1px solid #000' }}>
-                                <td style={{ borderRight: '1px solid #000' }}>
+                            <tr key={idx} style={{ height: '30px' }}>
+                                <td>
                                     <input value={item.date || ''} onChange={(e) => handleItemChange(idx, 'date', e.target.value)} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'center' }} placeholder="M/D" />
                                 </td>
-                                <td style={{ borderRight: '1px solid #000' }}>
+                                <td>
                                     <input value={item.round_trip || ''} onChange={(e) => handleItemChange(idx, 'round_trip', e.target.value.replace(/[^0-9]/g, ''))} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', paddingRight: '5px' }} onBlur={() => handleItemChange(idx, 'round_trip', formatNumber(item.round_trip))} />
                                 </td>
-                                <td style={{ borderRight: '1px solid #000' }}>
+                                <td>
                                     <input value={item.local_transport || ''} onChange={(e) => handleItemChange(idx, 'local_transport', e.target.value.replace(/[^0-9]/g, ''))} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', paddingRight: '5px' }} onBlur={() => handleItemChange(idx, 'local_transport', formatNumber(item.local_transport))} />
                                 </td>
-                                <td style={{ borderRight: '1px solid #000' }}>
+                                <td>
                                     <input value={item.lodging || ''} onChange={(e) => handleItemChange(idx, 'lodging', e.target.value.replace(/[^0-9]/g, ''))} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', paddingRight: '5px' }} onBlur={() => handleItemChange(idx, 'lodging', formatNumber(item.lodging))} />
                                 </td>
-                                <td style={{ borderRight: '1px solid #000' }}>
+                                <td>
                                     <input value={item.meals || ''} onChange={(e) => handleItemChange(idx, 'meals', e.target.value.replace(/[^0-9]/g, ''))} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', paddingRight: '5px' }} onBlur={() => handleItemChange(idx, 'meals', formatNumber(item.meals))} />
                                 </td>
-                                <td style={{ borderRight: '1px solid #000' }}>
+                                <td>
                                     <input value={item.parking || ''} onChange={(e) => handleItemChange(idx, 'parking', e.target.value.replace(/[^0-9]/g, ''))} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', paddingRight: '5px' }} onBlur={() => handleItemChange(idx, 'parking', formatNumber(item.parking))} />
                                 </td>
-                                <td style={{ borderRight: '1px solid #000' }}>
+                                <td>
                                     <input value={item.other || ''} onChange={(e) => handleItemChange(idx, 'other', e.target.value.replace(/[^0-9]/g, ''))} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', paddingRight: '5px' }} onBlur={() => handleItemChange(idx, 'other', formatNumber(item.other))} />
                                 </td>
                                 <td style={{ textAlign: 'right', paddingRight: '5px' }}>
@@ -204,22 +221,22 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                         );
                     })}
 
-                    <tr style={{ height: '40px', borderBottom: '1px solid #000', backgroundColor: '#fcfcfc' }}>
-                        <td style={{ borderRight: '1px solid #000' }}>현 금<br/>사 용</td>
-                        <td colSpan={2} style={{ borderRight: '1px solid #000' }}>
+                    <tr style={{ height: '40px', backgroundColor: '#fcfcfc' }}>
+                        <td>현 금<br/>사 용</td>
+                        <td colSpan={2}>
                             <input value={data.cash_usage || ''} onChange={(e) => handleChange('cash_usage', e.target.value.replace(/[^0-9]/g, ''))} onBlur={() => handleChange('cash_usage', formatNumber(data.cash_usage))} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'center', backgroundColor: 'transparent' }} />
                         </td>
-                        <td style={{ borderRight: '1px solid #000' }}>카 드<br/>사 용</td>
-                        <td colSpan={2} style={{ borderRight: '1px solid #000' }}>
+                        <td>카 드<br/>사 용</td>
+                        <td colSpan={2}>
                             <input value={data.card_usage || ''} onChange={(e) => handleChange('card_usage', e.target.value.replace(/[^0-9]/g, ''))} onBlur={() => handleChange('card_usage', formatNumber(data.card_usage))} readOnly={isReadOnly} style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'center', backgroundColor: 'transparent' }} />
                         </td>
-                        <td style={{ borderRight: '1px solid #000' }}>총 액</td>
+                        <td>총 액</td>
                         <td style={{ textAlign: 'right', paddingRight: '10px' }}>
                             {formatNumber(totalSum)}원
                         </td>
                     </tr>
 
-                    <tr style={{ minHeight: '300px' }}>
+                    <tr style={{ height: '300px' }}>
                         <td colSpan={8} style={{ textAlign: 'left', verticalAlign: 'top', padding: '10px' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>정산내역</div>
                             <textarea 
