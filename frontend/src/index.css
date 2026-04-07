@@ -281,7 +281,11 @@ body.resizing {
         background-color: white !important;
         box-shadow: none !important;
         border: none !important;
-        box-sizing: border-box;
+        box-sizing: border-box !important;
+    }
+
+    * {
+        box-sizing: border-box !important;
     }
 
     /* 모든 인쇄 제외 클래스 즉시 숨김 */

@@ -649,8 +649,7 @@ const ApprovalPage = () => {
 
                             <div 
                                 className={cn(
-                                "a4-wrapper no-shadow-on-print",
-                                selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0"
+                                "a4-wrapper no-shadow-on-print"
                             )}>
                                 <Box sx={{ 
                                     width: '100%',
