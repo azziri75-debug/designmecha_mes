@@ -659,7 +659,7 @@ const ApprovalPage = () => {
                                     display: 'flex', 
                                     flexDirection: 'column',
                                     bgcolor: '#ffffff',
-                                    p: selectedDoc.doc_type === 'PURCHASE_ORDER' ? '0' : { xs: '15mm', md: '15mm' },
+                                    p: { xs: '5mm', md: '5mm' },
                                     boxShadow: 'none',
                                     color: '#000000',
                                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' },
