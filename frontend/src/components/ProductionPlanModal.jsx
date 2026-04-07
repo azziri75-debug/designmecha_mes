@@ -567,17 +567,18 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                     <TableHead>
                                         <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                                             <TableCell width="3%" align="center"></TableCell> {/* Drag Handle Column */}
-                                            <TableCell width="4%">순서</TableCell>
-                                            <TableCell width="12%">공정명</TableCell>
+                                            <TableCell width="6%">순서</TableCell>
+                                            <TableCell width="11%">공정명</TableCell>
                                             <TableCell width="8%">구분</TableCell>
                                             <TableCell width="10%">외주/구매/작업자</TableCell>
                                             <TableCell width="10%">배정 장비</TableCell>
-                                            <TableCell width="12%">작업내용</TableCell>
+                                            <TableCell width="11%">작업내용</TableCell>
                                             <TableCell width="9%">시작일</TableCell>
                                             <TableCell width="9%">종료일</TableCell>
                                             <TableCell width="9%">공정비용</TableCell>
                                             <TableCell width="8%">수량</TableCell>
                                             <TableCell width="6%">관리</TableCell>
+
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
