@@ -102,7 +102,7 @@ async def read_stocks(
         .where(active_plan_product_qty.c.stock_production_id.is_not(None))\
         .scalar_subquery()
 
-    has_bom_subq = exists().where(BOM.parent_id == Product.id).scalar_subquery()
+    has_bom_subq = exists().where(BOM.parent_product_id == Product.id).scalar_subquery()
 
     from sqlalchemy import or_
     # Final query: Start from Product to include items with NO stock record yet (9 items vs 6 items bug fix)
