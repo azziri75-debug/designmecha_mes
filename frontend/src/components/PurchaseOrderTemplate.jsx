@@ -194,9 +194,9 @@ const PurchaseOrderTemplate = ({
     };
 
     return (
-        <div className="flex flex-col w-full h-full">
+        <div className="flex flex-col w-full">
 
-            <div className={cn("bg-white text-black relative flex flex-col flex-1 h-full", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
+            <div className={cn("bg-white text-black relative flex flex-col w-full", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
             {/* Header */}
             <div className="flex items-start justify-between mb-6 w-full idf-header-container">
@@ -285,11 +285,11 @@ const PurchaseOrderTemplate = ({
                 )}
             </div>
 
-            {/* Dynamic Spacer: Fills the gap to push the footer to the bottom while maintaining margins */}
-            <div className="flex-1" />
+            {/* Fixed Gap: Controlled space between item list and note section to prevent bottom overflow */}
+            <div className="mt-12" />
 
-            {/* Footer */}
-            <div className="text-[10px]">
+            {/* Footer Area with bottom safety padding */}
+            <div className="text-[10px] pb-8">
                 <div className="border border-black p-2 mb-2 min-h-[50px]">
                     <h4 className="font-bold border-b border-black w-16 mb-1 pb-1 italic">Note.</h4>
                     <EditableText

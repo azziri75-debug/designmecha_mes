@@ -339,7 +339,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 className="a4-paper-root print-safe-area"
                 sx={{
                     width: '210mm',
-                    height: '297mm',
+                    minHeight: '297mm',
                     p: '15mm',
                     mb: 4,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
@@ -348,7 +348,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     position: 'relative',
                     color: '#000000',
                     boxSizing: 'border-box',
-                    overflow: 'hidden',
+                    overflow: 'visible',
                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' } 
                 }}
             >

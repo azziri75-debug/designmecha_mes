@@ -70,7 +70,6 @@ body.resizing {
 .a4-wrapper {
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 297mm !important;
     min-height: 297mm !important;
     margin: 0 auto !important;
     padding: 0;
@@ -80,7 +79,7 @@ body.resizing {
     flex-shrink: 0;
     position: relative;
     color: black;
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     flex-direction: column;
 }
