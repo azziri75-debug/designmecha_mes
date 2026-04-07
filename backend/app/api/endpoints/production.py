@@ -698,7 +698,7 @@ async def update_production_plan(
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
 
-    # 2. Update Header
+    # 2. Update Header & Items
     update_data = plan_in.model_dump(exclude_unset=True)
     
     # [보강] 이미 COMPLETED인 경우 '계획 확정' 등으로 인한 상태 역행 방지
@@ -716,14 +716,46 @@ async def update_production_plan(
         plan.actual_completion_date = now_kst().date()
         for item in plan.items:
             if item.status != ProductionStatus.COMPLETED:
+                # from app.api.endpoints.production import on_production_item_completed # Same file
                 await on_production_item_completed(db, item, reference=f"Manual Plan Completion (Plan #{plan_id})")
 
+    # --- [NEW] 공정 상세 항목(items) 업데이트 로직 ---
+    if items_data is not None:
+        current_items_map = {item.id: item for item in plan.items}
+        
+        # 1. 삭제 및 업데이트 처리
+        incoming_ids = {item_in.id for item_in in items_data if item_in.id}
+        for item_id, item in list(current_items_map.items()):
+            if item_id not in incoming_ids:
+                await db.delete(item)
+        
+        # 2. 업데이트 및 추가 처리
+        for item_in in items_data:
+            if item_in.id and item_in.id in current_items_map:
+                # 기존 항목 업데이트
+                existing_item = current_items_map[item_in.id]
+                item_update_dict = item_in.model_dump(exclude_unset=True, exclude={"id"})
+                for k, v in item_update_dict.items():
+                    setattr(existing_item, k, v)
+                await sync_plan_item_cost(db, existing_item)
+            else:
+                # 신규 항목 추가
+                new_item = ProductionPlanItem(
+                    plan_id=plan_id,
+                    **item_in.model_dump(exclude={"id"})
+                )
+                db.add(new_item)
+                await sync_plan_item_cost(db, new_item)
+
+    await db.flush()
     await db.commit()
     
     # --- Trigger Side Effects ---
     # [FIX] Check for Auto-Completion if items were updated
-    if items_data and all((i.get('quantity') or 0) == 0 for i in items_data):
-        plan.status = ProductionStatus.COMPLETED
+    if items_data:
+        all_qty_zero = all((i.quantity or 0) == 0 for i in items_data)
+        if all_qty_zero:
+            plan.status = ProductionStatus.COMPLETED
 
     if plan.status == ProductionStatus.COMPLETED:
         await process_stock_deduction(db, plan_id=plan.id)
@@ -738,6 +770,7 @@ async def update_production_plan(
         await _handle_production_completion_effects(db, refetched_plan)
         await db.commit()
     elif plan.status == ProductionStatus.CONFIRMED:
+
         await process_stock_deduction(db, plan_id=plan.id)
         from app.api.utils.mrp import calculate_and_record_mrp
         await calculate_and_record_mrp(db, plan_id=plan.id)

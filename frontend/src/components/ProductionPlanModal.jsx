@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    TextField, Paper, IconButton, Typography, Box, Select, MenuItem
+    TextField, Paper, IconButton, Typography, Box, Select, MenuItem,
+    Autocomplete
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon, DragIndicator } from '@mui/icons-material';
 import api from '../lib/api';
@@ -17,6 +18,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
     const [equipments, setEquipments] = useState([]);
     const [productStocks, setProductStocks] = useState({}); // { product_id: current_stock }
     const [stockUseQtys, setStockUseQtys] = useState({}); // { product_id: use_qty }
+    const [masterProcesses, setMasterProcesses] = useState([]); // Master process list
 
     // Drag and Drop Refs
     const dragItem = useRef(null);
@@ -28,6 +30,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
             api.get('/basics/partners/', { params: { type: 'SUBCONTRACTOR' } }).then(res => setPartners(res.data)).catch(() => { });
             api.get('/basics/staff/').then(res => setStaffList(res.data)).catch(() => { });
             api.get('/basics/equipments/').then(res => setEquipments(res.data)).catch(() => { });
+            api.get('/product/processes/').then(res => setMasterProcesses(res.data)).catch(() => { });
             if (plan) {
                 // Edit Mode
                 setPlanDate(plan.plan_date);
@@ -604,15 +607,46 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                     />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <TextField
-                                                        value={item.process_name}
-                                                        onChange={(e) => handleItemChange(item.originalIndex, 'process_name', e.target.value)}
-                                                        size="small"
-                                                        fullWidth
-                                                        variant="standard"
+                                                    <Autocomplete
+                                                        freeSolo
+                                                        options={masterProcesses}
+                                                        getOptionLabel={(option) => typeof option === 'string' ? option : (option.name || "")}
+                                                        value={item.process_name || ""}
+                                                        onInputChange={(event, newInputValue) => {
+                                                            handleItemChange(item.originalIndex, 'process_name', newInputValue);
+                                                        }}
+                                                        onChange={(event, newValue) => {
+                                                            if (typeof newValue === 'object' && newValue !== null) {
+                                                                const newItems = [...items];
+                                                                const idx = item.originalIndex;
+                                                                newItems[idx].process_name = newValue.name;
+                                                                newItems[idx].course_type = newValue.course_type || "INTERNAL";
+                                                                
+                                                                const targetItem = newItems[idx];
+                                                                const stdProcs = targetItem.product?.standard_processes || [];
+                                                                const match = stdProcs.find(p => p.process?.name?.toLowerCase().trim() === newValue.name?.toLowerCase().trim());
+                                                                if (match) {
+                                                                    const qty = parseInt(targetItem.quantity) || 1;
+                                                                    newItems[idx].unit_cost = match.cost || 0;
+                                                                    newItems[idx].cost = (match.cost || 0) * qty;
+                                                                }
+                                                                setItems(newItems);
+                                                            }
+                                                        }}
+                                                        renderInput={(params) => (
+                                                            <TextField
+                                                                {...params}
+                                                                size="small"
+                                                                placeholder="공정 선택/입력"
+                                                                variant="standard"
+                                                                fullWidth
+                                                                disabled={isCompleted}
+                                                            />
+                                                        )}
                                                         disabled={isCompleted}
                                                     />
                                                 </TableCell>
+
                                                 <TableCell>
                                                     <Select
                                                         value={item.course_type}
