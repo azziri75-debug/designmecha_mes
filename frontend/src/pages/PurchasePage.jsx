@@ -714,7 +714,7 @@ const PurchasePage = ({ type }) => {
                                     color="primary"
                                 />
                             }
-                            label={<Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>재고 충분(부족분 0) 항목 숨기기</Typography>}
+                            label={<Typography variant="body2" sx={{ fontWeight: 'bold', color: '#fff' }}>재고 충분(부족분 0) 항목 숨기기</Typography>}
                         />
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button

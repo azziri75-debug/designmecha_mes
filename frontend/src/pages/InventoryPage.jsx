@@ -457,23 +457,6 @@ const InventoryPage = () => {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-white font-bold">{stock.product?.name}</div>
-                                                        {(stock.product?.item_type === 'PRODUCED' || stock.product?.item_type === 'PRODUCT') && (
-                                                            <button 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    toggleBOM(stock.product_id);
-                                                                }}
-                                                                className={cn(
-                                                                    "p-1.5 rounded-md transition-all",
-                                                                    expandedProductId === stock.product_id 
-                                                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" 
-                                                                        : "bg-gray-800 text-gray-400 hover:text-blue-400 hover:bg-gray-700"
-                                                                )}
-                                                                title="BOM 재고 현황 보기"
-                                                            >
-                                                                <Layers className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -515,15 +498,40 @@ const InventoryPage = () => {
                                                     {stock.updated_at ? new Date(stock.updated_at).toLocaleDateString() : '-'}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                                                        onClick={() => handleStockEdit(stock)}
-                                                    >
-                                                        <Pencil className="w-4 h-4 mr-2" />
-                                                        수정
-                                                    </Button>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {(stock.product?.item_type === 'PRODUCED' || stock.product?.item_type === 'PRODUCT') && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className={cn(
+                                                                    "h-8 transition-all",
+                                                                    expandedProductId === stock.product_id 
+                                                                        ? "bg-blue-600 text-white" 
+                                                                        : "text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                                                )}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    toggleBOM(stock.product_id);
+                                                                }}
+                                                                title="BOM 재고 현황 보기"
+                                                            >
+                                                                <Layers className="w-4 h-4 mr-2" />
+                                                                BOM재고
+                                                            </Button>
+                                                        )}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleStockEdit(stock);
+                                                            }}
+                                                        >
+                                                            <Pencil className="w-4 h-4 mr-2" />
+                                                            수정
+                                                        </Button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                             {/* BOM Stock Expanded View */}
