@@ -560,9 +560,9 @@ const ApprovalPage = () => {
                     <div className="bg-white rounded-2xl border border-gray-300 w-full max-w-7xl h-full max-h-[95vh] shadow-2xl animation-fade-in my-auto flex flex-col overflow-hidden doc-detail-modal">
                         <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-white print-hide">
                             <div>
-                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-blue-500" />
-                                    문서 상세 정보
+                                    문서 상세 보기
                                 </h3>
                             </div>
                             <div className="flex items-center gap-3">
