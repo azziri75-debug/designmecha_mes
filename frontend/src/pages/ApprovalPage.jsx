@@ -827,6 +827,7 @@ const ApprovalPage = () => {
                                 </div>
                             </div>
                         )}
+                        </div>
                     </div>
                 </div>,
                 document.body
