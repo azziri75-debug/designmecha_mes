@@ -281,11 +281,14 @@ const ProductModal = ({
                                     <input 
                                         name="recent_price" 
                                         type="number"
-                                        value={productFormData.recent_price || 0} 
+                                        value={productFormData.recent_price || productFormData.latest_price || 0} 
                                         onChange={handleInputChange} 
                                         className="w-full bg-emerald-900/10 border border-emerald-500/30 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium" 
                                         placeholder="0" 
                                     />
+                                    {(!productFormData.recent_price && productFormData.latest_price > 0) && (
+                                        <p className="text-[10px] text-emerald-500/70 mt-1 italic">이력 기반 자동 제안된 단가입니다.</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">

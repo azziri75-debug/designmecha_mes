@@ -1048,8 +1048,14 @@ const ProductsPage = ({ type }) => {
                                                         </span>
                                                     </td>
                                                 )}
-                                                <td className="px-6 py-4 font-medium text-blue-400">
-                                                    {product.recent_price ? `₩${product.recent_price.toLocaleString()}` : '-'}
+                                                <td className="px-6 py-4 font-medium">
+                                                    {product.recent_price ? (
+                                                        <span className="text-blue-400">₩{product.recent_price.toLocaleString()}</span>
+                                                    ) : product.latest_price ? (
+                                                        <span className="text-indigo-400/80 italic" title="최근 이력 기반 단가">₩{product.latest_price.toLocaleString()}*</span>
+                                                    ) : (
+                                                        <span className="text-gray-600">-</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                                     {(() => {
@@ -1566,11 +1572,14 @@ const ProductsPage = ({ type }) => {
                                                 <input 
                                                     name="recent_price" 
                                                     type="number"
-                                                    value={productFormData.recent_price || 0} 
+                                                    value={productFormData.recent_price || productFormData.latest_price || 0} 
                                                     onChange={handleProductInputChange} 
                                                     className="w-full bg-emerald-900/10 border border-emerald-500/30 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium" 
                                                     placeholder="0" 
                                                 />
+                                                {(!productFormData.recent_price && productFormData.latest_price > 0) && (
+                                                    <p className="text-[10px] text-emerald-500/70 mt-1">이력 기반 자동 제안된 단가입니다.</p>
+                                                )}
                                             </div>
 
 
