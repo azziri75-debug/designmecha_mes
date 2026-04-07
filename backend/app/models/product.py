@@ -39,7 +39,7 @@ class Product(Base):
     inventory = relationship("Inventory", back_populates="product", uselist=False)
     standard_processes = relationship("ProductProcess", back_populates="product", order_by="ProductProcess.sequence", lazy="selectin")
     bom_items = relationship("BOM", foreign_keys="BOM.parent_product_id", back_populates="parent_product", cascade="all, delete-orphan", lazy="selectin")
-    price_history = relationship("ProductPriceHistory", back_populates="product", cascade="all, delete-orphan", order_by="ProductPriceHistory.date.desc()")
+    price_history = relationship("ProductPriceHistory", back_populates="product", cascade="all, delete-orphan", order_by="ProductPriceHistory.date.desc()", lazy="selectin")
 
 class Process(Base):
     __tablename__ = "processes"
