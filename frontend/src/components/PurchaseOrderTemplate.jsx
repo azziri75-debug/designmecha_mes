@@ -201,9 +201,9 @@ const PurchaseOrderTemplate = ({
             {/* Header */}
             <div className="flex items-start justify-between mb-6 w-full idf-header-container">
                 {/* Left: NO */}
-                <div className="text-[8px] pt-8 idf-header-no" style={{ minWidth: '100px' }}>
+                <div className="text-[5.5px] pt-8 idf-header-no text-gray-400" style={{ minWidth: '80px' }}>
                     <p className="font-bold whitespace-nowrap">
-                        NO : <EditableText value={data.order_no} placeholder="" onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="inline-block border-b border-gray-100" style={{ minWidth: '50px' }} />
+                        NO : <EditableText value={data.order_no} placeholder="" onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="inline-block border-b border-gray-100" style={{ minWidth: '40px' }} />
                     </p>
                 </div>
 

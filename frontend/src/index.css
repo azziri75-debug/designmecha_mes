@@ -81,6 +81,8 @@ body.resizing {
     position: relative;
     color: black;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 /* [FINAL] Print Rules */
