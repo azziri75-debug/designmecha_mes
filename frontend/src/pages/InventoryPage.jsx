@@ -69,6 +69,31 @@ const InventoryPage = () => {
     const [editingProduction, setEditingProduction] = useState(null);
     const [editingStock, setEditingStock] = useState(null);
 
+    // BOM Expand States
+    const [expandedProductId, setExpandedProductId] = useState(null);
+    const [bomStockData, setBomStockData] = useState([]);
+    const [isBomLoading, setIsBomLoading] = useState(false);
+
+    const toggleBOM = async (productId) => {
+        if (expandedProductId === productId) {
+            setExpandedProductId(null);
+            setBomStockData([]);
+        } else {
+            setExpandedProductId(productId);
+            setIsBomLoading(true);
+            try {
+                const res = await api.get(`/inventory/bom-stock/${productId}`);
+                setBomStockData(res.data);
+            } catch (err) {
+                console.error("BOM stock fetch failed", err);
+                setBomStockData([]);
+            } finally {
+                setIsBomLoading(true); // Small delay feel or keep it loading
+                setTimeout(() => setIsBomLoading(false), 300);
+            }
+        }
+    };
+
 
     useEffect(() => {
         fetchPartners();
@@ -420,67 +445,174 @@ const InventoryPage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
                                     {filteredStocks.map((stock) => (
-                                        <tr key={stock.product_id} className="hover:bg-gray-800/30 transition-colors cursor-pointer" onDoubleClick={() => handleStockEdit(stock)}>
-                                            <td className="px-6 py-4">
-                                                <Badge variant="outline" className="bg-gray-800 text-gray-300 border-gray-700">
-                                                    {stock.product?.item_type === 'PRODUCED' || stock.product?.item_type === 'PRODUCT' ? '제품' : 
-                                                     stock.product?.item_type === 'PART' ? '부품' : 
-                                                     stock.product?.item_type === 'RAW_MATERIAL' ? '원자재' : stock.product?.item_type || '-'}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-white font-bold">{stock.product?.name}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-xs text-gray-300">{stock.product?.code}</div>
-                                                <div className="text-xs text-gray-500">{stock.product?.specification}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm text-gray-300 truncate max-w-[120px]" title={partners.find(p => p.id === stock.product?.partner_id)?.name || ''}>
-                                                    {partners.find(p => p.id === stock.product?.partner_id)?.name || '-'}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                                                    {stock.location || '기본창고'}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="text-lg font-bold text-white">
-                                                    {stock.current_quantity.toLocaleString()}
-                                                </div>
-                                                <div className="text-[10px] text-gray-500">물리적 실재고</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {stock.producing_total > 0 ? (
-                                                    <div className="flex flex-col items-end gap-1">
-                                                        <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-bold text-sm px-3">
-                                                            + {stock.producing_total.toLocaleString()}
-                                                        </Badge>
-                                                        <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                                                            <span className="w-1 h-1 rounded-full bg-blue-500"></span>
-                                                            수주: {stock.producing_so || 0} / 재고: {stock.producing_sp || 0}
-                                                        </div>
+                                        <React.Fragment key={stock.product_id}>
+                                            <tr className="hover:bg-gray-800/30 transition-colors cursor-pointer" onDoubleClick={() => handleStockEdit(stock)}>
+                                                <td className="px-6 py-4">
+                                                    <Badge variant="outline" className="bg-gray-800 text-gray-300 border-gray-700">
+                                                        {stock.product?.item_type === 'PRODUCED' || stock.product?.item_type === 'PRODUCT' ? '제품' : 
+                                                         stock.product?.item_type === 'PART' ? '부품' : 
+                                                         stock.product?.item_type === 'RAW_MATERIAL' ? '원자재' : stock.product?.item_type || '-'}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="text-white font-bold">{stock.product?.name}</div>
+                                                        {(stock.product?.item_type === 'PRODUCED' || stock.product?.item_type === 'PRODUCT') && (
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    toggleBOM(stock.product_id);
+                                                                }}
+                                                                className={cn(
+                                                                    "p-1.5 rounded-md transition-all",
+                                                                    expandedProductId === stock.product_id 
+                                                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" 
+                                                                        : "bg-gray-800 text-gray-400 hover:text-blue-400 hover:bg-gray-700"
+                                                                )}
+                                                                title="BOM 재고 현황 보기"
+                                                            >
+                                                                <Layers className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                ) : (
-                                                    <div className="text-gray-600 font-medium">-</div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-500 text-xs">
-                                                {stock.updated_at ? new Date(stock.updated_at).toLocaleDateString() : '-'}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                                                    onClick={() => handleStockEdit(stock)}
-                                                >
-                                                    <Pencil className="w-4 h-4 mr-2" />
-                                                    수정
-                                                </Button>
-                                            </td>
-                                        </tr>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-xs text-gray-300">{stock.product?.code}</div>
+                                                    <div className="text-xs text-gray-500">{stock.product?.specification}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-sm text-gray-300 truncate max-w-[120px]" title={partners.find(p => p.id === stock.product?.partner_id)?.name || ''}>
+                                                        {partners.find(p => p.id === stock.product?.partner_id)?.name || '-'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+                                                        {stock.location || '기본창고'}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="text-lg font-bold text-white">
+                                                        {stock.current_quantity.toLocaleString()}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-500">물리적 실재고</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    {stock.producing_total > 0 ? (
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-bold text-sm px-3">
+                                                                + {stock.producing_total.toLocaleString()}
+                                                            </Badge>
+                                                            <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                                                                <span className="w-1 h-1 rounded-full bg-blue-500"></span>
+                                                                수주: {stock.producing_so || 0} / 재고: {stock.producing_sp || 0}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-gray-600 font-medium">-</div>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-500 text-xs">
+                                                    {stock.updated_at ? new Date(stock.updated_at).toLocaleDateString() : '-'}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                                        onClick={() => handleStockEdit(stock)}
+                                                    >
+                                                        <Pencil className="w-4 h-4 mr-2" />
+                                                        수정
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                            {/* BOM Stock Expanded View */}
+                                            {expandedProductId === stock.product_id && (
+                                                <tr className="bg-blue-900/5 transition-all">
+                                                    <td colSpan="9" className="px-8 py-4">
+                                                        <div className="bg-gray-950 rounded-xl border border-blue-500/30 p-4 shadow-2xl relative overflow-hidden">
+                                                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Layers className="w-4 h-4 text-blue-400" />
+                                                                    <h4 className="text-sm font-bold text-blue-400">BOM 구성품 및 자재 재고 현황</h4>
+                                                                    <span className="text-[10px] text-gray-500 ml-2">부품 재고를 기준으로 생산 가능 수량을 산출합니다.</span>
+                                                                </div>
+                                                                <button onClick={() => setExpandedProductId(null)} className="text-gray-500 hover:text-white">
+                                                                    <AlertCircle className="w-4 h-4 rotate-45" />
+                                                                </button>
+                                                            </div>
+
+                                                            {isBomLoading ? (
+                                                                <div className="py-8 text-center">
+                                                                    <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2" />
+                                                                    <p className="text-xs text-gray-500">BOM 정보를 불러오는 중...</p>
+                                                                </div>
+                                                            ) : bomStockData.length > 0 ? (
+                                                                <div className="overflow-hidden rounded-lg border border-gray-800">
+                                                                    <table className="w-full text-xs text-left">
+                                                                        <thead className="bg-gray-900 text-gray-500">
+                                                                            <tr>
+                                                                                <th className="px-4 py-2 font-medium">구분</th>
+                                                                                <th className="px-4 py-2 font-medium">부품/자재명</th>
+                                                                                <th className="px-4 py-2 font-medium">규격</th>
+                                                                                <th className="px-4 py-2 font-medium text-right">소요량(1EA당)</th>
+                                                                                <th className="px-4 py-2 font-medium text-right">현재고</th>
+                                                                                <th className="px-4 py-2 font-medium text-right text-blue-400 font-bold">생산 가능 수량</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-gray-800 bg-gray-950/30">
+                                                                            {bomStockData.map((child, idx) => {
+                                                                                const maxProducible = child.required_quantity > 0 
+                                                                                    ? Math.floor(child.current_stock / child.required_quantity)
+                                                                                    : 0;
+                                                                                
+                                                                                return (
+                                                                                    <tr key={idx} className="hover:bg-gray-900 transition-colors">
+                                                                                        <td className="px-4 py-2.5">
+                                                                                            <Badge variant="outline" className="text-[10px] py-0 bg-gray-900">
+                                                                                                {child.child_type === 'PART' ? '부품' : '원자재'}
+                                                                                            </Badge>
+                                                                                        </td>
+                                                                                        <td className="px-4 py-2.5 font-medium text-gray-200">{child.child_name}</td>
+                                                                                        <td className="px-4 py-2.5 text-gray-500">{child.child_spec || '-'}</td>
+                                                                                        <td className="px-4 py-2.5 text-right font-mono text-gray-400">{child.required_quantity} {child.unit}</td>
+                                                                                        <td className="px-4 py-2.5 text-right font-bold text-gray-300">{child.current_stock.toLocaleString()}</td>
+                                                                                        <td className="px-4 py-2.5 text-right">
+                                                                                            <Badge className={cn(
+                                                                                                "font-bold",
+                                                                                                maxProducible <= 0 ? "bg-red-500/10 text-red-500 border-red-500/20" :
+                                                                                                maxProducible < 10 ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
+                                                                                                "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                                                                            )}>
+                                                                                                {maxProducible.toLocaleString()} EA 가능
+                                                                                            </Badge>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                );
+                                                                            })}
+                                                                        </tbody>
+                                                                    </table>
+                                                                    <div className="bg-blue-900/10 px-4 py-2 border-t border-gray-800 flex justify-between items-center">
+                                                                        <span className="text-[10px] text-blue-400 font-medium">전체 구성품 요약 현황</span>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className="text-[11px] text-gray-400">최대 생산 가능(병목 기준):</span>
+                                                                            <span className="text-sm font-bold text-emerald-400">
+                                                                                {Math.min(...bomStockData.map(c => c.required_quantity > 0 ? Math.floor(c.current_stock / c.required_quantity) : 999999999)).toLocaleString()} EA
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="py-8 text-center text-gray-600 italic text-xs">
+                                                                    등록된 BOM 정보가 없거나 가져올 수 없습니다.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                     {filteredStocks.length === 0 && (
                                         <tr>

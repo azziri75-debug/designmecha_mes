@@ -736,3 +736,46 @@ async def recalculate_inventory(db: AsyncSession = Depends(get_db)):
 
     await db.commit()
     return {"status": "success", "message": f"{updated_count} products recalculated and synchronized."}
+
+@router.get("/bom-stock/{product_id}")
+async def read_bom_stock(product_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    특정 제품의 BOM 구성 요소별 현재고 현황을 조회합니다.
+    """
+    from app.models.product import BOM, Product
+    from app.models.inventory import Stock
+    
+    # 1. BOM 데이터 조회 (자식 제품 정보 및 재고 정보 포함)
+    query = select(BOM).where(BOM.parent_product_id == product_id).options(
+        selectinload(BOM.child_product).selectinload(Product.inventory)
+    )
+    # Note: Product.inventory was found in product.py which links to 'stocks' table.
+    
+    result = await db.execute(query)
+    bom_items = result.scalars().all()
+    
+    res_data = []
+    for bi in bom_items:
+        child = bi.child_product
+        if not child: continue
+        
+        # Stock 객체 직접 조회 (relationship이 복잡할 경우 대비)
+        # 이미 selectinload로 가져오려 했으나, 안전을 위해 Product.inventory 또는 별도 쿼리 확인
+        stock_qty = 0
+        stock_query = select(Stock).where(Stock.product_id == child.id)
+        stock_res = await db.execute(stock_query)
+        stock_obj = stock_res.scalar_one_or_none()
+        if stock_obj:
+            stock_qty = stock_obj.current_quantity
+            
+        res_data.append({
+            "child_product_id": child.id,
+            "child_name": child.name,
+            "child_spec": child.specification,
+            "child_type": child.item_type,
+            "required_quantity": bi.required_quantity,
+            "current_stock": stock_qty,
+            "unit": child.unit or "EA"
+        })
+        
+    return res_data
