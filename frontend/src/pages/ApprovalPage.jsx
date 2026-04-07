@@ -556,38 +556,38 @@ const ApprovalPage = () => {
             </div>
 
             {showDocDetail && selectedDoc && createPortal(
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 approval-modal-overlay no-print">
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-7xl h-full max-h-[90vh] shadow-2xl animation-fade-in my-auto flex flex-col overflow-hidden">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-200/90 backdrop-blur-sm p-4 approval-modal-overlay no-print">
+                    <div className="bg-white rounded-2xl border border-gray-300 w-full max-w-7xl h-full max-h-[95vh] shadow-2xl animation-fade-in my-auto flex flex-col overflow-hidden">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-white">
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-blue-500" />
                                     문서 상세 정보
                                 </h3>
-                                <p className="text-xs text-gray-500 mt-1">ID: {selectedDoc.id} | 기안일: {format(new Date(selectedDoc.created_at), 'yyyy-MM-dd HH:mm')}</p>
+                                <p className="text-xs text-gray-400 mt-1">ID: {selectedDoc.id} | 기안일: {format(new Date(selectedDoc.created_at), 'yyyy-MM-dd HH:mm')}</p>
                             </div>
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={handlePrintApproval}
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+                                    className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
                                 >
                                     <Printer className="w-4 h-4" /> 인쇄
                                 </button>
                                 <button
                                     onClick={handleDownloadPDFApproval}
-                                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+                                    className="bg-white hover:bg-gray-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
                                 >
-                                    <Download className="w-4 h-4" /> PDF 저장
+                                    <FileDown className="w-4 h-4" /> PDF 저장
                                 </button>
-                                <button onClick={() => setShowDocDetail(false)} className="text-gray-400 hover:text-white transition-colors">
+                                <button onClick={() => setShowDocDetail(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
                         </div>
 
-                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto flex-1", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
+                        <div className={cn("p-6 md:p-8 space-y-8 overflow-y-auto flex-1 bg-[#eee]", selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0 space-y-0")}>
                             {!['PURCHASE_ORDER', 'EXPENSE_REPORT'].includes(selectedDoc.doc_type) && (
-                                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-700 pb-8">
+                                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-gray-300 pb-8 max-w-[210mm] mx-auto">
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2">
                                             <span className={cn(
@@ -604,9 +604,9 @@ const ApprovalPage = () => {
                                                 {STATUS_MAP[selectedDoc.status]?.label}
                                             </span>
                                         </div>
-                                        <h2 className="text-2xl font-bold text-white">{selectedDoc.title}</h2>
-                                        <div className="flex items-center gap-4 text-sm text-gray-400">
-                                            <div className="flex items-center gap-1.5 bg-gray-900 px-3 py-1 rounded-full border border-gray-700">
+                                        <h2 className="text-2xl font-bold text-gray-800">{selectedDoc.title}</h2>
+                                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                                            <div className="flex items-center gap-1.5 bg-white shadow-sm px-3 py-1 rounded-full border border-gray-200">
                                                 <User className="w-3.5 h-3.5" />
                                                 {selectedDoc.author?.name} {selectedDoc.author?.role}
                                             </div>
@@ -616,8 +616,8 @@ const ApprovalPage = () => {
                                     <div className="flex gap-3">
                                         {(selectedDoc.steps || []).map((step, idx) => (
                                             <div key={idx} className="flex flex-col items-center gap-1.5 w-20">
-                                                <div className="text-[10px] font-bold text-gray-500 uppercase">{step.approver?.role || (step.sequence === 1 ? '부장' : step.sequence === 2 ? '이사' : '대표이사')}</div>
-                                                <div className="w-16 h-16 bg-white rounded border border-gray-600 flex items-center justify-center relative overflow-hidden group">
+                                                <div className="text-[10px] font-bold text-gray-400 uppercase">{step.approver?.role || (step.sequence === 1 ? '부장' : step.sequence === 2 ? '이사' : '대표이사')}</div>
+                                                <div className="w-16 h-16 bg-white rounded border border-gray-200 shadow-sm flex items-center justify-center relative overflow-hidden group">
                                                     {step.status === 'APPROVED' ? (
                                                         step.approver?.stamp_image ? (
                                                             <img 
@@ -633,14 +633,14 @@ const ApprovalPage = () => {
                                                         <span className="text-[11px] text-red-600 font-bold border-2 border-red-500 px-1 rounded -rotate-12 uppercase">Rejected</span>
                                                     ) : (
                                                         <>
-                                                            <div className="text-[10px] text-gray-400">대기중</div>
-                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                                <div className="text-[9px] text-white font-medium text-center px-1">{step.approver?.name}</div>
+                                                            <div className="text-[10px] text-gray-300">대기중</div>
+                                                            <div className="absolute inset-0 bg-gray-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                <div className="text-[9px] text-gray-600 font-medium text-center px-1">{step.approver?.name}</div>
                                                             </div>
                                                         </>
                                                     )}
                                                 </div>
-                                                <div className="text-[9px] text-gray-500">{step.processed_at ? format(new Date(step.processed_at), 'MM-dd') : '---'}</div>
+                                                <div className="text-[9px] text-gray-400">{step.processed_at ? format(new Date(step.processed_at), 'MM-dd') : '---'}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -648,21 +648,19 @@ const ApprovalPage = () => {
                             )}
 
                             <div 
-                                style={{ overflowX: 'auto' }}
                                 className={cn(
-                                "bg-white p-6 md:p-12 a4-paper-container print-safe-area",
+                                "a4-wrapper no-shadow-on-print",
                                 selectedDoc.doc_type === 'PURCHASE_ORDER' && "p-0"
                             )}>
                                 <Box sx={{ 
                                     width: '100%',
-                                    maxWidth: '850px',
-                                    minHeight: { xs: 'auto', md: '1100px' },
+                                    // Removed maxWidth/minHeight here because a4-wrapper handles it
                                     margin: '0 auto',
                                     display: 'flex', 
                                     flexDirection: 'column',
                                     bgcolor: '#ffffff',
-                                    p: selectedDoc.doc_type === 'PURCHASE_ORDER' ? '0' : { xs: '20px', md: '40px' },
-                                    boxShadow: 'none', // Removed for clean print capture
+                                    p: selectedDoc.doc_type === 'PURCHASE_ORDER' ? '0' : { xs: '15mm', md: '15mm' },
+                                    boxShadow: 'none',
                                     color: '#000000',
                                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' },
                                     '& td, & th, & div, & span': { 
@@ -839,11 +837,11 @@ const ApprovalPage = () => {
                             </div>
 
                             {selectedDoc.rejection_reason && (
-                                <div className="bg-red-900/20 border border-red-900/50 p-4 rounded-xl flex gap-3">
+                                <div className="bg-red-50 border border-red-200 p-5 rounded-xl flex gap-3 max-w-[210mm] mx-auto mt-4 shadow-sm">
                                     <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                                     <div>
-                                        <p className="text-red-400 text-sm font-bold">반려 사유</p>
-                                        <p className="text-red-300/80 text-sm mt-1">{selectedDoc.rejection_reason}</p>
+                                        <p className="text-red-700 text-sm font-bold">반려 사유</p>
+                                        <p className="text-red-600/80 text-sm mt-1">{selectedDoc.rejection_reason}</p>
                                     </div>
                                 </div>
                             )}
@@ -867,18 +865,18 @@ const ApprovalPage = () => {
                         </div>
 
                         {canApprove(selectedDoc) && (
-                            <div className="p-4 md:p-6 border-t border-gray-600 bg-gray-900 flex-shrink-0 z-[100] shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
-                                <div className="max-w-4xl mx-auto space-y-3">
+                            <div className="p-4 md:p-6 border-t border-gray-200 bg-white flex-shrink-0 z-[100] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+                                <div className="max-w-4xl mx-auto space-y-4">
                                     <div className="flex flex-col gap-2">
-                                        <label className="text-sm font-medium text-gray-400">결재 의견 / 반려 사유 (필요 시)</label>
+                                        <label className="text-sm font-semibold text-gray-700">결재 의견 / 반려 사유 (필요 시)</label>
                                         <textarea
                                             value={approvalComment}
                                             onChange={e => setApprovalComment(e.target.value)}
-                                            className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 min-h-[60px] text-sm"
+                                            className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-3 min-h-[80px] text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                                             placeholder="반려 시에는 사유를 명확히 적어주세요"
                                         />
                                     </div>
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-4">
                                         <button
                                             onClick={() => {
                                                 if (!approvalComment.trim()) {
@@ -888,20 +886,20 @@ const ApprovalPage = () => {
                                                 handleProcess(selectedDoc.id, 'REJECTED', approvalComment);
                                                 setApprovalComment('');
                                             }}
-                                            className="flex-1 px-4 py-3 bg-red-900/40 hover:bg-red-900/60 text-red-400 rounded-xl transition-all font-bold border border-red-800/50 flex items-center justify-center gap-2 text-sm"
+                                            className="flex-1 px-4 py-3.5 bg-white hover:bg-red-50 text-red-500 rounded-xl transition-all font-bold border border-red-200 flex items-center justify-center gap-2 text-sm shadow-sm"
                                         >
                                             <X className="w-4 h-4" />
-                                            반려
+                                            반려하기
                                         </button>
                                         <button
                                             onClick={() => {
                                                 handleProcess(selectedDoc.id, 'APPROVED', approvalComment);
                                                 setApprovalComment('');
                                             }}
-                                            className="flex-[2] px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-lg shadow-emerald-900/20 font-bold flex items-center justify-center gap-2 text-sm"
+                                            className="flex-[2] px-4 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-lg shadow-blue-500/20 font-bold flex items-center justify-center gap-2 text-sm"
                                         >
                                             <CheckCircle2 className="w-4 h-4" />
-                                            승인하기
+                                            승인 / 서명하기
                                         </button>
                                     </div>
                                 </div>
