@@ -48,14 +48,14 @@ const ApprovalPage = () => {
     const [documents, setDocuments] = useState([]);
     
     const handlePrintApproval = async () => {
-        const contentEl = document.querySelector('.a4-paper-container');
+        const contentEl = document.querySelector('.a4-wrapper');
         if (contentEl) {
             await printAsImage(contentEl, { title: '전자결제 문서', orientation: 'portrait' });
         }
     };
 
     const handleDownloadPDFApproval = async () => {
-        const contentEl = document.querySelector('.a4-paper-container');
+        const contentEl = document.querySelector('.a4-wrapper');
         if (contentEl) {
             const docType = DOC_TYPES[selectedDoc.doc_type]?.label || '문서';
             const authorName = selectedDoc.author?.name || '기안자';
