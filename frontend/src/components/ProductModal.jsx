@@ -274,23 +274,25 @@ const ProductModal = ({
                                         <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">단위</label>
                                         <input name="unit" value={productFormData.unit || "EA"} onChange={handleInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="EA" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">최근 단가 (₩)</label>
-                                        <input 
-                                            name="recent_price" 
-                                            type="number"
-                                            value={productFormData.recent_price || 0} 
-                                            onChange={handleInputChange} 
-                                            className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm" 
-                                            placeholder="0" 
-                                        />
-                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-emerald-400 font-bold uppercase tracking-wider">최근 단가 (₩)</label>
+                                    <input 
+                                        name="recent_price" 
+                                        type="number"
+                                        value={productFormData.recent_price || 0} 
+                                        onChange={handleInputChange} 
+                                        className="w-full bg-emerald-900/10 border border-emerald-500/30 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium" 
+                                        placeholder="0" 
+                                    />
                                 </div>
 
                                 <div className="space-y-2">
                                     <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">비고</label>
                                     <textarea name="note" value={productFormData.note || ""} onChange={handleInputChange} className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all h-[106px] resize-none text-sm" placeholder="특이사항 입력" />
                                 </div>
+
                             </div>
                         </div>
 
