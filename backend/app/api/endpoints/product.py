@@ -466,20 +466,26 @@ async def get_product_purchase_history(
         ))
     
     # [NEW] Add Manual History
-    manual_stmt = select(ProductPriceHistoryModel).where(ProductPriceHistoryModel.product_id == product_id).order_by(ProductPriceHistoryModel.date.desc())
-    m_res = await db.execute(manual_stmt)
-    for m in m_res.scalars().all():
-        history.append(ProductPriceHistory(
-            date=m.date.strftime("%Y-%m-%d"),
-            type="MANUAL",
-            partner_name="-",
-            quantity=0,
-            unit_price=m.price,
-            total_amount=0,
-            order_no=m.note or "수동 입력"
-        ))
+    try:
+        manual_stmt = select(ProductPriceHistoryModel).where(ProductPriceHistoryModel.product_id == product_id).order_by(ProductPriceHistoryModel.date.desc())
+        m_res = await db.execute(manual_stmt)
+        for m in m_res.scalars().all():
+            history.append(ProductPriceHistory(
+                date=m.date.strftime("%Y-%m-%d") if m.date else "-",
+                type="MANUAL",
+                partner_name="-",
+                quantity=0,
+                unit_price=m.price,
+                total_amount=0,
+                order_no=m.note or "수동 입력"
+            ))
+    except Exception as e:
+        # If table is missing, just log and continue without manual history
+        print(f"⚠️ Warning: Failed to fetch manual price history (table might be missing): {e}")
+        await db.rollback()
 
     history.sort(key=lambda x: x.date, reverse=True)
+
     return history
 
 @router.get("/{product_id}/sales-history", response_model=List[ProductPriceHistory])
