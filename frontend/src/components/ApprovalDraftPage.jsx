@@ -365,10 +365,10 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     }
                 }
                 /* Global A4 Styles for overflow prevention */
-                .a4-paper-root td, .a4-paper-root th, .a4-paper-root div, .a4-paper-root input, .a4-paper-root textarea {
-                    word-break: break-all !important;
-                    word-wrap: break-word !important;
-                    white-space: pre-wrap !important;
+                .a4-paper-root td, .a4-paper-root th, .a4-paper-root input, .a4-paper-root textarea {
+                    word-break: break-all;
+                    word-wrap: break-word;
+                    white-space: pre-wrap;
                     overflow: visible !important;
                 }
                 /* Reset nested a4-wrapper to be flexible within the paper root */

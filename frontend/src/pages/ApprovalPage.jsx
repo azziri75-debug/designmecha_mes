@@ -592,21 +592,14 @@ const ApprovalPage = () => {
                                 )}>
                                 <Box sx={{ 
                                     width: '100%',
-                                    // Removed maxWidth/minHeight here because a4-wrapper handles it
                                     margin: '0 auto',
                                     display: 'flex', 
                                     flexDirection: 'column',
                                     bgcolor: '#ffffff',
-                                    p: { xs: '15mm', md: '15mm' },
+                                    p: 0,
                                     boxShadow: 'none',
                                     color: '#000000',
                                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' },
-                                    '& td, & th, & div, & span': { 
-                                        wordBreak: 'break-all !important',
-                                        wordWrap: 'break-word !important',
-                                        whiteSpace: 'pre-wrap !important',
-                                        overflow: 'visible !important'
-                                    }
                                 }}>
                                     {/* ... document form cases ... */}
                                     {selectedDoc.doc_type === 'INTERNAL_DRAFT' && (() => {
