@@ -230,7 +230,7 @@ export const ResizableTable = ({ columns, data, onUpdateWidths, onUpdateData, on
 
     return (
         <div className="w-full max-w-full overflow-hidden border-t-2 border-b-2 border-black">
-            <table className={cn("w-full border-collapse table-fixed md:table-fixed idf-resizable-table", className)}>
+            <table className={cn("w-full border-collapse idf-resizable-table", className)} style={{ tableLayout: 'auto' }}>
             <thead>
                 <tr className="font-bold border-b border-black" style={{ backgroundColor: '#f9fafb' }}>
                     {(columns || []).map((col, idx) => (
