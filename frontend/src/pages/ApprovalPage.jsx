@@ -276,7 +276,7 @@ const ApprovalPage = () => {
 
     return (
         <>
-            <div className={cn("space-y-6 approval-page-content", showDocDetail && "print:hidden")}>
+            <div className={cn("space-y-6 approval-page-content", showDocDetail && "print-hide")}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -556,7 +556,7 @@ const ApprovalPage = () => {
             </div>
 
             {showDocDetail && selectedDoc && createPortal(
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-200/90 backdrop-blur-sm p-4 approval-modal-overlay no-print">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-200/90 backdrop-blur-sm p-4 approval-modal-overlay no-print print-hide">
                     <div className="bg-white rounded-2xl border border-gray-300 w-full max-w-7xl h-full max-h-[95vh] shadow-2xl animation-fade-in my-auto flex flex-col overflow-hidden doc-detail-modal">
                         <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-white print-hide">
                             <div>
