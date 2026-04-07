@@ -205,11 +205,11 @@ const PurchaseOrderTemplate = ({
                 <div className="flex-1 flex flex-col items-center px-0 md:px-6 order-1 md:order-2 w-full idf-header-title text-center">
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '12px', md: '14px' } }}>주식회사 디자인메카</Typography>
                     <div className="border-[3px] border-black px-4 md:px-8 py-2 text-xl md:text-2xl font-bold text-center leading-none w-full md:w-auto" style={{ 
-                        whiteSpace: 'nowrap', 
                         letterSpacing: { xs: '2px', md: '10px' }, 
                         textIndent: { xs: '2px', md: '10px' },
                         display: 'inline-block',
-                        minWidth: 'max-content'
+                        minWidth: 'max-content',
+                        wordBreak: 'keep-all'
                     }}>
                         {data.title || '구 매 발 주 서'}
                     </div>
@@ -222,9 +222,9 @@ const PurchaseOrderTemplate = ({
             {/* Info Section */}
             <div className="flex flex-col md:flex-row idf-print-flex-row justify-between mb-4 md:mb-6 text-xs items-start gap-4">
                 <div className="space-y-4 flex-1 w-full">
-                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 w-fit max-w-full whitespace-nowrap">
-                        <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="w-auto" />
-                        <span className="text-sm pb-1 font-normal">귀하</span>
+                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 w-fit max-w-full">
+                        <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="w-auto" autoFit />
+                        <span className="text-sm pb-1 font-normal min-w-max">귀하</span>
                     </div>
                     <div className="space-y-1 text-[10px] text-gray-500">
                         <p>TEL : <span className="text-black">{data.partner_phone || '-'}</span></p>

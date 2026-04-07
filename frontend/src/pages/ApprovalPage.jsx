@@ -597,7 +597,7 @@ const ApprovalPage = () => {
                                     display: 'flex', 
                                     flexDirection: 'column',
                                     bgcolor: '#ffffff',
-                                    p: { xs: '5mm', md: '5mm' },
+                                    p: { xs: '15mm', md: '15mm' },
                                     boxShadow: 'none',
                                     color: '#000000',
                                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' },

@@ -256,41 +256,70 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             case 'LEAVE_REQUEST': return <LeaveRequestForm {...commonProps} />;
             case 'OVERTIME': return <OvertimeWorkForm {...commonProps} />;
             case 'PURCHASE_ORDER': return <PurchaseOrderForm {...commonProps} />;
-            case 'INTERNAL_DRAFT':
-            default:
-                return (
-                    <Box sx={{ px: 4, pt: 2 }}>
-                        <InternalDraftForm {...commonProps} />
-                    </Box>
-                );
-        }
-    };
-
-    return (
-        <Box sx={{ bgcolor: '#eee', minHeight: '100vh', py: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            {/* Header / Tabs Container */}
-            <Paper elevation={3} sx={{ width: '100%', maxWidth: '1100px', mb: 3, p: 2, position: 'sticky', top: 0, zIndex: 100 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1a237e' }}>결재 문서 기안</Typography>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+            cas            {/* Header / Tabs Container */}
+            <Paper elevation={1} sx={{ width: '100%', maxWidth: '1100px', mb: 3, borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 100, bgcolor: 'white' }}>
+                <div className="flex items-center justify-between p-5 bg-white">
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-blue-500" />
+                            {documentData?.id ? '문서 상세 보기' : '결재 문서 기안'}
+                        </h3>
+                    </div>
+                    <div className="flex items-center gap-3">
                         {!isReadOnly && (
-                            <>
-                                <Button 
-                                    variant="contained" 
-                                    color="primary" 
-                                    startIcon={<Send />} 
-                                    onClick={handleSubmit} 
-                                    disabled={isSaving}
-                                    sx={{ fontWeight: 'bold' }}
-                                >
-                                    {documentData?.id ? '[다시 제출하기]' : '[기안 제출하기]'}
-                                </Button>
-                                <Button variant="outlined" color="secondary" startIcon={<UserCheck />} onClick={() => setShowApproverSelector(true)}>결재자 지정</Button>
-                            </>
+                            <button 
+                                onClick={handleSubmit} 
+                                disabled={isSaving}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                            >
+                                <Send className="w-4 h-4" />
+                                {documentData?.id ? '다시 제출하기' : '기안 제출하기'}
+                            </button>
                         )}
-                        <Button variant="outlined" startIcon={<Printer />} onClick={handlePrint}>인쇄</Button>
-                        <Button variant="outlined" startIcon={<FileDown />} onClick={handleDownloadPDF}>PDF</Button>
-                        <IconButton onClick={() => navigate('/approval')}><X /></IconButton>
+                        {!isReadOnly && (
+                            <button 
+                                onClick={() => setShowApproverSelector(true)}
+                                className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                            >
+                                <UserCheck className="w-4 h-4" /> 결재자 지정
+                            </button>
+                        )}
+                        <button
+                            onClick={handlePrint}
+                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                        >
+                            <Printer className="w-4 h-4" /> 인쇄
+                        </button>
+                        <button
+                            onClick={handleDownloadPDF}
+                            className="bg-white hover:bg-gray-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                        >
+                            <FileDown className="w-4 h-4" /> PDF 저장
+                        </button>
+                        <button onClick={() => navigate('/approval')} className="text-gray-400 hover:text-gray-600 transition-colors ml-2">
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                </div>
+
+                {!isReadOnly && !documentData?.id && (
+                    <Tabs 
+                        value={docType} 
+                        onChange={(_, val) => setDocType(val)} 
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        sx={{ 
+                            px: 2,
+                            borderTop: '1px solid #f3f4f6',
+                            '& .MuiTab-root': { fontSize: '13px', minHeight: '48px' }
+                        }}
+                    >
+                        {DOC_TYPES.map(type => (
+                            <Tab key={type.value} label={type.label} value={type.value} />
+                        ))}
+                    </Tabs>
+                )}
+            </Paper>on onClick={() => navigate('/approval')}><X /></IconButton>
                     </Box>
                 </Box>
 
@@ -316,7 +345,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 sx={{
                     width: '210mm',
                     minHeight: '297mm',
-                    p: docType === 'PURCHASE_ORDER' || docType === 'OUTSOURCING' ? 0 : '15mm',
+                    p: '15mm',
                     mb: 4,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                     bgcolor: 'white',

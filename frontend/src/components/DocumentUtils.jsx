@@ -66,7 +66,7 @@ export const EditableText = ({
             <div
                 className={cn(
                     "min-h-[1.5em] flex items-center w-full",
-                    autoFit ? "whitespace-pre-wrap break-all" : "whitespace-nowrap overflow-hidden",
+                    autoFit ? "whitespace-pre-wrap break-all overflow-wrap-anywhere" : "whitespace-nowrap overflow-hidden text-ellipsis",
                     className
                 )}
                 style={{ fontSize: fittedSize, ...style }}
@@ -99,7 +99,7 @@ export const EditableText = ({
             onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
             className={cn(
                 "cursor-text transition-colors min-h-[1.5em] flex items-center w-full",
-                autoFit ? "whitespace-pre-wrap break-all" : "whitespace-nowrap overflow-hidden",
+                autoFit ? "whitespace-pre-wrap break-all overflow-wrap-anywhere" : "whitespace-nowrap overflow-hidden text-ellipsis",
                 className
             )}
             style={{

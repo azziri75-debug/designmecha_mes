@@ -353,27 +353,29 @@ export async function printAsImage(element, options = {}) {
   const targetH = element.clientHeight || element.offsetHeight;
 
   try {
-    const a4HeightPx = (A4.H_MM * 3.7795); // 297mm to px
+    const a4WidthPx = Math.floor(A4.W_MM * 3.7795); // 210mm to px
+    const a4HeightPx = Math.floor(A4.H_MM * 3.7795); // 297mm to px
     let scale = 1;
     
-    // 내용이 A4 높이를 초과하면 축소 비율 계산
+    // 내용이 A4 높이를 초과하면 축소 비율 계산 (가로 폭은 a4WidthPx에 맞춤)
     if (targetH > a4HeightPx) {
       scale = a4HeightPx / targetH;
     }
 
     const dataUrl = await toPng(element, {
       cacheBust: true,
-      backgroundColor: '#ffffff', // 배경을 흰색으로 고정
-      pixelRatio: 2, // 가독성을 위해 고해상도 유지
+      backgroundColor: '#ffffff',
+      pixelRatio: 2,
       filter: printFilter,
-      width: (A4.W_MM * 3.7795), // 210mm 고정
-      height: a4HeightPx,        // 297mm 고정
+      width: a4WidthPx,
+      height: a4HeightPx,
       style: { 
         boxShadow: 'none',
         transform: `scale(${scale})`,
         transformOrigin: 'top left',
         width: `${targetW}px`,
-        height: `${targetH}px`
+        height: `${targetH}px`,
+        overflow: 'hidden' // 캡처 시 스크롤바 제거
       }
     });
 
@@ -392,8 +394,10 @@ export async function printAsImage(element, options = {}) {
     html, body { width: 100%; height: 100%; background: white; overflow: hidden; }
     img { 
       display: block; 
-      width: 100% !important; 
-      max-height: 99.7% !important; 
+      width: 210mm !important; 
+      height: 297mm !important;
+      max-width: 100% !important;
+      max-height: 100% !important; 
       object-fit: contain !important;
     }
   </style>
@@ -458,14 +462,22 @@ export async function printMultiPageAsImage(elements, options = {}) {
     const targetW = el.clientWidth || el.offsetWidth;
     const targetH = el.clientHeight || el.offsetHeight;
 
+    const a4WidthPx = Math.floor(targetWidthMM * 3.7795);
+    const a4HeightPx = Math.floor((isLandscape ? A4.H_MM_LAND : A4.H_MM) * 3.7795);
+
     const url = await toPng(el, {
       cacheBust: true,
-      backgroundColor: null,
+      backgroundColor: '#ffffff',
       pixelRatio,
       filter: printFilter,
-      width: targetW,
-      height: targetH,
-      style: { boxShadow: 'none' }
+      width: a4WidthPx,
+      height: a4HeightPx,
+      style: { 
+        boxShadow: 'none',
+        width: `${targetW}px`,
+        height: `${targetH}px`,
+        overflow: 'hidden'
+      }
     });
 
     el.style.transform = origT;
@@ -496,8 +508,10 @@ export async function printMultiPageAsImage(elements, options = {}) {
   html, body { width: 100%; background: white; }
   img { 
     display: block; 
-    width: 100vw; 
-    height: 100vh; 
+    width: 210mm !important;
+    height: 297mm !important;
+    max-width: 100vw;
+    max-height: 100vh;
     object-fit: contain; 
     page-break-after: always; 
     page-break-inside: avoid;
