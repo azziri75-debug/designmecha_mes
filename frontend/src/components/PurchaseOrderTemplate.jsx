@@ -198,18 +198,18 @@ const PurchaseOrderTemplate = ({
 
             <div className={cn("bg-white text-black relative flex flex-col", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
-            <div className="flex flex-row idf-print-flex-row justify-between items-start mb-6 px-1 gap-2 w-full">
+            <div className="flex flex-row idf-print-flex-row justify-between items-start mb-6 px-1 gap-4 w-full">
                 {/* Left: NO */}
-                <div className="flex-1 flex-shrink-0 text-[9px] space-y-0.5 pt-8 idf-header-no min-w-0">
-                    <p className="flex items-center gap-1 whitespace-nowrap overflow-visible">
+                <div className="flex-1 flex-shrink-0 text-[10px] space-y-0.5 pt-8 idf-header-no min-w-0">
+                    <p className="flex items-center gap-1 whitespace-nowrap overflow-visible font-bold">
                         NO : <EditableText value={data.order_no} onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="w-auto border-b border-gray-100 min-w-[80px]" />
                     </p>
                 </div>
 
                 {/* Center: Title */}
-                <div className="flex-[2] flex-shrink-0 flex flex-col items-center idf-header-title text-center min-w-0">
+                <div className="flex-[1.5] flex-shrink-0 flex flex-col items-center idf-header-title text-center min-w-0 px-2">
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, fontSize: '14px', letterSpacing: '1px' }}>주식회사 디자인메카</Typography>
-                    <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold text-center leading-none inline-block" style={{ 
+                    <div className="border-[3px] border-black px-6 py-2 text-2xl font-bold text-center leading-none inline-block shadow-[4px_4px_0_rgba(0,0,0,0.05)]" style={{ 
                         letterSpacing: '10px', 
                         textIndent: '10px',
                         wordBreak: 'keep-all',
@@ -220,7 +220,7 @@ const PurchaseOrderTemplate = ({
                 </div>
 
                 {/* Right: Approval Grid */}
-                <div className="flex-1 flex-shrink-0 flex justify-end idf-header-approval min-w-0">
+                <div className="flex-1 flex-shrink-0 flex justify-end idf-header-approval min-w-0 pt-1">
                     {!hideApprovalGrid && <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />}
                 </div>
             </div>
