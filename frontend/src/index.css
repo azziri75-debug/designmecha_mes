@@ -99,9 +99,12 @@ body.resizing {
 
     /* Standardize Modal for Print */
     .doc-detail-modal {
-        position: static !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
         display: block !important;
-        width: 100% !important;
+        width: 210mm !important;
+        height: 297mm !important;
         max-width: none !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -111,26 +114,34 @@ body.resizing {
         border: none !important;
     }
 
-    .a4-wrapper {
-        width: 100% !important;
-        max-width: 100% !important;
+    .a4-wrapper, .a4-paper-root, .doc-detail-modal .a4-wrapper {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important; /* Force exact A4 height to allow flex-1 to expand */
+        max-width: 210mm !important;
         margin: 0 !important;
-        padding: 10mm !important;
+        padding: 0 !important; /* No extra padding, let child containers handle it (15mm) */
         background-color: white !important;
         border: none !important;
         box-shadow: none !important;
         box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
 
     /* Utility to hide elements in print */
     .print-hide, .no-print, .idf-no-print {
         display: none !important;
         height: 0 !important;
+        width: 0 !important;
     }
 
     /* Base cleanup */
     html, body, #root {
-        height: auto !important;
+        width: 210mm !important;
+        height: 297mm !important;
         margin: 0 !important;
         padding: 0 !important;
         overflow: visible !important;
@@ -144,26 +155,30 @@ body.resizing {
     }
 }
 
-/* [FINAL] Capture Rules (for printAsImage) */
+/* [FINAL] Capture Rules (for printAsImage / html2canvas) */
 .is-capturing {
     background-color: white !important;
     transform-origin: top left !important;
 }
 
 .a4-wrapper.is-capturing,
-.a4-paper-container.is-capturing,
+.a4-paper-root.is-capturing,
 .is-capturing .a4-wrapper,
-.is-capturing .a4-paper-container {
+.is-capturing .a4-paper-root {
     width: 210mm !important;
     min-width: 210mm !important;
+    height: 297mm !important; /* Force height during capture to prevent flex-1 collapse */
+    min-height: 297mm !important;
     margin: 0 !important;
-    padding: 10mm !important;
+    padding: 0 !important; /* Managed by PurchaseOrderTemplate / Box p-15mm */
     box-shadow: none !important;
     border: none !important;
     outline: none !important;
     border-radius: 0 !important;
     box-sizing: border-box !important;
     transform: none !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 .is-capturing * {
