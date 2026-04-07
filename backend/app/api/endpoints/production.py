@@ -720,17 +720,18 @@ async def update_production_plan(
                 await on_production_item_completed(db, item, reference=f"Manual Plan Completion (Plan #{plan_id})")
 
     # --- [NEW] 공정 상세 항목(items) 업데이트 로직 ---
-    if items_data is not None:
+    if plan_in.items is not None:
         current_items_map = {item.id: item for item in plan.items}
         
         # 1. 삭제 및 업데이트 처리
-        incoming_ids = {item_in.id for item_in in items_data if item_in.id}
+        # incoming_ids = {item_in.id for item_in in plan_in.items if item_in.id} # Pydantic objects use dot
+        incoming_ids = {item_in.id for item_in in plan_in.items if item_in.id}
         for item_id, item in list(current_items_map.items()):
             if item_id not in incoming_ids:
                 await db.delete(item)
         
         # 2. 업데이트 및 추가 처리
-        for item_in in items_data:
+        for item_in in plan_in.items:
             if item_in.id and item_in.id in current_items_map:
                 # 기존 항목 업데이트
                 existing_item = current_items_map[item_in.id]
@@ -752,10 +753,11 @@ async def update_production_plan(
     
     # --- Trigger Side Effects ---
     # [FIX] Check for Auto-Completion if items were updated
-    if items_data:
-        all_qty_zero = all((i.quantity or 0) == 0 for i in items_data)
+    if plan_in.items:
+        all_qty_zero = all((i.quantity or 0) == 0 for i in plan_in.items)
         if all_qty_zero:
             plan.status = ProductionStatus.COMPLETED
+
 
     if plan.status == ProductionStatus.COMPLETED:
         await process_stock_deduction(db, plan_id=plan.id)

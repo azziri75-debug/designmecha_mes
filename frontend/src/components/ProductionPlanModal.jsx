@@ -584,6 +584,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                         {group.items.map((item, index) => (
                                             <TableRow
                                                 key={item.cid}
+                                                onDragStart={(e) => handleDragStart(e, productId, index)}
+                                                onDragEnter={(e) => handleDragEnter(e, productId, index)}
                                                 onDragEnd={handleDragEnd}
                                                 onDragOver={(e) => e.preventDefault()}
                                                 draggable={!isCompleted}
@@ -609,8 +611,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                                 <TableCell>
                                                     <Autocomplete
                                                         freeSolo
-                                                        options={masterProcesses}
+                                                        options={masterProcesses.filter(p => !p.group_id || p.group_id === item.product?.group_id)}
                                                         getOptionLabel={(option) => typeof option === 'string' ? option : (option.name || "")}
+
                                                         value={item.process_name || ""}
                                                         onInputChange={(event, newInputValue) => {
                                                             handleItemChange(item.originalIndex, 'process_name', newInputValue);
