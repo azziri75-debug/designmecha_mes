@@ -325,7 +325,7 @@ const InventoryPage = () => {
                                 onChange={(e) => setItemType(e.target.value)}
                             >
                                 <option value="">전체</option>
-                                <option value="PRODUCT">제품</option>
+                                <option value="PRODUCED">제품</option>
                                 <option value="PART">부품</option>
                                 <option value="RAW_MATERIAL">원자재</option>
                             </select>

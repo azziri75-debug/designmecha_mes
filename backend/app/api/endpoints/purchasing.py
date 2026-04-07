@@ -29,48 +29,71 @@ async def get_unordered_requirements(
     status: str = "PENDING"
 ):
     """
-    기록된 미발주 소요량(MRP) 리스트 조회 API
+    기록된 미발주 소요량(MRP) 리스트 조회 API (품목별 합산 및 실시간 재고 반영)
     """
-    query = select(MaterialRequirement).where(MaterialRequirement.status == status)\
-        .options(
-            selectinload(MaterialRequirement.product),
-            selectinload(MaterialRequirement.order).selectinload(SalesOrder.partner),
-            selectinload(MaterialRequirement.plan)
-        )
-    
+    # 1. 실시간 발주 잔량(Open PO Qty) 서브쿼리
+    po_subq = select(
+        PurchaseOrderItem.product_id,
+        func.sum(PurchaseOrderItem.quantity - PurchaseOrderItem.received_quantity).label("open_qty")
+    ).join(PurchaseOrder).where(
+        PurchaseOrder.status.in_([PurchaseStatus.PENDING, PurchaseStatus.ORDERED, PurchaseStatus.PARTIAL])
+    ).group_by(PurchaseOrderItem.product_id).subquery()
+
+    # 2. 실시간 현재고(Live Stock) 서브쿼리
+    stock_subq = select(
+        Stock.product_id,
+        func.sum(Stock.current_quantity).label("live_stock")
+    ).group_by(Stock.product_id).subquery()
+
+    # 3. 메인 쿼리: 품목별 집계 및 실시간 정보 조인
+    query = select(
+        Product,
+        func.sum(MaterialRequirement.required_quantity).label("total_required"),
+        func.min(MaterialRequirement.id).label("min_mr_id"),
+        func.max(MaterialRequirement.created_at).label("latest_created"),
+        po_subq.c.open_qty,
+        stock_subq.c.live_stock
+    ).join(MaterialRequirement, MaterialRequirement.product_id == Product.id)\
+     .outerjoin(po_subq, Product.id == po_subq.c.product_id)\
+     .outerjoin(stock_subq, Product.id == stock_subq.c.product_id)\
+     .where(MaterialRequirement.status == status)\
+     .group_by(Product.id, po_subq.c.open_qty, stock_subq.c.live_stock)
+
     if major_group_id and str(major_group_id).isdigit():
         major_group_id_int = int(major_group_id)
         from app.models.product import ProductGroup
-        subquery = select(MaterialRequirement.id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+        subquery = select(Product.id).join(ProductGroup, Product.group_id == ProductGroup.id)\
                      .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))
-        query = query.where(MaterialRequirement.id.in_(subquery))
-    
+        query = query.where(Product.id.in_(subquery))
+
     result = await db.execute(query)
-    requirements = result.scalars().all()
-    
-    # Flatten metadata for response
-    for req in requirements:
-        if req.product:
-            req.product_name = req.product.name
-            req.specification = req.product.specification
-            req.item_type = req.product.item_type
+    rows = result.all()
+
+    final_results = []
+    for product, total_required, min_mr_id, latest_created, open_qty, live_stock in rows:
+        # 연관된 수주 번호 수집 (병합)
+        so_stmt = select(SalesOrder.order_no).join(MaterialRequirement, MaterialRequirement.order_id == SalesOrder.id)\
+                    .where(MaterialRequirement.product_id == product.id, MaterialRequirement.status == status).distinct()
+        so_res = await db.execute(so_stmt)
+        so_numbers = [r for r in so_res.scalars().all() if r]
         
-        # Add linkage info for UI
-        req.linkage_info = "-"
-        req.sales_order_number = None
-        if req.plan:
-            if req.plan.order:
-                req.linkage_info = f"생산계획({req.plan.order.order_no})"
-                req.sales_order_number = req.plan.order.order_no
-            elif req.plan.stock_production:
-                req.linkage_info = f"생산계획({req.plan.stock_production.production_no})"
-            else:
-                req.linkage_info = f"생산계획(ID:{req.plan.id})"
-        elif req.order:
-            req.linkage_info = f"수주({req.order.order_no})"
-            req.sales_order_number = str(req.order.order_no)
+        # 합산된 데이터 구성
+        res = schemas.MaterialRequirementResponse(
+            id=min_mr_id, # 대표 ID 하나 사용
+            product_id=product.id,
+            required_quantity=int(total_required or 0),
+            current_stock=int(live_stock or 0), # 실시간 재고 반영
+            open_purchase_qty=int(open_qty or 0), # 실시간 발주 잔량 반영
+            shortage_quantity=max(0, int(total_required or 0) - int(live_stock or 0) - int(open_qty or 0)), # 실질 부족분 계산
+            created_at=latest_created,
+            product_name=product.name,
+            specification=product.specification,
+            item_type=product.item_type,
+            sales_order_number=", ".join(so_numbers) if so_numbers else "-"
+        )
+        final_results.append(res)
             
-    return requirements
+    return final_results
 
 @router.get("/purchase/consumable-waits", response_model=List[schemas.ConsumablePurchaseWaitResponse])
 async def get_consumable_waits(
