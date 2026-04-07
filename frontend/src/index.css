@@ -144,6 +144,7 @@ body.resizing {
 /* [FINAL] Capture Rules (for printAsImage) */
 .is-capturing {
     background-color: white !important;
+    transform-origin: top left !important;
 }
 
 .a4-wrapper.is-capturing,

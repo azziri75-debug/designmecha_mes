@@ -353,14 +353,28 @@ export async function printAsImage(element, options = {}) {
   const targetH = element.clientHeight || element.offsetHeight;
 
   try {
+    const a4HeightPx = (A4.H_MM * 3.7795); // 297mm to px
+    let scale = 1;
+    
+    // 내용이 A4 높이를 초과하면 축소 비율 계산
+    if (targetH > a4HeightPx) {
+      scale = a4HeightPx / targetH;
+    }
+
     const dataUrl = await toPng(element, {
       cacheBust: true,
-      backgroundColor: null,
-      pixelRatio,
+      backgroundColor: '#ffffff', // 배경을 흰색으로 고정
+      pixelRatio: 2, // 가독성을 위해 고해상도 유지
       filter: printFilter,
-      width: targetW,
-      height: targetH,
-      style: { boxShadow: 'none' }
+      width: (A4.W_MM * 3.7795), // 210mm 고정
+      height: a4HeightPx,        // 297mm 고정
+      style: { 
+        boxShadow: 'none',
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+        width: `${targetW}px`,
+        height: `${targetH}px`
+      }
     });
 
     // 2. 팝업 창 인쇄 (이미지 로드 완료 보장)
