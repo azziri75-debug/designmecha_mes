@@ -296,14 +296,25 @@ async def on_production_item_completed(
             plan.status = ProductionStatus.COMPLETED
             plan.actual_completion_date = completion_date or now_kst().date()
             db.add(plan)
+            
+            # [FIX] 미발주 소요량(MRP) 중 충분한 재고로 인해 발주되지 않은 잉여 데이터들을 함께 완료(COMPLETED) 처리
+            from app.models.purchasing import MaterialRequirement
+            mr_stmt = select(MaterialRequirement).where(
+                MaterialRequirement.plan_id == plan.id,
+                MaterialRequirement.status != "COMPLETED"
+            )
+            mr_res = await db.execute(mr_stmt)
+            for pending_mr in mr_res.scalars().all():
+                pending_mr.status = "COMPLETED"
+                db.add(pending_mr)
 
-    # --- 2. 사내 생산(INTERNAL)이고 마지막 공정일 경우 완제품 입고 및 BOM 차감 ---
+    # --- 2. 마지막 공정일 경우 완제품 입고 및 BOM 차감 적용 (외주/사내 공통) ---
     max_seq_stmt = select(func.max(ProductionPlanItem.sequence)).where(ProductionPlanItem.plan_id == item.plan_id)
     max_seq_res = await db.execute(max_seq_stmt)
     max_seq = max_seq_res.scalar()
     is_last = (item.sequence == max_seq)
 
-    if item.course_type == "INTERNAL" and is_last:
+    if is_last:
         # A. 완제품 입고 (+)
         if auto_delivery:
             # 입고 후 즉시 출고 (FG Net 0)
