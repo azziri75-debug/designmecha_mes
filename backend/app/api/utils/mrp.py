@@ -78,7 +78,9 @@ async def calculate_and_record_mrp(
         # Aggregate quantities by product_id to handle potential duplicates in the plan itself
         product_qtys = {}
         for pi in plan.items:
-            product_qtys[pi.product_id] = product_qtys.get(pi.product_id, 0) + pi.quantity
+            # [FIX] Use max instead of sum to avoid multiplying by the number of processes
+            # Multiple processes in the same plan for the same product share the same target quantity.
+            product_qtys[pi.product_id] = max(product_qtys.get(pi.product_id, 0), pi.quantity)
         
         for pid, qty in product_qtys.items():
             items.append({"product_id": pid, "quantity": qty})
