@@ -347,6 +347,9 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     fontFamily: '"Malgun Gothic", "Dotum", sans-serif',
                     position: 'relative',
                     color: '#000000',
+                    height: '297mm', // Fixed A4 height
+                    boxSizing: 'border-box',
+                    overflow: 'hidden',
                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' } 
                 }}
             >

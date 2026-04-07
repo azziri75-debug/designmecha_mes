@@ -80,6 +80,7 @@ body.resizing {
     flex-shrink: 0;
     position: relative;
     color: black;
+    overflow: hidden;
 }
 
 /* [FINAL] Print Rules */
