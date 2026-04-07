@@ -668,6 +668,11 @@ const MobileWorkLogPage = () => {
                                                                         규격: {plan.items[0].product.specification}
                                                                     </Typography>
                                                                 )}
+                                                                {(plan.order?.note || plan.stock_production?.note) && (
+                                                                    <Typography variant="caption" sx={{ display: 'block', mt: -0.5, mb: 0.5, color: '#d97706', fontWeight: 'bold' }}>
+                                                                        비고: {plan.order?.note || plan.stock_production?.note}
+                                                                    </Typography>
+                                                                )}
                                                                 <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                                                                     <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
                                                                         고객사: {plan.order?.partner?.name || plan.stock_production?.partner?.name || '-'}
@@ -762,6 +767,11 @@ const MobileWorkLogPage = () => {
                                         {selectedItem.product?.specification && (
                                             <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
                                                 규격: {selectedItem.product.specification}
+                                            </Typography>
+                                        )}
+                                        {(selectedPlan?.order?.note || selectedPlan?.stock_production?.note) && (
+                                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#d97706', fontWeight: 'bold' }}>
+                                                비고: {selectedPlan.order?.note || selectedPlan.stock_production?.note}
                                             </Typography>
                                         )}
                                     </Box>
