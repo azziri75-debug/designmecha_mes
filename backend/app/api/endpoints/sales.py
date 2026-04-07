@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc, or_
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from app.api import deps
 from app.core.timezone import now_kst
 from app.models.sales import (
@@ -976,6 +976,13 @@ async def create_delivery(
     if all_completed:
         try:
             await complete_production_for_order(db, order_id=order_id, reference=delivery_no)
+            # [Fix] 수주 직접 연결 MRP 소요량 자동 완결 처리
+            await db.execute(
+                update(MaterialRequirement)
+                .where(MaterialRequirement.order_id == order_id)
+                .where(MaterialRequirement.status != "COMPLETED")
+                .values(status="COMPLETED")
+            )
         except Exception as e:
             print(f'[create_delivery] Auto-complete production plan failed: {e}')
 
@@ -1328,6 +1335,13 @@ async def update_delivery_history(
                 # [NEW] 납품 완료 시 생산 계획 자동 완료 처리
                 try:
                     await complete_production_for_order(db, order_id=order.id, reference=history.delivery_no)
+                    # [Fix] 수주 직접 연결 MRP 소요량 자동 완결 처리
+                    await db.execute(
+                        update(MaterialRequirement)
+                        .where(MaterialRequirement.order_id == order.id)
+                        .where(MaterialRequirement.status != "COMPLETED")
+                        .values(status="COMPLETED")
+                    )
                 except Exception as e:
                     print(f'[update_delivery_history] Auto-complete production plan failed: {e}')
             elif delivered_qty > 0:

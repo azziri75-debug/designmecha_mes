@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip
+    TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip,
+    FormControlLabel, Switch
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import api from '../lib/api';
@@ -24,6 +25,7 @@ const PurchasePage = ({ type }) => {
     const [selectedPendingItems, setSelectedPendingItems] = useState([]);
     const [selectedMrpItems, setSelectedMrpItems] = useState([]);
     const [expandedOrderId, setExpandedOrderId] = useState(null);
+    const [hideZeroShortage, setHideZeroShortage] = useState(false);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -453,7 +455,9 @@ const PurchasePage = ({ type }) => {
 
     const handleSelectAllMrp = (event) => {
         if (event.target.checked) {
-            setSelectedMrpItems(mrpItems.map(item => item.product_id));
+            // [Fix] Only select items currently visible by the filter
+            const visibleItems = mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0));
+            setSelectedMrpItems(visibleItems.map(item => item.product_id));
         } else {
             setSelectedMrpItems([]);
         }
@@ -701,35 +705,52 @@ const PurchasePage = ({ type }) => {
 
             {type !== 'CONSUMABLE' && tabValue === 1 && (
                 <>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 1 }}>
-                        <Button
-                            variant="outlined"
-                            color="error"
-                            startIcon={<DeleteIcon />}
-                            onClick={handleDeleteSelectedMrp}
-                            disabled={selectedMrpItems.length === 0}
-                        >
-                            선택 품목 삭제
-                        </Button>
-                        <Button
-                            variant="contained"
-                            startIcon={<AddIcon />}
-                            onClick={handleCreateFromMRP}
-                            disabled={selectedMrpItems.length === 0}
-                        >
-                            선택 품목 발주 등록
-                        </Button>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={hideZeroShortage}
+                                    onChange={(e) => setHideZeroShortage(e.target.checked)}
+                                    color="primary"
+                                />
+                            }
+                            label={<Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>재고 충분(부족분 0) 항목 숨기기</Typography>}
+                        />
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                                onClick={handleDeleteSelectedMrp}
+                                disabled={selectedMrpItems.length === 0}
+                            >
+                                선택 품목 삭제
+                            </Button>
+                            <Button
+                                variant="contained"
+                                startIcon={<AddIcon />}
+                                onClick={handleCreateFromMRP}
+                                disabled={selectedMrpItems.length === 0}
+                            >
+                                선택 품목 발주 등록
+                            </Button>
+                        </Box>
                     </Box>
                     <TableContainer component={Paper}>
                         <Table>
                             <TableHead>
                                 <TableRow>
                                     <TableCell padding="checkbox">
-                                        <Checkbox
-                                            indeterminate={selectedMrpItems.length > 0 && selectedMrpItems.length < mrpItems.length}
-                                            checked={mrpItems.length > 0 && selectedMrpItems.length === mrpItems.length}
-                                            onChange={handleSelectAllMrp}
-                                        />
+                                        {(() => {
+                                            const visibleItems = mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0));
+                                            return (
+                                                <Checkbox
+                                                    indeterminate={selectedMrpItems.length > 0 && selectedMrpItems.length < visibleItems.length}
+                                                    checked={visibleItems.length > 0 && selectedMrpItems.length === visibleItems.length}
+                                                    onChange={handleSelectAllMrp}
+                                                />
+                                            );
+                                        })()}
                                     </TableCell>
                                     <TableCell sx={{ minWidth: 200, fontWeight: 'bold' }}>품목명</TableCell>
                                     <TableCell sx={{ minWidth: 150 }}>규격</TableCell>
@@ -745,10 +766,16 @@ const PurchasePage = ({ type }) => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {mrpItems.length === 0 ? (
-                                    <TableRow><TableCell colSpan={8} align="center">수주 기반으로 계산된 추가 발주 필요 품목이 없습니다.</TableCell></TableRow>
+                                {mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0)).length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={10} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                            {mrpItems.length === 0 ? "수주 기반으로 계산된 추가 발주 필요 품목이 없습니다." : "조건에 맞는 소요량 내역이 없습니다."}
+                                        </TableCell>
+                                    </TableRow>
                                 ) : (
-                                    mrpItems.map((item) => (
+                                    mrpItems
+                                        .filter(item => !hideZeroShortage || (item.shortage_quantity > 0))
+                                        .map((item) => (
                                         <TableRow key={item.product_id} hover onClick={() => handleSelectMrpItem(item.product_id)} sx={{ cursor: 'pointer' }}>
                                             <TableCell padding="checkbox">
                                                 <Checkbox checked={selectedMrpItems.includes(item.product_id)} />
