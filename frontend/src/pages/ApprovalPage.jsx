@@ -6,7 +6,7 @@ import {
     Plus, Search, Filter, Pencil, Trash, X, Check,
     Calendar, User, Layers, Info, Settings, ClipboardList,
     ChevronRight, ArrowRight, Download, Upload, Printer,
-    Paperclip, File, ExternalLink
+    Paperclip, File, ExternalLink, FileDown
 } from 'lucide-react';
 import api from '../lib/api';
 import { cn, getImageUrl } from '../lib/utils';
