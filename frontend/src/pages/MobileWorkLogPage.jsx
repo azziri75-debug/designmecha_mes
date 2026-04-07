@@ -371,8 +371,31 @@ const MobileWorkLogPage = () => {
     };
 
     const handleCreateApproval = async () => {
-        if (!docFormData.reason && !docFormData.items && selectedDocType !== 'CONSUMABLES_PURCHASE') {
-            alert("필수 항목을 입력해주세요.");
+        // [MODIFIED] 상세 타입별 필수 항목 검증 보강
+        const errs = [];
+        if (selectedDocType === 'EARLY_LEAVE') {
+            if (!docFormData.date) errs.push("일자");
+            if (!docFormData.leave_time) errs.push("나가는 시간");
+            if (!docFormData.leave_reason) errs.push("조퇴 사유");
+        } else if (selectedDocType === 'LEAVE_REQUEST') {
+            if (!docFormData.start_date) errs.push("시작일");
+            if (!docFormData.end_date) errs.push("종료일");
+            if (!docFormData.vacation_reason) errs.push("휴가 사유");
+        } else if (selectedDocType === 'OVERTIME') {
+            if (!docFormData.date) errs.push("근무일");
+            if (!docFormData.start_time) errs.push("시작시간");
+            if (!docFormData.end_time) errs.push("종료시간");
+            if (!docFormData.reason) errs.push("업무 내용");
+        } else if (selectedDocType === 'CONSUMABLES_PURCHASE') {
+            const items = Array.isArray(docFormData.items) ? docFormData.items : [];
+            if (items.length === 0 || !items[0].product_name) errs.push("품목 내역");
+        } else {
+            // 기타 일반 문서
+            if (!docFormData.reason && !docFormData.items && !docFormData.content) errs.push("내용");
+        }
+
+        if (errs.length > 0) {
+            alert(`다음 필수 항목을 입력해주세요: ${errs.join(', ')}`);
             return;
         }
 
