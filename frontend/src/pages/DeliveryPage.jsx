@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Button, Typography, TextField, Grid, Divider, CircularProgress, IconButton, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import { Search, Plus, Printer, FileText, CheckCircle2, Clock, AlertCircle, TrendingUp, Package, Truck, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
 import api from '../lib/api';
+import { cn } from '../lib/utils';
 import ResizableTable from '../components/ResizableTable';
 import DeliveryModal from '../components/DeliveryModal';
 import FileViewerModal from '../components/FileViewerModal';
@@ -255,12 +256,18 @@ const DeliveryPage = () => {
                             <ResizableTable
                                 columns={DELIVERY_COLS}
                                 className="w-full text-left"
-                                theadClassName=""
-                                thClassName="px-6 py-5 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] bg-gray-900/50 border-b border-gray-800"
+                                theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
+                                thClassName="px-6 py-4"
                             >
                                     {displayedOrders.map((ord) => (
                                         <React.Fragment key={ord.id}>
-                                            <tr onClick={() => handleExpandToggle(ord.id)} className={`cursor-pointer group transition-all duration-300 hover:bg-gray-900/40 ${expandedOrder === ord.id ? 'bg-gray-900/60' : ''}`}>
+                                            <tr 
+                                                onClick={() => handleExpandToggle(ord.id)} 
+                                                className={cn(
+                                                    "cursor-pointer group transition-all duration-300 hover:bg-gray-800/40 border-b border-gray-800 text-gray-300",
+                                                    expandedOrder === ord.id && "bg-gray-800/30"
+                                                )}
+                                            >
                                                 <td className="px-6 py-5">
                                                     <div className="font-bold text-gray-200">{ord.partner?.name}</div>
                                                     <div className="text-[10px] text-gray-600 font-mono mt-0.5">{ord.order_no}</div>
@@ -320,27 +327,27 @@ const DeliveryPage = () => {
 
                                             {/* Expanded Detail Panel */}
                                             {expandedOrder === ord.id && (
-                                                <tr>
-                                                    <td colSpan="11" className="px-8 py-0 bg-gray-950/30">
+                                                <tr className="bg-gray-900/30">
+                                                    <td colSpan="11" className="px-8 py-0 border-none">
                                                         <div className="py-6 grid grid-cols-2 gap-8 border-t border-gray-800/50">
                                                             {/* Items Detail Table */}
                                                             <div className="bg-gray-950/50 rounded-xl border border-gray-700 p-4 shadow-xl">
                                                                 <h4 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
                                                                     <Package className="w-4 h-4" /> 수주 품목 및 납품 잔량
                                                                 </h4>
-                                                                <table className="w-full text-xs text-gray-400">
-                                                                    <thead>
-                                                                        <tr className="border-b border-gray-800 text-gray-500">
-                                                                            <th className="py-2 text-left">품목명</th>
-                                                                            <th className="py-2 text-left">규격</th>
-                                                                            <th className="py-2 text-right">수주량</th>
-                                                                            <th className="py-2 text-right">기납품</th>
-                                                                            <th className="py-2 text-right text-orange-400">잔량</th>
+                                                                <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded">
+                                                                    <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
+                                                                        <tr>
+                                                                            <th className="px-3 py-2 text-left">품목명</th>
+                                                                            <th className="px-3 py-2 text-left">규격</th>
+                                                                            <th className="px-3 py-2 text-right">수주량</th>
+                                                                            <th className="px-3 py-2 text-right">기납품</th>
+                                                                            <th className="px-3 py-2 text-right text-orange-400">잔량</th>
                                                                         </tr>
                                                                     </thead>
-                                                                    <tbody className="divide-y divide-gray-800/50">
+                                                                    <tbody className="divide-y divide-gray-800">
                                                                         {ord.items?.map(it => (
-                                                                            <tr key={it.id}>
+                                                                            <tr key={it.id} className="hover:bg-gray-800/30 border-b border-gray-800">
                                                                                 <td className="py-2.5 font-medium text-gray-300">
                                                                                     {it.product?.name}
                                                                                 </td>

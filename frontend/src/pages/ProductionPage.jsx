@@ -353,13 +353,14 @@ const ProductionPage = () => {
                     <Tab label="생산 완료" />
                 </Tabs>
 
-                <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: '#fcfcfc' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Paper sx={{ mb: 3, bgcolor: '#1e293b', border: '1px solid #334155', borderRadius: 2, overflow: 'hidden' }}>
+                <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'center', borderBottom: '1px solid #334155', flexWrap: 'wrap' }}>
                         <Typography variant="body2" color="textSecondary">기간:</Typography>
                         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }} />
                         <span>~</span>
                         <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }} />
                     </Box>
+                    <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: '#fcfcfc' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 150 }}>
                         <Typography variant="body2" color="textSecondary">사업부:</Typography>
                         <div style={{ flex: 1 }}>
@@ -396,6 +397,7 @@ const ProductionPage = () => {
                     </Box>
                     <Button size="small" variant="outlined" color="inherit" onClick={() => { setStartDate(''); setEndDate(''); setFilterPartner('all'); setSearchQuery(''); setSelectedMajorGroupId(''); }}>초기화</Button>
                 </Box>
+                </Paper>
 
                 <Box sx={{ p: 3 }}>
                     {tabIndex === 0 && (
@@ -535,7 +537,7 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
     if (!plannedIds) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress /></Box>;
 
     return (
-        <ResizableTable columns={UNPLANNED_COLS} className="w-full text-left text-sm" theadClassName="bg-gray-100 font-bold border-b" thClassName="px-4 py-3">
+        <ResizableTable columns={UNPLANNED_COLS} className="w-full text-left text-sm" theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700" thClassName="px-4 py-3">
             {unplannedOrders.length === 0 && unplannedStockProductions.length === 0 ? (
                 <tr><td colSpan={UNPLANNED_COLS.length} className="px-4 py-8 text-center text-gray-500">데이터가 없습니다.</td></tr>
             ) : (
@@ -552,7 +554,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
     const [open, setOpen] = useState(false);
     return (
         <React.Fragment>
-            <tr className="hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(order)}>
+            <tr className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-700 text-gray-300" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(order)}>
                 <td className="px-4 py-4"><Chip label="수주" size="small" variant="outlined" sx={{ mr: 1, height: 20 }} />{order.order_no}</td>
                 <td className="px-4 py-4">{order.partner?.name}</td>
                 <td className="px-4 py-4">{order.items?.[0]?.product?.name}{order.items?.length > 1 ? ` 외 ${order.items.length - 1}건` : ''}</td>
@@ -566,11 +568,11 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
                 <tr>
                     <td colSpan={UNPLANNED_COLS.length} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
-                            <Box sx={{ p: 2, bgcolor: '#fafafa' }}>
-                                <Typography variant="subtitle2" gutterBottom fontWeight="bold">수주 품목 목록</Typography>
-                                <table className="w-full text-xs text-left">
-                                    <thead><tr className="border-b"><th className="py-2">품명</th><th className="py-2">규격</th><th className="py-2">수량</th></tr></thead>
-                                    <tbody>{order.items?.map(it => <tr key={it.id} className="border-b"><td className="py-2">{it.product?.name}</td><td className="py-2">{it.product?.specification}</td><td className="py-2">{it.quantity}</td></tr>)}</tbody>
+                            <Box sx={{ p: 2, bgcolor: '#0f172a' }}>
+                                <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary.light">수주 품목 목록</Typography>
+                                <table className="w-full text-xs text-left text-gray-400">
+                                    <thead><tr className="border-b border-gray-700"><th className="py-2">품명</th><th className="py-2">규격</th><th className="py-2">수량</th></tr></thead>
+                                    <tbody>{order.items?.map(it => <tr key={it.id} className="border-b border-gray-800"><td className="py-2">{it.product?.name}</td><td className="py-2">{it.product?.specification}</td><td className="py-2">{it.quantity}</td></tr>)}</tbody>
                                 </table>
                             </Box>
                         </Collapse>
@@ -585,7 +587,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     const [open, setOpen] = useState(false);
     return (
         <React.Fragment>
-            <tr className="hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(null, stockProduction)}>
+            <tr className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-700 text-gray-300" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(null, stockProduction)}>
                 <td className="px-4 py-4"><Chip label="재고" size="small" sx={{ mr: 1, height: 20, bgcolor: '#e8f5e9' }} />{stockProduction.production_no}</td>
                 <td className="px-4 py-4">{stockProduction.partner?.name || '사내'}</td>
                 <td className="px-4 py-4">{stockProduction.product?.name}</td>
@@ -599,12 +601,14 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
                 <tr>
                     <td colSpan={UNPLANNED_COLS.length} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
-                            <Box sx={{ p: 2, bgcolor: '#fafafa' }}>
-                                <Typography variant="subtitle2" gutterBottom fontWeight="bold">재고 생산 상세</Typography>
+                            <Box sx={{ p: 2, bgcolor: '#0f172a' }}>
+                                <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary.light">재고 생산 제품 상세</Typography>
+                                <Box sx={{ border: '1px solid #334155', p: 2, borderRadius: 1 }}>
                                 <table className="w-full text-xs text-left">
                                     <thead><tr className="border-b"><th className="py-2">품명</th><th className="py-2">규격</th><th className="py-2">수량</th></tr></thead>
                                     <tbody><tr className="border-b"><td className="py-2">{stockProduction.product?.name}</td><td className="py-2">{stockProduction.product?.specification}</td><td className="py-2">{stockProduction.quantity}</td></tr></tbody>
                                 </table>
+                                </Box>
                             </Box>
                         </Collapse>
                     </td>
@@ -617,7 +621,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
 const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onRefresh, readonly }) => {
     const [managedCols, setManagedCols] = useState(PLAN_COLS);
     return (
-        <ResizableTable columns={managedCols} className="w-full text-left text-sm" theadClassName="bg-gray-100 font-bold border-b" thClassName="px-4 py-3" onResizeEnd={({ leftKey, newLeft, rightKey, newRight }) => {
+        <ResizableTable columns={managedCols} className="w-full text-left text-sm" theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700" thClassName="px-4 py-3" onResizeEnd={({ leftKey, newLeft, rightKey, newRight }) => {
             setManagedCols(prev => prev.map(col => { if (col.key === leftKey) return { ...col, width: newLeft }; if (col.key === rightKey) return { ...col, width: newRight }; return col; }));
         }}>
             {plans.length === 0 ? (
@@ -648,7 +652,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
 
     return (
         <React.Fragment>
-            <tr className={`hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 ${open ? 'bg-gray-50' : ''}`} onClick={() => setOpen(!open)} onDoubleClick={() => onEdit(plan)}>
+            <tr className={cn("hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300 cursor-pointer", open && "bg-gray-800/30")} onClick={() => setOpen(!open)} onDoubleClick={() => onEdit(plan)}>
                 <td className="px-4 py-4 text-center"><IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>{open ? <KeyboardArrowUp sx={{ fontSize: 18 }} /> : <KeyboardArrowDown sx={{ fontSize: 18 }} />}</IconButton></td>
                 <td className="px-4 py-4">
                     {order ? <div className="flex items-center gap-1"><Chip label="수주" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd' }} />{order.order_no}</div> :
@@ -695,12 +699,12 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                         <Collapse in={open} timeout="auto" unmountOnExit>
                             <div className="m-4">
                                 {Object.entries(groupedItems).map(([productId, group]) => (
-                                    <div key={productId} className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                    <div key={productId} className="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
                                         <div className="mb-3 flex flex-wrap gap-4 items-center font-bold text-xs text-blue-900">
                                             <span>품명: {group.product_name}</span><span>수량: {group.items[0]?.quantity}</span>
                                         </div>
-                                        <table className="w-full text-xs text-left bg-white border">
-                                            <thead className="bg-gray-100 border-b">
+                                        <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800">
+                                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                                 <tr><th className="px-4 py-2">순번</th><th className="px-4 py-2">공정명</th><th className="px-4 py-2">구분</th><th className="px-4 py-2">담당</th><th className="px-4 py-2">상태</th></tr>
                                             </thead>
                                             <tbody className="divide-y">
@@ -724,7 +728,7 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
     const [open, setOpen] = useState(false);
     return (
         <React.Fragment>
-            <tr className="hover:bg-blue-50 transition-colors cursor-pointer border-b" onClick={() => setOpen(!open)}>
+            <tr className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300 cursor-pointer" onClick={() => setOpen(!open)}>
                 <td className="px-4 py-3">{item.sequence}</td>
                 <td className="px-4 py-3">{item.process_name}</td>
                 <td className="px-4 py-3"><Chip label={typeMap[item.course_type] || item.course_type} size="small" /></td>
@@ -741,9 +745,9 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
                 <tr>
                     <td colSpan={5} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
-                            <Box sx={{ m: 2, p: 2, bgcolor: '#fff', border: '1px solid #eee' }}>
-                                <Typography variant="caption" fontWeight="bold">작업 로그</Typography>
-                                <table className="w-full text-[10px] mt-2 border"><tbody>{item.work_log_items?.map(log => <tr key={log.id} className="border-b"><td className="p-1">{log.work_log?.work_date}</td><td className="p-1">{log.worker?.name}</td><td className="p-1">{log.good_quantity} EA</td><td className="p-1">{log.note}</td></tr>)}</tbody></table>
+                            <Box sx={{ m: 2, p: 2, bgcolor: '#0f172a', border: '1px solid #334155' }}>
+                                <Typography variant="caption" fontWeight="bold" color="primary.light">작업 로그</Typography>
+                                <table className="w-full text-[10px] mt-2 border border-gray-800 text-gray-400"><tbody>{item.work_log_items?.map(log => <tr key={log.id} className="border-b border-gray-800 hover:bg-gray-800/30"><td className="p-1">{log.work_log?.work_date}</td><td className="p-1">{log.worker?.name}</td><td className="p-1">{log.good_quantity} EA</td><td className="p-1">{log.note}</td></tr>)}</tbody></table>
                             </Box>
                         </Collapse>
                     </td>

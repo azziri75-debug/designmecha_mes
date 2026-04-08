@@ -298,12 +298,12 @@ const AttendancePage = () => {
     };
 
     return (
-        <div className="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden font-sans">
+        <div className="flex h-[calc(100vh-64px)] bg-gray-950 overflow-hidden font-sans text-gray-300">
             {/* Sidebar: Staff List */}
-            <aside className="w-72 bg-white border-r border-slate-200 flex flex-col shadow-lg z-10">
-                <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                    <h2 className="flex items-center text-lg font-black text-slate-800">
-                        <UsersIcon className="w-6 h-6 mr-2 text-blue-600" />
+            <aside className="w-72 bg-gray-900 border-r border-gray-800 flex flex-col shadow-lg z-10">
+                <div className="p-6 border-b border-gray-800 bg-gray-900/50">
+                    <h2 className="flex items-center text-lg font-black text-gray-100">
+                        <UsersIcon className="w-6 h-6 mr-2 text-blue-500" />
                         임직원 목록
                     </h2>
                     <p className="text-xs text-slate-500 mt-1 font-medium italic">총 {staffList.length}명의 대원이 활약 중</p>
@@ -318,7 +318,7 @@ const AttendancePage = () => {
                                 : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-transparent hover:border-slate-100'
                                 }`}
                         >
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black mr-3 ${selectedStaff?.id === staff.id ? 'bg-white/20' : 'bg-slate-200 text-slate-500'}`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black mr-3 ${selectedStaff?.id === staff.id ? 'bg-white/20' : 'bg-gray-800 text-gray-400'}`}>
                                 {staff.name.substring(0, 1)}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -333,9 +333,9 @@ const AttendancePage = () => {
             </aside>
 
             {/* Main Content: Calendar */}
-            <main className="flex-1 flex flex-col bg-slate-50 overflow-hidden">
+            <main className="flex-1 flex flex-col bg-gray-950 overflow-hidden">
                 {/* Calendar Header */}
-                <header className="px-8 py-6 bg-white border-b border-slate-200 flex items-center justify-between">
+                <header className="px-8 py-6 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
                     <div className="flex items-center space-x-6">
                         <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
                             {activeTab === 'calendar' ? <CalendarDaysIcon className="w-8 h-8 text-blue-600" /> : <ClockIcon className="w-8 h-8 text-blue-600" />}
@@ -468,24 +468,24 @@ const AttendancePage = () => {
 
                             {/* Records Table */}
                             <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden">
-                                <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                                    <h3 className="font-black text-slate-800 flex items-center">
-                                        <ClockIcon className="w-5 h-5 mr-2 text-blue-600" />
+                                <div className="px-8 py-6 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
+                                    <h3 className="font-black text-gray-100 flex items-center">
+                                        <ClockIcon className="w-5 h-5 mr-2 text-blue-500" />
                                         전자결재 근태 내역
                                     </h3>
-                                    <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase">
+                                    <span className="text-[10px] font-black bg-blue-500/10 text-blue-500 px-3 py-1 rounded-full uppercase">
                                         {currentMonth.getFullYear()} Annual Records
                                     </span>
                                 </div>
                                 <ResizableTable
                                     columns={ATTENDANCE_COLS}
                                     className="w-full text-left"
-                                    theadClassName=""
-                                    thClassName="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest"
-                                    tbodyClassName="divide-y divide-slate-50"
+                                    theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
+                                    thClassName="px-8 py-4 text-[10px]"
+                                    tbodyClassName="divide-y divide-gray-800"
                                 >
                                     {summaryData?.documents?.map((doc) => (
-                                        <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                                        <tr key={doc.id} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300">
                                             <td className="px-8 py-4">
                                                 <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${doc.doc_type === 'VACATION' ? 'bg-indigo-100 text-indigo-600' : doc.doc_type === 'EARLY_LEAVE' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'
                                                     }`}>

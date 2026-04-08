@@ -281,7 +281,7 @@ const SettlementPage = () => {
                     <ResizableTable
                         columns={columns}
                         className="text-sm text-left"
-                        theadClassName="bg-gray-800/80 text-gray-400 font-medium border-b border-gray-700"
+                        theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
                         {loading ? (
@@ -292,7 +292,7 @@ const SettlementPage = () => {
                             ))
                         ) : data.length > 0 ? (
                             data.map((item, idx) => (
-                                <tr key={idx} className="hover:bg-gray-800/30 transition-colors border-b border-gray-800/50">
+                                <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-700 text-gray-300">
                                     {columns.map(col => {
                                         if (col.key === 'no') {
                                             return <td key={col.key} className="px-4 py-3 text-center text-gray-500 font-mono text-xs">{idx + 1}</td>;

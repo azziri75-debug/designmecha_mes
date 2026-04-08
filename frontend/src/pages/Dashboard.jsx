@@ -518,19 +518,19 @@ const Dashboard = () => {
                 {/* Recent Orders */}
                 <ChartCard title="최근 수주" icon={FileText} className="lg:col-span-2">
                     <div className="overflow-x-auto -mx-1">
-                        <table className="w-full text-xs text-gray-300" style={{ tableLayout: 'fixed' }}>
-                            <thead>
-                                <tr className="border-b border-gray-700/50">
-                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="100px">수주번호</ResizableTh>
-                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="150px">거래처</ResizableTh>
-                                    <ResizableTh className="text-right py-2 px-2 text-gray-500 font-medium" width="120px">금액</ResizableTh>
-                                    <ResizableTh className="text-center py-2 px-2 text-gray-500 font-medium" width="100px">상태</ResizableTh>
-                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium">수주일</ResizableTh>
+                        <table className="w-full text-xs text-left text-gray-400">
+                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[10px] uppercase tracking-wider border-b border-gray-700">
+                                <tr>
+                                    <ResizableTh className="py-3 px-3" width="100px">수주번호</ResizableTh>
+                                    <ResizableTh className="py-3 px-3" width="150px">거래처</ResizableTh>
+                                    <ResizableTh className="py-3 px-3 text-right" width="120px">금액</ResizableTh>
+                                    <ResizableTh className="py-3 px-3 text-center" width="100px">상태</ResizableTh>
+                                    <ResizableTh className="py-3 px-3">수주일</ResizableTh>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-800/50">
+                            <tbody className="divide-y divide-gray-800">
                                 {stats.recentOrders.map(o => (
-                                    <tr key={o.id} className="hover:bg-gray-700/30 transition-colors cursor-pointer" onClick={() => navigate('/sales')}>
+                                    <tr key={o.id} className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-800 text-gray-300" onClick={() => navigate('/sales')}>
                                         <td className="py-2.5 px-2 font-mono text-[11px] text-blue-400">{o.order_no}</td>
                                         <td className="py-2.5 px-2 font-medium text-white">{o.partner?.name || '-'}</td>
                                         <td className="py-2.5 px-2 text-right text-emerald-400 tabular-nums">{fmtWon(o.total_amount)}</td>
@@ -701,18 +701,18 @@ const Dashboard = () => {
                 {/* Recent Defects List */}
                 <ChartCard title="최근 발생 품질 결함" icon={ClipboardList} className="lg:col-span-2">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-[11px] text-gray-300" style={{ tableLayout: 'fixed' }}>
-                            <thead>
-                                <tr className="border-b border-gray-700/50">
-                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="100px">발생일</ResizableTh>
-                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="180px">품목 / 공정</ResizableTh>
-                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="200px">결함 사유</ResizableTh>
-                                    <ResizableTh className="text-center py-2 px-2 text-gray-500 font-medium">상태</ResizableTh>
+                        <table className="w-full text-[11px] text-left text-gray-400">
+                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[10px] uppercase tracking-wider border-b border-gray-700">
+                                <tr>
+                                    <ResizableTh className="py-3 px-2" width="100px">발생일</ResizableTh>
+                                    <ResizableTh className="py-3 px-2" width="180px">품목 / 공정</ResizableTh>
+                                    <ResizableTh className="py-3 px-2" width="200px">결함 사유</ResizableTh>
+                                    <ResizableTh className="py-3 px-2 text-center">상태</ResizableTh>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-800/50">
+                            <tbody className="divide-y divide-gray-800">
                                 {stats.recentDefects.map(d => (
-                                    <tr key={d.id} className="hover:bg-gray-700/30 transition-colors cursor-pointer" onClick={() => navigate('/quality')}>
+                                    <tr key={d.id} className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-800 text-gray-300" onClick={() => navigate('/quality')}>
                                         <td className="py-2 px-2 text-gray-500">{new Date(d.defect_date).toLocaleDateString()}</td>
                                         <td className="py-2 px-2">
                                             <div className="font-medium text-white">{d.plan_item?.product?.name || d.order?.items?.[0]?.product?.name || '-'}</div>

@@ -178,7 +178,7 @@ const QualityPage = () => {
                     <ResizableTable
                         columns={activeTab === 'occurred' ? QUALITY_COLS_OCCURRED : QUALITY_COLS_RESOLVED}
                         className="w-full text-sm text-left text-gray-400"
-                        theadClassName="bg-gray-800 text-xs uppercase text-gray-400 border-b border-gray-700"
+                        theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-6 py-3"
                     >
                         {loading ? (
@@ -189,7 +189,7 @@ const QualityPage = () => {
                                 defects.map(defect => (
                                     <tr
                                         key={defect.id}
-                                        className="hover:bg-gray-700/50 cursor-pointer transition-colors"
+                                    className="hover:bg-gray-800/40 cursor-pointer transition-colors border-b border-gray-700 text-gray-300"
                                         onClick={() => {
                                             setSelectedDefect(defect);
                                             setShowDetailModal(true);

@@ -147,7 +147,7 @@ const WorkLogPage = () => {
     return (
         <Box sx={{ width: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1a237e' }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#e2e8f0' }}>
                     작업일지 및 실적 관리
                 </Typography>
                 <Button
@@ -177,7 +177,7 @@ const WorkLogPage = () => {
             </Tabs>
 
             {/* Shared Filters */}
-            <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, alignItems: 'center', boxShadow: 2, borderRadius: 2 }}>
+            <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, alignItems: 'center', boxShadow: 2, borderRadius: 2, bgcolor: '#1e293b', border: '1px solid #334155' }}>
                 <TextField
                     label="시작일"
                     type="date"
@@ -218,7 +218,7 @@ const WorkLogPage = () => {
                 <ResizableTable
                     columns={LOG_COLS}
                     className="w-full text-left text-sm"
-                    theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                    theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                     thClassName="px-4 py-3"
                 >
                     {filteredLogs.length === 0 ? (
@@ -271,8 +271,8 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
         <React.Fragment>
             <tr 
                 className={cn(
-                    "hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100",
-                    open && "bg-blue-50"
+                    "hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-700 text-gray-300",
+                    open && "bg-blue-900/20"
                 )}
                 onClick={() => setOpen(!open)}
             >
@@ -281,9 +281,9 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                         {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
                     </IconButton>
                 </td>
-                <td className="px-4 py-4 font-bold text-gray-700">{log.work_date}</td>
-                <td className="px-4 py-4 text-gray-800">{log.worker?.name || '<미지정>'}</td>
-                <td className="px-4 py-4 font-semibold text-blue-600">{log.items?.length || 0}건</td>
+                <td className="px-4 py-4 font-bold text-gray-200">{log.work_date}</td>
+                <td className="px-4 py-4 text-gray-300">{log.worker?.name || '<미지정>'}</td>
+                <td className="px-4 py-4 font-semibold text-blue-400">{log.items?.length || 0}건</td>
                 <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
                         <span className="truncate max-w-[300px]" title={log.note}>{log.note || '-'}</span>
@@ -306,15 +306,15 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                 </td>
             </tr>
             {open && (
-                <tr className="bg-gray-50">
+                <tr className="bg-gray-900/40">
                     <td colSpan={LOG_COLS.length} className="px-8 py-4 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
-                            <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #eee', borderRadius: 1 }}>
-                                <Typography variant="subtitle2" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                            <Box sx={{ p: 2, bgcolor: '#0f172a', border: '1px solid #334155', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary.light">
                                     * 세부 작업 내역
                                 </Typography>
-                                <table className="w-full text-xs text-left border">
-                                    <thead className="bg-gray-50 border-b">
+                                <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800">
+                                    <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                         <tr>
                                             <th className="px-3 py-2">수주/재고번호</th>
                                             <th className="px-3 py-2">고객사</th>
@@ -325,7 +325,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                             <th className="px-3 py-2 text-right">불량</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y text-gray-700">
+                                    <tbody className="divide-y divide-gray-700 text-gray-300">
                                         {(!log.items || log.items.length === 0) ? (
                                             <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-500">세부 작업 내역이 없습니다.</td></tr>
                                         ) : (
@@ -339,7 +339,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                                 }
 
                                                 return (
-                                                    <tr key={item.id} className="hover:bg-gray-50">
+                                                    <tr key={item.id} className="hover:bg-gray-700/40">
                                                         <td className="px-3 py-2">{orderNo}</td>
                                                         <td className="px-3 py-2">{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</td>
                                                         <td className="px-3 py-2 text-[0.7rem] leading-tight">
@@ -374,7 +374,7 @@ const PerformanceManagementList = ({ data, onUpdate, startDate, endDate }) => {
         <ResizableTable
             columns={PERF_COLS}
             className="w-full text-left text-sm"
-            theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+            theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
             thClassName="px-4 py-3"
         >
             {data.length === 0 ? (
@@ -413,8 +413,8 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
         <React.Fragment>
             <tr 
                 className={cn(
-                    "hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100",
-                    open && "bg-blue-50"
+                    "hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-700 text-gray-300",
+                    open && "bg-blue-900/20"
                 )}
                 onClick={() => setOpen(!open)}
             >
@@ -423,23 +423,23 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
                         {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
                     </IconButton>
                 </td>
-                <td className="px-4 py-4 font-bold text-gray-800">{row.worker_name}</td>
-                <td className="px-4 py-4 text-right font-bold text-blue-800">
+                <td className="px-4 py-4 font-bold text-gray-200">{row.worker_name}</td>
+                <td className="px-4 py-4 text-right font-bold text-blue-400">
                     {(row.total_cost || 0).toLocaleString()}원
                 </td>
-                <td className="px-4 py-4 text-right font-medium text-gray-700">{row.log_days}일</td>
+                <td className="px-4 py-4 text-right font-medium text-gray-300">{row.log_days}일</td>
                 <td className="px-4 py-4 text-gray-500">-</td>
             </tr>
             {open && (
-                <tr className="bg-gray-50">
+                <tr className="bg-gray-900/40">
                     <td colSpan={PERF_COLS.length} className="px-8 py-4 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
-                            <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #eee', borderRadius: 1 }}>
-                                <Typography variant="subtitle2" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                            <Box sx={{ p: 2, bgcolor: '#0f172a', border: '1px solid #334155', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary.light">
                                     [{row.worker_name}] 상세 실적 내역 및 단가 수정
                                 </Typography>
-                                <table className="w-full text-xs text-left border">
-                                    <thead className="bg-gray-50 border-b">
+                                <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800">
+                                    <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                         <tr>
                                             <th className="px-3 py-2">작업일자</th>
                                             <th className="px-3 py-2">수주/재고번호</th>
@@ -452,7 +452,7 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
                                             <th className="px-3 py-2 text-center">저장</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y text-gray-700">
+                                    <tbody className="divide-y divide-gray-700 text-gray-300">
                                         {details.length === 0 ? (
                                             <tr><td colSpan={9} className="px-3 py-8 text-center text-gray-500">조회된 상세 내역이 없습니다.</td></tr>
                                         ) : (
@@ -502,20 +502,20 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
     };
 
     return (
-        <tr className="hover:bg-gray-50 border-b border-gray-100">
-            <td className="px-3 py-2 text-gray-600 font-medium">{item.work_log?.work_date}</td>
+        <tr className="hover:bg-gray-700/40 border-b border-gray-700 text-gray-300">
+            <td className="px-3 py-2 text-gray-400 font-medium">{item.work_log?.work_date}</td>
             <td className="px-3 py-2 text-[0.75rem]">{orderNo}</td>
             <td className="px-3 py-2 text-[0.75rem]">{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</td>
             <td className="px-3 py-2 text-[0.7rem] leading-tight text-right">
                 {plan?.order?.order_date ? (
                     <div>
                         <div>{plan.order.order_date}</div>
-                        <div className="text-blue-700">({plan.order.delivery_date || '-'})</div>
+                        <div className="text-blue-400">({plan.order.delivery_date || '-'})</div>
                     </div>
                 ) : (plan?.stock_production ? '재고생산' : '-')}
             </td>
             <td className="px-3 py-2">
-                <div className="font-bold">{item.plan_item?.process_name}</div>
+                <div className="font-bold text-gray-200">{item.plan_item?.process_name}</div>
                 <div className="text-xs text-gray-500">({item.plan_item?.product?.name})</div>
             </td>
             <td className="px-3 py-2 text-right">
@@ -523,7 +523,7 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
                     type="number"
                     value={editQty}
                     onChange={(e) => setEditQty(e.target.value)}
-                    className="w-16 px-1 py-1 border rounded text-right text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                    className="w-16 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-right text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none"
                 />
             </td>
             <td className="px-3 py-2 text-right">
@@ -531,10 +531,10 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
                     type="number"
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
-                    className="w-20 px-1 py-1 border rounded text-right text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                    className="w-20 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-right text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none"
                 />
             </td>
-            <td className="px-3 py-2 text-right font-bold text-blue-900">
+            <td className="px-3 py-2 text-right font-bold text-blue-400">
                 {(editQty * editPrice).toLocaleString()}원
             </td>
             <td className="px-3 py-2 text-center">

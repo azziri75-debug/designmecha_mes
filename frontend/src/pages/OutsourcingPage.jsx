@@ -476,7 +476,7 @@ const OutsourcingPage = () => {
                     <ResizableTable
                         columns={PENDING_COLS}
                         className="w-full text-left text-sm"
-                        theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                        theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
                         {pendingItems?.length === 0 ? (
@@ -485,7 +485,7 @@ const OutsourcingPage = () => {
                             pendingItems.map((item) => (
                                 <tr 
                                     key={item.id} 
-                                    className="hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100"
+                                    className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-700 text-gray-300"
                                     onClick={() => handleSelectPendingItem(item.id)}
                                 >
                                     <td className="px-4 py-4 w-[40px]">
@@ -498,13 +498,13 @@ const OutsourcingPage = () => {
                                             ) : item.plan?.stock_production ? (
                                                 <Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#f3e5f5', color: '#7b1fa2' }} />
                                             ) : null}
-                                            <span className="font-bold text-blue-700">{item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}</span>
+                                            <span className="font-bold text-blue-400">{item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}</span>
                                         </div>
                                     </td>
                                     <td className="px-4 py-4 truncate">{item.client_name || '-'}</td>
                                     <td className="px-4 py-4 truncate">{item.product_name_of_plan || '-'}</td>
                                     <td className="px-4 py-4">
-                                        <div className="font-bold text-gray-800">{item.process_name || '-'}</div>
+                                        <div className="font-bold text-gray-200">{item.process_name || '-'}</div>
                                         <div className="text-xs text-gray-500">{item.product?.name} ({item.product?.specification || '-'})</div>
                                     </td>
                                     <td className="px-4 py-4 truncate">{item.partner_name || '-'}</td>
@@ -531,7 +531,7 @@ const OutsourcingPage = () => {
                     <ResizableTable
                         columns={ORDER_COLS}
                         className="w-full text-left text-sm"
-                        theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                        theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
                         {orders.length === 0 ? (
@@ -621,8 +621,8 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
         <React.Fragment>
             <tr
                 className={cn(
-                    "hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100",
-                    expanded && "bg-blue-50"
+                    "hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300 cursor-pointer",
+                    expanded && "bg-gray-800/30"
                 )}
                 onClick={onToggle}
                 onDoubleClick={(e) => {
@@ -748,14 +748,14 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
                 </td>
             </tr>
             {expanded && (
-                <tr className="bg-gray-50">
+                <tr className="bg-gray-900/30">
                     <td colSpan={ORDER_COLS.length} className="px-8 py-4 border-none">
-                        <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #eee', borderRadius: 1 }}>
-                            <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary">
+                        <Box sx={{ p: 2, bgcolor: '#0f172a', border: '1px solid #334155', borderRadius: 1 }}>
+                            <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary.light">
                                 * 외주 발주 상세 내역
                             </Typography>
-                            <table className="w-full text-xs text-left border">
-                                <thead className="bg-gray-50 border-b">
+                            <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800">
+                                <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                     <tr>
                                         <th className="px-3 py-2">공정명/품목</th>
                                         <th className="px-3 py-2">규격</th>
@@ -765,9 +765,9 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
                                         <th className="px-3 py-2">비고</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y text-gray-700">
+                                <tbody className="divide-y divide-gray-800">
                                     {(order.items || []).map((item) => (
-                                        <tr key={item.id} className="hover:bg-gray-50">
+                                        <tr key={item.id} className="hover:bg-gray-800/30 border-b border-gray-800">
                                             <td className="px-3 py-2 font-bold">{item.product?.name}</td>
                                             <td className="px-3 py-2">{item.product?.specification}</td>
                                             <td className="px-3 py-2 text-right">{item.quantity} {item.product?.unit}</td>

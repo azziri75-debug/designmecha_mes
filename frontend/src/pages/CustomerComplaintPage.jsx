@@ -223,8 +223,8 @@ const CustomerComplaintPage = () => {
                     <ResizableTable
                         columns={COMPLAINT_COLS}
                         className="w-full text-sm text-left"
-                        theadClassName="text-xs uppercase bg-gray-700/50 text-gray-400"
-                        thClassName="px-6 py-4"
+                        theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
+                        thClassName="px-6 py-3"
                         tbodyClassName="divide-y divide-gray-700"
                     >
                         {loading ? (
@@ -235,7 +235,7 @@ const CustomerComplaintPage = () => {
                                     (c.partner?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                                     (c.content || '').toLowerCase().includes(searchQuery.toLowerCase())
                                 ).map((item) => (
-                                    <tr key={item.id} className="hover:bg-gray-700/30 transition-colors group">
+                                    <tr key={item.id} className="hover:bg-gray-800/40 transition-colors border-b border-gray-700 text-gray-300 group">
                                         <td className="px-6 py-4 font-medium text-gray-300">{item.receipt_date}</td>
                                         <td className="px-6 py-4">
                                             <div className="font-bold text-white">{item.partner?.name}</div>

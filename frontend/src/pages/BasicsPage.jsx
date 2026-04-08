@@ -1019,8 +1019,8 @@ const BasicsPageContent = () => {
                                 ) : activeTab === 'partners' ? (
                                     filteredPartners.length > 0 ? filteredPartners.map((partner) => (
                                         <React.Fragment key={partner.id}>
-                                            <tr
-                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer group"
+                                                <tr
+                                                    className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300 cursor-pointer group"
                                                 onClick={() => toggleExpand(partner.id)}
                                                 onDoubleClick={() => openEditPartnerModal(partner)}
                                             >
@@ -1116,8 +1116,8 @@ const BasicsPageContent = () => {
                                                             </div>
                                                             {partner.contacts && partner.contacts.length > 0 ? (
                                                                 <div className="overflow-x-auto">
-                                                                    <table className="w-full text-left text-sm text-gray-400">
-                                                                        <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                    <table className="w-full text-left text-sm text-gray-300">
+                                                                        <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                                                             <tr>
                                                                                 <th className="px-4 py-2">이름</th>
                                                                                 <th className="px-4 py-2">부서/직책</th>
@@ -1129,7 +1129,7 @@ const BasicsPageContent = () => {
                                                                         </thead>
                                                                         <tbody className="divide-y divide-gray-700">
                                                                             {partner.contacts.map((contact, idx) => (
-                                                                                <tr key={idx} className="hover:bg-gray-800/50 transition-colors group/contact">
+                                                                                <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 group/contact">
                                                                                     <td className="px-4 py-2 text-white font-medium">{contact.name}</td>
                                                                                     <td className="px-4 py-2">{contact.position}</td>
                                                                                     <td className="px-4 py-2">{contact.phone}</td>
@@ -1277,8 +1277,8 @@ const BasicsPageContent = () => {
                                                             </div>
                                                             {eq.history && eq.history.length > 0 ? (
                                                                 <div className="overflow-x-auto">
-                                                                    <table className="w-full text-left text-sm text-gray-400">
-                                                                        <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                    <table className="w-full text-left text-sm text-gray-300">
+                                                                        <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                                                             <tr>
                                                                                 <th className="px-4 py-2">일자</th>
                                                                                 <th className="px-4 py-2">구분</th>
@@ -1290,7 +1290,7 @@ const BasicsPageContent = () => {
                                                                         </thead>
                                                                         <tbody className="divide-y divide-gray-700">
                                                                             {eq.history.map((h, idx) => (
-                                                                                <tr key={idx} className="hover:bg-gray-800/50 transition-colors group/history">
+                                                                                <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 group/history">
                                                                                     <td className="px-4 py-2 text-white font-medium">{h.history_date || '-'}</td>
                                                                                     <td className="px-4 py-2">
                                                                                         {h.history_type === 'BREAKDOWN' ? '고장' :
@@ -1395,8 +1395,8 @@ const BasicsPageContent = () => {
                                                             </div>
                                                             {inst.history && inst.history.length > 0 ? (
                                                                 <div className="overflow-x-auto">
-                                                                    <table className="w-full text-left text-sm text-gray-400">
-                                                                        <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                    <table className="w-full text-left text-sm text-gray-300">
+                                                                        <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                                                             <tr>
                                                                                 <th className="px-4 py-2">일자</th>
                                                                                 <th className="px-4 py-2">구분</th>
@@ -1408,7 +1408,7 @@ const BasicsPageContent = () => {
                                                                         </thead>
                                                                         <tbody className="divide-y divide-gray-700">
                                                                             {inst.history.map((h, idx) => (
-                                                                                <tr key={idx} className="hover:bg-gray-800/50 transition-colors group/history">
+                                                                                <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 group/history">
                                                                                     <td className="px-4 py-2 text-white font-medium">{h.history_date || '-'}</td>
                                                                                     <td className="px-4 py-2">
                                                                                         {h.history_type === 'CALIBRATION' ? '교정' :
@@ -1701,8 +1701,8 @@ const BasicsPageContent = () => {
                                             </p>
                                         </div>
                                         <div className="overflow-x-auto rounded-xl border border-gray-700 bg-gray-900/50">
-                                            <table className="w-full text-sm text-left">
-                                                <thead className="text-xs uppercase bg-gray-800 text-gray-400">
+                                            <table className="w-full text-sm text-left text-gray-300">
+                                                <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                                     <tr>
                                                         <th className="px-4 py-3 border-b border-gray-700">연도</th>
                                                         <th className="px-4 py-3 border-b border-gray-700">시스템 발생(A)</th>
@@ -1716,7 +1716,7 @@ const BasicsPageContent = () => {
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-800">
                                                     {leaveHistory.map(leave => (
-                                                        <tr key={leave.id} className="hover:bg-gray-800/50 transition-colors">
+                                                        <tr key={leave.id} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800">
                                                             <td className="px-4 py-3 font-medium text-white">{leave.year}년</td>
                                                             <td className="px-4 py-3 text-gray-400">{leave.base_days}일</td>
                                                             <td className="px-4 py-3">
@@ -1981,8 +1981,8 @@ const BasicsPageContent = () => {
                                                     ]
                                                 ].map((column, colIdx) => (
                                                     <div key={colIdx} className="overflow-hidden border border-gray-700/50 rounded-xl bg-gray-900/40 shadow-inner">
-                                                        <table className="w-full text-[11px] text-left">
-                                                            <thead className="bg-gray-800/60 text-gray-400 border-b border-gray-700/50">
+                                                        <table className="w-full text-[11px] text-left text-gray-300">
+                                                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[10px] uppercase tracking-wider border-b border-gray-700">
                                                                 <tr>
                                                                     <th className="px-3 py-2 font-semibold">메뉴명</th>
                                                                     <th className="px-1 py-2 text-center w-10">조회</th>
@@ -2028,7 +2028,7 @@ const BasicsPageContent = () => {
                                                                     };
 
                                                                     return (
-                                                                        <tr key={menu.key} className="hover:bg-blue-500/5 transition-colors group">
+                                                                        <tr key={menu.key} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 group">
                                                                             <td className="px-3 py-2 text-gray-300 group-hover:text-blue-300 font-medium">{menu.label}</td>
                                                                             <td className="px-1 py-2 text-center">
                                                                                 <input type="checkbox" checked={p.view === true} onChange={() => toggle('view')} className="w-3.5 h-3.5 rounded border-gray-600 text-blue-600 bg-gray-800 focus:ring-0" />

@@ -325,11 +325,11 @@ const ApprovalPage = () => {
                                 <ResizableTable
                                     columns={APPROVAL_COLS}
                                     className="text-left"
-                                    theadClassName="bg-gray-900/50 text-xs font-semibold text-gray-400 uppercase tracking-wider"
-                                    thClassName="px-6 py-4"
+                                    theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
+                                    thClassName="px-6 py-3"
                                 >
                                     {documents.map((doc) => (
-                                        <tr key={doc.id} className="hover:bg-gray-800/50 transition-colors group cursor-pointer divide-x divide-gray-700/30" onClick={() => (doc.doc_type === 'INTERNAL_DRAFT' ? navigate(`/approval/draft?id=${doc.id}`) : openDocDetail(doc))}>
+                                        <tr key={doc.id} className="hover:bg-gray-800/40 transition-colors group cursor-pointer divide-x divide-gray-700/30 border-b border-gray-700 text-gray-300" onClick={() => (doc.doc_type === 'INTERNAL_DRAFT' ? navigate(`/approval/draft?id=${doc.id}`) : openDocDetail(doc))}>
                                             <td className="px-6 py-4 text-sm text-gray-400 truncate">{format(new Date(doc.created_at), 'yyyy-MM-dd')}</td>
                                             <td className="px-6 py-4 text-sm font-medium text-white truncate">{doc.author?.name} ({doc.author?.role})</td>
                                             <td className="px-6 py-4 truncate">

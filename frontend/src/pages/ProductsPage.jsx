@@ -962,7 +962,7 @@ const ProductsPage = ({ type }) => {
 
                     <div className="overflow-x-auto overflow-y-hidden">
                         <table className="w-full table-fixed text-left text-sm text-gray-400" style={{ minWidth: '1200px' }}>
-                            <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
+                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                 <tr>
                                     {isCloneMode && <th className="px-3 py-3 w-10 text-center">선택</th>}
                                     <ResizableTh initialWidth={120} className="px-6 py-3">{type === 'PART' ? '구입처' : '거래처'}</ResizableTh>
@@ -1009,7 +1009,7 @@ const ProductsPage = ({ type }) => {
                                     return sorted.length > 0 ? sorted.map((product) => (
                                         <React.Fragment key={product.id}>
                                             <tr
-                                                className={cn("hover:bg-gray-700/50 transition-colors cursor-pointer group", isCloneMode && targetProductIds.includes(product.id) ? "bg-blue-900/30" : "")}
+                                                className={cn("hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300 cursor-pointer group", isCloneMode && targetProductIds.includes(product.id) ? "bg-blue-900/30" : "")}
                                                 onClick={() => toggleExpand(product.id)}
                                                 onDoubleClick={() => handleEditProduct(product)}
                                             >
@@ -1185,8 +1185,8 @@ const ProductsPage = ({ type }) => {
                                                             {detailSubTab === 'routing' ? (
                                                                 product.standard_processes && product.standard_processes.length > 0 ? (
                                                                     <div className="overflow-x-auto">
-                                                                        <table className="w-full text-left text-sm text-gray-400">
-                                                                            <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                        <table className="w-full text-left text-sm text-gray-300">
+                                                                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                                                                 <tr>
                                                                                     <ResizableTh className="px-4 py-2 w-16 text-center">순서</ResizableTh>
                                                                                     <ResizableTh className="px-4 py-2">공정명</ResizableTh>
@@ -1200,7 +1200,7 @@ const ProductsPage = ({ type }) => {
                                                                             </thead>
                                                                             <tbody className="divide-y divide-gray-700">
                                                                                 {(product.standard_processes || []).slice().sort((a, b) => a.sequence - b.sequence).map((pp, idx) => (
-                                                                                    <tr key={idx} className="hover:bg-gray-800/50 transition-colors">
+                                                                                    <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800">
                                                                                         <td className="px-4 py-2 text-center text-white font-medium bg-gray-800/30">
                                                                                             {pp.sequence}
                                                                                         </td>
@@ -1272,8 +1272,8 @@ const ProductsPage = ({ type }) => {
                                                                     {loadingBom ? (
                                                                         <div className="text-center py-8 text-gray-500">로딩 중...</div>
                                                                     ) : bomItems.length > 0 ? (
-                                                                        <table className="w-full text-left text-sm text-gray-400">
-                                                                            <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                        <table className="w-full text-left text-sm text-gray-300">
+                                                                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                                                                 <tr>
                                                                                     <ResizableTh className="px-4 py-2">품목 유형</ResizableTh>
                                                                                     <ResizableTh className="px-4 py-2">품명</ResizableTh>
@@ -1286,7 +1286,7 @@ const ProductsPage = ({ type }) => {
                                                                             </thead>
                                                                             <tbody className="divide-y divide-gray-700">
                                                                                 {bomItems.map((item, idx) => (
-                                                                                    <tr key={idx} className="hover:bg-gray-800/50 transition-colors">
+                                                                                    <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800">
                                                                                         <td className="px-4 py-2">
                                                                                             <span className="text-[10px] px-1.5 py-0.5 rounded border bg-gray-700/50 border-gray-600 text-gray-300">
                                                                                                 {ITEM_TYPES[item.child_product?.item_type] || '-'}
@@ -1323,8 +1323,8 @@ const ProductsPage = ({ type }) => {
                                                                     {loadingHistory ? (
                                                                         <div className="text-center py-8 text-gray-500">데이터 로딩 중...</div>
                                                                     ) : priceHistory.length > 0 ? (
-                                                                        <table className="w-full text-left text-sm text-gray-400">
-                                                                            <thead className="bg-gray-800 text-xs uppercase font-medium text-gray-500">
+                                                                        <table className="w-full text-left text-sm text-gray-300">
+                                                                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                                                                 <tr>
                                                                                     <ResizableTh className="px-4 py-2">날짜</ResizableTh>
                                                                                     <ResizableTh className="px-4 py-2">구분</ResizableTh>
@@ -1336,7 +1336,7 @@ const ProductsPage = ({ type }) => {
                                                                             </thead>
                                                                             <tbody className="divide-y divide-gray-700">
                                                                                 {priceHistory.map((item, idx) => (
-                                                                                    <tr key={idx} className="hover:bg-gray-800/50 transition-colors">
+                                                                                    <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800">
                                                                                         <td className="px-4 py-2">{item.date}</td>
                                                                                         <td className="px-4 py-2">
                                                                                             <span className={cn(

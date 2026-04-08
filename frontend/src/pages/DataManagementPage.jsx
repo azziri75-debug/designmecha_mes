@@ -115,12 +115,12 @@ const MappingModal = ({ isOpen, onClose, verifyData, type, onConfirm }) => {
                             <ResizableTable
                                 columns={columns}
                                 className="text-xs text-left"
-                                theadClassName="sticky top-0 bg-gray-900 z-10 text-gray-500 border-b border-gray-800"
-                                thClassName="pb-3 pr-4 font-medium"
+                                theadClassName="sticky top-0 bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700 z-10"
+                                thClassName="px-4 py-3"
                             >
                                 <tbody className="divide-y divide-gray-800/50">
                                     {mappings.map((m, idx) => (
-                                        <tr key={idx} className="group hover:bg-white/5 transition-colors">
+                                        <tr key={idx} className="group hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300">
                                             <td className="py-4 text-gray-500">{m.row_index}</td>
                                             <td className="py-4">
                                                 <div className="font-medium text-white">

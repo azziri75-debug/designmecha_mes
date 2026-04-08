@@ -531,7 +531,7 @@ const PurchasePage = ({ type }) => {
     return (
         <Box sx={{ width: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color: '#1a237e' }}>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color: '#e2e8f0' }}>
                     {type === 'CONSUMABLE' ? '소모품 발주 관리' : '구매 자재 발주 관리'}
                 </Typography>
             </Box>
@@ -563,7 +563,7 @@ const PurchasePage = ({ type }) => {
             </Box>
 
             {/* Filter Section */}
-            <Paper sx={{ p: 2, mb: 2, bgcolor: '#fcfcfc', border: '1px solid #eee' }}>
+            <Paper sx={{ p: 2, mb: 2, bgcolor: '#1e293b', border: '1px solid #334155' }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 150 }}>
                         <Typography variant="body2" color="textSecondary">사업부:</Typography>
@@ -657,7 +657,7 @@ const PurchasePage = ({ type }) => {
                     <ResizableTable
                         columns={type === 'CONSUMABLE' ? PENDING_CONSUMABLE_COLS : PENDING_COLS}
                         className="w-full text-left text-sm"
-                        theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                        theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
                         {pendingItems.length === 0 ? (
@@ -666,7 +666,7 @@ const PurchasePage = ({ type }) => {
                             pendingItems.map((item) => (
                                 <tr 
                                     key={item.id} 
-                                    className="hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100"
+                                    className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-700 text-gray-300"
                                     onClick={() => handleSelectPendingItem(item.id)}
                                 >
                                     <td className="px-4 py-4 w-[40px]">
@@ -749,7 +749,7 @@ const PurchasePage = ({ type }) => {
                     <ResizableTable
                         columns={MRP_COLS}
                         className="w-full text-left text-sm"
-                        theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                        theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
                         {mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0)).length === 0 ? (
@@ -760,7 +760,7 @@ const PurchasePage = ({ type }) => {
                                 .map((item) => (
                                 <tr 
                                     key={item.product_id} 
-                                    className="hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100"
+                                    className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-800 text-gray-300"
                                     onClick={() => handleSelectMrpItem(item.product_id)}
                                 >
                                     <td className="px-4 py-4 w-[40px]">
@@ -806,7 +806,7 @@ const PurchasePage = ({ type }) => {
                     <ResizableTable
                         columns={ORDER_COLS}
                         className="w-full text-left text-sm"
-                        theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                        theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
                         {orders.length === 0 ? (
@@ -901,7 +901,7 @@ const PurchaseOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCompl
     return (
         <React.Fragment>
             <tr
-                className={`hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 ${expanded ? 'bg-blue-50' : ''}`}
+                className={cn("hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300 cursor-pointer", expanded && "bg-gray-800/30")}
                 onClick={onToggle}
                 onDoubleClick={(e) => {
                     e.stopPropagation();
@@ -1025,15 +1025,15 @@ const PurchaseOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCompl
                 </td>
             </tr>
             {expanded && (
-                <tr className="bg-gray-50">
+                <tr className="bg-gray-900/30">
                     <td colSpan={ORDER_COLS.length} className="px-8 py-4 border-none">
                         <Collapse in={expanded} timeout="auto" unmountOnExit>
-                            <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #eee', borderRadius: 1 }}>
-                                <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary">
+                            <Box sx={{ p: 2, bgcolor: '#0f172a', border: '1px solid #334155', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary.light">
                                     * 발주 상세 내역
                                 </Typography>
-                                <table className="w-full text-xs text-left border">
-                                    <thead className="bg-gray-50 border-b">
+                                <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800">
+                                    <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                         <tr>
                                             <th className="px-3 py-2">공정명</th>
                                             <th className="px-3 py-2">품목명</th>
@@ -1044,9 +1044,9 @@ const PurchaseOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCompl
                                             <th className="px-3 py-2">비고</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y">
+                                    <tbody className="divide-y divide-gray-800">
                                         {(order.items || []).map((item) => (
-                                            <tr key={item.id} className="hover:bg-gray-50">
+                                            <tr key={item.id} className="hover:bg-gray-800/30 border-b border-gray-800">
                                                 <td className="px-3 py-2">{item.process_name || '-'}</td>
                                                 <td className="px-3 py-2 font-bold">{item.product?.name}</td>
                                                 <td className="px-3 py-2">{item.product?.specification}</td>

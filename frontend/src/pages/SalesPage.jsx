@@ -399,14 +399,14 @@ const SalesPage = () => {
                         <ResizableTable
                             columns={activeTab === 'estimates' ? ESTIMATE_COLS : ORDER_COLS}
                             className="text-left text-sm text-gray-400"
-                            theadClassName="bg-gray-900/50 text-gray-200 uppercase font-medium"
+                            theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                             thClassName="px-4 py-3"
                         >
                             {activeTab === 'estimates' ? (
                                 estimates.map((est) => (
                                     <React.Fragment key={est.id}>
                                         <tr
-                                            className="hover:bg-gray-700/50 transition-colors cursor-pointer select-none divide-x divide-gray-700/30"
+                                            className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300"
                                             onClick={() => toggleEstimate(est.id)}
                                             onDoubleClick={() => handleEdit(est)}
                                         >
@@ -442,8 +442,28 @@ const SalesPage = () => {
                                                 <td colSpan={ESTIMATE_COLS.length} className="px-6 py-4">
                                                     <div className="ml-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
                                                         <h4 className="text-sm font-semibold mb-2 text-gray-300">견적 품목 상세</h4>
-                                                        <table className="w-full text-sm text-gray-400"><thead><tr className="border-b border-gray-700"><th className="py-2 text-left">품목명</th><th className="py-2 text-left">규격</th><th className="py-2 text-right">수량</th><th className="py-2 text-right">단가</th><th className="py-2 text-right">공급가액</th></tr></thead>
-                                                        <tbody className="divide-y divide-gray-800">{est.items?.map((item, idx) => (<tr key={idx}><td className="py-2">{item.product?.name || item.product_name || item.name}</td><td className="py-2">{item.specification || item.product?.specification || '-'}</td><td className="py-2 text-right">{item.quantity}</td><td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td><td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td></tr>))}</tbody></table>
+                                                        <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded">
+                                                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
+                                                                <tr>
+                                                                    <th className="px-3 py-2 text-left">품목명</th>
+                                                                    <th className="px-3 py-2 text-left">규격</th>
+                                                                    <th className="px-3 py-2 text-right">수량</th>
+                                                                    <th className="px-3 py-2 text-right">단가</th>
+                                                                    <th className="px-3 py-2 text-right">공급가액</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-800">
+                                                                {est.items?.map((item, idx) => (
+                                                                    <tr key={idx} className="hover:bg-gray-800/30 border-b border-gray-800">
+                                                                        <td className="px-3 py-2">{item.product?.name || item.product_name || item.name}</td>
+                                                                        <td className="px-3 py-2">{item.specification || item.product?.specification || '-'}</td>
+                                                                        <td className="px-3 py-2 text-right">{item.quantity}</td>
+                                                                        <td className="px-3 py-2 text-right">{item.unit_price?.toLocaleString()}</td>
+                                                                        <td className="px-3 py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -454,7 +474,7 @@ const SalesPage = () => {
                                 orders.map((ord) => (
                                     <React.Fragment key={ord.id}>
                                         <tr
-                                            className="hover:bg-gray-700/50 transition-colors cursor-pointer select-none divide-x divide-gray-700/30"
+                                            className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300"
                                             onClick={() => toggleOrder(ord.id)}
                                             onDoubleClick={() => handleEditOrder(ord)}
                                         >
@@ -493,8 +513,28 @@ const SalesPage = () => {
                                                 <td colSpan={ORDER_COLS.length} className="px-6 py-4">
                                                     <div className="ml-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
                                                         <h4 className="text-sm font-semibold mb-2 text-gray-300">수주 품목 상세</h4>
-                                                        <table className="w-full text-sm text-gray-400"><thead><tr className="border-b border-gray-700"><th className="py-2 text-left">품목명</th><th className="py-2 text-left">규격</th><th className="py-2 text-right">수량</th><th className="py-2 text-right">단가</th><th className="py-2 text-right">공급가액</th></tr></thead>
-                                                        <tbody className="divide-y divide-gray-800">{ord.items?.map((item, idx) => (<tr key={idx}><td className="py-2">{item.product?.name || item.product_name || item.name}</td><td className="py-2">{item.specification || item.product?.specification || '-'}</td><td className="py-2 text-right">{item.quantity}</td><td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td><td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td></tr>))}</tbody></table>
+                                                        <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded">
+                                                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
+                                                                <tr>
+                                                                    <th className="px-3 py-2 text-left">품목명</th>
+                                                                    <th className="px-3 py-2 text-left">규격</th>
+                                                                    <th className="px-3 py-2 text-right">수량</th>
+                                                                    <th className="px-3 py-2 text-right">단가</th>
+                                                                    <th className="px-3 py-2 text-right">공급가액</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-800">
+                                                                {ord.items?.map((item, idx) => (
+                                                                    <tr key={idx} className="hover:bg-gray-800/30 border-b border-gray-800">
+                                                                        <td className="px-3 py-2">{item.product?.name || item.product_name || item.name}</td>
+                                                                        <td className="px-3 py-2">{item.specification || item.product?.specification || '-'}</td>
+                                                                        <td className="px-3 py-2 text-right">{item.quantity}</td>
+                                                                        <td className="px-3 py-2 text-right">{item.unit_price?.toLocaleString()}</td>
+                                                                        <td className="px-3 py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
                                                     </div>
                                                 </td>
                                             </tr>

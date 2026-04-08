@@ -439,7 +439,7 @@ const InventoryPage = () => {
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-gray-800/50 text-gray-400 uppercase text-xs">
+                                <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                     <tr>
                                         <ResizableTableCell width={columnWidths.type} onResize={(w) => handleResize('type', w)} className="px-6 py-4 font-medium">구분</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-4 font-medium">품목명</ResizableTableCell>
@@ -456,7 +456,7 @@ const InventoryPage = () => {
                                     {filteredStocks.map((stock) => (
                                         <React.Fragment key={stock.product_id}>
                                             <tr 
-                                                className="hover:bg-gray-800/30 transition-colors cursor-pointer" 
+                                                className="hover:bg-gray-800/40 transition-colors border-b border-gray-700 text-gray-300 cursor-pointer" 
                                                 onDoubleClick={() => handleStockEdit(stock)}
                                                 onClick={() => toggleBOM(stock.product_id)}
                                             >
@@ -652,7 +652,7 @@ const InventoryPage = () => {
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-gray-800/50 text-gray-400 uppercase text-xs">
+                                <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
                                     <tr>
                                         <ResizableTableCell width={columnWidths.no} onResize={(w) => handleResize('no', w)} className="px-6 py-4 font-medium">관리번호</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-4 font-medium">품목명 / 규격</ResizableTableCell>
@@ -666,7 +666,7 @@ const InventoryPage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
                                     {filteredProductions.map((p) => (
-                                        <tr key={p.id} className="hover:bg-gray-800/30 transition-colors cursor-pointer" onDoubleClick={() => handleEdit(p)}>
+                                        <tr key={p.id} className="hover:bg-gray-800/40 transition-colors border-b border-gray-700 text-gray-300 cursor-pointer" onDoubleClick={() => handleEdit(p)}>
                                             <td className="px-6 py-4 font-mono text-blue-400">{p.production_no}</td>
                                             <td className="px-6 py-4">
                                                 <div className="text-white font-medium">{p.product?.name}</div>
