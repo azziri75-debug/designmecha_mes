@@ -1056,7 +1056,7 @@ const PurchaseOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCompl
                                         ))}
                                     </tbody>
                                 </table>
-                            </Box>
+                            </div>
                         </Collapse>
                     </td>
                 </tr>
