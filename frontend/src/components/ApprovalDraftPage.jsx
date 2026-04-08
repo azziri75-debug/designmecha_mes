@@ -267,7 +267,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
     };
 
     return (
-        <Box sx={{ bgcolor: '#eee', minHeight: '100vh', py: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ bgcolor: '#525659', minHeight: '100vh', py: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'auto' }}>
             {/* Header / Tabs Container */}
             <Paper elevation={1} sx={{ width: '100%', maxWidth: '1100px', mb: 3, borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 100, bgcolor: 'white' }}>
                 <div className="flex items-center justify-between p-5 bg-white">
@@ -333,24 +333,26 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 )}
             </Paper>
 
-            {/* A4 Paper */}
             <Paper
                 ref={printRef}
                 className="a4-paper-root print-safe-area"
+                elevation={10}
                 sx={{
                     width: '210mm',
+                    height: '297mm',
                     minHeight: '297mm',
+                    maxHeight: '297mm',
                     display: 'flex',
                     flexDirection: 'column',
                     p: '15mm',
                     mb: 4,
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                     bgcolor: 'white',
                     fontFamily: '"Malgun Gothic", "Dotum", sans-serif',
                     position: 'relative',
                     color: '#000000',
                     boxSizing: 'border-box',
-                    overflow: 'visible',
+                    overflow: 'hidden', // A4 영역 밖으로 나가지 않게 고정
+                    flexShrink: 0,
                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' } 
                 }}
             >

@@ -590,17 +590,21 @@ const ApprovalPage = () => {
                                     className={cn(
                                     "a4-wrapper no-shadow-on-print"
                                 )}>
-                                <Box sx={{ 
-                                    width: '100%',
-                                    minHeight: '100%',
+                                <Box className="a4-paper-root" sx={{ 
+                                    width: '210mm',
+                                    height: '297mm',
+                                    minHeight: '297mm',
+                                    maxHeight: '297mm',
                                     margin: '0 auto',
                                     display: 'flex', 
                                     flexDirection: 'column',
                                     bgcolor: '#ffffff',
                                     p: '15mm',
                                     boxSizing: 'border-box',
-                                    boxShadow: 'none',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                                     color: '#000000',
+                                    flexShrink: 0,
+                                    overflow: 'hidden',
                                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' },
                                 }}>
                                     {/* ... document form cases ... */}
