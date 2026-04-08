@@ -258,6 +258,7 @@ const WorkLogPage = () => {
                                         onEdit={() => handleEditClick(log)}
                                         onDelete={() => handleDeleteClick(log.id)}
                                         onViewFiles={() => handleViewFiles(log.attachment_file)}
+                                        widths={logTableWidths}
                                     />
                                 ))
                             )}
@@ -295,21 +296,21 @@ const WorkLogPage = () => {
     );
 };
 
-const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
+const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles, widths }) => {
     const [open, setOpen] = useState(false);
 
     return (
         <React.Fragment>
             <TableRow sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer', '&:hover': { backgroundColor: '#fafafa' } }} onClick={() => setOpen(!open)}>
-                <TableCell>
+                <TableCell sx={{ width: widths.expand }}>
                     <IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
                         {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
                     </IconButton>
                 </TableCell>
-                <TableCell sx={{ fontWeight: 500 }}>{log.work_date}</TableCell>
-                <TableCell>{log.worker?.name || '<미지정>'}</TableCell>
-                <TableCell>{log.items?.length || 0}건</TableCell>
-                <TableCell>
+                <TableCell sx={{ fontWeight: 500, width: widths.date }}>{log.work_date}</TableCell>
+                <TableCell sx={{ width: widths.worker }}>{log.worker?.name || '<미지정>'}</TableCell>
+                <TableCell sx={{ width: widths.count }}>{log.items?.length || 0}건</TableCell>
+                <TableCell sx={{ width: widths.note }}>
                     {log.note || '-'}
                     {log.attachment_file && safeParseJSON(log.attachment_file, []).length > 0 && (
                         <IconButton size="small" color="info" onClick={(e) => { e.stopPropagation(); onViewFiles(); }} title="첨부파일 보기" sx={{ ml: 1 }}>
@@ -317,7 +318,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                         </IconButton>
                     )}
                 </TableCell>
-                <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+                <TableCell align="center" onClick={(e) => e.stopPropagation()} sx={{ width: widths.actions }}>
                     <IconButton size="small" color="primary" onClick={onEdit} title="수정">
                         <EditIcon fontSize="small" />
                     </IconButton>
@@ -412,7 +413,7 @@ const PerformanceManagementList = ({ data, onUpdate, startDate, endDate, widths,
                         </TableRow>
                     ) : (
                         data.map(row => (
-                            <PerformanceRow key={row.worker_id} row={row} onUpdate={onUpdate} startDate={startDate} endDate={endDate} />
+                            <PerformanceRow key={row.worker_id} row={row} onUpdate={onUpdate} startDate={startDate} endDate={endDate} widths={widths} />
                         ))
                     )}
                 </TableBody>
@@ -421,7 +422,7 @@ const PerformanceManagementList = ({ data, onUpdate, startDate, endDate, widths,
     );
 };
 
-const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
+const PerformanceRow = ({ row, onUpdate, startDate, endDate, widths }) => {
     const [open, setOpen] = useState(false);
     const [details, setDetails] = useState([]);
 
@@ -445,17 +446,17 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
     return (
         <React.Fragment>
             <TableRow sx={{ cursor: 'pointer', '&:hover': { backgroundColor: '#fafafa' } }} onClick={() => setOpen(!open)}>
-                <TableCell>
+                <TableCell sx={{ width: widths.expand }}>
                     <IconButton size="small">
                         {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
                     </IconButton>
                 </TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>{row.worker_name}</TableCell>
-                <TableCell align="right" sx={{ color: '#1a237e', fontWeight: 500 }}>
+                <TableCell sx={{ fontWeight: 'bold', width: widths.worker }}>{row.worker_name}</TableCell>
+                <TableCell align="right" sx={{ color: '#1a237e', fontWeight: 500, width: widths.cost }}>
                     {(row.total_cost || 0).toLocaleString()}원
                 </TableCell>
-                <TableCell align="right">{row.log_days}일</TableCell>
-                <TableCell>-</TableCell>
+                <TableCell align="right" sx={{ width: widths.days }}>{row.log_days}일</TableCell>
+                <TableCell sx={{ width: widths.note }}>-</TableCell>
             </TableRow>
             <TableRow>
                 <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>

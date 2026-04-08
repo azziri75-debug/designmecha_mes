@@ -50,7 +50,8 @@ const PurchasePage = ({ type }) => {
 
     // Filter states
     const [searchQuery, setSearchQuery] = useState('');
-    const [columnWidths, setColumnWidths] = useState({
+    const [pendingWidths, setPendingWidths] = useState({
+        checkbox: 40,
         doc: 150,
         author: 100,
         product: 200,
@@ -66,8 +67,33 @@ const PurchasePage = ({ type }) => {
         target_product: 200
     });
 
-    const handleResize = (column, newWidth) => {
-        setColumnWidths(prev => {
+    const [mrpWidths, setMrpWidths] = useState({
+        checkbox: 40,
+        name: 200,
+        spec: 150,
+        type: 80,
+        link: 150,
+        gross: 100,
+        stock: 100,
+        open: 100,
+        net: 100,
+        actions: 80
+    });
+
+    const [orderWidths, setOrderWidths] = useState({
+        no: 150,
+        link: 180,
+        date: 120,
+        partner: 150,
+        spec: 150,
+        count: 100,
+        delivery: 120,
+        status: 100,
+        actions: 250 // 버튼이 많으므로 넉넉하게
+    });
+
+    const handleResize = (setFn) => (column) => (newWidth) => {
+        setFn(prev => {
             const colKeys = Object.keys(prev);
             const idx = colKeys.indexOf(column);
             if (idx < 0 || idx >= colKeys.length - 1) return { ...prev, [column]: newWidth };
@@ -616,11 +642,15 @@ const PurchasePage = ({ type }) => {
                             선택 품목 발주 등록
                         </Button>
                     </Box>
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
+                    <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
+                        <Table sx={{ 
+                            tableLayout: 'fixed', 
+                            width: Object.values(pendingWidths).reduce((a, b) => a + b, 0),
+                            minWidth: '100%'
+                        }}>
+                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox">
+                                    <TableCell padding="checkbox" sx={{ width: pendingWidths.checkbox }}>
                                         <Checkbox
                                             indeterminate={selectedPendingItems.length > 0 && selectedPendingItems.length < pendingItems.length}
                                             checked={pendingItems.length > 0 && selectedPendingItems.length === pendingItems.length}
@@ -629,27 +659,27 @@ const PurchasePage = ({ type }) => {
                                     </TableCell>
                                     {type === 'CONSUMABLE' ? (
                                         <>
-                                            <ResizableTableCell width={columnWidths.doc} onResize={(w) => handleResize('doc', w)}>연관 결재문서</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.author} onResize={(w) => handleResize('author', w)}>기안자</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)}>품목명</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.spec} onResize={(w) => handleResize('spec', w)}>규격</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)}>신청 수량</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.remarks} onResize={(w) => handleResize('remarks', w)}>사유/비고</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.date} onResize={(w) => handleResize('date', w)}>신청일자</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.doc} onResize={handleResize(setPendingWidths)('doc')}>연관 결재문서</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.author} onResize={handleResize(setPendingWidths)('author')}>기안자</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.product} onResize={handleResize(setPendingWidths)('product')}>품목명</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.spec} onResize={handleResize(setPendingWidths)('spec')}>규격</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.qty} onResize={handleResize(setPendingWidths)('qty')}>신청 수량</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.remarks} onResize={handleResize(setPendingWidths)('remarks')}>사유/비고</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.date} onResize={handleResize(setPendingWidths)('date')}>신청일자</ResizableTableCell>
                                         </>
                                     ) : (
                                         <>
-                                            <ResizableTableCell width={columnWidths.order_no} onResize={(w) => handleResize('order_no', w)}>수주/재고번호</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.client} onResize={(w) => handleResize('client', w)}>고객사</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.target_product} onResize={(w) => handleResize('target_product', w)}>생산제품명</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.process} onResize={(w) => handleResize('process', w)}>공정명</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)}>구매품목명</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.spec} onResize={(w) => handleResize('spec', w)}>규격</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)}>수량</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.unit} onResize={(w) => handleResize('unit', w)}>단위</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.date} onResize={(w) => handleResize('date', w)}>계획일자</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.partner} onResize={(w) => handleResize('partner', w)}>구매처(계획)</ResizableTableCell>
-                                            <ResizableTableCell width={columnWidths.remarks} onResize={(w) => handleResize('remarks', w)}>비고</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.order_no} onResize={handleResize(setPendingWidths)('order_no')}>수주/재고번호</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.client} onResize={handleResize(setPendingWidths)('client')}>고객사</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.target_product} onResize={handleResize(setPendingWidths)('target_product')}>생산제품명</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.process} onResize={handleResize(setPendingWidths)('process')}>공정명</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.product} onResize={handleResize(setPendingWidths)('product')}>구매품목명</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.spec} onResize={handleResize(setPendingWidths)('spec')}>규격</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.qty} onResize={handleResize(setPendingWidths)('qty')}>수량</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.unit} onResize={handleResize(setPendingWidths)('unit')}>단위</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.date} onResize={handleResize(setPendingWidths)('date')}>계획일자</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.partner} onResize={handleResize(setPendingWidths)('partner')}>구매처(계획)</ResizableTableCell>
+                                            <ResizableTableCell width={pendingWidths.remarks} onResize={handleResize(setPendingWidths)('remarks')}>비고</ResizableTableCell>
                                         </>
                                     )}
                                 </TableRow>
@@ -745,11 +775,15 @@ const PurchasePage = ({ type }) => {
                             </Button>
                         </Box>
                     </Box>
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
+                    <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
+                        <Table sx={{ 
+                            tableLayout: 'fixed', 
+                            width: Object.values(mrpWidths).reduce((a, b) => a + b, 0),
+                            minWidth: '100%'
+                        }}>
+                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox">
+                                    <TableCell padding="checkbox" sx={{ width: mrpWidths.checkbox }}>
                                         {(() => {
                                             const visibleItems = mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0));
                                             return (
@@ -761,17 +795,15 @@ const PurchasePage = ({ type }) => {
                                             );
                                         })()}
                                     </TableCell>
-                                    <TableCell sx={{ minWidth: 200, fontWeight: 'bold' }}>품목명</TableCell>
-                                    <TableCell sx={{ minWidth: 150 }}>규격</TableCell>
-                                    <TableCell sx={{ minWidth: 100 }}>구분</TableCell>
-                                    <TableCell sx={{ minWidth: 150 }}>연결번호 (수주)</TableCell>
-                                    <TableCell align="right" sx={{ minWidth: 100, fontWeight: 'bold' }}>총 소요량 (Gross)</TableCell>
-                                    <TableCell align="right" sx={{ minWidth: 100, color: 'text.secondary' }}>현재 재고 (Stock)</TableCell>
-                                    <TableCell align="right" sx={{ minWidth: 100, color: 'info.main' }}>발주 잔량</TableCell>
-                                    <TableCell align="right" sx={{ minWidth: 100, fontWeight: 'bold', color: 'error.main', bgcolor: 'rgba(211, 47, 47, 0.05)' }}>
-                                        실제 발주 (Net)
-                                    </TableCell>
-                                    <TableCell align="center">관리</TableCell>
+                                    <ResizableTableCell width={mrpWidths.name} onResize={handleResize(setMrpWidths)('name')}>품목명</ResizableTableCell>
+                                    <ResizableTableCell width={mrpWidths.spec} onResize={handleResize(setMrpWidths)('spec')}>규격</ResizableTableCell>
+                                    <ResizableTableCell width={mrpWidths.type} onResize={handleResize(setMrpWidths)('type')}>구분</ResizableTableCell>
+                                    <ResizableTableCell width={mrpWidths.link} onResize={handleResize(setMrpWidths)('link')}>연결번호 (수주)</ResizableTableCell>
+                                    <ResizableTableCell width={mrpWidths.gross} onResize={handleResize(setMrpWidths)('gross')} align="right">총 소요량 (Gross)</ResizableTableCell>
+                                    <ResizableTableCell width={mrpWidths.stock} onResize={handleResize(setMrpWidths)('stock')} align="right">현재 재고 (Stock)</ResizableTableCell>
+                                    <ResizableTableCell width={mrpWidths.open} onResize={handleResize(setMrpWidths)('open')} align="right">발주 잔량</ResizableTableCell>
+                                    <ResizableTableCell width={mrpWidths.net} onResize={handleResize(setMrpWidths)('net')} align="right">실제 발주 (Net)</ResizableTableCell>
+                                    <ResizableTableCell width={mrpWidths.actions} onResize={handleResize(setMrpWidths)('actions')} align="center">관리</ResizableTableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -836,19 +868,23 @@ const PurchasePage = ({ type }) => {
                             </Button>
                         )}
                     </Box>
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
+                    <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
+                        <Table sx={{ 
+                            tableLayout: 'fixed', 
+                            width: Object.values(orderWidths).reduce((a, b) => a + b, 0),
+                            minWidth: '100%'
+                        }}>
+                             <TableHead>
                                 <TableRow>
-                                    <TableCell>발주번호</TableCell>
-                                    <TableCell>연결 정보 (수주/재고)</TableCell>
-                                    <TableCell>발주일자</TableCell>
-                                    <TableCell>공급사</TableCell>
-                                    <TableCell>규격</TableCell>
-                                    <TableCell>품목 수</TableCell>
-                                    <TableCell>납품예정일</TableCell>
-                                    <TableCell>상태</TableCell>
-                                    <TableCell>관리</TableCell>
+                                    <ResizableTableCell width={orderWidths.no} onResize={handleResize(setOrderWidths)('no')}>발주번호</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.link} onResize={handleResize(setOrderWidths)('link')}>연결 정보 (수주/재고)</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.date} onResize={handleResize(setOrderWidths)('date')}>발주일자</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.partner} onResize={handleResize(setOrderWidths)('partner')}>공급사</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.spec} onResize={handleResize(setOrderWidths)('spec')}>규격</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.count} onResize={handleResize(setOrderWidths)('count')}>품목 수</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.delivery} onResize={handleResize(setOrderWidths)('delivery')}>납품예정일</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.status} onResize={handleResize(setOrderWidths)('status')}>상태</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.actions} onResize={handleResize(setOrderWidths)('actions')} align="center">관리</ResizableTableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>

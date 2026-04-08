@@ -18,11 +18,12 @@ const ResizableTableCell = ({ width, minWidth = 50, onResize, children, ...props
         e.stopPropagation();
         setIsResizing(true);
 
-        const startX = e.pageX;
+        const startX = e.clientX;
         const startWidth = cellRef.current ? cellRef.current.offsetWidth : (width || 120);
 
         const handleMouseMove = (mouseMoveEvent) => {
-            const newWidth = Math.max(minWidth, startWidth + (mouseMoveEvent.pageX - startX));
+            const delta = mouseMoveEvent.clientX - startX;
+            const newWidth = Math.max(minWidth, startWidth + delta);
             if (onResize) onResize(newWidth);
         };
 

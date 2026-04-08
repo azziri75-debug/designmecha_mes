@@ -25,26 +25,32 @@ const OutsourcingPage = () => {
     const [pendingItems, setPendingItems] = useState([]);
     const [selectedPendingItems, setSelectedPendingItems] = useState([]);
     const [expandedOrderId, setExpandedOrderId] = useState(null);
-    const [columnWidths, setColumnWidths] = useState({
+    const [pendingWidths, setPendingWidths] = useState({
+        checkbox: 40,
         order_no: 150,
-        partner: 150,
-        order_date: 120,
-        amount: 120,
-        status: 100,
-        files: 80,
-        history: 100,
-        actions: 120,
         client: 120,
         target_product: 200,
         process: 150,
+        partner: 120,
         qty: 80,
         unit: 80,
         date: 120,
         remarks: 150
     });
 
-    const handleResize = (column, newWidth) => {
-        setColumnWidths(prev => {
+    const [orderWidths, setOrderWidths] = useState({
+        order_no: 150,
+        related_id: 180,
+        order_date: 120,
+        partner: 150,
+        count: 100,
+        delivery: 120,
+        status: 100,
+        actions: 250
+    });
+
+    const handleResize = (setFn) => (column) => (newWidth) => {
+        setFn(prev => {
             const colKeys = Object.keys(prev);
             const idx = colKeys.indexOf(column);
             if (idx < 0 || idx >= colKeys.length - 1) return { ...prev, [column]: newWidth };
@@ -474,26 +480,30 @@ const OutsourcingPage = () => {
                             선택 품목 발주 등록
                         </Button>
                     </Box>
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
+                    <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
+                        <Table sx={{ 
+                            tableLayout: 'fixed', 
+                            width: Object.values(pendingWidths).reduce((a, b) => a + b, 0),
+                            minWidth: '100%'
+                        }}>
+                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox">
+                                    <TableCell padding="checkbox" sx={{ width: pendingWidths.checkbox }}>
                                         <Checkbox
                                             indeterminate={selectedPendingItems.length > 0 && selectedPendingItems.length < pendingItems.length}
                                             checked={pendingItems.length > 0 && selectedPendingItems.length === pendingItems.length}
                                             onChange={handleSelectAllPending}
                                         />
                                     </TableCell>
-                                    <ResizableTableCell width={columnWidths.order_no} onResize={(w) => handleResize('order_no', w)}>수주/재고번호</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.client} onResize={(w) => handleResize('client', w)}>고객사</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.target_product} onResize={(w) => handleResize('target_product', w)}>생산제품명</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.process} onResize={(w) => handleResize('process', w)}>외주공정명</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.partner} onResize={(w) => handleResize('partner', w)}>외주처(계획)</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.qty} onResize={(w) => handleResize('qty', w)}>수량</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.unit} onResize={(w) => handleResize('unit', w)}>단위</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.date} onResize={(w) => handleResize('date', w)}>계획일자</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.remarks} onResize={(w) => handleResize('remarks', w)}>비고</ResizableTableCell>
+                                    <ResizableTableCell width={pendingWidths.order_no} onResize={handleResize(setPendingWidths)('order_no')}>수주/재고번호</ResizableTableCell>
+                                    <ResizableTableCell width={pendingWidths.client} onResize={handleResize(setPendingWidths)('client')}>고객사</ResizableTableCell>
+                                    <ResizableTableCell width={pendingWidths.target_product} onResize={handleResize(setPendingWidths)('target_product')}>생산제품명</ResizableTableCell>
+                                    <ResizableTableCell width={pendingWidths.process} onResize={handleResize(setPendingWidths)('process')}>외주공정명</ResizableTableCell>
+                                    <ResizableTableCell width={pendingWidths.partner} onResize={handleResize(setPendingWidths)('partner')}>외주처(계획)</ResizableTableCell>
+                                    <ResizableTableCell width={pendingWidths.qty} onResize={handleResize(setPendingWidths)('qty')}>수량</ResizableTableCell>
+                                    <ResizableTableCell width={pendingWidths.unit} onResize={handleResize(setPendingWidths)('unit')}>단위</ResizableTableCell>
+                                    <ResizableTableCell width={pendingWidths.date} onResize={handleResize(setPendingWidths)('date')}>계획일자</ResizableTableCell>
+                                    <ResizableTableCell width={pendingWidths.remarks} onResize={handleResize(setPendingWidths)('remarks')}>비고</ResizableTableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -546,18 +556,22 @@ const OutsourcingPage = () => {
                             </Button>
                         )}
                     </Box>
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
+                    <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
+                        <Table sx={{ 
+                            tableLayout: 'fixed', 
+                            width: Object.values(orderWidths).reduce((a, b) => a + b, 0),
+                            minWidth: '100%'
+                        }}>
+                             <TableHead>
                                 <TableRow sx={{ bgcolor: '#f8f9fa' }}>
-                                    <TableCell>발주번호</TableCell>
-                                    <TableCell>수주정보</TableCell>
-                                    <TableCell>발주일자</TableCell>
-                                    <TableCell>외주처</TableCell>
-                                    <TableCell>품목 수</TableCell>
-                                    <TableCell>납기일자</TableCell>
-                                    <TableCell>상태</TableCell>
-                                    <TableCell>관리</TableCell>
+                                    <ResizableTableCell width={orderWidths.order_no} onResize={handleResize(setOrderWidths)('order_no')}>발주번호</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.related_id} onResize={handleResize(setOrderWidths)('related_id')}>수주정보</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.order_date} onResize={handleResize(setOrderWidths)('order_date')}>발주일자</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.partner} onResize={handleResize(setOrderWidths)('partner')}>외주처</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.count} onResize={handleResize(setOrderWidths)('count')}>품목 수</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.delivery} onResize={handleResize(setOrderWidths)('delivery')}>납기일자</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.status} onResize={handleResize(setOrderWidths)('status')}>상태</ResizableTableCell>
+                                    <ResizableTableCell width={orderWidths.actions} onResize={handleResize(setOrderWidths)('actions')} align="center">관리</ResizableTableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
