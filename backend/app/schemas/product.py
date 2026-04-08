@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import datetime
 
 # ProductGroup Schemas
 class ProductGroupBase(BaseModel):
@@ -148,10 +149,9 @@ class ProductPriceHistoryCreate(BaseModel):
     price: float
     note: Optional[str] = None
     type: str = "MANUAL"
-
 class ProductPriceHistoryResponse(ProductPriceHistoryCreate):
     id: int
-    date: str
+    date: datetime
 
     class Config:
         from_attributes = True
