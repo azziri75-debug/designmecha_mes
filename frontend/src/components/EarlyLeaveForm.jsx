@@ -36,13 +36,14 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                 let diff = (end - start) / (1000 * 60 * 60);
                 if (diff < 0) diff += 24;
                 calcHours = isNaN(diff) ? 0 : parseFloat(diff.toFixed(1));
-            } else {
-                // 조퇴는 퇴근 시점부터 정규 퇴근(18:00)까지의 시간을 계산할 수도 있으나, 
-                // 현재는 사용자가 직접 입력하거나 기본값을 유지하도록 함 (나머지 로직 보존)
-                calcHours = data.hours || 0;
+            } else if (data.leave_type === '조퇴') {
+                // 조퇴는 정규 퇴근 시간(18:00)까지의 시간을 계산
+                const workEnd = new Date(`2000-01-01T18:00`);
+                let diff = (workEnd - start) / (1000 * 60 * 60);
+                calcHours = isNaN(diff) ? 0 : parseFloat(Math.max(0, diff).toFixed(1));
             }
 
-            if (data.hours !== calcHours && calcHours > 0) {
+            if (data.hours !== calcHours && calcHours >= 0) {
                 updates.hours = calcHours;
             }
         }
@@ -57,7 +58,6 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         const newData = { ...data, [field]: value };
         if (field === 'leave_type' && value === '조퇴') {
             newData.return_time = null;
-            newData.hours = 0; // 조퇴 시 시간 초기화 (사용자 입력 대기)
         }
         onChange(newData);
     };
