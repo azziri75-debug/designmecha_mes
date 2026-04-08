@@ -6,7 +6,7 @@ import { cn, safeParseJSON } from '../lib/utils';
 import WorkLogModal from '../components/WorkLogModal';
 import FileViewerModal from '../components/FileViewerModal';
 import { Tabs, Tab } from '@mui/material';
-import api from '../lib/api';
+
 
 const WorkLogPage = () => {
     const [workLogs, setWorkLogs] = useState([]);
