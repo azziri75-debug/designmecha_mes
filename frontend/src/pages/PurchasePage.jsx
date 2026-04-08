@@ -50,47 +50,56 @@ const PurchasePage = ({ type }) => {
 
     // Filter states
     const [searchQuery, setSearchQuery] = useState('');
-    const [pendingWidths, setPendingWidths] = useState({
-        checkbox: 40,
-        doc: 150,
-        author: 100,
-        product: 200,
-        spec: 150,
-        qty: 100,
-        remarks: 200,
-        date: 120,
-        order_no: 150,
-        process: 100,
-        unit: 80,
-        partner: 120,
-        client: 120,
-        target_product: 200
-    });
+const PENDING_COLS = [
+    { key: 'checkbox', label: '', width: 40, noResize: true },
+    { key: 'order_no', label: '수주/재고번호', width: 150 },
+    { key: 'client', label: '고객사', width: 120 },
+    { key: 'target', label: '생산제품명', width: 200 },
+    { key: 'process', label: '공정명', width: 100 },
+    { key: 'product', label: '구매품목명', width: 200 },
+    { key: 'spec', label: '규격', width: 150 },
+    { key: 'qty', label: '수량', width: 80 },
+    { key: 'unit', label: '단위', width: 60 },
+    { key: 'date', label: '계획일자', width: 100 },
+    { key: 'partner', label: '구매처(계획)', width: 120 },
+    { key: 'remarks', label: '비고', width: 150 },
+];
 
-    const [mrpWidths, setMrpWidths] = useState({
-        checkbox: 40,
-        name: 200,
-        spec: 150,
-        type: 80,
-        link: 150,
-        gross: 100,
-        stock: 100,
-        open: 100,
-        net: 100,
-        actions: 80
-    });
+const PENDING_CONSUMABLE_COLS = [
+    { key: 'checkbox', label: '', width: 40, noResize: true },
+    { key: 'doc', label: '연관 결재문서', width: 180 },
+    { key: 'author', label: '기안자', width: 100 },
+    { key: 'product', label: '품목명', width: 200 },
+    { key: 'spec', label: '규격', width: 150 },
+    { key: 'qty', label: '신청 수량', width: 100 },
+    { key: 'remarks', label: '사유/비고', width: 200 },
+    { key: 'date', label: '신청일자', width: 120 },
+];
 
-    const [orderWidths, setOrderWidths] = useState({
-        no: 150,
-        link: 180,
-        date: 120,
-        partner: 150,
-        spec: 150,
-        count: 100,
-        delivery: 120,
-        status: 100,
-        actions: 250 // 버튼이 많으므로 넉넉하게
-    });
+const MRP_COLS = [
+    { key: 'checkbox', label: '', width: 40, noResize: true },
+    { key: 'name', label: '품목명', width: 200 },
+    { key: 'spec', label: '규격', width: 150 },
+    { key: 'type', label: '구분', width: 80 },
+    { key: 'link', label: '연결번호 (수주)', width: 150 },
+    { key: 'gross', label: '총 소요량 (Gross)', width: 100 },
+    { key: 'stock', label: '현재 재고 (Stock)', width: 100 },
+    { key: 'open', label: '발주 잔량', width: 100 },
+    { key: 'net', label: '실제 발주 (Net)', width: 100 },
+    { key: 'actions', label: '관리', width: 60, noResize: true },
+];
+
+const ORDER_COLS = [
+    { key: 'no', label: '발주번호', width: 150 },
+    { key: 'link', label: '연결 정보 (수주/재고)', width: 180 },
+    { key: 'date', label: '발주일자', width: 120 },
+    { key: 'partner', label: '공급사', width: 150 },
+    { key: 'spec', label: '규격', width: 150 },
+    { key: 'count', label: '품목 수', width: 100 },
+    { key: 'delivery', label: '납품예정일', width: 120 },
+    { key: 'status', label: '상태', width: 100 },
+    { key: 'actions', label: '관리', width: 250, noResize: true },
+];
 
     const handleResize = (setFn) => (column) => (newWidth) => {
         setFn(prev => {
@@ -643,103 +652,62 @@ const PurchasePage = ({ type }) => {
                             선택 품목 발주 등록
                         </Button>
                     </Box>
-                    <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-                        <Table sx={{ 
-                            tableLayout: 'fixed', 
-                            width: Object.values(pendingWidths).reduce((a, b) => a + b, 0),
-                            minWidth: '100%'
-                        }}>
-                             <TableHead>
-                                <TableRow>
-                                    <TableCell padding="checkbox" sx={{ width: pendingWidths.checkbox }}>
-                                        <Checkbox
-                                            indeterminate={selectedPendingItems.length > 0 && selectedPendingItems.length < pendingItems.length}
-                                            checked={pendingItems.length > 0 && selectedPendingItems.length === pendingItems.length}
-                                            onChange={handleSelectAllPending}
-                                        />
-                                    </TableCell>
+                    <ResizableTable
+                        columns={type === 'CONSUMABLE' ? PENDING_CONSUMABLE_COLS : PENDING_COLS}
+                        className="w-full text-left text-sm"
+                        theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                        thClassName="px-4 py-3"
+                    >
+                        {pendingItems.length === 0 ? (
+                            <tr><td colSpan={(type === 'CONSUMABLE' ? PENDING_CONSUMABLE_COLS : PENDING_COLS).length} className="px-4 py-12 text-center text-gray-500">발주 대기 중인 품목이 없습니다.</td></tr>
+                        ) : (
+                            pendingItems.map((item) => (
+                                <tr 
+                                    key={item.id} 
+                                    className="hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100"
+                                    onClick={() => handleSelectPendingItem(item.id)}
+                                >
+                                    <td className="px-4 py-4 w-[40px]">
+                                        <Checkbox checked={selectedPendingItems.includes(item.id)} size="small" />
+                                    </td>
                                     {type === 'CONSUMABLE' ? (
                                         <>
-                                            <ResizableTableCell width={pendingWidths.doc} onResize={handleResize(setPendingWidths)('doc')}>연관 결재문서</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.author} onResize={handleResize(setPendingWidths)('author')}>기안자</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.product} onResize={handleResize(setPendingWidths)('product')}>품목명</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.spec} onResize={handleResize(setPendingWidths)('spec')}>규격</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.qty} onResize={handleResize(setPendingWidths)('qty')}>신청 수량</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.remarks} onResize={handleResize(setPendingWidths)('remarks')}>사유/비고</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.date} onResize={handleResize(setPendingWidths)('date')}>신청일자</ResizableTableCell>
+                                            <td className="px-4 py-4 font-bold text-blue-700">{item.approval_title || '-'}</td>
+                                            <td className="px-4 py-4">{item.requester_name || item.author_name || '-'} {item.department ? `(${item.department})` : ''}</td>
+                                            <td className="px-4 py-4 font-bold">{item.requested_item_name || item.product?.name || '-'}</td>
+                                            <td className="px-4 py-4">{item.product?.specification || item.remarks || '-'}</td>
+                                            <td className="px-4 py-4">{item.quantity} {item.product?.unit || 'EA'}</td>
+                                            <td className="px-4 py-4 truncate max-w-[200px]" title={item.remarks}>{item.remarks}</td>
+                                            <td className="px-4 py-4 whitespace-nowrap">{item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
                                         </>
                                     ) : (
                                         <>
-                                            <ResizableTableCell width={pendingWidths.order_no} onResize={handleResize(setPendingWidths)('order_no')}>수주/재고번호</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.client} onResize={handleResize(setPendingWidths)('client')}>고객사</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.target_product} onResize={handleResize(setPendingWidths)('target_product')}>생산제품명</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.process} onResize={handleResize(setPendingWidths)('process')}>공정명</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.product} onResize={handleResize(setPendingWidths)('product')}>구매품목명</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.spec} onResize={handleResize(setPendingWidths)('spec')}>규격</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.qty} onResize={handleResize(setPendingWidths)('qty')}>수량</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.unit} onResize={handleResize(setPendingWidths)('unit')}>단위</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.date} onResize={handleResize(setPendingWidths)('date')}>계획일자</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.partner} onResize={handleResize(setPendingWidths)('partner')}>구매처(계획)</ResizableTableCell>
-                                            <ResizableTableCell width={pendingWidths.remarks} onResize={handleResize(setPendingWidths)('remarks')}>비고</ResizableTableCell>
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center gap-1">
+                                                    {item.plan?.order ? (
+                                                        <Chip label="수주" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd', color: '#1976d2' }} />
+                                                    ) : item.plan?.stock_production ? (
+                                                        <Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#f3e5f5', color: '#7b1fa2' }} />
+                                                    ) : null}
+                                                    <span className="font-bold text-blue-700">{item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4 truncate">{item.client_name || '-'}</td>
+                                            <td className="px-4 py-4 truncate">{item.product_name_of_plan || '-'}</td>
+                                            <td className="px-4 py-4 whitespace-nowrap">{item.process_name || '-'}</td>
+                                            <td className="px-4 py-4 font-bold">{item.product?.name || '-'}</td>
+                                            <td className="px-4 py-4 truncate">{item.product?.specification || '-'}</td>
+                                            <td className="px-4 py-4">{item.quantity || 0}</td>
+                                            <td className="px-4 py-4">{item.product?.unit || 'EA'}</td>
+                                            <td className="px-4 py-4 whitespace-nowrap">{item.plan?.plan_date || '-'}</td>
+                                            <td className="px-4 py-4 truncate">{item.partner_name || '-'}</td>
+                                            <td className="px-4 py-4 truncate max-w-[150px]" title={item.note}>{item.note}</td>
                                         </>
                                     )}
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {pendingItems.length === 0 ? (
-                                    <TableRow><TableCell colSpan={12} align="center">발주 대기 중인 품목이 없습니다.</TableCell></TableRow>
-                                ) : (
-                                    pendingItems?.map((item) => (
-                                        <TableRow key={item?.id} hover onClick={() => handleSelectPendingItem(item?.id)} sx={{ cursor: 'pointer' }}>
-                                            <TableCell padding="checkbox">
-                                                <Checkbox checked={selectedPendingItems.includes(item?.id)} />
-                                            </TableCell>
-                                            {type === 'CONSUMABLE' ? (
-                                                <>
-                                                    <TableCell>
-                                                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                                            {item?.approval_title || '-'}
-                                                        </Typography>
-                                                    </TableCell>
-                                                    <TableCell>{item?.requester_name || item?.author_name || '-'} {item?.department ? `(${item.department})` : ''}</TableCell>
-                                                    <TableCell><b>{item?.requested_item_name || item?.product?.name || '-'}</b></TableCell>
-                                                    <TableCell>{item?.product?.specification || item?.remarks || '-'}</TableCell>
-                                                    <TableCell>{item?.quantity} {item?.product?.unit || 'EA'}</TableCell>
-                                                    <TableCell>{item?.remarks}</TableCell>
-                                                    <TableCell>{item?.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</TableCell>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <TableCell>
-                                                        <Box>
-                                                            <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                                                {item?.plan?.order ? (
-                                                                    <Chip label="수주" size="small" variant="outlined" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem', color: 'primary.main' }} />
-                                                                ) : item?.plan?.stock_production ? (
-                                                                    <Chip label="재고" size="small" variant="outlined" color="success" sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }} />
-                                                                ) : null}
-                                                                {item?.plan?.order?.order_no || item?.plan?.stock_production?.production_no || '-'}
-                                                            </Typography>
-                                                        </Box>
-                                                    </TableCell>
-                                                    <TableCell>{item?.client_name || '-'}</TableCell>
-                                                    <TableCell>{item?.product_name_of_plan || '-'}</TableCell>
-                                                    <TableCell>{item?.process_name || '-'}</TableCell>
-                                                    <TableCell>{item?.product?.name || '-'}</TableCell>
-                                                    <TableCell>{item?.product?.specification || '-'}</TableCell>
-                                                    <TableCell>{item?.quantity || 0}</TableCell>
-                                                    <TableCell>{item?.product?.unit || 'EA'}</TableCell>
-                                                    <TableCell>{item?.plan?.plan_date || '-'}</TableCell>
-                                                    <TableCell>{item.partner_name || '-'}</TableCell>
-                                                    <TableCell>{item.note}</TableCell>
-                                                </>
-                                            )}
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                </tr>
+                            ))
+                        )}
+                    </ResizableTable>
                 </>
             )}
 
@@ -754,7 +722,7 @@ const PurchasePage = ({ type }) => {
                                     color="primary"
                                 />
                             }
-                            label={<Typography variant="body2" sx={{ fontWeight: 'bold', color: '#fff' }}>재고 충분(부족분 0) 항목 숨기기</Typography>}
+                            label={<Typography variant="body2" sx={{ fontWeight: 'bold' }}>재고 충분(부족분 0) 항목 숨기기</Typography>}
                         />
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button
@@ -776,87 +744,51 @@ const PurchasePage = ({ type }) => {
                             </Button>
                         </Box>
                     </Box>
-                    <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-                        <Table sx={{ 
-                            tableLayout: 'fixed', 
-                            width: Object.values(mrpWidths).reduce((a, b) => a + b, 0),
-                            minWidth: '100%'
-                        }}>
-                             <TableHead>
-                                <TableRow>
-                                    <TableCell padding="checkbox" sx={{ width: mrpWidths.checkbox }}>
-                                        {(() => {
-                                            const visibleItems = mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0));
-                                            return (
-                                                <Checkbox
-                                                    indeterminate={selectedMrpItems.length > 0 && selectedMrpItems.length < visibleItems.length}
-                                                    checked={visibleItems.length > 0 && selectedMrpItems.length === visibleItems.length}
-                                                    onChange={handleSelectAllMrp}
-                                                />
-                                            );
-                                        })()}
-                                    </TableCell>
-                                    <ResizableTableCell width={mrpWidths.name} onResize={handleResize(setMrpWidths)('name')}>품목명</ResizableTableCell>
-                                    <ResizableTableCell width={mrpWidths.spec} onResize={handleResize(setMrpWidths)('spec')}>규격</ResizableTableCell>
-                                    <ResizableTableCell width={mrpWidths.type} onResize={handleResize(setMrpWidths)('type')}>구분</ResizableTableCell>
-                                    <ResizableTableCell width={mrpWidths.link} onResize={handleResize(setMrpWidths)('link')}>연결번호 (수주)</ResizableTableCell>
-                                    <ResizableTableCell width={mrpWidths.gross} onResize={handleResize(setMrpWidths)('gross')} align="right">총 소요량 (Gross)</ResizableTableCell>
-                                    <ResizableTableCell width={mrpWidths.stock} onResize={handleResize(setMrpWidths)('stock')} align="right">현재 재고 (Stock)</ResizableTableCell>
-                                    <ResizableTableCell width={mrpWidths.open} onResize={handleResize(setMrpWidths)('open')} align="right">발주 잔량</ResizableTableCell>
-                                    <ResizableTableCell width={mrpWidths.net} onResize={handleResize(setMrpWidths)('net')} align="right">실제 발주 (Net)</ResizableTableCell>
-                                    <ResizableTableCell width={mrpWidths.actions} onResize={handleResize(setMrpWidths)('actions')} align="center">관리</ResizableTableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0)).length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={10} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                                            {mrpItems.length === 0 ? "수주 기반으로 계산된 추가 발주 필요 품목이 없습니다." : "조건에 맞는 소요량 내역이 없습니다."}
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    mrpItems
-                                        .filter(item => !hideZeroShortage || (item.shortage_quantity > 0))
-                                        .map((item) => (
-                                        <TableRow key={item.product_id} hover onClick={() => handleSelectMrpItem(item.product_id)} sx={{ cursor: 'pointer' }}>
-                                            <TableCell padding="checkbox">
-                                                <Checkbox checked={selectedMrpItems.includes(item.product_id)} />
-                                            </TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>{item.product_name}</TableCell>
-                                            <TableCell>{item.specification}</TableCell>
-                                            <TableCell>
-                                                <Chip label={item.item_type} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
-                                                    {item.sales_order_number || "-"}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>{item.required_quantity?.toLocaleString() || '0'}</TableCell>
-                                            <TableCell align="right" sx={{ color: item.current_stock > 0 ? 'success.main' : 'text.secondary' }}>
-                                                {item.current_stock?.toLocaleString() || '0'}
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ color: 'info.main' }}>{item.open_purchase_qty?.toLocaleString() || '0'}</TableCell>
-                                            <TableCell align="right" sx={{ 
-                                                fontWeight: 'bold', 
-                                                color: (item.shortage_quantity || 0) > 0 ? 'error.main' : 'success.main',
-                                                bgcolor: (item.shortage_quantity || 0) > 0 ? 'rgba(211, 47, 47, 0.05)' : 'rgba(46, 125, 50, 0.05)'
-                                            }}>
-                                                {(item.shortage_quantity || 0).toLocaleString()}
-                                            </TableCell>
-                                            <TableCell align="center" onClick={(e) => e.stopPropagation()}>
-                                                <Tooltip title="삭제">
-                                                    <IconButton size="small" color="error" onClick={() => handleDeleteMrpItem(item.id)}>
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                    <ResizableTable
+                        columns={MRP_COLS}
+                        className="w-full text-left text-sm"
+                        theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                        thClassName="px-4 py-3"
+                    >
+                        {mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0)).length === 0 ? (
+                            <tr><td colSpan={MRP_COLS.length} className="px-4 py-12 text-center text-gray-500">{mrpItems.length === 0 ? "수주 기반으로 계산된 추가 발주 필요 품목이 없습니다." : "조건에 맞는 소요량 내역이 없습니다."}</td></tr>
+                        ) : (
+                            mrpItems
+                                .filter(item => !hideZeroShortage || (item.shortage_quantity > 0))
+                                .map((item) => (
+                                <tr 
+                                    key={item.product_id} 
+                                    className="hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100"
+                                    onClick={() => handleSelectMrpItem(item.product_id)}
+                                >
+                                    <td className="px-4 py-4 w-[40px]">
+                                        <Checkbox checked={selectedMrpItems.includes(item.product_id)} size="small" />
+                                    </td>
+                                    <td className="px-4 py-4 font-bold">{item.product_name}</td>
+                                    <td className="px-4 py-4 truncate">{item.specification}</td>
+                                    <td className="px-4 py-4">
+                                        <Chip label={item.item_type} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.6rem' }} />
+                                    </td>
+                                    <td className="px-4 py-4 font-medium text-gray-600">
+                                        {item.sales_order_number || "-"}
+                                    </td>
+                                    <td className="px-4 py-4 text-right font-bold">{item.required_quantity?.toLocaleString() || '0'}</td>
+                                    <td className={`px-4 py-4 text-right ${item.current_stock > 0 ? 'text-green-600 font-bold' : 'text-gray-400'}`}>
+                                        {item.current_stock?.toLocaleString() || '0'}
+                                    </td>
+                                    <td className="px-4 py-4 text-right text-blue-600 font-bold">{item.open_purchase_qty?.toLocaleString() || '0'}</td>
+                                    <td className={`px-4 py-4 text-right font-bold ${item.shortage_quantity > 0 ? 'text-red-600 bg-red-50' : 'text-green-600 bg-green-50'}`}>
+                                        {(item.shortage_quantity || 0).toLocaleString()}
+                                    </td>
+                                    <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                        <IconButton size="small" color="error" onClick={() => handleDeleteMrpItem(item.id)}>
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </ResizableTable>
                 </>
             )}
 
@@ -869,220 +801,53 @@ const PurchasePage = ({ type }) => {
                             </Button>
                         )}
                     </Box>
-                    <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-                        <Table sx={{ 
-                            tableLayout: 'fixed', 
-                            width: Object.values(orderWidths).reduce((a, b) => a + b, 0),
-                            minWidth: '100%'
-                        }}>
-                             <TableHead>
-                                <TableRow>
-                                    <ResizableTableCell width={orderWidths.no} onResize={handleResize(setOrderWidths)('no')}>발주번호</ResizableTableCell>
-                                    <ResizableTableCell width={orderWidths.link} onResize={handleResize(setOrderWidths)('link')}>연결 정보 (수주/재고)</ResizableTableCell>
-                                    <ResizableTableCell width={orderWidths.date} onResize={handleResize(setOrderWidths)('date')}>발주일자</ResizableTableCell>
-                                    <ResizableTableCell width={orderWidths.partner} onResize={handleResize(setOrderWidths)('partner')}>공급사</ResizableTableCell>
-                                    <ResizableTableCell width={orderWidths.spec} onResize={handleResize(setOrderWidths)('spec')}>규격</ResizableTableCell>
-                                    <ResizableTableCell width={orderWidths.count} onResize={handleResize(setOrderWidths)('count')}>품목 수</ResizableTableCell>
-                                    <ResizableTableCell width={orderWidths.delivery} onResize={handleResize(setOrderWidths)('delivery')}>납품예정일</ResizableTableCell>
-                                    <ResizableTableCell width={orderWidths.status} onResize={handleResize(setOrderWidths)('status')}>상태</ResizableTableCell>
-                                    <ResizableTableCell width={orderWidths.actions} onResize={handleResize(setOrderWidths)('actions')} align="center">관리</ResizableTableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {orders.length === 0 ? (
-                                    <TableRow><TableCell colSpan={9} align="center">{(type === 'CONSUMABLE' ? tabValue === 1 : tabValue === 2) ? "진행 중인 발주 내역이 없습니다." : "완료된 발주 내역이 없습니다."}</TableCell></TableRow>
-                                ) : (
-                                    orders.map((order) => (
-                                        <React.Fragment key={order.id}>
-                                            <TableRow
-                                                hover
-                                                onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
-                                                onDoubleClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleEditClick(order);
-                                                }}
-                                                sx={{ cursor: 'pointer', backgroundColor: expandedOrderId === order.id ? 'action.hover' : 'inherit' }}
-                                            >
-                                                <TableCell>{order.order_no}</TableCell>
-                                                <TableCell>
-                                                    <Box>
-                                                        <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-                                                            {order.sales_order_number ? (
-                                                                <>
-                                                                    {order.sales_order_number.includes('SP') ? (
-                                                                        <span style={{ color: '#2e7d32' }}>[재고] </span>
-                                                                    ) : (
-                                                                        <span style={{ color: '#1976d2' }}>[수주] </span>
-                                                                    )}
-                                                                    {order.sales_order_number}
-                                                                </>
-                                                            ) : (
-                                                                <span style={{ color: '#757575' }}>재고용</span>
-                                                            )}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="textSecondary">{order.order?.partner?.name || order.related_customer_names || '-'}</Typography>
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>{order.order_date}</TableCell>
-                                                <TableCell>{order.partner?.name}</TableCell>
-                                                <TableCell>{order.items[0]?.product?.specification || '-'}</TableCell>
-                                                <TableCell>{order.items.length} 품목</TableCell>
-                                                <TableCell>{order.delivery_date}</TableCell>
-                                                <TableCell>
-                                                    <Chip
-                                                        label={order.status}
-                                                        color={order.status === 'COMPLETED' ? "success" : order.status === 'PENDING' ? "warning" : "primary"}
-                                                        size="small"
-                                                    />
-                                                </TableCell>
-                                                <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <Tooltip title="수정">
-                                                        <IconButton size="small" onClick={() => handleEditClick(order)}>
-                                                            <EditIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="삭제">
-                                                        <IconButton size="small" color="error" onClick={() => handleDeleteOrder(order.id)}>
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="견적의뢰서">
-                                                        <IconButton size="small" color="info" onClick={() => {
-                                                            setSheetOrder(order);
-                                                            setSheetType('estimate_request');
-                                                            setSheetModalOpen(true);
-                                                        }}>
-                                                            <DescIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="구매발주서">
-                                                        <IconButton size="small" color="success" onClick={() => {
-                                                            setSheetOrder(order);
-                                                            setSheetType('purchase_order');
-                                                            setSheetModalOpen(true);
-                                                        }}>
-                                                            <PrintIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    {(order.status === 'PENDING' || order.status === 'ORDERED') && (
-                                                        <Tooltip title="결재요청">
-                                                            <IconButton size="small" color="primary" onClick={() => handleApprovalSubmit(order)}>
-                                                                <SendIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    )}
-                                                    {order.status !== 'COMPLETED' && (
-                                                        <Tooltip title="발주 완료(입고)">
-                                                            <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); handleCompleteOrder(order.id); }}>
-                                                                <CheckCircleIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    )}
-                                                    {(() => {
-                                                        const files = safeParseJSON(order.attachment_file, []);
-                                                        return (
-                                                            <>
-                                                                {files.length > 0 && (
-                                                                    <Tooltip title={`첨부파일 ${files.length}개`}>
-                                                                        <IconButton size="small" onClick={() => {
-                                                                            setViewingFiles(files);
-                                                                            setViewingFileTitle(order.order_no);
-                                                                            setViewingTargetId(order.id);
-                                                                            setShowFileModal(true);
-                                                                        }}>
-                                                                            <AttachIcon fontSize="small" color="action" />
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                )}
-                                                                <input
-                                                                    type="file"
-                                                                    id={`po-file-${order.id}`}
-                                                                    style={{ display: 'none' }}
-                                                                    onChange={async (e) => {
-                                                                        const file = e.target.files[0];
-                                                                        if (!file) return;
-                                                                        const formData = new FormData();
-                                                                        formData.append('file', file);
-                                                                        try {
-                                                                            const uploadRes = await api.post('/upload', formData, {
-                                                                                headers: { 'Content-Type': 'multipart/form-data' }
-                                                                            });
-                                                                            const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
-                                                                            const updatedFiles = [...files, newFile];
-                                                                            await api.put(`/purchasing/purchase/orders/${order.id}`, { attachment_file: updatedFiles });
-                                                                            
-                                                                            // 일관된 리스트 갱신 (탭 구분 없이 현재 활성 탭에 맞는 데이터 다시 가져오기)
-                                                                            if (type === 'CONSUMABLE') {
-                                                                                if (tabValue === 0) fetchPendingItems();
-                                                                                else if (tabValue === 1) fetchOrders();
-                                                                                else fetchCompletedOrders();
-                                                                            } else {
-                                                                                if (tabValue === 0) fetchPendingItems();
-                                                                                else if (tabValue === 1) fetchMrpItems();
-                                                                                else if (tabValue === 2) fetchOrders();
-                                                                                else fetchCompletedOrders();
-                                                                            }
-                                                                        } catch (err) {
-                                                                            console.error("Upload failed", err);
-                                                                            alert("파일 업로드 실패");
-                                                                        } finally {
-                                                                            e.target.value = null;
-                                                                        }
-                                                                    }}
-                                                                />
-                                                                <Tooltip title="첨부파일 추가">
-                                                                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); document.getElementById(`po-file-${order.id}`).click(); }}>
-                                                                        <AddIcon sx={{ fontSize: 18 }} />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </TableCell>
-                                            </TableRow>
-                                            {expandedOrderId === order.id && (
-                                                <TableRow>
-                                                    <TableCell colSpan={7} sx={{ py: 0, bgcolor: '#f5f5f5' }}>
-                                                        <Box sx={{ margin: 2 }}>
-                                                            <Typography variant="subtitle2" gutterBottom component="div" color="primary">
-                                                                * 발주 상세 내역
-                                                            </Typography>
-                                                            <Table size="small" aria-label="purchases">
-                                                                <TableHead>
-                                                                    <TableRow>
-                                                                        <TableCell>공정명</TableCell>
-                                                                        <TableCell>품목명</TableCell>
-                                                                        <TableCell>규격</TableCell>
-                                                                        <TableCell>수량</TableCell>
-                                                                        <TableCell>단가</TableCell>
-                                                                        <TableCell>금액</TableCell>
-                                                                        <TableCell>비고</TableCell>
-                                                                    </TableRow>
-                                                                </TableHead>
-                                                                <TableBody>
-                                                                    {(order.items || []).map((item) => (
-                                                                        <TableRow key={item.id}>
-                                                                            <TableCell>{item.process_name || '-'}</TableCell>
-                                                                            <TableCell>{item.product?.name}</TableCell>
-                                                                            <TableCell>{item.product?.specification}</TableCell>
-                                                                            <TableCell>{item.quantity} {item.product?.unit}</TableCell>
-                                                                            <TableCell>{(item.unit_price || 0).toLocaleString()}</TableCell>
-                                                                            <TableCell>{((item.quantity || 0) * (item.unit_price || 0)).toLocaleString()}</TableCell>
-                                                                            <TableCell>{item.note}</TableCell>
-                                                                        </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
-                                                        </Box>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                    <ResizableTable
+                        columns={ORDER_COLS}
+                        className="w-full text-left text-sm"
+                        theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                        thClassName="px-4 py-3"
+                    >
+                        {orders.length === 0 ? (
+                            <tr><td colSpan={ORDER_COLS.length} className="px-4 py-12 text-center text-gray-500">{(type === 'CONSUMABLE' ? tabValue === 1 : tabValue === 2) ? "진행 중인 발주 내역이 없습니다." : "완료된 발주 내역이 없습니다."}</td></tr>
+                        ) : (
+                            orders.map((order) => (
+                                <PurchaseOrderRow 
+                                    key={order.id} 
+                                    order={order} 
+                                    expanded={expandedOrderId === order.id}
+                                    onToggle={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                                    onEdit={handleEditClick}
+                                    onDelete={handleDeleteOrder}
+                                    onComplete={handleCompleteOrder}
+                                    onApproval={handleApprovalSubmit}
+                                    onOpenFiles={(files, ord) => {
+                                        setViewingFiles(files);
+                                        setViewingFileTitle(ord.order_no);
+                                        setViewingTargetId(ord.id);
+                                        setShowFileModal(true);
+                                    }}
+                                    onRefresh={() => {
+                                        if (type === 'CONSUMABLE') {
+                                            if (tabValue === 0) fetchPendingItems();
+                                            else if (tabValue === 1) fetchOrders();
+                                            else fetchCompletedOrders();
+                                        } else {
+                                            if (tabValue === 0) fetchPendingItems();
+                                            else if (tabValue === 1) fetchMrpItems();
+                                            else if (tabValue === 2) fetchOrders();
+                                            else fetchCompletedOrders();
+                                        }
+                                    }}
+                                    onOpenSheet={(ord, stype) => {
+                                        setSheetOrder(ord);
+                                        setSheetType(stype);
+                                        setSheetModalOpen(true);
+                                    }}
+                                    readonly={tabValue === (type === 'CONSUMABLE' ? 2 : 3)}
+                                />
+                            ))
+                        )}
+                    </ResizableTable>
                 </>
             )}
 
@@ -1092,7 +857,6 @@ const PurchasePage = ({ type }) => {
                 onSuccess={handleSuccess}
                 waitItem={initialModalItems[0]}
             />
-
             <PurchaseOrderModal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
@@ -1101,16 +865,13 @@ const PurchasePage = ({ type }) => {
                 initialItems={initialModalItems}
                 purchaseType={type}
             />
-
             <PurchaseSheetModal
                 isOpen={sheetModalOpen}
                 onClose={() => setSheetModalOpen(false)}
                 order={sheetOrder}
                 sheetType={sheetType}
                 onSave={() => handleSuccess()} 
-
             />
-
             <FileViewerModal
                 isOpen={showFileModal}
                 onClose={() => setShowFileModal(false)}
@@ -1118,14 +879,12 @@ const PurchasePage = ({ type }) => {
                 title={viewingFileTitle}
                 onDeleteFile={(index) => handleDeleteAttachment(viewingTargetId, index)}
             />
-
             <OrderModal
                 isOpen={sourceOrderModalOpen}
                 onClose={() => setSourceOrderModalOpen(false)}
                 order={selectedSourceOrder}
                 readonly={true}
             />
-
             <StockProductionModal
                 isOpen={sourceStockModalOpen}
                 onClose={() => setSourceStockModalOpen(false)}
@@ -1133,6 +892,176 @@ const PurchasePage = ({ type }) => {
                 readonly={true}
             />
         </Box>
+    );
+};
+
+const PurchaseOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onComplete, onApproval, onOpenFiles, onRefresh, onOpenSheet, readonly }) => {
+    return (
+        <React.Fragment>
+            <tr
+                className={`hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 ${expanded ? 'bg-blue-50' : ''}`}
+                onClick={onToggle}
+                onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(order);
+                }}
+            >
+                <td className="px-4 py-4">{order.order_no}</td>
+                <td className="px-4 py-4">
+                    <Box>
+                        <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                            {order.sales_order_number ? (
+                                <>
+                                    {order.sales_order_number.includes('SP') ? (
+                                        <span style={{ color: '#2e7d32' }}>[재고] </span>
+                                    ) : (
+                                        <span style={{ color: '#1976d2' }}>[수주] </span>
+                                    )}
+                                    {order.sales_order_number}
+                                </>
+                            ) : (
+                                <span style={{ color: '#757575' }}>재고용</span>
+                            )}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">{order.order?.partner?.name || order.related_customer_names || '-'}</Typography>
+                    </Box>
+                </td>
+                <td className="px-4 py-4">{order.order_date}</td>
+                <td className="px-4 py-4 font-bold">{order.partner?.name}</td>
+                <td className="px-4 py-4 truncate">{order.items?.[0]?.product?.specification || '-'}</td>
+                <td className="px-4 py-4">{order.items?.length} 품목</td>
+                <td className="px-4 py-4 text-orange-600 font-bold">{order.delivery_date}</td>
+                <td className="px-4 py-4">
+                    <Chip
+                        label={order.status}
+                        color={order.status === 'COMPLETED' ? "success" : order.status === 'PENDING' ? "warning" : "primary"}
+                        size="small"
+                        sx={{ height: 20, fontSize: '0.7rem' }}
+                    />
+                </td>
+                <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1">
+                        <Tooltip title="수정">
+                            <IconButton size="small" onClick={() => onEdit(order)}>
+                                <EditIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="삭제">
+                            <IconButton size="small" color="error" onClick={() => onDelete(order.id)}>
+                                <DeleteIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="견적의뢰서">
+                            <IconButton size="small" color="info" onClick={() => onOpenSheet(order, 'estimate_request')}>
+                                <DescIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="구매발주서">
+                            <IconButton size="small" color="success" onClick={() => onOpenSheet(order, 'purchase_order')}>
+                                <PrintIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        {(order.status === 'PENDING' || order.status === 'ORDERED') && (
+                            <Tooltip title="결재요청">
+                                <IconButton size="small" color="primary" onClick={() => onApproval(order)}>
+                                    <SendIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                        {!readonly && order.status !== 'COMPLETED' && (
+                            <Tooltip title="발주 완료(입고)">
+                                <IconButton size="small" color="success" onClick={() => onComplete(order.id)}>
+                                    <CheckCircleIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                        {(() => {
+                            const files = safeParseJSON(order.attachment_file, []);
+                            return (
+                                <>
+                                    {files.length > 0 && (
+                                        <Tooltip title={`첨부파일 ${files.length}개`}>
+                                            <IconButton size="small" onClick={() => onOpenFiles(files, order)}>
+                                                <AttachIcon fontSize="small" color="action" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    <input
+                                        type="file"
+                                        id={`po-file-${order.id}`}
+                                        style={{ display: 'none' }}
+                                        onChange={async (e) => {
+                                            const file = e.target.files[0];
+                                            if (!file) return;
+                                            const formData = new FormData();
+                                            formData.append('file', file);
+                                            try {
+                                                const uploadRes = await api.post('/upload', formData, {
+                                                    headers: { 'Content-Type': 'multipart/form-data' }
+                                                });
+                                                const newFile = { name: uploadRes.data.filename, url: uploadRes.data.url };
+                                                const updatedFiles = [...files, newFile];
+                                                await api.put(`/purchasing/purchase/orders/${order.id}`, { attachment_file: updatedFiles });
+                                                onRefresh();
+                                            } catch (err) {
+                                                console.error("Upload failed", err);
+                                                alert("파일 업로드 실패");
+                                            } finally {
+                                                e.target.value = null;
+                                            }
+                                        }}
+                                    />
+                                    <Tooltip title="첨부파일 추가">
+                                        <IconButton size="small" onClick={() => document.getElementById(`po-file-${order.id}`).click()}>
+                                            <AddIcon sx={{ fontSize: 18 }} />
+                                        </IconButton>
+                                    </Tooltip>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </td>
+            </tr>
+            {expanded && (
+                <tr className="bg-gray-50">
+                    <td colSpan={ORDER_COLS.length} className="px-8 py-4 border-none">
+                        <Collapse in={expanded} timeout="auto" unmountOnExit>
+                            <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #eee', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary">
+                                    * 발주 상세 내역
+                                </Typography>
+                                <table className="w-full text-xs text-left border">
+                                    <thead className="bg-gray-50 border-b">
+                                        <tr>
+                                            <th className="px-3 py-2">공정명</th>
+                                            <th className="px-3 py-2">품목명</th>
+                                            <th className="px-3 py-2">규격</th>
+                                            <th className="px-3 py-2 text-right">수량</th>
+                                            <th className="px-3 py-2 text-right">단가</th>
+                                            <th className="px-3 py-2 text-right">금액</th>
+                                            <th className="px-3 py-2">비고</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {(order.items || []).map((item) => (
+                                            <tr key={item.id} className="hover:bg-gray-50">
+                                                <td className="px-3 py-2">{item.process_name || '-'}</td>
+                                                <td className="px-3 py-2 font-bold">{item.product?.name}</td>
+                                                <td className="px-3 py-2">{item.product?.specification}</td>
+                                                <td className="px-3 py-2 text-right">{item.quantity} {item.product?.unit}</td>
+                                                <td className="px-3 py-2 text-right">{(item.unit_price || 0).toLocaleString()}</td>
+                                                <td className="px-3 py-2 text-right font-bold text-blue-900">{((item.quantity || 0) * (item.unit_price || 0)).toLocaleString()}</td>
+                                                <td className="px-3 py-2 truncate max-w-[150px]" title={item.note}>{item.note}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </Box>
+                        </Collapse>
+                    </td>
+                </tr>
+            )}
+        </React.Fragment>
     );
 };
 

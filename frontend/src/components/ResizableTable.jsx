@@ -32,7 +32,7 @@ import { cn } from '../lib/utils';
  *   </ResizableTable>
  */
 
-const MIN_WIDTH = 40;
+const MIN_WIDTH = 50;
 
 const ResizableTable = ({
     columns,
@@ -43,20 +43,21 @@ const ResizableTable = ({
     tbodyClassName,
     style,
     tableRef: externalTableRef,
+    onResizeEnd, // 추가: 리사이징 완료 시 콜백
 }) => {
-    // 컬럼 너비를 ref로 관리하여 리렌더 없이 DOM을 직접 제어 → 부드러운 드래그
+    // 컬럼 너비를 ref로 관리하여 리렌더 없이 DOM을 직접 제어
     const colRefs = useRef({}); // { key: colElement }
     const widthsRef = useRef({}); // { key: number(px) }
 
-    // 초기 너비 설정
-    const initWidths = useCallback(() => {
+    // 초기 및 업데이트 너비 설정
+    useEffect(() => {
         columns.forEach(col => {
-            if (!widthsRef.current[col.key]) {
-                widthsRef.current[col.key] = col.width || 120;
+            widthsRef.current[col.key] = col.width || 120;
+            if (colRefs.current[col.key]) {
+                colRefs.current[col.key].style.width = `${widthsRef.current[col.key]}px`;
             }
         });
     }, [columns]);
-    initWidths();
 
     const handleMouseDown = useCallback((leftKey, rightKey) => (e) => {
         e.preventDefault();
@@ -68,17 +69,18 @@ const ResizableTable = ({
 
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
+        document.body.classList.add('resizing');
 
         const onMouseMove = (me) => {
             const delta = me.clientX - startX;
             const newLeft = Math.max(MIN_WIDTH, leftStart + delta);
-            const newRight = Math.max(MIN_WIDTH, rightStart - delta);
+            const actualDelta = newLeft - leftStart;
+            const newRight = Math.max(MIN_WIDTH, rightStart - actualDelta);
 
             if (newLeft >= MIN_WIDTH && newRight >= MIN_WIDTH) {
                 widthsRef.current[leftKey] = newLeft;
                 widthsRef.current[rightKey] = newRight;
 
-                // DOM 직접 조작으로 부드러운 드래그
                 if (colRefs.current[leftKey]) {
                     colRefs.current[leftKey].style.width = `${newLeft}px`;
                 }
@@ -91,13 +93,24 @@ const ResizableTable = ({
         const onMouseUp = () => {
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
+            document.body.classList.remove('resizing');
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
+
+            // 최종 결과를 부모에게 전달 (필요 시)
+            if (onResizeEnd) {
+                onResizeEnd({
+                    leftKey, 
+                    newLeft: widthsRef.current[leftKey],
+                    rightKey,
+                    newRight: widthsRef.current[rightKey]
+                });
+            }
         };
 
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
-    }, []);
+    }, [onResizeEnd]);
 
     return (
         <table

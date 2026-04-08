@@ -6,7 +6,7 @@ import { cn, safeParseJSON } from '../lib/utils';
 import WorkLogModal from '../components/WorkLogModal';
 import FileViewerModal from '../components/FileViewerModal';
 import { Tabs, Tab } from '@mui/material';
-import ResizableTableCell from '../components/ResizableTableCell';
+import api from '../lib/api';
 
 const WorkLogPage = () => {
     const [workLogs, setWorkLogs] = useState([]);
@@ -28,36 +28,24 @@ const WorkLogPage = () => {
     const [performanceData, setPerformanceData] = useState([]);
 
     // Table Resize States
-    const [logTableWidths, setLogTableWidths] = useState({
-        expand: 65,
-        date: 150,
-        worker: 150,
-        count: 150,
-        note: 300,
-        actions: 120
-    });
+const LOG_COLS = [
+    { key: 'expand', label: '', width: 50, noResize: true },
+    { key: 'date', label: '작업일자', width: 120 },
+    { key: 'worker', label: '작성자', width: 120 },
+    { key: 'count', label: '세부 작업 수', width: 120 },
+    { key: 'note', label: '비고', width: 300 },
+    { key: 'actions', label: '관리', width: 100, noResize: true },
+];
 
-    const [perfTableWidths, setPerfTableWidths] = useState({
-        expand: 65,
-        worker: 180,
-        cost: 250,
-        days: 150,
-        note: 250
-    });
+const PERF_COLS = [
+    { key: 'expand', label: '', width: 50, noResize: true },
+    { key: 'worker', label: '작업자', width: 180 },
+    { key: 'cost', label: '누적 공정비용 (실적)', width: 250 },
+    { key: 'days', label: '작업 일수', width: 120 },
+    { key: 'note', label: '비고', width: 250 },
+];
 
-    const handleResize = (setFn) => (column) => (newWidth) => {
-        setFn(prev => {
-            const colKeys = Object.keys(prev);
-            const idx = colKeys.indexOf(column);
-            if (idx < 0 || idx >= colKeys.length - 1) return { ...prev, [column]: newWidth };
-            
-            const rightKey = colKeys[idx + 1];
-            const delta = newWidth - prev[column];
-            const newRight = Math.max(50, (prev[rightKey] || 100) - delta);
-            
-            return { ...prev, [column]: newWidth, [rightKey]: newRight };
-        });
-    };
+
 
     const fetchWorkLogs = async () => {
         try {
@@ -224,55 +212,32 @@ const WorkLogPage = () => {
             </Paper>
 
             {tabValue === 0 ? (
-                <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-                    <Table sx={{ 
-                        tableLayout: 'fixed', 
-                        width: Object.values(logTableWidths).reduce((a, b) => a + b, 0),
-                        minWidth: '100%'
-                    }}>
-                        <TableHead>
-                            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                                <ResizableTableCell width={logTableWidths.expand} onResize={handleResize(setLogTableWidths)('expand')} />
-                                <ResizableTableCell width={logTableWidths.date} onResize={handleResize(setLogTableWidths)('date')}>작업일자</ResizableTableCell>
-                                <ResizableTableCell width={logTableWidths.worker} onResize={handleResize(setLogTableWidths)('worker')}>작성자</ResizableTableCell>
-                                <ResizableTableCell width={logTableWidths.count} onResize={handleResize(setLogTableWidths)('count')}>세부 작업 수</ResizableTableCell>
-                                <ResizableTableCell width={logTableWidths.note} onResize={handleResize(setLogTableWidths)('note')}>비고</ResizableTableCell>
-                                <ResizableTableCell 
-                                    width={logTableWidths.actions} 
-                                    align="center"
-                                >
-                                    관리
-                                </ResizableTableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {filteredLogs.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>등록된 (또는 검색된) 작업일지가 없습니다.</TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredLogs.map(log => (
-                                    <WorkLogRow
-                                        key={log.id}
-                                        log={log}
-                                        onEdit={() => handleEditClick(log)}
-                                        onDelete={() => handleDeleteClick(log.id)}
-                                        onViewFiles={() => handleViewFiles(log.attachment_file)}
-                                        widths={logTableWidths}
-                                    />
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                <ResizableTable
+                    columns={LOG_COLS}
+                    className="w-full text-left text-sm"
+                    theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+                    thClassName="px-4 py-3"
+                >
+                    {filteredLogs.length === 0 ? (
+                        <tr><td colSpan={LOG_COLS.length} className="px-4 py-12 text-center text-gray-500">등록된 (또는 검색된) 작업일지가 없습니다.</td></tr>
+                    ) : (
+                        filteredLogs.map(log => (
+                            <WorkLogRow
+                                key={log.id}
+                                log={log}
+                                onEdit={() => handleEditClick(log)}
+                                onDelete={() => handleDeleteClick(log.id)}
+                                onViewFiles={() => handleViewFiles(log.attachment_file)}
+                            />
+                        ))
+                    )}
+                </ResizableTable>
             ) : (
                 <PerformanceManagementList
                     data={performanceData}
                     onUpdate={() => { fetchPerformanceData(); fetchWorkLogs(); }}
                     startDate={startDate}
                     endDate={endDate}
-                    widths={perfTableWidths}
-                    onResize={handleResize(setPerfTableWidths)}
                 />
             )}
 
@@ -296,133 +261,131 @@ const WorkLogPage = () => {
     );
 };
 
-const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles, widths }) => {
+const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
     const [open, setOpen] = useState(false);
 
     return (
         <React.Fragment>
-            <TableRow sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer', '&:hover': { backgroundColor: '#fafafa' } }} onClick={() => setOpen(!open)}>
-                <TableCell sx={{ width: widths.expand }}>
+            <tr 
+                className={cn(
+                    "hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100",
+                    open && "bg-blue-50"
+                )}
+                onClick={() => setOpen(!open)}
+            >
+                <td className="px-4 py-4 w-[50px] text-center">
                     <IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
                         {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
                     </IconButton>
-                </TableCell>
-                <TableCell sx={{ fontWeight: 500, width: widths.date }}>{log.work_date}</TableCell>
-                <TableCell sx={{ width: widths.worker }}>{log.worker?.name || '<미지정>'}</TableCell>
-                <TableCell sx={{ width: widths.count }}>{log.items?.length || 0}건</TableCell>
-                <TableCell sx={{ width: widths.note }}>
-                    {log.note || '-'}
-                    {log.attachment_file && safeParseJSON(log.attachment_file, []).length > 0 && (
-                        <IconButton size="small" color="info" onClick={(e) => { e.stopPropagation(); onViewFiles(); }} title="첨부파일 보기" sx={{ ml: 1 }}>
-                            <AttachFileIcon fontSize="small" />
+                </td>
+                <td className="px-4 py-4 font-bold text-gray-700">{log.work_date}</td>
+                <td className="px-4 py-4 text-gray-800">{log.worker?.name || '<미지정>'}</td>
+                <td className="px-4 py-4 font-semibold text-blue-600">{log.items?.length || 0}건</td>
+                <td className="px-4 py-4">
+                    <div className="flex items-center gap-2">
+                        <span className="truncate max-w-[300px]" title={log.note}>{log.note || '-'}</span>
+                        {log.attachment_file && safeParseJSON(log.attachment_file, []).length > 0 && (
+                            <IconButton size="small" color="info" onClick={(e) => { e.stopPropagation(); onViewFiles(); }} title="첨부파일 보기">
+                                <AttachFileIcon fontSize="small" />
+                            </IconButton>
+                        )}
+                    </div>
+                </td>
+                <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1 justify-center">
+                        <IconButton size="small" color="primary" onClick={onEdit} title="수정">
+                            <EditIcon fontSize="small" />
                         </IconButton>
-                    )}
-                </TableCell>
-                <TableCell align="center" onClick={(e) => e.stopPropagation()} sx={{ width: widths.actions }}>
-                    <IconButton size="small" color="primary" onClick={onEdit} title="수정">
-                        <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={onDelete} title="삭제">
-                        <DeleteIcon fontSize="small" />
-                    </IconButton>
-                </TableCell>
-            </TableRow>
-            <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
-                    <Collapse in={open} timeout="auto" unmountOnExit>
-                        <Box sx={{ margin: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #eee' }}>
-                            <Typography variant="subtitle2" gutterBottom sx={{ color: '#555', fontWeight: 'bold' }}>
-                                세부 작업 내역
-                            </Typography>
-                            <Table size="small" sx={{ mt: 1 }}>
-                                <TableHead>
-                                    <TableRow sx={{ backgroundColor: '#fff' }}>
-                                        <TableCell>수주/재고번호</TableCell>
-                                        <TableCell>고객사</TableCell>
-                                        <TableCell>수주일/납기일</TableCell>
-                                        <TableCell>품명</TableCell>
-                                        <TableCell>공정명</TableCell>
-                                        <TableCell align="right">양품</TableCell>
-                                        <TableCell align="right">불량</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {(!log.items || log.items.length === 0) ? (
-                                        <TableRow><TableCell colSpan={7} align="center">세부 작업 내역이 없습니다.</TableCell></TableRow>
-                                    ) : (
-                                        log.items.map(item => {
-                                            const plan = item.plan_item?.plan;
-                                            let orderNo = '-';
-                                            if (plan?.order?.order_no) {
-                                                orderNo = `[수주] ${plan.order.order_no}`;
-                                            } else if (plan?.stock_production?.production_no) {
-                                                orderNo = `[재고] ${plan.stock_production.production_no}`;
-                                            }
+                        <IconButton size="small" color="error" onClick={onDelete} title="삭제">
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </div>
+                </td>
+            </tr>
+            {open && (
+                <tr className="bg-gray-50">
+                    <td colSpan={LOG_COLS.length} className="px-8 py-4 border-none">
+                        <Collapse in={open} timeout="auto" unmountOnExit>
+                            <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #eee', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                                    * 세부 작업 내역
+                                </Typography>
+                                <table className="w-full text-xs text-left border">
+                                    <thead className="bg-gray-50 border-b">
+                                        <tr>
+                                            <th className="px-3 py-2">수주/재고번호</th>
+                                            <th className="px-3 py-2">고객사</th>
+                                            <th className="px-3 py-2">수주일/납기일</th>
+                                            <th className="px-3 py-2">품명</th>
+                                            <th className="px-3 py-2">공정명</th>
+                                            <th className="px-3 py-2 text-right">양품</th>
+                                            <th className="px-3 py-2 text-right">불량</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y text-gray-700">
+                                        {(!log.items || log.items.length === 0) ? (
+                                            <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-500">세부 작업 내역이 없습니다.</td></tr>
+                                        ) : (
+                                            log.items.map(item => {
+                                                const plan = item.plan_item?.plan;
+                                                let orderNo = '-';
+                                                if (plan?.order?.order_no) {
+                                                    orderNo = `[수주] ${plan.order.order_no}`;
+                                                } else if (plan?.stock_production?.production_no) {
+                                                    orderNo = `[재고] ${plan.stock_production.production_no}`;
+                                                }
 
-                                            return (
-                                                <TableRow key={item.id} sx={{ backgroundColor: '#fff' }}>
-                                                    <TableCell sx={{ fontSize: '0.8rem' }}>{orderNo}</TableCell>
-                                                    <TableCell sx={{ fontSize: '0.8rem' }}>{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</TableCell>
-                                                    <TableCell sx={{ fontSize: '0.75rem' }}>
-                                                        {plan?.order?.order_date ? (
-                                                            <div>
-                                                                <div>오더: {plan.order.order_date}</div>
-                                                                <div style={{ color: '#1a237e' }}>납기: {plan.order.delivery_date || '-'}</div>
-                                                            </div>
-                                                        ) : (plan?.stock_production ? '재고생산' : '-')}
-                                                    </TableCell>
-                                                    <TableCell>{item.plan_item?.product?.name || '-'}</TableCell>
-                                                    <TableCell>{item.plan_item?.process_name || '-'}</TableCell>
-                                                    <TableCell align="right" sx={{ color: '#2e7d32', fontWeight: 500 }}>{item.good_quantity}</TableCell>
-                                                    <TableCell align="right" sx={{ color: '#d32f2f', fontWeight: 500 }}>{item.bad_quantity}</TableCell>
-                                                </TableRow>
-                                            );
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </Box>
-                    </Collapse>
-                </TableCell>
-            </TableRow>
+                                                return (
+                                                    <tr key={item.id} className="hover:bg-gray-50">
+                                                        <td className="px-3 py-2">{orderNo}</td>
+                                                        <td className="px-3 py-2">{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</td>
+                                                        <td className="px-3 py-2 text-[0.7rem] leading-tight">
+                                                            {plan?.order?.order_date ? (
+                                                                <div>
+                                                                    <div>오더: {plan.order.order_date}</div>
+                                                                    <div className="text-blue-700">납기: {plan.order.delivery_date || '-'}</div>
+                                                                </div>
+                                                            ) : (plan?.stock_production ? '재고생산' : '-')}
+                                                        </td>
+                                                        <td className="px-3 py-2 font-bold">{item.plan_item?.product?.name || '-'}</td>
+                                                        <td className="px-3 py-2">{item.plan_item?.process_name || '-'}</td>
+                                                        <td className="px-3 py-2 text-right font-bold text-green-700">{item.good_quantity}</td>
+                                                        <td className="px-3 py-2 text-right font-bold text-red-600">{item.bad_quantity}</td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </Box>
+                        </Collapse>
+                    </td>
+                </tr>
+            )}
         </React.Fragment>
     );
 };
 
-const PerformanceManagementList = ({ data, onUpdate, startDate, endDate, widths, onResize }) => {
+const PerformanceManagementList = ({ data, onUpdate, startDate, endDate }) => {
     return (
-        <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-            <Table sx={{ 
-                tableLayout: 'fixed', 
-                width: Object.values(widths).reduce((a, b) => a + b, 0),
-                minWidth: '100%' 
-            }}>
-                <TableHead>
-                    <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                        <ResizableTableCell width={widths.expand} onResize={onResize('expand')} />
-                        <ResizableTableCell width={widths.worker} onResize={onResize('worker')}>작업자</ResizableTableCell>
-                        <ResizableTableCell width={widths.cost} onResize={onResize('cost')} align="right">누적 공정비용 (실적)</ResizableTableCell>
-                        <ResizableTableCell width={widths.days} onResize={onResize('days')} align="right">작업 일수</ResizableTableCell>
-                        <ResizableTableCell width={widths.note} onResize={onResize('note')}>비고</ResizableTableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {data.length === 0 ? (
-                        <TableRow>
-                            <TableCell colSpan={5} align="center" sx={{ py: 3 }}>표시할 실적 데이터가 없습니다.</TableCell>
-                        </TableRow>
-                    ) : (
-                        data.map(row => (
-                            <PerformanceRow key={row.worker_id} row={row} onUpdate={onUpdate} startDate={startDate} endDate={endDate} widths={widths} />
-                        ))
-                    )}
-                </TableBody>
-            </Table>
-        </TableContainer>
+        <ResizableTable
+            columns={PERF_COLS}
+            className="w-full text-left text-sm"
+            theadClassName="bg-gray-100 text-gray-900 font-bold border-b"
+            thClassName="px-4 py-3"
+        >
+            {data.length === 0 ? (
+                <tr><td colSpan={PERF_COLS.length} className="px-4 py-12 text-center text-gray-500">표시할 실적 데이터가 없습니다.</td></tr>
+            ) : (
+                data.map(row => (
+                    <PerformanceRow key={row.worker_id} row={row} onUpdate={onUpdate} startDate={startDate} endDate={endDate} />
+                ))
+            )}
+        </ResizableTable>
     );
 };
 
-const PerformanceRow = ({ row, onUpdate, startDate, endDate, widths }) => {
+const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
     const [open, setOpen] = useState(false);
     const [details, setDetails] = useState([]);
 
@@ -445,50 +408,62 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate, widths }) => {
 
     return (
         <React.Fragment>
-            <TableRow sx={{ cursor: 'pointer', '&:hover': { backgroundColor: '#fafafa' } }} onClick={() => setOpen(!open)}>
-                <TableCell sx={{ width: widths.expand }}>
+            <tr 
+                className={cn(
+                    "hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100",
+                    open && "bg-blue-50"
+                )}
+                onClick={() => setOpen(!open)}
+            >
+                <td className="px-4 py-4 w-[50px] text-center">
                     <IconButton size="small">
                         {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
                     </IconButton>
-                </TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: widths.worker }}>{row.worker_name}</TableCell>
-                <TableCell align="right" sx={{ color: '#1a237e', fontWeight: 500, width: widths.cost }}>
+                </td>
+                <td className="px-4 py-4 font-bold text-gray-800">{row.worker_name}</td>
+                <td className="px-4 py-4 text-right font-bold text-blue-800">
                     {(row.total_cost || 0).toLocaleString()}원
-                </TableCell>
-                <TableCell align="right" sx={{ width: widths.days }}>{row.log_days}일</TableCell>
-                <TableCell sx={{ width: widths.note }}>-</TableCell>
-            </TableRow>
-            <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
-                    <Collapse in={open} timeout="auto" unmountOnExit>
-                        <Box sx={{ margin: 2, p: 2, backgroundColor: '#f1f3f4', borderRadius: 1 }}>
-                            <Typography variant="subtitle2" gutterBottom sx={{ color: '#111', fontWeight: 'bold' }}>
-                                [{row.worker_name}] 상세 실적 내역 및 단가 수정
-                            </Typography>
-                            <Table size="small" sx={{ mt: 1, backgroundColor: '#fff' }}>
-                                <TableHead>
-                                    <TableRow sx={{ backgroundColor: '#eee' }}>
-                                        <TableCell>작업일자</TableCell>
-                                        <TableCell>수주/재고번호</TableCell>
-                                        <TableCell>고객사</TableCell>
-                                        <TableCell>수주일/납기일</TableCell>
-                                        <TableCell>공정명 (품명)</TableCell>
-                                        <TableCell align="right">양품수량</TableCell>
-                                        <TableCell align="right">공정단가</TableCell>
-                                        <TableCell align="right">합계</TableCell>
-                                        <TableCell align="center">저장</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {details.map(item => (
-                                        <PerformanceDetailRow key={item.id} item={item} onUpdate={() => { fetchDetails(); onUpdate(); }} />
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </Box>
-                    </Collapse>
-                </TableCell>
-            </TableRow>
+                </td>
+                <td className="px-4 py-4 text-right font-medium text-gray-700">{row.log_days}일</td>
+                <td className="px-4 py-4 text-gray-500">-</td>
+            </tr>
+            {open && (
+                <tr className="bg-gray-50">
+                    <td colSpan={PERF_COLS.length} className="px-8 py-4 border-none">
+                        <Collapse in={open} timeout="auto" unmountOnExit>
+                            <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #eee', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                                    [{row.worker_name}] 상세 실적 내역 및 단가 수정
+                                </Typography>
+                                <table className="w-full text-xs text-left border">
+                                    <thead className="bg-gray-50 border-b">
+                                        <tr>
+                                            <th className="px-3 py-2">작업일자</th>
+                                            <th className="px-3 py-2">수주/재고번호</th>
+                                            <th className="px-3 py-2">고객사</th>
+                                            <th className="px-3 py-2 text-right">수주일/납기일</th>
+                                            <th className="px-3 py-2">공정명 (품명)</th>
+                                            <th className="px-3 py-2 text-right">양품수량</th>
+                                            <th className="px-3 py-2 text-right">공정단가</th>
+                                            <th className="px-3 py-2 text-right">합계</th>
+                                            <th className="px-3 py-2 text-center">저장</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y text-gray-700">
+                                        {details.length === 0 ? (
+                                            <tr><td colSpan={9} className="px-3 py-8 text-center text-gray-500">조회된 상세 내역이 없습니다.</td></tr>
+                                        ) : (
+                                            details.map(item => (
+                                                <PerformanceDetailRow key={item.id} item={item} onUpdate={() => { fetchDetails(); onUpdate(); }} />
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </Box>
+                        </Collapse>
+                    </td>
+                </tr>
+            )}
         </React.Fragment>
     );
 };
@@ -524,55 +499,47 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
     };
 
     return (
-        <TableRow>
-            <TableCell>{item.work_log?.work_date}</TableCell>
-            <TableCell sx={{ fontSize: '0.75rem' }}>{orderNo}</TableCell>
-            <TableCell sx={{ fontSize: '0.75rem' }}>{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</TableCell>
-            <TableCell sx={{ fontSize: '0.7rem' }}>
+        <tr className="hover:bg-gray-50 border-b border-gray-100">
+            <td className="px-3 py-2 text-gray-600 font-medium">{item.work_log?.work_date}</td>
+            <td className="px-3 py-2 text-[0.75rem]">{orderNo}</td>
+            <td className="px-3 py-2 text-[0.75rem]">{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</td>
+            <td className="px-3 py-2 text-[0.7rem] leading-tight text-right">
                 {plan?.order?.order_date ? (
                     <div>
                         <div>{plan.order.order_date}</div>
-                        <div style={{ color: '#1a237e' }}>({plan.order.delivery_date || '-'})</div>
+                        <div className="text-blue-700">({plan.order.delivery_date || '-'})</div>
                     </div>
                 ) : (plan?.stock_production ? '재고생산' : '-')}
-            </TableCell>
-            <TableCell>
-                {item.plan_item?.process_name}
-                <Typography variant="caption" display="block" color="textSecondary">
-                    ({item.plan_item?.product?.name})
-                </Typography>
-            </TableCell>
-            <TableCell align="right">
-                <TextField
+            </td>
+            <td className="px-3 py-2">
+                <div className="font-bold">{item.plan_item?.process_name}</div>
+                <div className="text-xs text-gray-500">({item.plan_item?.product?.name})</div>
+            </td>
+            <td className="px-3 py-2 text-right">
+                <input
                     type="number"
-                    size="small"
-                    variant="standard"
                     value={editQty}
                     onChange={(e) => setEditQty(e.target.value)}
-                    inputProps={{ style: { textAlign: 'right', fontSize: '0.85rem' } }}
-                    sx={{ width: 60 }}
+                    className="w-16 px-1 py-1 border rounded text-right text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                 />
-            </TableCell>
-            <TableCell align="right">
-                <TextField
+            </td>
+            <td className="px-3 py-2 text-right">
+                <input
                     type="number"
-                    size="small"
-                    variant="standard"
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
-                    inputProps={{ style: { textAlign: 'right', fontSize: '0.85rem' } }}
-                    sx={{ width: 80 }}
+                    className="w-20 px-1 py-1 border rounded text-right text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                 />
-            </TableCell>
-            <TableCell align="right" sx={{ fontWeight: 500 }}>
-                {(editQty * editPrice).toLocaleString()}
-            </TableCell>
-            <TableCell align="center">
+            </td>
+            <td className="px-3 py-2 text-right font-bold text-blue-900">
+                {(editQty * editPrice).toLocaleString()}원
+            </td>
+            <td className="px-3 py-2 text-center">
                 <IconButton size="small" color="primary" onClick={handleSave} disabled={saving}>
                     <SaveIcon fontSize="small" />
                 </IconButton>
-            </TableCell>
-        </TableRow>
+            </td>
+        </tr>
     );
 };
 
