@@ -33,6 +33,22 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
         }
     }, [data.start_time, data.time, data.end_time, currentUser]);
 
+    // [NEW] Display logic for read-only mode when hours might be missing
+    const getDisplayHours = () => {
+        if (data.hours) return data.hours;
+        
+        const startTime = data.start_time || data.time;
+        const endTime = data.end_time;
+        if (startTime && endTime) {
+            const start = new Date(`2000-01-01T${startTime}`);
+            const end = new Date(`2000-01-01T${endTime}`);
+            let diff = (end - start) / (1000 * 60 * 60);
+            if (diff < 0) diff += 24;
+            return parseFloat(diff.toFixed(1));
+        }
+        return 0;
+    };
+
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
         onChange({ ...data, [field]: value });
@@ -123,7 +139,7 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                                     style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
                                 />
                                 <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '14px', color: '#1976d2' }}>
-                                    총: {data.hours || 0} 시간
+                                    총: {getDisplayHours()} 시간
                                 </Typography>
                             </Box>
                         </td>

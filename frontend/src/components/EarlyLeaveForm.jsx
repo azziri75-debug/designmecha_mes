@@ -53,6 +53,29 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         }
     }, [data.leave_type, data.date, data.leave_time, data.time, data.return_time, data.end_time, currentUser, onChange]);
 
+    // [NEW] Display logic for read-only mode when hours might be missing
+    const getDisplayHours = () => {
+        if (data.hours) return data.hours;
+        
+        const startTime = data.leave_time || data.time;
+        const endTime = data.return_time || data.end_time;
+        if (!startTime) return 0;
+
+        const start = new Date(`2000-01-01T${startTime}`);
+        let calcHours = 0;
+        if (data.leave_type === '외출' && endTime) {
+            const end = new Date(`2000-01-01T${endTime}`);
+            let diff = (end - start) / (1000 * 60 * 60);
+            if (diff < 0) diff += 24;
+            calcHours = parseFloat(diff.toFixed(1));
+        } else if (data.leave_type === '조퇴' || !data.leave_type) {
+            const workEnd = new Date(`2000-01-01T18:00`);
+            let diff = (workEnd - start) / (1000 * 60 * 60);
+            calcHours = parseFloat(Math.max(0, diff).toFixed(1));
+        }
+        return isNaN(calcHours) ? 0 : calcHours;
+    };
+
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
         const newData = { ...data, [field]: value };
@@ -123,53 +146,77 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                             </RadioGroup>
                         </td>
                     </TableRow>
-                    <TableRow sx={{ height: '60px' }}>
-                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>시 기</Box>
+                    <TableRow sx={{ height: '70px' }}>
+                        <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>근무일시</Box>
                         <td colSpan={4}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <input 
-                                    type="date" 
-                                    value={data.date || new Date().toISOString().split('T')[0]} 
-                                    onChange={(e) => handleChange('date', e.target.value)}
-                                    readOnly={isReadOnly}
-                                    style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                {isReadOnly ? (
+                                    <Typography sx={{ fontSize: '14px', py: 0.5, borderBottom: '1px solid #eee' }}>
+                                        {data.date || '-'}
+                                    </Typography>
+                                ) : (
+                                    <input 
+                                        type="date" 
+                                        value={data.date || new Date().toISOString().split('T')[0]} 
+                                        onChange={(e) => handleChange('date', e.target.value)}
+                                        readOnly={isReadOnly}
+                                        style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
+                                    />
+                                )}
                                 {!isOuting ? (
                                     <>
                                         <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '13px' }}>퇴근시간:</Typography>
-                                        <input 
-                                            type="time" 
-                                            value={data.leave_time || data.time || ''} 
-                                            onChange={(e) => {
-                                                if (isReadOnly || typeof onChange !== 'function') return;
-                                                onChange({ ...data, leave_time: e.target.value, return_time: '' });
-                                            }}
-                                            readOnly={isReadOnly}
-                                            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                        />
+                                        {isReadOnly ? (
+                                            <Typography sx={{ fontSize: '14px', py: 0.5 }}>
+                                                {data.leave_time || data.time || '-'}
+                                            </Typography>
+                                        ) : (
+                                            <input 
+                                                type="time" 
+                                                value={data.leave_time || data.time || ''} 
+                                                onChange={(e) => {
+                                                    if (isReadOnly || typeof onChange !== 'function') return;
+                                                    onChange({ ...data, leave_time: e.target.value, return_time: '' });
+                                                }}
+                                                readOnly={isReadOnly}
+                                                style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
+                                            />
+                                        )}
                                     </>
                                 ) : (
                                     <>
                                         <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '13px' }}>외출시간:</Typography>
-                                        <input 
-                                            type="time" 
-                                            value={data.leave_time || data.time || ''} 
-                                            onChange={(e) => handleChange('leave_time', e.target.value)}
-                                            readOnly={isReadOnly}
-                                            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                        />
+                                        {isReadOnly ? (
+                                            <Typography sx={{ fontSize: '14px', py: 0.5 }}>
+                                                {data.leave_time || data.time || '-'}
+                                            </Typography>
+                                        ) : (
+                                            <input 
+                                                type="time" 
+                                                value={data.leave_time || data.time || ''} 
+                                                onChange={(e) => handleChange('leave_time', e.target.value)}
+                                                readOnly={isReadOnly}
+                                                style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
+                                            />
+                                        )}
                                         <Typography>~</Typography>
-                                        <input 
-                                            type="time" 
-                                            value={data.return_time || data.end_time || ''} 
-                                            onChange={(e) => handleChange('return_time', e.target.value)}
-                                            readOnly={isReadOnly}
-                                            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                        />
+                                        {isReadOnly ? (
+                                            <Typography sx={{ fontSize: '14px', py: 0.5 }}>
+                                                {data.return_time || data.end_time || '-'}
+                                            </Typography>
+                                        ) : (
+                                            <input 
+                                                type="time" 
+                                                value={data.return_time || data.end_time || ''} 
+                                                onChange={(e) => handleChange('return_time', e.target.value)}
+                                                readOnly={isReadOnly}
+                                                style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
+                                            />
+                                        )}
                                     </>
                                 )}
                                 <Typography sx={{ ml: 2, fontWeight: 'bold', fontSize: '14px', color: '#1976d2' }}>
-                                    총: {data.hours || 0} 시간
+                                    총: {getDisplayHours()} 시간
                                 </Typography>
                             </Box>
                         </td>
@@ -177,13 +224,19 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                     <TableRow>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>사 유</Box>
                         <td colSpan={4} style={{ height: '200px', verticalAlign: 'top' }}>
-                            <textarea 
-                                value={data.leave_reason || data.reason || ''} 
-                                onChange={(e) => handleChange('leave_reason', e.target.value)}
-                                readOnly={isReadOnly}
-                                rows={8}
-                                style={{ border: 'none', width: '100%', height: '100%', outline: 'none', resize: 'none', fontFamily: 'inherit', padding: '10px' }}
-                            />
+                            {isReadOnly ? (
+                                <Typography sx={{ whiteSpace: 'pre-wrap', p: 1, fontSize: '14px', lineHeight: '1.6', minHeight: '200px' }}>
+                                    {data.leave_reason || data.reason || '-'}
+                                </Typography>
+                            ) : (
+                                <textarea 
+                                    value={data.leave_reason || data.reason || ''} 
+                                    onChange={(e) => handleChange('leave_reason', e.target.value)}
+                                    readOnly={isReadOnly}
+                                    rows={8}
+                                    style={{ border: 'none', width: '100%', height: '100%', outline: 'none', resize: 'none', fontFamily: 'inherit', padding: '10px' }}
+                                />
+                            )}
                         </td>
                     </TableRow>
                 </TableBody>

@@ -401,11 +401,59 @@ const MobileWorkLogPage = () => {
 
         setLoading(true);
         try {
+            // [NEW] Calculate leave_days/hours for attendance docs before submission
+            let finalDocFormData = { ...docFormData };
+            if (selectedDocType === 'LEAVE_REQUEST') {
+                const sDate = finalDocFormData.start_date;
+                const eDate = finalDocFormData.end_date || sDate;
+                const vType = finalDocFormData.vacation_type || '연차';
+                
+                if (vType.includes('반차')) {
+                    finalDocFormData.leave_days = 0.5;
+                } else if (sDate && eDate) {
+                    const start = new Date(sDate);
+                    const end = new Date(eDate);
+                    if (end >= start) {
+                        finalDocFormData.leave_days = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+                    }
+                }
+            } else if (selectedDocType === 'EARLY_LEAVE') {
+                const startTime = finalDocFormData.leave_time;
+                const endTime = finalDocFormData.return_time;
+                const type = finalDocFormData.leave_type || '조퇴';
+                
+                if (startTime) {
+                    const start = new Date(`2000-01-01T${startTime}`);
+                    let calcHours = 0;
+                    if (type === '외출' && endTime) {
+                        const end = new Date(`2000-01-01T${endTime}`);
+                        let diff = (end - start) / (1000 * 60 * 60);
+                        if (diff < 0) diff += 24;
+                        calcHours = parseFloat(diff.toFixed(1));
+                    } else if (type === '조퇴') {
+                        const workEnd = new Date(`2000-01-01T18:00`);
+                        let diff = (workEnd - start) / (1000 * 60 * 60);
+                        calcHours = parseFloat(Math.max(0, diff).toFixed(1));
+                    }
+                    finalDocFormData.hours = calcHours;
+                }
+            } else if (selectedDocType === 'OVERTIME') {
+                const startTime = finalDocFormData.start_time;
+                const endTime = finalDocFormData.end_time;
+                if (startTime && endTime) {
+                    const start = new Date(`2000-01-01T${startTime}`);
+                    const end = new Date(`2000-01-01T${endTime}`);
+                    let diff = (end - start) / (1000 * 60 * 60);
+                    if (diff < 0) diff += 24;
+                    finalDocFormData.hours = parseFloat(diff.toFixed(1));
+                }
+            }
+
             const payload = {
                 title: `${user.name} - ${DOC_TYPES[selectedDocType].label}`,
                 doc_type: selectedDocType,
                 // [FIX] Ensure content is a valid dictionary (Object) for Pydantic
-                content: typeof docFormData === 'string' ? safeParseJSON(docFormData, {}) : (docFormData || {}),
+                content: typeof finalDocFormData === 'string' ? safeParseJSON(finalDocFormData, {}) : (finalDocFormData || {}),
                 // [FIX] Ensure attachment_file is a valid list of dicts for Pydantic
                 attachment_file: [] 
             };

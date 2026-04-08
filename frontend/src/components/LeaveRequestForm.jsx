@@ -44,6 +44,25 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
     // 🚨 수동 기입 덮어쓰기 방지를 위해 data.leave_days는 의존성 배열에서 제외할 것
     }, [data.start_date, data.end_date, data.vacation_type, currentUser]);
 
+    // [NEW] Display logic for read-only mode when leave_days might be missing (e.g., from old mobile requests)
+    const getDisplayLeaveDays = () => {
+        if (data.leave_days) return data.leave_days;
+        
+        const vType = data.vacation_type || '연차';
+        if (vType.includes('반차')) return 0.5;
+        
+        const start = data.start_date;
+        const end = data.end_date || start;
+        if (start && end) {
+            const s = new Date(start);
+            const e = new Date(end);
+            if (e >= s) {
+                return Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
+            }
+        }
+        return '0';
+    };
+
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
         
@@ -143,31 +162,47 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>휴가기간</Box>
                         <td colSpan={4}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                <input 
-                                    type="date" 
-                                    value={data.start_date || new Date().toISOString().split('T')[0]} 
-                                    onChange={(e) => handleChange('start_date', e.target.value)}
-                                    readOnly={isReadOnly}
-                                    style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                />
+                                {isReadOnly ? (
+                                    <Typography sx={{ fontSize: '14px', py: 0.5, borderBottom: '1px solid #eee', minWidth: '120px' }}>
+                                        {data.start_date || '-'}
+                                    </Typography>
+                                ) : (
+                                    <input 
+                                        type="date" 
+                                        value={data.start_date || new Date().toISOString().split('T')[0]} 
+                                        onChange={(e) => handleChange('start_date', e.target.value)}
+                                        readOnly={isReadOnly}
+                                        style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
+                                    />
+                                )}
                                 <Typography>~</Typography>
-                                <input 
-                                    type="date" 
-                                    value={data.end_date || ''} 
-                                    onChange={(e) => handleChange('end_date', e.target.value)}
-                                    readOnly={isReadOnly}
-                                    style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
-                                />
+                                {isReadOnly ? (
+                                    <Typography sx={{ fontSize: '14px', py: 0.5, borderBottom: '1px solid #eee', minWidth: '120px' }}>
+                                        {data.end_date || '-'}
+                                    </Typography>
+                                ) : (
+                                    <input 
+                                        type="date" 
+                                        value={data.end_date || ''} 
+                                        onChange={(e) => handleChange('end_date', e.target.value)}
+                                        readOnly={isReadOnly}
+                                        style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none' }}
+                                    />
+                                )}
                                 <Typography sx={{ ml: 2 }}>(&nbsp;</Typography>
-                                <input 
-                                    type="number" 
-                                    step="0.5" 
-                                    value={data.leave_days || ''}
-                                    onChange={(e) => handleChange('leave_days', e.target.value)}
-                                    placeholder="일수"
-                                    readOnly={isReadOnly}
-                                    style={{ width: '50px', border: 'none', borderBottom: '1px solid #ccc', outline: 'none', textAlign: 'center' }}
-                                />
+                                {isReadOnly ? (
+                                    <Typography sx={{ fontWeight: 'bold' }}>{getDisplayLeaveDays()}</Typography>
+                                ) : (
+                                    <input 
+                                        type="number" 
+                                        step="0.5" 
+                                        value={data.leave_days || ''}
+                                        onChange={(e) => handleChange('leave_days', e.target.value)}
+                                        placeholder="일수"
+                                        readOnly={isReadOnly}
+                                        style={{ width: '50px', border: 'none', borderBottom: '1px solid #ccc', outline: 'none', textAlign: 'center' }}
+                                    />
+                                )}
                                 <Typography className="text-sm">)일간</Typography>
                             </Box>
                             {data.vacation_type === '반차' && (
@@ -184,13 +219,19 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                     <TableRow>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>휴가사유</Box>
                         <td colSpan={4} style={{ height: '150px', verticalAlign: 'top' }}>
-                            <textarea 
-                                value={data.vacation_reason || data.reason || ''} 
-                                onChange={(e) => handleChange('vacation_reason', e.target.value)}
-                                readOnly={isReadOnly}
-                                rows={6}
-                                style={{ border: 'none', width: '100%', height: '100%', outline: 'none', resize: 'none', fontFamily: 'inherit', padding: '10px' }}
-                            />
+                            {isReadOnly ? (
+                                <Typography sx={{ whiteSpace: 'pre-wrap', p: 1, fontSize: '14px', lineHeight: '1.6', minHeight: '150px' }}>
+                                    {data.vacation_reason || data.reason || '-'}
+                                </Typography>
+                            ) : (
+                                <textarea 
+                                    value={data.vacation_reason || data.reason || ''} 
+                                    onChange={(e) => handleChange('vacation_reason', e.target.value)}
+                                    readOnly={isReadOnly}
+                                    rows={6}
+                                    style={{ border: 'none', width: '100%', height: '100%', outline: 'none', resize: 'none', fontFamily: 'inherit', padding: '10px' }}
+                                />
+                            )}
                         </td>
                     </TableRow>
                 </TableBody>
