@@ -293,7 +293,7 @@ const ApprovalPage = () => {
                                 { id: 'ALL_COMPLETED', label: '전체 완료' },
                                 { id: 'ALL_REJECTED', label: '전체 반려' },
                                 { id: 'WAITING_FOR_ME', label: '나의 결재 대기' },
-                                { id: 'MY_WAITING', label: '나의 기안' }
+                                { id: 'MY_DRAFTS', label: '나의 기안' }
                             ].map(m => (
                                 <button key={m.id} onClick={() => { setViewMode(m.id); setSearchParams({ mode: m.id }); }} className={cn("px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200", viewMode === m.id ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800")}>{m.label}</button>
                             ))}
