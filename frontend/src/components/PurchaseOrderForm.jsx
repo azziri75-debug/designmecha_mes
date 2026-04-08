@@ -38,7 +38,7 @@ const PurchaseOrderForm = ({ data, onChange, isReadOnly, currentUser, documentDa
             currentUser={currentUser}
             documentData={documentData}
             company={company}
-            className="min-h-[297mm]"
+            className="w-full h-full"
         />
     );
 };

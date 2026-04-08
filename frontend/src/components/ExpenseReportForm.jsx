@@ -95,11 +95,11 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     return (
         <Box className="a4-form-container print-safe-area" sx={{ width: '100%', height: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column', p: 0, color: '#000', position: 'relative', bgcolor: 'white' }}>
             {/* Title */}
-            <Typography variant="h3" align="center" sx={{ 
+            <Typography variant="h4" align="center" sx={{ 
                 fontWeight: 'bold', 
-                mb: 4, 
+                mb: 2, 
                 letterSpacing: { xs: '2px', md: '10px' },
-                fontSize: { xs: '24px', md: '48px' } 
+                fontSize: { xs: '20px', md: '32px' } 
             }}>
                 지 출 결 의 서
             </Typography>
@@ -109,8 +109,9 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                 display: 'flex', 
                 flexDirection: { xs: 'column', md: 'row' },
                 justifyContent: 'space-between', 
-                gap: 2,
-                mb: 2 
+                alignItems: 'flex-end',
+                width: '100%',
+                mb: 1.5 
             }}>
                 {/* Left Info Table */}
                 <Table size="small" sx={{ 

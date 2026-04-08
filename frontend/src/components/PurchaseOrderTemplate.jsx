@@ -199,7 +199,7 @@ const PurchaseOrderTemplate = ({
             <div className={cn("bg-white text-black relative flex flex-col flex-1 h-full", className)} style={{ fontFamily: '"Malgun Gothic", sans-serif' }}>
             {/* Header */}
             {/* Header */}
-            <div className="flex items-start justify-between mb-6 w-full idf-header-container">
+            <div className="flex items-start justify-between mb-4 w-full idf-header-container">
                 {/* Left: NO */}
                 <div className="pt-8 idf-header-no text-gray-400" style={{ minWidth: '80px', fontSize: '6px' }}>
                     <p className="font-bold whitespace-nowrap">
@@ -226,9 +226,9 @@ const PurchaseOrderTemplate = ({
             </div>
 
             {/* Info Section */}
-            <div className="flex flex-col md:flex-row idf-print-flex-row justify-between mb-4 md:mb-6 text-xs items-start gap-4">
+            <div className="flex flex-col md:flex-row idf-print-flex-row justify-between mb-2 text-xs items-start gap-4">
                 <div className="space-y-4 flex-1 w-full">
-                    <div className="flex items-end gap-2 text-lg md:text-xl font-bold border-b-2 border-black pb-1 mb-2 w-fit max-w-full">
+                    <div className="flex items-end gap-2 text-base md:text-lg font-bold border-b-2 border-black pb-1 mb-1 w-fit max-w-full">
                         <EditableText value={data.partner_name || '공급처'} onChange={(v) => handleMetaChange('partner_name', v)} isReadOnly={isReadOnly} className="w-auto" autoFit />
                         <span className="text-sm pb-1 font-normal min-w-max">귀하</span>
                     </div>
@@ -239,7 +239,7 @@ const PurchaseOrderTemplate = ({
                     </div>
                 </div>
                 <div className="text-left md:text-right w-full md:w-[220px]">
-                    <h2 className="text-xl font-bold">{company?.name || '디자인메카'}</h2>
+                    <h2 className="text-lg font-bold">{company?.name || '디자인메카'}</h2>
                     <p className="tracking-widest uppercase text-[9px] text-gray-400">Designmecha Enterprise</p>
                     <div className="mt-4 space-y-0.5 text-gray-800 text-[9px]">
                         <p>{company?.address || '충남 아산시 음봉면 월암로 336-39'}</p>

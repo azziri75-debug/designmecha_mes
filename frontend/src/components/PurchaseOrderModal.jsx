@@ -159,8 +159,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [newProductInitialName, setNewProductInitialName] = useState('');
     const [activeRowIndex, setActiveRowIndex] = useState(null);
 
-    const [showPreview, setShowPreview] = useState(false);
     const [purchaseTypeState, setPurchaseTypeState] = useState(purchaseType || 'PART');
+    const printRef = React.useRef(null);
 
     useEffect(() => {
         if (purchaseType) setPurchaseTypeState(purchaseType);
@@ -184,6 +184,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         const stepStaffId = String(currentApproverToSign.staff_id || "");
 
         return (approverId === myStaffId || stepStaffId === myStaffId);
+    };
+
+    const handlePrint = async () => {
+        if (!printRef.current) return;
+        await printAsImage(printRef.current, { title: '구매발주서 기안', orientation: 'portrait' });
     };
 
     const handleProcessApproval = async (status) => {
@@ -555,8 +560,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>{order ? "발주서 수정" : "발주서 등록"}</DialogTitle>
-            <DialogContent sx={{ p: 2, bgcolor: '#f8f9fa' }}>
-                {/* Header Section: Partner & Order Info */}
+            <DialogContent sx={{ p: 0, bgcolor: '#f8f9fa', overflow: 'auto' }}>
+                <Box ref={printRef} className="a4-paper-root" sx={{ p: '15mm', bgcolor: 'white', minHeight: '297mm', display: 'flex', flexDirection: 'column' }}>
+                    {/* Header Section: Partner & Order Info */}
                 <Paper variant="outlined" sx={{ p: 2, mb: 2, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
                     <Autocomplete
                         options={partners}
@@ -827,7 +833,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     </Table>
                 </TableContainer>
                 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }} className="no-print">
                     {!order && (
                         <Button
                             variant="outlined"
@@ -839,13 +845,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         </Button>
                     )}
                 </Box>
-
-            </DialogContent>
+            </Box>
+        </DialogContent>
             <DialogActions sx={{ position: 'sticky', bottom: 0, bgcolor: 'background.paper', zIndex: 100, borderTop: '2px solid #ddd', p: 2, boxShadow: '0 -4px 10px rgba(0,0,0,0.1)' }}>
                 <Button onClick={onClose}>취소</Button>
                 {/* 👇 소모품(CONSUMABLE)이 아닐 때만 인쇄 버튼 노출 👇 */}
                 {purchaseTypeState !== 'CONSUMABLE' && (
-                    <Button onClick={() => window.print()} color="info" startIcon={<Printer />}>인쇄</Button>
+                    <Button onClick={handlePrint} color="info" startIcon={<Printer />}>인쇄</Button>
                 )}
                 {canApprove(approvalDoc) && (
                     <>

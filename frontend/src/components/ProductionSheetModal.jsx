@@ -37,7 +37,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
     return (
         <div 
             ref={ref} 
-            className="bg-white text-black flex flex-col shadow-none origin-top relative mb-8 last:mb-0" 
+            className="bg-white text-black flex flex-col shadow-none origin-top relative mb-8 last:mb-0 a4-paper-root" 
             style={{ 
                 fontFamily: '"Malgun Gothic", sans-serif', 
                 border: '1px solid #e5e7eb',
@@ -47,7 +47,7 @@ const PageFrame = React.forwardRef(({ metadata, group, company, pageNum, totalPa
                 background: 'white',
                 boxSizing: 'border-box',
                 overflow: 'visible',
-                padding: '10mm'
+                padding: '15mm'
             }}
         >
             {/* Header Area */}

@@ -11,7 +11,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
     useEffect(() => {
         let updates = {};
         
-        // 1. 초기값 강제 셋업 및 레거시 데이터 호환성 (모바일 기안 대응)
+        // 1. 초기값 강제 셋업 및 레거시 데이터 호환성
         if (!data.leave_type) updates.leave_type = data.type || '조퇴';
         if (!data.leave_time && data.time) updates.leave_time = data.time;
         if (!data.return_time && data.end_time) updates.return_time = data.end_time;
@@ -23,38 +23,42 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         if (!data.staff_no && currentUser?.staff_no) updates.staff_no = currentUser.staff_no;
         if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
 
-        // 2. 시간 계산
+        // 2. 시간 계산 (입력 즉시 반응하도록 보정)
         const startTime = data.leave_time || data.time;
         const endTime = data.return_time || data.end_time;
         
-        if (startTime && endTime) {
+        if (startTime && (data.leave_type === '외출' ? endTime : true)) {
             const start = new Date(`2000-01-01T${startTime}`);
-            const end = new Date(`2000-01-01T${endTime}`);
-            let diff = (end - start) / (1000 * 60 * 60);
-            if (diff < 0) diff += 24;
+            const end = endTime ? new Date(`2000-01-01T${endTime}`) : null;
             
-            // 🚨 NaN 방어
-            const calcHours = isNaN(diff) ? 0 : parseFloat(diff.toFixed(1));
-            if (data.hours !== calcHours) {
+            let calcHours = 0;
+            if (data.leave_type === '외출' && end) {
+                let diff = (end - start) / (1000 * 60 * 60);
+                if (diff < 0) diff += 24;
+                calcHours = isNaN(diff) ? 0 : parseFloat(diff.toFixed(1));
+            } else {
+                // 조퇴는 퇴근 시점부터 정규 퇴근(18:00)까지의 시간을 계산할 수도 있으나, 
+                // 현재는 사용자가 직접 입력하거나 기본값을 유지하도록 함 (나머지 로직 보존)
+                calcHours = data.hours || 0;
+            }
+
+            if (data.hours !== calcHours && calcHours > 0) {
                 updates.hours = calcHours;
             }
         }
 
-        if (Object.keys(updates).length > 0) {
+        if (Object.keys(updates).length > 0 && typeof onChange === 'function') {
             onChange({ ...data, ...updates });
         }
-    }, [data.leave_type, data.date, data.leave_time, data.time, data.return_time, data.end_time, currentUser]);
+    }, [data.leave_type, data.date, data.leave_time, data.time, data.return_time, data.end_time, currentUser, onChange]);
 
     const handleChange = (field, value) => {
         if (isReadOnly || typeof onChange !== 'function') return;
-        
         const newData = { ...data, [field]: value };
-        
-        // 조퇴 선택 시 종료 시간 null 처리 (Bug #3 대응)
         if (field === 'leave_type' && value === '조퇴') {
             newData.return_time = null;
+            newData.hours = 0; // 조퇴 시 시간 초기화 (사용자 입력 대기)
         }
-        
         onChange(newData);
     };
 

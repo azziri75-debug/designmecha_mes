@@ -88,8 +88,11 @@ export async function generateA4PDF(element, options = {}) {
 
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
-    const usableW = pdfW - marginMm * 2;
-    const usableH = pdfH - marginMm * 2;
+    
+    // 이미지가 이미 15mm 여백을 포함하고 있으므로 PDF 레벨 마진은 0을 기본으로 함
+    const actualMargin = options.marginMm !== undefined ? options.marginMm : 0;
+    const usableW = pdfW - actualMargin * 2;
+    const usableH = pdfH - actualMargin * 2;
 
     const scale = usableW / wPx;
     const imgH_mm = hPx * scale;
@@ -113,12 +116,12 @@ export async function generateA4PDF(element, options = {}) {
         canvas.height = sliceH;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, -yOffset, wPx, hPx);
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', marginMm, marginMm, wPx * scale, sliceH * scale, undefined, 'FAST');
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', actualMargin, actualMargin, wPx * scale, sliceH * scale, undefined, 'FAST');
         yOffset += pageImgH_px;
         pageNum++;
       }
     } else {
-      pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, usableW, imgH_mm, undefined, 'FAST');
+      pdf.addImage(dataUrl, 'PNG', actualMargin, actualMargin, usableW, imgH_mm, undefined, 'FAST');
     }
 
     if (action === 'download') {
@@ -224,7 +227,8 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
   });
 
   const pdfW = pdf.internal.pageSize.getWidth();
-  const usableW = pdfW - marginMm * 2;
+  const actualMargin = options.marginMm !== undefined ? options.marginMm : 0;
+  const usableW = pdfW - actualMargin * 2;
 
   try {
     for (let i = 0; i < validElements.length; i++) {
@@ -250,7 +254,7 @@ export async function generateMultiPageA4PDF(elements, options = {}) {
       });
 
       const scale = usableW / wPx;
-      pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, usableW, hPx * scale, undefined, 'FAST');
+      pdf.addImage(dataUrl, 'PNG', actualMargin, actualMargin, usableW, hPx * scale, undefined, 'FAST');
 
       el.style.boxShadow = origShadow;
       el.classList.remove('is-capturing');
