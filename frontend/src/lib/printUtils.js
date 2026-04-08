@@ -200,6 +200,75 @@ export async function printAsImage(element, options = {}) {
 }
 
 /**
+ * 다중 요소를 하나의 PDF로 병합하여 생성 (Blob 또는 다운로드)
+ */
+export async function generateMultiPageA4PDF(elements, options = {}) {
+  const {
+    fileName = `document_${Date.now()}.pdf`,
+    orientation = 'portrait',
+    action = 'download',
+    pixelRatio = 2,
+    marginMm = 0,
+  } = options;
+
+  const validElements = (elements || []).filter(Boolean);
+  if (validElements.length === 0) return null;
+
+  const isLandscape = orientation === 'landscape';
+  
+  const pdf = new jsPDF({
+    orientation: isLandscape ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  });
+
+  const pdfW = pdf.internal.pageSize.getWidth();
+  const usableW = pdfW - marginMm * 2;
+
+  try {
+    for (let i = 0; i < validElements.length; i++) {
+      const el = validElements[i];
+      if (i > 0) pdf.addPage();
+
+      el.classList.add('is-capturing');
+      const origShadow = el.style.boxShadow;
+      el.style.boxShadow = 'none';
+
+      await new Promise(r => setTimeout(r, 150));
+      const wPx = el.clientWidth || el.offsetWidth;
+      const hPx = el.clientHeight || el.offsetHeight;
+
+      const dataUrl = await toPng(el, {
+        cacheBust: true,
+        backgroundColor: '#ffffff',
+        pixelRatio,
+        filter: printFilter,
+        width: wPx,
+        height: hPx,
+        style: { boxShadow: 'none', transform: 'none' }
+      });
+
+      const scale = usableW / wPx;
+      pdf.addImage(dataUrl, 'PNG', marginMm, marginMm, usableW, hPx * scale, undefined, 'FAST');
+
+      el.style.boxShadow = origShadow;
+      el.classList.remove('is-capturing');
+    }
+
+    if (action === 'download') {
+      pdf.save(fileName);
+      return;
+    } else {
+      return pdf.output('blob');
+    }
+  } catch (error) {
+    console.error('MultiPDF generation failed:', error);
+    return null;
+  }
+}
+
+/**
  * 여러 요소를 각각의 페이지로 인쇄
  */
 export async function printMultiPageAsImage(elements, options = {}) {
