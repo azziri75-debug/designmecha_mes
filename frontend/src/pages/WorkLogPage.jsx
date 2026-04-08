@@ -45,7 +45,7 @@ const WorkLogPage = () => {
         note: 200
     });
 
-    const handleResize = (setFn) => (column, newWidth) => {
+    const handleResize = (setFn) => (column) => (newWidth) => {
         setFn(prev => {
             const colKeys = Object.keys(prev);
             const idx = colKeys.indexOf(column);
