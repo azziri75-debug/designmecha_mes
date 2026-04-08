@@ -136,6 +136,7 @@ body.resizing {
         width: 297mm !important;
         height: 210mm !important;
         max-width: 297mm !important;
+        flex-direction: row !important; /* 위아래가 아닌 좌우 배치 강제 */
     }
 
     /* Utility to hide elements in print */
@@ -194,6 +195,7 @@ body.resizing {
     min-width: 297mm !important;
     height: 210mm !important;
     min-height: 210mm !important;
+    flex-direction: row !important; /* 캡처 시에도 좌우 배치 유지 */
 }
 
 .is-capturing * {
