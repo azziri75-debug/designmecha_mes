@@ -9,6 +9,24 @@ import FileViewerModal from '../components/FileViewerModal';
 import { Tabs, Tab } from '@mui/material';
 
 
+
+const LOG_COLS = [
+    { key: 'expand', label: '', width: 50, noResize: true },
+    { key: 'date', label: '작업일자', width: 120 },
+    { key: 'worker', label: '작성자', width: 120 },
+    { key: 'count', label: '세부 작업 수', width: 120 },
+    { key: 'note', label: '비고', width: 300 },
+    { key: 'actions', label: '관리', width: 100, noResize: true },
+];
+
+const PERF_COLS = [
+    { key: 'expand', label: '', width: 50, noResize: true },
+    { key: 'worker', label: '작업자', width: 180 },
+    { key: 'cost', label: '누적 공정비용 (실적)', width: 250 },
+    { key: 'days', label: '작업 일수', width: 120 },
+    { key: 'note', label: '비고', width: 250 },
+];
+
 const WorkLogPage = () => {
     const [workLogs, setWorkLogs] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
@@ -29,22 +47,6 @@ const WorkLogPage = () => {
     const [performanceData, setPerformanceData] = useState([]);
 
     // Table Resize States
-const LOG_COLS = [
-    { key: 'expand', label: '', width: 50, noResize: true },
-    { key: 'date', label: '작업일자', width: 120 },
-    { key: 'worker', label: '작성자', width: 120 },
-    { key: 'count', label: '세부 작업 수', width: 120 },
-    { key: 'note', label: '비고', width: 300 },
-    { key: 'actions', label: '관리', width: 100, noResize: true },
-];
-
-const PERF_COLS = [
-    { key: 'expand', label: '', width: 50, noResize: true },
-    { key: 'worker', label: '작업자', width: 180 },
-    { key: 'cost', label: '누적 공정비용 (실적)', width: 250 },
-    { key: 'days', label: '작업 일수', width: 120 },
-    { key: 'note', label: '비고', width: 250 },
-];
 
 
 

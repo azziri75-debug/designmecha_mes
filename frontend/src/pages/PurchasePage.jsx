@@ -16,40 +16,7 @@ import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 import ConsumableOrderModal from '../components/ConsumableOrderModal';
 
-const PurchasePage = ({ type }) => {
-    const navigate = useNavigate();
-    const [tabValue, setTabValue] = useState(0);
-    const [orders, setOrders] = useState([]);
-    const [pendingItems, setPendingItems] = useState([]);
-    const [mrpItems, setMrpItems] = useState([]); // MRP Unordered Requirements
-    const [selectedPendingItems, setSelectedPendingItems] = useState([]);
-    const [selectedMrpItems, setSelectedMrpItems] = useState([]);
-    const [expandedOrderId, setExpandedOrderId] = useState(null);
-    const [hideZeroShortage, setHideZeroShortage] = useState(false);
 
-    const [modalOpen, setModalOpen] = useState(false);
-    const [selectedOrder, setSelectedOrder] = useState(null);
-    const [initialModalItems, setInitialModalItems] = useState([]);
-    const [consumableModalOpen, setConsumableModalOpen] = useState(false);
-
-    // 견적의뢰서/구매발주서 모달
-    const [sheetModalOpen, setSheetModalOpen] = useState(false);
-    const [sheetOrder, setSheetOrder] = useState(null);
-    const [sheetType, setSheetType] = useState('purchase_order');
-
-    // 첨부파일 뷰어 모달
-    const [showFileModal, setShowFileModal] = useState(false);
-    const [viewingFiles, setViewingFiles] = useState([]);
-    const [viewingFileTitle, setViewingFileTitle] = useState('');
-    const [viewingTargetId, setViewingTargetId] = useState(null);
-
-    const [sourceOrderModalOpen, setSourceOrderModalOpen] = useState(false);
-    const [selectedSourceOrder, setSelectedSourceOrder] = useState(null);
-    const [sourceStockModalOpen, setSourceStockModalOpen] = useState(false);
-    const [selectedSourceStock, setSelectedSourceStock] = useState(null);
-
-    // Filter states
-    const [searchQuery, setSearchQuery] = useState('');
 const PENDING_COLS = [
     { key: 'checkbox', label: '', width: 40, noResize: true },
     { key: 'order_no', label: '수주/재고번호', width: 150 },
@@ -100,6 +67,41 @@ const ORDER_COLS = [
     { key: 'status', label: '상태', width: 100 },
     { key: 'actions', label: '관리', width: 250, noResize: true },
 ];
+
+const PurchasePage = ({ type }) => {
+    const navigate = useNavigate();
+    const [tabValue, setTabValue] = useState(0);
+    const [orders, setOrders] = useState([]);
+    const [pendingItems, setPendingItems] = useState([]);
+    const [mrpItems, setMrpItems] = useState([]); // MRP Unordered Requirements
+    const [selectedPendingItems, setSelectedPendingItems] = useState([]);
+    const [selectedMrpItems, setSelectedMrpItems] = useState([]);
+    const [expandedOrderId, setExpandedOrderId] = useState(null);
+    const [hideZeroShortage, setHideZeroShortage] = useState(false);
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [initialModalItems, setInitialModalItems] = useState([]);
+    const [consumableModalOpen, setConsumableModalOpen] = useState(false);
+
+    // 견적의뢰서/구매발주서 모달
+    const [sheetModalOpen, setSheetModalOpen] = useState(false);
+    const [sheetOrder, setSheetOrder] = useState(null);
+    const [sheetType, setSheetType] = useState('purchase_order');
+
+    // 첨부파일 뷰어 모달
+    const [showFileModal, setShowFileModal] = useState(false);
+    const [viewingFiles, setViewingFiles] = useState([]);
+    const [viewingFileTitle, setViewingFileTitle] = useState('');
+    const [viewingTargetId, setViewingTargetId] = useState(null);
+
+    const [sourceOrderModalOpen, setSourceOrderModalOpen] = useState(false);
+    const [selectedSourceOrder, setSelectedSourceOrder] = useState(null);
+    const [sourceStockModalOpen, setSourceStockModalOpen] = useState(false);
+    const [selectedSourceStock, setSelectedSourceStock] = useState(null);
+
+    // Filter states
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleResize = (setFn) => (column) => (newWidth) => {
         setFn(prev => {

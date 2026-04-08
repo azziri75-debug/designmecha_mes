@@ -19,13 +19,7 @@ import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 
 
-const OutsourcingPage = () => {
-    const navigate = useNavigate();
-    const [tabValue, setTabValue] = useState(0);
-    const [orders, setOrders] = useState([]);
-    const [pendingItems, setPendingItems] = useState([]);
-    const [selectedPendingItems, setSelectedPendingItems] = useState([]);
-    const [expandedOrderId, setExpandedOrderId] = useState(null);
+
 const PENDING_COLS = [
     { key: 'checkbox', label: '', width: 40, noResize: true },
     { key: 'order_no', label: '수주/재고번호', width: 150 },
@@ -49,6 +43,15 @@ const ORDER_COLS = [
     { key: 'status', label: '상태', width: 100 },
     { key: 'actions', label: '관리', width: 250, noResize: true },
 ];
+
+const OutsourcingPage = () => {
+    const navigate = useNavigate();
+    const [tabValue, setTabValue] = useState(0);
+    const [orders, setOrders] = useState([]);
+    const [pendingItems, setPendingItems] = useState([]);
+    const [selectedPendingItems, setSelectedPendingItems] = useState([]);
+    const [expandedOrderId, setExpandedOrderId] = useState(null);
+
 
 
 

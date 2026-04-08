@@ -691,7 +691,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
             </tr>
             {open && (
                 <tr>
-                    <td colSpan={13} className="p-0 border-none">
+                    <td colSpan={PLAN_COLS.length} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
                             <div className="m-4">
                                 {Object.entries(groupedItems).map(([productId, group]) => (
