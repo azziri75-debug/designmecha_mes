@@ -183,7 +183,7 @@ export async function printAsImage(element, options = {}) {
           @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
           html, body { width: 100%; height: 100%; background: white; overflow: hidden; }
-          img { display: block; width: 210mm !important; height: ${isLandscape ? 'auto' : '297mm !important'}; margin: 0 auto; }
+          img { display: block; width: ${isLandscape ? '297mm !important' : '210mm !important'}; height: ${isLandscape ? '210mm' : '297mm'} !important; margin: 0 auto; }
         </style>
       </head>
       <body>
