@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
+import ResizableTable from '../components/ResizableTable';
 
 const SettlementPage = () => {
     const today = new Date();
@@ -65,67 +66,74 @@ const SettlementPage = () => {
     const fmtNum = (val) => new Intl.NumberFormat('ko-KR').format(val || 0);
 
     const getColumns = () => {
+        const noCol = { key: "no", label: "No", width: 60, noResize: true, thClassName: "text-center" };
         switch (activeTab) {
             case "orders":
                 return [
-                    { key: "partner_name", label: "업체명" },
-                    { key: "order_date", label: "수주일" },
-                    { key: "product_name", label: "품명" },
-                    { key: "specification", label: "규격" },
-                    { key: "quantity", label: "수량", align: "right" },
-                    { key: "unit_price", label: "단가", align: "right", format: fmtWon },
-                    { key: "total_price", label: "합계", align: "right", format: fmtWon },
+                    noCol,
+                    { key: "partner_name", label: "업체명", width: 140 },
+                    { key: "order_date", label: "수주일", width: 110 },
+                    { key: "product_name", label: "품명", width: 200 },
+                    { key: "specification", label: "규격", width: 150 },
+                    { key: "quantity", label: "수량", align: "right", width: 80 },
+                    { key: "unit_price", label: "단가", align: "right", format: fmtWon, width: 120 },
+                    { key: "total_price", label: "합계", align: "right", format: fmtWon, width: 140 },
                 ];
             case "sales":
                 return [
-                    { key: "partner_name", label: "업체명" },
-                    { key: "order_date", label: "수주일" },
-                    { key: "delivery_date", label: "납품일" },
-                    { key: "product_name", label: "품명" },
-                    { key: "specification", label: "규격" },
-                    { key: "quantity", label: "수량", align: "right" },
-                    { key: "unit_price", label: "단가", align: "right", format: fmtWon },
-                    { key: "total_price", label: "합계", align: "right", format: fmtWon },
+                    noCol,
+                    { key: "partner_name", label: "업체명", width: 140 },
+                    { key: "order_date", label: "수주일", width: 110 },
+                    { key: "delivery_date", label: "납품일", width: 110 },
+                    { key: "product_name", label: "품명", width: 180 },
+                    { key: "specification", label: "규격", width: 150 },
+                    { key: "quantity", label: "수량", align: "right", width: 80 },
+                    { key: "unit_price", label: "단가", align: "right", format: fmtWon, width: 120 },
+                    { key: "total_price", label: "합계", align: "right", format: fmtWon, width: 140 },
                 ];
             case "purchases":
                 return [
-                    { key: "category", label: "구분" },
-                    { key: "partner_name", label: "공급사" },
-                    { key: "product_name", label: "품명" },
-                    { key: "specification", label: "규격" },
-                    { key: "quantity", label: "수량", align: "right" },
-                    { key: "unit_price", label: "단가", align: "right", format: fmtWon },
-                    { key: "total_price", label: "합계", align: "right", format: fmtWon },
+                    noCol,
+                    { key: "category", label: "구분", width: 100 },
+                    { key: "partner_name", label: "공급사", width: 140 },
+                    { key: "product_name", label: "품명", width: 200 },
+                    { key: "specification", label: "규격", width: 150 },
+                    { key: "quantity", label: "수량", align: "right", width: 80 },
+                    { key: "unit_price", label: "단가", align: "right", format: fmtWon, width: 120 },
+                    { key: "total_price", label: "합계", align: "right", format: fmtWon, width: 140 },
                 ];
             case "production":
                 return [
-                    { key: "partner_name", label: "업체명" },
-                    { key: "order_date", label: "수주일" },
-                    { key: "end_date", label: "생산완료일" },
-                    { key: "product_name", label: "품명" },
-                    { key: "specification", label: "규격" },
-                    { key: "quantity", label: "수량", align: "right" },
-                    { key: "process_cost", label: "공정비용", align: "right", format: fmtWon },
-                    { key: "total_cost", label: "합계", align: "right", format: fmtWon },
+                    noCol,
+                    { key: "partner_name", label: "업체명", width: 140 },
+                    { key: "order_date", label: "수주일", width: 110 },
+                    { key: "end_date", label: "생산완료일", width: 110 },
+                    { key: "product_name", label: "품명", width: 180 },
+                    { key: "specification", label: "규격", width: 150 },
+                    { key: "quantity", label: "수량", align: "right", width: 80 },
+                    { key: "process_cost", label: "공정비용", align: "right", format: fmtWon, width: 120 },
+                    { key: "total_cost", label: "합계", align: "right", format: fmtWon, width: 140 },
                 ];
             case "defects":
                 return [
-                    { key: "defect_date", label: "발생일" },
-                    { key: "process_name", label: "공정명" },
-                    { key: "partner_name", label: "고객사" },
-                    { key: "product_name", label: "품명" },
-                    { key: "specification", label: "규격" },
-                    { key: "quantity", label: "수량", align: "right" },
-                    { key: "amount", label: "금액", align: "right", format: fmtWon },
-                    { key: "resolution_date", label: "처리일" },
+                    noCol,
+                    { key: "defect_date", label: "발생일", width: 110 },
+                    { key: "process_name", label: "공정명", width: 130 },
+                    { key: "partner_name", label: "고객사", width: 140 },
+                    { key: "product_name", label: "품명", width: 180 },
+                    { key: "specification", label: "규격", width: 150 },
+                    { key: "quantity", label: "수량", align: "right", width: 80 },
+                    { key: "amount", label: "금액", align: "right", format: fmtWon, width: 120 },
+                    { key: "resolution_date", label: "처리일", width: 110 },
                 ];
             case "complaints":
                 return [
-                    { key: "receipt_date", label: "접수일" },
-                    { key: "partner_name", label: "고객사" },
-                    { key: "content", label: "내용" },
-                    { key: "status", label: "상태" },
-                    { key: "action_note", label: "조치내역" },
+                    noCol,
+                    { key: "receipt_date", label: "접수일", width: 110 },
+                    { key: "partner_name", label: "고객사", width: 140 },
+                    { key: "content", label: "내용", width: 300 },
+                    { key: "status", label: "상태", width: 100 },
+                    { key: "action_note", label: "조치내역", width: 250 },
                 ];
             default: return [];
         }
@@ -270,44 +278,41 @@ const SettlementPage = () => {
             {/* Table Container */}
             <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-xl overflow-hidden min-h-[500px]">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-800/80 text-gray-400 font-medium border-b border-gray-700">
-                            <tr>
-                                <th className="px-4 py-3 w-10 text-center">No</th>
-                                {columns.map(col => (
-                                    <th key={col.key} className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}>
-                                        {col.label}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-800/50">
-                            {loading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td colSpan={columns.length + 1} className="px-4 py-10 text-center text-gray-600">불러오는 중...</td>
-                                    </tr>
-                                ))
-                            ) : data.length > 0 ? (
-                                data.map((item, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-800/30 transition-colors">
-                                        <td className="px-4 py-3 text-center text-gray-500 font-mono text-xs">{idx + 1}</td>
-                                        {columns.map(col => (
+                    <ResizableTable
+                        columns={columns}
+                        className="text-sm text-left"
+                        theadClassName="bg-gray-800/80 text-gray-400 font-medium border-b border-gray-700"
+                        thClassName="px-4 py-3"
+                    >
+                        {loading ? (
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <tr key={i} className="animate-pulse">
+                                    <td colSpan={columns.length} className="px-4 py-10 text-center text-gray-600">불러오는 중...</td>
+                                </tr>
+                            ))
+                        ) : data.length > 0 ? (
+                            data.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-gray-800/30 transition-colors border-b border-gray-800/50">
+                                    {columns.map(col => {
+                                        if (col.key === 'no') {
+                                            return <td key={col.key} className="px-4 py-3 text-center text-gray-500 font-mono text-xs">{idx + 1}</td>;
+                                        }
+                                        return (
                                             <td key={col.key} className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}>
                                                 {col.format ? col.format(item[col.key]) : item[col.key] || '-'}
                                             </td>
-                                        ))}
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={columns.length + 1} className="px-4 py-20 text-center text-gray-500">
-                                        해당 조건의 데이터가 없습니다.
-                                    </td>
+                                        );
+                                    })}
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={columns.length} className="px-4 py-20 text-center text-gray-500">
+                                    해당 조건의 데이터가 없습니다.
+                                </td>
+                            </tr>
+                        )}
+                    </ResizableTable>
                 </div>
             </div>
         </div>

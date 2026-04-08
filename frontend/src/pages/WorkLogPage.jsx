@@ -6,6 +6,7 @@ import { cn, safeParseJSON } from '../lib/utils';
 import WorkLogModal from '../components/WorkLogModal';
 import FileViewerModal from '../components/FileViewerModal';
 import { Tabs, Tab } from '@mui/material';
+import ResizableTableCell from '../components/ResizableTableCell';
 
 const WorkLogPage = () => {
     const [workLogs, setWorkLogs] = useState([]);
@@ -25,6 +26,38 @@ const WorkLogPage = () => {
 
     const [tabValue, setTabValue] = useState(0);
     const [performanceData, setPerformanceData] = useState([]);
+
+    // Table Resize States
+    const [logTableWidths, setLogTableWidths] = useState({
+        expand: 50,
+        date: 150,
+        worker: 150,
+        count: 150,
+        note: 300,
+        actions: 120
+    });
+
+    const [perfTableWidths, setPerfTableWidths] = useState({
+        expand: 50,
+        worker: 150,
+        cost: 200,
+        days: 120,
+        note: 200
+    });
+
+    const handleResize = (setFn) => (column, newWidth) => {
+        setFn(prev => {
+            const colKeys = Object.keys(prev);
+            const idx = colKeys.indexOf(column);
+            if (idx < 0 || idx >= colKeys.length - 1) return { ...prev, [column]: newWidth };
+            
+            const rightKey = colKeys[idx + 1];
+            const delta = newWidth - prev[column];
+            const newRight = Math.max(50, (prev[rightKey] || 100) - delta);
+            
+            return { ...prev, [column]: newWidth, [rightKey]: newRight };
+        });
+    };
 
     const fetchWorkLogs = async () => {
         try {
@@ -192,15 +225,20 @@ const WorkLogPage = () => {
 
             {tabValue === 0 ? (
                 <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-                    <Table>
+                    <Table sx={{ tableLayout: 'fixed' }}>
                         <TableHead>
                             <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                                <TableCell width="50px" />
-                                <TableCell>작업일자</TableCell>
-                                <TableCell>작성자</TableCell>
-                                <TableCell>세부 작업 수</TableCell>
-                                <TableCell>비고</TableCell>
-                                <TableCell align="center" width="120px">관리</TableCell>
+                                <ResizableTableCell width={logTableWidths.expand} onResize={handleResize(setLogTableWidths)('expand')} />
+                                <ResizableTableCell width={logTableWidths.date} onResize={handleResize(setLogTableWidths)('date')}>작업일자</ResizableTableCell>
+                                <ResizableTableCell width={logTableWidths.worker} onResize={handleResize(setLogTableWidths)('worker')}>작성자</ResizableTableCell>
+                                <ResizableTableCell width={logTableWidths.count} onResize={handleResize(setLogTableWidths)('count')}>세부 작업 수</ResizableTableCell>
+                                <ResizableTableCell width={logTableWidths.note} onResize={handleResize(setLogTableWidths)('note')}>비고</ResizableTableCell>
+                                <ResizableTableCell 
+                                    width={logTableWidths.actions} 
+                                    align="center"
+                                >
+                                    관리
+                                </ResizableTableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -228,6 +266,8 @@ const WorkLogPage = () => {
                     onUpdate={() => { fetchPerformanceData(); fetchWorkLogs(); }}
                     startDate={startDate}
                     endDate={endDate}
+                    widths={perfTableWidths}
+                    onResize={handleResize(setPerfTableWidths)}
                 />
             )}
 
@@ -344,17 +384,17 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
     );
 };
 
-const PerformanceManagementList = ({ data, onUpdate, startDate, endDate }) => {
+const PerformanceManagementList = ({ data, onUpdate, startDate, endDate, widths, onResize }) => {
     return (
         <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-            <Table>
+            <Table sx={{ tableLayout: 'fixed' }}>
                 <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                        <TableCell width="50px" />
-                        <TableCell>작업자</TableCell>
-                        <TableCell align="right">누적 공정비용 (실적)</TableCell>
-                        <TableCell align="right">작업 일수</TableCell>
-                        <TableCell>비고</TableCell>
+                        <ResizableTableCell width={widths.expand} onResize={onResize('expand')} />
+                        <ResizableTableCell width={widths.worker} onResize={onResize('worker')}>작업자</ResizableTableCell>
+                        <ResizableTableCell width={widths.cost} onResize={onResize('cost')} align="right">누적 공정비용 (실적)</ResizableTableCell>
+                        <ResizableTableCell width={widths.days} onResize={onResize('days')} align="right">작업 일수</ResizableTableCell>
+                        <ResizableTableCell width={widths.note} onResize={onResize('note')}>비고</ResizableTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>

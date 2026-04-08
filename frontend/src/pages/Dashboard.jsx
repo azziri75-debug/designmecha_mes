@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
+import ResizableTh from '../components/ResizableTh';
 
 /* ─── Utility ───────────────────────────────────────────────── */
 const fmt = (n) => (n ?? 0).toLocaleString('ko-KR');
@@ -517,14 +518,14 @@ const Dashboard = () => {
                 {/* Recent Orders */}
                 <ChartCard title="최근 수주" icon={FileText} className="lg:col-span-2">
                     <div className="overflow-x-auto -mx-1">
-                        <table className="w-full text-xs text-gray-300">
+                        <table className="w-full text-xs text-gray-300" style={{ tableLayout: 'fixed' }}>
                             <thead>
                                 <tr className="border-b border-gray-700/50">
-                                    <th className="text-left py-2 px-2 text-gray-500 font-medium">수주번호</th>
-                                    <th className="text-left py-2 px-2 text-gray-500 font-medium">거래처</th>
-                                    <th className="text-right py-2 px-2 text-gray-500 font-medium">금액</th>
-                                    <th className="text-center py-2 px-2 text-gray-500 font-medium">상태</th>
-                                    <th className="text-left py-2 px-2 text-gray-500 font-medium">수주일</th>
+                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="100px">수주번호</ResizableTh>
+                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="150px">거래처</ResizableTh>
+                                    <ResizableTh className="text-right py-2 px-2 text-gray-500 font-medium" width="120px">금액</ResizableTh>
+                                    <ResizableTh className="text-center py-2 px-2 text-gray-500 font-medium" width="100px">상태</ResizableTh>
+                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium">수주일</ResizableTh>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800/50">
@@ -700,13 +701,13 @@ const Dashboard = () => {
                 {/* Recent Defects List */}
                 <ChartCard title="최근 발생 품질 결함" icon={ClipboardList} className="lg:col-span-2">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-[11px] text-gray-300">
+                        <table className="w-full text-[11px] text-gray-300" style={{ tableLayout: 'fixed' }}>
                             <thead>
                                 <tr className="border-b border-gray-700/50">
-                                    <th className="text-left py-2 px-2 text-gray-500 font-medium">발생일</th>
-                                    <th className="text-left py-2 px-2 text-gray-500 font-medium">품목 / 공정</th>
-                                    <th className="text-left py-2 px-2 text-gray-500 font-medium">결함 사유</th>
-                                    <th className="text-center py-2 px-2 text-gray-500 font-medium">상태</th>
+                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="100px">발생일</ResizableTh>
+                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="180px">품목 / 공정</ResizableTh>
+                                    <ResizableTh className="text-left py-2 px-2 text-gray-500 font-medium" width="200px">결함 사유</ResizableTh>
+                                    <ResizableTh className="text-center py-2 px-2 text-gray-500 font-medium">상태</ResizableTh>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800/50">

@@ -17,6 +17,7 @@ import {
 import api from '../lib/api';
 import Card from '../components/Card';
 import { cn } from '../lib/utils';
+import ResizableTable from '../components/ResizableTable';
 
 // API_URL 제거 (api 인스턴스의 baseURL 사용)
 
@@ -100,101 +101,111 @@ const MappingModal = ({ isOpen, onClose, verifyData, type, onConfirm }) => {
                 </div>
 
                 <div className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                    <table className="w-full text-xs text-left border-collapse">
-                        <thead className="sticky top-0 bg-gray-900 z-10 text-gray-500 border-b border-gray-800">
-                            <tr>
-                                <th className="pb-3 pr-4 font-medium w-12">행</th>
-                                <th className="pb-3 pr-4 font-medium">{type === 'products' ? '제품명' : '제품/규격'}</th>
-                                <th className="pb-3 pr-4 font-medium">거래처 매핑</th>
-                                {type === 'orders' && <th className="pb-3 pr-4 font-medium">제품 매핑</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-800/50">
-                            {mappings.map((m, idx) => (
-                                <tr key={idx} className="group hover:bg-white/5 transition-colors">
-                                    <td className="py-4 text-gray-500">{m.row_index}</td>
-                                    <td className="py-4">
-                                        <div className="font-medium text-white">
-                                            {type === 'products' ? m.data.name : `${m.data.product_name} / ${m.data.specification || '-'}`}
-                                        </div>
-                                        <div className="text-[10px] text-gray-500 mt-0.5">
-                                            {type === 'orders' && `수량: ${m.data.quantity} / 단가: ${m.data.unit_price}`}
-                                        </div>
-                                    </td>
+                    {(() => {
+                        const columns = [
+                            { key: 'row_index', label: '행', width: 60, noResize: true },
+                            { key: 'name', label: type === 'products' ? '제품명' : '제품/규격', width: 250 },
+                            { key: 'partner', label: '거래처 매핑', width: 350 },
+                        ];
+                        if (type === 'orders') {
+                            columns.push({ key: 'product', label: '제품 매핑', width: 300 });
+                        }
 
-                                    {/* Partner Mapping Column */}
-                                    <td className="py-4 pr-4">
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-gray-400 text-[10px] shrink-0 w-16">엑셀: {m.data.partner_name || '-'}</span>
-                                                {m.partner_status === 'EXACT' || m.status === 'EXACT' ? (
-                                                    <Check className="w-3 h-3 text-green-500" />
-                                                ) : (
-                                                    <AlertCircle className="w-3 h-3 text-yellow-500" />
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <select
-                                                    className="bg-gray-800 border border-gray-700 text-gray-200 text-[11px] rounded px-2 py-1 flex-1 outline-none focus:border-blue-500"
-                                                    value={(type === 'products' ? m.mapping_type : m.partner_mapping_type) === 'NEW' ? 'NEW' : (m.partner_id || '')}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        const updates = type === 'products'
-                                                            ? { mapping_type: val === 'NEW' ? 'NEW' : 'EXISTING', partner_id: val === 'NEW' ? null : parseInt(val) }
-                                                            : { partner_mapping_type: val === 'NEW' ? 'NEW' : 'EXISTING', partner_id: val === 'NEW' ? null : parseInt(val) };
-                                                        handleMappingChange(idx, updates);
-                                                    }}
-                                                >
-                                                    <option value="NEW">✨ 신규 거래처 등록</option>
-                                                    <optgroup label="추천 검색 결과">
-                                                        {(m.partner_matches || m.matches || []).map(p => (
-                                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                                        ))}
-                                                    </optgroup>
-                                                </select>
-                                                {(type === 'products' ? m.mapping_type : m.partner_mapping_type) === 'NEW' && (
-                                                    <input
-                                                        type="text"
-                                                        className="bg-gray-800 border border-gray-700 text-blue-400 text-[11px] rounded px-2 py-1 w-24 outline-none focus:border-blue-500"
-                                                        value={m.new_partner_name}
-                                                        onChange={(e) => handleMappingChange(idx, { new_partner_name: e.target.value })}
-                                                    />
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-
-                                    {/* Product Mapping Column (Orders Only) */}
-                                    {type === 'orders' && (
-                                        <td className="py-4">
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-gray-400 text-[10px] shrink-0 w-16">매칭 상태:</span>
-                                                    {m.product_status === 'EXACT' ? (
-                                                        <span className="text-green-500 font-bold">EXACT</span>
-                                                    ) : (
-                                                        <span className="text-red-400 font-bold">선택 필요</span>
-                                                    )}
+                        return (
+                            <ResizableTable
+                                columns={columns}
+                                className="text-xs text-left"
+                                theadClassName="sticky top-0 bg-gray-900 z-10 text-gray-500 border-b border-gray-800"
+                                thClassName="pb-3 pr-4 font-medium"
+                            >
+                                <tbody className="divide-y divide-gray-800/50">
+                                    {mappings.map((m, idx) => (
+                                        <tr key={idx} className="group hover:bg-white/5 transition-colors">
+                                            <td className="py-4 text-gray-500">{m.row_index}</td>
+                                            <td className="py-4">
+                                                <div className="font-medium text-white">
+                                                    {type === 'products' ? m.data.name : `${m.data.product_name} / ${m.data.specification || '-'}`}
                                                 </div>
-                                                <select
-                                                    className="bg-gray-800 border border-gray-700 text-gray-200 text-[11px] rounded px-2 py-1 w-full outline-none focus:border-blue-500"
-                                                    value={m.product_id || ''}
-                                                    onChange={(e) => handleMappingChange(idx, { product_id: parseInt(e.target.value) })}
-                                                >
-                                                    <option value="">-- 제품 선택 --</option>
-                                                    {m.product_matches.map(p => (
-                                                        <option key={p.id} value={p.id}>
-                                                            {p.name} ({p.specification || '규격없음'}) {p.partner_id === m.partner_id ? '✅' : ''}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                                <div className="text-[10px] text-gray-500 mt-0.5">
+                                                    {type === 'orders' && `수량: ${m.data.quantity} / 단가: ${m.data.unit_price}`}
+                                                </div>
+                                            </td>
+
+                                            {/* Partner Mapping Column */}
+                                            <td className="py-4 pr-4">
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-gray-400 text-[10px] shrink-0 w-16">엑셀: {m.data.partner_name || '-'}</span>
+                                                        {m.partner_status === 'EXACT' || m.status === 'EXACT' ? (
+                                                            <Check className="w-3 h-3 text-green-500" />
+                                                        ) : (
+                                                            <AlertCircle className="w-3 h-3 text-yellow-500" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <select
+                                                            className="bg-gray-800 border border-gray-700 text-gray-200 text-[11px] rounded px-2 py-1 flex-1 outline-none focus:border-blue-500"
+                                                            value={(type === 'products' ? m.mapping_type : m.partner_mapping_type) === 'NEW' ? 'NEW' : (m.partner_id || '')}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                const updates = type === 'products'
+                                                                    ? { mapping_type: val === 'NEW' ? 'NEW' : 'EXISTING', partner_id: val === 'NEW' ? null : parseInt(val) }
+                                                                    : { partner_mapping_type: val === 'NEW' ? 'NEW' : 'EXISTING', partner_id: val === 'NEW' ? null : parseInt(val) };
+                                                                handleMappingChange(idx, updates);
+                                                            }}
+                                                        >
+                                                            <option value="NEW">✨ 신규 거래처 등록</option>
+                                                            <optgroup label="추천 검색 결과">
+                                                                {(m.partner_matches || m.matches || []).map(p => (
+                                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                                ))}
+                                                            </optgroup>
+                                                        </select>
+                                                        {(type === 'products' ? m.mapping_type : m.partner_mapping_type) === 'NEW' && (
+                                                            <input
+                                                                type="text"
+                                                                className="bg-gray-800 border border-gray-700 text-blue-400 text-[11px] rounded px-2 py-1 w-24 outline-none focus:border-blue-500"
+                                                                value={m.new_partner_name}
+                                                                onChange={(e) => handleMappingChange(idx, { new_partner_name: e.target.value })}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            {/* Product Mapping Column (Orders Only) */}
+                                            {type === 'orders' && (
+                                                <td className="py-4">
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-gray-400 text-[10px] shrink-0 w-16">매칭 상태:</span>
+                                                            {m.product_status === 'EXACT' ? (
+                                                                <span className="text-green-500 font-bold">EXACT</span>
+                                                            ) : (
+                                                                <span className="text-red-400 font-bold">선택 필요</span>
+                                                            )}
+                                                        </div>
+                                                        <select
+                                                            className="bg-gray-800 border border-gray-700 text-gray-200 text-[11px] rounded px-2 py-1 w-full outline-none focus:border-blue-500"
+                                                            value={m.product_id || ''}
+                                                            onChange={(e) => handleMappingChange(idx, { product_id: parseInt(e.target.value) })}
+                                                        >
+                                                            <option value="">-- 제품 선택 --</option>
+                                                            {m.product_matches.map(p => (
+                                                                <option key={p.id} value={p.id}>
+                                                                    {p.name} ({p.specification || '규격없음'}) {p.partner_id === m.partner_id ? '✅' : ''}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </ResizableTable>
+                        );
+                    })()}
                 </div>
 
                 <div className="p-6 border-t border-gray-800 flex justify-end gap-3 bg-gray-900/50">
