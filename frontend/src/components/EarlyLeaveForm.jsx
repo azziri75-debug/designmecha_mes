@@ -59,7 +59,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
     };
 
     return (
-        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', height: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box sx={{ flex: 1, pt: 4 }}>
                     <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '5px' }}>
@@ -203,7 +203,9 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                 </Box>
             </Box>
 
-            <Typography align="center" variant="h6" sx={{ mt: 'auto', mb: 2, fontWeight: 'bold' }}>
+            <Box sx={{ flex: 1 }} />
+
+            <Typography align="center" variant="h6" sx={{ mt: 'auto', pt: 6, pb: 2, fontWeight: 'bold' }}>
                 (주)디자인메카
             </Typography>
             <style>{`

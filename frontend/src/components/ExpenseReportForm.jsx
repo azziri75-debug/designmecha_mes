@@ -93,7 +93,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const totalAmount = data.total_amount || 0;
 
     return (
-        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', p: 0, color: '#000', position: 'relative', bgcolor: 'white' }}>
+        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', height: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column', p: 0, color: '#000', position: 'relative', bgcolor: 'white' }}>
             {/* Title */}
             <Typography variant="h3" align="center" sx={{ 
                 fontWeight: 'bold', 
@@ -310,8 +310,10 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                 </Button>
             )}
 
+            <Box sx={{ flex: 1 }} />
+
             {/* Bottom Signature */}
-            <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Box sx={{ mt: 'auto', pt: 6, pb: 2, textAlign: 'center' }}>
                 <Typography sx={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '5px' }}>
                     (주)디자인메카
                 </Typography>

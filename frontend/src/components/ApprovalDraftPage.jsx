@@ -340,6 +340,8 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                 sx={{
                     width: '210mm',
                     minHeight: '297mm',
+                    display: 'flex',
+                    flexDirection: 'column',
                     p: '15mm',
                     mb: 4,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.15)',

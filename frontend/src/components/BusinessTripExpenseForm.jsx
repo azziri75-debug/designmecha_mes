@@ -96,7 +96,7 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
     // Wait, the form typically expects user to split cash/card manually. We will just show total.
 
     return (
-        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', height: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             <style>
                 {`
                     .settlement-table {
@@ -255,20 +255,26 @@ const BusinessTripExpenseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                 </tbody>
             </table>
 
-            <Box sx={{ mt: 5, textAlign: 'center' }}>
+            <Box sx={{ flex: 1 }} />
+
+            <Box sx={{ mt: 'auto', pt: 6, pb: 2, textAlign: 'center' }}>
                 <Typography sx={{ fontWeight: 'bold', fontSize: '16px', mb: 3 }}>
                     상기와 같이 정산합니다.
                 </Typography>
                 <div style={{ marginBottom: '20px', fontSize: '15px' }}>
                     {data.submit_date || formattedDate}
                 </div>
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mb: 4 }}>
                     <Typography sx={{ fontSize: '15px' }}>정산자 :</Typography>
                     <Typography sx={{ minWidth: '80px', textAlign: 'center', fontSize: '15px' }}>
                         {data.name || documentData?.author?.name || currentUser?.name || ''}
                     </Typography>
                     <Typography sx={{ fontSize: '15px' }}>(인)</Typography>
                 </Box>
+
+                <Typography align="center" variant="h6" sx={{ mt: 4, fontWeight: 'bold' }}>
+                    (주)디자인메카
+                </Typography>
             </Box>
         </Box>
     );

@@ -114,7 +114,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     );
 
     return (
-        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+        <Box className="a4-form-container print-safe-area" sx={{ width: '100%', height: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             <Box className="idf-header" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box sx={{ flex: 1, pt: 2 }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#333', mb: 1 }}>주식회사 디자인메카</Typography>
@@ -292,7 +292,9 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                 </Box>
             )}
 
-            <Typography align="center" sx={{ mt: 'auto', pt: 6, fontWeight: 'bold', fontSize: '24px', letterSpacing: '5px' }}>
+            <Box sx={{ flex: 1 }} />
+
+            <Typography align="center" sx={{ mt: 'auto', pt: 6, pb: 2, fontWeight: 'bold', fontSize: '24px', letterSpacing: '5px' }}>
                 (주)디자인메카
             </Typography>
 
