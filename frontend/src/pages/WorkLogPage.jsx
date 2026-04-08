@@ -3,6 +3,7 @@ import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableConta
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, KeyboardArrowDown, KeyboardArrowUp, AttachFile as AttachFileIcon, TrendingUp as PerformanceIcon, List as ListIcon, Save as SaveIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import { cn, safeParseJSON } from '../lib/utils';
+import ResizableTable from '../components/ResizableTable';
 import WorkLogModal from '../components/WorkLogModal';
 import FileViewerModal from '../components/FileViewerModal';
 import { Tabs, Tab } from '@mui/material';

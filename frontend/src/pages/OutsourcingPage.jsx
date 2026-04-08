@@ -11,6 +11,7 @@ import {
 } from '@mui/icons-material';
 import api from '../lib/api';
 import { cn, safeParseJSON } from '../lib/utils';
+import ResizableTable from '../components/ResizableTable';
 import OutsourcingOrderModal from '../components/OutsourcingOrderModal';
 import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
