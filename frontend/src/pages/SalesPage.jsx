@@ -406,7 +406,7 @@ const SalesPage = () => {
                                 estimates.map((est) => (
                                     <React.Fragment key={est.id}>
                                         <tr
-                                            className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300"
+                                            className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300 border-b border-gray-700/50"
                                             onClick={() => toggleEstimate(est.id)}
                                             onDoubleClick={() => handleEdit(est)}
                                         >
@@ -474,7 +474,7 @@ const SalesPage = () => {
                                 orders.map((ord) => (
                                     <React.Fragment key={ord.id}>
                                         <tr
-                                            className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300"
+                                            className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300 border-b border-gray-700/50"
                                             onClick={() => toggleOrder(ord.id)}
                                             onDoubleClick={() => handleEditOrder(ord)}
                                         >
