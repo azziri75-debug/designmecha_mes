@@ -96,6 +96,15 @@ const ProductsPage = ({ type }) => {
     };
     const BOM_ITEM_TYPES = ['PRODUCED']; // BOM 탭 표시 조건
 
+    // [Add] 컬럼 수 계산 헬퍼 함수 (레이아웃 틀어짐 방지)
+    const getColCount = () => {
+        let count = 8; // 기본 필수 컬럼들 (Partner, Name, Spec, Unit, Recent Price, Files, Note, Actions)
+        if (type !== 'CONSUMABLE') count += 2; // Group, Material
+        if (type === 'PRODUCED') count += 1; // Process Count
+        if (isCloneMode) count += 1; // Checkbox
+        return count;
+    };
+
     // Removed useEffect for activeTab based on type, now set directly in useState
 
     // Reset activeTab when type prop changes (fixes tab switching bug)
@@ -951,8 +960,8 @@ const ProductsPage = ({ type }) => {
                         </Box>
                     )}
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full table-fixed text-left text-sm text-gray-400">
+                    <div className="overflow-x-auto overflow-y-hidden">
+                        <table className="w-full table-fixed text-left text-sm text-gray-400" style={{ minWidth: '1200px' }}>
                             <thead className="bg-gray-900/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
                                     {isCloneMode && <th className="px-3 py-3 w-10 text-center">선택</th>}
@@ -1126,7 +1135,7 @@ const ProductsPage = ({ type }) => {
                                             {/* Expanded Process Information */}
                                             {expandedProductId === product.id && (
                                                 <tr className="bg-gray-800/50 animation-fade-in-down">
-                                                    <td colSpan="9" className="p-4 pl-16">
+                                                    <td colSpan={getColCount()} className="p-4 pl-16">
                                                         <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
                                                             <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
                                                                 <div className="flex space-x-4">
@@ -1360,7 +1369,7 @@ const ProductsPage = ({ type }) => {
                                             )}
                                         </React.Fragment>
                                     )) : (
-                                        <tr><td colSpan="9" className="text-center py-8">등록된 제품이 없습니다.</td></tr>
+                                        <tr><td colSpan={getColCount()} className="text-center py-8 text-gray-500">등록된 항목이 없습니다.</td></tr>
                                     );
                                 })()
                                 }
