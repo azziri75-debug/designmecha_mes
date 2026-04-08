@@ -1614,7 +1614,7 @@ const MobileWorkLogPage = () => {
                                 </Typography>
                                 <Divider sx={{ my: 1 }} />
                                 <Box sx={{ mt: 1 }}>
-                                    {selectedDoc.doc_type === 'VACATION' && (
+                                    {(selectedDoc.doc_type === 'VACATION' || selectedDoc.doc_type === 'LEAVE_REQUEST') && (
                                         <Stack spacing={1}>
                                             <Typography variant="body2"><b>기간:</b> {selectedDoc.content.start_date} ~ {selectedDoc.content.end_date} ({selectedDoc.content.vacation_type}{selectedDoc.content.half_day_type ? ` - ${selectedDoc.content.half_day_type}` : ''})</Typography>
                                             <Typography variant="body2"><b>사유:</b> {selectedDoc.content.vacation_reason || selectedDoc.content.reason}</Typography>
