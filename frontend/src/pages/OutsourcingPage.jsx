@@ -485,7 +485,7 @@ const OutsourcingPage = () => {
                             pendingItems.map((item) => (
                                 <tr 
                                     key={item.id} 
-                                    className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-700 text-gray-300"
+                                    className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300"
                                     onClick={() => handleSelectPendingItem(item.id)}
                                 >
                                     <td className="px-4 py-4 w-[40px]">
@@ -621,7 +621,7 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
         <React.Fragment>
             <tr
                 className={cn(
-                    "hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300 cursor-pointer",
+                    "hover:bg-gray-800/40 transition-colors select-none divide-x divide-gray-700/30 text-gray-300 cursor-pointer",
                     expanded && "bg-gray-800/30"
                 )}
                 onClick={onToggle}
@@ -748,13 +748,11 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
                 </td>
             </tr>
             {expanded && (
-                <tr className="bg-gray-900/30">
-                    <td colSpan={ORDER_COLS.length} className="px-8 py-4 border-none">
-                        <Box sx={{ p: 2, bgcolor: '#0f172a', border: '1px solid #334155', borderRadius: 1 }}>
-                            <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary.light">
-                                * 외주 발주 상세 내역
-                            </Typography>
-                            <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800">
+                <tr className="bg-gray-800/50">
+                    <td colSpan={ORDER_COLS.length} className="p-0 border-none">
+                        <div className="p-4 bg-gray-900 rounded-lg border border-gray-700 mx-4 my-2">
+                            <h4 className="text-sm font-semibold mb-2 text-gray-300">외주 발주 상세 내역</h4>
+                            <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded-md">
                                 <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                     <tr>
                                         <th className="px-3 py-2">공정명/품목</th>
@@ -778,7 +776,7 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
                                     ))}
                                 </tbody>
                             </table>
-                        </Box>
+                        </div>
                     </td>
                 </tr>
             )}

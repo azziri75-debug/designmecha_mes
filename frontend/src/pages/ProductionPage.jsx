@@ -554,27 +554,31 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
     const [open, setOpen] = useState(false);
     return (
         <React.Fragment>
-            <tr className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-700 text-gray-300" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(order)}>
-                <td className="px-4 py-4"><Chip label="수주" size="small" variant="outlined" sx={{ mr: 1, height: 20 }} />{order.order_no}</td>
-                <td className="px-4 py-4">{order.partner?.name}</td>
-                <td className="px-4 py-4">{order.items?.[0]?.product?.name}{order.items?.length > 1 ? ` 외 ${order.items.length - 1}건` : ''}</td>
-                <td className="px-4 py-4">{order.order_date}</td>
-                <td className="px-4 py-4 text-orange-600">{order.delivery_date}</td>
-                <td className="px-4 py-4">{order.note || '-'}</td>
-                <td className="px-4 py-4">{order.total_amount?.toLocaleString()}</td>
-                <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}><Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order)}>계획</Button></td>
+            <tr className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(order)}>
+                <td className="px-4 py-4 truncate"><Chip label="수주" size="small" variant="outlined" sx={{ mr: 1, height: 20 }} />{order.order_no}</td>
+                <td className="px-4 py-4 truncate">{order.partner?.name}</td>
+                <td className="px-4 py-4 truncate">{order.items?.[0]?.product?.name}{order.items?.length > 1 ? ` 외 ${order.items.length - 1}건` : ''}</td>
+                <td className="px-4 py-4 whitespace-nowrap">{order.order_date}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-orange-600">{order.delivery_date}</td>
+                <td className="px-4 py-4 truncate">{order.note || '-'}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-right">{order.total_amount?.toLocaleString()}</td>
+                <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}><Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order)}>계획</Button></td>
             </tr>
             {open && (
-                <tr>
+                <tr className="bg-gray-800/50">
                     <td colSpan={UNPLANNED_COLS.length} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
-                            <Box sx={{ p: 2, bgcolor: '#0f172a' }}>
-                                <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary.light">수주 품목 목록</Typography>
-                                <table className="w-full text-xs text-left text-gray-400">
-                                    <thead><tr className="border-b border-gray-700"><th className="py-2">품명</th><th className="py-2">규격</th><th className="py-2">수량</th></tr></thead>
-                                    <tbody>{order.items?.map(it => <tr key={it.id} className="border-b border-gray-800"><td className="py-2">{it.product?.name}</td><td className="py-2">{it.product?.specification}</td><td className="py-2">{it.quantity}</td></tr>)}</tbody>
+                            <div className="p-4 bg-gray-900 rounded-lg border border-gray-700 mx-4 my-2">
+                                <h4 className="text-sm font-semibold mb-2 text-gray-300">수주 품목 목록</h4>
+                                <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded-md">
+                                    <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
+                                        <tr><th className="px-4 py-2">품명</th><th className="px-4 py-2">규격</th><th className="px-4 py-2 text-right">수량</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-800">
+                                        {order.items?.map(it => <tr key={it.id} className="hover:bg-gray-800/40"><td className="px-4 py-2">{it.product?.name}</td><td className="px-4 py-2">{it.product?.specification}</td><td className="px-4 py-2 text-right">{it.quantity}</td></tr>)}
+                                    </tbody>
                                 </table>
-                            </Box>
+                            </div>
                         </Collapse>
                     </td>
                 </tr>
@@ -587,29 +591,35 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     const [open, setOpen] = useState(false);
     return (
         <React.Fragment>
-            <tr className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-700 text-gray-300" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(null, stockProduction)}>
-                <td className="px-4 py-4"><Chip label="재고" size="small" sx={{ mr: 1, height: 20, bgcolor: '#e8f5e9' }} />{stockProduction.production_no}</td>
-                <td className="px-4 py-4">{stockProduction.partner?.name || '사내'}</td>
-                <td className="px-4 py-4">{stockProduction.product?.name}</td>
-                <td className="px-4 py-4">{stockProduction.request_date}</td>
-                <td className="px-4 py-4 text-orange-600">{stockProduction.target_date || '-'}</td>
-                <td className="px-4 py-4">{stockProduction.note || '-'}</td>
-                <td className="px-4 py-4">-</td>
-                <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}><Button variant="outlined" color="success" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(null, stockProduction)}>계획</Button></td>
+            <tr className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(null, stockProduction)}>
+                <td className="px-4 py-4 truncate"><Chip label="재고" size="small" sx={{ mr: 1, height: 20, bgcolor: '#e8f5e9' }} />{stockProduction.production_no}</td>
+                <td className="px-4 py-4 truncate">{stockProduction.partner?.name || '사내'}</td>
+                <td className="px-4 py-4 truncate">{stockProduction.product?.name}</td>
+                <td className="px-4 py-4 whitespace-nowrap">{stockProduction.request_date}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-orange-600">{stockProduction.target_date || '-'}</td>
+                <td className="px-4 py-4 truncate">{stockProduction.note || '-'}</td>
+                <td className="px-4 py-4 text-right">-</td>
+                <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}><Button variant="outlined" color="success" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(null, stockProduction)}>계획</Button></td>
             </tr>
             {open && (
-                <tr>
+                <tr className="bg-gray-800/50">
                     <td colSpan={UNPLANNED_COLS.length} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
-                            <Box sx={{ p: 2, bgcolor: '#0f172a' }}>
-                                <Typography variant="subtitle2" gutterBottom fontWeight="bold" color="primary.light">재고 생산 제품 상세</Typography>
-                                <Box sx={{ border: '1px solid #334155', p: 2, borderRadius: 1 }}>
-                                <table className="w-full text-xs text-left">
-                                    <thead><tr className="border-b"><th className="py-2">품명</th><th className="py-2">규격</th><th className="py-2">수량</th></tr></thead>
-                                    <tbody><tr className="border-b"><td className="py-2">{stockProduction.product?.name}</td><td className="py-2">{stockProduction.product?.specification}</td><td className="py-2">{stockProduction.quantity}</td></tr></tbody>
+                            <div className="p-4 bg-gray-900 rounded-lg border border-gray-700 mx-4 my-2">
+                                <h4 className="text-sm font-semibold mb-2 text-gray-300">재고 생산 제품 상세</h4>
+                                <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded-md">
+                                    <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
+                                        <tr><th className="px-4 py-2">품명</th><th className="px-4 py-2">규격</th><th className="px-4 py-2 text-right">수량</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-800">
+                                        <tr className="hover:bg-gray-800/40">
+                                            <td className="px-4 py-2">{stockProduction.product?.name}</td>
+                                            <td className="px-4 py-2">{stockProduction.product?.specification}</td>
+                                            <td className="px-4 py-2 text-right">{stockProduction.quantity}</td>
+                                        </tr>
+                                    </tbody>
                                 </table>
-                                </Box>
-                            </Box>
+                            </div>
                         </Collapse>
                     </td>
                 </tr>
@@ -652,9 +662,9 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
 
     return (
         <React.Fragment>
-            <tr className={cn("hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300 cursor-pointer", open && "bg-gray-800/30")} onClick={() => setOpen(!open)} onDoubleClick={() => onEdit(plan)}>
-                <td className="px-4 py-4 text-center"><IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>{open ? <KeyboardArrowUp sx={{ fontSize: 18 }} /> : <KeyboardArrowDown sx={{ fontSize: 18 }} />}</IconButton></td>
-                <td className="px-4 py-4">
+            <tr className={cn("hover:bg-gray-800/40 transition-colors select-none divide-x divide-gray-700/30 text-gray-300 cursor-pointer", open && "bg-gray-800/30")} onClick={() => setOpen(!open)} onDoubleClick={() => onEdit(plan)}>
+                <td className="px-4 py-4 text-center"><IconButton size="small" sx={{ color: 'text.secondary' }} onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>{open ? <KeyboardArrowUp sx={{ fontSize: 18 }} /> : <KeyboardArrowDown sx={{ fontSize: 18 }} />}</IconButton></td>
+                <td className="px-4 py-4 truncate">
                     {order ? <div className="flex items-center gap-1"><Chip label="수주" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd' }} />{order.order_no}</div> :
                         sp ? <div className="flex items-center gap-1"><Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#f3e5f5' }} />{sp.production_no || `Stock-${sp.id}`}</div> : '-'}
                 </td>
@@ -665,10 +675,10 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                         return names.length > 1 ? `${names[0]} 외 ${names.length - 1}건` : names[0] || '';
                     })()}
                 </td>
-                <td className="px-4 py-4 text-orange-600 font-medium">{order?.delivery_date || '-'}</td>
-                <td className="px-4 py-4 text-right">{(order?.total_amount || 0).toLocaleString()}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-orange-600 font-medium">{order?.delivery_date || '-'}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-right">{(order?.total_amount || 0).toLocaleString()}</td>
                 <td className="px-4 py-4 truncate max-w-[150px]">{order?.note || sp?.note || '-'}</td>
-                <td className="px-4 py-4"><Chip label={plan.status} size="small" color={plan.status === 'COMPLETED' ? "success" : plan.status === 'CONFIRMED' ? "secondary" : "primary"} /></td>
+                <td className="px-4 py-4 text-center"><Chip label={plan.status} size="small" color={plan.status === 'COMPLETED' ? "success" : plan.status === 'CONFIRMED' ? "secondary" : "primary"} /></td>
                 <td className="px-4 py-4 text-center">{defects?.length > 0 && <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); onShowDefects(defects); }}><AlertCircle className="w-5 h-5" /></IconButton>}</td>
                 <td className="px-4 py-4 text-center">{plan.items?.length || 0}</td>
                 <td className="px-4 py-4 text-right font-bold text-green-800">{(plan.items?.reduce((sum, item) => sum + (item.cost || 0), 0) || 0).toLocaleString()}</td>
@@ -694,20 +704,20 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 </td>
             </tr>
             {open && (
-                <tr>
+                <tr className="bg-gray-800/50">
                     <td colSpan={PLAN_COLS.length} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
-                            <div className="m-4">
+                            <div className="p-4 mx-4 my-2">
                                 {Object.entries(groupedItems).map(([productId, group]) => (
-                                    <div key={productId} className="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                                        <div className="mb-3 flex flex-wrap gap-4 items-center font-bold text-xs text-blue-900">
+                                    <div key={productId} className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
+                                        <div className="mb-3 flex flex-wrap gap-4 items-center font-bold text-xs text-blue-400">
                                             <span>품명: {group.product_name}</span><span>수량: {group.items[0]?.quantity}</span>
                                         </div>
-                                        <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800">
+                                        <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded-md">
                                             <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                                 <tr><th className="px-4 py-2">순번</th><th className="px-4 py-2">공정명</th><th className="px-4 py-2">구분</th><th className="px-4 py-2">담당</th><th className="px-4 py-2">상태</th></tr>
                                             </thead>
-                                            <tbody className="divide-y">
+                                            <tbody className="divide-y divide-gray-800">
                                                 {group.items.sort((a, b) => a.sequence - b.sequence).map(item => (
                                                     <ProcessRow key={item.id} item={item} defects={defects} typeMap={typeMap} onShowDefects={onShowDefects} onRefresh={onRefresh} onOpenProcessFiles={onOpenProcessFiles} />
                                                 ))}
@@ -728,27 +738,42 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
     const [open, setOpen] = useState(false);
     return (
         <React.Fragment>
-            <tr className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300 cursor-pointer" onClick={() => setOpen(!open)}>
-                <td className="px-4 py-3">{item.sequence}</td>
+            <tr className="hover:bg-gray-800/40 transition-colors select-none text-gray-300 cursor-pointer" onClick={() => setOpen(!open)}>
+                <td className="px-4 py-3 text-center">{item.sequence}</td>
                 <td className="px-4 py-3">{item.process_name}</td>
-                <td className="px-4 py-3"><Chip label={typeMap[item.course_type] || item.course_type} size="small" /></td>
+                <td className="px-4 py-3"><Chip label={typeMap[item.course_type] || item.course_type} size="small" sx={{ height: 20 }} /></td>
                 <td className="px-4 py-3">{item.course_type === 'INTERNAL' ? item.worker?.name : item.partner_name}</td>
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <select value={item.status} onChange={async (e) => {
                         try { await api.patch(`/production/plan-items/${item.id}`, { status: e.target.value }); onRefresh(); } catch (err) { alert("오류 발생"); }
-                    }} className="text-xs p-1 border rounded">
+                    }} className="text-xs p-1 border border-gray-700 bg-gray-800 text-gray-200 rounded">
                         <option value="PLANNED">계획</option><option value="IN_PROGRESS">진행중</option><option value="COMPLETED">완료</option>
                     </select>
                 </td>
             </tr>
             {open && (
-                <tr>
+                <tr className="bg-gray-900/50">
                     <td colSpan={5} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
-                            <Box sx={{ m: 2, p: 2, bgcolor: '#0f172a', border: '1px solid #334155' }}>
-                                <Typography variant="caption" fontWeight="bold" color="primary.light">작업 로그</Typography>
-                                <table className="w-full text-[10px] mt-2 border border-gray-800 text-gray-400"><tbody>{item.work_log_items?.map(log => <tr key={log.id} className="border-b border-gray-800 hover:bg-gray-800/30"><td className="p-1">{log.work_log?.work_date}</td><td className="p-1">{log.worker?.name}</td><td className="p-1">{log.good_quantity} EA</td><td className="p-1">{log.note}</td></tr>)}</tbody></table>
-                            </Box>
+                            <div className="p-3 mx-4 my-2 border border-gray-700 bg-gray-800 rounded-md">
+                                <h4 className="text-[11px] font-semibold mb-2 text-gray-400">작업 로그</h4>
+                                <table className="w-full text-[10px] text-gray-300 border border-gray-700 rounded-md overflow-hidden bg-gray-900">
+                                    <tbody className="divide-y divide-gray-800">
+                                        {item.work_log_items?.length > 0 ? (
+                                            item.work_log_items.map(log => 
+                                                <tr key={log.id} className="hover:bg-gray-800/40">
+                                                    <td className="px-2 py-1">{log.work_log?.work_date}</td>
+                                                    <td className="px-2 py-1">{log.worker?.name}</td>
+                                                    <td className="px-2 py-1 text-right">{log.good_quantity} EA</td>
+                                                    <td className="px-2 py-1">{log.note}</td>
+                                                </tr>
+                                            )
+                                        ) : (
+                                            <tr><td colSpan={4} className="px-2 py-2 text-center text-gray-500">로그가 없습니다.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </Collapse>
                     </td>
                 </tr>
