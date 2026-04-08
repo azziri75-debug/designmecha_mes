@@ -344,7 +344,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     maxHeight: '297mm',
                     display: 'flex',
                     flexDirection: 'column',
-                    p: '15mm',
+                    p: 0,
                     mb: 4,
                     bgcolor: 'white',
                     fontFamily: '"Malgun Gothic", "Dotum", sans-serif',
@@ -356,7 +356,19 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     '& *': { color: '#000000 !important', borderColor: '#000000 !important' } 
                 }}
             >
-                {renderFormBody()}
+                {/* 캡처 시 여백 소실 방지를 위한 내부 패딩 레이어 */}
+                <Box sx={{ 
+                    flex: 1, 
+                    p: '15mm', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    width: '100%', 
+                    height: '100%', 
+                    boxSizing: 'border-box',
+                    overflow: 'hidden'
+                }}>
+                    {renderFormBody()}
+                </Box>
             </Paper>
 
             <style>{`
