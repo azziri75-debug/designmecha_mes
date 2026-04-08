@@ -29,7 +29,7 @@ const WorkLogPage = () => {
 
     // Table Resize States
     const [logTableWidths, setLogTableWidths] = useState({
-        expand: 50,
+        expand: 65,
         date: 150,
         worker: 150,
         count: 150,
@@ -38,11 +38,11 @@ const WorkLogPage = () => {
     });
 
     const [perfTableWidths, setPerfTableWidths] = useState({
-        expand: 50,
-        worker: 150,
-        cost: 200,
-        days: 120,
-        note: 200
+        expand: 65,
+        worker: 180,
+        cost: 250,
+        days: 150,
+        note: 250
     });
 
     const handleResize = (setFn) => (column) => (newWidth) => {
@@ -225,7 +225,11 @@ const WorkLogPage = () => {
 
             {tabValue === 0 ? (
                 <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-                    <Table sx={{ tableLayout: 'fixed' }}>
+                    <Table sx={{ 
+                        tableLayout: 'fixed', 
+                        width: Object.values(logTableWidths).reduce((a, b) => a + b, 0),
+                        minWidth: '100%'
+                    }}>
                         <TableHead>
                             <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                                 <ResizableTableCell width={logTableWidths.expand} onResize={handleResize(setLogTableWidths)('expand')} />
@@ -387,7 +391,11 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
 const PerformanceManagementList = ({ data, onUpdate, startDate, endDate, widths, onResize }) => {
     return (
         <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3, borderRadius: 2 }}>
-            <Table sx={{ tableLayout: 'fixed' }}>
+            <Table sx={{ 
+                tableLayout: 'fixed', 
+                width: Object.values(widths).reduce((a, b) => a + b, 0),
+                minWidth: '100%' 
+            }}>
                 <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                         <ResizableTableCell width={widths.expand} onResize={onResize('expand')} />
