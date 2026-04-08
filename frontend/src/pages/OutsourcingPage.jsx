@@ -16,7 +16,7 @@ import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
-import api from '../lib/api';
+
 
 const OutsourcingPage = () => {
     const navigate = useNavigate();
