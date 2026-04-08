@@ -658,6 +658,12 @@ async def complete_purchase_order(
             item.received_quantity += qty
             
             if item.product_id:
+                # [Fix] 발주 완료 시 제품 마스터의 최근 단가 필드 자동 갱신
+                product = await db.get(Product, item.product_id)
+                if product:
+                    product.recent_price = item.unit_price
+                    db.add(product)
+
                 await handle_stock_movement(
                     db=db,
                     product_id=item.product_id,

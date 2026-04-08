@@ -235,7 +235,12 @@ async def read_products(
     # Enrich with latest_price
     enriched_products = []
     for p in products:
-        p_history = await get_product_price_history(p.id, db)
+        # [Fix] 품목 유형에 따라 적절한 단가 이력 함수 호출
+        if p.item_type in ["PART", "CONSUMABLE", "RAW_MATERIAL"]:
+            p_history = await get_product_purchase_history(p.id, db)
+        else:
+            p_history = await get_product_price_history(p.id, db)
+            
         latest_price = p_history[0].unit_price if p_history else 0.0
         p.latest_price = latest_price
         p.partner_name = p.partner.name if p.partner else None
@@ -265,7 +270,12 @@ async def read_product(
         raise HTTPException(status_code=404, detail="Product not found")
     
     # Enrich with latest_price and partner_name
-    p_history = await get_product_price_history(product.id, db)
+    # [Fix] 품목 유형에 따라 적절한 단가 이력 함수 호출
+    if product.item_type in ["PART", "CONSUMABLE", "RAW_MATERIAL"]:
+        p_history = await get_product_purchase_history(product.id, db)
+    else:
+        p_history = await get_product_price_history(product.id, db)
+        
     product.latest_price = p_history[0].unit_price if p_history else 0.0
     product.partner_name = product.partner.name if product.partner else None
     
