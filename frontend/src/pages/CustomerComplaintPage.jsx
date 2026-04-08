@@ -8,7 +8,16 @@ import api from '../lib/api';
 import { formatNumber, cn } from '../lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import MultiFileUpload from '../components/MultiFileUpload';
-import ResizableTableCell from '../components/ResizableTableCell';
+import ResizableTable from '../components/ResizableTable';
+
+const COMPLAINT_COLS = [
+    { key: 'date',    label: '접수일',   width: 120 },
+    { key: 'partner', label: '고객사',   width: 150 },
+    { key: 'content', label: '불만 내용', width: 400 },
+    { key: 'status',  label: '상태',     width: 100 },
+    { key: 'file',    label: '파일',     width: 80 },
+    { key: 'actions', label: '작업',     width: 120, noResize: true },
+];
 
 const CustomerComplaintPage = () => {
     const [complaints, setComplaints] = useState([]);
@@ -17,19 +26,7 @@ const CustomerComplaintPage = () => {
     const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
     const [groups, setGroups] = useState([]);
     const [tab, setTab] = useState('RECEIVED');
-    const [columnWidths, setColumnWidths] = useState({
-        date: 120,
-        partner: 150,
-        content: 400,
-        status: 100,
-        file: 80,
-        actions: 120
-    });
-
-    const handleResize = (column, newWidth) => {
-        setColumnWidths(prev => ({ ...prev, [column]: newWidth }));
-    };
-
+    // Modals & form state
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedComplaint, setSelectedComplaint] = useState(null);
     const [formData, setFormData] = useState({
@@ -223,19 +220,14 @@ const CustomerComplaintPage = () => {
             <Card className="bg-gray-800 border-gray-700">
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs uppercase bg-gray-700/50 text-gray-400">
-                                <tr>
-                                    <ResizableTableCell width={columnWidths.date} onResize={(w) => handleResize('date', w)} className="px-6 py-4">접수일</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.partner} onResize={(w) => handleResize('partner', w)} className="px-6 py-4">고객사</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.content} onResize={(w) => handleResize('content', w)} className="px-6 py-4">불만 내용</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.status} onResize={(w) => handleResize('status', w)} className="px-6 py-4">상태</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.file} onResize={(w) => handleResize('file', w)} className="px-6 py-4">파일</ResizableTableCell>
-                                    <ResizableTableCell width={columnWidths.actions} onResize={(w) => handleResize('actions', w)} className="px-6 py-4 text-center">작업</ResizableTableCell>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-700">
-                                {loading ? (
+                    <ResizableTable
+                        columns={COMPLAINT_COLS}
+                        className="w-full text-sm text-left"
+                        theadClassName="text-xs uppercase bg-gray-700/50 text-gray-400"
+                        thClassName="px-6 py-4"
+                        tbodyClassName="divide-y divide-gray-700"
+                    >
+                        {loading ? (
                                     <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400">불러오는 중...</td></tr>
                                 ) : complaints.length === 0 ? (
                                     <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400">내역이 없습니다.</td></tr>
@@ -283,8 +275,7 @@ const CustomerComplaintPage = () => {
                                         </td>
                                     </tr>
                                 ))}
-                            </tbody>
-                        </table>
+                    </ResizableTable>
                     </div>
                 </CardContent>
             </Card>

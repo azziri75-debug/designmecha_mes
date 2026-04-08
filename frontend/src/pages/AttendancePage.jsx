@@ -11,6 +11,18 @@ import {
     ClockIcon
 } from '@heroicons/react/24/outline';
 import { RefreshCw } from 'lucide-react';
+import ResizableTable from '../components/ResizableTable';
+
+const ATTENDANCE_COLS = [
+    { key: 'type',   label: 'Type',       width: 100 },
+    { key: 'title',  label: 'Title',      width: 240 },
+    { key: 'date',   label: 'Date',       width: 180 },
+    { key: 'annual', label: 'Annual',     width: 80 },
+    { key: 'sick',   label: 'Sick',       width: 80 },
+    { key: 'event',  label: 'Event',      width: 80 },
+    { key: 'etc',    label: 'Etc (Hrs)',  width: 100, noResize: true },
+];
+
 
 const AttendancePage = () => {
     const { user } = useAuth();
@@ -465,54 +477,45 @@ const AttendancePage = () => {
                                         {currentMonth.getFullYear()} Annual Records
                                     </span>
                                 </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="bg-slate-50/80 border-b border-slate-100">
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Title</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Annual</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Sick</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Event</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Etc (Hrs)</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {summaryData?.documents?.map((doc) => (
-                                                <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
-                                                    <td className="px-8 py-4">
-                                                        <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${doc.doc_type === 'VACATION' ? 'bg-indigo-100 text-indigo-600' : doc.doc_type === 'EARLY_LEAVE' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'
-                                                            }`}>
-                                                            {doc.doc_type}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-8 py-4 text-sm font-bold text-slate-700">{doc.title}</td>
-                                                    <td className="px-8 py-4 text-xs font-bold text-slate-400 tabular-nums">{doc.date}</td>
-                                                    <td className="px-8 py-4 text-sm font-black text-slate-900 text-center">
-                                                        {doc.doc_type === 'VACATION' && (doc.vacation_type === '연차' || doc.vacation_type === '반차') ? doc.applied_value.toFixed(1) : '-'}
-                                                    </td>
-                                                    <td className="px-8 py-4 text-sm font-black text-rose-600 text-center">
-                                                        {doc.doc_type === 'VACATION' && doc.vacation_type === '병가' ? doc.applied_value.toFixed(1) : '-'}
-                                                    </td>
-                                                    <td className="px-8 py-4 text-sm font-black text-amber-600 text-center">
-                                                        {doc.doc_type === 'VACATION' && doc.vacation_type === '경조휴가' ? doc.applied_value.toFixed(1) : '-'}
-                                                    </td>
-                                                    <td className="px-8 py-4 text-sm font-black text-slate-900 text-right">
-                                                        {doc.doc_type !== 'VACATION' ? doc.applied_value.toFixed(1) : '-'}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {(!summaryData?.documents || summaryData.documents.length === 0) && (
-                                                <tr>
-                                                    <td colSpan="4" className="px-8 py-12 text-center text-slate-400 font-bold italic">
-                                                        기록이 없습니다.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <ResizableTable
+                                    columns={ATTENDANCE_COLS}
+                                    className="w-full text-left"
+                                    theadClassName=""
+                                    thClassName="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                                    tbodyClassName="divide-y divide-slate-50"
+                                >
+                                    {summaryData?.documents?.map((doc) => (
+                                        <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-8 py-4">
+                                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${doc.doc_type === 'VACATION' ? 'bg-indigo-100 text-indigo-600' : doc.doc_type === 'EARLY_LEAVE' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'
+                                                    }`}>
+                                                    {doc.doc_type}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-4 text-sm font-bold text-slate-700">{doc.title}</td>
+                                            <td className="px-8 py-4 text-xs font-bold text-slate-400 tabular-nums">{doc.date}</td>
+                                            <td className="px-8 py-4 text-sm font-black text-slate-900 text-center">
+                                                {doc.doc_type === 'VACATION' && (doc.vacation_type === '연차' || doc.vacation_type === '반차') ? doc.applied_value.toFixed(1) : '-'}
+                                            </td>
+                                            <td className="px-8 py-4 text-sm font-black text-rose-600 text-center">
+                                                {doc.doc_type === 'VACATION' && doc.vacation_type === '병가' ? doc.applied_value.toFixed(1) : '-'}
+                                            </td>
+                                            <td className="px-8 py-4 text-sm font-black text-amber-600 text-center">
+                                                {doc.doc_type === 'VACATION' && doc.vacation_type === '경조휴가' ? doc.applied_value.toFixed(1) : '-'}
+                                            </td>
+                                            <td className="px-8 py-4 text-sm font-black text-slate-900 text-right">
+                                                {doc.doc_type !== 'VACATION' ? doc.applied_value.toFixed(1) : '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {(!summaryData?.documents || summaryData.documents.length === 0) && (
+                                        <tr>
+                                            <td colSpan="7" className="px-8 py-12 text-center text-slate-400 font-bold italic">
+                                                기록이 없습니다.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </ResizableTable>
                             </div>
                         </div>
                     )}

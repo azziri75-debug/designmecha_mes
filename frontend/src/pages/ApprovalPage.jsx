@@ -23,6 +23,16 @@ import LeaveRequestForm from '../components/LeaveRequestForm';
 import OvertimeWorkForm from '../components/OvertimeWorkForm';
 import PurchaseOrderForm from '../components/PurchaseOrderForm';
 import BusinessTripExpenseForm from '../components/BusinessTripExpenseForm';
+import ResizableTable from '../components/ResizableTable';
+
+const APPROVAL_COLS = [
+    { key: 'date',    label: '기안일',   width: 110 },
+    { key: 'author',  label: '기안자',   width: 130 },
+    { key: 'type',    label: '종류',    width: 130 },
+    { key: 'title',   label: '제목',    width: 300 },
+    { key: 'status',  label: '상태',    width: 110 },
+    { key: 'actions', label: '관리',   width: 60, noResize: true },
+];
 
 const DOC_TYPES = {
     INTERNAL_DRAFT: { label: '내부기안', color: 'blue' },
@@ -312,38 +322,31 @@ const ApprovalPage = () => {
 
                         <Card>
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead className="bg-gray-900/50 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                                        <tr>
-                                            <th className="px-6 py-4">기안일</th>
-                                            <th className="px-6 py-4">기안자</th>
-                                            <th className="px-6 py-4">종류</th>
-                                            <th className="px-6 py-4">제목</th>
-                                            <th className="px-6 py-4">상태</th>
-                                            <th className="px-6 py-4 text-right">관리</th>
+                                <ResizableTable
+                                    columns={APPROVAL_COLS}
+                                    className="text-left"
+                                    theadClassName="bg-gray-900/50 text-xs font-semibold text-gray-400 uppercase tracking-wider"
+                                    thClassName="px-6 py-4"
+                                >
+                                    {documents.map((doc) => (
+                                        <tr key={doc.id} className="hover:bg-gray-800/50 transition-colors group cursor-pointer divide-x divide-gray-700/30" onClick={() => (doc.doc_type === 'INTERNAL_DRAFT' ? navigate(`/approval/draft?id=${doc.id}`) : openDocDetail(doc))}>
+                                            <td className="px-6 py-4 text-sm text-gray-400 truncate">{format(new Date(doc.created_at), 'yyyy-MM-dd')}</td>
+                                            <td className="px-6 py-4 text-sm font-medium text-white truncate">{doc.author?.name} ({doc.author?.role})</td>
+                                            <td className="px-6 py-4 truncate">
+                                                <span className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase", `bg-${DOC_TYPES[doc.doc_type]?.color}-900/40 text-${DOC_TYPES[doc.doc_type]?.color}-400`)}>
+                                                    {DOC_TYPES[doc.doc_type]?.label}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-100 font-semibold truncate">{doc.title}</td>
+                                            <td className="px-6 py-4 text-sm truncate">
+                                                <span className={cn("px-2 py-1 rounded-full text-[10px] font-bold", STATUS_MAP[doc.status]?.bg, STATUS_MAP[doc.status]?.text)}>
+                                                    {STATUS_MAP[doc.status]?.label}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right"><ChevronRight className="w-5 h-5 text-gray-500 ml-auto" /></td>
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-700">
-                                        {documents.map((doc) => (
-                                            <tr key={doc.id} className="hover:bg-gray-800/50 transition-colors group cursor-pointer" onClick={() => (doc.doc_type === 'INTERNAL_DRAFT' ? navigate(`/approval/draft?id=${doc.id}`) : openDocDetail(doc))}>
-                                                <td className="px-6 py-4 text-sm text-gray-400">{format(new Date(doc.created_at), 'yyyy-MM-dd')}</td>
-                                                <td className="px-6 py-4 text-sm font-medium text-white">{doc.author?.name} ({doc.author?.role})</td>
-                                                <td className="px-6 py-4">
-                                                    <span className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase", `bg-${DOC_TYPES[doc.doc_type]?.color}-900/40 text-${DOC_TYPES[doc.doc_type]?.color}-400`)}>
-                                                        {DOC_TYPES[doc.doc_type]?.label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-100 font-semibold">{doc.title}</td>
-                                                <td className="px-6 py-4 text-sm">
-                                                    <span className={cn("px-2 py-1 rounded-full text-[10px] font-bold", STATUS_MAP[doc.status]?.bg, STATUS_MAP[doc.status]?.text)}>
-                                                        {STATUS_MAP[doc.status]?.label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right"><ChevronRight className="w-5 h-5 text-gray-500 ml-auto" /></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                    ))}
+                                </ResizableTable>
                             </div>
                         </Card>
                     </div>

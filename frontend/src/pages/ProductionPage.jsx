@@ -703,8 +703,18 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
     }
 
     const handleResize = (colKey) => (newWidth) => {
-        setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
+        setColWidths(prev => {
+            const colKeys = Object.keys(prev);
+            const idx = colKeys.indexOf(colKey);
+            if (idx < 0 || idx >= colKeys.length - 1) return { ...prev, [colKey]: newWidth };
+            const rightKey = colKeys[idx + 1];
+            const delta = newWidth - prev[colKey];
+            const newRight = Math.max(40, (prev[rightKey] || 80) - delta);
+            if (newRight < 40) return prev;
+            return { ...prev, [colKey]: newWidth, [rightKey]: newRight };
+        });
     };
+
     const planOrderIds = plannedIds?.orders || [];
     const planStockProdIds = plannedIds?.stocks || [];
 
@@ -928,7 +938,16 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
     });
 
     const handleResize = (colKey) => (newWidth) => {
-        setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
+        setColWidths(prev => {
+            const colKeys = Object.keys(prev);
+            const idx = colKeys.indexOf(colKey);
+            if (idx < 0 || idx >= colKeys.length - 1) return { ...prev, [colKey]: newWidth };
+            const rightKey = colKeys[idx + 1];
+            const delta = newWidth - prev[colKey];
+            const newRight = Math.max(40, (prev[rightKey] || 80) - delta);
+            if (newRight < 40) return prev;
+            return { ...prev, [colKey]: newWidth, [rightKey]: newRight };
+        });
     };
 
     return (
@@ -1242,7 +1261,16 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
     });
 
     const handleResize = (colKey) => (newWidth) => {
-        setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
+        setColWidths(prev => {
+            const colKeys = Object.keys(prev);
+            const idx = colKeys.indexOf(colKey);
+            if (idx < 0 || idx >= colKeys.length - 1) return { ...prev, [colKey]: newWidth };
+            const rightKey = colKeys[idx + 1];
+            const delta = newWidth - prev[colKey];
+            const newRight = Math.max(40, (prev[rightKey] || 80) - delta);
+            if (newRight < 40) return prev;
+            return { ...prev, [colKey]: newWidth, [rightKey]: newRight };
+        });
     };
 
     const order = plan.order;

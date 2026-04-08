@@ -67,7 +67,16 @@ const PurchasePage = ({ type }) => {
     });
 
     const handleResize = (column, newWidth) => {
-        setColumnWidths(prev => ({ ...prev, [column]: newWidth }));
+        setColumnWidths(prev => {
+            const colKeys = Object.keys(prev);
+            const idx = colKeys.indexOf(column);
+            if (idx < 0 || idx >= colKeys.length - 1) return { ...prev, [column]: newWidth };
+            const rightKey = colKeys[idx + 1];
+            const delta = newWidth - prev[column];
+            const newRight = Math.max(40, (prev[rightKey] || 80) - delta);
+            if (newRight < 40) return prev;
+            return { ...prev, [column]: newWidth, [rightKey]: newRight };
+        });
     };
     const [selectedPartnerId, setSelectedPartnerId] = useState(null);
     const [startDate, setStartDate] = useState('');

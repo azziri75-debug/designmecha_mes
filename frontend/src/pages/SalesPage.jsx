@@ -8,13 +8,38 @@ import FileViewerModal from '../components/FileViewerModal';
 import EstimateModal from '../components/EstimateModal';
 import OrderModal from '../components/OrderModal';
 import EstimateSheetModal from '../components/EstimateSheetModal';
-import ResizableTh from '../components/ResizableTh';
+import ResizableTable from '../components/ResizableTable';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
         {children}
     </div>
 );
+
+const ESTIMATE_COLS = [
+    { key: 'expand', label: '', width: 32, noResize: true },
+    { key: 'date',   label: '견적일자',  width: 110 },
+    { key: 'partner',label: '거래처',   width: 160 },
+    { key: 'amount', label: '총 금액',  width: 130 },
+    { key: 'items',  label: '품목 수',  width: 80 },
+    { key: 'attach', label: '첨부파일', width: 90 },
+    { key: 'note',   label: '비고',    width: 200 },
+    { key: 'actions',label: '관리',   width: 120, noResize: true },
+];
+const ORDER_COLS = [
+    { key: 'expand',  label: '', width: 32, noResize: true },
+    { key: 'order_no',label: '수주번호',   width: 130 },
+    { key: 'order_date',label:'수주일자', width: 110 },
+    { key: 'delivery',label: '납품요청일', width: 110 },
+    { key: 'actual',  label: '실 납품일', width: 110 },
+    { key: 'partner', label: '거래처',   width: 150 },
+    { key: 'status',  label: '상태',    width: 100 },
+    { key: 'amount',  label: '총 금액',  width: 130 },
+    { key: 'items',   label: '품목 수',  width: 80 },
+    { key: 'attach',  label: '첨부파일', width: 90 },
+    { key: 'note',    label: '비고',    width: 150 },
+    { key: 'actions', label: '관리',   width: 100, noResize: true },
+];
 
 const SalesPage = () => {
     const [activeTab, setActiveTab] = useState('estimates'); // 'estimates' | 'orders'
@@ -371,260 +396,116 @@ const SalesPage = () => {
                     <div className="p-8 text-center text-gray-400">로딩 중...</div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-gray-400">
-                            <thead className="bg-gray-900/50 text-gray-200 uppercase font-medium">
-                                <tr>
-                                    <th className="px-6 py-3 w-4"></th> {/* Helper for expansion */}
-                                    {activeTab === 'estimates' ? (
-                                        <>
-                                            <ResizableTh className="px-6 py-3">견적일자</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">거래처</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">총 금액</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">품목 수</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">첨부파일</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">비고</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">관리</ResizableTh>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ResizableTh className="px-6 py-3">수주번호</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">수주일자</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">납품요청일</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">실 납품일</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">거래처</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">상태</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">총 금액</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">품목 수</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">첨부파일</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">비고</ResizableTh>
-                                            <ResizableTh className="px-6 py-3">관리</ResizableTh>
-                                        </>
-                                    )}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-700">
-                                {activeTab === 'estimates' ? (
-                                    estimates.map((est) => (
-                                        <React.Fragment key={est.id}>
-                                            <tr
-                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer select-none"
-                                                onClick={() => toggleEstimate(est.id)}
-                                                onDoubleClick={() => handleEdit(est)}
-                                            >
-                                                <td className="px-6 py-4 text-center">
-                                                    {expandedEstimates.has(est.id) ? '▼' : '▶'}
-                                                </td>
-                                                <td className="px-6 py-4">{est.estimate_date}</td>
-                                                <td className="px-6 py-4 font-medium text-white">{est.partner?.name}</td>
-                                                <td className="px-6 py-4">{est.total_amount?.toLocaleString()} 원</td>
-                                                <td className="px-6 py-4">{est.items?.length || 0} 건</td>
-                                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="flex items-center gap-2">
-                                                        {(() => {
-                                                            const files = safeParseJSON(est.attachment_file, []);
-
-                                                            if (Array.isArray(files) && files.length > 0) {
-                                                                return (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setViewingFiles(files);
-                                                                            setViewingTargetId(est.id);
-                                                                            setViewingTargetType('estimate');
-                                                                            setShowFileModal(true);
-                                                                        }}
-                                                                        className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors"
-                                                                        title="첨부파일 보기/다운로드"
-                                                                    >
-                                                                        <FileText className="w-3 h-3" />
-                                                                        {files.length}개
-                                                                    </button>
-                                                                );
-                                                            }
-                                                            return <span className="text-gray-600 text-xs">-</span>;
-                                                        })()}
-
+                        <ResizableTable
+                            columns={activeTab === 'estimates' ? ESTIMATE_COLS : ORDER_COLS}
+                            className="text-left text-sm text-gray-400"
+                            theadClassName="bg-gray-900/50 text-gray-200 uppercase font-medium"
+                            thClassName="px-4 py-3"
+                        >
+                            {activeTab === 'estimates' ? (
+                                estimates.map((est) => (
+                                    <React.Fragment key={est.id}>
+                                        <tr
+                                            className="hover:bg-gray-700/50 transition-colors cursor-pointer select-none divide-x divide-gray-700/30"
+                                            onClick={() => toggleEstimate(est.id)}
+                                            onDoubleClick={() => handleEdit(est)}
+                                        >
+                                            <td className="px-2 py-4 text-center">{expandedEstimates.has(est.id) ? '▼' : '▶'}</td>
+                                            <td className="px-4 py-4 truncate">{est.estimate_date}</td>
+                                            <td className="px-4 py-4 font-medium text-white truncate">{est.partner?.name}</td>
+                                            <td className="px-4 py-4 truncate">{est.total_amount?.toLocaleString()} 원</td>
+                                            <td className="px-4 py-4 truncate">{est.items?.length || 0} 건</td>
+                                            <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                                {(() => {
+                                                    const files = safeParseJSON(est.attachment_file, []);
+                                                    if (Array.isArray(files) && files.length > 0) {
+                                                        return (
+                                                            <button onClick={(e) => { e.stopPropagation(); setViewingFiles(files); setViewingTargetId(est.id); setViewingTargetType('estimate'); setShowFileModal(true); }} className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors" title="첨부파일 보기/다운로드">
+                                                                <FileText className="w-3 h-3" />{files.length}개
+                                                            </button>
+                                                        );
+                                                    }
+                                                    return <span className="text-gray-600 text-xs">-</span>;
+                                                })()}
+                                            </td>
+                                            <td className="px-4 py-4 truncate">{est.note}</td>
+                                            <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => { setSheetEstimate(est); setShowSheetModal(true); }} className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded" title="견적서 인쇄"><Printer className="w-4 h-4" /></button>
+                                                    <button onClick={() => handleEdit(est)} className="text-blue-400 hover:underline text-xs">수정</button>
+                                                    <button onClick={() => handleDelete(est.id)} className="text-red-400 hover:underline text-xs ml-1">삭제</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {expandedEstimates.has(est.id) && (
+                                            <tr className="bg-gray-800/50">
+                                                <td colSpan={ESTIMATE_COLS.length} className="px-6 py-4">
+                                                    <div className="ml-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
+                                                        <h4 className="text-sm font-semibold mb-2 text-gray-300">견적 품목 상세</h4>
+                                                        <table className="w-full text-sm text-gray-400"><thead><tr className="border-b border-gray-700"><th className="py-2 text-left">품목명</th><th className="py-2 text-left">규격</th><th className="py-2 text-right">수량</th><th className="py-2 text-right">단가</th><th className="py-2 text-right">공급가액</th></tr></thead>
+                                                        <tbody className="divide-y divide-gray-800">{est.items?.map((item, idx) => (<tr key={idx}><td className="py-2">{item.product?.name || item.product_name || item.name}</td><td className="py-2">{item.specification || item.product?.specification || '-'}</td><td className="py-2 text-right">{item.quantity}</td><td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td><td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td></tr>))}</tbody></table>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 truncate max-w-[200px]">{est.note}</td>
-                                                <td className="px-6 py-4 flex items-center" onClick={(e) => e.stopPropagation()}>
-                                                    <button
-                                                        onClick={() => {
-                                                            setSheetEstimate(est);
-                                                            setShowSheetModal(true);
-                                                        }}
-                                                        className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded mr-2"
-                                                        title="견적서 인쇄/미리보기"
-                                                    >
-                                                        <Printer className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleEdit(est)}
-                                                        className="text-blue-400 hover:underline text-xs mr-3"
-                                                    >
-                                                        수정
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(est.id)}
-                                                        className="text-red-400 hover:underline text-xs"
-                                                    >
-                                                        삭제
-                                                    </button>
-                                                </td>
                                             </tr>
-                                            {expandedEstimates.has(est.id) && (
-                                                <tr className="bg-gray-800/50">
-                                                    <td colSpan="9" className="px-6 py-4">
-                                                        <div className="ml-8 p-4 bg-gray-900 rounded-lg border border-gray-700">
-                                                            <h4 className="text-sm font-semibold mb-2 text-gray-300">견적 품목 상세</h4>
-                                                            <table className="w-full text-sm text-gray-400">
-                                                                <thead>
-                                                                    <tr className="border-b border-gray-700">
-                                                                        <th className="py-2 text-left">품목명</th>
-                                                                        <th className="py-2 text-left">규격</th>
-                                                                        <th className="py-2 text-right">수량</th>
-                                                                        <th className="py-2 text-right">단가</th>
-                                                                        <th className="py-2 text-right">공급가액</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody className="divide-y divide-gray-800">
-                                                                    {est.items?.map((item, idx) => (
-                                                                        <tr key={idx}>
-                                                                            <td className="py-2">{item.product?.name || item.product_name || item.name}</td>
-                                                                            <td className="py-2">{item.specification || item.product?.specification || "-"}</td>
-                                                                            <td className="py-2 text-right">{item.quantity}</td>
-                                                                            <td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td>
-                                                                            <td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                                ) : (
-                                    orders.map((ord) => (
-                                        <React.Fragment key={ord.id}>
-                                            <tr
-                                                className="hover:bg-gray-700/50 transition-colors cursor-pointer select-none"
-                                                onClick={() => toggleOrder(ord.id)}
-                                                onDoubleClick={() => handleEditOrder(ord)}
-                                            >
-                                                <td className="px-6 py-4 text-center">
-                                                    {expandedOrders.has(ord.id) ? '▼' : '▶'}
-                                                </td>
-                                                <td className="px-6 py-4 font-mono text-xs text-gray-300">{ord.order_no}</td>
-                                                <td className="px-6 py-4">{ord.order_date}</td>
-                                                <td className="px-6 py-4 text-orange-400">{ord.delivery_date || '-'}</td>
-                                                <td className="px-6 py-4 text-emerald-400">{ord.actual_delivery_date || '-'}</td>
-                                                <td className="px-6 py-4 font-medium text-white">{ord.partner?.name}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className={cn(
-                                                        "px-2 py-0.5 rounded text-xs font-medium",
-                                                        ord.status === 'PENDING' ? "bg-yellow-900/50 text-yellow-400 border border-yellow-700" :
-                                                            (ord.status === 'CONFIRMED' || ord.status === 'PRODUCTION_COMPLETED') ? "bg-blue-900/50 text-blue-400 border border-blue-700" :
-                                                                ord.status === 'PARTIALLY_DELIVERED' ? "bg-orange-900/50 text-orange-400 border border-orange-700" :
-                                                                    (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? "bg-green-900/50 text-green-400 border border-green-700" :
-                                                                        "bg-gray-800 text-gray-400"
-                                                    )}>
-                                                        {ord.status === 'PARTIALLY_DELIVERED' ? '부분납품' :
-                                                            (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? '납품완료' : 
-                                                            ord.status === 'PRODUCTION_COMPLETED' ? '생산완료' :
-                                                            ord.status === 'PENDING' ? '대기' :
-                                                            ord.status === 'CONFIRMED' ? '확정' : ord.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">{ord.total_amount?.toLocaleString()} 원</td>
-                                                <td className="px-6 py-4">{ord.items?.length || 0} 건</td>
-                                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="flex items-center gap-2">
-                                                        {(() => {
-                                                            const files = safeParseJSON(ord.attachment_file, []);
-
-                                                            if (Array.isArray(files) && files.length > 0) {
-                                                                return (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setViewingFiles(files);
-                                                                            setViewingTargetId(ord.id);
-                                                                            setViewingTargetType('order'); // To handle deletion correctly
-                                                                            setShowFileModal(true);
-                                                                        }}
-                                                                        className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors"
-                                                                        title="첨부파일 보기/다운로드"
-                                                                    >
-                                                                        <FileText className="w-3 h-3" />
-                                                                        {files.length}개
-                                                                    </button>
-                                                                );
-                                                            }
-                                                            return <span className="text-gray-600 text-xs">-</span>;
-                                                        })()}
+                                        )}
+                                    </React.Fragment>
+                                ))
+                            ) : (
+                                orders.map((ord) => (
+                                    <React.Fragment key={ord.id}>
+                                        <tr
+                                            className="hover:bg-gray-700/50 transition-colors cursor-pointer select-none divide-x divide-gray-700/30"
+                                            onClick={() => toggleOrder(ord.id)}
+                                            onDoubleClick={() => handleEditOrder(ord)}
+                                        >
+                                            <td className="px-2 py-4 text-center">{expandedOrders.has(ord.id) ? '▼' : '▶'}</td>
+                                            <td className="px-4 py-4 font-mono text-xs text-gray-300 truncate">{ord.order_no}</td>
+                                            <td className="px-4 py-4 truncate">{ord.order_date}</td>
+                                            <td className="px-4 py-4 text-orange-400 truncate">{ord.delivery_date || '-'}</td>
+                                            <td className="px-4 py-4 text-emerald-400 truncate">{ord.actual_delivery_date || '-'}</td>
+                                            <td className="px-4 py-4 font-medium text-white truncate">{ord.partner?.name}</td>
+                                            <td className="px-4 py-4">
+                                                <span className={cn("px-2 py-0.5 rounded text-xs font-medium", ord.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border border-yellow-700' : (ord.status === 'CONFIRMED' || ord.status === 'PRODUCTION_COMPLETED') ? 'bg-blue-900/50 text-blue-400 border border-blue-700' : ord.status === 'PARTIALLY_DELIVERED' ? 'bg-orange-900/50 text-orange-400 border border-orange-700' : (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? 'bg-green-900/50 text-green-400 border border-green-700' : 'bg-gray-800 text-gray-400')}>
+                                                    {ord.status === 'PARTIALLY_DELIVERED' ? '부분납품' : (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? '납품완료' : ord.status === 'PRODUCTION_COMPLETED' ? '생산완료' : ord.status === 'PENDING' ? '대기' : ord.status === 'CONFIRMED' ? '확정' : ord.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4 truncate">{ord.total_amount?.toLocaleString()} 원</td>
+                                            <td className="px-4 py-4 truncate">{ord.items?.length || 0} 건</td>
+                                            <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                                {(() => {
+                                                    const files = safeParseJSON(ord.attachment_file, []);
+                                                    if (Array.isArray(files) && files.length > 0) {
+                                                        return <button onClick={(e) => { e.stopPropagation(); setViewingFiles(files); setViewingTargetId(ord.id); setViewingTargetType('order'); setShowFileModal(true); }} className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors" title="첨부파일 보기/다운로드"><FileText className="w-3 h-3" />{files.length}개</button>;
+                                                    }
+                                                    return <span className="text-gray-600 text-xs">-</span>;
+                                                })()}
+                                            </td>
+                                            <td className="px-4 py-4 truncate">{ord.note}</td>
+                                            <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => handleEditOrder(ord)} className="text-blue-400 hover:underline text-xs">수정</button>
+                                                    <button onClick={() => handleDeleteOrder(ord.id)} className="text-red-400 hover:underline text-xs">삭제</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {expandedOrders.has(ord.id) && (
+                                            <tr className="bg-gray-800/50">
+                                                <td colSpan={ORDER_COLS.length} className="px-6 py-4">
+                                                    <div className="ml-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
+                                                        <h4 className="text-sm font-semibold mb-2 text-gray-300">수주 품목 상세</h4>
+                                                        <table className="w-full text-sm text-gray-400"><thead><tr className="border-b border-gray-700"><th className="py-2 text-left">품목명</th><th className="py-2 text-left">규격</th><th className="py-2 text-right">수량</th><th className="py-2 text-right">단가</th><th className="py-2 text-right">공급가액</th></tr></thead>
+                                                        <tbody className="divide-y divide-gray-800">{ord.items?.map((item, idx) => (<tr key={idx}><td className="py-2">{item.product?.name || item.product_name || item.name}</td><td className="py-2">{item.specification || item.product?.specification || '-'}</td><td className="py-2 text-right">{item.quantity}</td><td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td><td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td></tr>))}</tbody></table>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 truncate max-w-[200px]">{ord.note}</td>
-                                                <td className="px-6 py-4 flex items-center" onClick={(e) => e.stopPropagation()}>
-                                                    <button
-                                                        onClick={() => handleEditOrder(ord)}
-                                                        className="text-blue-400 hover:underline text-xs mr-3"
-                                                    >
-                                                        수정
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteOrder(ord.id)}
-                                                        className="text-red-400 hover:underline text-xs"
-                                                    >
-                                                        삭제
-                                                    </button>
-                                                </td>
                                             </tr>
-                                            {expandedOrders.has(ord.id) && (
-                                                <tr className="bg-gray-800/50">
-                                                    <td colSpan="12" className="px-6 py-4">
-                                                        <div className="ml-8 p-4 bg-gray-900 rounded-lg border border-gray-700">
-                                                            <h4 className="text-sm font-semibold mb-2 text-gray-300">수주 품목 상세</h4>
-                                                            <table className="w-full text-sm text-gray-400">
-                                                                <thead>
-                                                                    <tr className="border-b border-gray-700">
-                                                                        <th className="py-2 text-left">품목명</th>
-                                                                        <th className="py-2 text-left">규격</th>
-                                                                        <th className="py-2 text-right">수량</th>
-                                                                        <th className="py-2 text-right">단가</th>
-                                                                        <th className="py-2 text-right">공급가액</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody className="divide-y divide-gray-800">
-                                                                    {ord.items?.map((item, idx) => (
-                                                                        <tr key={idx}>
-                                                                            <td className="py-2">{item.product?.name || item.product_name || item.name}</td>
-                                                                            <td className="py-2">{item.specification || item.product?.specification || "-"}</td>
-                                                                            <td className="py-2 text-right">{item.quantity}</td>
-                                                                            <td className="py-2 text-right">{item.unit_price?.toLocaleString()}</td>
-                                                                            <td className="py-2 text-right">{(item.quantity * item.unit_price)?.toLocaleString()}</td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                                )}
-                                {(!loading && ((activeTab === 'estimates' && estimates.length === 0) || (activeTab === 'orders' && orders.length === 0))) && (
-                                    <tr>
-                                        <td colSpan="10" className="px-6 py-12 text-center text-gray-500">
-                                            데이터가 없습니다.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                        )}
+                                    </React.Fragment>
+                                ))
+                            )}
+                            {(!loading && ((activeTab === 'estimates' && estimates.length === 0) || (activeTab === 'orders' && orders.length === 0))) && (
+                                <tr><td colSpan="12" className="px-6 py-12 text-center text-gray-500">데이터가 없습니다.</td></tr>
+                            )}
+                        </ResizableTable>
                     </div>
                 )}
             </Card>

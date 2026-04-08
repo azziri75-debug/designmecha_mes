@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 
+/**
+ * ResizableTh (개선버전)
+ * 
+ * 드래그 시 본 th는 늘어나고, 바로 오른쪽 th는 같은 양만큼 줄어듭니다.
+ * 테이블 전체 너비는 고정됩니다.
+ */
 const ResizableTh = ({ children, className, initialWidth, minWidth = 50, style, ...props }) => {
-    // If an initial width like "20%" or "100px" is passed via className or props, 
-    // we start with 'auto' unless explicitly provided to state.
     const [width, setWidth] = useState(initialWidth || 'auto');
     const [isResizing, setIsResizing] = useState(false);
     const thRef = useRef(null);
@@ -23,33 +27,49 @@ const ResizableTh = ({ children, className, initialWidth, minWidth = 50, style, 
         e.stopPropagation();
         setIsResizing(true);
         document.body.classList.add('resizing');
-    };
 
-    useEffect(() => {
-        const handleMouseMove = (e) => {
-            if (!isResizing || !thRef.current) return;
-            const thRect = thRef.current.getBoundingClientRect();
-            const newWidth = Math.max(minWidth, e.clientX - thRect.left);
-            setWidth(newWidth);
+        const startX = e.clientX;
+        const startWidth = thRef.current ? thRef.current.offsetWidth : (typeof width === 'number' ? width : 120);
+
+        // 바로 오른쪽 th를 찾습니다.
+        const nextTh = thRef.current ? thRef.current.nextElementSibling : null;
+        const nextStartWidth = nextTh ? nextTh.offsetWidth : null;
+
+        const handleMouseMove = (me) => {
+            const delta = me.clientX - startX;
+            const newLeft = Math.max(minWidth, startWidth + delta);
+            const actualDelta = newLeft - startWidth;
+
+            // 이 th 크기 업데이트
+            if (thRef.current) {
+                thRef.current.style.width = `${newLeft}px`;
+                thRef.current.style.minWidth = `${newLeft}px`;
+                thRef.current.style.maxWidth = `${newLeft}px`;
+            }
+
+            // 오른쪽 th도 같이 조정 (좌↑ → 우↓)
+            if (nextTh && nextStartWidth !== null) {
+                const newRight = Math.max(minWidth, nextStartWidth - actualDelta);
+                nextTh.style.width = `${newRight}px`;
+                nextTh.style.minWidth = `${newRight}px`;
+                nextTh.style.maxWidth = `${newRight}px`;
+            }
+
+            setWidth(newLeft);
         };
 
         const handleMouseUp = () => {
-            if (isResizing) {
-                setIsResizing(false);
-                document.body.classList.remove('resizing');
-            }
-        };
-
-        if (isResizing) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-        }
-
-        return () => {
+            setIsResizing(false);
+            document.body.classList.remove('resizing');
+            document.body.style.cursor = '';
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [isResizing, minWidth]);
+
+        document.body.style.cursor = 'col-resize';
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+    };
 
     return (
         <th
