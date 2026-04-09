@@ -119,6 +119,7 @@ class Staff(Base):
 
     dept = relationship("Department", back_populates="members", foreign_keys=[department_id])
     is_accounting = Column(Boolean, default=False) # NEW: 회계 담당 여부
+    extension = Column(String(20), nullable=True)  # [NEW] 내선번호
 
 class EmployeeTimeRecord(Base):
     """사원 근태/HR 기록 (전자결재 승인 시 자동 생성 및 수동 관리)"""

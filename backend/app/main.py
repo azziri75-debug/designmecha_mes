@@ -941,6 +941,8 @@ async def startup_event():
                 await db.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL;"))
                 # 3. approval_lines.department_id 추가
                 await db.execute(text("ALTER TABLE approval_lines ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE;"))
+                # 4. staff.extension 추가 (내선번호)
+                await db.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS extension VARCHAR(20);"))
                 await db.commit()
                 print("Startup: Department system tables/columns verified/created")
 

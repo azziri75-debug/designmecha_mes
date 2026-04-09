@@ -1008,6 +1008,7 @@ const BasicsPageContent = () => {
                                             <ResizableTh className="px-6 py-3">부서/직책</ResizableTh>
                                             <ResizableTh className="px-6 py-3">주업무</ResizableTh>
                                             <ResizableTh className="px-6 py-3">전화번호</ResizableTh>
+                                            <ResizableTh className="px-6 py-3">내선번호</ResizableTh>
                                             <ResizableTh className="px-6 py-3">상태</ResizableTh>
                                         </>
                                     ) : activeTab === 'equipments' ? (
@@ -1202,7 +1203,12 @@ const BasicsPageContent = () => {
                                                 {member.department && <div className="text-[11px] text-gray-500">{member.department}</div>}
                                             </td>
                                             <td className="px-6 py-4">{member.main_duty || '-'}</td>
-                                            <td className="px-6 py-4">{member.phone}</td>
+                                            <td className="px-6 py-4">{member.phone || '-'}</td>
+                                            <td className="px-6 py-4">
+                                                {member.extension
+                                                    ? <span className="px-2 py-0.5 bg-gray-700/80 border border-gray-600 rounded text-xs text-gray-200 font-mono">{member.extension}</span>
+                                                    : <span className="text-gray-600">-</span>}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <span className={cn(
                                                     "px-2 py-1 rounded-full text-xs font-medium",
@@ -1889,6 +1895,10 @@ const BasicsPageContent = () => {
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-medium text-gray-300">연락처</label>
                                                     <input name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="010-0000-0000" maxLength="13" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-300">내선번호</label>
+                                                    <input name="extension" value={formData.extension || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 1234" maxLength="20" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-medium text-gray-300">이메일</label>

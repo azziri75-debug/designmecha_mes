@@ -104,6 +104,7 @@ class StaffBase(BaseModel):
     staff_no: Optional[str] = None
     is_accounting: Optional[bool] = False # NEW: 회계 담당 여부
     department_id: Optional[int] = None  # [NEW] 부서 FK
+    extension: Optional[str] = None  # [NEW] 내선번호
 
 class StaffSimple(StaffBase):
     id: int
