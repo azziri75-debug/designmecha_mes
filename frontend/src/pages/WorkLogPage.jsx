@@ -41,9 +41,21 @@ const WorkLogPage = () => {
     const [staffList, setStaffList] = useState([]);
 
     // Filters
+    const [filterMode, setFilterMode] = useState('all'); // 'all' | 'month'
+    const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+    const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedWorker, setSelectedWorker] = useState('');
+
+    // 년/월 변경 시 startDate/endDate 자동 계산
+    const applyMonthFilter = (year, month) => {
+        const start = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const end = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+        setStartDate(start);
+        setEndDate(end);
+    };
 
     // File Viewer
     const [fileViewerOpen, setFileViewerOpen] = useState(false);
@@ -185,16 +197,69 @@ const WorkLogPage = () => {
                 ))}
             </div>
 
-            {/* Shared Filters */}
             <Card className="p-4 flex flex-wrap gap-4 items-end mb-4 print-safe-area">
+                {/* 기간 선택 */}
                 <div className="space-y-1">
-                    <label className="text-xs text-gray-400">시작일</label>
-                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
+                    <label className="text-xs text-gray-400">검색 기간</label>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => { setFilterMode('all'); setStartDate(''); setEndDate(''); }}
+                            className={`px-3 py-2 rounded text-sm h-[38px] font-medium border transition-colors ${
+                                filterMode === 'all'
+                                    ? 'bg-blue-600 text-white border-blue-500'
+                                    : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
+                            }`}
+                        >
+                            전체기간
+                        </button>
+                        <button
+                            onClick={() => { setFilterMode('month'); applyMonthFilter(filterYear, filterMonth); }}
+                            className={`px-3 py-2 rounded text-sm h-[38px] font-medium border transition-colors ${
+                                filterMode === 'month'
+                                    ? 'bg-blue-600 text-white border-blue-500'
+                                    : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
+                            }`}
+                        >
+                            년/월 선택
+                        </button>
+                    </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs text-gray-400">종료일</label>
-                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
-                </div>
+                {filterMode === 'month' && (
+                    <>
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400">년도</label>
+                            <select
+                                value={filterYear}
+                                onChange={(e) => {
+                                    const y = Number(e.target.value);
+                                    setFilterYear(y);
+                                    applyMonthFilter(y, filterMonth);
+                                }}
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px] outline-none focus:border-blue-500"
+                            >
+                                {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
+                                    <option key={y} value={y}>{y}년</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400">월</label>
+                            <select
+                                value={filterMonth}
+                                onChange={(e) => {
+                                    const m = Number(e.target.value);
+                                    setFilterMonth(m);
+                                    applyMonthFilter(filterYear, m);
+                                }}
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px] outline-none focus:border-blue-500"
+                            >
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                    <option key={m} value={m}>{m}월</option>
+                                ))}
+                            </select>
+                        </div>
+                    </>
+                )}
                 <div className="flex-1 min-w-[200px] space-y-1">
                     <label className="text-xs text-gray-400">작업자</label>
                     <select
@@ -209,7 +274,7 @@ const WorkLogPage = () => {
                     </select>
                 </div>
                 <button
-                    onClick={() => { setStartDate(''); setEndDate(''); setSelectedWorker(''); }}
+                    onClick={() => { setFilterMode('all'); setStartDate(''); setEndDate(''); setSelectedWorker(''); }}
                     className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-sm h-[38px] transition-colors font-medium border border-gray-600"
                 >
                     초기화

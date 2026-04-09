@@ -70,6 +70,7 @@ const ORDER_COLS = [
     { key: 'itemname', label: '품명', width: 200 },
     { key: 'count', label: '품목 수', width: 80 },
     { key: 'delivery', label: '납품예정일', width: 120 },
+    { key: 'actual_delivery', label: '실제납품일', width: 120 },
     { key: 'status', label: '상태', width: 100 },
     { key: 'actions', label: '관리', width: 250, noResize: true },
 ];
@@ -105,6 +106,9 @@ const PurchasePage = ({ type }) => {
     const [selectedSourceOrder, setSelectedSourceOrder] = useState(null);
     const [sourceStockModalOpen, setSourceStockModalOpen] = useState(false);
     const [selectedSourceStock, setSelectedSourceStock] = useState(null);
+
+    // 입고날짜 선택 다이얼로그
+    const [deliveryDateDialog, setDeliveryDateDialog] = useState(null); // { orderId, date }
 
     // Filter states
     const [searchQuery, setSearchQuery] = useState('');
@@ -328,17 +332,26 @@ const PurchasePage = ({ type }) => {
         }
     };
 
-    const handleCompleteOrder = async (orderId) => {
-        if (!window.confirm("이 발주건을 발주 완료(입고) 처리하시겠습니까?\n품목 재고가 자동으로 업데이트됩니다.")) return;
+    const handleCompleteOrder = (orderId) => {
+        // 납품일 선택 다이얼로그 오픈
+        const today = new Date().toISOString().split('T')[0];
+        setDeliveryDateDialog({ orderId, date: today });
+    };
+
+    const handleCompleteConfirm = async () => {
+        if (!deliveryDateDialog) return;
+        const { orderId, date } = deliveryDateDialog;
         try {
-            await api.post(`/purchasing/purchase/orders/${orderId}/complete`);
-            alert("완료(입고) 처리되었습니다.");
+            await api.post(`/purchasing/purchase/orders/${orderId}/complete`, { actual_delivery_date: date });
+            alert('입고 처리되었습니다.');
+            setDeliveryDateDialog(null);
             handleSuccess();
         } catch (error) {
-            console.error("Complete failed", error);
-            alert("처리 실패: " + (error.response?.data?.detail || error.message));
+            console.error('Complete failed', error);
+            alert('처리 실패: ' + (error.response?.data?.detail || error.message));
         }
     };
+
 
     const handleDeleteAttachment = async (targetId, indexToRemove) => {
         if (!targetId) return;
@@ -875,6 +888,40 @@ const PurchasePage = ({ type }) => {
                 stockProduction={selectedSourceStock}
                 readonly={true}
             />
+            {/* 입고날짜 선택 다이얼로그 */}
+            {deliveryDateDialog && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
+                        <h3 className="text-lg font-black text-white mb-6">📦 입고날짜 선택</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-gray-400 font-bold block mb-1">실제 입고일</label>
+                                <input
+                                    type="date"
+                                    value={deliveryDateDialog.date}
+                                    onChange={e => setDeliveryDateDialog(p => ({ ...p, date: e.target.value }))}
+                                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500">입고일을 확인 후 등록하면 재고가 자동 반영됩니다.</p>
+                        </div>
+                        <div className="flex gap-3 mt-6 justify-end">
+                            <button
+                                onClick={() => setDeliveryDateDialog(null)}
+                                className="px-4 py-2 rounded-lg text-sm text-gray-400 border border-gray-600 hover:bg-gray-800"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleCompleteConfirm}
+                                className="px-5 py-2 rounded-lg text-sm font-bold bg-green-600 hover:bg-green-500 text-white"
+                            >
+                                입고 확인
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -922,6 +969,11 @@ const PurchaseOrderRow = ({ order, type, expanded, onToggle, onEdit, onDelete, o
                 </td>
                 <td className="px-4 py-4">{order.items?.length} 품목</td>
                 <td className="px-4 py-4 text-orange-600 font-bold">{order.delivery_date}</td>
+                <td className="px-4 py-4 font-bold">
+                    {order.actual_delivery_date
+                        ? <span className="text-green-400">{order.actual_delivery_date}</span>
+                        : <span className="text-gray-500">-</span>}
+                </td>
                 <td className="px-4 py-4">
                     <Chip
                         label={order.status}

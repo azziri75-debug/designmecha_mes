@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
@@ -81,6 +81,9 @@ const OutsourcingPage = () => {
     const [selectedSourceOrder, setSelectedSourceOrder] = useState(null);
     const [sourceStockModalOpen, setSourceStockModalOpen] = useState(false);
     const [selectedSourceStock, setSelectedSourceStock] = useState(null);
+
+    // 입고납품일 선택 다이얼로그
+    const [deliveryDateDialog, setDeliveryDateDialog] = useState(null);
 
     // Filter states
     const [searchQuery, setSearchQuery] = useState('');
@@ -599,6 +602,40 @@ const OutsourcingPage = () => {
                 stockProduction={selectedSourceStock}
                 readonly={true}
             />
+            {/* 입고납품일 선택 다이얼로그 */}
+            {deliveryDateDialog && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
+                        <h3 className="text-lg font-black text-white mb-6">📦 입고납품일 선택</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-gray-400 font-bold block mb-1">실제 입고일</label>
+                                <input
+                                    type="date"
+                                    value={deliveryDateDialog.date}
+                                    onChange={e => setDeliveryDateDialog(p => ({ ...p, date: e.target.value }))}
+                                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500">입고일을 확인 후 등록하면 재고가 자동 반영됩니다.</p>
+                        </div>
+                        <div className="flex gap-3 mt-6 justify-end">
+                            <button
+                                onClick={() => setDeliveryDateDialog(null)}
+                                className="px-4 py-2 rounded-lg text-sm text-gray-400 border border-gray-600 hover:bg-gray-800"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleCompleteConfirm}
+                                className="px-5 py-2 rounded-lg text-sm font-bold bg-green-600 hover:bg-green-500 text-white"
+                            >
+                                입고 확인
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
                 </div>
             </Card>
         </div>
@@ -645,6 +682,11 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
                 <td className="px-4 py-4 font-bold">{order.partner?.name}</td>
                 <td className="px-4 py-4">{order.items.length} 품목</td>
                 <td className="px-4 py-4 text-orange-600 font-bold">{order.delivery_date}</td>
+                <td className="px-4 py-4 font-bold">
+                    {order.actual_delivery_date
+                        ? <span className="text-green-400">{order.actual_delivery_date}</span>
+                        : <span className="text-gray-500">-</span>}
+                </td>
                 <td className="px-4 py-4">
                     <Chip
                         label={order.status}

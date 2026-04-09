@@ -636,10 +636,12 @@ async def create_purchase_order(
 @router.post("/purchase/orders/{order_id}/complete")
 async def complete_purchase_order(
     order_id: int,
+    body: Optional[dict] = None,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Any = Depends(deps.get_current_user)
 ):
     """구매 발주서 완료 처리 (입고 반영)"""
+    from fastapi import Body
     query = select(PurchaseOrder).options(selectinload(PurchaseOrder.items)).where(PurchaseOrder.id == order_id)
     res = await db.execute(query)
     order = res.scalars().first()
@@ -648,9 +650,21 @@ async def complete_purchase_order(
         raise HTTPException(status_code=404, detail="발주서를 찾을 수 없습니다.")
     if order.status == PurchaseStatus.COMPLETED:
         raise HTTPException(status_code=400, detail="이미 완료(입고)된 발주건입니다.")
+
+    # actual_delivery_date: body로 전달되면 해당 날짜, 없으면 당일
+    body = body or {}
+    actual_date_str = body.get("actual_delivery_date")
+    if actual_date_str:
+        from datetime import date as date_type
+        try:
+            actual_date = date_type.fromisoformat(str(actual_date_str))
+        except Exception:
+            actual_date = now_kst().date()
+    else:
+        actual_date = now_kst().date()
         
     order.status = PurchaseStatus.COMPLETED
-    order.actual_delivery_date = now_kst().date()
+    order.actual_delivery_date = actual_date
     
     for item in order.items:
         qty = item.quantity - item.received_quantity
@@ -684,6 +698,7 @@ async def complete_purchase_order(
 @router.post("/outsourcing/orders/{order_id}/complete")
 async def complete_outsourcing_order(
     order_id: int,
+    body: Optional[dict] = None,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Any = Depends(deps.get_current_user)
 ):
@@ -701,9 +716,21 @@ async def complete_outsourcing_order(
         raise HTTPException(status_code=404, detail="외주 발주서를 찾을 수 없습니다.")
     if order.status == OutsourcingStatus.COMPLETED:
         raise HTTPException(status_code=400, detail="이미 완료된 외주건입니다.")
+
+    # actual_delivery_date: body로 전달되면 해당 날짜, 없으면 당일
+    body = body or {}
+    actual_date_str = body.get("actual_delivery_date")
+    if actual_date_str:
+        from datetime import date as date_type
+        try:
+            actual_date = date_type.fromisoformat(str(actual_date_str))
+        except Exception:
+            actual_date = now_kst().date()
+    else:
+        actual_date = now_kst().date()
         
     order.status = OutsourcingStatus.COMPLETED
-    order.actual_delivery_date = now_kst().date()
+    order.actual_delivery_date = actual_date
     
     for item in order.items:
         # 1. Update related production plan item if exists

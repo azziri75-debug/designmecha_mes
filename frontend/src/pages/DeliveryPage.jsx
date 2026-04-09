@@ -9,17 +9,18 @@ import FileViewerModal from '../components/FileViewerModal';
 import TransactionStatementModal from '../components/TransactionStatementModal';
 
 const DELIVERY_COLS = [
-    { key: 'customer',     label: 'Customer',     width: 150 },
-    { key: 'product',      label: 'Product Name', width: 200 },
-    { key: 'order_date',   label: 'Order Date',   width: 120 },
-    { key: 'due_date',     label: 'Due Date',     width: 120 },
+    { key: 'customer',     label: '고객사',     width: 150 },
+    { key: 'product',      label: '품목명', width: 200 },
+    { key: 'order_date',   label: '수주일',   width: 120 },
+    { key: 'due_date',     label: '납품예정일',     width: 120 },
+    { key: 'actual_date',  label: '실제납품일',  width: 120 },
     { key: 'note',         label: '비고',           width: 150 },
-    { key: 'total_items',  label: 'Total Items',  width: 100 },
-    { key: 'order_amount', label: 'Order Amount', width: 150 },
-    { key: 'deliv_amount', label: 'Deliv. Amount',width: 150 },
-    { key: 'status',       label: 'Status',       width: 100 },
-    { key: 'actions',      label: 'Actions',      width: 100, noResize: true },
-    { key: 'details',      label: 'Details',      width: 80,  noResize: true },
+    { key: 'total_items',  label: '품목수',  width: 80 },
+    { key: 'order_amount', label: '수주금액', width: 150 },
+    { key: 'deliv_amount', label: '납품금액',width: 150 },
+    { key: 'status',       label: '상태',       width: 100 },
+    { key: 'actions',      label: '납품등록',      width: 100, noResize: true },
+    { key: 'details',      label: '상세',      width: 80,  noResize: true },
 ];
 
 const DeliveryPage = () => {
@@ -283,6 +284,17 @@ const DeliveryPage = () => {
                                                 </td>
                                                 <td className="px-6 py-5 text-sm font-mono text-gray-400">{ord.order_date}</td>
                                                 <td className="px-6 py-5 text-sm font-mono text-blue-400 font-bold">{ord.delivery_date || '-'}</td>
+                                                <td className="px-6 py-5 text-sm font-mono font-bold">
+                                                    {(() => {
+                                                        // 납품이력 중 가장 최신 delivery_date 표시
+                                                        const histories = ord.delivery_histories || [];
+                                                        if (histories.length === 0) return <span className="text-gray-600">-</span>;
+                                                        const latest = histories.reduce((a, b) =>
+                                                            (a.delivery_date || '') > (b.delivery_date || '') ? a : b
+                                                        );
+                                                        return <span className="text-green-400">{latest.delivery_date || '-'}</span>;
+                                                    })()}
+                                                </td>
                                                 <td className="px-6 py-5 text-sm max-w-[150px] truncate text-gray-400" title={ord.note}>{ord.note || '-'}</td>
                                                 <td className="px-6 py-5 text-sm text-gray-400">{ord.items?.length || 0}</td>
                                                 <td className="px-6 py-5">
@@ -328,7 +340,7 @@ const DeliveryPage = () => {
                                             {/* Expanded Detail Panel */}
                                             {expandedOrder === ord.id && (
                                                 <tr className="bg-gray-900/30">
-                                                    <td colSpan="11" className="px-8 py-0 border-none">
+                                                    <td colSpan="12" className="px-8 py-0 border-none">
                                                         <div className="py-6 grid grid-cols-2 gap-8 border-t border-gray-800/50">
                                                             {/* Items Detail Table */}
                                                             <div className="bg-gray-950/50 rounded-xl border border-gray-700 p-4 shadow-xl">
@@ -453,7 +465,7 @@ const DeliveryPage = () => {
                                     ))}
                                     {displayedOrders.length === 0 && (
                                         <tr>
-                                            <td colSpan="11" className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan="12" className="px-6 py-12 text-center text-gray-500">
                                                 데이터가 없습니다.
                                             </td>
                                         </tr>
