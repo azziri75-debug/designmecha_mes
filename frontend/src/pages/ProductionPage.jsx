@@ -347,7 +347,6 @@ const ProductionPage = () => {
     const completedPlans = plans.filter(p => p.status === 'COMPLETED' && filterData(p));
 
     return (
-    return (
         <div className="space-y-6">
             <div className="flex justify-between items-center no-print">
                 <h1 className="text-2xl font-bold text-white">생산 관리</h1>

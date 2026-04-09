@@ -1444,8 +1444,11 @@ async def update_production_plan_status(
                     selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
                     selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                     selectinload(ProductionPlanItem.work_log_items),  # Fix: MissingGreenlet
+                    selectinload(ProductionPlanItem.equipment),
+                    selectinload(ProductionPlanItem.worker),
                 ),
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
                 selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
                 selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
             )
