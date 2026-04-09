@@ -30,10 +30,16 @@ const getRank = (role) => {
    조직도 인쇄용 CSS (print 미디어 쿼리)
    ────────────────────────────────────────── */
 const PRINT_STYLE = `
+/* ── A4 가로 방향, 여백 최소화 ── */
+@page {
+  size: A4 landscape;
+  margin: 8mm 6mm;
+}
+
 @media print {
   /* ── 조직도 전용 인쇄 스타일 (body.org-chart-printing 클래스일 때만 적용) ── */
 
-  /* 1. body 전체를 숨기되 레이아웃은 유지 (visibility 방식 → 스크롤바 미캡처) */
+  /* 1. body 전체를 숨기되 레이아웃은 유지 */
   body.org-chart-printing {
     visibility: hidden !important;
     overflow: visible !important;
@@ -48,29 +54,72 @@ const PRINT_STYLE = `
     width: 100% !important;
     overflow: visible !important;
     background: white !important;
-    padding: 10mm 12mm !important;
+    padding: 4mm 6mm !important;
     box-sizing: border-box !important;
+    /* 전체 축소로 1페이지 맞춤 */
+    zoom: 0.82 !important;
   }
   body.org-chart-printing #org-chart-print-area * {
     visibility: visible !important;
   }
 
-  /* 3. 조직도 내 인쇄 불필요 요소 숨김 */
+  /* 3. 섹션 간격 축소 */
+  body.org-chart-printing #org-chart-print-area .space-y-10 > * + *,
+  body.org-chart-printing #org-chart-print-area .space-y-8 > * + * {
+    margin-top: 6mm !important;
+  }
+
+  /* 4. 제목 크기 축소 */
+  body.org-chart-printing #org-chart-print-area h1 {
+    font-size: 18pt !important;
+    margin-bottom: 1mm !important;
+  }
+
+  /* 5. 카드 그리드 — 가로 모드에 맞게 컬럼 늘리기 */
+  body.org-chart-printing #org-chart-print-area .grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  /* 6. 카드 내부 여백 축소 */
+  body.org-chart-printing #org-chart-print-area .org-card,
+  body.org-chart-printing #org-chart-print-area [class*="rounded-xl"] {
+    padding: 6px 8px !important;
+  }
+
+  /* 7. 카드 불필요 요소 숨김 */
   body.org-chart-printing .no-print {
     visibility: hidden !important;
     display: none !important;
   }
 
-  /* 4. 스크롤바 완전 제거 */
+  /* 8. 스크롤바 완전 제거 */
   body.org-chart-printing ::-webkit-scrollbar { display: none !important; }
 
-  /* 5. 카드가 페이지 경계에서 잘리지 않도록 */
+  /* 9. 카드가 페이지 경계에서 잘리지 않도록 */
   body.org-chart-printing .org-card {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  /* 6. 인쇄 시 경영진 카드 강조색 제거 → 흑백 통일 */
+  /* 10a. 텍스트 잘림 방지 - truncate 오버라이드 */
+  body.org-chart-printing #org-chart-print-area .truncate {
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: normal !important;
+    word-break: break-all !important;
+  }
+
+  /* 10b. 카드 폰트 크기 축소로 긴 텍스트 수용 */
+  body.org-chart-printing #org-chart-print-area .org-card .text-xs {
+    font-size: 7pt !important;
+    line-height: 1.3 !important;
+  }
+  body.org-chart-printing #org-chart-print-area .org-card .text-sm {
+    font-size: 8.5pt !important;
+  }
+
+  /* 10. 인쇄 시 경영진 카드 강조색 제거 → 흑백 통일 */
   body.org-chart-printing #org-chart-print-area [class*="from-blue"],
   body.org-chart-printing #org-chart-print-area [class*="from-purple"],
   body.org-chart-printing #org-chart-print-area [class*="to-purple"],
@@ -102,7 +151,7 @@ const PRINT_STYLE = `
 function StaffCard({ member, highlight }) {
   return (
     <div className={cn(
-      'rounded-xl border p-4 flex flex-col gap-1 shadow-sm transition-all',
+      'org-card rounded-xl border p-4 flex flex-col gap-1 shadow-sm transition-all',
       highlight
         ? 'bg-gradient-to-br from-blue-900/60 to-purple-900/40 border-blue-500/50 shadow-blue-900/30'
         : 'bg-gray-800/80 border-gray-700/60 hover:border-gray-600',
