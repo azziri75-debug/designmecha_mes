@@ -687,7 +687,7 @@ const BasicsPageContent = () => {
                         <Plus className="w-4 h-4" />
                         <span>권한 없음</span>
                     </button>
-                ) : activeTab === 'departments' ? null : (
+                ) : (activeTab === 'departments' || activeTab === 'company') ? null : (
                     <button
                         type="button"
                         onClick={openCreateModal}
