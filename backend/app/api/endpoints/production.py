@@ -1682,23 +1682,9 @@ async def create_work_log(
         await db.flush()
         await sync_plan_item_status(db, item_in.plan_item_id)
         
-        # --- Stock Movement & Backflush Hook ---
-        if item_in.good_quantity > 0 and plan_item:
-            # 1. 완제품/공정품 입고 처리
-            await handle_stock_movement(
-                db=db,
-                product_id=plan_item.product_id,
-                quantity=item_in.good_quantity,
-                transaction_type=TransactionType.IN,
-                reference=f"WorkLog (Item {log_item.id})"
-            )
-            # 2. 하위 부품 Backflush 처리
-            await handle_backflush(
-                db=db,
-                parent_product_id=plan_item.product_id,
-                produced_quantity=item_in.good_quantity,
-                reference=f"WorkLog (Item {log_item.id})"
-            )
+        # [NOTE] Stock movement is handled by sync_plan_item_status → on_production_item_completed
+        # when the last process reaches completion. Do NOT add per-item stock movement here
+        # as it would multiply by process count.
 
     await db.commit()
     await db.refresh(log)
@@ -1762,68 +1748,8 @@ async def update_work_log(
         else:
             log.attachment_file = log_in.attachment_file
 
-    if log_in.items is not None:
-        # --- Stock Reversal Hook ---
-        for old_item in log.items:
-            if old_item.good_quantity > 0:
-                # Load plan item to get product_id
-                plan_item = await db.get(ProductionPlanItem, old_item.plan_item_id)
-                if plan_item:
-                    # 완제품 입고 취소 (출고 처리)
-                    await handle_stock_movement(
-                        db=db,
-                        product_id=plan_item.product_id,
-                        quantity=-old_item.good_quantity,
-                        transaction_type=TransactionType.ADJUSTMENT,
-                        reference=f"WorkLog Update (Reverse Item {old_item.id})"
-                    )
-                    # 하위 부품 Backflush 취소 (입고 처리)
-                    await handle_backflush(
-                        db=db,
-                        parent_product_id=plan_item.product_id,
-                        produced_quantity=-old_item.good_quantity,
-                        reference=f"WorkLog Update (Reverse Item {old_item.id})"
-                    )
-
-        log.items.clear()
-        
-        for item_in in log_in.items:
-            # Fetch plan item to get default price if needed
-            plan_item = await db.get(ProductionPlanItem, item_in.plan_item_id)
-            u_price = item_in.unit_price
-            if not u_price and plan_item:
-                u_price = (plan_item.cost or 0) / (plan_item.quantity or 1)
-
-            log_item = WorkLogItem(
-                work_log_id=log.id,
-                plan_item_id=item_in.plan_item_id,
-                worker_id=item_in.worker_id,
-                start_time=item_in.start_time,
-                end_time=item_in.end_time,
-                good_quantity=item_in.good_quantity,
-                bad_quantity=item_in.bad_quantity,
-                unit_price=u_price,
-                note=item_in.note
-            )
-            log.items.append(log_item)
-            await db.flush()
-            await sync_plan_item_status(db, item_in.plan_item_id)
-
-            # --- Stock Movement & Backflush Hook for NEW items ---
-            if item_in.good_quantity > 0 and plan_item:
-                await handle_stock_movement(
-                    db=db,
-                    product_id=plan_item.product_id,
-                    quantity=item_in.good_quantity,
-                    transaction_type=TransactionType.IN,
-                    reference=f"WorkLog Update (New Item {log_item.id})"
-                )
-                await handle_backflush(
-                    db=db,
-                    parent_product_id=plan_item.product_id,
-                    produced_quantity=item_in.good_quantity,
-                    reference=f"WorkLog Update (New Item {log_item.id})"
-                )
+            # [NOTE] Stock movement is handled by sync_plan_item_status → on_production_item_completed.
+            # Do NOT add per-item stock movement here; it would multiply by process count.
 
     await db.commit()
 
