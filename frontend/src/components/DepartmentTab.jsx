@@ -147,30 +147,82 @@ function OrgChartModal({ onClose, departments, allStaff, company }) {
   const printRef = useRef(null);
 
   const handlePrint = () => {
-    // 1. 주입 주는 스타일 (body 직소 자식에만 적용)
-    if (!document.getElementById('__org_print_style__')) {
-      const style = document.createElement('style');
-      style.id = '__org_print_style__';
-      style.textContent = PRINT_STYLE;
-      document.head.appendChild(style);
-    }
-    // 2. 조직도 콘텐츠를 body 직소의 포털 div에 복사
-    const existing = document.getElementById('org-print-portal');
-    if (existing) document.body.removeChild(existing);
-    const portal = document.createElement('div');
-    portal.id = 'org-print-portal';
-    portal.style.display = 'none';
-    if (printRef.current) portal.innerHTML = printRef.current.innerHTML;
-    document.body.appendChild(portal);
-    // 3. body에 클래스 추가 → print CSS 활성화
-    document.body.classList.add('org-chart-printing');
-    // 4. afterprint 이벤트에서 정리
-    window.addEventListener('afterprint', () => {
-      document.body.classList.remove('org-chart-printing');
-      const p = document.getElementById('org-print-portal');
-      if (p) document.body.removeChild(p);
-    }, { once: true });
-    window.print();
+    if (!printRef.current) return;
+
+    // 앱 CSS 링크/스타일 수집
+    const linkTags = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map(l => l.outerHTML).join('\n');
+    const inlineStyles = Array.from(document.querySelectorAll('style'))
+      .map(s => `<style>${s.textContent}</style>`).join('\n');
+
+    const content = printRef.current.innerHTML;
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>\uc870\uc9c1\ub3c4</title>
+${linkTags}
+${inlineStyles}
+<style>
+@page { size: A4 landscape; margin: 6mm 8mm; }
+html, body {
+  background: white !important;
+  margin: 0 !important; padding: 3mm 5mm !important;
+  font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  zoom: 0.72;
+}
+/* \ub2e4\ud06c\ubaa8\ub4dc \ucf54\uc2a4 \uc624\ubc84\ub77c\uc774\ub4dc */
+* { color-scheme: light !important; background-attachment: initial; }
+[class*="bg-gray-7"],[class*="bg-gray-8"],[class*="bg-gray-9"],[class*="bg-black"],
+[class*="bg-gray-950"],[class*="bg-gray-800"],[class*="bg-gray-900"] {
+  background-color: white !important; background-image: none !important;
+}
+[class*="border-gray-7"],[class*="border-gray-6"],[class*="border-gray-5"] {
+  border-color: #d1d5db !important;
+}
+[class*="text-white"]  { color: #111827 !important; }
+[class*="text-gray-3"],[class*="text-gray-4"],[class*="text-gray-5"] { color: #6b7280 !important; }
+/* \uacbd\uc601\uc9c4 \ucee8\ub4dc \ud45c\uc2dc */
+[class*="from-blue"],[class*="from-purple"],[class*="to-purple"] {
+  background: white !important; background-image: none !important; border-color: #d1d5db !important;
+}
+[class*="bg-blue"],[class*="bg-purple"] { background: #e5e7eb !important; background-image: none !important; }
+[class*="text-blue"],[class*="text-purple"] { color: #1d4ed8 !important; }
+/* \uc870\uc9c1\ub3c4 \ub808\uc774\uc544\uc6c3 */
+.no-print { display: none !important; }
+.space-y-10>*+*,.space-y-8>*+* { margin-top: 4mm !important; }
+.space-y-6>*+* { margin-top: 3mm !important; }
+h1 { font-size: 16pt !important; color: #111 !important; margin-bottom: 1mm !important; }
+p  { font-size: 7.5pt !important; color: #6b7280 !important; margin-bottom: 2mm !important; }
+/* \uadf8\ub9ac\ub4dc */
+.grid { grid-template-columns: repeat(5,1fr) !important; gap: 5px !important; }
+/* \uce74\ub4dc */
+.org-card { break-inside: avoid !important; page-break-inside: avoid !important;
+  padding: 5px 7px !important; border: 1px solid #e5e7eb !important;
+  border-radius: 6px !important; background: white !important; }
+.org-card .text-xs { font-size: 6pt !important; line-height: 1.25 !important; }
+.org-card .text-sm { font-size: 7.5pt !important; }
+/* \ud14d\uc2a4\ud2b8 \uc798\ub9bc */
+.truncate { overflow: visible !important; text-overflow: unset !important;
+  white-space: normal !important; word-break: break-all !important; }
+/* \uc544\uc774\ucf58 SVG */
+svg { width: 10px !important; height: 10px !important; }
+/* \ub370\ucf54\ub808\uc774\ud130 \ub77c\uc778 \uc228\uae40 */
+.h-px { display: none !important; }
+</style>
+</head>
+<body>${content}</body>
+</html>`;
+
+    const win = window.open('', '_blank', 'width=1200,height=900');
+    if (!win) { alert('\ud31d\uc5c5\uc774 \ucc28\ub2e8\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \ud31d\uc5c5\uc744 \ud5c8\uc6a9\ud558\uace0 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.'); return; }
+    win.document.write(html);
+    win.document.close();
+    // CSS/\uc774\ubbf8\uc9c0 \ub85c\ub4dc \ub2e4 \ub09c \ud6c4 \uc778\uc1c4
+    win.addEventListener('load', () => {
+      setTimeout(() => { win.focus(); win.print(); win.close(); }, 400);
+    });
   };
 
   // 직급 최상위 직원 (대표이사 등) - 부서 미배정 or 최상위 직급
