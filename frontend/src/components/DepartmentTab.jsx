@@ -12,6 +12,9 @@ const DOC_TYPES = [
   { value: 'PURCHASE_ORDER', label: '구매발주서' },
 ];
 
+const sortByRankThenName = (a, b) =>
+  getRank(a.role) - getRank(b.role) || (a.name || '').localeCompare(b.name || '', 'ko');
+
 const cn = (...c) => c.filter(Boolean).join(' ');
 
 // 직급 순위 (낮은 숫자 = 높은 직급)
@@ -152,19 +155,19 @@ function OrgChartModal({ onClose, departments, allStaff, company }) {
 
     const topList = allStaff
       .filter(s => s.is_active && getRank(s.role) <= 3)
-      .sort((a, b) => getRank(a.role) - getRank(b.role));
+      .sort(sortByRankThenName);
 
     const assignedIds = new Set(departments.flatMap(d => (d.members || []).map(m => m.id)));
     const unassignedList = allStaff
       .filter(s => s.is_active && !assignedIds.has(s.id) && getRank(s.role) > 3)
-      .sort((a, b) => getRank(a.role) - getRank(b.role));
+      .sort(sortByRankThenName);
 
     const deptList = departments
       .map(d => ({
         ...d,
         sorted: [...(d.members || [])].map(enrich)
           .filter(m => m.is_active !== false)
-          .sort((a, b) => getRank(a.role) - getRank(b.role)),
+          .sort(sortByRankThenName),
       }))
       .filter(d => d.sorted.length > 0);
 
@@ -220,22 +223,22 @@ function OrgChartModal({ onClose, departments, allStaff, company }) {
   // 직급 최상위 직원 (대표이사 등) - 부서 미배정 or 최상위 직급
   const topStaff = allStaff
     .filter(s => s.is_active && getRank(s.role) <= 3)
-    .sort((a, b) => getRank(a.role) - getRank(b.role));
+    .sort(sortByRankThenName);
 
   // 부서별 직원 (allStaff로 enrich해서 phone/extension/email 포함)
   const deptSections = departments.map(dept => ({
     ...dept,
     sortedMembers: [...(dept.members || [])]
-      .map(m => allStaff.find(s => s.id === m.id) || m) // ← 전체 데이터로 보완
+      .map(m => allStaff.find(s => s.id === m.id) || m)
       .filter(m => m.is_active !== false)
-      .sort((a, b) => getRank(a.role) - getRank(b.role)),
+      .sort(sortByRankThenName),
   }));
 
   // 무소속 활성 직원 (부서 없고 최상위 직급도 아닌)
   const assignedIds = new Set(departments.flatMap(d => (d.members || []).map(m => m.id)));
   const unassigned = allStaff
     .filter(s => s.is_active && !assignedIds.has(s.id) && getRank(s.role) > 3)
-    .sort((a, b) => getRank(a.role) - getRank(b.role));
+    .sort(sortByRankThenName);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-950/95 backdrop-blur-sm">
