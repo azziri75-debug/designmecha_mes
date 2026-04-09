@@ -66,9 +66,19 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
 async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
     """
     모든 공정이 완료되었는지 확인하고, 그렇다면 생산 계획을 완료 처리합니다.
+    [FIX] update_production_plan_status를 직접 호출하면 MissingGreenlet이 발생할 수 있으므로
+    직접 상태를 변경하고 완료 효과 함수만 호출합니다.
     """
+    from app.core.timezone import now_kst
     result = await db.execute(
-        select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id)
+        select(ProductionPlan).options(
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order).selectinload(PurchaseOrder.items),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order).selectinload(OutsourcingOrder.items),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+        ).where(ProductionPlan.id == plan_id)
     )
     plan = result.scalars().first()
     if not plan or not plan.items:
@@ -76,52 +86,24 @@ async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
 
     all_completed = all(item.status == ProductionStatus.COMPLETED for item in plan.items)
     if all_completed and plan.status != ProductionStatus.COMPLETED:
-        await update_production_plan_status(plan_id, ProductionStatus.COMPLETED, db)
+        plan.status = ProductionStatus.COMPLETED
+        plan.actual_completion_date = now_kst().date()
+        db.add(plan)
+        await db.flush()
+        await _handle_production_completion_effects(db, plan)
+        await db.commit()
 
 async def process_stock_deduction(db: AsyncSession, plan_id: int):
     """
-    생산 계획 확정 시, 사용하기로 한 재고(stock_use_quantity)를 실제 창고에서 차감합니다.
-    공정별로 중복 차감되지 않도록 품목별로 합산하여 한 번만 차감합니다.
+    [DISABLED] 생산계획 확정 시 재고를 차감하는 함수.
+    재고 소진(stock_use_quantity)은 납품(delivery) 시점에 처리되어야 하므로
+    이 함수는 더 이상 아무런 동작을 수행하지 않습니다.
+    stock_deducted 플래그는 기록 용도로만 유지합니다.
     """
-    result = await db.execute(
-        select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(ProductionPlan.id == plan_id)
-    )
-    plan = result.scalars().first()
-    if not plan:
-        return
-
-    # 1. 품목별 차감 수량 집계 (중복 방지)
-    deductions = {} # {product_id: stock_use_quantity}
-    items_to_mark = []
-    
-    for item in plan.items:
-        if (item.stock_use_quantity or 0) > 0 and not item.stock_deducted:
-            # 모든 공정에서 동일한 stock_use_quantity를 가지므로 덮어쓰기 방식으로 집계 가능
-            deductions[item.product_id] = item.stock_use_quantity
-            items_to_mark.append(item)
-
-    if not deductions:
-        return
-
-    from app.api.utils.inventory import handle_stock_movement
-    from app.models.inventory import TransactionType
-
-    # 2. 실제 재고 차감 실행
-    for pid, qty in deductions.items():
-        await handle_stock_movement(
-            db=db,
-            product_id=pid,
-            quantity=-qty,
-            transaction_type=TransactionType.OUT,
-            reference=f"생산계획 확정 재고소진 (Plan #{plan.id})"
-        )
-
-    # 3. 모든 관련 품목에 대해 차감 완료 표시
-    for item in items_to_mark:
-        item.stock_deducted = True
-        db.add(item)
-    
-    await db.flush()
+    # [NOTE] 과거에는 여기서 stock_use_quantity를 OUT 처리했으나,
+    # 재고 소진은 납품 완료 시점에 발생해야 하므로 이 로직은 비활성화됩니다.
+    # 납품 완료 시 delivery 엔드포인트에서 자동 처리됩니다.
+    return
 
 async def _handle_production_completion_effects(db: AsyncSession, plan: ProductionPlan):
     """
