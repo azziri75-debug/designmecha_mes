@@ -13,6 +13,7 @@ import {
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import ResizableTable from '../components/ResizableTable';
+import { formatCurrency } from '../utils/currency';
 
 const SettlementPage = () => {
     const today = new Date();
@@ -23,6 +24,7 @@ const SettlementPage = () => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
     const [groups, setGroups] = useState([]);
+    const [exchangeRate, setExchangeRate] = useState(1350); // 1 USD = N KRW
 
     const tabs = [
         { id: "orders", label: "수주내역" },
@@ -64,6 +66,11 @@ const SettlementPage = () => {
 
     const fmtWon = (val) => new Intl.NumberFormat('ko-KR').format(val || 0) + '원';
     const fmtNum = (val) => new Intl.NumberFormat('ko-KR').format(val || 0);
+    // 통화 인식 포맷 (currency 필드 필요)
+    const fmtWithCurrency = (val, row, key) => {
+        const cur = row?.currency || 'KRW';
+        return formatCurrency(val, cur);
+    };
 
     const getColumns = () => {
         const noCol = { key: "no", label: "No", width: 60, noResize: true, thClassName: "text-center" };
@@ -76,8 +83,8 @@ const SettlementPage = () => {
                     { key: "product_name", label: "품명", width: 200 },
                     { key: "specification", label: "규격", width: 150 },
                     { key: "quantity", label: "수량", align: "right", width: 80 },
-                    { key: "unit_price", label: "단가", align: "right", format: fmtWon, width: 120 },
-                    { key: "total_price", label: "합계", align: "right", format: fmtWon, width: 140 },
+                    { key: "unit_price", label: "단가", align: "right", width: 120, renderCell: (val, row) => formatCurrency(val, row?.currency || 'KRW') },
+                    { key: "total_price", label: "합계", align: "right", width: 140, renderCell: (val, row) => formatCurrency(val, row?.currency || 'KRW') },
                 ];
             case "sales":
                 return [
@@ -88,8 +95,8 @@ const SettlementPage = () => {
                     { key: "product_name", label: "품명", width: 180 },
                     { key: "specification", label: "규격", width: 150 },
                     { key: "quantity", label: "수량", align: "right", width: 80 },
-                    { key: "unit_price", label: "단가", align: "right", format: fmtWon, width: 120 },
-                    { key: "total_price", label: "합계", align: "right", format: fmtWon, width: 140 },
+                    { key: "unit_price", label: "단가", align: "right", width: 120, renderCell: (val, row) => formatCurrency(val, row?.currency || 'KRW') },
+                    { key: "total_price", label: "합계", align: "right", width: 140, renderCell: (val, row) => formatCurrency(val, row?.currency || 'KRW') },
                 ];
             case "purchases":
                 return [
@@ -139,7 +146,7 @@ const SettlementPage = () => {
         }
     };
 
-    const totalSum = useMemo(() => {
+    const totalSums = useMemo(() => {
         const sumKey = {
             orders: "total_price",
             sales: "total_price",
@@ -147,10 +154,11 @@ const SettlementPage = () => {
             production: "total_cost",
             defects: "amount"
         }[activeTab];
-        
         if (!sumKey) return null;
-        return data.reduce((acc, curr) => acc + (curr[sumKey] || 0), 0);
-    }, [data, activeTab]);
+        const krw = data.filter(r => (r.currency || 'KRW') === 'KRW').reduce((a, c) => a + (c[sumKey] || 0), 0);
+        const usd = data.filter(r => (r.currency || 'KRW') === 'USD').reduce((a, c) => a + (c[sumKey] || 0), 0);
+        return { krw, usd, converted: krw + usd * exchangeRate };
+    }, [data, activeTab, exchangeRate]);
 
     const handleDownloadExcel = () => {
         if (!data || data.length === 0) {
@@ -246,6 +254,20 @@ const SettlementPage = () => {
                     <Download className="w-4 h-4" />
                     <span>엑셀 다운로드</span>
                 </button>
+
+                {/* 환율 설정 */}
+                <div className="space-y-1.5">
+                    <label className="text-xs text-gray-500 font-medium">기준환율 (1 USD = ? KRW)</label>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="number"
+                            value={exchangeRate}
+                            onChange={e => setExchangeRate(Number(e.target.value) || 1350)}
+                            className="bg-gray-900 border border-yellow-700/50 text-yellow-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-yellow-500 outline-none w-28 font-mono"
+                        />
+                        <span className="text-xs text-gray-500 font-medium">원</span>
+                    </div>
+                </div>
             </div>
 
             {/* Tabs & Total Sum */}
@@ -267,10 +289,32 @@ const SettlementPage = () => {
                     ))}
                 </nav>
 
-                {totalSum !== null && (
-                    <div className="bg-blue-500/10 border border-blue-500/30 px-6 py-2 rounded-full mb-2 md:mb-0 animate-in fade-in slide-in-from-right-4 duration-500">
-                        <span className="text-gray-400 text-xs mr-3 font-medium uppercase tracking-wider">Total Sum</span>
-                        <span className="text-blue-400 font-bold text-lg">{fmtWon(totalSum)}</span>
+                {totalSums !== null && (
+                    <div className="flex items-center gap-3 mb-2 md:mb-0 flex-wrap">
+                        {totalSums.krw !== 0 && (
+                            <div className="bg-blue-500/10 border border-blue-500/30 px-4 py-2 rounded-full animate-in fade-in">
+                                <span className="text-gray-400 text-xs mr-2 font-medium uppercase tracking-wider">화</span>
+                                <span className="text-blue-400 font-bold">{formatCurrency(totalSums.krw, 'KRW')}</span>
+                            </div>
+                        )}
+                        {totalSums.usd !== 0 && (
+                            <div className="bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 rounded-full animate-in fade-in">
+                                <span className="text-gray-400 text-xs mr-2 font-medium uppercase tracking-wider">$</span>
+                                <span className="text-emerald-400 font-bold">{formatCurrency(totalSums.usd, 'USD')}</span>
+                            </div>
+                        )}
+                        {totalSums.usd !== 0 && (
+                            <div className="bg-yellow-500/10 border border-yellow-500/30 px-4 py-2 rounded-full animate-in fade-in">
+                                <span className="text-gray-400 text-xs mr-2 font-medium">환올합산</span>
+                                <span className="text-yellow-400 font-bold">{formatCurrency(totalSums.converted, 'KRW')}</span>
+                            </div>
+                        )}
+                        {totalSums.usd === 0 && (
+                            <div className="bg-blue-500/10 border border-blue-500/30 px-4 py-2 rounded-full animate-in fade-in">
+                                <span className="text-gray-400 text-xs mr-3 font-medium uppercase tracking-wider">Total</span>
+                                <span className="text-blue-400 font-bold text-lg">{formatCurrency(totalSums.krw, 'KRW')}</span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -299,7 +343,7 @@ const SettlementPage = () => {
                                         }
                                         return (
                                             <td key={col.key} className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}>
-                                                {col.format ? col.format(item[col.key]) : item[col.key] || '-'}
+                                                {col.renderCell ? col.renderCell(item[col.key], item) : col.format ? col.format(item[col.key]) : item[col.key] || '-'}
                                             </td>
                                         );
                                     })}

@@ -11,6 +11,7 @@ import FileViewerModal from '../components/FileViewerModal';
 import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 import ResizableTable from '../components/ResizableTable';
+import { formatCurrency } from '../utils/currency';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -542,7 +543,7 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
                                     <TableCell>{new Date(d.defect_date).toLocaleDateString()}</TableCell>
                                     <TableCell>{d.defect_reason}</TableCell>
                                     <TableCell align="right">{d.quantity} EA</TableCell>
-                                    <TableCell align="right" sx={{ color: '#d32f2f' }}>{d.amount.toLocaleString()} 원</TableCell>
+                                    <TableCell align="right" sx={{ color: '#d32f2f' }}>{formatCurrency(d.amount, 'KRW')}</TableCell>
                                     <TableCell><Chip label={d.status} size="small" color={d.status === 'RESOLVED' ? 'success' : 'error'} variant="outlined" /></TableCell>
                                 </TableRow>
                             ))}
@@ -602,7 +603,7 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
                 <td className="px-4 py-4 whitespace-nowrap">{order.order_date}</td>
                 <td className="px-4 py-4 whitespace-nowrap text-orange-600">{order.delivery_date}</td>
                 <td className="px-4 py-4 truncate">{order.note || '-'}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-right">{order.total_amount?.toLocaleString()}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-right">{formatCurrency(order.total_amount, order.items?.[0]?.currency || 'KRW')}</td>
                 <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}><Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => onCreatePlan(order)}>계획</Button></td>
             </tr>
             {open && (
@@ -717,12 +718,12 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                     })()}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-orange-600 font-medium">{order?.delivery_date || '-'}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-right">{(order?.total_amount || 0).toLocaleString()}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-right">{formatCurrency(order?.total_amount || 0, order?.items?.[0]?.currency || 'KRW')}</td>
                 <td className="px-4 py-4 truncate max-w-[150px]">{order?.note || sp?.note || '-'}</td>
                 <td className="px-4 py-4 text-center"><Chip label={plan.status} size="small" color={plan.status === 'COMPLETED' ? "success" : plan.status === 'CONFIRMED' ? "secondary" : "primary"} /></td>
                 <td className="px-4 py-4 text-center">{defects?.length > 0 && <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); onShowDefects(defects); }}><AlertCircle className="w-5 h-5" /></IconButton>}</td>
                 <td className="px-4 py-4 text-center">{plan.items?.length || 0}</td>
-                <td className="px-4 py-4 text-right font-bold text-green-800">{(plan.items?.reduce((sum, item) => sum + (item.cost || 0), 0) || 0).toLocaleString()}</td>
+                <td className="px-4 py-4 text-right font-bold text-green-800">{formatCurrency(plan.items?.reduce((sum, item) => sum + (item.cost || 0), 0) || 0, 'KRW')}</td>
                 <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                     {safeParseJSON(plan.attachment_file, []).length > 0 && <IconButton size="small" color="primary" onClick={() => onOpenFiles(safeParseJSON(plan.attachment_file, []), plan)}><FileText className="w-4 h-4" /></IconButton>}
                 </td>

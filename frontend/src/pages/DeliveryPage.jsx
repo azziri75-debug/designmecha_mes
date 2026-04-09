@@ -7,6 +7,7 @@ import ResizableTable from '../components/ResizableTable';
 import DeliveryModal from '../components/DeliveryModal';
 import FileViewerModal from '../components/FileViewerModal';
 import TransactionStatementModal from '../components/TransactionStatementModal';
+import { formatCurrency } from '../utils/currency';
 
 const DELIVERY_COLS = [
     { key: 'customer',     label: '고객사',     width: 150 },
@@ -298,12 +299,10 @@ const DeliveryPage = () => {
                                                 <td className="px-6 py-5 text-sm max-w-[150px] truncate text-gray-400" title={ord.note}>{ord.note || '-'}</td>
                                                 <td className="px-6 py-5 text-sm text-gray-400">{ord.items?.length || 0}</td>
                                                 <td className="px-6 py-5">
-                                                    <span className="text-sm font-black text-white">{(ord.total_amount || 0).toLocaleString()}</span>
-                                                    <span className="text-[10px] text-gray-500 ml-1 font-bold">원</span>
+                                                    <span className="text-sm font-black text-white">{formatCurrency(ord.total_amount || 0, ord.items?.[0]?.currency || 'KRW')}</span>
                                                 </td>
                                                 <td className="px-6 py-5">
-                                                    <span className="text-sm font-black text-blue-400">{(ord.total_delivered_amount || 0).toLocaleString()}</span>
-                                                    <span className="text-[10px] text-gray-500 ml-1 font-bold">원</span>
+                                                    <span className="text-sm font-black text-blue-400">{formatCurrency(ord.total_delivered_amount || 0, ord.items?.[0]?.currency || 'KRW')}</span>
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     {/* 👇 상태 렌더링 배지 로직도 DELIVERY_COMPLETED를 인식하도록 수정 👇 */}
@@ -392,7 +391,7 @@ const DeliveryPage = () => {
                                                                                         </div>
                                                                                         <div className="text-right">
                                                                                             <div className="text-[10px] text-gray-400">총 납품액</div>
-                                                                                            <div className="text-sm font-black text-blue-400">₩{(dh.delivery_amount || 0).toLocaleString()}</div>
+                                                                                            <div className="text-sm font-black text-blue-400">{formatCurrency(dh.delivery_amount || 0, dh.items?.[0]?.order_item?.currency || 'KRW')}</div>
                                                                                         </div>
                                                                                     </div>
                                                                                     {/* Minimal Items List */}
@@ -401,7 +400,7 @@ const DeliveryPage = () => {
                                                                                             <div key={it.id} className="flex justify-between py-0.5">
                                                                                                 <span className="truncate flex-1">{it.order_item?.product?.name}</span>
                                                                                                 <span className="w-12 text-right">{it.quantity?.toLocaleString()}개</span>
-                                                                                                <span className="w-20 text-right font-bold text-gray-300">₩{(it.delivery_amount || 0).toLocaleString()}</span>
+                                                                                                <span className="w-20 text-right font-bold text-gray-300">{formatCurrency(it.delivery_amount || 0, it.order_item?.currency || 'KRW')}</span>
                                                                                             </div>
                                                                                         ))}
                                                                                     </div>
@@ -549,8 +548,8 @@ const DeliveryPage = () => {
                                                 {item.order_item?.product?.name || '품목명 없음'}
                                             </div>
                                             <div className="text-[10px] text-gray-500">
-                                                단가: ₩{(item.order_item?.unit_price || 0).toLocaleString()} ·
-                                                <span className="text-blue-400 font-bold ml-1">계: ₩{(item.quantity * (item.order_item?.unit_price || 0)).toLocaleString()}</span>
+                                                단가: {formatCurrency(item.order_item?.unit_price || 0, item.order_item?.currency || 'KRW')} ·
+                                                <span className="text-blue-400 font-bold ml-1">계: {formatCurrency(item.quantity * (item.order_item?.unit_price || 0), item.order_item?.currency || 'KRW')}</span>
                                             </div>
                                         </div>
                                         <div className="w-24">

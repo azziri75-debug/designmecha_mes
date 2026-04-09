@@ -5,6 +5,7 @@ import { cn, safeParseJSON } from '../lib/utils';
 import Select from 'react-select';
 import OrderHistoryModal from './OrderHistoryModal';
 import QuotationHistoryModal from './QuotationHistoryModal';
+import { formatCurrency, CurrencySelect } from '../utils/currency';
 
 const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = null }) => {
     // Select styling
@@ -82,6 +83,7 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                         unit: item.product?.unit || 'EA',
                         quantity: item.quantity,
                         unit_price: item.unit_price,
+                        currency: item.currency || 'KRW',
                         note: item.note || '',
                         is_discount: !item.product_id && item.product_name === '할인금액'
                     })),
@@ -135,6 +137,7 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
             unit: 'EA',
             quantity: 1,
             unit_price: 0,
+            currency: 'KRW',
             note: '',
             is_new: true
         };
@@ -173,6 +176,7 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
             product_spec: product.specification,
             unit: product.unit,
             unit_price: recentPrice,
+            currency: product.price_currency || 'KRW',
             is_new: false
         };
         setFormData(prev => ({ ...prev, items: newItems }));
@@ -408,7 +412,7 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                                         <th className="px-4 py-2">품명</th>
                                         <th className="px-4 py-2">규격</th>
                                         <th className="px-4 py-2 text-center">수량</th>
-                                        <th className="px-4 py-2">단가</th>
+                                        <th className="px-4 py-2">단가 / 통화</th>
                                         <th className="px-4 py-2 text-right">금액</th>
                                         <th className="px-4 py-2">비고</th>
                                         <th className="px-4 py-2 w-10"></th>
@@ -448,14 +452,21 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                                                 <td className="px-4 py-2">
                                                     <div className="flex items-center gap-1">
                                                         <span className={item.is_discount ? "text-amber-400" : ""}>{item.is_discount ? "-" : ""}</span>
-                                                        <input type="number" value={item.unit_price} onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)} className={cn("w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white", item.is_discount && "text-amber-400")} />
+                                                        <input type="number" value={item.unit_price} onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)} className={cn("w-20 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white", item.is_discount && "text-amber-400")} />
                                                         {!item.is_discount && (
-                                                            <button type="button" onClick={() => openPriceHistory(index, item.product_id)} className="p-1 text-gray-400 hover:text-blue-400 transition-colors" title="과거 단가 이력"><History className="w-4 h-4" /></button>
+                                                            <>
+                                                                <CurrencySelect
+                                                                    value={item.currency || 'KRW'}
+                                                                    onChange={(v) => updateItem(index, 'currency', v)}
+                                                                    className="!py-1 text-xs"
+                                                                />
+                                                                <button type="button" onClick={() => openPriceHistory(index, item.product_id)} className="p-1 text-gray-400 hover:text-blue-400 transition-colors" title="과거 단가 이력"><History className="w-4 h-4" /></button>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </td>
                                                 <td className={cn("px-4 py-2 text-right font-medium", item.is_discount ? "text-amber-400" : "text-blue-400")}>
-                                                    {(item.is_discount ? -Math.abs(item.unit_price) : (item.quantity * item.unit_price)).toLocaleString()}
+                                                    {formatCurrency(item.is_discount ? -Math.abs(item.unit_price) : (item.quantity * item.unit_price), item.currency || 'KRW')}
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <input type="text" value={item.note || ''} onChange={(e) => updateItem(index, 'note', e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white" />
@@ -467,20 +478,28 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                                         ))
                                     )}
                                 </tbody>
-                                {formData.items.length > 0 && (
-                                    <tfoot className="bg-gray-800 font-bold text-white">
-                                        <tr>
-                                            <td colSpan="4" className="px-4 py-2 text-right">합계</td>
-                                            <td className="px-4 py-2 text-right text-blue-400">
-                                                {formData.items.reduce((sum, i) => {
-                                                    const price = i.is_discount ? -Math.abs(i.unit_price) : i.unit_price;
-                                                    return sum + (i.quantity * price);
-                                                }, 0).toLocaleString()}
-                                            </td>
-                                            <td colSpan="2"></td>
-                                        </tr>
-                                    </tfoot>
-                                )}
+                            {formData.items.length > 0 && (() => {
+                                    const krwTotal = formData.items.filter(i => (i.currency || 'KRW') === 'KRW').reduce((s, i) => s + (i.is_discount ? -Math.abs(i.unit_price) : i.quantity * i.unit_price), 0);
+                                    const usdTotal = formData.items.filter(i => (i.currency || 'KRW') === 'USD').reduce((s, i) => s + (i.quantity * i.unit_price), 0);
+                                    return (
+                                        <tfoot className="bg-gray-800 font-bold text-white">
+                                            {krwTotal !== 0 && (
+                                                <tr>
+                                                    <td colSpan="4" className="px-4 py-1.5 text-right text-gray-400 text-sm">화 합계</td>
+                                                    <td className="px-4 py-1.5 text-right text-blue-400">{formatCurrency(krwTotal, 'KRW')}</td>
+                                                    <td colSpan="2"></td>
+                                                </tr>
+                                            )}
+                                            {usdTotal !== 0 && (
+                                                <tr>
+                                                    <td colSpan="4" className="px-4 py-1.5 text-right text-gray-400 text-sm">$ 합계</td>
+                                                    <td className="px-4 py-1.5 text-right text-emerald-400">{formatCurrency(usdTotal, 'USD')}</td>
+                                                    <td colSpan="2"></td>
+                                                </tr>
+                                            )}
+                                        </tfoot>
+                                    );
+                                })()}
                             </table>
                         </div>
                     </div>

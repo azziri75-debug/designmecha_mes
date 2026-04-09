@@ -10,6 +10,7 @@ import ProcessGroupManager from '../components/ProcessGroupManager';
 import ResizableTh from '../components/ResizableTh';
 import ProcessChartTemplate from '../components/ProcessChartTemplate';
 import ProductModal from '../components/ProductModal';
+import { formatCurrency, CurrencySelect } from '../utils/currency';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -1059,9 +1060,9 @@ const ProductsPage = ({ type }) => {
                                                 )}
                                                 <td className="px-6 py-4 font-medium">
                                                     {product.recent_price ? (
-                                                        <span className="text-blue-400">₩{product.recent_price.toLocaleString()}</span>
+                                                        <span className="text-blue-400">{formatCurrency(product.recent_price, product.price_currency)}</span>
                                                     ) : product.latest_price ? (
-                                                        <span className="text-indigo-400/80 italic" title="최근 이력 기반 단가">₩{product.latest_price.toLocaleString()}*</span>
+                                                        <span className="text-indigo-400/80 italic" title="최근 이력 기반 단가">{formatCurrency(product.latest_price, product.price_currency)}*</span>
                                                     ) : (
                                                         <span className="text-gray-600">-</span>
                                                     )}
@@ -1297,8 +1298,7 @@ const ProductsPage = ({ type }) => {
                                                                                         <td className="px-4 py-2 text-right text-emerald-400 font-medium">{item.required_quantity}</td>
                                                                                         <td className="px-4 py-2 text-xs">{item.child_product?.unit || 'EA'}</td>
                                                                                         <td className="px-4 py-2 text-right font-medium text-blue-400">
-                                                                                            {allParts.find(p => p.id === item.child_product_id)?.recent_price ?
-                                                                                                `₩${allParts.find(p => p.id === item.child_product_id).recent_price.toLocaleString()}` : '-'}
+                                                                                            {(() => { const p = allParts.find(p => p.id === item.child_product_id); return p?.recent_price ? formatCurrency(p.recent_price, p.price_currency) : '-'; })()}
                                                                                         </td>
                                                                                         <td className="px-4 py-2 text-center">
                                                                                             <button
@@ -1577,15 +1577,24 @@ const ProductsPage = ({ type }) => {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-emerald-400 font-bold uppercase tracking-wider">최근 단가 (₩)</label>
-                                                <input 
-                                                    name="recent_price" 
-                                                    type="number"
-                                                    value={productFormData.recent_price || productFormData.latest_price || 0} 
-                                                    onChange={handleProductInputChange} 
-                                                    className="w-full bg-emerald-900/10 border border-emerald-500/30 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium" 
-                                                    placeholder="0" 
-                                                />
+                                                <label className="text-xs font-semibold text-emerald-400 font-bold uppercase tracking-wider">
+                                                    최근 단가 ({productFormData.price_currency === 'USD' ? '$' : '₩'})
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        name="recent_price"
+                                                        type="number"
+                                                        value={productFormData.recent_price || productFormData.latest_price || 0}
+                                                        onChange={handleProductInputChange}
+                                                        className="flex-1 bg-emerald-900/10 border border-emerald-500/30 text-white rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium"
+                                                        placeholder="0"
+                                                    />
+                                                    <CurrencySelect
+                                                        value={productFormData.price_currency || 'KRW'}
+                                                        onChange={(v) => setProductFormData(prev => ({ ...prev, price_currency: v }))}
+                                                        className="!py-2.5 !rounded-lg"
+                                                    />
+                                                </div>
                                                 {(!productFormData.recent_price && productFormData.latest_price > 0) && (
                                                     <p className="text-[10px] text-emerald-500/70 mt-1">이력 기반 자동 제안된 단가입니다.</p>
                                                 )}
@@ -1926,8 +1935,7 @@ const ProductsPage = ({ type }) => {
                                                             </td>
                                                             <td className="px-4 py-3 text-xs text-gray-400">{item.child_product?.unit || 'EA'}</td>
                                                             <td className="px-4 py-3 text-right font-medium text-blue-400">
-                                                                {allParts.find(p => p.id === item.child_product_id)?.recent_price ?
-                                                                    `₩${allParts.find(p => p.id === item.child_product_id).recent_price.toLocaleString()}` : '-'}
+                                                                {(() => { const p = allParts.find(p => p.id === item.child_product_id); return p?.recent_price ? formatCurrency(p.recent_price, p.price_currency) : '-'; })()}
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className="flex items-center justify-center gap-2">

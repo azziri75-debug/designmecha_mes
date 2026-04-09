@@ -11,6 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import ResizableTh from '../components/ResizableTh';
+import { formatCurrency } from '../utils/currency';
 
 /* ─── Utility ───────────────────────────────────────────────── */
 const fmt = (n) => (n ?? 0).toLocaleString('ko-KR');
@@ -533,7 +534,7 @@ const Dashboard = () => {
                                     <tr key={o.id} className="hover:bg-gray-800/40 transition-colors cursor-pointer border-b border-gray-800 text-gray-300" onClick={() => navigate('/sales')}>
                                         <td className="py-2.5 px-2 font-mono text-[11px] text-blue-400">{o.order_no}</td>
                                         <td className="py-2.5 px-2 font-medium text-white">{o.partner?.name || '-'}</td>
-                                        <td className="py-2.5 px-2 text-right text-emerald-400 tabular-nums">{fmtWon(o.total_amount)}</td>
+                                        <td className="py-2.5 px-2 text-right text-emerald-400 tabular-nums">{formatCurrency(o.total_amount, o.items?.[0]?.currency || 'KRW')}</td>
                                         <td className="py-2.5 px-2 text-center"><StatusBadge status={o.status} /></td>
                                         <td className="py-2.5 px-2 text-gray-500">{o.order_date}</td>
                                     </tr>

@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Search, FileText, Download, Upload, History } from 'lucide-react';
 import api from '../lib/api';
 import { cn, safeParseJSON } from '../lib/utils';
-
 import Select from 'react-select';
 import OrderHistoryModal from './OrderHistoryModal';
 import QuotationHistoryModal from './QuotationHistoryModal';
+import { formatCurrency, CurrencySelect } from '../utils/currency';
 
 const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }) => {
     // Select styling
@@ -87,6 +87,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                         unit: item.product?.unit || item.unit,
                         quantity: item.quantity,
                         unit_price: item.unit_price,
+                        currency: item.currency || 'KRW',
                         note: item.note || ''
                     })),
                     note: orderToEdit.note || '',
@@ -174,6 +175,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
             unit: 'EA',
             quantity: 0,
             unit_price: 0,
+            currency: 'KRW',
             note: ''
         };
         setFormData(prev => ({ ...prev, items: [...prev.items, newItem] }));
@@ -196,7 +198,8 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
             product_name: product.name,
             product_spec: product.specification,
             unit: product.unit,
-            unit_price: recentPrice
+            unit_price: recentPrice,
+            currency: product.price_currency || 'KRW'
         };
         setFormData(prev => ({ ...prev, items: newItems }));
     };
@@ -534,7 +537,12 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                                             type="number"
                                                             value={item.unit_price}
                                                             onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                                                            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white"
+                                                            className="w-20 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white"
+                                                        />
+                                                        <CurrencySelect
+                                                            value={item.currency || 'KRW'}
+                                                            onChange={(v) => updateItem(index, 'currency', v)}
+                                                            className="!py-1 text-xs"
                                                         />
                                                         <button
                                                             type="button"
@@ -547,7 +555,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-2 text-right font-medium text-blue-400">
-                                                    {(item.quantity * item.unit_price).toLocaleString()}
+                                                    {formatCurrency(item.quantity * item.unit_price, item.currency || 'KRW')}
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <input
@@ -566,17 +574,28 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                         ))
                                     )}
                                 </tbody>
-                                {formData.items.length > 0 && (
-                                    <tfoot className="bg-gray-800 font-bold text-white">
-                                        <tr>
-                                            <td colSpan="4" className="px-4 py-2 text-right">합계</td>
-                                            <td className="px-4 py-2 text-right text-blue-400">
-                                                {formData.items.reduce((sum, i) => sum + (i.quantity * i.unit_price), 0).toLocaleString()}
-                                            </td>
-                                            <td colSpan="2"></td>
-                                        </tr>
-                                    </tfoot>
-                                )}
+                                {formData.items.length > 0 && (() => {
+                                        const krwTotal = formData.items.filter(i => (i.currency || 'KRW') === 'KRW').reduce((s, i) => s + i.quantity * i.unit_price, 0);
+                                        const usdTotal = formData.items.filter(i => (i.currency || 'KRW') === 'USD').reduce((s, i) => s + i.quantity * i.unit_price, 0);
+                                        return (
+                                            <tfoot className="bg-gray-800 font-bold text-white">
+                                                {krwTotal !== 0 && (
+                                                    <tr>
+                                                        <td colSpan="4" className="px-4 py-1.5 text-right text-gray-400 text-sm">화 합계</td>
+                                                        <td className="px-4 py-1.5 text-right text-blue-400">{formatCurrency(krwTotal, 'KRW')}</td>
+                                                        <td colSpan="2"></td>
+                                                    </tr>
+                                                )}
+                                                {usdTotal !== 0 && (
+                                                    <tr>
+                                                        <td colSpan="4" className="px-4 py-1.5 text-right text-gray-400 text-sm">$ 합계</td>
+                                                        <td className="px-4 py-1.5 text-right text-emerald-400">{formatCurrency(usdTotal, 'USD')}</td>
+                                                        <td colSpan="2"></td>
+                                                    </tr>
+                                                )}
+                                            </tfoot>
+                                        );
+                                    })()}
                             </table>
                         </div>
                     </div>
