@@ -147,82 +147,74 @@ function OrgChartModal({ onClose, departments, allStaff, company }) {
   const printRef = useRef(null);
 
   const handlePrint = () => {
-    if (!printRef.current) return;
+    // dept members enrich
+    const enrich = (m) => allStaff.find(s => s.id === m.id) || m;
 
-    // 앱 CSS 링크/스타일 수집
-    const linkTags = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-      .map(l => l.outerHTML).join('\n');
-    const inlineStyles = Array.from(document.querySelectorAll('style'))
-      .map(s => `<style>${s.textContent}</style>`).join('\n');
+    const topList = allStaff
+      .filter(s => s.is_active && getRank(s.role) <= 3)
+      .sort((a, b) => getRank(a.role) - getRank(b.role));
 
-    const content = printRef.current.innerHTML;
+    const assignedIds = new Set(departments.flatMap(d => (d.members || []).map(m => m.id)));
+    const unassignedList = allStaff
+      .filter(s => s.is_active && !assignedIds.has(s.id) && getRank(s.role) > 3)
+      .sort((a, b) => getRank(a.role) - getRank(b.role));
+
+    const deptList = departments
+      .map(d => ({
+        ...d,
+        sorted: [...(d.members || [])].map(enrich)
+          .filter(m => m.is_active !== false)
+          .sort((a, b) => getRank(a.role) - getRank(b.role)),
+      }))
+      .filter(d => d.sorted.length > 0);
+
+    const card = (m) => `
+      <div style="border:1px solid #e5e7eb;border-radius:8px;padding:7px 10px;width:170px;flex:0 0 auto;break-inside:avoid;page-break-inside:avoid;background:white;">
+        <div style="font-size:10pt;font-weight:700;color:#111827;margin-bottom:1px;">${m.name || ''}</div>
+        ${m.role ? `<div style="font-size:8pt;color:#6b7280;margin-bottom:3px;">${m.role}</div>` : ''}
+        <div style="font-size:7pt;color:#374151;line-height:1.7;word-break:break-all;">
+          ${m.phone ? `&#128241; ${m.phone}<br>` : ''}
+          ${m.extension ? `&#9742; &#45236;&#49440; ${m.extension}<br>` : ''}
+          ${m.email ? `&#9993; ${m.email}` : ''}
+        </div>
+      </div>`;
+
+    const section = (title, members) => `
+      <div style="margin-bottom:12px;">
+        <div style="font-size:10pt;font-weight:600;color:#1f2937;border-bottom:1px solid #e5e7eb;padding-bottom:3px;margin-bottom:7px;">${title}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${members.map(card).join('')}
+        </div>
+      </div>`;
 
     const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>\uc870\uc9c1\ub3c4</title>
-${linkTags}
-${inlineStyles}
+<html><head>
+<meta charset="UTF-8"><title>${company?.name || ''} 조직도</title>
 <style>
-@page { size: A4 landscape; margin: 6mm 8mm; }
-html, body {
-  background: white !important;
-  margin: 0 !important; padding: 3mm 5mm !important;
-  font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
-  zoom: 0.72;
-}
-/* \ub2e4\ud06c\ubaa8\ub4dc \ucf54\uc2a4 \uc624\ubc84\ub77c\uc774\ub4dc */
-* { color-scheme: light !important; background-attachment: initial; }
-[class*="bg-gray-7"],[class*="bg-gray-8"],[class*="bg-gray-9"],[class*="bg-black"],
-[class*="bg-gray-950"],[class*="bg-gray-800"],[class*="bg-gray-900"] {
-  background-color: white !important; background-image: none !important;
-}
-[class*="border-gray-7"],[class*="border-gray-6"],[class*="border-gray-5"] {
-  border-color: #d1d5db !important;
-}
-[class*="text-white"]  { color: #111827 !important; }
-[class*="text-gray-3"],[class*="text-gray-4"],[class*="text-gray-5"] { color: #6b7280 !important; }
-/* \uacbd\uc601\uc9c4 \ucee8\ub4dc \ud45c\uc2dc */
-[class*="from-blue"],[class*="from-purple"],[class*="to-purple"] {
-  background: white !important; background-image: none !important; border-color: #d1d5db !important;
-}
-[class*="bg-blue"],[class*="bg-purple"] { background: #e5e7eb !important; background-image: none !important; }
-[class*="text-blue"],[class*="text-purple"] { color: #1d4ed8 !important; }
-/* \uc870\uc9c1\ub3c4 \ub808\uc774\uc544\uc6c3 */
-.no-print { display: none !important; }
-.space-y-10>*+*,.space-y-8>*+* { margin-top: 4mm !important; }
-.space-y-6>*+* { margin-top: 3mm !important; }
-h1 { font-size: 16pt !important; color: #111 !important; margin-bottom: 1mm !important; }
-p  { font-size: 7.5pt !important; color: #6b7280 !important; margin-bottom: 2mm !important; }
-/* \uadf8\ub9ac\ub4dc */
-.grid { grid-template-columns: repeat(5,1fr) !important; gap: 5px !important; }
-/* \uce74\ub4dc */
-.org-card { break-inside: avoid !important; page-break-inside: avoid !important;
-  padding: 5px 7px !important; border: 1px solid #e5e7eb !important;
-  border-radius: 6px !important; background: white !important; }
-.org-card .text-xs { font-size: 6pt !important; line-height: 1.25 !important; }
-.org-card .text-sm { font-size: 7.5pt !important; }
-/* \ud14d\uc2a4\ud2b8 \uc798\ub9bc */
-.truncate { overflow: visible !important; text-overflow: unset !important;
-  white-space: normal !important; word-break: break-all !important; }
-/* \uc544\uc774\ucf58 SVG */
-svg { width: 10px !important; height: 10px !important; }
-/* \ub370\ucf54\ub808\uc774\ud130 \ub77c\uc778 \uc228\uae40 */
-.h-px { display: none !important; }
+  @page { size: A4 landscape; margin: 8mm 10mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif;
+    background: white; margin: 0; padding: 3mm 4mm;
+    zoom: 0.85;
+  }
 </style>
 </head>
-<body>${content}</body>
-</html>`;
+<body>
+  <h1 style="text-align:center;font-size:18pt;color:#111;margin:0 0 2px 0;">${company?.name || ''} 조직도</h1>
+  <p style="text-align:center;font-size:8.5pt;color:#9ca3af;margin:0 0 10px 0;">
+    ${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 기준
+  </p>
+  ${topList.length > 0 ? section('🏢 경영진', topList) : ''}
+  ${deptList.map(d => section(`👥 ${d.name} (${d.sorted.length}명)`, d.sorted)).join('')}
+  ${unassignedList.length > 0 ? section('기타', unassignedList) : ''}
+</body></html>`;
 
-    const win = window.open('', '_blank', 'width=1200,height=900');
-    if (!win) { alert('\ud31d\uc5c5\uc774 \ucc28\ub2e8\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \ud31d\uc5c5\uc744 \ud5c8\uc6a9\ud558\uace0 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.'); return; }
+    const win = window.open('', '_blank', 'width=1200,height=850');
+    if (!win) { alert('팝업이 차단되었습니다. 주소표시줄에서 팝업 허용 후 다시 시도해주세요.'); return; }
     win.document.write(html);
     win.document.close();
-    // CSS/\uc774\ubbf8\uc9c0 \ub85c\ub4dc \ub2e4 \ub09c \ud6c4 \uc778\uc1c4
-    win.addEventListener('load', () => {
-      setTimeout(() => { win.focus(); win.print(); win.close(); }, 400);
-    });
+    setTimeout(() => { win.focus(); win.print(); win.close(); }, 600);
   };
 
   // 직급 최상위 직원 (대표이사 등) - 부서 미배정 or 최상위 직급
