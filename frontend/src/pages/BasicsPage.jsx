@@ -2465,7 +2465,6 @@ const BasicsPageContent = () => {
                 files={viewingFiles}
                 title={fileModalTitle}
             />
-        </div>
         </>
         )}
         </div >
