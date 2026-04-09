@@ -513,7 +513,7 @@ const ProductionPage = () => {
             <ProductionSheetModal isOpen={sheetModalOpen} onClose={() => setSheetModalOpen(false)} plan={sheetPlan} sheetType={sheetType} onSave={fetchPlans} />
             <FileViewerModal isOpen={showFileModal} onClose={() => setShowFileModal(false)} files={viewingFiles} title={viewingFileTitle} onDeleteFile={onDeleteFile} />
             <DefectInfoModal isOpen={defectModalOpen} onClose={() => setDefectModalOpen(false)} defects={selectedDefects} />
-        </Box>
+        </div>
     );
 };
 
