@@ -765,10 +765,12 @@ async def update_production_plan(
         await process_stock_deduction(db, plan_id=plan.id)
         # Re-fetch with needed relationships for effects
         res = await db.execute(select(ProductionPlan).options(
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items),
-            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items),
-            selectinload(ProductionPlan.order),
-            selectinload(ProductionPlan.stock_production)
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order).selectinload(PurchaseOrder.items),
+            selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order).selectinload(OutsourcingOrder.items),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+            selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+            selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
         ).where(ProductionPlan.id == plan.id))
         refetched_plan = res.scalars().first()
         await _handle_production_completion_effects(db, refetched_plan)
@@ -1456,7 +1458,13 @@ async def update_production_plan_status(
                     selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
                     selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
                     selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
-                    selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlanItem.plan).options(
+                        selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                        selectinload(ProductionPlan.stock_production).options(
+                            selectinload(StockProduction.product),
+                            selectinload(StockProduction.partner),
+                        ),
+                    ),
                     selectinload(ProductionPlanItem.work_log_items),  # Fix: MissingGreenlet
                     selectinload(ProductionPlanItem.equipment),
                     selectinload(ProductionPlanItem.worker),
