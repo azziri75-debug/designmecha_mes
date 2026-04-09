@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
@@ -264,15 +264,22 @@ const OutsourcingPage = () => {
         }
     };
 
-    const handleCompleteOrder = async (orderId) => {
-        if (!window.confirm("이 외주건을 완료(입고) 처리하시겠습니까?\n품목 재고가 자동으로 업데이트됩니다.")) return;
+    const handleCompleteOrder = (orderId) => {
+        const today = new Date().toISOString().split('T')[0];
+        setDeliveryDateDialog({ orderId, date: today });
+    };
+
+    const handleCompleteConfirm = async () => {
+        if (!deliveryDateDialog) return;
+        const { orderId, date } = deliveryDateDialog;
         try {
-            await api.post(`/purchasing/outsourcing/orders/${orderId}/complete`);
-            alert("완료(입고) 처리되었습니다.");
+            await api.post(`/purchasing/outsourcing/orders/${orderId}/complete`, { actual_delivery_date: date });
+            alert('입고 처리되었습니다.');
+            setDeliveryDateDialog(null);
             handleSuccess();
         } catch (error) {
-            console.error("Complete failed", error);
-            alert("처리 실패: " + (error.response?.data?.detail || error.message));
+            console.error('Complete failed', error);
+            alert('처리 실패: ' + (error.response?.data?.detail || error.message));
         }
     };
 
