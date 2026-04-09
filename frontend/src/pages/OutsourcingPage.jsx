@@ -12,6 +12,12 @@ import {
 import api from '../lib/api';
 import { cn, safeParseJSON } from '../lib/utils';
 import ResizableTable from '../components/ResizableTable';
+
+const Card = ({ children, className }) => (
+    <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
+        {children}
+    </div>
+);
 import OutsourcingOrderModal from '../components/OutsourcingOrderModal';
 import PurchaseSheetModal from '../components/PurchaseSheetModal';
 import FileViewerModal from '../components/FileViewerModal';
@@ -358,107 +364,88 @@ const OutsourcingPage = () => {
     };
 
     return (
-        <Box sx={{ width: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color: '#1a237e' }}>
+        <div className="space-y-6">
+            <div className="flex justify-between items-center no-print">
+                <h1 className="text-2xl font-bold text-white">
                     외주 가공 발주 관리
-                </Typography>
-            </Box>
+                </h1>
+            </div>
 
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-                <Tabs
-                    value={tabValue}
-                    onChange={handleTabChange}
-                    sx={{
-                        '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                        '& .Mui-selected': { color: '#fff !important' },
-                    }}
-                >
-                    <Tab label="미발주 현황 (Pending)" />
-                    <Tab label="발주 현황 (Ordered)" />
-                    <Tab label="완료 내역 (Completed)" />
-                </Tabs>
-            </Box>
+            {/* Tabs */}
+            <div className="flex gap-2 border-b border-gray-700 print-safe-area">
+                {['미발주 현황 (Pending)', '발주 현황 (Ordered)', '완료 내역 (Completed)'].map((label, index) => (
+                    <button
+                        key={index}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium transition-colors relative",
+                            tabValue === index ? "text-blue-400" : "text-gray-400 hover:text-gray-300"
+                        )}
+                        onClick={() => handleTabChange(null, index)}
+                    >
+                        {label}
+                        {tabValue === index && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400" />
+                        )}
+                    </button>
+                ))}
+            </div>
 
             {/* Filter Section */}
-            <Paper sx={{ p: 2, mb: 2, bgcolor: '#fcfcfc', border: '1px solid #eee' }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 150 }}>
-                        <Typography variant="body2" color="textSecondary">사업부:</Typography>
-                        <Box sx={{ flex: 1 }}>
+            <Card className="p-4 flex flex-wrap gap-4 items-end mb-4 print-safe-area">
+                <div className="flex-1 min-w-[150px] space-y-1">
+                    <label className="text-xs text-gray-400">사업부</label>
+                    <select
+                        value={selectedMajorGroupId}
+                        onChange={(e) => setSelectedMajorGroupId(e.target.value)}
+                        className="w-full bg-gray-700 border-gray-600 outline-none focus:border-blue-500 rounded text-white px-3 py-2 text-sm h-[38px]"
+                    >
+                        <option value="">전체 사업부</option>
+                        {groups.filter(g => g.type === 'MAJOR').map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                    </select>
+                </div>
+                {(tabValue === 1 || tabValue === 2) && (
+                    <>
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400">시작일</label>
+                            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400">종료일</label>
+                            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
+                        </div>
+                        <div className="flex-1 min-w-[200px] space-y-1">
+                            <label className="text-xs text-gray-400">외주처</label>
                             <select
-                                value={selectedMajorGroupId}
-                                onChange={(e) => setSelectedMajorGroupId(e.target.value)}
-                                style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', fontSize: '14px' }}
+                                value={selectedPartnerId || ''}
+                                onChange={(e) => setSelectedPartnerId(e.target.value || null)}
+                                className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]"
                             >
-                                <option value="">전체 사업부</option>
-                                {groups.filter(g => g.type === 'MAJOR').map(g => (
-                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                <option value="">전체 외주처</option>
+                                {partners.filter(p => (p.partner_type && p.partner_type.includes('SUBCONTRACTOR')) || p.type === 'SUBCONTRACTOR').map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
                                 ))}
                             </select>
-                        </Box>
-                    </Box>
-                    {(tabValue === 1 || tabValue === 2) && (
-                        <>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="body2" color="textSecondary">기간:</Typography>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
-                                />
-                                <span>~</span>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
-                                />
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
-                                <Typography variant="body2" color="textSecondary">외주처:</Typography>
-                                <Box sx={{ flex: 1 }}>
-                                    <select
-                                        value={selectedPartnerId || ''}
-                                        onChange={(e) => setSelectedPartnerId(e.target.value || null)}
-                                        style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', fontSize: '14px' }}
-                                    >
-                                        <option value="">전체 외주처</option>
-                                        {partners.filter(p => (p.partner_type && p.partner_type.includes('SUBCONTRACTOR')) || p.type === 'SUBCONTRACTOR').map(p => (
-                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                        ))}
-                                    </select>
-                                </Box>
-                            </Box>
-                        </>
-                    )}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" color="textSecondary">품명/품번:</Typography>
-                        <input
-                            type="text"
-                            placeholder="검색어 입력..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '150px', fontSize: '14px' }}
-                        />
-                    </Box>
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        color="inherit"
-                        onClick={() => {
-                            setStartDate('');
-                            setEndDate('');
-                            setSelectedPartnerId(null);
-                            setSearchQuery('');
-                            setSelectedMajorGroupId('');
-                        }}
-                    >
-                        초기화
-                    </Button>
-                </Box>
-            </Paper>
+                        </div>
+                    </>
+                )}
+                <div className="space-y-1">
+                    <label className="text-xs text-gray-400">품명/품번</label>
+                    <div className="relative">
+                        <input type="text" placeholder="검색어 입력..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-[200px] bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
+                    </div>
+                </div>
+                <button
+                    onClick={() => { setStartDate(''); setEndDate(''); setSelectedPartnerId(null); setSearchQuery(''); setSelectedMajorGroupId(''); }}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-sm h-[38px] transition-colors font-medium border border-gray-600"
+                >
+                    초기화
+                </button>
+            </Card>
+
+            <Card className="p-0 overflow-hidden min-h-[500px]">
+                <div className="overflow-x-auto p-3">
 
 
             {tabValue === 0 && (
@@ -612,7 +599,9 @@ const OutsourcingPage = () => {
                 stockProduction={selectedSourceStock}
                 readonly={true}
             />
-        </Box>
+                </div>
+            </Card>
+        </div>
     );
 };
 

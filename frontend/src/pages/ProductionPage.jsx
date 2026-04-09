@@ -12,6 +12,12 @@ import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 import ResizableTable from '../components/ResizableTable';
 
+const Card = ({ children, className }) => (
+    <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
+        {children}
+    </div>
+);
+
 const UNPLANNED_COLS = [
     { key: 'no', label: '수주/재고번호', width: 150 },
     { key: 'partner', label: '거래처', width: 150 },
@@ -341,65 +347,101 @@ const ProductionPage = () => {
     const completedPlans = plans.filter(p => p.status === 'COMPLETED' && filterData(p));
 
     return (
-        <Box sx={{ width: '100%' }}>
-            <Typography variant="h4" gutterBottom component="div" sx={{ mb: 4, fontWeight: 'bold', color: '#1a237e' }} className="no-print">
-                생산 관리
-            </Typography>
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center no-print">
+                <h1 className="text-2xl font-bold text-white">생산 관리</h1>
+            </div>
 
-            <Paper sx={{ width: '100%', mb: 2 }} className="print-safe-area">
-                <Tabs value={tabIndex} onChange={handleTabChange} indicatorColor="primary" textColor="primary">
-                    <Tab label="생산 대기 수주" />
-                    <Tab label="생산현황" />
-                    <Tab label="생산 완료" />
-                </Tabs>
+            {/* Tabs */}
+            <div className="flex gap-2 border-b border-gray-700 print-safe-area">
+                {['생산 대기 수주', '생산현황', '생산 완료'].map((label, index) => (
+                    <button
+                        key={index}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium transition-colors relative",
+                            tabIndex === index ? "text-blue-400" : "text-gray-400 hover:text-gray-300"
+                        )}
+                        onClick={() => handleTabChange(null, index)}
+                    >
+                        {label}
+                        {tabIndex === index && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400" />
+                        )}
+                    </button>
+                ))}
+            </div>
 
-                <Paper sx={{ mb: 3, bgcolor: '#1e293b', border: '1px solid #334155', borderRadius: 2, overflow: 'hidden' }}>
-                <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'center', borderBottom: '1px solid #334155', flexWrap: 'wrap' }}>
-                        <Typography variant="body2" color="textSecondary">기간:</Typography>
-                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }} />
-                        <span>~</span>
-                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px' }} />
-                    </Box>
-                    <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: '#fcfcfc' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 150 }}>
-                        <Typography variant="body2" color="textSecondary">사업부:</Typography>
-                        <div style={{ flex: 1 }}>
-                            <Select
-                                isClearable
-                                placeholder="전체 사업부"
-                                options={groups.filter(g => g.type === 'MAJOR').map(g => ({ value: g.id.toString(), label: g.name }))}
-                                value={groups.find(g => g.id.toString() === selectedMajorGroupId) ? { value: selectedMajorGroupId, label: groups.find(g => g.id.toString() === selectedMajorGroupId).name } : null}
-                                onChange={(opt) => setSelectedMajorGroupId(opt ? opt.value : '')}
-                            />
-                        </div>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
-                        <Typography variant="body2" color="textSecondary">거래처:</Typography>
-                        <div style={{ flex: 1 }}>
-                            <Select
-                                isClearable
-                                placeholder="전체 거래처"
-                                options={[
-                                    { value: 'all', label: '전체 거래처' },
-                                    { value: 'internal', label: '사내(재고)' },
-                                    ...partners.map(p => ({ value: p.id.toString(), label: p.name }))
-                                ]}
-                                value={filterPartner === 'all' ? { value: 'all', label: '전체 거래처' } :
-                                    filterPartner === 'internal' ? { value: 'internal', label: '사내(재고)' } :
-                                        partners.find(p => p.id.toString() === filterPartner) ? { value: filterPartner, label: partners.find(p => p.id.toString() === filterPartner).name } : null}
-                                onChange={(opt) => setFilterPartner(opt ? opt.value : 'all')}
-                            />
-                        </div>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" color="textSecondary">품명/품번:</Typography>
-                        <input type="text" placeholder="검색어 입력..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '150px' }} />
-                    </Box>
-                    <Button size="small" variant="outlined" color="inherit" onClick={() => { setStartDate(''); setEndDate(''); setFilterPartner('all'); setSearchQuery(''); setSelectedMajorGroupId(''); }}>초기화</Button>
-                </Box>
-                </Paper>
+            {/* Content & Filters */}
+            <Card className="p-4 flex flex-wrap gap-4 items-end mb-4 print-safe-area">
+                <div className="space-y-1">
+                    <label className="text-xs text-gray-400">시작일</label>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs text-gray-400">종료일</label>
+                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
+                </div>
+                
+                <div className="flex-1 min-w-[150px] space-y-1">
+                    <label className="text-xs text-gray-400">사업부</label>
+                    <Select
+                        isClearable
+                        placeholder="전체 사업부"
+                        options={groups.filter(g => g.type === 'MAJOR').map(g => ({ value: g.id.toString(), label: g.name }))}
+                        value={groups.find(g => g.id.toString() === selectedMajorGroupId) ? { value: selectedMajorGroupId, label: groups.find(g => g.id.toString() === selectedMajorGroupId).name } : null}
+                        onChange={(opt) => setSelectedMajorGroupId(opt ? opt.value : '')}
+                        styles={{
+                            control: (base) => ({ ...base, backgroundColor: '#374151', borderColor: '#4b5563', color: 'white', fontSize: '0.875rem' }),
+                            input: (base) => ({ ...base, color: 'white' }),
+                            placeholder: (base) => ({ ...base, color: '#9ca3af' }),
+                            menu: (base) => ({ ...base, backgroundColor: '#1f2937', color: 'white', zIndex: 99 }),
+                            option: (base, state) => ({ ...base, backgroundColor: state.isFocused ? '#374151' : 'transparent', color: 'white' }),
+                            singleValue: (base) => ({ ...base, color: 'white' })
+                        }}
+                    />
+                </div>
 
-                <Box sx={{ p: 3 }}>
+                <div className="flex-1 min-w-[200px] space-y-1">
+                    <label className="text-xs text-gray-400">거래처</label>
+                    <Select
+                        isClearable
+                        placeholder="전체 거래처"
+                        options={[
+                            { value: 'all', label: '전체 거래처' },
+                            { value: 'internal', label: '사내(재고)' },
+                            ...partners.map(p => ({ value: p.id.toString(), label: p.name }))
+                        ]}
+                        value={filterPartner === 'all' ? { value: 'all', label: '전체 거래처' } : filterPartner === 'internal' ? { value: 'internal', label: '사내(재고)' } : partners.find(p => p.id.toString() === filterPartner) ? { value: filterPartner, label: partners.find(p => p.id.toString() === filterPartner).name } : null}
+                        onChange={(opt) => setFilterPartner(opt ? opt.value : 'all')}
+                        styles={{
+                            control: (base) => ({ ...base, backgroundColor: '#374151', borderColor: '#4b5563', color: 'white', fontSize: '0.875rem' }),
+                            input: (base) => ({ ...base, color: 'white' }),
+                            placeholder: (base) => ({ ...base, color: '#9ca3af' }),
+                            menu: (base) => ({ ...base, backgroundColor: '#1f2937', color: 'white', zIndex: 99 }),
+                            option: (base, state) => ({ ...base, backgroundColor: state.isFocused ? '#374151' : 'transparent', color: 'white' }),
+                            singleValue: (base) => ({ ...base, color: 'white' })
+                        }}
+                    />
+                </div>
+
+                <div className="space-y-1">
+                    <label className="text-xs text-gray-400">품명/품번</label>
+                    <div className="relative">
+                        <input type="text" placeholder="검색어 입력..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-[200px] bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
+                    </div>
+                </div>
+
+                <button
+                    onClick={() => { setStartDate(''); setEndDate(''); setFilterPartner('all'); setSearchQuery(''); setSelectedMajorGroupId(''); }}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-sm h-[38px] transition-colors font-medium border border-gray-600"
+                >
+                    초기화
+                </button>
+            </Card>
+
+            <Card className="p-0 overflow-hidden min-h-[500px]">
+                <div className="overflow-x-auto">
                     {tabIndex === 0 && (
                         <UnplannedOrdersTable
                             orders={orders}
@@ -465,8 +507,8 @@ const ProductionPage = () => {
                             readonly={true}
                         />
                     )}
-                </Box>
-            </Paper>
+                </div>
+            </Card>
 
             <ProductionPlanModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSuccess={handleSuccess} order={selectedOrder} stockProduction={selectedStockProduction} plan={selectedPlan} />
             <ProductionSheetModal isOpen={sheetModalOpen} onClose={() => setSheetModalOpen(false)} plan={sheetPlan} sheetType={sheetType} onSave={fetchPlans} />

@@ -8,6 +8,12 @@ import WorkLogModal from '../components/WorkLogModal';
 import FileViewerModal from '../components/FileViewerModal';
 import { Tabs, Tab } from '@mui/material';
 
+const Card = ({ children, className }) => (
+    <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
+        {children}
+    </div>
+);
+
 
 
 const LOG_COLS = [
@@ -145,104 +151,105 @@ const WorkLogPage = () => {
     };
 
     return (
-        <Box sx={{ width: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#e2e8f0' }}>
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center no-print">
+                <h1 className="text-2xl font-bold text-white">
                     작업일지 및 실적 관리
-                </Typography>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
+                </h1>
+                <button
                     onClick={handleCreateClick}
-                    sx={{ boxShadow: 2 }}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                 >
+                    <AddIcon fontSize="small" />
                     새 작업일지 등록
-                </Button>
-            </Box>
+                </button>
+            </div>
 
-            <Tabs
-                value={tabValue}
-                onChange={(e, v) => setTabValue(v)}
-                sx={{
-                    mb: 3,
-                    borderBottom: 1,
-                    borderColor: 'divider',
-                    '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .Mui-selected': { color: '#fff !important' },
-                }}
-            >
-                <Tab icon={<ListIcon />} iconPosition="start" label="작업일지 목록" />
-                <Tab icon={<PerformanceIcon />} iconPosition="start" label="실적 관리 (작업자별)" />
-            </Tabs>
+            {/* Tabs */}
+            <div className="flex gap-2 border-b border-gray-700 print-safe-area">
+                {['작업일지 목록', '실적 관리 (작업자별)'].map((label, index) => (
+                    <button
+                        key={index}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium transition-colors relative flex items-center gap-2",
+                            tabValue === index ? "text-blue-400" : "text-gray-400 hover:text-gray-300"
+                        )}
+                        onClick={() => setTabValue(index)}
+                    >
+                        {index === 0 ? <ListIcon fontSize="small" /> : <PerformanceIcon fontSize="small" />}
+                        {label}
+                        {tabValue === index && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400" />
+                        )}
+                    </button>
+                ))}
+            </div>
 
             {/* Shared Filters */}
-            <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, alignItems: 'center', boxShadow: 2, borderRadius: 2, bgcolor: '#1e293b', border: '1px solid #334155' }}>
-                <TextField
-                    label="시작일"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    size="small"
-                />
-                <Typography variant="body1">~</Typography>
-                <TextField
-                    label="종료일"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    size="small"
-                />
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                    <InputLabel id="worker-filter-label">작업자</InputLabel>
-                    <Select
-                        labelId="worker-filter-label"
+            <Card className="p-4 flex flex-wrap gap-4 items-end mb-4 print-safe-area">
+                <div className="space-y-1">
+                    <label className="text-xs text-gray-400">시작일</label>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs text-gray-400">종료일</label>
+                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]" />
+                </div>
+                <div className="flex-1 min-w-[200px] space-y-1">
+                    <label className="text-xs text-gray-400">작업자</label>
+                    <select
                         value={selectedWorker}
-                        label="작업자"
                         onChange={(e) => setSelectedWorker(e.target.value)}
+                        className="w-full bg-gray-700 border-gray-600 outline-none focus:border-blue-500 rounded text-white px-3 py-2 text-sm h-[38px]"
                     >
-                        <MenuItem value=""><em>전체</em></MenuItem>
+                        <option value="">전체 작업자</option>
                         {staffList.filter(s => s.is_active).map(staff => (
-                            <MenuItem key={staff.id} value={staff.id}>{staff.name}</MenuItem>
+                            <option key={staff.id} value={staff.id}>{staff.name}</option>
                         ))}
-                    </Select>
-                </FormControl>
-                <Button variant="outlined" color="secondary" onClick={() => { setStartDate(''); setEndDate(''); setSelectedWorker(''); }} size="small">
-                    초기화
-                </Button>
-            </Paper>
-
-            {tabValue === 0 ? (
-                <ResizableTable
-                    columns={LOG_COLS}
-                    className="w-full text-left text-sm"
-                    theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
-                    thClassName="px-4 py-3"
+                    </select>
+                </div>
+                <button
+                    onClick={() => { setStartDate(''); setEndDate(''); setSelectedWorker(''); }}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-sm h-[38px] transition-colors font-medium border border-gray-600"
                 >
-                    {filteredLogs.length === 0 ? (
-                        <tr><td colSpan={LOG_COLS.length} className="px-4 py-12 text-center text-gray-500">등록된 (또는 검색된) 작업일지가 없습니다.</td></tr>
+                    초기화
+                </button>
+            </Card>
+
+            <Card className="p-0 overflow-hidden min-h-[500px]">
+                <div className="overflow-x-auto p-3">
+                    {tabValue === 0 ? (
+                        <ResizableTable
+                            columns={LOG_COLS}
+                            className="w-full text-left text-sm"
+                            theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
+                            thClassName="px-4 py-3"
+                        >
+                            {filteredLogs.length === 0 ? (
+                                <tr><td colSpan={LOG_COLS.length} className="px-4 py-12 text-center text-gray-500">등록된 (또는 검색된) 작업일지가 없습니다.</td></tr>
+                            ) : (
+                                filteredLogs.map(log => (
+                                    <WorkLogRow
+                                        key={log.id}
+                                        log={log}
+                                        onEdit={() => handleEditClick(log)}
+                                        onDelete={() => handleDeleteClick(log.id)}
+                                        onViewFiles={() => handleViewFiles(log.attachment_file)}
+                                    />
+                                ))
+                            )}
+                        </ResizableTable>
                     ) : (
-                        filteredLogs.map(log => (
-                            <WorkLogRow
-                                key={log.id}
-                                log={log}
-                                onEdit={() => handleEditClick(log)}
-                                onDelete={() => handleDeleteClick(log.id)}
-                                onViewFiles={() => handleViewFiles(log.attachment_file)}
-                            />
-                        ))
+                        <PerformanceManagementList
+                            data={performanceData}
+                            onUpdate={() => { fetchPerformanceData(); fetchWorkLogs(); }}
+                            startDate={startDate}
+                            endDate={endDate}
+                        />
                     )}
-                </ResizableTable>
-            ) : (
-                <PerformanceManagementList
-                    data={performanceData}
-                    onUpdate={() => { fetchPerformanceData(); fetchWorkLogs(); }}
-                    startDate={startDate}
-                    endDate={endDate}
-                />
-            )}
+                </div>
+            </Card>
 
             {modalOpen && (
                 <WorkLogModal
@@ -260,7 +267,7 @@ const WorkLogPage = () => {
                 title="작업일지 첨부파일"
                 readOnly={true}
             />
-        </Box>
+        </div>
     );
 };
 
