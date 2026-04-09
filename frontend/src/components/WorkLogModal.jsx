@@ -434,7 +434,7 @@ const ListPlans = ({ plans, onSelectPlan }) => {
                             partner = plan.order.partner?.name || '-';
                         } else if (plan?.stock_production?.production_no) {
                             orderNo = `[재고] ${plan.stock_production.production_no}`;
-                            partner = '사내 생산';
+                            partner = plan.stock_production.partner?.name || '사내 생산';
                         }
 
                         return (
@@ -469,7 +469,7 @@ const ListPlans = ({ plans, onSelectPlan }) => {
 const ListPlanItems = ({ plan, onSelect }) => {
     const items = plan.items.filter(pi =>
         pi.course_type === 'INTERNAL' &&
-        (pi.status === 'PLANNED' || pi.status === 'IN_PROGRESS' || pi.status === 'COMPLETED')
+        (pi.status === 'PLANNED' || pi.status === 'CONFIRMED' || pi.status === 'IN_PROGRESS' || pi.status === 'COMPLETED')
     );
 
     return (
