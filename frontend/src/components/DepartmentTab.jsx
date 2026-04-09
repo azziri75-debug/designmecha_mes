@@ -117,10 +117,11 @@ function OrgChartModal({ onClose, departments, allStaff, company }) {
     .filter(s => s.is_active && getRank(s.role) <= 3)
     .sort((a, b) => getRank(a.role) - getRank(b.role));
 
-  // 부서별 직원 (직급순 정렬)
+  // 부서별 직원 (allStaff로 enrich해서 phone/extension/email 포함)
   const deptSections = departments.map(dept => ({
     ...dept,
     sortedMembers: [...(dept.members || [])]
+      .map(m => allStaff.find(s => s.id === m.id) || m) // ← 전체 데이터로 보완
       .filter(m => m.is_active !== false)
       .sort((a, b) => getRank(a.role) - getRank(b.role)),
   }));
