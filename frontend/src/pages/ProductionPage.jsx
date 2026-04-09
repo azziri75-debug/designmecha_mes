@@ -633,7 +633,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     return (
         <React.Fragment>
             <tr className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(null, stockProduction)}>
-                <td className="px-4 py-4 truncate"><Chip label="재고" size="small" sx={{ mr: 1, height: 20, bgcolor: '#e8f5e9' }} />{stockProduction.production_no}</td>
+                <td className="px-4 py-4 truncate"><Chip label="재고" size="small" sx={{ mr: 1, height: 20, bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />{stockProduction.production_no}</td>
                 <td className="px-4 py-4 truncate">{stockProduction.partner?.name || '사내'}</td>
                 <td className="px-4 py-4 truncate">{stockProduction.product?.name}</td>
                 <td className="px-4 py-4 whitespace-nowrap">{stockProduction.request_date}</td>
@@ -707,7 +707,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 <td className="px-4 py-4 text-center"><IconButton size="small" sx={{ color: 'text.secondary' }} onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>{open ? <KeyboardArrowUp sx={{ fontSize: 18 }} /> : <KeyboardArrowDown sx={{ fontSize: 18 }} />}</IconButton></td>
                 <td className="px-4 py-4 truncate">
                     {order ? <div className="flex items-center gap-1"><Chip label="수주" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd' }} />{order.order_no}</div> :
-                        sp ? <div className="flex items-center gap-1"><Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#f3e5f5' }} />{sp.production_no || `Stock-${sp.id}`}</div> : '-'}
+                        sp ? <div className="flex items-center gap-1"><Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />{sp.production_no || `Stock-${sp.id}`}</div> : '-'}
                 </td>
                 <td className="px-4 py-4 truncate">{plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내'}</td>
                 <td className="px-4 py-4 truncate">

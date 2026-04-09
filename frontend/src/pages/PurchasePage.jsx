@@ -668,7 +668,7 @@ const PurchasePage = ({ type }) => {
                                                     {item.plan?.order ? (
                                                         <Chip label="수주" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd', color: '#1976d2' }} />
                                                     ) : item.plan?.stock_production ? (
-                                                        <Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#f3e5f5', color: '#7b1fa2' }} />
+                                                        <Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />
                                                     ) : null}
                                                     <span className="font-bold text-blue-700">{item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}</span>
                                                 </div>
