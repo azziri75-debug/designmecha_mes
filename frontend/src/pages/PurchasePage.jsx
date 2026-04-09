@@ -831,6 +831,8 @@ const PurchasePage = ({ type }) => {
                     </ResizableTable>
                 </>
             )}
+                </div>
+            </Card>
 
             <ConsumableOrderModal
                 open={consumableModalOpen}
