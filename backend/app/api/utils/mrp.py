@@ -80,7 +80,11 @@ async def calculate_and_record_mrp(
         for pi in plan.items:
             # [FIX] Use max instead of sum to avoid multiplying by the number of processes
             # Multiple processes in the same plan for the same product share the same target quantity.
-            product_qtys[pi.product_id] = max(product_qtys.get(pi.product_id, 0), pi.quantity)
+            # [FIX2] stock_use_quantity가 이미 차감된 순생산량을 사용.
+            # quantity = gross_quantity - stock_use_quantity (이미 프론트에서 계산 저장됨)
+            # 방어적으로 직접 계산: max(0, pi.quantity) 사용 (이미 순량)
+            net_qty = max(0, pi.quantity or 0)
+            product_qtys[pi.product_id] = max(product_qtys.get(pi.product_id, 0), net_qty)
         
         for pid, qty in product_qtys.items():
             items.append({"product_id": pid, "quantity": qty})

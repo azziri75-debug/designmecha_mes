@@ -762,6 +762,18 @@ async def update_production_plan(
         await process_stock_deduction(db, plan_id=plan.id)
         from app.api.utils.mrp import calculate_and_record_mrp
         await calculate_and_record_mrp(db, plan_id=plan.id)
+    elif plan.status == ProductionStatus.IN_PROGRESS and plan_in.items:
+        # [FIX] IN_PROGRESS 상태에서 items(stock_use_quantity/quantity) 변경 시 MRP 재계산
+        # 재고소진량 입력 후 BOM 부품 소요량이 순생산량 기준으로 재반영되도록 함
+        qty_fields = {'stock_use_quantity', 'quantity', 'gross_quantity'}
+        has_qty_change = any(
+            qty_fields & set(i.model_fields_set)
+            for i in plan_in.items
+        )
+        if has_qty_change:
+            from app.api.utils.mrp import calculate_and_record_mrp
+            await calculate_and_record_mrp(db, plan_id=plan.id)
+            print(f"[update_plan] MRP recalculated for IN_PROGRESS plan {plan_id} due to item qty change.")
     
     # 4. Re-fetch with full options for response
     result = await db.execute(
@@ -1484,6 +1496,13 @@ async def update_production_plan_item(
         raise HTTPException(status_code=404, detail="Plan Item not found")
 
     update_data = item_in.model_dump(exclude_unset=True)
+    
+    # [FIX] 재고소진량 변경 감지: 적용 전 plan_id와 재계산 필요 여부 기록
+    should_recalculate_mrp = (
+        "stock_use_quantity" in update_data or "quantity" in update_data
+    )
+    plan_id_for_mrp = item.plan_id
+    
     for field, value in update_data.items():
         setattr(item, field, value)
 
@@ -1501,6 +1520,16 @@ async def update_production_plan_item(
 
     await db.commit()
     await db.refresh(item)
+    
+    # [FIX] 재고소진량이 변경된 경우: MRP 재계산으로 부품 소요량을 순생산량 기준으로 갱신
+    if should_recalculate_mrp and plan_id_for_mrp:
+        try:
+            from app.api.utils.mrp import calculate_and_record_mrp
+            await calculate_and_record_mrp(db, plan_id=plan_id_for_mrp)
+            print(f"[update_plan_item] MRP recalculated for plan {plan_id_for_mrp} due to stock_use_quantity/quantity change.")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"[update_plan_item] MRP recalculation failed: {e}")
     
     # --- Auto-Complete Check ---
     if "status" in update_data and update_data["status"] == ProductionStatus.COMPLETED:
