@@ -1577,7 +1577,10 @@ async def read_work_logs(
                 selectinload(WorkLogItem.worker),
                 selectinload(WorkLogItem.work_log),
                 selectinload(WorkLogItem.plan_item).options(
-                    selectinload(ProductionPlanItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                    selectinload(ProductionPlanItem.product).options(
+                        selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                        selectinload(Product.bom_items).selectinload(BOM.child_product),
+                    ),
                     selectinload(ProductionPlanItem.equipment),
                     selectinload(ProductionPlanItem.worker),
                     selectinload(ProductionPlanItem.purchase_items),
