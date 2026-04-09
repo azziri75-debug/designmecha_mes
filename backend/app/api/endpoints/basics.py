@@ -17,7 +17,7 @@ from fastapi import UploadFile, File
 from app.api import deps
 get_db = deps.get_db
 from app.api.utils.email import send_sysadmin_email
-from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory, EmployeeTimeRecord, IgnoredPartnerDuplicate
+from app.models.basics import Partner, Staff, Contact, Company, Equipment, EquipmentHistory, FormTemplate, MeasuringInstrument, MeasurementHistory, EmployeeTimeRecord, IgnoredPartnerDuplicate, Department
 from app.schemas.basics import (
     PartnerCreate, PartnerResponse, PartnerUpdate,
     StaffCreate, StaffResponse, StaffUpdate,
@@ -27,7 +27,8 @@ from app.schemas.basics import (
     FormTemplateCreate, FormTemplateResponse, FormTemplateUpdate,
     MeasuringInstrumentCreate, MeasuringInstrumentResponse, MeasuringInstrumentUpdate,
     MeasurementHistoryCreate, MeasurementHistoryResponse,
-    IgnoredDuplicateCreate, IgnoredDuplicateResponse
+    IgnoredDuplicateCreate, IgnoredDuplicateResponse,
+    DepartmentCreate, DepartmentUpdate, DepartmentResponse
 )
 from dateutil.relativedelta import relativedelta
 
@@ -1123,3 +1124,136 @@ async def get_my_attendance_summary(
     summary["standard_hours"] = total_standard_hours
 
     return summary
+
+
+# ============================================================
+# --- Department (조직도) Endpoints ---
+# ============================================================
+
+@router.get("/departments/", response_model=List[DepartmentResponse])
+async def list_departments(db: AsyncSession = Depends(get_db)):
+    """부서 목록 조회 (소속 직원 포함)"""
+    result = await db.execute(
+        select(Department)
+        .options(selectinload(Department.members))
+        .order_by(Department.name)
+    )
+    depts = result.scalars().all()
+    # members를 dict 형태로 직렬화하여 순환참조 방지
+    output = []
+    for d in depts:
+        members_data = [
+            {"id": m.id, "name": m.name, "role": m.role, "department": m.department, "department_id": m.department_id, "is_active": m.is_active, "staff_no": m.staff_no}
+            for m in d.members
+        ]
+        output.append({
+            "id": d.id,
+            "name": d.name,
+            "description": d.description,
+            "created_at": d.created_at,
+            "members": members_data
+        })
+    return output
+
+@router.post("/departments/", response_model=DepartmentResponse)
+async def create_department(
+    dept_in: DepartmentCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """부서 생성"""
+    # 중복 체크
+    existing = await db.execute(select(Department).where(Department.name == dept_in.name))
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail="이미 동일한 이름의 부서가 존재합니다.")
+
+    new_dept = Department(name=dept_in.name, description=dept_in.description)
+    db.add(new_dept)
+    await db.flush()
+
+    # 소속 직원 설정
+    if dept_in.member_ids:
+        staff_res = await db.execute(select(Staff).where(Staff.id.in_(dept_in.member_ids)))
+        for s in staff_res.scalars().all():
+            s.department_id = new_dept.id
+            s.department = new_dept.name  # 하위호환용 문자열 동기화
+
+    await db.commit()
+
+    result = await db.execute(
+        select(Department).options(selectinload(Department.members)).where(Department.id == new_dept.id)
+    )
+    dept = result.scalars().first()
+    members_data = [
+        {"id": m.id, "name": m.name, "role": m.role, "department": m.department, "department_id": m.department_id, "is_active": m.is_active, "staff_no": m.staff_no}
+        for m in dept.members
+    ]
+    return {"id": dept.id, "name": dept.name, "description": dept.description, "created_at": dept.created_at, "members": members_data}
+
+@router.put("/departments/{dept_id}", response_model=DepartmentResponse)
+async def update_department(
+    dept_id: int,
+    dept_in: DepartmentUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """부서 수정 (이름, 설명, 소속 직원)"""
+    result = await db.execute(
+        select(Department).options(selectinload(Department.members)).where(Department.id == dept_id)
+    )
+    dept = result.scalars().first()
+    if not dept:
+        raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다.")
+
+    # 이름 중복 체크 (자기 자신 제외)
+    if dept_in.name and dept_in.name != dept.name:
+        dup = await db.execute(select(Department).where(Department.name == dept_in.name, Department.id != dept_id))
+        if dup.scalars().first():
+            raise HTTPException(status_code=400, detail="이미 동일한 이름의 부서가 존재합니다.")
+
+    dept.name = dept_in.name
+    dept.description = dept_in.description
+
+    # 소속 직원 재설정
+    if dept_in.member_ids is not None:
+        # 기존 멤버 해제 (이 부서에 속했던 직원 모두)
+        old_members_res = await db.execute(select(Staff).where(Staff.department_id == dept_id))
+        for s in old_members_res.scalars().all():
+            s.department_id = None
+            # department 문자열은 유지 (다른 부서명일 수도 있으므로 건드리지 않음)
+
+        # 새 멤버 설정
+        if dept_in.member_ids:
+            new_members_res = await db.execute(select(Staff).where(Staff.id.in_(dept_in.member_ids)))
+            for s in new_members_res.scalars().all():
+                s.department_id = dept_id
+                s.department = dept.name  # 하위호환 동기화
+
+    await db.commit()
+
+    result = await db.execute(
+        select(Department).options(selectinload(Department.members)).where(Department.id == dept_id)
+    )
+    dept = result.scalars().first()
+    members_data = [
+        {"id": m.id, "name": m.name, "role": m.role, "department": m.department, "department_id": m.department_id, "is_active": m.is_active, "staff_no": m.staff_no}
+        for m in dept.members
+    ]
+    return {"id": dept.id, "name": dept.name, "description": dept.description, "created_at": dept.created_at, "members": members_data}
+
+@router.delete("/departments/{dept_id}")
+async def delete_department(
+    dept_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """부서 삭제 (소속 직원 department_id를 NULL로 해제)"""
+    result = await db.execute(select(Department).where(Department.id == dept_id))
+    dept = result.scalars().first()
+    if not dept:
+        raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다.")
+
+    # 멤버 해제 (cascade SET NULL이 있지만 명시적으로도 처리)
+    await db.execute(
+        Staff.__table__.update().where(Staff.department_id == dept_id).values(department_id=None)
+    )
+    await db.delete(dept)
+    await db.commit()
+    return {"message": "부서가 삭제되었습니다."}

@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import FileViewerModal from '../components/FileViewerModal';
 import Card from '../components/Card';
 import ResizableTh from '../components/ResizableTh';
+import DepartmentTab from '../components/DepartmentTab';
 
 // Helper Components
 class ErrorBoundary extends React.Component {
@@ -82,6 +83,7 @@ const BasicsPageContent = () => {
 
     const [partners, setPartners] = useState([]);
     const [staff, setStaff] = useState([]);
+    const [departments, setDepartments] = useState([]);  // [NEW]
     const [equipments, setEquipments] = useState([]);
     const [instruments, setInstruments] = useState([]);
     const [company, setCompany] = useState(null); // eslint-disable-line no-unused-vars
@@ -189,12 +191,12 @@ const BasicsPageContent = () => {
                     setPartners([]);
                 }
             } else if (activeTab === 'staff') {
-                const res = await api.get('/basics/staff/');
-                if (Array.isArray(res.data)) {
-                    setStaff(res.data);
-                } else {
-                    setStaff([]);
-                }
+                const [staffRes, deptsRes] = await Promise.all([
+                    api.get('/basics/staff/'),
+                    api.get('/basics/departments/'),
+                ]);
+                setStaff(Array.isArray(staffRes.data) ? staffRes.data : []);
+                setDepartments(Array.isArray(deptsRes.data) ? deptsRes.data : []);
             } else if (activeTab === 'equipments') {
                 const res = await api.get('/basics/equipments/');
                 setEquipments(res.data || []);
@@ -663,6 +665,17 @@ const BasicsPageContent = () => {
                     >
                         측정기 관리
                     </button>
+                    <button
+                        onClick={() => setActiveTab('departments')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                            activeTab === 'departments'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                        )}
+                    >
+                        조직도
+                    </button>
                 </div>
                 {(!isSystemAdmin && (activeTab === 'company' || activeTab === 'staff')) ? (
                     <button
@@ -674,7 +687,7 @@ const BasicsPageContent = () => {
                         <Plus className="w-4 h-4" />
                         <span>권한 없음</span>
                     </button>
-                ) : (
+                ) : activeTab === 'departments' ? null : (
                     <button
                         type="button"
                         onClick={openCreateModal}
@@ -685,6 +698,13 @@ const BasicsPageContent = () => {
                     </button>
                 )}
             </div>
+            {activeTab === 'departments' ? (
+                <Card>
+                    <DepartmentTab />
+                </Card>
+            ) : (
+            <>
+
             {activeTab === 'partners' && duplicateGroups.length > 0 && (
                 <div className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border border-yellow-500/30 rounded-xl p-5 flex items-center justify-between shadow-xl shadow-yellow-900/20 animate-in fade-in slide-in-from-top-4 duration-500">
                     <div className="flex items-center gap-4">
@@ -1814,7 +1834,21 @@ const BasicsPageContent = () => {
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-medium text-gray-300">부서</label>
-                                                    <input name="department" value={formData.department || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="예: 생산팀, 영업팀" />
+                                                    <select
+                                                        name="department_id"
+                                                        value={formData.department_id || ''}
+                                                        onChange={e => {
+                                                            const deptId = e.target.value ? parseInt(e.target.value) : null;
+                                                            const deptName = deptId ? (departments.find(d => d.id === deptId)?.name || '') : '';
+                                                            setFormData(prev => ({ ...prev, department_id: deptId, department: deptName }));
+                                                        }}
+                                                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                    >
+                                                        <option value="">부서 미지정</option>
+                                                        {departments.map(d => (
+                                                            <option key={d.id} value={d.id}>{d.name}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="space-y-2">
@@ -2431,6 +2465,9 @@ const BasicsPageContent = () => {
                 files={viewingFiles}
                 title={fileModalTitle}
             />
+        </div>
+        </>
+        )}
         </div >
     );
 };

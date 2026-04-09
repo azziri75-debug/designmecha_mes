@@ -31,6 +31,7 @@ class ApprovalLine(Base):
     doc_type = Column(String, nullable=False) # VACATION, EARLY_LEAVE, SUPPLIES, INTERNAL_DRAFT
     approver_id = Column(Integer, ForeignKey("staff.id"), nullable=False)
     sequence = Column(Integer, nullable=False) # 1, 2, 3...
+    department_id = Column(Integer, ForeignKey("departments.id", ondelete="CASCADE"), nullable=True)  # [NEW] NULL=공통, 값=부서전용
 
     approver = relationship("Staff", foreign_keys=[approver_id], lazy="selectin")
 

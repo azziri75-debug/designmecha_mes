@@ -75,6 +75,17 @@ class AttendanceStatus(str, enum.Enum):
     EARLY_LEAVE = "EARLY_LEAVE"
     ABSENT = "ABSENT"
 
+class Department(Base):
+    """부서 (조직도)"""
+    __tablename__ = "departments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=now_kst)
+
+    members = relationship("Staff", back_populates="dept", foreign_keys="[Staff.department_id]")
+
 class Staff(Base):
     __tablename__ = "staff"
 
@@ -93,7 +104,8 @@ class Staff(Base):
     stamp_image = Column(JSON, nullable=True) # {name, url}
     
     login_id = Column(String, unique=True, index=True, nullable=True)
-    department = Column(String, nullable=True)
+    department = Column(String, nullable=True)  # 기존 문자열 필드 (하위호환 유지)
+    department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)  # [NEW] 부서 FK
     email = Column(String, nullable=True)
     join_date = Column(Date, nullable=True)
     
@@ -104,6 +116,8 @@ class Staff(Base):
     # Permission Fields
     can_access_external = Column(Boolean, default=False)
     can_view_others = Column(Boolean, default=False)
+
+    dept = relationship("Department", back_populates="members", foreign_keys=[department_id])
     is_accounting = Column(Boolean, default=False) # NEW: 회계 담당 여부
 
 class EmployeeTimeRecord(Base):

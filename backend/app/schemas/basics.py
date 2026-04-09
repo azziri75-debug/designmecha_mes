@@ -3,6 +3,30 @@ from typing import Optional, List, Union, Any
 from datetime import date, datetime, time
 from app.models.basics import PartnerType
 
+# Department Schemas
+class DepartmentBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class DepartmentCreate(DepartmentBase):
+    member_ids: Optional[List[int]] = []  # 소속 직원 ID 목록
+
+class DepartmentUpdate(DepartmentBase):
+    member_ids: Optional[List[int]] = None
+
+class DepartmentResponse(DepartmentBase):
+    id: int
+    created_at: Optional[datetime] = None
+    members: List[Any] = []  # StaffSimpleᄂ은 forward reference
+    class Config:
+        from_attributes = True
+
+class DepartmentSimple(BaseModel):
+    id: int
+    name: str
+    class Config:
+        from_attributes = True
+
 # Contact Schemas
 class ContactBase(BaseModel):
     name: str
@@ -79,6 +103,8 @@ class StaffBase(BaseModel):
     can_view_others: Optional[bool] = False
     staff_no: Optional[str] = None
     is_accounting: Optional[bool] = False # NEW: 회계 담당 여부
+    department_id: Optional[int] = None  # [NEW] 부서 FK
+
 class StaffSimple(StaffBase):
     id: int
     class Config:
@@ -92,6 +118,7 @@ class StaffUpdate(StaffBase):
 
 class StaffResponse(StaffBase):
     id: int
+    dept: Optional[DepartmentSimple] = None  # [NEW] 부서 정보
 
     class Config:
         from_attributes = True

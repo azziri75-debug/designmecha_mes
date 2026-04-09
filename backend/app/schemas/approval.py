@@ -7,6 +7,7 @@ class ApprovalLineBase(BaseModel):
     doc_type: str
     approver_id: int
     sequence: int
+    department_id: Optional[int] = None  # NULL=공통, 값=부서전용
 
 class ApprovalLineCreate(ApprovalLineBase):
     pass

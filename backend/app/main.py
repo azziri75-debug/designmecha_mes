@@ -926,6 +926,51 @@ async def startup_event():
                 await db.rollback()
             # -----------------------------------------------------
 
+            # --- [NEW] Department System Migration ---
+            try:
+                # 1. departments 테이블 생성
+                await db.execute(text("""
+                    CREATE TABLE IF NOT EXISTS departments (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR NOT NULL UNIQUE,
+                        description TEXT,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """))
+                # 2. staff.department_id 추가
+                await db.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL;"))
+                # 3. approval_lines.department_id 추가
+                await db.execute(text("ALTER TABLE approval_lines ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE;"))
+                await db.commit()
+                print("Startup: Department system tables/columns verified/created")
+
+                # 4. 기존 staff.department 문자열 → departments 테이블 자동 매핑
+                dept_rows = await db.execute(text("""
+                    SELECT DISTINCT department FROM staff
+                    WHERE department IS NOT NULL AND department != '' AND department_id IS NULL
+                """))
+                dept_names = [row[0] for row in dept_rows.fetchall()]
+                for dept_name in dept_names:
+                    result = await db.execute(text("""
+                        INSERT INTO departments (name, created_at)
+                        VALUES (:name, NOW())
+                        ON CONFLICT (name) DO NOTHING
+                        RETURNING id
+                    """), {"name": dept_name})
+                    row = result.fetchone()
+                    if not row:
+                        row = (await db.execute(text("SELECT id FROM departments WHERE name = :name"), {"name": dept_name})).fetchone()
+                    if row:
+                        dept_id = row[0]
+                        upd = await db.execute(text("UPDATE staff SET department_id = :did WHERE department = :dname AND department_id IS NULL"), {"did": dept_id, "dname": dept_name})
+                        print(f"Startup: Dept '{dept_name}' → id={dept_id}, mapped {upd.rowcount} staff")
+                await db.commit()
+                print("Startup: Department auto-migration complete")
+            except Exception as e:
+                print(f"Startup: Department migration failed: {e}")
+                await db.rollback()
+            # ------------------------------------------------
+
             # --- [NEW] Sales Item Columns Migration (Postgres) ---
             # estimate_items: add product_name, make product_id nullable
             try:

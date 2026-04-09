@@ -91,41 +91,61 @@ async def get_approval_stats(
 @router.get("/lines", response_model=List[ApprovalLineResponse])
 async def get_approval_lines(
     doc_type: str = Query(...),
+    department_id: Optional[int] = Query(None),  # [NEW] 부서 ID (None=공통)
     db: AsyncSession = Depends(deps.get_db)
 ):
     """문서 종류별 결재선 템플릿 조회 (대소문자 구분 없음)"""
     doc_type_clean = doc_type.strip().upper()
-    result = await db.execute(
+    query = (
         select(ApprovalLine)
         .options(selectinload(ApprovalLine.approver))
         .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
         .order_by(ApprovalLine.sequence)
     )
+    if department_id is not None:
+        query = query.where(ApprovalLine.department_id == department_id)
+    else:
+        query = query.where(ApprovalLine.department_id.is_(None))
+    result = await db.execute(query)
     return result.scalars().all()
 
 @router.post("/lines", response_model=List[ApprovalLineResponse])
 async def set_approval_lines(
     doc_type: str,
     lines: List[ApprovalLineCreate],
+    department_id: Optional[int] = None,  # [NEW] None=공통, 값=부서전용
     db: AsyncSession = Depends(deps.get_db)
 ):
-    """문서 종류별 결재선 템플릿 설정"""
-    # 기존 설정 삭제
-    await db.execute(delete(ApprovalLine).where(ApprovalLine.doc_type == doc_type))
-    
+    """문서 종류별 결재선 템플릿 설정 (부서별 분리 지원)"""
+    # 해당 doc_type + department_id 조합만 삭제
+    del_query = delete(ApprovalLine).where(ApprovalLine.doc_type == doc_type)
+    if department_id is not None:
+        del_query = del_query.where(ApprovalLine.department_id == department_id)
+    else:
+        del_query = del_query.where(ApprovalLine.department_id.is_(None))
+    await db.execute(del_query)
+
     for line in lines:
-        db_line = ApprovalLine(**line.model_dump())
+        data = line.model_dump()
+        # department_id 쿼리 파라미터 우선 사용 (body보다)
+        data['department_id'] = department_id
+        db_line = ApprovalLine(**data)
         db.add(db_line)
-    
+
     await db.commit()
-    
+
     # 다시 조회 (관계형 객체 approver 로드 포함)
-    result = await db.execute(
+    result_query = (
         select(ApprovalLine)
         .options(selectinload(ApprovalLine.approver))
         .where(ApprovalLine.doc_type == doc_type)
         .order_by(ApprovalLine.sequence)
     )
+    if department_id is not None:
+        result_query = result_query.where(ApprovalLine.department_id == department_id)
+    else:
+        result_query = result_query.where(ApprovalLine.department_id.is_(None))
+    result = await db.execute(result_query)
     return result.scalars().all()
 
 @router.get("/documents", response_model=List[ApprovalDocumentResponse])
@@ -325,21 +345,45 @@ async def create_document(
             # Get default approval lines from template (Case-insensitive & Trimmed)
             doc_type_clean = doc_in.doc_type.strip().upper()
             print(f"[DEBUG] Fetching approval lines for: '{doc_type_clean}' (Original: '{doc_in.doc_type}')")
-            lines_res = await db.execute(
-                select(ApprovalLine)
-                .options(selectinload(ApprovalLine.approver))
-                .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
-                .order_by(ApprovalLine.sequence)
-            )
-            lines = lines_res.scalars().all()
-            print(f"[DEBUG] Found {len(lines)} default lines for {doc_type_clean}")
+
+            # [NEW] 부서 전용 결재선 우선 적용: 기안자의 department_id가 있으면 부서선을 먼저 조회
+            author_dept_id = current_user.department_id
+            lines = []
+
+            if author_dept_id:
+                dept_lines_res = await db.execute(
+                    select(ApprovalLine)
+                    .options(selectinload(ApprovalLine.approver))
+                    .where(
+                        func.upper(ApprovalLine.doc_type) == doc_type_clean,
+                        ApprovalLine.department_id == author_dept_id
+                    )
+                    .order_by(ApprovalLine.sequence)
+                )
+                lines = dept_lines_res.scalars().all()
+                if lines:
+                    print(f"[DEBUG] Using dept-specific lines for dept_id={author_dept_id}: {len(lines)} lines")
+
             if not lines:
-                 print(f"[WARNING] No default approval lines found for {doc_type_clean}")
+                # Fallback: 공통 결재선 (부서문null)
+                common_lines_res = await db.execute(
+                    select(ApprovalLine)
+                    .options(selectinload(ApprovalLine.approver))
+                    .where(
+                        func.upper(ApprovalLine.doc_type) == doc_type_clean,
+                        ApprovalLine.department_id.is_(None)
+                    )
+                    .order_by(ApprovalLine.sequence)
+                )
+                lines = common_lines_res.scalars().all()
+                print(f"[DEBUG] Found {len(lines)} common (fallback) lines for {doc_type_clean}")
+
+            if not lines:
+                print(f"[WARNING] No default approval lines found for {doc_type_clean}")
             for line in lines:
                 if line.approver:
                     lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
                 else:
-                    # If approver is NULL but role is specified (generic placeholder) - Not currently supported in model, but for safety:
                     print(f"[WARNING] ApprovalLine ID {line.id} has no approver_id")
 
         # Validate approval lines for non-draft documents
