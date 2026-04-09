@@ -31,14 +31,44 @@ const getRank = (role) => {
    ────────────────────────────────────────── */
 const PRINT_STYLE = `
 @media print {
-  body * { visibility: hidden !important; }
-  #org-chart-print-area, #org-chart-print-area * { visibility: visible !important; }
-  #org-chart-print-area {
-    position: fixed; inset: 0; background: white !important;
-    overflow: auto; z-index: 9999;
-    padding: 20mm 15mm;
+  /* ── 조직도 전용 인쇄 스타일 (body.org-chart-printing 클래스일 때만 적용) ── */
+
+  /* 1. body 전체를 숨기되 레이아웃은 유지 (visibility 방식 → 스크롤바 미캡처) */
+  body.org-chart-printing {
+    visibility: hidden !important;
+    overflow: visible !important;
+    height: auto !important;
   }
-  .no-print { display: none !important; }
+
+  /* 2. 조직도 영역만 보이게 */
+  body.org-chart-printing #org-chart-print-area {
+    visibility: visible !important;
+    position: absolute !important;
+    top: 0 !important; left: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+    background: white !important;
+    padding: 10mm 12mm !important;
+    box-sizing: border-box !important;
+  }
+  body.org-chart-printing #org-chart-print-area * {
+    visibility: visible !important;
+  }
+
+  /* 3. 조직도 내 인쇄 불필요 요소 숨김 */
+  body.org-chart-printing .no-print {
+    visibility: hidden !important;
+    display: none !important;
+  }
+
+  /* 4. 스크롤바 완전 제거 */
+  body.org-chart-printing ::-webkit-scrollbar { display: none !important; }
+
+  /* 5. 카드가 페이지 경계에서 잘리지 않도록 */
+  body.org-chart-printing .org-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
 }
 `;
 
@@ -104,12 +134,20 @@ function OrgChartModal({ onClose, departments, allStaff, company }) {
   const printRef = useRef(null);
 
   const handlePrint = () => {
-    const style = document.createElement('style');
-    style.id = '__org_print_style__';
-    style.textContent = PRINT_STYLE;
-    document.head.appendChild(style);
+    // 스타일 주입 (중복 방지)
+    if (!document.getElementById('__org_print_style__')) {
+      const style = document.createElement('style');
+      style.id = '__org_print_style__';
+      style.textContent = PRINT_STYLE;
+      document.head.appendChild(style);
+    }
+    // body에 클래스 추가 → 조직도 전용 print CSS 활성화
+    document.body.classList.add('org-chart-printing');
+    // afterprint 이벤트에서 클래스 제거 (다른 문서 인쇄에 영향 없도록)
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('org-chart-printing');
+    }, { once: true });
     window.print();
-    setTimeout(() => document.getElementById('__org_print_style__')?.remove(), 1000);
   };
 
   // 직급 최상위 직원 (대표이사 등) - 부서 미배정 or 최상위 직급
