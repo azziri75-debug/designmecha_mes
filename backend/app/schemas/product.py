@@ -109,6 +109,7 @@ class ProductBase(BaseModel):
     note: Optional[str] = None
     item_type: Optional[str] = None  # PRODUCED, PART, CONSUMABLE
     recent_price: Optional[float] = 0.0 # 구매 시 자동 갱신되는 단가
+    price_currency: str = 'KRW' # 단가 통화 (KRW/USD)
 
 class ProductCreate(ProductBase):
     standard_processes: List[ProductProcessCreate] = []
@@ -125,6 +126,7 @@ class ProductUpdate(BaseModel):
     item_type: Optional[str] = None
     standard_processes: Optional[List[ProductProcessCreate]] = None
     recent_price: Optional[float] = None
+    price_currency: Optional[str] = None
 
 class ProductSimple(ProductBase):
     id: int
@@ -147,8 +149,10 @@ class ProductResponse(ProductBase):
 class ProductPriceHistoryCreate(BaseModel):
     product_id: int
     price: float
+    currency: str = 'KRW'
     note: Optional[str] = None
     type: str = "MANUAL"
+
 class ProductPriceHistoryResponse(ProductPriceHistoryCreate):
     id: int
     date: datetime

@@ -97,6 +97,7 @@ class PurchaseOrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, default=0)
     unit_price = Column(Float, default=0.0)
+    currency = Column(String(3), default='KRW') # 통화 (KRW/USD)
     received_quantity = Column(Integer, default=0) # 입고 수량
     note = Column(String, nullable=True)
     order_size = Column(String, nullable=True)

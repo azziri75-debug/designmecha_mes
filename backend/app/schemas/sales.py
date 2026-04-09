@@ -11,6 +11,7 @@ class EstimateItemBase(BaseModel):
     product_name: Optional[str] = None
     unit_price: float
     quantity: float
+    currency: str = 'KRW' # 통화 (KRW/USD)
     note: Optional[str] = None
     specification: Optional[str] = None
 
@@ -64,6 +65,7 @@ class SalesOrderItemBase(BaseModel):
     product_name: Optional[str] = None
     unit_price: float
     quantity: float
+    currency: str = 'KRW' # 통화 (KRW/USD)
     delivered_quantity: float = 0
     note: Optional[str] = None
     specification: Optional[str] = None
@@ -77,6 +79,7 @@ class SalesOrderItemUpdate(BaseModel):
     product_name: Optional[str] = None
     unit_price: Optional[float] = None
     quantity: Optional[float] = None
+    currency: Optional[str] = None
     delivered_quantity: Optional[float] = 0
     note: Optional[str] = None
 
@@ -226,6 +229,7 @@ class SalesOrderItemForStatus(BaseModel):
     product_id: Optional[int] = None
     product_name: Optional[str] = None
     unit_price: float
+    currency: str = 'KRW'
     quantity: float
     delivered_quantity: float = 0
     status: str

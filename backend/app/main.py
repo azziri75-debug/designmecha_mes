@@ -994,7 +994,22 @@ async def startup_event():
                 print(f"Startup: sales_order_items migration failed: {e}")
                 await db.rollback()
             # -------------------------------------------------------
-            
+
+            # --- [CURRENCY] 통화 컬럼 마이그레이션 ---
+            try:
+                await db.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS price_currency VARCHAR(3) DEFAULT 'KRW';"))
+                await db.execute(text("ALTER TABLE product_price_histories ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'KRW';"))
+                await db.execute(text("ALTER TABLE estimate_items ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'KRW';"))
+                await db.execute(text("ALTER TABLE sales_order_items ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'KRW';"))
+                await db.execute(text("ALTER TABLE delivery_history_items ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'KRW';"))
+                await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'KRW';"))
+                await db.commit()
+                print("Startup: currency columns added to products/estimates/orders/delivery/purchase")
+            except Exception as e:
+                print(f"Startup: currency migration failed: {e}")
+                await db.rollback()
+            # -------------------------------------------------------
+
             # 7. [EMERGENCY] Initialize Admin User via Raw SQL (Bypassing ORM constraints)
             try:
                 from passlib.context import CryptContext

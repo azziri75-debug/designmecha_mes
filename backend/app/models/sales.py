@@ -47,6 +47,7 @@ class EstimateItem(Base):
     product_name = Column(String, nullable=True) # Manual input or Discount
     unit_price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
+    currency = Column(String(3), default='KRW') # 통화 (KRW/USD)
     note = Column(Text, nullable=True)
 
     estimate = relationship("Estimate", back_populates="items")
@@ -88,6 +89,7 @@ class SalesOrderItem(Base):
     product_name = Column(String, nullable=True)
     unit_price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
+    currency = Column(String(3), default='KRW') # 통화 (KRW/USD)
     delivered_quantity = Column(Integer, default=0)
     status = Column(SqEnum(OrderItemStatus), default=OrderItemStatus.PENDING)
     note = Column(Text, nullable=True)

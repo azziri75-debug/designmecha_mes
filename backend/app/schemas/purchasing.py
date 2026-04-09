@@ -10,6 +10,7 @@ class PurchaseOrderItemBase(BaseModel):
     product_id: int
     quantity: int
     unit_price: float
+    currency: str = 'KRW' # 통화 (KRW/USD)
     note: Optional[str] = None
     order_size: Optional[str] = None
     material: Optional[str] = None
@@ -27,6 +28,7 @@ class PurchaseOrderItemUpdate(BaseModel):
     product_id: Optional[int] = None
     quantity: Optional[int] = None
     unit_price: Optional[float] = None
+    currency: Optional[str] = None
     received_quantity: Optional[int] = None
     note: Optional[str] = None
     order_size: Optional[str] = None

@@ -32,6 +32,7 @@ class Product(Base):
     note = Column(Text, nullable=True) # 비고
     item_type = Column(String, default="PRODUCED", nullable=True) # PRODUCED(생산제품), PART(부품), CONSUMABLE(소모품)
     recent_price = Column(Float, default=0.0) # 최근 단가 (구매 시 자동 갱신)
+    price_currency = Column(String(3), default='KRW') # 단가 통화 (KRW/USD)
     
     # Relationships
     group = relationship("ProductGroup", back_populates="products")
@@ -116,6 +117,7 @@ class ProductPriceHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     price = Column(Float, nullable=False)
+    currency = Column(String(3), default='KRW') # 통화 (KRW/USD)
     date = Column(DateTime, default=now_kst)
     note = Column(String, nullable=True)
     type = Column(String, default="MANUAL") # MANUAL, PURCHASE, SALES 등
