@@ -128,7 +128,7 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>직 위</Box>
                         <td>
                             <input 
-                                value={data.role || (documentData?.author?.role || currentUser?.role || '')} 
+                                value={data.role !== undefined ? data.role : (documentData?.author?.role || '')} 
                                 onChange={(e) => handleChange('role', e.target.value)}
                                 readOnly={isReadOnly}
                                 style={{ border: 'none', width: '100%', outline: 'none' }}

@@ -25,7 +25,10 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
         try {
             const res = await api.get(`/approval/lines?doc_type=${docType}`);
             const steps = (res.data || []).sort((a,b) => a.sequence - b.sequence).map(line => ({
-                role: line.approver?.role || '검토',
+                approver_id: line.approver_id,
+                // [FIX] approver 객체가 있으면 실제 role, 없으면 line의 role 필드 사용
+                role: line.approver?.role || line.role || '결재',
+                approver: line.approver || null,
                 status: 'PENDING'
             }));
             setFallbackSteps(steps);
@@ -185,7 +188,8 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
                     <Box component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold', fontSize: '10px' }}>기안자</Box>
                     {steps.map((step, i) => (
                         <Box key={i} component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold', fontSize: '10px' }}>
-                            {step.approver?.role || step.role || ''}
+                            {/* [FIX] approver 객체의 role → step.role 순서로 fallback */}
+                            {step.approver?.role || step.role || '결재'}
                         </Box>
                     ))}
                 </TableRow>
