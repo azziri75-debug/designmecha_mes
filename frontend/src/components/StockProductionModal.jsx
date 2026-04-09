@@ -80,13 +80,13 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess, initialData }) => {
     };
 
     const filteredPartners = partners.filter(p =>
-        p.name.toLowerCase().includes(partnerSearch.toLowerCase()) ||
-        p.code?.toLowerCase().includes(partnerSearch.toLowerCase())
+        (p.name?.toLowerCase() || '').includes(partnerSearch?.toLowerCase() || '') ||
+        (p.code?.toLowerCase() || '').includes(partnerSearch?.toLowerCase() || '')
     );
 
     const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-        p.code.toLowerCase().includes(productSearch.toLowerCase())
+        (p.name?.toLowerCase() || '').includes(productSearch?.toLowerCase() || '') ||
+        (p.code?.toLowerCase() || '').includes(productSearch?.toLowerCase() || '')
     );
 
     const handlePartnerSelect = (partner) => {
