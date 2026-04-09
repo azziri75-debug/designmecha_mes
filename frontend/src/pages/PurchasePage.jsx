@@ -67,8 +67,8 @@ const ORDER_COLS = [
     { key: 'link', label: '연결 정보 (수주/재고)', width: 180 },
     { key: 'date', label: '발주일자', width: 120 },
     { key: 'partner', label: '공급사', width: 150 },
-    { key: 'spec', label: '규격', width: 150 },
-    { key: 'count', label: '품목 수', width: 100 },
+    { key: 'itemname', label: '품명', width: 200 },
+    { key: 'count', label: '품목 수', width: 80 },
     { key: 'delivery', label: '납품예정일', width: 120 },
     { key: 'status', label: '상태', width: 100 },
     { key: 'actions', label: '관리', width: 250, noResize: true },
@@ -795,6 +795,7 @@ const PurchasePage = ({ type }) => {
                                 <PurchaseOrderRow 
                                     key={order.id} 
                                     order={order} 
+                                    type={type}
                                     expanded={expandedOrderId === order.id}
                                     onToggle={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
                                     onEdit={handleEditClick}
@@ -878,7 +879,7 @@ const PurchasePage = ({ type }) => {
     );
 };
 
-const PurchaseOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onComplete, onApproval, onOpenFiles, onRefresh, onOpenSheet, readonly }) => {
+const PurchaseOrderRow = ({ order, type, expanded, onToggle, onEdit, onDelete, onComplete, onApproval, onOpenFiles, onRefresh, onOpenSheet, readonly }) => {
     return (
         <React.Fragment>
             <tr
@@ -903,7 +904,7 @@ const PurchaseOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCompl
                                     {order.sales_order_number}
                                 </>
                             ) : (
-                                <span style={{ color: '#757575' }}>재고용</span>
+                                <span style={{ color: '#757575' }}>{type === 'CONSUMABLE' ? '소모품' : '재고용'}</span>
                             )}
                         </Typography>
                         <Typography variant="caption" color="textSecondary">{order.order?.partner?.name || order.related_customer_names || '-'}</Typography>
@@ -911,7 +912,14 @@ const PurchaseOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCompl
                 </td>
                 <td className="px-4 py-4">{order.order_date}</td>
                 <td className="px-4 py-4 font-bold">{order.partner?.name}</td>
-                <td className="px-4 py-4 truncate">{order.items?.[0]?.product?.specification || '-'}</td>
+                <td className="px-4 py-4 font-bold truncate">
+                    {(() => {
+                        const items = order.items || [];
+                        if (items.length === 0) return '-';
+                        const firstName = items[0]?.product?.name || '-';
+                        return items.length > 1 ? `${firstName} 외 ${items.length - 1}건` : firstName;
+                    })()}
+                </td>
                 <td className="px-4 py-4">{order.items?.length} 품목</td>
                 <td className="px-4 py-4 text-orange-600 font-bold">{order.delivery_date}</td>
                 <td className="px-4 py-4">
@@ -1013,27 +1021,31 @@ const PurchaseOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCompl
                                 <h4 className="text-sm font-semibold mb-2 text-gray-300">발주 상세 내역</h4>
                                 <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded-md">
                                     <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
-                                        <tr>
-                                            <th className="px-3 py-2">공정명</th>
-                                            <th className="px-3 py-2">품목명</th>
-                                            <th className="px-3 py-2">규격</th>
-                                            <th className="px-3 py-2 text-right">수량</th>
-                                            <th className="px-3 py-2 text-right">단가</th>
-                                            <th className="px-3 py-2 text-right">금액</th>
-                                            <th className="px-3 py-2">비고</th>
-                                        </tr>
+                                     <tr>
+                                             {!type || type !== 'CONSUMABLE' ? (
+                                                 <th className="px-3 py-2">공정명</th>
+                                             ) : null}
+                                             <th className="px-3 py-2">품목명</th>
+                                             <th className="px-3 py-2">규격</th>
+                                             <th className="px-3 py-2 text-right">수량</th>
+                                             <th className="px-3 py-2 text-right">단가</th>
+                                             <th className="px-3 py-2 text-right">금액</th>
+                                             <th className="px-3 py-2">비고</th>
+                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-800">
                                         {(order.items || []).map((item) => (
-                                            <tr key={item.id} className="hover:bg-gray-800/30 border-b border-gray-800">
-                                                <td className="px-3 py-2">{item.process_name || '-'}</td>
-                                                <td className="px-3 py-2 font-bold">{item.product?.name}</td>
-                                                <td className="px-3 py-2">{item.product?.specification}</td>
-                                                <td className="px-3 py-2 text-right">{item.quantity} {item.product?.unit}</td>
-                                                <td className="px-3 py-2 text-right">{(item.unit_price || 0).toLocaleString()}</td>
-                                                <td className="px-3 py-2 text-right font-bold text-blue-900">{((item.quantity || 0) * (item.unit_price || 0)).toLocaleString()}</td>
-                                                <td className="px-3 py-2 truncate max-w-[150px]" title={item.note}>{item.note}</td>
-                                            </tr>
+                                     <tr key={item.id} className="hover:bg-gray-800/30 border-b border-gray-800">
+                                                 {!type || type !== 'CONSUMABLE' ? (
+                                                     <td className="px-3 py-2">{item.process_name || '-'}</td>
+                                                 ) : null}
+                                                 <td className="px-3 py-2 font-bold">{item.product?.name}</td>
+                                                 <td className="px-3 py-2">{item.product?.specification}</td>
+                                                 <td className="px-3 py-2 text-right">{item.quantity} {item.product?.unit}</td>
+                                                 <td className="px-3 py-2 text-right">{(item.unit_price || 0).toLocaleString()}</td>
+                                                 <td className="px-3 py-2 text-right font-bold text-blue-900">{((item.quantity || 0) * (item.unit_price || 0)).toLocaleString()}</td>
+                                                 <td className="px-3 py-2 truncate max-w-[150px]" title={item.note}>{item.note}</td>
+                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
