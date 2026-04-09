@@ -1328,7 +1328,19 @@ async def update_production_plan_status(
                         db.add(oo)
 
             await process_stock_deduction(db, plan_id=plan_id)
-            await _handle_production_completion_effects(db, plan)
+            # Re-fetch plan with all relationships needed for completion effects
+            _refetch_res = await db.execute(
+                select(ProductionPlan).options(
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order).selectinload(PurchaseOrder.items),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order).selectinload(OutsourcingOrder.items),
+                    selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                    selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                ).where(ProductionPlan.id == plan_id)
+            )
+            _plan_for_effects = _refetch_res.scalars().first()
+            await _handle_production_completion_effects(db, _plan_for_effects)
                 
         # Rollback Logic (COMPLETED -> NOT COMPLETED)
         elif old_status == ProductionStatus.COMPLETED and status != ProductionStatus.COMPLETED:
