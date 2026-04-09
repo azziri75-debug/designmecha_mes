@@ -727,21 +727,19 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                     {safeParseJSON(plan.attachment_file, []).length > 0 && <IconButton size="small" color="primary" onClick={() => onOpenFiles(safeParseJSON(plan.attachment_file, []), plan)}><FileText className="w-4 h-4" /></IconButton>}
                 </td>
                 <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                    {!readonly && (
-                        <div className="flex gap-1 justify-center">
-                            {plan.status !== 'COMPLETED' ? (
-                                <>
-                                    <IconButton size="small" color="info" onClick={() => onPrint(plan, 'PRODUCTION')}><PrintIcon fontSize="small" /></IconButton>
-                                    <IconButton size="small" color="primary" onClick={() => onEdit(plan)}><EditIcon fontSize="small" /></IconButton>
-                                    <IconButton size="small" color="error" onClick={() => onDelete(plan.id)}><DeleteIcon fontSize="small" /></IconButton>
-                                    {plan.status === 'PLANNED' && <IconButton size="small" color="secondary" onClick={() => onConfirm(plan.id)}><CheckIcon fontSize="small" /></IconButton>}
-                                    <IconButton size="small" color="success" onClick={() => onComplete(plan.id)}><CheckIcon fontSize="small" /></IconButton>
-                                </>
-                            ) : (
+                    <div className="flex gap-1 justify-center">
+                        {plan.status !== 'COMPLETED' && !readonly ? (
+                            <>
+                                <IconButton size="small" color="info" onClick={() => onPrint(plan, 'PRODUCTION')}><PrintIcon fontSize="small" /></IconButton>
+                                <IconButton size="small" color="primary" onClick={() => onEdit(plan)}><EditIcon fontSize="small" /></IconButton>
                                 <IconButton size="small" color="error" onClick={() => onDelete(plan.id)}><DeleteIcon fontSize="small" /></IconButton>
-                            )}
-                        </div>
-                    )}
+                                {plan.status === 'PLANNED' && <IconButton size="small" color="secondary" onClick={() => onConfirm(plan.id)}><CheckIcon fontSize="small" /></IconButton>}
+                                <IconButton size="small" color="success" onClick={() => onComplete(plan.id)}><CheckIcon fontSize="small" /></IconButton>
+                            </>
+                        ) : (
+                            <IconButton size="small" color="error" onClick={() => onDelete(plan.id)}><DeleteIcon fontSize="small" /></IconButton>
+                        )}
+                    </div>
                 </td>
             </tr>
             {open && (
