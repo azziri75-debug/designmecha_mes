@@ -535,8 +535,11 @@ async def create_staff(
     new_staff = Staff(**staff.model_dump())
     db.add(new_staff)
     await db.commit()
-    await db.refresh(new_staff)
-    return new_staff
+    # dept 관계를 eager load
+    result = await db.execute(
+        select(Staff).options(selectinload(Staff.dept)).where(Staff.id == new_staff.id)
+    )
+    return result.scalars().first()
 
 
 @router.get("/staff/", response_model=List[StaffResponse])
@@ -548,9 +551,13 @@ async def read_staff(
     # Comprehensive Auto-migration for Staff Table using helper
     from app.api.deps import ensure_staff_columns
     
-    for attempt in range(15): # Increase retries for safety
+    for attempt in range(15):
         try:
-            result = await db.execute(select(Staff).offset(skip).limit(limit))
+            result = await db.execute(
+                select(Staff)
+                .options(selectinload(Staff.dept))  # [FIX] dept eager loading
+                .offset(skip).limit(limit)
+            )
             staff_list = result.scalars().all()
             return staff_list
         except Exception as e:
@@ -586,8 +593,11 @@ async def update_staff(
         setattr(staff, key, value)
     
     await db.commit()
-    await db.refresh(staff)
-    return staff
+    # dept 관계를 eager load 후 반환
+    result = await db.execute(
+        select(Staff).options(selectinload(Staff.dept)).where(Staff.id == staff_id)
+    )
+    return result.scalars().first()
 
 @router.delete("/staff/{staff_id}")
 async def delete_staff(
