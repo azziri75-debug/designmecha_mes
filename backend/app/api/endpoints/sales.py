@@ -14,7 +14,7 @@ from app.models.sales import (
 from app.schemas import sales as schemas
 from app.models.product import Product, ProductProcess, BOM
 from app.models.basics import Partner
-from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder
+from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder, ProductionStatus
 from app.models.quality import InspectionResult, QualityDefect
 from app.models.purchasing import PurchaseOrder, PurchaseStatus, PurchaseOrderItem, OutsourcingOrder, OutsourcingStatus, OutsourcingOrderItem, MaterialRequirement
 from app.api.utils.status_cascade import complete_production_for_order
@@ -591,7 +591,7 @@ async def update_order(
     
     # Update Items
     if order_in.items is not None:
-        from app.models.production import ProductionPlan, ProductionPlanItem, WorkLogItem
+        from app.models.production import ProductionPlan, ProductionPlanItem, WorkLogItem, ProductionStatus
         from sqlalchemy import func
         
         existing_items = {item.id: item for item in db_order.items}
@@ -610,6 +610,7 @@ async def update_order(
                         .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
                         .where(ProductionPlan.order_id == db_order.id)
                         .where(ProductionPlanItem.product_id == db_item.product_id)
+                        .where(ProductionPlan.status != ProductionStatus.CANCELED)  # [FIX] 취소된 계획 제외
                     )
                     if plan_check.scalar() > 0:
                         raise HTTPException(
@@ -653,12 +654,13 @@ async def update_order(
                         detail=f"품목({item.product.name if item.product else item_id})은(는) 이미 납품 이력이 존재하여 삭제할 수 없습니다. 납품 내역을 먼저 취소해 주세요."
                     )
                 
-                # Check Production Plan
+                # Check Production Plan (CANCELED 상태 제외)
                 plan_check = await db.execute(
                     select(func.count(ProductionPlanItem.id))
                     .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
                     .where(ProductionPlan.order_id == db_order.id)
                     .where(ProductionPlanItem.product_id == item.product_id)
+                    .where(ProductionPlan.status != ProductionStatus.CANCELED)  # [FIX] 취소된 계획 제외
                 )
                 if plan_check.scalar() > 0:
                     raise HTTPException(
