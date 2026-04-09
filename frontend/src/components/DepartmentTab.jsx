@@ -69,6 +69,30 @@ const PRINT_STYLE = `
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+
+  /* 6. 인쇄 시 경영진 카드 강조색 제거 → 흑백 통일 */
+  body.org-chart-printing #org-chart-print-area [class*="from-blue"],
+  body.org-chart-printing #org-chart-print-area [class*="from-purple"],
+  body.org-chart-printing #org-chart-print-area [class*="to-purple"],
+  body.org-chart-printing #org-chart-print-area [class*="border-blue"] {
+    background: white !important;
+    background-image: none !important;
+    border-color: #d1d5db !important;
+  }
+  body.org-chart-printing #org-chart-print-area [class*="bg-blue"],
+  body.org-chart-printing #org-chart-print-area [class*="bg-purple"] {
+    background: #e5e7eb !important;
+    background-image: none !important;
+  }
+  body.org-chart-printing #org-chart-print-area [class*="text-blue"],
+  body.org-chart-printing #org-chart-print-area [class*="text-purple"],
+  body.org-chart-printing #org-chart-print-area [class*="text-white"] {
+    color: #111827 !important;
+  }
+  body.org-chart-printing #org-chart-print-area [class*="text-gray-4"],
+  body.org-chart-printing #org-chart-print-area [class*="text-gray-5"] {
+    color: #6b7280 !important;
+  }
 }
 `;
 
