@@ -30,118 +30,58 @@ const getRank = (role) => {
    조직도 인쇄용 CSS (print 미디어 쿼리)
    ────────────────────────────────────────── */
 const PRINT_STYLE = `
-/* ── A4 가로 방향, 여백 최소화 ── */
 @page {
   size: A4 landscape;
-  margin: 8mm 6mm;
+  margin: 6mm 8mm;
 }
-
 @media print {
-  /* ── 조직도 전용 인쇄 스타일 (body.org-chart-printing 클래스일 때만 적용) ── */
-
-  /* 1. body 전체를 숨기되 레이아웃은 유지 */
-  body.org-chart-printing {
-    visibility: hidden !important;
-    overflow: visible !important;
-    height: auto !important;
-  }
-
-  /* 2. 조직도 영역만 보이게 */
-  body.org-chart-printing #org-chart-print-area {
-    visibility: visible !important;
-    position: absolute !important;
-    top: 0 !important; left: 0 !important;
-    width: 100% !important;
-    overflow: visible !important;
-    background: white !important;
-    padding: 4mm 6mm !important;
-    box-sizing: border-box !important;
-    /* 전체 축소로 1페이지 맞춤 */
-    zoom: 0.82 !important;
-  }
-  body.org-chart-printing #org-chart-print-area * {
-    visibility: visible !important;
-  }
-
-  /* 3. 섹션 간격 축소 */
-  body.org-chart-printing #org-chart-print-area .space-y-10 > * + *,
-  body.org-chart-printing #org-chart-print-area .space-y-8 > * + * {
-    margin-top: 6mm !important;
-  }
-
-  /* 4. 제목 크기 축소 */
-  body.org-chart-printing #org-chart-print-area h1 {
-    font-size: 18pt !important;
-    margin-bottom: 1mm !important;
-  }
-
-  /* 5. 카드 그리드 — 가로 모드에 맞게 컬럼 늘리기 */
-  body.org-chart-printing #org-chart-print-area .grid {
-    grid-template-columns: repeat(5, 1fr) !important;
-    gap: 6px !important;
-  }
-
-  /* 6. 카드 내부 여백 축소 */
-  body.org-chart-printing #org-chart-print-area .org-card,
-  body.org-chart-printing #org-chart-print-area [class*="rounded-xl"] {
-    padding: 6px 8px !important;
-  }
-
-  /* 7. 카드 불필요 요소 숨김 */
-  body.org-chart-printing .no-print {
-    visibility: hidden !important;
+  /* 다른 모든 요소 숨김 */
+  body.org-chart-printing > *:not(#org-print-portal) {
     display: none !important;
   }
-
-  /* 8. 스크롤바 완전 제거 */
-  body.org-chart-printing ::-webkit-scrollbar { display: none !important; }
-
-  /* 9. 카드가 페이지 경계에서 잘리지 않도록 */
-  body.org-chart-printing .org-card {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-
-  /* 10a. 텍스트 잘림 방지 - truncate 오버라이드 */
-  body.org-chart-printing #org-chart-print-area .truncate {
-    overflow: visible !important;
-    text-overflow: unset !important;
-    white-space: normal !important;
-    word-break: break-all !important;
-  }
-
-  /* 10b. 카드 폰트 크기 축소로 긴 텍스트 수용 */
-  body.org-chart-printing #org-chart-print-area .org-card .text-xs {
-    font-size: 7pt !important;
-    line-height: 1.3 !important;
-  }
-  body.org-chart-printing #org-chart-print-area .org-card .text-sm {
-    font-size: 8.5pt !important;
-  }
-
-  /* 10. 인쇄 시 경영진 카드 강조색 제거 → 흑백 통일 */
-  body.org-chart-printing #org-chart-print-area [class*="from-blue"],
-  body.org-chart-printing #org-chart-print-area [class*="from-purple"],
-  body.org-chart-printing #org-chart-print-area [class*="to-purple"],
-  body.org-chart-printing #org-chart-print-area [class*="border-blue"] {
+  /* 포털 div만 표시 */
+  body.org-chart-printing > #org-print-portal {
+    display: block !important;
     background: white !important;
-    background-image: none !important;
-    border-color: #d1d5db !important;
+    width: 100% !important;
+    padding: 3mm 5mm !important;
+    box-sizing: border-box !important;
+    zoom: 0.72 !important;
   }
-  body.org-chart-printing #org-chart-print-area [class*="bg-blue"],
-  body.org-chart-printing #org-chart-print-area [class*="bg-purple"] {
-    background: #e5e7eb !important;
-    background-image: none !important;
+  /* 제목 */
+  #org-print-portal h1 { font-size: 18pt !important; margin-bottom: 1mm !important; }
+  #org-print-portal p  { font-size: 8pt !important; margin-bottom: 3mm !important; }
+  /* 섹션 간격 */
+  #org-print-portal .space-y-10 > * + *,
+  #org-print-portal .space-y-8  > * + * { margin-top: 5mm !important; }
+  /* 지원잠 카드 자림 방지 */
+  #org-print-portal .org-card { break-inside: avoid !important; page-break-inside: avoid !important; }
+  /* 그리드 5열 */
+  #org-print-portal .grid { grid-template-columns: repeat(5,1fr) !important; gap: 5px !important; }
+  /* 카드 여백 */
+  #org-print-portal .org-card { padding: 5px 7px !important; }
+  /* 폰트 */
+  #org-print-portal .org-card .text-xs { font-size: 6.5pt !important; line-height: 1.25 !important; }
+  #org-print-portal .org-card .text-sm { font-size: 8pt !important; }
+  /* 텍스트 잘림 방지 */
+  #org-print-portal .truncate {
+    overflow: visible !important; text-overflow: unset !important;
+    white-space: normal !important; word-break: break-all !important;
   }
-  body.org-chart-printing #org-chart-print-area [class*="text-blue"],
-  body.org-chart-printing #org-chart-print-area [class*="text-purple"],
-  body.org-chart-printing #org-chart-print-area [class*="text-white"] {
-    color: #111827 !important;
-  }
-  body.org-chart-printing #org-chart-print-area [class*="text-gray-4"],
-  body.org-chart-printing #org-chart-print-area [class*="text-gray-5"] {
-    color: #6b7280 !important;
-  }
+  /* 세큰/구분선 텍스트 */
+  #org-print-portal [class*="text-white"]  { color: #111 !important; }
+  #org-print-portal [class*="text-blue"]   { color: #1d4ed8 !important; }
+  #org-print-portal [class*="text-gray-4"],
+  #org-print-portal [class*="text-gray-5"] { color: #6b7280 !important; }
+  /* 경영진 컨드 색상 제거 */
+  #org-print-portal [class*="from-blue"],
+  #org-print-portal [class*="from-purple"],
+  #org-print-portal [class*="to-purple"]   { background: white !important; background-image: none !important; border-color: #d1d5db !important; }
+  #org-print-portal [class*="bg-blue"],
+  #org-print-portal [class*="bg-purple"]   { background: #e5e7eb !important; background-image: none !important; }
+  #org-print-portal [class*="text-purple"] { color: #111 !important; }
+  /* 스크롤바 숨김 */
+  ::-webkit-scrollbar { display: none !important; }
 }
 `;
 
@@ -207,18 +147,28 @@ function OrgChartModal({ onClose, departments, allStaff, company }) {
   const printRef = useRef(null);
 
   const handlePrint = () => {
-    // 스타일 주입 (중복 방지)
+    // 1. 주입 주는 스타일 (body 직소 자식에만 적용)
     if (!document.getElementById('__org_print_style__')) {
       const style = document.createElement('style');
       style.id = '__org_print_style__';
       style.textContent = PRINT_STYLE;
       document.head.appendChild(style);
     }
-    // body에 클래스 추가 → 조직도 전용 print CSS 활성화
+    // 2. 조직도 콘텐츠를 body 직소의 포털 div에 복사
+    const existing = document.getElementById('org-print-portal');
+    if (existing) document.body.removeChild(existing);
+    const portal = document.createElement('div');
+    portal.id = 'org-print-portal';
+    portal.style.display = 'none';
+    if (printRef.current) portal.innerHTML = printRef.current.innerHTML;
+    document.body.appendChild(portal);
+    // 3. body에 클래스 추가 → print CSS 활성화
     document.body.classList.add('org-chart-printing');
-    // afterprint 이벤트에서 클래스 제거 (다른 문서 인쇄에 영향 없도록)
+    // 4. afterprint 이벤트에서 정리
     window.addEventListener('afterprint', () => {
       document.body.classList.remove('org-chart-printing');
+      const p = document.getElementById('org-print-portal');
+      if (p) document.body.removeChild(p);
     }, { once: true });
     window.print();
   };
