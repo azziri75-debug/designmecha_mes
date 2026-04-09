@@ -1084,14 +1084,38 @@ async def delete_production_plan(
 
     # 1-1. 재고 롤백 처리 (삭제 전 실행)
     if plan.status == ProductionStatus.COMPLETED:
+        # [FIX] 실제 순생산량(net_qty) 조회 - 재고소진으로만 완료된 경우 backflush가 실행되지 않았으므로 롤백 불필요
+        pi_result = await db.execute(
+            select(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
+        )
+        plan_items_for_rollback = pi_result.scalars().all()
+        
+        # 순생산량 계산: 각 product별 max quantity (공정 수에 무관하게 실제 생산된 수량)
+        net_prod_qtys = {}
+        for pi in plan_items_for_rollback:
+            pid = pi.product_id
+            net_prod_qtys[pid] = max(net_prod_qtys.get(pid, 0), pi.quantity or 0)
+
         if plan.stock_production:
             sp = plan.stock_production
-            await handle_stock_movement(db, sp.product_id, -sp.quantity, TransactionType.OUT, f"Delete Rollback ({sp.production_no})")
-            await handle_backflush(db, sp.product_id, -sp.quantity, f"Delete Rollback ({sp.production_no})")
+            net_qty = net_prod_qtys.get(sp.product_id, 0)
+            
+            # 완제품 입고분 롤백 (실제 생산이 있었을 때만)
+            if net_qty > 0:
+                await handle_stock_movement(db, sp.product_id, -net_qty, TransactionType.OUT, f"Delete Rollback ({sp.production_no})")
+                await handle_backflush(db, sp.product_id, -net_qty, f"Delete Rollback ({sp.production_no})")
+                print(f"[Delete Rollback] stock_production {sp.production_no}: net_qty={net_qty} rolled back.")
+            else:
+                print(f"[Delete Rollback] stock_production {sp.production_no}: net_qty=0 (stock-depletion only), skipping backflush rollback.")
         elif plan.order:
-            for item in plan.order.items:
-                await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.OUT, f"Delete Rollback ({plan.order.order_no})")
-                await handle_backflush(db, item.product_id, -item.quantity, f"Delete Rollback ({plan.order.order_no})")
+            for order_item in plan.order.items:
+                net_qty = net_prod_qtys.get(order_item.product_id, 0)
+                if net_qty > 0:
+                    await handle_stock_movement(db, order_item.product_id, -net_qty, TransactionType.OUT, f"Delete Rollback ({plan.order.order_no})")
+                    await handle_backflush(db, order_item.product_id, -net_qty, f"Delete Rollback ({plan.order.order_no})")
+                    print(f"[Delete Rollback] order {plan.order.order_no}: net_qty={net_qty} rolled back.")
+                else:
+                    print(f"[Delete Rollback] order {plan.order.order_no}: net_qty=0, skipping backflush rollback.")
 
     elif plan.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
         # 생산 중 수량 차감
