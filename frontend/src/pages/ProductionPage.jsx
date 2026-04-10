@@ -803,7 +803,20 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
             <tr className="hover:bg-gray-800/40 transition-colors select-none text-gray-300 cursor-pointer" onClick={() => setOpen(!open)}>
                 <td className="px-3 py-3 text-center text-gray-400">{item.sequence}</td>
                 <td className="px-3 py-3 font-medium">{item.process_name}</td>
-                <td className="px-3 py-3"><Chip label={typeMap[item.course_type] || item.course_type} size="small" sx={{ height: 18, fontSize: '10px' }} /></td>
+                <td className="px-3 py-3">
+                    {item.course_type === 'INTERNAL' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">사내</span>
+                    )}
+                    {item.course_type === 'OUTSOURCING' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">외주</span>
+                    )}
+                    {item.course_type === 'PURCHASE' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/40">구매</span>
+                    )}
+                    {!['INTERNAL','OUTSOURCING','PURCHASE'].includes(item.course_type) && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-gray-600/40 text-gray-300 border border-gray-500/40">{item.course_type}</span>
+                    )}
+                </td>
                 <td className="px-3 py-3 text-gray-400">{item.course_type === 'INTERNAL' ? (item.worker?.name || '-') : (item.partner_name || '-')}</td>
                 <td className="px-3 py-3 text-gray-400">{item.equipment?.name || '-'}</td>
                 <td className="px-3 py-3 text-gray-400 max-w-[120px] truncate">{item.note || '-'}</td>
