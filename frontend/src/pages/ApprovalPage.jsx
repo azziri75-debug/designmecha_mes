@@ -422,6 +422,7 @@ const ApprovalPage = () => {
                         </Card>
                     </div>
                 ) : (
+                    <>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {Object.entries(DOC_TYPES).map(([type, info]) => (
                             <Card key={type} className="flex flex-col">
@@ -460,6 +461,7 @@ const ApprovalPage = () => {
                             </button>
                         </div>
                     )}
+                    </>
                 )}
             </div>
 
