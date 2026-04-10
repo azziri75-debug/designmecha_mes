@@ -510,6 +510,26 @@ async def get_document(
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
     return doc
 
+@router.put("/documents/{doc_id}/cancel")
+async def cancel_document(
+    doc_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
+):
+    """결재 문서를 CANCELLED 상태로 변경 (재결재 전 기존 문서 취소용)"""
+    result = await db.execute(
+        select(ApprovalDocument).where(ApprovalDocument.id == doc_id, ApprovalDocument.deleted_at.is_(None))
+    )
+    doc = result.scalars().first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+    # 기안자 또는 ADMIN만 취소 가능
+    if doc.author_id != current_user.id and current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="취소 권한이 없습니다.")
+    doc.status = ApprovalStatus.CANCELLED
+    await db.commit()
+    return {"message": "결재 문서가 취소되었습니다.", "doc_id": doc_id}
+
 @router.post("/documents/{doc_id}/process")
 async def process_approval(
     doc_id: int,

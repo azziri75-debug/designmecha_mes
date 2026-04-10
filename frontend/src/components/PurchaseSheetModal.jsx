@@ -187,8 +187,8 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
 
     if (!isOpen || !order) return null;
 
-    const isApproved = approvalDoc?.status === 'APPROVED';
-    const isReadOnly = isApproved && !editOverride; // 결재완료 후 수정 모드가 아니면 읽기 전용
+    const isApproved = approvalDoc?.status === 'COMPLETED';  // 백엔드 ApprovalStatus.COMPLETED
+    const isReadOnly = isApproved && !editOverride;
 
     const totalAmount = (metadata.items || []).reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
 
@@ -276,6 +276,14 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                                     if (!window.confirm(confirmMsg)) return;
                                     setSaving(true);
                                     try {
+                                        // 재결재 시: 기존 완료 문서를 CANCELLED로 취소하여 중복 차단 우회
+                                        if (editOverride && approvalDoc?.id) {
+                                            try {
+                                                await api.put(`/approval/documents/${approvalDoc.id}/cancel`);
+                                            } catch (cancelErr) {
+                                                console.warn('Failed to cancel old approval doc, proceeding anyway', cancelErr);
+                                            }
+                                        }
                                         const firstItemProcess = metadata.items?.[0]?.name || (orderType === 'outsourcing' ? '외주공정' : (metadata.purchase_type === 'CONSUMABLE' ? '소모품' : '구매자재'));
                                         const customerName = metadata.related_customer_names || '재고용';
                                         const partnerName = metadata.partner_name || '공급사미지정';
