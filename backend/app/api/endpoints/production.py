@@ -231,6 +231,35 @@ async def sync_plan_item_cost(db: AsyncSession, plan_item: ProductionPlanItem):
             db.add(plan_item)
             await db.flush()
 
+
+@router.post("/plans/backfill-completion-dates")
+async def backfill_completion_dates(
+    db: AsyncSession = Depends(deps.get_db),
+):
+    """
+    [관리자용] COMPLETED 상태이지만 actual_completion_date가 없는 생산 계획의 
+    완료일을 updated_at(최종수정일) 기준으로 일괄 채워줍니다.
+    """
+    result = await db.execute(
+        select(ProductionPlan).where(
+            ProductionPlan.status == ProductionStatus.COMPLETED,
+            ProductionPlan.actual_completion_date == None
+        )
+    )
+    plans = result.scalars().all()
+    updated_count = 0
+    for plan in plans:
+        # updated_at을 날짜로 변환하거나 없으면 오늘 날짜 사용
+        if plan.updated_at:
+            plan.actual_completion_date = plan.updated_at.date()
+        else:
+            plan.actual_completion_date = now_kst().date()
+        db.add(plan)
+        updated_count += 1
+    
+    await db.commit()
+    return {"updated": updated_count, "message": f"{updated_count}건의 생산 완료일이 업데이트되었습니다."}
+
 @router.get("/plans", response_model=List[schemas.ProductionPlan])
 async def read_production_plans(
     skip: int = 0,
@@ -439,6 +468,7 @@ async def create_production_plan(
             is_fully_stock_satisfied = all((item.quantity or 0) == 0 for item in plan_in.items) if plan_in.items else False
             if is_fully_stock_satisfied:
                 plan.status = ProductionStatus.COMPLETED
+                plan.actual_completion_date = now_kst().date()  # [FIX] 완료일 기록
                 # [FIX] 하위 모든 공정도 함께 완료 처리 (발주 대기 목록 노출 방지)
                 for itm in plan.items:
                     itm.status = ProductionStatus.COMPLETED
@@ -741,6 +771,8 @@ async def update_production_plan(
         all_qty_zero = all((i.quantity or 0) == 0 for i in plan_in.items)
         if all_qty_zero:
             plan.status = ProductionStatus.COMPLETED
+            if not plan.actual_completion_date:  # [FIX] 완료일 미설정 시 오늘 날짜
+                plan.actual_completion_date = now_kst().date()
 
 
     if plan.status == ProductionStatus.COMPLETED:

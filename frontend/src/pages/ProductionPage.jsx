@@ -719,8 +719,14 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                     })()}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-orange-600 font-medium">{order?.delivery_date || '-'}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-emerald-400">
-                    {plan.status === 'COMPLETED' ? (plan.actual_completion_date || '-') : '-'}
+                <td className="px-4 py-4 whitespace-nowrap">
+                    {plan.status === 'COMPLETED' ? (
+                        plan.actual_completion_date
+                            ? <span className="text-emerald-400">{plan.actual_completion_date}</span>
+                            : plan.updated_at
+                                ? <span className="text-gray-400 text-xs" title="수정일 기준(완료일 미기록)">{plan.updated_at.split('T')[0]}*</span>
+                                : <span className="text-gray-600">-</span>
+                    ) : '-'}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-right">{formatCurrency(order?.total_amount || 0, (() => { const cur = order?.items?.find(it => it.currency && it.currency !== 'KRW')?.currency; return cur || order?.items?.[0]?.currency || 'KRW'; })())}</td>
                 <td className="px-4 py-4 truncate max-w-[150px]">{order?.note || sp?.note || '-'}</td>
