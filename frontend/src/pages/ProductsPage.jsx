@@ -10,7 +10,9 @@ import ProcessGroupManager from '../components/ProcessGroupManager';
 import ResizableTh from '../components/ResizableTh';
 import ProcessChartTemplate from '../components/ProcessChartTemplate';
 import ProductModal from '../components/ProductModal';
-import { formatCurrency, CurrencySelect } from '../utils/currency';
+import { formatCurrency } from '../utils/currency';
+import { CurrencySelect } from '../components/CurrencySelect';
+
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>

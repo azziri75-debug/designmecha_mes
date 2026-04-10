@@ -5,7 +5,9 @@ import { cn, safeParseJSON } from '../lib/utils';
 import Select from 'react-select';
 import OrderHistoryModal from './OrderHistoryModal';
 import QuotationHistoryModal from './QuotationHistoryModal';
-import { formatCurrency, CurrencySelect } from '../utils/currency';
+import { formatCurrency } from '../utils/currency';
+import { CurrencySelect } from '../components/CurrencySelect';
+
 
 const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }) => {
     // Select styling
