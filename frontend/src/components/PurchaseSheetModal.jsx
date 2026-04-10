@@ -68,16 +68,25 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
 
     const initializeMetadata = () => {
         if (!order) return;
-        const items = (order.items || []).map((item, idx) => ({
-            idx: idx + 1,
-            name: item.product?.name || "",
-            spec: item.product?.specification || item.product?.code || "",
-            qty: item.quantity,
-            price: item.unit_price || 0,
-            total: item.quantity * (item.unit_price || 0),
-            material: item.material || "",
-            order_size: item.order_size || ""
-        }));
+        const items = (order.items || []).map((item, idx) => {
+            const baseName = item.product?.name || item.process_name || "";
+            const processName = item.process_name;
+            // 품목명 뒤에 공정명 추가 (공정명이 있고 품목명과 다를 경우)
+            const displayName = (processName && processName !== baseName)
+                ? `${baseName} [${processName}]`
+                : baseName;
+            return {
+                idx: idx + 1,
+                name: displayName,
+                spec: item.product?.specification || item.product?.code || "",
+                qty: item.quantity,
+                price: item.unit_price || 0,
+                total: item.quantity * (item.unit_price || 0),
+                material: item.material || "",
+                order_size: item.order_size || "",
+                process_name: processName || ""
+            };
+        });
 
         while (items.length < 12) {
             items.push({ idx: "", name: "", spec: "", qty: "", price: "", total: "" });

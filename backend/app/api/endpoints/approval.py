@@ -530,6 +530,32 @@ async def cancel_document(
     await db.commit()
     return {"message": "결재 문서가 취소되었습니다.", "doc_id": doc_id}
 
+@router.patch("/documents/{doc_id}/title")
+async def update_document_title(
+    doc_id: int,
+    payload: dict,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
+):
+    """결재 문서 제목 수정 (시스템 관리자 전용)"""
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="시스템 관리자만 제목을 수정할 수 있습니다.")
+    
+    new_title = payload.get("title", "").strip()
+    if not new_title:
+        raise HTTPException(status_code=400, detail="제목을 입력해주세요.")
+    
+    result = await db.execute(
+        select(ApprovalDocument).where(ApprovalDocument.id == doc_id, ApprovalDocument.deleted_at.is_(None))
+    )
+    doc = result.scalars().first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+    
+    doc.title = new_title
+    await db.commit()
+    return {"message": "제목이 수정되었습니다.", "doc_id": doc_id, "title": new_title}
+
 @router.post("/documents/{doc_id}/process")
 async def process_approval(
     doc_id: int,

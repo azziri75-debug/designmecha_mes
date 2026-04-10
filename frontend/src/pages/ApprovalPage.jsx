@@ -76,6 +76,10 @@ const ApprovalPage = () => {
     const [selectedDoc, setSelectedDoc] = useState(null);
     const [approvalComment, setApprovalComment] = useState('');
 
+    // 인라인 제목 편집 (관리자 전용)
+    const [editingTitleId, setEditingTitleId] = useState(null);
+    const [editingTitleValue, setEditingTitleValue] = useState('');
+
     const handlePrintApproval = async () => {
         const contentEl = document.querySelector('.doc-detail-modal .a4-wrapper');
         if (contentEl) {
@@ -178,6 +182,22 @@ const ApprovalPage = () => {
     const handleEditDoc = (doc) => {
         navigate(`/approval/draft?id=${doc.id}`);
         setShowDocDetail(false);
+    };
+
+    const handleSaveTitle = async (docId) => {
+        const newTitle = editingTitleValue.trim();
+        if (!newTitle) {
+            setEditingTitleId(null);
+            return;
+        }
+        try {
+            await api.patch(`/approval/documents/${docId}/title`, { title: newTitle });
+            setDocuments(prev => prev.map(d => d.id === docId ? { ...d, title: newTitle } : d));
+        } catch (err) {
+            alert('제목 수정 실패: ' + (err.response?.data?.detail || err.message));
+        } finally {
+            setEditingTitleId(null);
+        }
     };
 
     const handleProcess = async (docId, status, comment) => {
@@ -337,7 +357,38 @@ const ApprovalPage = () => {
                                                     {DOC_TYPES[doc.doc_type]?.label}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-100 font-semibold truncate">{doc.title}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-100 font-semibold truncate" onClick={(e) => e.stopPropagation()}>
+                                                {currentUser?.user_type === 'ADMIN' && editingTitleId === doc.id ? (
+                                                    <input
+                                                        autoFocus
+                                                        className="w-full bg-gray-700 border border-blue-500 rounded px-2 py-1 text-white text-sm outline-none"
+                                                        value={editingTitleValue}
+                                                        onChange={e => setEditingTitleValue(e.target.value)}
+                                                        onBlur={() => handleSaveTitle(doc.id)}
+                                                        onKeyDown={e => {
+                                                            if (e.key === 'Enter') handleSaveTitle(doc.id);
+                                                            if (e.key === 'Escape') setEditingTitleId(null);
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="flex items-center gap-2 group/title">
+                                                        <span className="truncate">{doc.title}</span>
+                                                        {currentUser?.user_type === 'ADMIN' && (
+                                                            <button
+                                                                className="opacity-0 group-hover/title:opacity-100 transition-opacity text-gray-500 hover:text-blue-400 flex-shrink-0"
+                                                                title="제목 수정"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditingTitleId(doc.id);
+                                                                    setEditingTitleValue(doc.title);
+                                                                }}
+                                                            >
+                                                                <Pencil className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 text-sm truncate">
                                                 <span className={cn("px-2 py-1 rounded-full text-[10px] font-bold", STATUS_MAP[doc.status]?.bg, STATUS_MAP[doc.status]?.text)}>
                                                     {STATUS_MAP[doc.status]?.label}

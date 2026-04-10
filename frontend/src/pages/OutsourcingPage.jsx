@@ -44,6 +44,7 @@ const ORDER_COLS = [
     { key: 'related_id', label: '수주정보', width: 180 },
     { key: 'order_date', label: '발주일자', width: 120 },
     { key: 'partner', label: '외주처', width: 150 },
+    { key: 'process', label: '공정명', width: 150 },
     { key: 'count', label: '품목 수', width: 100 },
     { key: 'delivery', label: '납기일자', width: 120 },
     { key: 'actual_delivery', label: '실제납품일', width: 120 },
@@ -194,14 +195,21 @@ const OutsourcingPage = () => {
                 order_date: order.order_date,
                 delivery_date: order.delivery_date,
                 special_notes: order.note,
-                items: (order.items || []).map((item, idx) => ({
-                    idx: idx + 1,
-                    name: item.product?.name || item.process_name,
-                    spec: item.product?.specification || '-',
-                    qty: item.quantity,
-                    price: item.unit_price,
-                    total: item.quantity * (item.unit_price || 0)
-                })),
+                items: (order.items || []).map((item, idx) => {
+                    const baseName = item.product?.name || item.process_name || '';
+                    const processName = item.process_name;
+                    const displayName = (processName && item.product?.name && processName !== item.product?.name)
+                        ? `${item.product.name} [${processName}]`
+                        : baseName;
+                    return {
+                        idx: idx + 1,
+                        name: displayName,
+                        spec: item.product?.specification || '-',
+                        qty: item.quantity,
+                        price: item.unit_price,
+                        total: item.quantity * (item.unit_price || 0)
+                    };
+                }),
                 colWidths: [40, 200, 120, 60, 80, 100]
             },
             attachments_to_add: existingAttachments.map(a => ({
@@ -688,6 +696,14 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
                 </td>
                 <td className="px-4 py-4">{order.order_date}</td>
                 <td className="px-4 py-4 font-bold">{order.partner?.name}</td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                    {(() => {
+                        const items = order.items || [];
+                        const processNames = [...new Set(items.map(i => i.process_name).filter(Boolean))];
+                        if (processNames.length === 0) return <span className="text-gray-500">-</span>;
+                        return <span className="text-xs text-blue-300 font-medium">{processNames.join(', ')}</span>;
+                    })()}
+                </td>
                 <td className="px-4 py-4">{order.items.length} 품목</td>
                 <td className="px-4 py-4 text-orange-600 font-bold">{order.delivery_date}</td>
                 <td className="px-4 py-4 font-bold">
