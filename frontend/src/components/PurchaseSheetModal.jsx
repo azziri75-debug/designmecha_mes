@@ -313,7 +313,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         <PurchaseOrderTemplate
                             data={metadata}
                             onChange={handleMetaChange}
-                            isReadOnly={true}
+                            isReadOnly={false}
                             documentData={approvalDoc}
                             currentUser={currentUser}
                             company={company}
