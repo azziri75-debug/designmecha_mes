@@ -621,6 +621,7 @@ async def update_order(
                 db_item.product_id = item_in.product_id
                 db_item.product_name = item_in.product_name
                 db_item.unit_price = item_in.unit_price
+                db_item.currency = item_in.currency or 'KRW'
                 db_item.quantity = item_in.quantity
                 db_item.note = item_in.note
                 db_item.delivered_quantity = item_in.delivered_quantity or 0
@@ -632,6 +633,7 @@ async def update_order(
                     product_id=item_in.product_id,
                     product_name=item_in.product_name,
                     unit_price=item_in.unit_price,
+                    currency=item_in.currency or 'KRW',
                     quantity=item_in.quantity,
                     note=item_in.note,
                     delivered_quantity=item_in.delivered_quantity or 0

@@ -467,12 +467,21 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                     <div>
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-lg font-semibold text-white">수주 품목</h3>
-                            <button
-                                onClick={addItem}
-                                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 flex items-center gap-1"
-                            >
-                                <Plus className="w-3 h-3" /> 품목 추가
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {['PRODUCTION_COMPLETED', 'PARTIALLY_DELIVERED', 'DELIVERY_COMPLETED', 'DELIVERED'].includes(formData.status) && (
+                                    <span className="text-xs text-amber-400 bg-amber-900/30 border border-amber-700/50 px-2 py-1 rounded">
+                                        ⚠ 진행/완료 건: 단가·통화만 수정 가능
+                                    </span>
+                                )}
+                                {!['PRODUCTION_COMPLETED', 'PARTIALLY_DELIVERED', 'DELIVERY_COMPLETED', 'DELIVERED'].includes(formData.status) && (
+                                <button
+                                    onClick={addItem}
+                                    className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 flex items-center gap-1"
+                                >
+                                    <Plus className="w-3 h-3" /> 품목 추가
+                                </button>
+                                )}
+                            </div>
                         </div>
 
                         <div className="bg-gray-900 rounded-lg overflow-x-auto border border-gray-700">
@@ -505,9 +514,13 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                             </td>
                                         </tr>
                                     ) : (
-                                        formData.items.map((item, index) => (
-                                            <tr key={index}>
+                                        formData.items.map((item, index) => {
+                                            const isLocked = ['PRODUCTION_COMPLETED', 'PARTIALLY_DELIVERED', 'DELIVERY_COMPLETED', 'DELIVERED'].includes(formData.status);
+                                            return (<tr key={index}>
                                                 <td className="px-4 py-2 text-white">
+                                                    {isLocked ? (
+                                                        <span className="text-gray-300 text-sm px-2">{item.product_name}</span>
+                                                    ) : (
                                                     <Select
                                                         options={partnerProducts.map(p => ({ value: p, label: p.specification ? `${p.name} (${p.specification})` : p.name }))}
                                                         value={item.product_id ? { value: item, label: item.product_spec ? `${item.product_name} (${item.product_spec})` : item.product_name } : null}
@@ -523,15 +536,20 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                                         placeholder="품목 검색..."
                                                         isSearchable
                                                     />
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-2">{item.product_spec}</td>
                                                 <td className="px-4 py-2">
+                                                    {isLocked ? (
+                                                        <span className="block text-right text-gray-300 text-sm pr-2">{item.quantity}</span>
+                                                    ) : (
                                                     <input
                                                         type="number"
                                                         value={item.quantity}
                                                         onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
                                                         className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white"
                                                     />
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <div className="flex items-center gap-1">
@@ -568,12 +586,14 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                                     />
                                                 </td>
                                                 <td className="px-4 py-2 text-center">
-                                                    <button onClick={() => removeItem(index)} className="text-gray-500 hover:text-red-400">
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    {!isLocked && (
+                                                        <button onClick={() => removeItem(index)} className="text-gray-500 hover:text-red-400">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                 </td>
-                                            </tr>
-                                        ))
+                                            </tr>);
+                                        })
                                     )}
                                 </tbody>
                                 {formData.items.length > 0 && (() => {
