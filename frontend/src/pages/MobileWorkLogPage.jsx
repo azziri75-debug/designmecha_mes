@@ -1454,6 +1454,27 @@ const MobileWorkLogPage = () => {
                                         </Box>
                                     </RadioGroup>
                                 </Box>
+                                {(() => {
+                                    const sDate = docFormData.start_date;
+                                    const eDate = docFormData.end_date || sDate;
+                                    const vType = docFormData.vacation_type || '연차';
+                                    let days = 0;
+                                    if (vType.includes('반차')) {
+                                        days = 0.5;
+                                    } else if (sDate && eDate) {
+                                        const start = new Date(sDate);
+                                        const end = new Date(eDate);
+                                        if (end >= start) {
+                                            days = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+                                        }
+                                    }
+                                    if (days > 0) return (
+                                        <Box sx={{ p: 1, bgcolor: '#e0f2f1', borderRadius: 1, textAlign: 'center' }}>
+                                            <Typography variant="body2" color="primary" fontWeight="bold">계산된 기간: {days}일</Typography>
+                                        </Box>
+                                    );
+                                    return null;
+                                })()}
                                 <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.vacation_reason || ''} onChange={e => setDocFormData({ ...docFormData, vacation_reason: e.target.value })} />
                             </Stack>
                         )}
@@ -1475,6 +1496,31 @@ const MobileWorkLogPage = () => {
                                 {docFormData.leave_type === '외출' && (
                                     <TextField label="종료(복귀) 시간" type="time" fullWidth size="small" value={docFormData.return_time || ''} InputLabelProps={{ shrink: true }} onChange={e => setDocFormData({ ...docFormData, return_time: e.target.value })} />
                                 )}
+                                {(() => {
+                                    const startTime = docFormData.leave_time;
+                                    const endTime = docFormData.return_time;
+                                    const type = docFormData.leave_type || '조퇴';
+                                    if (startTime) {
+                                        const start = new Date(`2000-01-01T${startTime}`);
+                                        let h = 0;
+                                        if (type === '외출' && endTime) {
+                                            const end = new Date(`2000-01-01T${endTime}`);
+                                            let diff = (end - start) / (1000 * 60 * 60);
+                                            if (diff < 0) diff += 24;
+                                            h = parseFloat(diff.toFixed(1));
+                                        } else if (type === '조퇴') {
+                                            const workEnd = new Date(`2000-01-01T18:00`);
+                                            let diff = (workEnd - start) / (1000 * 60 * 60);
+                                            h = parseFloat(Math.max(0, diff).toFixed(1));
+                                        }
+                                        if (h > 0) return (
+                                            <Box sx={{ p: 1, bgcolor: '#f3e5f5', borderRadius: 1, textAlign: 'center' }}>
+                                                <Typography variant="body2" color="secondary" fontWeight="bold">계산된 시간: {h}시간</Typography>
+                                            </Box>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                                 <TextField label="사유" multiline rows={4} fullWidth size="small" value={docFormData.leave_reason || ''} onChange={e => setDocFormData({ ...docFormData, leave_reason: e.target.value })} />
                             </Stack>
                         )}
@@ -1617,12 +1663,18 @@ const MobileWorkLogPage = () => {
                                     {(selectedDoc.doc_type === 'VACATION' || selectedDoc.doc_type === 'LEAVE_REQUEST') && (
                                         <Stack spacing={1}>
                                             <Typography variant="body2"><b>기간:</b> {selectedDoc.content.start_date} ~ {selectedDoc.content.end_date} ({selectedDoc.content.vacation_type}{selectedDoc.content.half_day_type ? ` - ${selectedDoc.content.half_day_type}` : ''})</Typography>
+                                            {selectedDoc.content.leave_days && (
+                                                <Typography variant="body2" color="primary"><b>신청일수:</b> {selectedDoc.content.leave_days}일</Typography>
+                                            )}
                                             <Typography variant="body2"><b>사유:</b> {selectedDoc.content.vacation_reason || selectedDoc.content.reason}</Typography>
                                         </Stack>
                                     )}
                                     {selectedDoc.doc_type === 'EARLY_LEAVE' && (
                                         <Stack spacing={1}>
                                             <Typography variant="body2"><b>일시:</b> {selectedDoc.content.date} {selectedDoc.content.leave_time || selectedDoc.content.time}{(selectedDoc.content.return_time || selectedDoc.content.end_time) ? ` ~ ${selectedDoc.content.return_time || selectedDoc.content.end_time}` : ''} ({selectedDoc.content.leave_type || selectedDoc.content.type})</Typography>
+                                            {selectedDoc.content.hours && (
+                                                <Typography variant="body2" sx={{ color: '#a855f7' }}><b>신청시간:</b> {selectedDoc.content.hours}시간</Typography>
+                                            )}
                                             <Typography variant="body2"><b>사유:</b> {selectedDoc.content.leave_reason || selectedDoc.content.reason}</Typography>
                                         </Stack>
                                     )}

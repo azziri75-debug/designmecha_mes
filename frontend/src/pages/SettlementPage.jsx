@@ -146,8 +146,7 @@ const SettlementPage = () => {
                     { key: "product_name", label: "품명", width: 180 },
                     { key: "specification", label: "규격", width: 150 },
                     { key: "quantity", label: "수량", align: "right", width: 80 },
-                    { key: "process_cost", label: "공정비용", align: "right", format: fmtWon, width: 120 },
-                    { key: "total_cost", label: "합계", align: "right", format: fmtWon, width: 140 },
+                    { key: "process_cost", label: "총 공정비용", align: "right", format: fmtWon, width: 140 },
                 ];
             case "defects":
                 return [
