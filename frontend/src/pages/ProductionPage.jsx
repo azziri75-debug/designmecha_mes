@@ -36,6 +36,7 @@ const PLAN_COLS = [
     { key: 'partner', label: '거래처', width: 130 },
     { key: 'product', label: '품명', width: 250 },
     { key: 'delivery', label: '납기일', width: 100 },
+    { key: 'end_date', label: '생산완료일', width: 110 },
     { key: 'amount', label: '금액', width: 100 },
     { key: 'note', label: '비고', width: 150 },
     { key: 'status', label: '상태', width: 100 },
@@ -718,7 +719,13 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                     })()}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-orange-600 font-medium">{order?.delivery_date || '-'}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-right">{formatCurrency(order?.total_amount || 0, order?.items?.[0]?.currency || 'KRW')}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-emerald-400">
+                    {(() => {
+                        const completedItem = plan.items?.find(it => it.status === 'COMPLETED' && it.end_date);
+                        return completedItem?.end_date || plan.items?.reduce((latest, it) => it.end_date > latest ? it.end_date : latest, '') || '-';
+                    })()}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-right">{formatCurrency(order?.total_amount || 0, (() => { const cur = order?.items?.find(it => it.currency && it.currency !== 'KRW')?.currency; return cur || order?.items?.[0]?.currency || 'KRW'; })())}</td>
                 <td className="px-4 py-4 truncate max-w-[150px]">{order?.note || sp?.note || '-'}</td>
                 <td className="px-4 py-4 text-center"><Chip label={plan.status} size="small" color={plan.status === 'COMPLETED' ? "success" : plan.status === 'CONFIRMED' ? "secondary" : "primary"} /></td>
                 <td className="px-4 py-4 text-center">{defects?.length > 0 && <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); onShowDefects(defects); }}><AlertCircle className="w-5 h-5" /></IconButton>}</td>

@@ -46,6 +46,7 @@ const ORDER_COLS = [
     { key: 'partner', label: '외주처', width: 150 },
     { key: 'count', label: '품목 수', width: 100 },
     { key: 'delivery', label: '납기일자', width: 120 },
+    { key: 'actual_delivery', label: '실제납품일', width: 120 },
     { key: 'status', label: '상태', width: 100 },
     { key: 'actions', label: '관리', width: 250, noResize: true },
 ];
