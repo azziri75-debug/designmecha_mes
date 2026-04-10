@@ -15,6 +15,7 @@ import Card from '../components/Card';
 import { format } from 'date-fns';
 import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import { useAuth } from '../contexts/AuthContext';
+import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
 import InternalDraftForm from '../components/InternalDraftForm';
 import ExpenseReportForm from '../components/ExpenseReportForm';
 import ConsumablesPurchaseForm from '../components/ConsumablesPurchaseForm';
@@ -59,6 +60,7 @@ const ApprovalPage = () => {
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(false);
     const { user: currentUser } = useAuth();
+    const { waitingCount, refresh: refreshBadge } = useApprovalBadge();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Initialize viewMode from URL or default to ALL
@@ -322,10 +324,17 @@ const ApprovalPage = () => {
                                 { id: 'ALL_PENDING', label: '전체 대기' },
                                 { id: 'ALL_COMPLETED', label: '전체 완료' },
                                 { id: 'ALL_REJECTED', label: '전체 반려' },
-                                { id: 'WAITING_FOR_ME', label: '나의 결재 대기' },
+                                { id: 'WAITING_FOR_ME', label: '나의 결재 대기', badge: waitingCount },
                                 { id: 'MY_DRAFTS', label: '나의 기안' }
                             ].map(m => (
-                                <button key={m.id} onClick={() => { setViewMode(m.id); setSearchParams({ mode: m.id }); }} className={cn("px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200", viewMode === m.id ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800")}>{m.label}</button>
+                                <button key={m.id} onClick={() => { setViewMode(m.id); setSearchParams({ mode: m.id }); if (m.id === 'WAITING_FOR_ME') refreshBadge(); }} className={cn("relative px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200", viewMode === m.id ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800")}>
+                                    {m.label}
+                                    {m.badge > 0 && (
+                                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow">
+                                            {m.badge > 9 ? '9+' : m.badge}
+                                        </span>
+                                    )}
+                                </button>
                             ))}
                         </div>
 

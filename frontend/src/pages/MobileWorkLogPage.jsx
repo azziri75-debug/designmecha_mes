@@ -38,7 +38,8 @@ import {
     AccordionSummary,
     AccordionDetails,
     Avatar,
-    Alert
+    Alert,
+    Badge
 } from '@mui/material';
 import {
     Assignment as AssignmentIcon,
@@ -66,6 +67,7 @@ import {
     AccessTime as ClockIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
 import api from '../lib/api';
 import { safeParseJSON } from '../lib/utils';
 
@@ -77,6 +79,7 @@ const ATTENDANCE_DOC_META = {
 
 const MobileWorkLogPage = () => {
     const { user, logout } = useAuth();
+    const { waitingCount } = useApprovalBadge();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -1166,17 +1169,24 @@ const MobileWorkLogPage = () => {
                                 { id: 'MY_WAITING', label: '기안대기' },
                                 { id: 'MY_COMPLETED', label: '결재완료' },
                                 { id: 'MY_REJECTED', label: '반려문서' },
-                                { id: 'WAITING_FOR_ME', label: '나의결재대기' }
+                                { id: 'WAITING_FOR_ME', label: '나의결재대기', badge: waitingCount }
                             ].map(m => (
-                                <Chip
+                                <Badge
                                     key={m.id}
-                                    label={m.label}
-                                    onClick={() => setViewMode(m.id)}
-                                    color={viewMode === m.id ? "primary" : "default"}
-                                    variant={viewMode === m.id ? "filled" : "outlined"}
-                                    size="small"
-                                    sx={{ flexShrink: 0 }}
-                                />
+                                    badgeContent={m.badge || 0}
+                                    color="error"
+                                    invisible={!m.badge || m.badge === 0}
+                                    sx={{ '& .MuiBadge-badge': { fontSize: '9px', height: 16, minWidth: 16 } }}
+                                >
+                                    <Chip
+                                        label={m.label}
+                                        onClick={() => setViewMode(m.id)}
+                                        color={viewMode === m.id ? "primary" : "default"}
+                                        variant={viewMode === m.id ? "filled" : "outlined"}
+                                        size="small"
+                                        sx={{ flexShrink: 0 }}
+                                    />
+                                </Badge>
                             ))}
                         </Stack>
 
@@ -1365,7 +1375,19 @@ const MobileWorkLogPage = () => {
                 >
                     <BottomNavigationAction label="생산현황" icon={<AssignmentIcon />} />
                     <BottomNavigationAction label="내 실적" icon={<BarChartIcon />} />
-                    <BottomNavigationAction label="전자결재" icon={<DescriptionIcon />} />
+                    <BottomNavigationAction
+                        label="전자결재"
+                        icon={
+                            <Badge
+                                badgeContent={waitingCount}
+                                color="error"
+                                max={9}
+                                sx={{ '& .MuiBadge-badge': { fontSize: '9px', height: 16, minWidth: 16, right: -2, top: 2 } }}
+                            >
+                                <DescriptionIcon />
+                            </Badge>
+                        }
+                    />
                     <BottomNavigationAction label="근태현황" icon={<AssignmentIndIcon />} />
                 </BottomNavigation>
             </Paper >

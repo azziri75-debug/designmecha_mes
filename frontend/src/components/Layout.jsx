@@ -24,13 +24,15 @@ import {
     Blocks,
     Cpu,
     Plus,
-    Mail, Send
+    Mail, Send,
+    AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Fab } from '@mui/material';
 
-const SidebarItem = ({ icon: Icon, label, to, active }) => {
+const SidebarItem = ({ icon: Icon, label, to, active, badge }) => {
     return (
         <Link
             to={to}
@@ -41,8 +43,14 @@ const SidebarItem = ({ icon: Icon, label, to, active }) => {
                     : "text-gray-400 hover:text-white hover:bg-gray-800"
             )}
         >
-            <Icon className={cn("w-5 h-5", active ? "text-white" : "text-gray-400 group-hover:text-white")} />
-            <span className="font-medium text-sm">{label}</span>
+            <Icon className={cn("w-5 h-5 flex-shrink-0", active ? "text-white" : "text-gray-400 group-hover:text-white")} />
+            <span className="font-medium text-sm flex-1">{label}</span>
+            {badge > 0 && (
+                <span className="flex items-center gap-0.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none min-w-[18px] justify-center animate-pulse">
+                    <AlertCircle className="w-2.5 h-2.5" />
+                    {badge}
+                </span>
+            )}
         </Link>
     );
 };
@@ -51,6 +59,7 @@ const Layout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, logout, hasPermission } = useAuth();
+    const { waitingCount } = useApprovalBadge();
     
     const [contactModalOpen, setContactModalOpen] = useState(false);
     const [contactForm, setContactForm] = useState({ subject: '', content: '' });
@@ -119,6 +128,7 @@ const Layout = () => {
                             key={item.to}
                             {...item}
                             active={location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to + '/'))}
+                            badge={item.menuKey === 'approval' ? waitingCount : 0}
                         />
                     ))}
                 </div>
