@@ -184,8 +184,11 @@ const OutsourcingPage = () => {
             console.error("Attachment parse error", e);
         }
 
+        const isStockOnly = !order.related_customer_names;
+        const customerSuffix = isStockOnly ? '재고용' : (order.related_customer_names || '재고용');
+
         const approvalPayload = {
-            title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
+            title: `[외주발주서] (${partnerName}) - ${firstItemProcess} - ${customerSuffix}`,
             doc_type: 'PURCHASE_ORDER',
             content: {
                 order_no: order.order_no,

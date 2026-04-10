@@ -164,6 +164,7 @@ const MobileWorkLogPage = () => {
         }
     };
 
+    // 모든 문서 유형 (목록 표시용)
     const DOC_TYPES = {
         LEAVE_REQUEST: { label: '휴가원', color: '#3b82f6' },
         EARLY_LEAVE: { label: '조퇴/외출원', color: '#a855f7' },
@@ -172,6 +173,13 @@ const MobileWorkLogPage = () => {
         INTERNAL_DRAFT: { label: '내부기안', color: '#3b82f6' },
         EXPENSE_REPORT: { label: '지출결의서', color: '#6366f1' },
         PURCHASE_ORDER: { label: '구매발주서', color: '#f59e0b' }
+    };
+    // 모바일에서 생성 가능한 문서 유형 (내부기안/지출결의서/구매발주서 제외)
+    const CREATE_DOC_TYPES = {
+        LEAVE_REQUEST: { label: '휴가원', color: '#3b82f6' },
+        EARLY_LEAVE: { label: '조퇴/외출원', color: '#a855f7' },
+        CONSUMABLES_PURCHASE: { label: '소모품 신청서', color: '#10b981' },
+        OVERTIME: { label: '야근/특근신청서', color: '#f97316' }
     };
 
     const STATUS_MAP = {
@@ -453,10 +461,11 @@ const MobileWorkLogPage = () => {
                 }
             }
 
-            // 수정 모드: 원본 기안자 이름 유지 / 신규 기안: 현재 사용자 이름
             const authorName = (editingDocId && originalAuthor?.name) ? originalAuthor.name : user.name;
+            const label = DOC_TYPES[selectedDocType]?.label || '문서';
+            const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '').replace(/\.$/, '');
             const payload = {
-                title: `${authorName} - ${DOC_TYPES[selectedDocType].label}`,
+                title: `[${label}] ${authorName} - ${todayStr}`,
                 doc_type: selectedDocType,
                 // [FIX] Ensure content is a valid dictionary (Object) for Pydantic
                 content: typeof finalDocFormData === 'string' ? safeParseJSON(finalDocFormData, {}) : (finalDocFormData || {}),
@@ -1429,7 +1438,7 @@ const MobileWorkLogPage = () => {
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
                             <Typography variant="subtitle2" gutterBottom fontWeight="bold">문서 종류 선택</Typography>
                             <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { display: 'none' } }}>
-                                {Object.entries(DOC_TYPES).map(([key, info]) => (
+                                {Object.entries(CREATE_DOC_TYPES).map(([key, info]) => (
                                     <Chip
                                         key={key}
                                         label={info.label}

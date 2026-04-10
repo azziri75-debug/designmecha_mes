@@ -556,6 +556,94 @@ async def update_document_title(
     await db.commit()
     return {"message": "제목이 수정되었습니다.", "doc_id": doc_id, "title": new_title}
 
+@router.post("/admin/retitle-documents")
+async def retitle_all_documents(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
+):
+    """기존 결재 문서 제목을 새 형식으로 일괄 업데이트 (시스템 관리자 전용)"""
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="시스템 관리자만 실행할 수 있습니다.")
+
+    DOC_TYPE_LABELS = {
+        "INTERNAL_DRAFT": "내부기안",
+        "EXPENSE_REPORT": "지출결의서",
+        "BUSINESS_TRIP": "출장여비정산서",
+        "LEAVE_REQUEST": "휴가원",
+        "EARLY_LEAVE": "조퇴/외출원",
+        "CONSUMABLES_PURCHASE": "소모품 구매신청서",
+        "OVERTIME": "야근/특근신청서",
+        "PURCHASE_ORDER": "구매발주서",
+    }
+
+    result = await db.execute(
+        select(ApprovalDocument)
+        .options(selectinload(ApprovalDocument.author))
+        .where(ApprovalDocument.deleted_at.is_(None))
+    )
+    docs = result.scalars().all()
+
+    updated = 0
+    skipped = 0
+    log = []
+
+    import re as _re
+    from zoneinfo import ZoneInfo
+
+    for doc in docs:
+        author_name = doc.author.name if doc.author else "미확인"
+        created_kst = doc.created_at.astimezone(ZoneInfo("Asia/Seoul")) if doc.created_at else None
+        date_str = created_kst.strftime("%Y.%m.%d") if created_kst else "날짜미상"
+        label = DOC_TYPE_LABELS.get(doc.doc_type, doc.doc_type)
+        content = doc.content or {}
+        old_title = doc.title or ""
+        new_title = old_title
+
+        if doc.doc_type == "INTERNAL_DRAFT":
+            form_title = content.get("title", "").strip()
+            draft_type = content.get("draft_type", "GENERAL")
+            if draft_type == "PAYMENT" and form_title:
+                # 이미 [거래처]- 형식이면 유지, 아니면 내부기안 형식 적용
+                partner_for_title = content.get("partner_for_title", "")
+                if partner_for_title and not form_title.startswith("["):
+                    form_title = f"[{partner_for_title}]-{content.get('title_body', form_title)}"
+                elif not partner_for_title:
+                    # 기존 title에서 [거래처]- 파싱 시도
+                    m = _re.match(r'^\[(.+?)\]-(.*)$', form_title)
+                    if not m:
+                        # 파싱 불가: 그냥 내부기안 형식으로
+                        pass
+            new_title = f"[내부기안] {form_title} - {author_name}" if form_title else f"[내부기안] - {author_name}"
+
+        elif doc.doc_type in ("PURCHASE_ORDER",) and doc.reference_type in ("PURCHASE", "OUTSOURCING"):
+            # 발주서 연동 문서: 새 형식 적용 시도
+            doc_prefix = "외주발주서" if doc.reference_type == "OUTSOURCING" else "구매발주서"
+            partner = content.get("partner_name", "")
+            items_list = content.get("items", [])
+            process_name = items_list[0].get("name", "").split("[")[-1].replace("]", "").strip() if items_list else ""
+            # 제목에서 고객사 추출 시도 (기존 형식 파싱)
+            m = _re.search(r'- ([^-]+)$', old_title)
+            customer = m.group(1).strip() if m else "재고용"
+            if partner and process_name:
+                new_title = f"[{doc_prefix}] ({partner}) - {process_name} - {customer}"
+            else:
+                new_title = f"[{doc_prefix}] {old_title}" if not old_title.startswith("[") else old_title
+
+        else:
+            # 일반 문서 유형
+            if not old_title.startswith(f"[{label}]"):
+                new_title = f"[{label}] {author_name} - {date_str}"
+
+        if new_title != old_title:
+            doc.title = new_title
+            log.append({"id": doc.id, "old": old_title, "new": new_title})
+            updated += 1
+        else:
+            skipped += 1
+
+    await db.commit()
+    return {"updated": updated, "skipped": skipped, "log": log[:50]}
+
 @router.post("/documents/{doc_id}/process")
 async def process_approval(
     doc_id: int,

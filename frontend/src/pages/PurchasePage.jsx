@@ -234,8 +234,12 @@ const PurchasePage = ({ type }) => {
 
         const existingAttachments = safeParseJSON(order.attachment_file, []);
 
+        const isStockOnly = !order.related_customer_names;
+        const customerSuffix = isStockOnly ? '재고용' : (order.related_customer_names || '재고용');
+        const titleSuffix = isStockOnly ? `-재고용` : '';
+
         const approvalPayload = {
-            title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
+            title: `[구매발주서] (${partnerName}) - ${firstItemProcess} - ${customerSuffix}`,
             doc_type: 'PURCHASE_ORDER',
             content: {
                 order_no: order.order_no,

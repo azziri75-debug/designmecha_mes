@@ -11,6 +11,17 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const draftType = data.draft_type || 'GENERAL';
     const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }];
 
+    // Parse [거래처]-제목 format when opening existing PAYMENT documents
+    useEffect(() => {
+        if (draftType === 'PAYMENT' && data.title && !data.partner_for_title && !data.title_body) {
+            const match = data.title.match(/^\[(.+?)\]-(.*)$/);
+            if (match) {
+                onChange({ ...data, partner_for_title: match[1], title_body: match[2] });
+            }
+        }
+    }, [data.title, draftType]);
+
+
     // --- Column Resizing Logic (Percentage-based to always fit container) ---
     // Percentages sum to 100 (excluding the optional delete-button column)
     const initialPcts = data.colPcts || [5, 22, 11, 7, 7, 11, 14, 23]; // sum = 100
@@ -135,13 +146,44 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     <TableRow>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>문서제목</Box>
                         <td colSpan={3}>
-                            <input 
-                                value={data.title || ''} 
-                                onChange={(e) => handleChange({ title: e.target.value })}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none', fontWeight: 'bold', fontSize: '15px' }}
-                                placeholder="기안 제목을 입력하세요"
-                            />
+                            {draftType === 'PAYMENT' ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0, width: '100%' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                                        <span style={{ fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap' }}>[</span>
+                                        <input
+                                            value={data.partner_for_title || ''}
+                                            onChange={(e) => {
+                                                const partner = e.target.value;
+                                                const titlePart = data.title_body || '';
+                                                handleChange({ partner_for_title: partner, title: partner && titlePart ? `[${partner}]-${titlePart}` : (partner ? `[${partner}]-` : titlePart) });
+                                            }}
+                                            readOnly={isReadOnly}
+                                            style={{ border: 'none', outline: 'none', fontWeight: 'bold', fontSize: '15px', width: '110px' }}
+                                            placeholder="거래처 입력"
+                                        />
+                                        <span style={{ fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap' }}>]-</span>
+                                    </Box>
+                                    <input
+                                        value={data.title_body || ''}
+                                        onChange={(e) => {
+                                            const titlePart = e.target.value;
+                                            const partner = data.partner_for_title || '';
+                                            handleChange({ title_body: titlePart, title: partner ? `[${partner}]-${titlePart}` : titlePart });
+                                        }}
+                                        readOnly={isReadOnly}
+                                        style={{ border: 'none', width: '100%', outline: 'none', fontWeight: 'bold', fontSize: '15px', minWidth: 0 }}
+                                        placeholder="기안 제목을 입력하세요"
+                                    />
+                                </Box>
+                            ) : (
+                                <input
+                                    value={data.title || ''}
+                                    onChange={(e) => handleChange({ title: e.target.value })}
+                                    readOnly={isReadOnly}
+                                    style={{ border: 'none', width: '100%', outline: 'none', fontWeight: 'bold', fontSize: '15px' }}
+                                    placeholder="기안 제목을 입력하세요"
+                                />
+                            )}
                         </td>
                     </TableRow>
                     <TableRow>

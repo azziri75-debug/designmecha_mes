@@ -183,13 +183,18 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
     };
 
     const handleSubmit = async () => {
+        const label = DOC_TYPES.find(t => t.value === docType)?.label || '문서';
+        const authorName = currentUser?.name || '';
+        const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '').replace(/\.$/, '');
+
         let finalTitle = title;
-        if (docType === 'INTERNAL_DRAFT' && formContent?.title) {
-            finalTitle = formContent.title;
-        } else if (docType !== 'INTERNAL_DRAFT') {
-            const label = DOC_TYPES.find(t => t.value === docType)?.label || '문서';
-            const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '');
-            finalTitle = `[${label}] ${currentUser?.name || ''} - ${todayStr}`;
+        if (docType === 'INTERNAL_DRAFT') {
+            const formTitle = formContent?.title || '';
+            finalTitle = formTitle
+                ? `[내부기안] ${formTitle} - ${authorName}`
+                : `[내부기안] - ${authorName}`;
+        } else {
+            finalTitle = `[${label}] ${authorName} - ${todayStr}`;
         }
 
         if (!finalTitle) { alert('제목을 입력해주세요.'); return; }

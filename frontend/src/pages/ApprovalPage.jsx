@@ -202,6 +202,17 @@ const ApprovalPage = () => {
         }
     };
 
+    const handleRetitleAll = async () => {
+        if (!window.confirm('기존 문서 제목을 새 형식으로 일괄 변환합니다. 계속하시겠습니까?')) return;
+        try {
+            const res = await api.post('/approval/admin/retitle-documents');
+            alert(`완료: ${res.data.updated}건 업데이트, ${res.data.skipped}건 변경없음`);
+            fetchInitialData();
+        } catch (err) {
+            alert('오류: ' + (err.response?.data?.detail || err.message));
+        }
+    };
+
     const handleProcess = async (docId, status, comment) => {
         try {
             await api.post(`/approval/documents/${docId}/process`, { status, comment });
@@ -435,6 +446,20 @@ const ApprovalPage = () => {
                             </Card>
                         ))}
                     </div>
+                    {currentUser?.user_type === 'ADMIN' && (
+                        <div className="mt-8 p-4 bg-gray-800 border border-yellow-700/40 rounded-xl">
+                            <h4 className="text-yellow-400 font-bold text-sm mb-1 flex items-center gap-2">
+                                <Settings className="w-4 h-4"/> 관리자 도구
+                            </h4>
+                            <p className="text-gray-400 text-xs mb-3">기존에 작성된 모든 문서의 제목을 새 형식으로 일괄 변환합니다.</p>
+                            <button
+                                onClick={handleRetitleAll}
+                                className="bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                            >
+                                기존 문서 제목 일괄 변환
+                            </button>
+                        </div>
+                    )}
                 )}
             </div>
 
