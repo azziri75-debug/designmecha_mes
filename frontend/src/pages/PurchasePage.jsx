@@ -234,9 +234,11 @@ const PurchasePage = ({ type }) => {
 
         const existingAttachments = safeParseJSON(order.attachment_file, []);
 
-        const isStockOnly = !order.related_customer_names;
-        const customerSuffix = isStockOnly ? '재고용' : (order.related_customer_names || '재고용');
-        const titleSuffix = isStockOnly ? `-재고용` : '';
+        const isStockProduction = !!(order.items?.[0]?.plan?.stock_production);
+        const baseCustomer = order.related_customer_names || '';
+        const customerSuffix = isStockProduction
+            ? (baseCustomer ? `${baseCustomer}-재고용` : '재고용')
+            : (baseCustomer || '고객사미지정');
 
         const approvalPayload = {
             title: `[구매발주서] (${partnerName}) - ${firstItemProcess} - ${customerSuffix}`,
