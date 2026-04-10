@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { safeParseJSON } from '../lib/utils';
 import api from '../lib/api';
 import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, Printer, X } from 'lucide-react';
@@ -19,27 +19,27 @@ const Card = ({ children, className }) => (
 
 const ESTIMATE_COLS = [
     { key: 'expand', label: '', width: 32, noResize: true },
-    { key: 'date',   label: '寃ъ쟻?쇱옄',  width: 110 },
-    { key: 'partner',label: '嫄곕옒泥?,   width: 160 },
-    { key: 'amount', label: '珥?湲덉븸',  width: 130 },
-    { key: 'items',  label: '?덈ぉ ??,  width: 80 },
-    { key: 'attach', label: '泥⑤??뚯씪', width: 90 },
-    { key: 'note',   label: '鍮꾧퀬',    width: 200 },
-    { key: 'actions',label: '愿由?,   width: 120, noResize: true },
+    { key: 'date',   label: '견적일자',  width: 110 },
+    { key: 'partner',label: '거래처',   width: 160 },
+    { key: 'amount', label: '총 금액',  width: 130 },
+    { key: 'items',  label: '품목 수',  width: 80 },
+    { key: 'attach', label: '첨부파일', width: 90 },
+    { key: 'note',   label: '비고',    width: 200 },
+    { key: 'actions',label: '관리',   width: 120, noResize: true },
 ];
 const ORDER_COLS = [
     { key: 'expand',  label: '', width: 32, noResize: true },
-    { key: 'order_no',label: '?섏＜踰덊샇',   width: 130 },
-    { key: 'order_date',label:'?섏＜?쇱옄', width: 110 },
-    { key: 'delivery',label: '?⑺뭹?붿껌??, width: 110 },
-    { key: 'actual',  label: '???⑺뭹??, width: 110 },
-    { key: 'partner', label: '嫄곕옒泥?,   width: 150 },
-    { key: 'status',  label: '?곹깭',    width: 100 },
-    { key: 'amount',  label: '珥?湲덉븸',  width: 130 },
-    { key: 'items',   label: '?덈ぉ ??,  width: 80 },
-    { key: 'attach',  label: '泥⑤??뚯씪', width: 90 },
-    { key: 'note',    label: '鍮꾧퀬',    width: 150 },
-    { key: 'actions', label: '愿由?,   width: 100, noResize: true },
+    { key: 'order_no',label: '수주번호',   width: 130 },
+    { key: 'order_date',label:'수주일자', width: 110 },
+    { key: 'delivery',label: '납품요청일', width: 110 },
+    { key: 'actual',  label: '실 납품일', width: 110 },
+    { key: 'partner', label: '거래처',   width: 150 },
+    { key: 'status',  label: '상태',    width: 100 },
+    { key: 'amount',  label: '총 금액',  width: 130 },
+    { key: 'items',   label: '품목 수',  width: 80 },
+    { key: 'attach',  label: '첨부파일', width: 90 },
+    { key: 'note',    label: '비고',    width: 150 },
+    { key: 'actions', label: '관리',   width: 100, noResize: true },
 ];
 
 const SalesPage = () => {
@@ -175,14 +175,14 @@ const SalesPage = () => {
     };
 
     const handleDelete = async (estimateId) => {
-        if (!window.confirm("?뺣쭚濡???젣?섏떆寃좎뒿?덇퉴?")) return;
+        if (!window.confirm("정말로 삭제하시겠습니까?")) return;
         try {
             await api.delete(`/sales/estimates/${estimateId}`);
-            alert("??젣?섏뿀?듬땲??");
+            alert("삭제되었습니다.");
             fetchEstimates();
         } catch (error) {
             console.error("Delete failed", error);
-            alert("??젣 ?ㅽ뙣");
+            alert("삭제 실패");
         }
     };
 
@@ -192,20 +192,20 @@ const SalesPage = () => {
     };
 
     const handleDeleteOrder = async (orderId) => {
-        if (!window.confirm("?뺣쭚濡???젣?섏떆寃좎뒿?덇퉴? 愿???앹궛 怨꾪쉷???④퍡 ??젣?⑸땲??")) return;
+        if (!window.confirm("정말로 삭제하시겠습니까? 관련 생산 계획도 함께 삭제됩니다.")) return;
         try {
             await api.delete(`/sales/orders/${orderId}`);
-            alert("??젣?섏뿀?듬땲??");
+            alert("삭제되었습니다.");
             fetchOrders();
         } catch (error) {
             console.error("Delete failed", error);
-            alert("??젣 ?ㅽ뙣");
+            alert("삭제 실패");
         }
     };
 
     const handleDeleteAttachment = async (targetId, indexToRemove) => {
         if (!targetId) return;
-        if (!window.confirm("?뺣쭚濡???泥⑤??뚯씪????젣?섏떆寃좎뒿?덇퉴? (???묒뾽? ?섎룎由????놁뒿?덈떎)")) return;
+        if (!window.confirm("정말로 이 첨부파일을 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
 
         try {
             const isEstimate = viewingTargetType === 'estimate';
@@ -232,23 +232,23 @@ const SalesPage = () => {
                 if (newFiles.length === 0) setShowFileModal(false);
             }
 
-            alert("泥⑤??뚯씪????젣?섏뿀?듬땲??");
+            alert("첨부파일이 삭제되었습니다.");
         } catch (error) {
             console.error("Failed to delete attachment", error);
-            alert("泥⑤??뚯씪 ??젣 ?ㅽ뙣");
+            alert("첨부파일 삭제 실패");
         }
     };
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-white">?곸뾽 愿由?/h1>
+                <h1 className="text-2xl font-bold text-white">영업 관리</h1>
                 <button
                     onClick={() => activeTab === 'estimates' ? setShowEstimateModal(true) : setShowOrderModal(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-500 text-white font-medium"
                 >
                     <Plus className="w-4 h-4" />
-                    {activeTab === 'estimates' ? '?좉퇋 寃ъ쟻 ?깅줉' : '?좉퇋 ?섏＜ ?깅줉'}
+                    {activeTab === 'estimates' ? '신규 견적 등록' : '신규 수주 등록'}
                 </button>
             </div>
 
@@ -261,7 +261,7 @@ const SalesPage = () => {
                     )}
                     onClick={() => setActiveTab('estimates')}
                 >
-                    寃ъ쟻 愿由?
+                    견적 관리
                     {activeTab === 'estimates' && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400" />
                     )}
@@ -273,7 +273,7 @@ const SalesPage = () => {
                     )}
                     onClick={() => setActiveTab('orders')}
                 >
-                    ?섏＜ 愿由?
+                    수주 관리
                     {activeTab === 'orders' && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400" />
                     )}
@@ -283,10 +283,10 @@ const SalesPage = () => {
             {/* Content & Filters */}
             <Card className="p-4 flex flex-wrap gap-4 items-end mb-4">
                 <div className="flex-1 min-w-[150px] space-y-1">
-                    <label className="text-xs text-gray-400">?ъ뾽遺</label>
+                    <label className="text-xs text-gray-400">사업부</label>
                     <Select
                         isClearable
-                        placeholder="?꾩껜 ?ъ뾽遺"
+                        placeholder="전체 사업부"
                         options={groups.filter(g => g.type === 'MAJOR').map(g => ({ value: g.id, label: g.name }))}
                         value={groups.find(g => g.id === selectedMajorGroupId) ? { value: selectedMajorGroupId, label: groups.find(g => g.id === selectedMajorGroupId).name } : null}
                         onChange={(opt) => setSelectedMajorGroupId(opt ? opt.value : "")}
@@ -311,12 +311,12 @@ const SalesPage = () => {
                     />
                 </div>
                 <div className="flex-1 min-w-[200px] space-y-1">
-                    <label className="text-xs text-gray-400">嫄곕옒泥?寃??/label>
+                    <label className="text-xs text-gray-400">거래처 검색</label>
                     <Select
                         isClearable
                         isSearchable
-                        placeholder="嫄곕옒泥??좏깮 ?먮뒗 ??댄븨 寃??.."
-                        noOptionsMessage={() => "嫄곕옒泥섍? ?놁뒿?덈떎"}
+                        placeholder="거래처 선택 또는 타이핑 검색..."
+                        noOptionsMessage={() => "거래처가 없습니다"}
                         options={partners.map(p => ({ value: p.id, label: p.name }))}
                         value={partners.find(p => p.id === selectedPartnerId) ? { value: selectedPartnerId, label: partners.find(p => p.id === selectedPartnerId).name } : null}
                         onChange={(opt) => setSelectedPartnerId(opt ? opt.value : "")}
@@ -341,11 +341,11 @@ const SalesPage = () => {
                     />
                 </div>
                 <div className="space-y-1">
-                    <label className="text-xs text-gray-400">?덈챸/洹쒓꺽</label>
+                    <label className="text-xs text-gray-400">품명/규격</label>
                     <div className="relative">
                         <input
                             type="text"
-                            placeholder="寃?됱뼱 ?낅젰..."
+                            placeholder="검색어 입력..."
                             className="w-full bg-gray-700 border-gray-600 rounded text-white pl-9 pr-3 py-2 text-sm h-[38px]"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -354,7 +354,7 @@ const SalesPage = () => {
                     </div>
                 </div>
                 <div className="space-y-1">
-                    <label className="text-xs text-gray-400">?쒖옉??/label>
+                    <label className="text-xs text-gray-400">시작일</label>
                     <input
                         type="date"
                         className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]"
@@ -363,7 +363,7 @@ const SalesPage = () => {
                     />
                 </div>
                 <div className="space-y-1">
-                    <label className="text-xs text-gray-400">醫낅즺??/label>
+                    <label className="text-xs text-gray-400">종료일</label>
                     <input
                         type="date"
                         className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]"
@@ -374,19 +374,19 @@ const SalesPage = () => {
 
                 {activeTab === 'orders' && (
                     <div className="space-y-1">
-                        <label className="text-xs text-gray-400">?곹깭</label>
+                        <label className="text-xs text-gray-400">상태</label>
                         <select
                             className="w-full bg-gray-700 border-gray-600 rounded text-white px-3 py-2 text-sm h-[38px]"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
                         >
-                            <option value="">?꾩껜 (Status)</option>
-                            <option value="PENDING">?湲?/option>
-                            <option value="CONFIRMED">?뺤젙</option>
-                            <option value="PRODUCTION_COMPLETED">?앹궛 ?꾨즺</option>
-                            <option value="PARTIALLY_DELIVERED">遺遺??⑺뭹</option>
-                            <option value="DELIVERED">?⑺뭹 ?꾨즺</option>
-                            <option value="CANCELLED">痍⑥냼</option>
+                            <option value="">전체 (Status)</option>
+                            <option value="PENDING">대기</option>
+                            <option value="CONFIRMED">확정</option>
+                            <option value="PRODUCTION_COMPLETED">생산 완료</option>
+                            <option value="PARTIALLY_DELIVERED">부분 납품</option>
+                            <option value="DELIVERED">납품 완료</option>
+                            <option value="CANCELLED">취소</option>
                         </select>
                     </div>
                 )}
@@ -394,7 +394,7 @@ const SalesPage = () => {
 
             <Card className="p-0 overflow-hidden min-h-[500px]">
                 {loading ? (
-                    <div className="p-8 text-center text-gray-400">濡쒕뵫 以?..</div>
+                    <div className="p-8 text-center text-gray-400">로딩 중...</div>
                 ) : (
                     <div className="overflow-x-auto">
                         <ResizableTable
@@ -411,18 +411,18 @@ const SalesPage = () => {
                                             onClick={() => toggleEstimate(est.id)}
                                             onDoubleClick={() => handleEdit(est)}
                                         >
-                                            <td className="px-2 py-4 text-center">{expandedEstimates.has(est.id) ? '?? : '??}</td>
+                                            <td className="px-2 py-4 text-center">{expandedEstimates.has(est.id) ? '▼' : '▶'}</td>
                                             <td className="px-4 py-4 truncate">{est.estimate_date}</td>
                                             <td className="px-4 py-4 font-medium text-white truncate">{est.partner?.name}</td>
                                             <td className="px-4 py-4 truncate">{formatCurrency(est.total_amount, est.items?.[0]?.currency || 'KRW')}</td>
-                                            <td className="px-4 py-4 truncate">{est.items?.length || 0} 嫄?/td>
+                                            <td className="px-4 py-4 truncate">{est.items?.length || 0} 건</td>
                                             <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                                 {(() => {
                                                     const files = safeParseJSON(est.attachment_file, []);
                                                     if (Array.isArray(files) && files.length > 0) {
                                                         return (
-                                                            <button onClick={(e) => { e.stopPropagation(); setViewingFiles(files); setViewingTargetId(est.id); setViewingTargetType('estimate'); setShowFileModal(true); }} className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors" title="泥⑤??뚯씪 蹂닿린/?ㅼ슫濡쒕뱶">
-                                                                <FileText className="w-3 h-3" />{files.length}媛?
+                                                            <button onClick={(e) => { e.stopPropagation(); setViewingFiles(files); setViewingTargetId(est.id); setViewingTargetType('estimate'); setShowFileModal(true); }} className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors" title="첨부파일 보기/다운로드">
+                                                                <FileText className="w-3 h-3" />{files.length}개
                                                             </button>
                                                         );
                                                     }
@@ -432,9 +432,9 @@ const SalesPage = () => {
                                             <td className="px-4 py-4 truncate">{est.note}</td>
                                             <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center gap-1">
-                                                    <button onClick={() => { setSheetEstimate(est); setShowSheetModal(true); }} className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded" title="寃ъ쟻???몄뇙"><Printer className="w-4 h-4" /></button>
-                                                    <button onClick={() => handleEdit(est)} className="text-blue-400 hover:underline text-xs">?섏젙</button>
-                                                    <button onClick={() => handleDelete(est.id)} className="text-red-400 hover:underline text-xs ml-1">??젣</button>
+                                                    <button onClick={() => { setSheetEstimate(est); setShowSheetModal(true); }} className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded" title="견적서 인쇄"><Printer className="w-4 h-4" /></button>
+                                                    <button onClick={() => handleEdit(est)} className="text-blue-400 hover:underline text-xs">수정</button>
+                                                    <button onClick={() => handleDelete(est.id)} className="text-red-400 hover:underline text-xs ml-1">삭제</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -442,15 +442,15 @@ const SalesPage = () => {
                                             <tr className="bg-gray-800/50">
                                                 <td colSpan={ESTIMATE_COLS.length} className="px-6 py-4">
                                                     <div className="ml-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-                                                        <h4 className="text-sm font-semibold mb-2 text-gray-300">寃ъ쟻 ?덈ぉ ?곸꽭</h4>
+                                                        <h4 className="text-sm font-semibold mb-2 text-gray-300">견적 품목 상세</h4>
                                                         <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded">
                                                             <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                                                 <tr>
-                                                                    <th className="px-3 py-2 text-left">?덈ぉ紐?/th>
-                                                                    <th className="px-3 py-2 text-left">洹쒓꺽</th>
-                                                                    <th className="px-3 py-2 text-right">?섎웾</th>
-                                                                    <th className="px-3 py-2 text-right">?④?</th>
-                                                                    <th className="px-3 py-2 text-right">怨듦툒媛??/th>
+                                                                    <th className="px-3 py-2 text-left">품목명</th>
+                                                                    <th className="px-3 py-2 text-left">규격</th>
+                                                                    <th className="px-3 py-2 text-right">수량</th>
+                                                                    <th className="px-3 py-2 text-right">단가</th>
+                                                                    <th className="px-3 py-2 text-right">공급가액</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-gray-800">
@@ -479,7 +479,7 @@ const SalesPage = () => {
                                             onClick={() => toggleOrder(ord.id)}
                                             onDoubleClick={() => handleEditOrder(ord)}
                                         >
-                                            <td className="px-2 py-4 text-center">{expandedOrders.has(ord.id) ? '?? : '??}</td>
+                                            <td className="px-2 py-4 text-center">{expandedOrders.has(ord.id) ? '▼' : '▶'}</td>
                                             <td className="px-4 py-4 font-mono text-xs text-gray-300 truncate">{ord.order_no}</td>
                                             <td className="px-4 py-4 truncate">{ord.order_date}</td>
                                             <td className="px-4 py-4 text-orange-400 truncate">{ord.delivery_date || '-'}</td>
@@ -487,16 +487,16 @@ const SalesPage = () => {
                                             <td className="px-4 py-4 font-medium text-white truncate">{ord.partner?.name}</td>
                                             <td className="px-4 py-4">
                                                 <span className={cn("px-2 py-0.5 rounded text-xs font-medium", ord.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border border-yellow-700' : (ord.status === 'CONFIRMED' || ord.status === 'PRODUCTION_COMPLETED') ? 'bg-blue-900/50 text-blue-400 border border-blue-700' : ord.status === 'PARTIALLY_DELIVERED' ? 'bg-orange-900/50 text-orange-400 border border-orange-700' : (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? 'bg-green-900/50 text-green-400 border border-green-700' : 'bg-gray-800 text-gray-400')}>
-                                                    {ord.status === 'PARTIALLY_DELIVERED' ? '遺遺꾨궔?? : (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? '?⑺뭹?꾨즺' : ord.status === 'PRODUCTION_COMPLETED' ? '?앹궛?꾨즺' : ord.status === 'PENDING' ? '?湲? : ord.status === 'CONFIRMED' ? '?뺤젙' : ord.status}
+                                                    {ord.status === 'PARTIALLY_DELIVERED' ? '부분납품' : (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? '납품완료' : ord.status === 'PRODUCTION_COMPLETED' ? '생산완료' : ord.status === 'PENDING' ? '대기' : ord.status === 'CONFIRMED' ? '확정' : ord.status}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-4 truncate">{formatCurrency(ord.total_amount, ord.items?.[0]?.currency || 'KRW')}</td>
-                                            <td className="px-4 py-4 truncate">{ord.items?.length || 0} 嫄?/td>
+                                            <td className="px-4 py-4 truncate">{ord.items?.length || 0} 건</td>
                                             <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                                 {(() => {
                                                     const files = safeParseJSON(ord.attachment_file, []);
                                                     if (Array.isArray(files) && files.length > 0) {
-                                                        return <button onClick={(e) => { e.stopPropagation(); setViewingFiles(files); setViewingTargetId(ord.id); setViewingTargetType('order'); setShowFileModal(true); }} className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors" title="泥⑤??뚯씪 蹂닿린/?ㅼ슫濡쒕뱶"><FileText className="w-3 h-3" />{files.length}媛?/button>;
+                                                        return <button onClick={(e) => { e.stopPropagation(); setViewingFiles(files); setViewingTargetId(ord.id); setViewingTargetType('order'); setShowFileModal(true); }} className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800/40 transition-colors" title="첨부파일 보기/다운로드"><FileText className="w-3 h-3" />{files.length}개</button>;
                                                     }
                                                     return <span className="text-gray-600 text-xs">-</span>;
                                                 })()}
@@ -504,8 +504,8 @@ const SalesPage = () => {
                                             <td className="px-4 py-4 truncate">{ord.note}</td>
                                             <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center gap-2">
-                                                    <button onClick={() => handleEditOrder(ord)} className="text-blue-400 hover:underline text-xs">?섏젙</button>
-                                                    <button onClick={() => handleDeleteOrder(ord.id)} className="text-red-400 hover:underline text-xs">??젣</button>
+                                                    <button onClick={() => handleEditOrder(ord)} className="text-blue-400 hover:underline text-xs">수정</button>
+                                                    <button onClick={() => handleDeleteOrder(ord.id)} className="text-red-400 hover:underline text-xs">삭제</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -513,15 +513,15 @@ const SalesPage = () => {
                                             <tr className="bg-gray-800/50">
                                                 <td colSpan={ORDER_COLS.length} className="px-6 py-4">
                                                     <div className="ml-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-                                                        <h4 className="text-sm font-semibold mb-2 text-gray-300">?섏＜ ?덈ぉ ?곸꽭</h4>
+                                                        <h4 className="text-sm font-semibold mb-2 text-gray-300">수주 품목 상세</h4>
                                                         <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded">
                                                             <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                                                 <tr>
-                                                                    <th className="px-3 py-2 text-left">?덈ぉ紐?/th>
-                                                                    <th className="px-3 py-2 text-left">洹쒓꺽</th>
-                                                                    <th className="px-3 py-2 text-right">?섎웾</th>
-                                                                    <th className="px-3 py-2 text-right">?④?</th>
-                                                                    <th className="px-3 py-2 text-right">怨듦툒媛??/th>
+                                                                    <th className="px-3 py-2 text-left">품목명</th>
+                                                                    <th className="px-3 py-2 text-left">규격</th>
+                                                                    <th className="px-3 py-2 text-right">수량</th>
+                                                                    <th className="px-3 py-2 text-right">단가</th>
+                                                                    <th className="px-3 py-2 text-right">공급가액</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-gray-800">
@@ -544,7 +544,7 @@ const SalesPage = () => {
                                 ))
                             )}
                             {(!loading && ((activeTab === 'estimates' && estimates.length === 0) || (activeTab === 'orders' && orders.length === 0))) && (
-                                <tr><td colSpan="12" className="px-6 py-12 text-center text-gray-500">?곗씠?곌? ?놁뒿?덈떎.</td></tr>
+                                <tr><td colSpan="12" className="px-6 py-12 text-center text-gray-500">데이터가 없습니다.</td></tr>
                             )}
                         </ResizableTable>
                     </div>
@@ -597,4 +597,3 @@ const SalesPage = () => {
 };
 
 export default SalesPage;
-
