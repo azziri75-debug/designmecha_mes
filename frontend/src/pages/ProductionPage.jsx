@@ -733,7 +733,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 <td className="px-4 py-4 text-center"><Chip label={plan.status} size="small" color={plan.status === 'COMPLETED' ? "success" : plan.status === 'CONFIRMED' ? "secondary" : "primary"} /></td>
                 <td className="px-4 py-4 text-center">{defects?.length > 0 && <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); onShowDefects(defects); }}><AlertCircle className="w-5 h-5" /></IconButton>}</td>
                 <td className="px-4 py-4 text-center">{plan.items?.length || 0}</td>
-                <td className="px-4 py-4 text-right font-bold text-green-800">{formatCurrency(plan.items?.reduce((sum, item) => sum + (item.cost || 0), 0) || 0, 'KRW')}</td>
+                <td className="px-4 py-4 text-right font-bold text-emerald-400">{formatCurrency(plan.items?.reduce((sum, item) => sum + (item.cost || 0), 0) || 0, 'KRW')}</td>
                 <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                     {safeParseJSON(plan.attachment_file, []).length > 0 && <IconButton size="small" color="primary" onClick={() => onOpenFiles(safeParseJSON(plan.attachment_file, []), plan)}><FileText className="w-4 h-4" /></IconButton>}
                 </td>
@@ -765,7 +765,19 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                                         </div>
                                         <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded-md">
                                             <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
-                                                <tr><th className="px-4 py-2">순번</th><th className="px-4 py-2">공정명</th><th className="px-4 py-2">구분</th><th className="px-4 py-2">담당</th><th className="px-4 py-2">상태</th></tr>
+                                                <tr>
+                                                    <th className="px-3 py-2">순번</th>
+                                                    <th className="px-3 py-2">공정명</th>
+                                                    <th className="px-3 py-2">구분</th>
+                                                    <th className="px-3 py-2">담당</th>
+                                                    <th className="px-3 py-2">배정 장비</th>
+                                                    <th className="px-3 py-2">작업내용</th>
+                                                    <th className="px-3 py-2">시작일</th>
+                                                    <th className="px-3 py-2">종료일</th>
+                                                    <th className="px-3 py-2 text-right">공정비용</th>
+                                                    <th className="px-3 py-2 text-right">수량</th>
+                                                    <th className="px-3 py-2">상태</th>
+                                                </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-800">
                                                 {group.items.sort((a, b) => a.sequence - b.sequence).map(item => (
@@ -789,11 +801,17 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
     return (
         <React.Fragment>
             <tr className="hover:bg-gray-800/40 transition-colors select-none text-gray-300 cursor-pointer" onClick={() => setOpen(!open)}>
-                <td className="px-4 py-3 text-center">{item.sequence}</td>
-                <td className="px-4 py-3">{item.process_name}</td>
-                <td className="px-4 py-3"><Chip label={typeMap[item.course_type] || item.course_type} size="small" sx={{ height: 20 }} /></td>
-                <td className="px-4 py-3">{item.course_type === 'INTERNAL' ? item.worker?.name : item.partner_name}</td>
-                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                <td className="px-3 py-3 text-center text-gray-400">{item.sequence}</td>
+                <td className="px-3 py-3 font-medium">{item.process_name}</td>
+                <td className="px-3 py-3"><Chip label={typeMap[item.course_type] || item.course_type} size="small" sx={{ height: 18, fontSize: '10px' }} /></td>
+                <td className="px-3 py-3 text-gray-400">{item.course_type === 'INTERNAL' ? (item.worker?.name || '-') : (item.partner_name || '-')}</td>
+                <td className="px-3 py-3 text-gray-400">{item.equipment?.name || '-'}</td>
+                <td className="px-3 py-3 text-gray-400 max-w-[120px] truncate">{item.note || '-'}</td>
+                <td className="px-3 py-3 text-gray-400 whitespace-nowrap">{item.start_date || '-'}</td>
+                <td className="px-3 py-3 text-gray-400 whitespace-nowrap">{item.end_date || '-'}</td>
+                <td className="px-3 py-3 text-right font-bold text-emerald-400">{item.cost ? item.cost.toLocaleString() + '원' : '-'}</td>
+                <td className="px-3 py-3 text-right">{item.quantity ?? '-'}</td>
+                <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <select value={item.status} onChange={async (e) => {
                         try { await api.patch(`/production/plan-items/${item.id}`, { status: e.target.value }); onRefresh(); } catch (err) { alert("오류 발생"); }
                     }} className="text-xs p-1 border border-gray-700 bg-gray-800 text-gray-200 rounded">
@@ -803,7 +821,7 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
             </tr>
             {open && (
                 <tr className="bg-gray-900/50">
-                    <td colSpan={5} className="p-0 border-none">
+                    <td colSpan={11} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
                             <div className="p-3 mx-4 my-2 border border-gray-700 bg-gray-800 rounded-md">
                                 <h4 className="text-[11px] font-semibold mb-2 text-gray-400">작업 로그</h4>
