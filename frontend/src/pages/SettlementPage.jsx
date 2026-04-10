@@ -25,6 +25,8 @@ const SettlementPage = () => {
     const [data, setData] = useState([]);
     const [groups, setGroups] = useState([]);
     const [exchangeRate, setExchangeRate] = useState(1350); // 1 USD = N KRW
+    const [rateLoading, setRateLoading] = useState(true);
+    const [rateDate, setRateDate] = useState(null);
 
     const tabs = [
         { id: "orders", label: "수주내역" },
@@ -43,6 +45,30 @@ const SettlementPage = () => {
             } catch (e) { console.error(e); }
         };
         fetchGroups();
+    }, []);
+
+    // 실시간 환율 조회 (open.er-api.com - 무료, API키 불필요)
+    useEffect(() => {
+        const fetchExchangeRate = async () => {
+            setRateLoading(true);
+            try {
+                const res = await fetch('https://open.er-api.com/v6/latest/USD');
+                const json = await res.json();
+                if (json?.result === 'success' && json?.rates?.KRW) {
+                    setExchangeRate(Math.round(json.rates.KRW));
+                    // 고시 날짜 파싱 (time_last_update_utc)
+                    if (json.time_last_update_utc) {
+                        const d = new Date(json.time_last_update_utc);
+                        setRateDate(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`);
+                    }
+                }
+            } catch (e) {
+                console.warn('환율 조회 실패, 기본값 유지:', e);
+            } finally {
+                setRateLoading(false);
+            }
+        };
+        fetchExchangeRate();
     }, []);
 
     useEffect(() => {
@@ -257,7 +283,16 @@ const SettlementPage = () => {
 
                 {/* 환율 설정 */}
                 <div className="space-y-1.5">
-                    <label className="text-xs text-gray-500 font-medium">기준환율 (1 USD = ? KRW)</label>
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-500 font-medium">기준환율 (1 USD = ? KRW)</label>
+                        {rateLoading ? (
+                            <span className="text-xs text-yellow-500 animate-pulse">조회 중...</span>
+                        ) : rateDate ? (
+                            <span className="text-xs text-emerald-500">({rateDate} 기준)</span>
+                        ) : (
+                            <span className="text-xs text-gray-600">수동 입력</span>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2">
                         <input
                             type="number"
