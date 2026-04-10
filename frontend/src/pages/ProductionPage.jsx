@@ -720,10 +720,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-orange-600 font-medium">{order?.delivery_date || '-'}</td>
                 <td className="px-4 py-4 whitespace-nowrap text-emerald-400">
-                    {(() => {
-                        const completedItem = plan.items?.find(it => it.status === 'COMPLETED' && it.end_date);
-                        return completedItem?.end_date || plan.items?.reduce((latest, it) => it.end_date > latest ? it.end_date : latest, '') || '-';
-                    })()}
+                    {plan.status === 'COMPLETED' ? (plan.actual_completion_date || '-') : '-'}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-right">{formatCurrency(order?.total_amount || 0, (() => { const cur = order?.items?.find(it => it.currency && it.currency !== 'KRW')?.currency; return cur || order?.items?.[0]?.currency || 'KRW'; })())}</td>
                 <td className="px-4 py-4 truncate max-w-[150px]">{order?.note || sp?.note || '-'}</td>

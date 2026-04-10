@@ -64,6 +64,7 @@ class ProductionPlanItemUpdate(BaseModel):
 class ProductionPlanBase(BaseModel):
     plan_date: Optional[date] = None
     status: Optional[ProductionStatus] = ProductionStatus.PLANNED
+    actual_completion_date: Optional[date] = None  # 생산 완료일
     attachment_file: Optional[Union[List[Any], str]] = None
     sheet_metadata: Optional[dict] = None
 
