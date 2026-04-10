@@ -36,6 +36,7 @@ async def get_settlement_orders(
         Product.specification,
         SalesOrderItem.quantity,
         SalesOrderItem.unit_price,
+        SalesOrderItem.currency,
         (SalesOrderItem.quantity * SalesOrderItem.unit_price).label("total_price")
     ).select_from(SalesOrder)\
      .join(SalesOrderItem, SalesOrder.id == SalesOrderItem.order_id)\
@@ -71,6 +72,7 @@ async def get_settlement_sales(
         Product.specification,
         SalesOrderItem.quantity,
         SalesOrderItem.unit_price,
+        SalesOrderItem.currency,
         (SalesOrderItem.quantity * SalesOrderItem.unit_price).label("total_price")
     ).select_from(SalesOrder)\
      .join(SalesOrderItem, SalesOrder.id == SalesOrderItem.order_id)\

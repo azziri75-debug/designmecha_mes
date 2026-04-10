@@ -469,6 +469,7 @@ async def create_order(
             product_id=item.product_id,
             product_name=item.product_name,
             unit_price=item.unit_price,
+            currency=item.currency or 'KRW',
             quantity=item.quantity,
             note=item.note,
             delivered_quantity=item.delivered_quantity
