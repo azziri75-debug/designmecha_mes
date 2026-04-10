@@ -83,6 +83,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                     order_date: orderToEdit.order_date,
                     delivery_date: orderToEdit.delivery_date || '',
                     items: (orderToEdit.items || []).map(item => ({
+                        id: item.id,
                         product_id: item.product_id,
                         product_name: item.product?.name || item.product_name,
                         product_spec: item.product?.specification || item.product_spec,
@@ -90,6 +91,7 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                         quantity: item.quantity,
                         unit_price: item.unit_price,
                         currency: item.currency || 'KRW',
+                        delivered_quantity: item.delivered_quantity || 0,
                         note: item.note || ''
                     })),
                     note: orderToEdit.note || '',
