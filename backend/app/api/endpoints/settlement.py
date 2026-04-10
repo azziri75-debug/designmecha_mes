@@ -97,13 +97,15 @@ async def get_settlement_purchases(
     major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """3. 매입내역: 구매발주서 + 외주발주서 기준"""
+    """3. 매입내역: 구매발주서 + 외주발주서 기준 (실제 입고일 기준)"""
     data = []
     
-    # Material/Consumable Purchases
+    # Material/Consumable Purchases - 실제 입고일(actual_delivery_date) 기준
     p_query = select(
         PurchaseOrder.purchase_type.label("category"),
         Partner.name.label("partner_name"),
+        PurchaseOrder.order_date,
+        PurchaseOrder.actual_delivery_date.label("delivery_date"),
         Product.name.label("product_name"),
         Product.specification,
         PurchaseOrderItem.quantity,
@@ -114,14 +116,17 @@ async def get_settlement_purchases(
      .join(Partner, PurchaseOrder.partner_id == Partner.id)\
      .join(Product, PurchaseOrderItem.product_id == Product.id)\
      .where(
-         PurchaseOrder.status != PurchaseStatus.CANCELED,
-         get_month_filter(PurchaseOrder.order_date, year, month)
+         PurchaseOrder.status == PurchaseStatus.COMPLETED,
+         PurchaseOrder.actual_delivery_date != None,
+         get_month_filter(PurchaseOrder.actual_delivery_date, year, month)
      )
     
-    # Outsourcing Purchases
+    # Outsourcing Purchases - 실제 납품일(actual_delivery_date) 기준
     o_query = select(
         func.cast("OUTSOURCING", String).label("category"),
         Partner.name.label("partner_name"),
+        OutsourcingOrder.order_date,
+        OutsourcingOrder.actual_delivery_date.label("delivery_date"),
         Product.name.label("product_name"),
         Product.specification,
         OutsourcingOrderItem.quantity,
@@ -132,8 +137,9 @@ async def get_settlement_purchases(
      .join(Partner, OutsourcingOrder.partner_id == Partner.id)\
      .outerjoin(Product, OutsourcingOrderItem.product_id == Product.id)\
      .where(
-         OutsourcingOrder.status != OutsourcingStatus.CANCELED,
-         get_month_filter(OutsourcingOrder.order_date, year, month)
+         OutsourcingOrder.status == OutsourcingStatus.COMPLETED,
+         OutsourcingOrder.actual_delivery_date != None,
+         get_month_filter(OutsourcingOrder.actual_delivery_date, year, month)
      )
 
     if major_group_id:
@@ -158,24 +164,25 @@ async def get_settlement_production(
     major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """4. 생산내역: 생산관리(생산완료) 기준"""
+    """4. 생산내역: 생산관리(생산완료) 기준 - 실제 완료일(actual_completion_date) 기준"""
     query = select(
         Partner.name.label("partner_name"),
         SalesOrder.order_date,
-        ProductionPlanItem.end_date,
+        ProductionPlan.actual_completion_date.label("end_date"),
         Product.name.label("product_name"),
         Product.specification,
         ProductionPlanItem.quantity,
         ProductionPlanItem.cost.label("process_cost"),
         (ProductionPlanItem.quantity * ProductionPlanItem.cost).label("total_cost")
-    ).select_from(ProductionPlanItem)\
-     .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)\
+    ).select_from(ProductionPlan)\
+     .join(ProductionPlanItem, ProductionPlanItem.plan_id == ProductionPlan.id)\
      .outerjoin(SalesOrder, ProductionPlan.order_id == SalesOrder.id)\
      .outerjoin(Partner, SalesOrder.partner_id == Partner.id)\
      .join(Product, ProductionPlanItem.product_id == Product.id)\
      .where(
-         ProductionPlanItem.status == ProductionStatus.COMPLETED,
-         get_month_filter(ProductionPlanItem.end_date, year, month)
+         ProductionPlan.status == ProductionStatus.COMPLETED,
+         ProductionPlan.actual_completion_date != None,
+         get_month_filter(ProductionPlan.actual_completion_date, year, month)
      )
 
     if major_group_id:
