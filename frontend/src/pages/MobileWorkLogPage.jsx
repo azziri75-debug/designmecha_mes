@@ -105,6 +105,7 @@ const MobileWorkLogPage = () => {
 
     const [comment, setComment] = useState('');
     const [editingDocId, setEditingDocId] = useState(null);
+    const [originalAuthor, setOriginalAuthor] = useState(null); // 수정 시 원본 기안자 정보 보존
 
     // Registration Form
     const [goodQty, setGoodQty] = useState('');
@@ -449,8 +450,10 @@ const MobileWorkLogPage = () => {
                 }
             }
 
+            // 수정 모드: 원본 기안자 이름 유지 / 신규 기안: 현재 사용자 이름
+            const authorName = (editingDocId && originalAuthor?.name) ? originalAuthor.name : user.name;
             const payload = {
-                title: `${user.name} - ${DOC_TYPES[selectedDocType].label}`,
+                title: `${authorName} - ${DOC_TYPES[selectedDocType].label}`,
                 doc_type: selectedDocType,
                 // [FIX] Ensure content is a valid dictionary (Object) for Pydantic
                 content: typeof finalDocFormData === 'string' ? safeParseJSON(finalDocFormData, {}) : (finalDocFormData || {}),
@@ -492,6 +495,7 @@ const MobileWorkLogPage = () => {
         setSelectedDocType(doc.doc_type);
         setDocFormData(doc.content);
         setEditingDocId(doc.id);
+        setOriginalAuthor(doc.author || null); // 원본 기안자 정보 보존
         setShowDetailModal(false);
         setShowCreateModal(true);
     };
