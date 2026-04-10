@@ -48,51 +48,82 @@ const RectDiagram = ({ w = '가로', h = '세로', t = '높이' }) => (
 );
 
 const CylDiagram = ({ d = '직경', l = '길이' }) => (
-    <svg viewBox="0 0 240 160" style={{ width: '100%', maxWidth: 260 }}>
+    <svg viewBox="0 0 260 170" style={{ width: '100%', maxWidth: 260 }}>
         <defs>
-            <marker id="arrC" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-                <path d="M0,0 L0,6 L6,3 z" fill="#60a5fa"/>
+            <marker id="arrC" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+                <path d="M0,0 L0,7 L7,3.5 z" fill="#60a5fa"/>
+            </marker>
+            <marker id="arrCR" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse">
+                <path d="M0,0 L0,7 L7,3.5 z" fill="#60a5fa"/>
             </marker>
         </defs>
-        <rect x="60" y="40" width="120" height="80" fill="#1e3a5f" stroke="#60a5fa" strokeWidth="1.5"/>
-        <ellipse cx="60" cy="80" rx="20" ry="40" fill="#1e3a5f" stroke="#60a5fa" strokeWidth="1.5"/>
-        <ellipse cx="180" cy="80" rx="20" ry="40" fill="#243f6e" stroke="#60a5fa" strokeWidth="1.5"/>
-        {/* 길이 치수 */}
-        <line x1="60" y1="132" x2="180" y2="132" stroke="#60a5fa" strokeWidth="1" markerStart="url(#arrC)" markerEnd="url(#arrC)"/>
-        <text x="120" y="147" textAnchor="middle" fill="#93c5fd" fontSize="11">{l} mm</text>
-        {/* 직경 치수 */}
-        <line x1="8" y1="40" x2="8" y2="120" stroke="#60a5fa" strokeWidth="1" markerStart="url(#arrC)" markerEnd="url(#arrC)"/>
-        <text x="4" y="84" textAnchor="middle" fill="#93c5fd" fontSize="11" transform="rotate(-90,4,84)">φ{d} mm</text>
+        {/* 원통 몸체 */}
+        <rect x="55" y="40" width="130" height="85" fill="#1e3a5f" stroke="none"/>
+        <ellipse cx="55"  cy="82" rx="22" ry="42" fill="#1e3a5f" stroke="#60a5fa" strokeWidth="1.5"/>
+        <ellipse cx="185" cy="82" rx="22" ry="42" fill="#243f6e" stroke="#60a5fa" strokeWidth="1.5"/>
+        <line x1="55"  y1="40"  x2="185" y2="40"  stroke="#60a5fa" strokeWidth="1.5"/>
+        <line x1="55"  y1="124" x2="185" y2="124" stroke="#60a5fa" strokeWidth="1.5"/>
+        {/* 길이 치수선 */}
+        <line x1="55"  y1="138" x2="185" y2="138" stroke="#60a5fa" strokeWidth="1" markerStart="url(#arrCR)" markerEnd="url(#arrC)"/>
+        <text x="120" y="152" textAnchor="middle" fill="#93c5fd" fontSize="11">{l} mm</text>
+        {/* 직경 치수선 */}
+        <line x1="10" y1="40"  x2="10" y2="124" stroke="#60a5fa" strokeWidth="1" markerStart="url(#arrCR)" markerEnd="url(#arrC)"/>
+        <text x="6"  y="85"  textAnchor="middle" fill="#93c5fd" fontSize="11" transform="rotate(-90,6,85)">φ{d} mm</text>
     </svg>
 );
 
 const RingDiagram = ({ od = '외경', id2 = '내경', t = '두께' }) => (
-    <svg viewBox="0 0 240 185" style={{ width: '100%', maxWidth: 260 }}>
+    <svg viewBox="0 0 280 200" style={{ width: '100%', maxWidth: 280 }}>
         <defs>
-            <marker id="arrG" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-                <path d="M0,0 L0,6 L6,3 z" fill="#60a5fa"/>
+            <marker id="arrG" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+                <path d="M0,0 L0,7 L7,3.5 z" fill="#60a5fa"/>
+            </marker>
+            <marker id="arrGR" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse">
+                <path d="M0,0 L0,7 L7,3.5 z" fill="#60a5fa"/>
             </marker>
         </defs>
-        {/* 링 상단 타원 (hole) */}
-        <ellipse cx="120" cy="65" rx="68" ry="28" fill="none" stroke="#60a5fa" strokeWidth="1.5"/>
-        <ellipse cx="120" cy="65" rx="34" ry="14" fill="#0f172a" stroke="#60a5fa" strokeWidth="1.5"/>
-        {/* 옆면 수직선 */}
-        <line x1="52" y1="65" x2="52" y2="97" stroke="#60a5fa" strokeWidth="1.5"/>
-        <line x1="188" y1="65" x2="188" y2="97" stroke="#60a5fa" strokeWidth="1.5"/>
-        <line x1="86" y1="65" x2="86" y2="97" stroke="#60a5fa" strokeWidth="1" strokeDasharray="3,2"/>
-        <line x1="154" y1="65" x2="154" y2="97" stroke="#60a5fa" strokeWidth="1" strokeDasharray="3,2"/>
-        {/* 링 하단 타원 */}
-        <ellipse cx="120" cy="97" rx="68" ry="28" fill="#1e3a5f" stroke="#60a5fa" strokeWidth="1.5"/>
-        <ellipse cx="120" cy="97" rx="34" ry="14" fill="#0f172a" stroke="#60a5fa" strokeWidth="1.5"/>
-        {/* 외경 */}
-        <line x1="120" y1="97" x2="188" y2="97" stroke="#60a5fa" strokeWidth="1" markerEnd="url(#arrG)"/>
-        <text x="157" y="113" textAnchor="middle" fill="#93c5fd" fontSize="10">R외 {od}/2</text>
-        {/* 내경 */}
-        <line x1="120" y1="97" x2="86" y2="97" stroke="#60a5fa" strokeWidth="1" markerEnd="url(#arrG)"/>
-        <text x="100" y="85" textAnchor="middle" fill="#93c5fd" fontSize="10">R내 {id2}/2</text>
-        {/* 두께 */}
-        <line x1="204" y1="65" x2="204" y2="97" stroke="#60a5fa" strokeWidth="1" markerStart="url(#arrG)" markerEnd="url(#arrG)"/>
-        <text x="218" y="85" textAnchor="start" fill="#93c5fd" fontSize="10">{t} mm</text>
+
+        {/* ── 링 3D 뷰 ── */}
+        {/* 하단 외곽 타원 (보이는 바닥면) */}
+        <ellipse cx="115" cy="118" rx="80" ry="28" fill="#1e3a5f" stroke="#60a5fa" strokeWidth="1.5"/>
+        {/* 하단 내경 구멍 */}
+        <ellipse cx="115" cy="118" rx="38" ry="13" fill="#0d1b2a" stroke="#60a5fa" strokeWidth="1.5"/>
+
+        {/* 좌우 옆면 수직선 */}
+        <line x1="35"  y1="90"  x2="35"  y2="118" stroke="#60a5fa" strokeWidth="1.5"/>
+        <line x1="195" y1="90"  x2="195" y2="118" stroke="#60a5fa" strokeWidth="1.5"/>
+        {/* 내경 내벽 수직선 (점선) */}
+        <line x1="77"  y1="105" x2="77"  y2="118" stroke="#60a5fa" strokeWidth="1" strokeDasharray="3,2"/>
+        <line x1="153" y1="105" x2="153" y2="118" stroke="#60a5fa" strokeWidth="1" strokeDasharray="3,2"/>
+
+        {/* 상단 외곽 타원 */}
+        <ellipse cx="115" cy="90"  rx="80" ry="28" fill="#243f6e" stroke="#60a5fa" strokeWidth="1.5"/>
+        {/* 상단 내경 구멍 */}
+        <ellipse cx="115" cy="90"  rx="38" ry="13" fill="#0d1b2a" stroke="#60a5fa" strokeWidth="1.5"/>
+
+        {/* ── 치수선 ── */}
+        {/* 외경: 중심 → 외곽 우측 (상단 타원면) */}
+        <line x1="115" y1="90" x2="195" y2="90" stroke="#facc15" strokeWidth="1" markerEnd="url(#arrG)"/>
+        <text x="158" y="84" textAnchor="middle" fill="#facc15" fontSize="10" fontWeight="bold">φ{od}</text>
+
+        {/* 내경: 중심 → 내경 우측 (상단 타원면) */}
+        <line x1="115" y1="90" x2="153" y2="90" stroke="#fb923c" strokeWidth="1" markerEnd="url(#arrG)"/>
+        <text x="137" y="106" textAnchor="middle" fill="#fb923c" fontSize="10" fontWeight="bold">φ{id2}</text>
+
+        {/* 두께: 우측 세로 치수선 */}
+        <line x1="206" y1="90"  x2="220" y2="90"  stroke="#60a5fa" strokeWidth="1"/>
+        <line x1="213" y1="90"  x2="213" y2="118" stroke="#60a5fa" strokeWidth="1" markerStart="url(#arrGR)" markerEnd="url(#arrG)"/>
+        <line x1="206" y1="118" x2="220" y2="118" stroke="#60a5fa" strokeWidth="1"/>
+        <text x="228" y="107" textAnchor="start" fill="#93c5fd" fontSize="10">{t}<tspan fontSize="9"> mm</tspan></text>
+
+        {/* 범례 */}
+        <rect x="4" y="168" width="270" height="28" rx="4" fill="rgba(30,58,95,0.5)" stroke="#1e3a5f" strokeWidth="1"/>
+        <circle cx="14" cy="182" r="4" fill="none" stroke="#facc15" strokeWidth="1.5"/>
+        <text x="22" y="186" fill="#facc15" fontSize="9">외경(OD)</text>
+        <circle cx="75" cy="182" r="4" fill="none" stroke="#fb923c" strokeWidth="1.5"/>
+        <text x="83" y="186" fill="#fb923c" fontSize="9">내경(ID)</text>
+        <line x1="138" y1="182" x2="148" y2="182" stroke="#60a5fa" strokeWidth="1.5"/>
+        <text x="152" y="186" fill="#93c5fd" fontSize="9">두께(T)</text>
     </svg>
 );
 
