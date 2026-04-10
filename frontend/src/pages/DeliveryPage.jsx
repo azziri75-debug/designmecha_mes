@@ -415,6 +415,8 @@ const DeliveryPage = () => {
                                                                                                 delivery_date: dh.delivery_date,
                                                                                                 order_no: ord.order_no,
                                                                                                 partner: ord.partner,
+                                                                                                note: dh.note || '',   // 비고 연결
+                                                                                                remarks: dh.note || '', // TransactionStatementModal용 fallback
                                                                                                 items: (dh.items || []).map(it => ({
                                                                                                     date: dh.delivery_date,
                                                                                                     item_name: it.order_item?.product?.name || '',
