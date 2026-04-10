@@ -171,9 +171,8 @@ async def get_settlement_production(
         ProductionPlan.actual_completion_date.label("end_date"),
         Product.name.label("product_name"),
         Product.specification,
-        ProductionPlanItem.quantity,
-        ProductionPlanItem.cost.label("process_cost"),
-        (ProductionPlanItem.quantity * ProductionPlanItem.cost).label("total_cost")
+        func.max(ProductionPlanItem.quantity).label("quantity"),  # 대표 수량
+        func.sum(ProductionPlanItem.cost).label("process_cost")   # 모든 공정 비용 합산
     ).select_from(ProductionPlan)\
      .join(ProductionPlanItem, ProductionPlanItem.plan_id == ProductionPlan.id)\
      .outerjoin(SalesOrder, ProductionPlan.order_id == SalesOrder.id)\
@@ -183,6 +182,14 @@ async def get_settlement_production(
          ProductionPlan.status == ProductionStatus.COMPLETED,
          ProductionPlan.actual_completion_date != None,
          get_month_filter(ProductionPlan.actual_completion_date, year, month)
+     )\
+     .group_by(
+         ProductionPlan.id,
+         Partner.name,
+         SalesOrder.order_date,
+         ProductionPlan.actual_completion_date,
+         Product.name,
+         Product.specification
      )
 
     if major_group_id:
