@@ -22,6 +22,7 @@ import MobileAttendancePage from './pages/MobileAttendancePage';
 import AttendancePage from './pages/AttendancePage';
 import ApprovalDraftPage from './components/ApprovalDraftPage';
 import SettlementPage from './pages/SettlementPage';
+import WeightCalculatorPage from './pages/WeightCalculatorPage';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -88,6 +89,7 @@ const App = () => {
       </Route>
       <Route path="/mobile/work-logs" element={<ProtectedRoute><MobileWorkLogPage /></ProtectedRoute>} />
       <Route path="/mobile/attendance" element={<ProtectedRoute><MobileAttendancePage /></ProtectedRoute>} />
+      <Route path="/weight-calculator" element={<WeightCalculatorPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

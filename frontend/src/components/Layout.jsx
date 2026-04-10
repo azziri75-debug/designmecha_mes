@@ -32,7 +32,6 @@ import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Fab } from '@mui/material';
-import WeightCalculator from './WeightCalculator';
 
 const SidebarItem = ({ icon: Icon, label, to, active, badge }) => {
     return (
@@ -65,7 +64,17 @@ const Layout = () => {
     
     const [contactModalOpen, setContactModalOpen] = useState(false);
     const [contactForm, setContactForm] = useState({ subject: '', content: '' });
-    const [weightCalcOpen, setWeightCalcOpen] = useState(false);
+
+    const openWeightCalculator = () => {
+        const w = 680, h = 820;
+        const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+        const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
+        window.open(
+            '/weight-calculator',
+            'weight_calc',
+            `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        );
+    };
 
     const handleSendSysadmin = async () => {
         try {
@@ -159,7 +168,7 @@ const Layout = () => {
                     </button>
 
                     <button
-                        onClick={() => setWeightCalcOpen(true)}
+                        onClick={() => openWeightCalculator()}
                         className="flex items-center gap-2 px-3 py-2 w-full text-sm text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-md transition-colors font-semibold"
                     >
                         <Calculator className="w-4 h-4" />
@@ -223,8 +232,6 @@ const Layout = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-
-            {weightCalcOpen && <WeightCalculator onClose={() => setWeightCalcOpen(false)} />}
         </div>
     );
 };
