@@ -25,12 +25,14 @@ import {
     Cpu,
     Plus,
     Mail, Send,
-    AlertCircle
+    AlertCircle,
+    Calculator
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Fab } from '@mui/material';
+import WeightCalculator from './WeightCalculator';
 
 const SidebarItem = ({ icon: Icon, label, to, active, badge }) => {
     return (
@@ -63,6 +65,7 @@ const Layout = () => {
     
     const [contactModalOpen, setContactModalOpen] = useState(false);
     const [contactForm, setContactForm] = useState({ subject: '', content: '' });
+    const [weightCalcOpen, setWeightCalcOpen] = useState(false);
 
     const handleSendSysadmin = async () => {
         try {
@@ -156,6 +159,14 @@ const Layout = () => {
                     </button>
 
                     <button
+                        onClick={() => setWeightCalcOpen(true)}
+                        className="flex items-center gap-2 px-3 py-2 w-full text-sm text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-md transition-colors font-semibold"
+                    >
+                        <Calculator className="w-4 h-4" />
+                        <span>중량 계산기</span>
+                    </button>
+
+                    <button
                         onClick={handleLogout}
                         className="flex items-center gap-2 px-3 py-2 w-full text-sm text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
                     >
@@ -212,6 +223,8 @@ const Layout = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {weightCalcOpen && <WeightCalculator onClose={() => setWeightCalcOpen(false)} />}
         </div>
     );
 };
