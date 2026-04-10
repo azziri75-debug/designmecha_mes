@@ -15,6 +15,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState(sheetType);
     const [approvalDoc, setApprovalDoc] = useState(null);
+    const [editOverride, setEditOverride] = useState(false); // 결재완료 후 수정 모드
     const { currentUser } = useAuth();
 
     const [metadata, setMetadata] = useState({
@@ -36,6 +37,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
             fetchCompany();
             initializeMetadata();
             fetchApprovalDoc();
+            setEditOverride(false); // 열 때마다 수정 모드 초기화
         }
     }, [isOpen, order, activeTab]);
 
@@ -185,6 +187,9 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
 
     if (!isOpen || !order) return null;
 
+    const isApproved = approvalDoc?.status === 'APPROVED';
+    const isReadOnly = isApproved && !editOverride; // 결재완료 후 수정 모드가 아니면 읽기 전용
+
     const totalAmount = (metadata.items || []).reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
 
     const baseColumns = [
@@ -227,6 +232,24 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         <button onClick={() => setActiveTab('purchase_order')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-colors", activeTab === 'purchase_order' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}>구매발주서</button>
                     </div>
                     <div className="flex items-center gap-2">
+                        {/* 수정 및 재결재 모드 */}
+                        {isApproved && !editOverride && (
+                            <button
+                                onClick={() => {
+                                    if (window.confirm("결재 완료된 문서입니다.\n내용을 수정하면 기존 결재가 무효화되고 재결재가 필요합니다.\n\n수정 모드로 전환하시겠습니까?")) {
+                                        setEditOverride(true);
+                                    }
+                                }}
+                                className="bg-yellow-600 hover:bg-yellow-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"
+                            >
+                                ✏️ 수정 및 재결재
+                            </button>
+                        )}
+                        {isApproved && editOverride && (
+                            <span className="text-yellow-400 text-xs font-bold bg-yellow-900/40 px-2 py-1 rounded flex items-center gap-1">
+                                ⚠️ 수정 중 — 저장 후 재결재 필요
+                            </span>
+                        )}
                         <button
                             onClick={handlePrintWindow}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"
@@ -242,11 +265,15 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         </button>
 
                         {/* [MOD] 결재요청 button moved from template to header to avoid print inclusion */}
-                        {(!approvalDoc || approvalDoc.status !== 'APPROVED') && (
+                        {/* 결재요청: 미승인이거나 수정 중일 때 표시 */}
+                        {(!isApproved || editOverride) && (
                             <button
                                 onClick={async () => {
                                     if (!order?.id) return;
-                                    if (!window.confirm("이 내용으로 전자결재 [결재요청]을 진행하시겠습니까?")) return;
+                                    const confirmMsg = editOverride
+                                        ? "기존 결재를 무효화하고 수정된 내용으로 재결재 요청을 진행하시겠습니까?"
+                                        : "이 내용으로 전자결재 [결재요청]을 진행하시겠습니까?";
+                                    if (!window.confirm(confirmMsg)) return;
                                     setSaving(true);
                                     try {
                                         const firstItemProcess = metadata.items?.[0]?.name || (orderType === 'outsourcing' ? '외주공정' : (metadata.purchase_type === 'CONSUMABLE' ? '소모품' : '구매자재'));
@@ -279,7 +306,8 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                                         };
                                         
                                         await api.post('/approval/documents', approvalPayload);
-                                        alert("결재 요청이 상신되었습니다.");
+                                        alert(editOverride ? "재결재 요청이 상신되었습니다." : "결재 요청이 상신되었습니다.");
+                                        setEditOverride(false);
                                         fetchApprovalDoc();
                                     } catch (err) {
                                         console.error("Failed to submit approval", err);
@@ -291,7 +319,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                                 disabled={saving}
                                 className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-1"
                             >
-                                <Save className="w-4 h-4" /> 결재요청
+                                <Save className="w-4 h-4" /> {editOverride ? '재결재 요청' : '결재요청'}
                             </button>
                         )}
 
@@ -313,7 +341,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         <PurchaseOrderTemplate
                             data={metadata}
                             onChange={handleMetaChange}
-                            isReadOnly={false}
+                            isReadOnly={isReadOnly}
                             documentData={approvalDoc}
                             currentUser={currentUser}
                             company={company}
