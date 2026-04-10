@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip
+    TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip, Collapse
 } from '@mui/material';
 import { 
     Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, 

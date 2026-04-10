@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip,
-    FormControlLabel, Switch
+    FormControlLabel, Switch, Collapse
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Print as PrintIcon, Delete as DeleteIcon, Description as DescIcon, AttachFile as AttachIcon, Send as SendIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import api from '../lib/api';
