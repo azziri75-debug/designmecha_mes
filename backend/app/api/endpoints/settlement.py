@@ -12,6 +12,7 @@ from app.models.production import ProductionPlan, ProductionPlanItem, Production
 from app.models.quality import QualityDefect, CustomerComplaint, DefectStatus
 from app.models.product import Product, ProductGroup
 from app.models.basics import Partner
+from app.models.inventory import StockProduction
 
 router = APIRouter()
 
@@ -164,19 +165,35 @@ async def get_settlement_production(
     major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """4. 생산내역: 생산관리(생산완료) 기준 - 실제 완료일(actual_completion_date) 기준"""
+    """4. 생산내역: 생산관리(생산완료) 기준 - 실제 완료일(actual_completion_date) 기준
+       - 수주생산: SalesOrder → Partner(고객사), SalesOrder.order_date(수주일)
+       - 재고생산: StockProduction → Partner(고객사), StockProduction.request_date(요청일)
+    """
+    # StockProduction 전용 Partner alias
+    StockPartner = Partner.__table__.alias("stock_partner")
+
     query = select(
-        Partner.name.label("partner_name"),
-        SalesOrder.order_date,
+        # 업체명: 수주생산이면 수주처, 재고생산이면 재고요청 고객사
+        func.coalesce(
+            Partner.name,
+            StockPartner.c.name
+        ).label("partner_name"),
+        # 수주일: 수주생산이면 수주일, 재고생산이면 재고생산 요청일
+        func.coalesce(
+            SalesOrder.order_date,
+            StockProduction.request_date
+        ).label("order_date"),
         ProductionPlan.actual_completion_date.label("end_date"),
         Product.name.label("product_name"),
         Product.specification,
-        func.max(ProductionPlanItem.quantity).label("quantity"),  # 대표 수량
-        func.sum(ProductionPlanItem.cost).label("process_cost")   # 모든 공정 비용 합산
+        func.max(ProductionPlanItem.quantity).label("quantity"),
+        func.sum(ProductionPlanItem.cost).label("process_cost")
     ).select_from(ProductionPlan)\
      .join(ProductionPlanItem, ProductionPlanItem.plan_id == ProductionPlan.id)\
      .outerjoin(SalesOrder, ProductionPlan.order_id == SalesOrder.id)\
      .outerjoin(Partner, SalesOrder.partner_id == Partner.id)\
+     .outerjoin(StockProduction, ProductionPlan.stock_production_id == StockProduction.id)\
+     .outerjoin(StockPartner, StockProduction.partner_id == StockPartner.c.id)\
      .join(Product, ProductionPlanItem.product_id == Product.id)\
      .where(
          ProductionPlan.status == ProductionStatus.COMPLETED,
@@ -186,7 +203,9 @@ async def get_settlement_production(
      .group_by(
          ProductionPlan.id,
          Partner.name,
+         StockPartner.c.name,
          SalesOrder.order_date,
+         StockProduction.request_date,
          ProductionPlan.actual_completion_date,
          Product.name,
          Product.specification
