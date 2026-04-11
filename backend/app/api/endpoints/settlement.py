@@ -348,8 +348,8 @@ async def get_chart_summary(
         ), SalesOrder.actual_delivery_date
     ))
 
-    # 매입
-    r_purchases = await db.execute(pd(
+    # 매입 = 구매발주(자재/MRP/소모품) + 외주발주
+    r_pur_buy = await db.execute(pd(
         with_grp(
             select(group_expr.label("g"),
                    func.sum(PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price).label("v"))
@@ -360,6 +360,24 @@ async def get_chart_summary(
             .group_by(group_expr)
         ), PurchaseOrder.actual_delivery_date
     ))
+    r_pur_out = await db.execute(pd(
+        with_grp(
+            select(group_expr.label("g"),
+                   func.sum(OutsourcingOrderItem.unit_price * OutsourcingOrderItem.quantity).label("v"))
+            .select_from(OutsourcingOrderItem)
+            .join(OutsourcingOrder, OutsourcingOrderItem.outsourcing_order_id == OutsourcingOrder.id)
+            .outerjoin(Product, OutsourcingOrderItem.product_id == Product.id)
+            .where(OutsourcingOrder.status == OutsourcingStatus.COMPLETED)
+            .group_by(group_expr)
+        ), OutsourcingOrder.actual_delivery_date
+    ))
+    # 두 소스 합산
+    pur_map: dict = {}
+    for r in r_pur_buy.fetchall():
+        pur_map[r[0] or "미분류"] = pur_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
+    for r in r_pur_out.fetchall():
+        pur_map[r[0] or "미분류"] = pur_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
+    purchases_data = [{"name": k, "value": v} for k, v in sorted(pur_map.items(), key=lambda x: -x[1])]
 
     # 생산 (완료일 폴백)
     eff = func.coalesce(
@@ -416,28 +434,45 @@ async def get_chart_summary(
         SalesOrder.actual_delivery_date
     ))
 
-    # 매입처 순위 Top10
-    pur_sum = func.sum(PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price)
-    r_purchase_rank = await db.execute(pd(
-        select(Partner.name.label("g"), pur_sum.label("v"))
+    # 매입처 순위 Top10 = 구매발주 + 외주발주 합산
+    pur_sum_b = func.sum(PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price)
+    r_pur_rank_buy = await db.execute(pd(
+        select(Partner.name.label("g"), pur_sum_b.label("v"))
         .select_from(PurchaseOrderItem)
         .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
         .join(Partner,       PurchaseOrder.partner_id == Partner.id)
         .where(PurchaseOrder.status == PurchaseStatus.COMPLETED)
         .group_by(Partner.name)
-        .order_by(pur_sum.desc())
-        .limit(10),
+        .order_by(pur_sum_b.desc()),
         PurchaseOrder.actual_delivery_date
     ))
+    pur_sum_o = func.sum(OutsourcingOrderItem.unit_price * OutsourcingOrderItem.quantity)
+    r_pur_rank_out = await db.execute(pd(
+        select(Partner.name.label("g"), pur_sum_o.label("v"))
+        .select_from(OutsourcingOrderItem)
+        .join(OutsourcingOrder, OutsourcingOrderItem.outsourcing_order_id == OutsourcingOrder.id)
+        .join(Partner,          OutsourcingOrder.partner_id == Partner.id)
+        .where(OutsourcingOrder.status == OutsourcingStatus.COMPLETED)
+        .group_by(Partner.name)
+        .order_by(pur_sum_o.desc()),
+        OutsourcingOrder.actual_delivery_date
+    ))
+    pur_rank_map: dict = {}
+    for r in r_pur_rank_buy.fetchall():
+        pur_rank_map[r[0] or "미분류"] = pur_rank_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
+    for r in r_pur_rank_out.fetchall():
+        pur_rank_map[r[0] or "미분류"] = pur_rank_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
+    purchase_ranking = [{"name": k, "value": v}
+                        for k, v in sorted(pur_rank_map.items(), key=lambda x: -x[1])[:10]]
 
     return {
         "orders":           row2(r_orders),
         "sales":            row2(r_sales),
-        "purchases":        row2(r_purchases),
+        "purchases":        purchases_data,
         "production":       row2(r_prod),
         "defects":          [{"name": r[0] or "미분류", "value": float(r[1] or 0), "count": int(r[2] or 0)}
                              for r in r_defects.fetchall()],
         "complaints":       row2(r_complaints),
         "sales_ranking":    row2(r_sales_rank),
-        "purchase_ranking": row2(r_purchase_rank),
+        "purchase_ranking": purchase_ranking,
     }
