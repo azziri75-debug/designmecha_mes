@@ -147,8 +147,9 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>문서제목</Box>
                         <td colSpan={3}>
                             {draftType === 'PAYMENT' ? (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0, width: '100%' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0, width: '100%', overflow: 'hidden' }}>
+                                    {/* 거래처 부분 — 고정 너비, 줄어들지 않음 */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                                         <span style={{ fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap' }}>[</span>
                                         <input
                                             value={data.partner_for_title || ''}
@@ -158,11 +159,12 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                                 handleChange({ partner_for_title: partner, title: partner && titlePart ? `[${partner}]-${titlePart}` : (partner ? `[${partner}]-` : titlePart) });
                                             }}
                                             readOnly={isReadOnly}
-                                            style={{ border: 'none', outline: 'none', fontWeight: 'bold', fontSize: '15px', width: '110px' }}
+                                            style={{ border: 'none', outline: 'none', fontWeight: 'bold', fontSize: '15px', width: '120px' }}
                                             placeholder="거래처 입력"
                                         />
                                         <span style={{ fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap' }}>]-</span>
                                     </Box>
+                                    {/* 기안제목 — 나머지 공간 차지 */}
                                     <input
                                         value={data.title_body || ''}
                                         onChange={(e) => {
@@ -171,7 +173,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                             handleChange({ title_body: titlePart, title: partner ? `[${partner}]-${titlePart}` : titlePart });
                                         }}
                                         readOnly={isReadOnly}
-                                        style={{ border: 'none', width: '100%', outline: 'none', fontWeight: 'bold', fontSize: '15px', minWidth: 0 }}
+                                        style={{ border: 'none', flex: 1, minWidth: 0, outline: 'none', fontWeight: 'bold', fontSize: '15px' }}
                                         placeholder="기안 제목을 입력하세요"
                                     />
                                 </Box>
