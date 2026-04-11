@@ -71,31 +71,45 @@ const PurchaseOrderTemplate = ({
     ];
 
     let formattedItems = (data.items || []).map((item, idx) => {
-        // [NEW] Blend material and order_size into spec for clear printing
         let specDisplay = item.spec || '';
         const extraParts = [];
         if (item.material) extraParts.push(`재질: ${item.material}`);
         if (item.order_size) extraParts.push(`사이즈: ${item.order_size}`);
-        if (item.pricing_type === 'WEIGHT' && item.total_weight) {
-            extraParts.push(`총 중량: ${fmt(item.total_weight)}kg`);
+
+        const isWeight = item.pricing_type === 'WEIGHT';
+
+        if (isWeight) {
+            if (item.unit_weight) extraParts.push(`개당: ${fmt(item.unit_weight)}kg`);
+            if (item.total_weight) extraParts.push(`총중량: ${fmt(item.total_weight)}kg`);
+            if (item.weight_price) extraParts.push(`중량단가: ${fmt(item.weight_price)}원/kg`);
+        } else {
+            if (item.total_weight) extraParts.push(`총 중량: ${fmt(item.total_weight)}kg`);
         }
-        
+
         if (extraParts.length > 0) {
             const extraStr = extraParts.join(' / ');
             specDisplay = specDisplay ? `${specDisplay} / ${extraStr}` : extraStr;
         }
 
+        // 수량 표시: 중량기준이면 "총중량(kg)" 우선, EA도 공시
+        const qtyDisplay = isWeight
+            ? (item.total_weight ? `${fmt(item.total_weight)}kg (${fmt(item.qty)}EA)` : fmt(item.qty))
+            : fmt(item.qty);
+
+        const priceDisplay = isEstimate ? "" :
+            isWeight ? `${fmt(item.weight_price || item.price)} (원/kg)` : fmt(item.price);
+
         return {
             ...item,
             idx: item.idx || idx + 1,
             spec: specDisplay,
-            qty: fmt(item.qty),
-            price: isEstimate ? "" : (item.pricing_type === 'WEIGHT' ? `${fmt(item.price)} (kg당)` : fmt(item.price)),
+            qty: qtyDisplay,
+            price: priceDisplay,
             total: isEstimate ? "" : fmt(
-                (item.pricing_type === 'WEIGHT' 
-                    ? (parseFloat(item.total_weight) || 0) 
+                (isWeight
+                    ? (parseFloat(item.total_weight) || 0)
                     : (parseFloat(item.qty) || 0)
-                ) * (parseFloat(item.price) || 0)
+                ) * (parseFloat(item.weight_price || item.price) || 0)
             )
         };
     });
@@ -122,12 +136,11 @@ const PurchaseOrderTemplate = ({
             cleanVal = val.replace(/,/g, '');
         }
         newItems[rIdx] = { ...newItems[rIdx], [key]: cleanVal };
-
-        if (key === 'qty' || key === 'price' || key === 'total_weight') {
-            const q = parseFloat(newItems[rIdx].qty) || 0;
-            const p = parseFloat(newItems[rIdx].price) || 0;
-            const w = parseFloat(newItems[rIdx].total_weight) || 0;
-            const isWeight = newItems[rIdx].pricing_type === 'WEIGHT';
+        const isWeight = newItems[rIdx].pricing_type === 'WEIGHT';
+        if (key === 'qty' || key === 'price' || key === 'total_weight' || key === 'weight_price') {
+            const q  = parseFloat(newItems[rIdx].qty) || 0;
+            const p  = parseFloat(newItems[rIdx].weight_price || newItems[rIdx].price) || 0;
+            const w  = parseFloat(newItems[rIdx].total_weight) || 0;
             newItems[rIdx].total = (isWeight ? w : q) * p;
         }
         onChange('items', newItems);

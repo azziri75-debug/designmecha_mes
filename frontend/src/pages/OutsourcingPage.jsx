@@ -213,7 +213,13 @@ const OutsourcingPage = () => {
                         spec: item.product?.specification || '-',
                         qty: item.quantity,
                         price: item.unit_price,
-                        total: item.quantity * (item.unit_price || 0)
+                        pricing_type: item.pricing_type || 'UNIT',
+                        unit_weight: item.unit_weight || 0,
+                        total_weight: item.total_weight || 0,
+                        weight_price: item.weight_price || 0,
+                        total: item.pricing_type === 'WEIGHT'
+                            ? (item.total_weight || 0) * (item.weight_price || item.unit_price || 0)
+                            : item.quantity * (item.unit_price || 0)
                     };
                 }),
                 colWidths: [40, 200, 120, 60, 80, 100]

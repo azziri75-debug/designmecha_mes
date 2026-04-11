@@ -293,7 +293,12 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     const handleAddItem = () => {
         setFormData(prev => ({
             ...prev,
-            items: [...prev.items, { product_id: '', quantity: 0, unit_price: 0, note: '', material: '', order_size: '', pricing_type: 'UNIT', total_weight: 0 }]
+            items: [...prev.items, {
+                product_id: '', quantity: 0, unit_price: 0, note: '',
+                material: '', order_size: '',
+                pricing_type: 'UNIT',
+                total_weight: 0, unit_weight: 0, weight_price: 0
+            }]
         }));
     };
 
@@ -304,16 +309,53 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
     const handleItemChange = async (index, field, value) => {
         const newItems = [...formData.items];
-        newItems[index][field] = value;
+        newItems[index] = { ...newItems[index], [field]: value };
+
+        // ── 중량 기준 3중 연동 ────────────────────────────────────────────
+        if (newItems[index].pricing_type === 'WEIGHT') {
+            const qty      = parseFloat(newItems[index].quantity)     || 0;
+            const unitW    = parseFloat(newItems[index].unit_weight)  || 0;
+            const totalW   = parseFloat(newItems[index].total_weight) || 0;
+            const weightP  = parseFloat(newItems[index].weight_price) || 0;
+
+            if (field === 'quantity') {
+                // 수량 변경 → 총중량 재계산 (개당중량 기준)
+                if (unitW > 0) {
+                    newItems[index].total_weight = (qty * unitW).toFixed(4);
+                } else if (totalW > 0 && qty > 0) {
+                    newItems[index].unit_weight = (totalW / qty).toFixed(4);
+                }
+            } else if (field === 'unit_weight') {
+                // 개당중량 변경 → 총중량 재계산
+                newItems[index].total_weight = (qty * parseFloat(value || 0)).toFixed(4);
+            } else if (field === 'total_weight') {
+                // 총중량 변경 → 개당중량 재계산
+                if (qty > 0) {
+                    newItems[index].unit_weight = (parseFloat(value || 0) / qty).toFixed(4);
+                }
+            }
+            // 중량단가 기준 단가(unit_price) 자동 계산 (총중량×중량단가/수량)
+            const newTotalW = parseFloat(newItems[index].total_weight) || 0;
+            const newQty   = parseFloat(newItems[index].quantity) || 1;
+            if (weightP > 0) {
+                newItems[index].unit_price = newQty > 0
+                    ? ((newTotalW * weightP) / newQty).toFixed(0)
+                    : 0;
+            }
+            if (field === 'weight_price') {
+                const wp2 = parseFloat(value || 0);
+                newItems[index].unit_price = newQty > 0
+                    ? ((newTotalW * wp2) / newQty).toFixed(0)
+                    : 0;
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────
 
         if (field === 'product_id' && value) {
             const product = products.find(p => String(p.id) === String(value));
-            
-            // Auto-fill material
             if (product && product.material) {
                 newItems[index].material = product.material;
             }
-
             try {
                 const res = await api.get('/purchasing/price-history', {
                     params: { product_id: value, limit: 1 }
@@ -390,6 +432,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     product_id: item.product_id,
                     quantity: parseInt(item.quantity) || 0,
                     unit_price: parseFloat(item.unit_price) || 0,
+                    unit_weight: parseFloat(item.unit_weight) || 0,
+                    weight_price: parseFloat(item.weight_price) || 0,
                     note: item.note || '',
                     order_size: item.order_size || '',
                     material: item.material || '',
@@ -555,18 +599,77 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                             </TableCell>
                                         </TableRow>
 
-                                        {/* Row 2: Secondary Fields (Note Only for Outsourcing) */}
+                                        {/* Row 2: 중량 기준 상세 or 비고 */}
                                         <TableRow sx={{ bgcolor: '#fafafa' }}>
                                             <TableCell colSpan={5} sx={{ pt: 1, pb: 1 }}>
-                                                <TextField
-                                                    size="small"
-                                                    label="비고"
-                                                    placeholder="상세 내용을 입력하세요."
-                                                    fullWidth
-                                                    value={item.note || ''}
-                                                    onChange={(e) => handleItemChange(index, 'note', e.target.value)}
-                                                    sx={{ bgcolor: 'white' }}
-                                                />
+                                                {item.pricing_type === 'WEIGHT' ? (
+                                                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                        <Box sx={{ minWidth: 100 }}>
+                                                            <Typography variant="caption" color="text.secondary">수량 (EA)</Typography>
+                                                            <TextField
+                                                                type="number" size="small" fullWidth
+                                                                value={item.quantity || ''}
+                                                                onChange={e => handleItemChange(index, 'quantity', e.target.value)}
+                                                                placeholder="수량"
+                                                                inputProps={{ style: { textAlign: 'center' } }}
+                                                            />
+                                                        </Box>
+                                                        <Box sx={{ minWidth: 110 }}>
+                                                            <Typography variant="caption" color="text.secondary">개당 중량 (kg)</Typography>
+                                                            <TextField
+                                                                type="number" size="small" fullWidth
+                                                                value={item.unit_weight || ''}
+                                                                onChange={e => handleItemChange(index, 'unit_weight', e.target.value)}
+                                                                placeholder="개당 중량"
+                                                                inputProps={{ style: { textAlign: 'right' } }}
+                                                            />
+                                                        </Box>
+                                                        <Box sx={{ minWidth: 110 }}>
+                                                            <Typography variant="caption" color="text.secondary">총 중량 (kg)</Typography>
+                                                            <TextField
+                                                                type="number" size="small" fullWidth
+                                                                value={item.total_weight || ''}
+                                                                onChange={e => handleItemChange(index, 'total_weight', e.target.value)}
+                                                                placeholder="총 중량"
+                                                                inputProps={{ style: { textAlign: 'right', color: '#1976d2', fontWeight: 'bold' } }}
+                                                            />
+                                                        </Box>
+                                                        <Box sx={{ minWidth: 130 }}>
+                                                            <Typography variant="caption" color="text.secondary">중량 단가 (원/kg)</Typography>
+                                                            <TextField
+                                                                type="number" size="small" fullWidth
+                                                                value={item.weight_price || ''}
+                                                                onChange={e => handleItemChange(index, 'weight_price', e.target.value)}
+                                                                placeholder="원/kg"
+                                                                inputProps={{ style: { textAlign: 'right' } }}
+                                                            />
+                                                        </Box>
+                                                        <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', pb: 0.5 }}>
+                                                            <Typography variant="caption" color="text.secondary">개당 단가 (자동)</Typography>
+                                                            <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold', textAlign: 'right', border: '1px solid #e0e0e0', px: 1, py: 0.8, borderRadius: 1, minWidth: 100 }}>
+                                                                ₩{(parseFloat(item.unit_price) || 0).toLocaleString()}
+                                                            </Typography>
+                                                        </Box>
+                                                        <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', pb: 0.5 }}>
+                                                            <Typography variant="caption" color="text.secondary">비고</Typography>
+                                                            <TextField
+                                                                size="small" placeholder="비고"
+                                                                value={item.note || ''}
+                                                                onChange={e => handleItemChange(index, 'note', e.target.value)}
+                                                                sx={{ bgcolor: 'white', minWidth: 120 }}
+                                                            />
+                                                        </Box>
+                                                    </Box>
+                                                ) : (
+                                                    <TextField
+                                                        size="small" label="비고"
+                                                        placeholder="상세 내용을 입력하세요."
+                                                        fullWidth
+                                                        value={item.note || ''}
+                                                        onChange={(e) => handleItemChange(index, 'note', e.target.value)}
+                                                        sx={{ bgcolor: 'white' }}
+                                                    />
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     </React.Fragment>
