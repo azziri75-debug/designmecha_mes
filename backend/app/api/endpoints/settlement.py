@@ -166,11 +166,18 @@ async def get_settlement_production(
     db: AsyncSession = Depends(get_db)
 ):
     """4. 생산내역: 생산관리(생산완료) 기준 - 실제 완료일(actual_completion_date) 기준
+       - 완료일 없는 경우 updated_at(최근수정일)을 폴백으로 사용
        - 수주생산: SalesOrder → Partner(고객사), SalesOrder.order_date(수주일)
        - 재고생산: StockProduction → Partner(고객사), StockProduction.request_date(요청일)
     """
     # StockProduction 전용 Partner alias
     StockPartner = Partner.__table__.alias("stock_partner")
+
+    # 생산완료일 폴백: actual_completion_date 없으면 updated_at의 날짜 부분 사용
+    effective_end_col = func.coalesce(
+        ProductionPlan.actual_completion_date,
+        func.date(ProductionPlan.updated_at)
+    )
 
     query = select(
         # 업체명: 수주생산이면 수주처, 재고생산이면 재고요청 고객사
@@ -183,7 +190,8 @@ async def get_settlement_production(
             SalesOrder.order_date,
             StockProduction.request_date
         ).label("order_date"),
-        ProductionPlan.actual_completion_date.label("end_date"),
+        # 생산완료일: 없으면 최근수정일(updated_at)로 대체
+        effective_end_col.label("end_date"),
         Product.name.label("product_name"),
         Product.specification,
         func.max(ProductionPlanItem.quantity).label("quantity"),
@@ -197,8 +205,8 @@ async def get_settlement_production(
      .join(Product, ProductionPlanItem.product_id == Product.id)\
      .where(
          ProductionPlan.status == ProductionStatus.COMPLETED,
-         ProductionPlan.actual_completion_date != None,
-         get_month_filter(ProductionPlan.actual_completion_date, year, month)
+         # 완료일 OR 최근수정일 중 하나가 해당 월에 속하면 포함
+         get_month_filter(effective_end_col, year, month)
      )\
      .group_by(
          ProductionPlan.id,
@@ -207,6 +215,7 @@ async def get_settlement_production(
          SalesOrder.order_date,
          StockProduction.request_date,
          ProductionPlan.actual_completion_date,
+         ProductionPlan.updated_at,
          Product.name,
          Product.specification
      )
