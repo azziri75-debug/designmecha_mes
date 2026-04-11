@@ -290,3 +290,154 @@ async def get_settlement_complaints(
 
     result = await db.execute(query)
     return [dict(r._mapping) for r in result]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 차트 요약: 사업부별 집계 + 거래처 순위
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get("/chart-summary")
+async def get_chart_summary(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """사업부별 수주/매출/매입/생산/불량/고객불만 집계 + 매출처·매입처 Top10"""
+
+    MinorGrp = ProductGroup.__table__.alias("minor_grp")
+    MajorGrp = ProductGroup.__table__.alias("major_grp")
+    group_expr = func.coalesce(MajorGrp.c.name, MinorGrp.c.name, "미분류")
+
+    def pd(q, col):
+        if year:  q = q.where(extract('year',  col) == year)
+        if month: q = q.where(extract('month', col) == month)
+        return q
+
+    def with_grp(q):
+        return (q
+            .outerjoin(MinorGrp, Product.group_id == MinorGrp.c.id)
+            .outerjoin(MajorGrp, MinorGrp.c.parent_id == MajorGrp.c.id)
+        )
+
+    def row2(res):
+        return [{"name": r[0] or "미분류", "value": float(r[1] or 0)}
+                for r in res.fetchall()]
+
+    # 수주
+    r_orders = await db.execute(pd(
+        with_grp(
+            select(group_expr.label("g"),
+                   func.sum(SalesOrderItem.quantity * SalesOrderItem.unit_price).label("v"))
+            .select_from(SalesOrderItem)
+            .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
+            .join(Product,    SalesOrderItem.product_id == Product.id)
+            .where(SalesOrder.status != OrderStatus.CANCELLED)
+            .group_by(group_expr)
+        ), SalesOrder.order_date
+    ))
+
+    # 매출
+    r_sales = await db.execute(pd(
+        with_grp(
+            select(group_expr.label("g"),
+                   func.sum(SalesOrderItem.quantity * SalesOrderItem.unit_price).label("v"))
+            .select_from(SalesOrderItem)
+            .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
+            .join(Product,    SalesOrderItem.product_id == Product.id)
+            .where(SalesOrder.status.in_([OrderStatus.DELIVERY_COMPLETED, OrderStatus.DELIVERED]))
+            .group_by(group_expr)
+        ), SalesOrder.actual_delivery_date
+    ))
+
+    # 매입
+    r_purchases = await db.execute(pd(
+        with_grp(
+            select(group_expr.label("g"),
+                   func.sum(PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price).label("v"))
+            .select_from(PurchaseOrderItem)
+            .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+            .join(Product,       PurchaseOrderItem.product_id == Product.id)
+            .where(PurchaseOrder.status == PurchaseStatus.COMPLETED)
+            .group_by(group_expr)
+        ), PurchaseOrder.actual_delivery_date
+    ))
+
+    # 생산 (완료일 폴백)
+    eff = func.coalesce(
+        ProductionPlan.actual_completion_date,
+        func.date(ProductionPlan.updated_at)
+    )
+    prod_q = with_grp(
+        select(group_expr.label("g"),
+               func.sum(ProductionPlanItem.cost).label("v"))
+        .select_from(ProductionPlanItem)
+        .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+        .join(Product,        ProductionPlanItem.product_id == Product.id)
+        .where(ProductionPlan.status == ProductionStatus.COMPLETED)
+        .group_by(group_expr)
+    )
+    if year:  prod_q = prod_q.where(extract('year',  eff) == year)
+    if month: prod_q = prod_q.where(extract('month', eff) == month)
+    r_prod = await db.execute(prod_q)
+
+    # 불량
+    r_defects = await db.execute(pd(
+        with_grp(
+            select(group_expr.label("g"),
+                   func.sum(QualityDefect.amount).label("v"),
+                   func.count(QualityDefect.id).label("cnt"))
+            .select_from(QualityDefect)
+            .join(ProductionPlanItem, QualityDefect.plan_item_id == ProductionPlanItem.id)
+            .join(Product, ProductionPlanItem.product_id == Product.id)
+            .group_by(group_expr)
+        ), QualityDefect.defect_date
+    ))
+
+    # 고객불만
+    r_complaints = await db.execute(pd(
+        select(Partner.name.label("g"),
+               func.count(CustomerComplaint.id).label("v"))
+        .select_from(CustomerComplaint)
+        .join(Partner, CustomerComplaint.partner_id == Partner.id)
+        .group_by(Partner.name),
+        CustomerComplaint.receipt_date
+    ))
+
+    # 매출처 순위 Top10
+    sal_sum = func.sum(SalesOrderItem.quantity * SalesOrderItem.unit_price)
+    r_sales_rank = await db.execute(pd(
+        select(Partner.name.label("g"), sal_sum.label("v"))
+        .select_from(SalesOrderItem)
+        .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
+        .join(Partner,    SalesOrder.partner_id == Partner.id)
+        .where(SalesOrder.status.in_([OrderStatus.DELIVERY_COMPLETED, OrderStatus.DELIVERED]))
+        .group_by(Partner.name)
+        .order_by(sal_sum.desc())
+        .limit(10),
+        SalesOrder.actual_delivery_date
+    ))
+
+    # 매입처 순위 Top10
+    pur_sum = func.sum(PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price)
+    r_purchase_rank = await db.execute(pd(
+        select(Partner.name.label("g"), pur_sum.label("v"))
+        .select_from(PurchaseOrderItem)
+        .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+        .join(Partner,       PurchaseOrder.partner_id == Partner.id)
+        .where(PurchaseOrder.status == PurchaseStatus.COMPLETED)
+        .group_by(Partner.name)
+        .order_by(pur_sum.desc())
+        .limit(10),
+        PurchaseOrder.actual_delivery_date
+    ))
+
+    return {
+        "orders":           row2(r_orders),
+        "sales":            row2(r_sales),
+        "purchases":        row2(r_purchases),
+        "production":       row2(r_prod),
+        "defects":          [{"name": r[0] or "미분류", "value": float(r[1] or 0), "count": int(r[2] or 0)}
+                             for r in r_defects.fetchall()],
+        "complaints":       row2(r_complaints),
+        "sales_ranking":    row2(r_sales_rank),
+        "purchase_ranking": row2(r_purchase_rank),
+    }

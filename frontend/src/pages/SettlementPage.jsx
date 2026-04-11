@@ -14,6 +14,7 @@ import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import ResizableTable from '../components/ResizableTable';
 import { formatCurrency } from '../utils/currency';
+import SettlementChartTab from '../components/SettlementChartTab';
 
 const SettlementPage = () => {
     const today = new Date();
@@ -29,12 +30,13 @@ const SettlementPage = () => {
     const [rateDate, setRateDate] = useState(null);
 
     const tabs = [
-        { id: "orders", label: "수주내역" },
-        { id: "sales", label: "매출내역" },
-        { id: "purchases", label: "매입내역" },
+        { id: "orders",     label: "수주내역" },
+        { id: "sales",      label: "매출내역" },
+        { id: "purchases",  label: "매입내역" },
         { id: "production", label: "생산내역" },
-        { id: "defects", label: "불량내역" },
+        { id: "defects",    label: "불량내역" },
         { id: "complaints", label: "고객불만" },
+        { id: "chart",      label: "📊 차트 분석" },
     ];
 
     useEffect(() => {
@@ -72,7 +74,7 @@ const SettlementPage = () => {
     }, []);
 
     useEffect(() => {
-        fetchData();
+        if (activeTab !== 'chart') fetchData();
     }, [year, month, majorGroupId, activeTab]);
 
     const fetchData = async () => {
@@ -308,19 +310,23 @@ const SettlementPage = () => {
 
             {/* Tabs & Total Sum */}
             <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-800 gap-4">
-                <nav className="flex gap-1">
+                <nav className="flex gap-1 flex-wrap">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-6 py-3 text-sm font-medium transition-all relative ${
-                                activeTab === tab.id 
-                                ? "text-blue-500" 
-                                : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"
+                            className={`px-5 py-3 text-sm font-medium transition-all relative ${
+                                activeTab === tab.id
+                                ? tab.id === 'chart' ? 'text-emerald-400' : 'text-blue-500'
+                                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'
                             }`}
                         >
                             {tab.label}
-                            {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
+                            {activeTab === tab.id && (
+                                <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${
+                                    tab.id === 'chart' ? 'bg-emerald-400' : 'bg-blue-500'
+                                }`} />
+                            )}
                         </button>
                     ))}
                 </nav>
@@ -355,7 +361,10 @@ const SettlementPage = () => {
                 )}
             </div>
 
-            {/* Table Container */}
+            {/* Table or Chart */}
+            {activeTab === 'chart' ? (
+                <SettlementChartTab />
+            ) : (
             <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-xl overflow-hidden min-h-[500px]">
                 <div className="overflow-x-auto">
                     <ResizableTable
@@ -395,6 +404,7 @@ const SettlementPage = () => {
                     </ResizableTable>
                 </div>
             </div>
+            )}
         </div>
     );
 };
