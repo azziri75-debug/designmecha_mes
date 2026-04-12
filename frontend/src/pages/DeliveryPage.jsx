@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
 import { Card, Button, Typography, TextField, Grid, Divider, CircularProgress, IconButton, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import { Search, Plus, Printer, FileText, CheckCircle2, Clock, AlertCircle, TrendingUp, Package, Truck, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
 import api from '../lib/api';
@@ -86,10 +87,20 @@ const DeliveryPage = () => {
         }
     };
 
+    // 고객사 필터: 입력 즉시 검색 (400ms debounce)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchOrders();
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [partnerFilter]);
+
+    // 나머지 필터(날짜, 상태, 사업부) 변경 시 즉시 검색
     useEffect(() => {
         fetchOrders();
         fetchGroups();
-    }, [selectedMajorGroupId]);
+    }, [selectedMajorGroupId, dateRange.start, dateRange.end, dateType, statusFilter]);
+
 
     const handleDeliveryClick = (order) => {
         setSelectedOrder(order);
