@@ -285,6 +285,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
             // 2. 소모품(CONSUMABLE) 여부 판단 (waitItem 여부로 더 확실하게 체크)
             const isConsumableOrder = purchaseType === 'CONSUMABLE' || firstItem.type === 'CONSUMABLE_WAIT';
+            // 제목 생성을 위한 메타데이터 추출 (수주건 vs 재고건)
+            const isStock = !!(firstItem?.plan?.stock_production_id || firstItem?.stock_production_id || firstItem?.type === 'MRP' || firstItem?.type === 'PENDING');
+            const customerName = firstItem?.plan?.order?.partner?.name || firstItem?.plan?.stock_production?.partner?.name || firstItem?.customer_name || '';
 
             setFormData({
                 partner_id: foundPartner ? foundPartner.id : '',
@@ -298,6 +301,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                   (firstItem?.type === 'MRP' ? "재고용 (MRP)" : 
                                    firstItem?.type === 'PENDING' ? "재고용 (생산)" : "직접발주"),
                 purchase_type: purchaseType || 'PART',
+                is_stock: isStock,
+                related_customer_names: customerName,
                 items: initialItems.map(item => {
                     let parsedProductId = '';
                     let parsedProductName = '';

@@ -616,7 +616,6 @@ async def retitle_all_documents(
             new_title = f"[내부기안] {form_title} - {author_name}" if form_title else f"[내부기안] - {author_name}"
 
         elif doc.doc_type in ("PURCHASE_ORDER",) and doc.reference_type in ("PURCHASE", "OUTSOURCING"):
-            doc_prefix = "외주발주서" if doc.reference_type == "OUTSOURCING" else "구매발주서"
             partner = content.get("partner_name", "")
             items_list = content.get("items", [])
 
@@ -635,19 +634,47 @@ async def retitle_all_documents(
             extra_count = len(items_list) - 1
             product_part = f"{first_product} 외 {extra_count}건" if extra_count > 0 else first_product
 
-            # 고객사: content에서 추출, 없으면 '재고용'
-            customer = content.get("related_customer_names", "") or content.get("customer_name", "")
-            if not customer:
-                # 구형 제목에서 마지막 세그먼트 추출 시도
-                m = _re.search(r'-\s*([^-]+)\s*$', old_title)
-                customer = m.group(1).strip() if m else "재고용"
+            purchase_type_flag = content.get("purchase_type", "")
 
-            process_part = f"-{first_process}" if first_process else ""
-
-            if partner:
-                new_title = f"[{doc_prefix}] ({partner})-{product_part}{process_part}-{customer}"
+            if purchase_type_flag == "CONSUMABLE":
+                # 소모품: [소모품발주서] (거래처)-제품명-yyyy.mm.dd
+                raw_date = content.get("order_date", "") or (date_str.replace(".", "-") if date_str else "")
+                fmt_date = raw_date[:10].replace("-", ".") if raw_date else date_str
+                if partner:
+                    new_title = f"[소모품발주서] ({partner})-{product_part}-{fmt_date}"
+                else:
+                    new_title = f"[소모품발주서] {old_title}" if not old_title.startswith("[") else old_title
             else:
-                new_title = f"[{doc_prefix}] {old_title}" if not old_title.startswith("[") else old_title
+                doc_prefix = "외주발주서" if doc.reference_type == "OUTSOURCING" else "구매발주서"
+                
+                # 수주건/재고건 정보 추출
+                customer_base = content.get("related_customer_names", "") or content.get("customer_name", "")
+                is_stock = content.get("is_stock", False)
+
+                # 레거시 데이터 대응: 기존 제목 필드 등에서 정보 추출 시도
+                if not customer_base and not is_stock:
+                    # 제목의 마지막 부분이 '- 재고용' 또는 '- 고객사' 형태인지 파악
+                    m = _re2.search(r'-\s*([^-]+)\s*$', old_title)
+                    last_part = m.group(1).strip() if m else ""
+                    if "재고용" in last_part:
+                        is_stock = True
+                        customer_base = last_part.replace("-재고용", "").replace("재고용", "").strip()
+                    else:
+                        customer_base = last_part
+
+                stock_suffix = "-재고용" if is_stock else ""
+                # 고객사 정보가 있으면 '-고객사(-재고용)', 없으면 '-재고용'
+                if customer_base:
+                    customer_part = f"-{customer_base}{stock_suffix}"
+                else:
+                    customer_part = stock_suffix if stock_suffix else "-재고용"
+
+                process_part = f"-{first_process}" if first_process else ""
+
+                if partner:
+                    new_title = f"[{doc_prefix}] ({partner})-{product_part}{process_part}{customer_part}"
+                else:
+                    new_title = f"[{doc_prefix}] {old_title}" if not old_title.startswith("[") else old_title
 
         else:
             # 일반 문서 유형

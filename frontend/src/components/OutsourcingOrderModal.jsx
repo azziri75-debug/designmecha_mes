@@ -197,6 +197,10 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                 firstItem?.plan?.order?.order_no ||
                 firstItem?.plan?.stock_production?.production_no || 
                 (firstItem ? "재고용 (외주)" : "직접발주");
+            
+            // 제목 생성을 위한 메타데이터 추출 (수주건 vs 재고건)
+            const isStock = !!(firstItem?.plan?.stock_production_id || firstItem?.stock_production_id || String(displayCode).includes('재고용'));
+            const customerName = firstItem?.plan?.order?.partner?.name || firstItem?.plan?.stock_production?.partner?.name || firstItem?.customer_name || '';
 
             setFormData({
                 partner_id: foundPartner ? foundPartner.id : '',
@@ -206,6 +210,8 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                 note: '',
                 status: 'PENDING',
                 display_order_no: displayCode,
+                is_stock: isStock,
+                related_customer_names: customerName,
                 items: (initialItems || []).map(item => {
                     const productObj = item?.product || item?.item || item?.material || {};
                     const productId = item?.product_id || productObj?.id || item?.item_id;

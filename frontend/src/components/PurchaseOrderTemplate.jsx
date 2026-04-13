@@ -157,34 +157,46 @@ const PurchaseOrderTemplate = ({
 
         setIsSubmitting(true);
         try {
-            // 문서종류 레이블
-        const docLabel = purchaseType === 'OUTSOURCING' ? '외주발주서' : '구매발주서';
-        const partnerName = data.partner_name || '공급사미지정';
-        const items = data.items || [];
+            // 공통 정보
+            const partnerName = data.partner_name || '공급사미지정';
+            const items = data.items || [];
 
-        // item.name 형식: "제품명 [공정명]" 또는 "제품명"
-        const parseItemName = (name = '') => {
-            const match = name.match(/^(.+?)\s*\[(.+?)\]\s*$/);
-            if (match) return { product: match[1].trim(), process: match[2].trim() };
-            // 구분자 없으면 전체를 제품명으로
-            return { product: name.trim(), process: '' };
-        };
+            // item.name 형식: "제품명 [공정명]" 또는 "제품명"
+            const parseItemName = (name = '') => {
+                const match = name.match(/^(.+?)\s*\[(.+?)\]\s*$/);
+                if (match) return { product: match[1].trim(), process: match[2].trim() };
+                return { product: name.trim(), process: '' };
+            };
 
-        const firstItem = items[0];
-        const { product: firstProductName, process: firstProcessName } = parseItemName(firstItem?.name || '');
+            const firstItem = items[0];
+            const { product: firstProductName, process: firstProcessName } = parseItemName(firstItem?.name || '');
 
-        // 다중 품목 처리: "제품명 외 N건"
-        const extraCount = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
-        const productPart = `${firstProductName}${extraCount}`;
+            // 다중 품목 처리: "제품명 외 N건"
+            const extraCount = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
+            const productPart = `${firstProductName}${extraCount}`;
 
-        // 고객사: 있으면 고객사명, 없으면 '재고용'
-        const customerName = data.related_customer_names || '재고용';
+            // 제목 생성 — 소모품 발주서 vs 일반 발주서 분기
+            let docTitle;
+            if (data.purchase_type === 'CONSUMABLE') {
+                // 소모품: [소모품발주서] (거래처)-제품명-yyyy.mm.dd
+                const rawDate = data.order_date || new Date().toISOString().slice(0, 10);
+                const dateStr = rawDate.slice(0, 10).replace(/-/g, '.');
+                docTitle = `[소모품발주서] (${partnerName})-${productPart}-${dateStr}`;
+            } else {
+                // 자재구매/외주발주: [문서종류] (거래처)-제품명-공정명-고객사|재고용
+                const docLabel = purchaseType === 'OUTSOURCING' ? '외주발주서' : '구매발주서';
+                const processPart = firstProcessName ? `-${firstProcessName}` : '';
+                
+                // 고객사 명칭 및 재고용 접미사 처리
+                const customerBase = data.related_customer_names || '';
+                const stockSuffix = data.is_stock ? '-재고용' : '';
+                const customerPart = customerBase ? `-${customerBase}${stockSuffix}` : (stockSuffix || '-재고용');
+                
+                docTitle = `[${docLabel}] (${partnerName})-${productPart}${processPart}${customerPart}`;
+            }
 
-        // 공정명 파트 (없으면 생략)
-        const processPart = firstProcessName ? `-${firstProcessName}` : '';
-
-        const approvalPayload = {
-            title: `[${docLabel}] (${partnerName})-${productPart}${processPart}-${customerName}`,
+            const approvalPayload = {
+                title: docTitle,
 
                 doc_type: docType,
                 content: {
@@ -195,6 +207,9 @@ const PurchaseOrderTemplate = ({
                     order_date: data.order_date,
                     delivery_date: data.delivery_date,
                     special_notes: data.special_notes,
+                    purchase_type: data.purchase_type || (purchaseType === 'OUTSOURCING' ? 'OUTSOURCING' : 'PURCHASE'),
+                    related_customer_names: data.related_customer_names || '',
+                    is_stock: data.is_stock || false,
                     items: (data.items || []).map((item, idx) => {
                         const isWeight = item.pricing_type === 'WEIGHT';
                         const multiplier = isWeight ? (parseFloat(item.total_weight) || 0) : (parseFloat(item.qty) || 0);
