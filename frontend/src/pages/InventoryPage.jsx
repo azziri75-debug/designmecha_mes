@@ -816,20 +816,8 @@ const InventoryPage = () => {
                                         );
                                     })}
                                     {groupedProductions.length === 0 && (
-                            variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                                        onClick={() => handleDelete(p.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {filteredProductions.length === 0 && (
                                         <tr>
-                                            <td colSpan="6" className="px-6 py-10 text-center text-gray-500 italic">
+                                            <td colSpan="8" className="px-6 py-10 text-center text-gray-500 italic">
                                                 생산 요청 내역이 없습니다.
                                             </td>
                                         </tr>
