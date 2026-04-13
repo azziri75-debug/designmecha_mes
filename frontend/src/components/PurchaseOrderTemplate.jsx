@@ -157,12 +157,35 @@ const PurchaseOrderTemplate = ({
 
         setIsSubmitting(true);
         try {
-            const firstItemProcess = data.items?.[0]?.name || (purchaseType === 'OUTSOURCING' ? '외주공정' : (data.purchase_type === 'CONSUMABLE' ? '소모품' : '구매자재'));
-            const customerName = data.related_customer_names || '재고용';
-            const partnerName = data.partner_name || '공급사미지정';
+            // 문서종류 레이블
+        const docLabel = purchaseType === 'OUTSOURCING' ? '외주발주서' : '구매발주서';
+        const partnerName = data.partner_name || '공급사미지정';
+        const items = data.items || [];
 
-            const approvalPayload = {
-                title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
+        // item.name 형식: "제품명 [공정명]" 또는 "제품명"
+        const parseItemName = (name = '') => {
+            const match = name.match(/^(.+?)\s*\[(.+?)\]\s*$/);
+            if (match) return { product: match[1].trim(), process: match[2].trim() };
+            // 구분자 없으면 전체를 제품명으로
+            return { product: name.trim(), process: '' };
+        };
+
+        const firstItem = items[0];
+        const { product: firstProductName, process: firstProcessName } = parseItemName(firstItem?.name || '');
+
+        // 다중 품목 처리: "제품명 외 N건"
+        const extraCount = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
+        const productPart = `${firstProductName}${extraCount}`;
+
+        // 고객사: 있으면 고객사명, 없으면 '재고용'
+        const customerName = data.related_customer_names || '재고용';
+
+        // 공정명 파트 (없으면 생략)
+        const processPart = firstProcessName ? `-${firstProcessName}` : '';
+
+        const approvalPayload = {
+            title: `[${docLabel}] (${partnerName})-${productPart}${processPart}-${customerName}`,
+
                 doc_type: docType,
                 content: {
                     order_no: data.order_no,

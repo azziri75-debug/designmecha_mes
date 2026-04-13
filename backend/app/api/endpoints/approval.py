@@ -616,16 +616,36 @@ async def retitle_all_documents(
             new_title = f"[내부기안] {form_title} - {author_name}" if form_title else f"[내부기안] - {author_name}"
 
         elif doc.doc_type in ("PURCHASE_ORDER",) and doc.reference_type in ("PURCHASE", "OUTSOURCING"):
-            # 발주서 연동 문서: 새 형식 적용 시도
             doc_prefix = "외주발주서" if doc.reference_type == "OUTSOURCING" else "구매발주서"
             partner = content.get("partner_name", "")
             items_list = content.get("items", [])
-            process_name = items_list[0].get("name", "").split("[")[-1].replace("]", "").strip() if items_list else ""
-            # 제목에서 고객사 추출 시도 (기존 형식 파싱)
-            m = _re.search(r'- ([^-]+)$', old_title)
-            customer = m.group(1).strip() if m else "재고용"
-            if partner and process_name:
-                new_title = f"[{doc_prefix}] ({partner}) - {process_name} - {customer}"
+
+            # item.name 형식: "제품명 [공정명]" 또는 "제품명"
+            import re as _re2
+            def parse_item_name(name):
+                m = _re2.match(r'^(.+?)\s*\[(.+?)\]\s*$', name or '')
+                if m:
+                    return m.group(1).strip(), m.group(2).strip()
+                return (name or '').strip(), ''
+
+            first_name_raw = items_list[0].get("name", "") if items_list else ""
+            first_product, first_process = parse_item_name(first_name_raw)
+
+            # 다중 품목 처리
+            extra_count = len(items_list) - 1
+            product_part = f"{first_product} 외 {extra_count}건" if extra_count > 0 else first_product
+
+            # 고객사: content에서 추출, 없으면 '재고용'
+            customer = content.get("related_customer_names", "") or content.get("customer_name", "")
+            if not customer:
+                # 구형 제목에서 마지막 세그먼트 추출 시도
+                m = _re.search(r'-\s*([^-]+)\s*$', old_title)
+                customer = m.group(1).strip() if m else "재고용"
+
+            process_part = f"-{first_process}" if first_process else ""
+
+            if partner:
+                new_title = f"[{doc_prefix}] ({partner})-{product_part}{process_part}-{customer}"
             else:
                 new_title = f"[{doc_prefix}] {old_title}" if not old_title.startswith("[") else old_title
 
