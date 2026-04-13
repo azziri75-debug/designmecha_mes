@@ -96,6 +96,8 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                 data={{
                     ...order,
                     delivery_date: lastDelivery.delivery_date,
+                    delivery_id: lastDelivery.id,
+                    statement_json: lastDelivery.statement_json,
                     items: lastDelivery.items.map(di => ({
                         ...di.order_item,
                         quantity: di.quantity

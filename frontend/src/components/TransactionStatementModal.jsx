@@ -21,6 +21,7 @@ const injectPrintCSS = () => {
     style.innerHTML = `
         @media print {
             @page { size: A4 landscape !important; margin: 0 !important; }
+            .tsm-no-print { display: none !important; }
         }
     `;
     document.head.appendChild(style);
@@ -70,7 +71,19 @@ const td = (c, extra = {}) => ({
 const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     if (!data) return null;
 
-    const [items] = useState(data.items || []);
+    // ── Data State ────────────────────────────────
+    const [items, setItems] = useState([]);
+    
+    // Initialize items from snapshot or props
+    useEffect(() => {
+        if (!open) return;
+        if (data.statement_json?.items) {
+            setItems(data.statement_json.items);
+        } else {
+            setItems(data.items || []);
+        }
+    }, [open, data]);
+
     const [supplierInfo, setSupplierInfo] = useState(data.supplier_info || {
         biz_no: '312-81-38446',
         company_name: '(주)디자인메카',
@@ -89,6 +102,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [pdfStatus, setPdfStatus] = useState(null);
     const [companyStampUrl, setCompanyStampUrl] = useState(null); // DB 직인 이미지 URL
+    const [isSaving, setIsSaving] = useState(false);
     const printRef = useRef();
 
     // ── Resizable Columns State & Logic ───────────────────────
@@ -184,6 +198,62 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         }).catch(() => {/* 실패해도 SVG fallback 사용 */ });
         return () => removePrintCSS();
     }, [open, data.supplier_info]);
+ 
+    // ── 품목 조작 ──────────────────────────────
+    const addItem = () => {
+        setItems(prev => [...prev, {
+            date: new Date().toISOString().split('T')[0],
+            product_name: '새 항목',
+            specification: '',
+            quantity: 1,
+            unit_price: 0
+        }]);
+    };
+ 
+    const updateItem = (idx, field, val) => {
+        setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: val } : it));
+    };
+ 
+    const removeItem = (idx) => {
+        if (window.confirm("항목을 삭제하시겠습니까?")) {
+            setItems(prev => prev.filter((_, i) => i !== idx));
+        }
+    };
+ 
+    const handleSaveStatement = async () => {
+        if (!data.delivery_id && !data.id) {
+            return alert("납품 이력 ID가 없어 저장할 수 없습니다.");
+        }
+        setIsSaving(true);
+        try {
+            const historyId = data.delivery_id || data.id;
+            const orderId = data.order_id || data.id; // data contains order if opened from page
+            
+            const payload = {
+                statement_json: {
+                    items,
+                    totalSupply,
+                    totalTax,
+                    totalAmount,
+                    prev_balance: footerInfo.prev_balance,
+                    paid_amount: footerInfo.paid_amount,
+                    receiver_name: footerInfo.receiver_name,
+                    remarks
+                }
+            };
+ 
+            // Delivery ID is usually part of the data or passed separately
+            await api.put(`/sales/orders/${orderId}/delivery/${historyId}`, payload);
+            alert("거래명세서 정보가 저장되었습니다.");
+            if (onSuccess) onSuccess();
+        } catch (err) {
+            console.error("Save failed:", err);
+            alert("저장 중 오류가 발생했습니다.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
 
     // ── 계산 ──────────────────────────────────
     const totalSupply = items.reduce((s, i) => s + (i.quantity || 0) * (i.unit_price || 0), 0);
@@ -380,12 +450,51 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         </thead>
                         <tbody>
                             {items.map((item, idx) => (
-                                <tr key={idx} style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{(item.date || data.delivery_date || '').slice(5)}</td>
-                                    <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all', textOverflow: 'clip' }), fontWeight: 'bold', fontSize: '11.5px' }}>{item.product?.name || item.product_name || item.item_name || ''}</td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>{item.specification || item.product?.specification || ''}</td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11.5px' }}>{formatNumber(item.quantity)}</td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '11.5px' }}>{formatNumber(item.unit_price)}</td>
+                                <tr key={idx} style={{ height: ROW_H }} className="tsm-item-row group">
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>
+                                        <input 
+                                            value={(item.date || data.delivery_date || '').slice(5)} 
+                                            onChange={e => updateItem(idx, 'date', e.target.value)}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none' }}
+                                            className="tsm-no-padding-input"
+                                        />
+                                    </td>
+                                    <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all', textOverflow: 'clip' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative' }}>
+                                        <input 
+                                            value={item.product?.name || item.product_name || item.item_name || ''} 
+                                            onChange={e => updateItem(idx, 'product_name', e.target.value)}
+                                            style={{ width: '100%', border: 'none', background: 'transparent', color: C, fontSize: '11.5px', fontWeight: 'bold', outline: 'none' }}
+                                        />
+                                        <button 
+                                            onClick={() => removeItem(idx)}
+                                            className="tsm-no-print"
+                                            style={{ position: 'absolute', right: '2px', top: '50%', transform: 'translateY(-50%)', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '10px', padding: '2px 4px', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s' }}
+                                        >삭제</button>
+                                        <style>{`.tsm-item-row:hover button { opacity: 0.8 !important; }`}</style>
+                                    </td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>
+                                        <input 
+                                            value={item.specification || item.product?.specification || ''} 
+                                            onChange={e => updateItem(idx, 'specification', e.target.value)}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none' }}
+                                        />
+                                    </td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11.5px' }}>
+                                        <input 
+                                            type="number"
+                                            value={item.quantity} 
+                                            onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none' }}
+                                        />
+                                    </td>
+                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '11.5px' }}>
+                                        <input 
+                                            type="number"
+                                            value={item.unit_price} 
+                                            onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
+                                            style={{ width: '100%', border: 'none', textAlign: 'right', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none' }}
+                                        />
+                                    </td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{formatNumber((item.quantity || 0) * (item.unit_price || 0))}</td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '12px' }}>{formatNumber(Math.floor((item.quantity || 0) * (item.unit_price || 0) * 0.1))}</td>
                                 </tr>
@@ -514,9 +623,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     />
                 </Box>
                 <Box className="tsm-no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#f8fafc', flexShrink: 0 }}>
-                    <Button variant="contained" size="large" startIcon={isGeneratingPdf ? <CircularProgress size={16} color="inherit" /> : <FileDown />} onClick={handleDownloadPDF} disabled={isGeneratingPdf} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>PDF 다운로드</Button>
-                    <Button variant="contained" size="large" startIcon={<Printer />} onClick={handlePrint} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 4, borderRadius: 2 }}>인쇄</Button>
-                    <Button variant="outlined" size="large" onClick={onClose} sx={{ borderColor: '#cbd5e1', color: '#64748b', fontWeight: 'bold', px: 4, borderRadius: 2 }}>닫기</Button>
+                    <Button variant="contained" size="large" onClick={addItem} sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' }, fontWeight: 'bold', px: 3, borderRadius: 2 }}>항목 추가</Button>
+                    <Button variant="contained" size="large" startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <CheckCircle2 />} onClick={handleSaveStatement} disabled={isSaving} sx={{ bgcolor: '#4f46e5', fontWeight: 'bold', px: 3, borderRadius: 2 }}>저장</Button>
+                    <Button variant="contained" size="large" startIcon={isGeneratingPdf ? <CircularProgress size={16} color="inherit" /> : <FileDown />} onClick={handleDownloadPDF} disabled={isGeneratingPdf} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 3, borderRadius: 2 }}>PDF 다운로드</Button>
+                    <Button variant="contained" size="large" startIcon={<Printer />} onClick={handlePrint} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 3, borderRadius: 2 }}>인쇄</Button>
+                    <Button variant="outlined" size="large" onClick={onClose} sx={{ borderColor: '#cbd5e1', color: '#64748b', fontWeight: 'bold', px: 3, borderRadius: 2 }}>닫기</Button>
                 </Box>
             </Box>
         </Modal>

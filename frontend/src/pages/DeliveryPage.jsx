@@ -422,6 +422,8 @@ const DeliveryPage = () => {
                                                                                         onClick={() => {
                                                                                             setStatementData({
                                                                                                 id: dh.id,
+                                                                                                delivery_id: dh.id,
+                                                                                                order_id: ord.id,
                                                                                                 delivery_no: dh.delivery_no,
                                                                                                 delivery_date: dh.delivery_date,
                                                                                                 order_no: ord.order_no,
