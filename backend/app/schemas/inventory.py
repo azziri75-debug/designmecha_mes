@@ -36,9 +36,11 @@ class StockProductionBase(BaseModel):
     quantity: int
     target_date: Optional[date] = None
     note: Optional[str] = None
+    batch_no: Optional[str] = None
 
 class StockProductionCreate(StockProductionBase):
     production_no: Optional[str] = None
+    request_date: Optional[date] = None
 
 class StockProductionUpdate(BaseModel):
     quantity: Optional[int] = None
@@ -58,6 +60,7 @@ class StockProductionSimple(StockProductionBase):
 class StockProductionResponse(StockProductionBase):
     id: int
     production_no: str
+    batch_no: Optional[str] = None
     request_date: date
     status: str
     created_at: datetime

@@ -32,6 +32,7 @@ class StockProduction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     production_no = Column(String, unique=True, index=True) # 재고생산번호 (SP-YYYYMMDD-XXX)
+    batch_no = Column(String, nullable=True, index=True)    # 묶음번호 (다중등록 시 첫 번호 공유)
     
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True) # 보충 요청 거래처

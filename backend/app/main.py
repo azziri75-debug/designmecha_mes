@@ -350,6 +350,15 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE outsourcing_order_items ADD COLUMN total_weight DOUBLE PRECISION"))
                         print("Startup: Added total_weight to outsourcing_order_items (Postgres)")
+
+                    # 4. stock_productions.batch_no
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='stock_productions' AND column_name='batch_no'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE stock_productions ADD COLUMN batch_no VARCHAR"))
+                        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_productions_batch_no ON stock_productions (batch_no)"))
+                        await db.execute(text("UPDATE stock_productions SET batch_no = production_no WHERE batch_no IS NULL"))
+                        print("Startup: Added batch_no to stock_productions (Postgres)")
+
                     
                     # [Hard Cleanup] 유령 근태 데이터 강제 삭제
                     # approval_id가 NULL이거나 연결된 결재 문서가 삭제된 기록을 서버 시작 시 자동으로 정리

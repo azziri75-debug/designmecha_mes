@@ -326,7 +326,10 @@ const ProductionPage = () => {
             if (filterPartner === 'internal') {
                 if (p.order_id) return false;
             } else {
-                if (p.order?.partner_id !== parseInt(filterPartner)) return false;
+                // 수주연결 or 재고생산의 거래처 id 비교
+                const orderPartnerId = p.order?.partner_id;
+                const stockPartnerId = p.stock_production?.partner_id;
+                if (orderPartnerId !== parseInt(filterPartner) && stockPartnerId !== parseInt(filterPartner)) return false;
             }
         }
         if (startDate && p.plan_date < startDate) return false;
@@ -336,11 +339,12 @@ const ProductionPage = () => {
             const orderNo = (p.order?.order_no || '').toLowerCase();
             const prodNo = (p.stock_production?.production_no || '').toLowerCase();
             const partnerName = (p.order?.partner?.name || '').toLowerCase();
+            const stockPartnerName = (p.stock_production?.partner?.name || '').toLowerCase();
             const hasMatchingProduct = (p.items || []).some(item =>
                 (item.product?.name || '').toLowerCase().includes(q) ||
                 (item.product?.specification || '').toLowerCase().includes(q)
             );
-            if (!orderNo.includes(q) && !prodNo.includes(q) && !partnerName.includes(q) && !hasMatchingProduct) return false;
+            if (!orderNo.includes(q) && !prodNo.includes(q) && !partnerName.includes(q) && !stockPartnerName.includes(q) && !hasMatchingProduct) return false;
         }
         return true;
     };

@@ -493,9 +493,18 @@ async def create_stock_production(
             new_seq = 1
             
         prod_in.production_no = f"SP-{today}-{new_seq:03d}"
-        
-    new_prod = StockProduction(**prod_in.model_dump())
+
+    # batch_no: 제공되지 않은 경우 production_no를 그대로 사용 (단건 = 자기 자신이 그룹)
+    batch_no = prod_in.batch_no or prod_in.production_no
+    req_date = prod_in.request_date or date.today()
+
+    dump = prod_in.model_dump()
+    dump['batch_no'] = batch_no
+    dump['request_date'] = req_date
+
+    new_prod = StockProduction(**dump)
     db.add(new_prod)
+
     
     # Update in_production_quantity in Stock
     stock_query = select(Stock).where(Stock.product_id == prod_in.product_id)

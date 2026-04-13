@@ -12,8 +12,11 @@ import {
     ArrowDownLeft,
     Pencil,
     Trash2,
-    Layers
+    Layers,
+    ChevronDown,
+    ChevronRight,
 } from 'lucide-react';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -77,6 +80,8 @@ const InventoryPage = () => {
     const [showStockInitModal, setShowStockInitModal] = useState(false);
     const [editingProduction, setEditingProduction] = useState(null);
     const [editingStock, setEditingStock] = useState(null);
+
+    const [expandedGroup, setExpandedGroup] = useState(null);
 
     // BOM Expand States
     const [expandedProductId, setExpandedProductId] = useState(null);
@@ -185,6 +190,26 @@ const InventoryPage = () => {
         });
     }, [stocks, hideEmpty]);
     
+    // 재고생산 내역 그룹화: batch_no 기준 (다중등록 시 첫 번째 production_no 공유)
+    const groupedProductions = React.useMemo(() => {
+        const groups = new Map();
+        productions.forEach(p => {
+            // batch_no가 있으면 그 기준으로, 없으면 production_no로 단독 그룹
+            const key = p.batch_no || p.production_no;
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    key,
+                    batch_no: key,
+                    request_date: p.request_date,
+                    partner: p.partner,
+                    items: []
+                });
+            }
+            groups.get(key).items.push(p);
+        });
+        return Array.from(groups.values());
+    }, [productions]);
+
     const filteredProductions = productions;
 
     const selectStyles = {
@@ -658,50 +683,140 @@ const InventoryPage = () => {
                                         <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-4 font-medium">품목명 / 규격</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.partner} onResize={(w) => handleResize('partner', w)} className="px-6 py-4 font-medium">거래처</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.req_qty} onResize={(w) => handleResize('req_qty', w)} className="px-6 py-4 font-medium">요청수량</ResizableTableCell>
-                                        <ResizableTableCell width={columnWidths.req_date} onResize={(w) => handleResize('req_date', w)} className="px-6 py-4 font-medium">요청일 / 완료예정일</ResizableTableCell>
-                                        <ResizableTableCell width={columnWidths.status} onResize={(w) => handleResize('status', w)} className="px-6 py-4 font-medium">상태</ResizableTableCell>
-                                        <ResizableTableCell width={columnWidths.note} onResize={(w) => handleResize('note', w)} className="px-6 py-4 font-medium">비고</ResizableTableCell>
-                                        <ResizableTableCell width={columnWidths.actions} onResize={(w) => handleResize('actions', w)} className="px-6 py-4 font-medium text-right">관리</ResizableTableCell>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-800">
-                                    {filteredProductions.map((p) => (
-                                        <tr key={p.id} className="hover:bg-gray-800/40 transition-colors border-b border-gray-700 text-gray-300 cursor-pointer" onDoubleClick={() => handleEdit(p)}>
-                                            <td className="px-6 py-4 font-mono text-blue-400">{p.production_no}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-white font-medium">{p.product?.name}</div>
-                                                <div className="text-xs text-gray-500">{p.product?.specification}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-300">{p.partner?.name || '-'}</td>
-                                            <td className="px-6 py-4 text-white font-semibold">{p.quantity.toLocaleString()}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-gray-300">{p.request_date}</div>
-                                                <div className="text-xs text-yellow-500/70">{p.target_date || '-'}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <Badge className={cn(
-                                                    "px-2 py-0.5",
-                                                    p.status === 'COMPLETED' ? "bg-green-500/10 text-green-500 border-green-500/20" :
-                                                        p.status === 'IN_PROGRESS' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
-                                                            "bg-gray-500/10 text-gray-500 border-gray-500/20"
-                                                )}>
-                                                    {p.status === 'COMPLETED' ? '생산완료' :
-                                                        p.status === 'IN_PROGRESS' ? '생산중' : '대기'}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-500 truncate max-w-[150px]">{p.note || '-'}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                                                        onClick={() => handleEdit(p)}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
+                                        <ResizableTableCell width={columnWidths.req_date} onResize={(w) =                                 <tbody className="divide-y divide-gray-800">
+                                    {groupedProductions.map((grp) => {
+                                        const isMulti = grp.items.length > 1;
+                                        const isExpanded = expandedGroup === grp.key;
+                                        const totalQty = grp.items.reduce((s, p) => s + (p.quantity || 0), 0);
+
+                                        return (
+                                            <React.Fragment key={grp.key}>
+                                                {/* 그룹 행 */}
+                                                <tr
+                                                    className={cn(
+                                                        "hover:bg-gray-800/40 transition-colors border-b border-gray-700 text-gray-300 cursor-pointer",
+                                                        isExpanded && "bg-gray-800/30"
+                                                    )}
+                                                    onClick={() => isMulti && setExpandedGroup(isExpanded ? null : grp.key)}
+                                                    onDoubleClick={() => !isMulti && handleEdit(grp.items[0])}
+                                                >
+                                                    <td className="px-6 py-4 font-mono text-blue-400">
+                                                        <div className="flex items-center gap-2">
+                                                            {isMulti ? (
+                                                                <>
+                                                                    {isExpanded
+                                                                        ? <ChevronDown className="w-3.5 h-3.5 text-blue-400" />
+                                                                        : <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
+                                                                    }
+                                                                    <span className="text-blue-300 text-xs">{grp.batch_no}</span>
+                                                                    <span className="text-[10px] bg-blue-600/20 text-blue-400 border border-blue-600/30 rounded px-1">{grp.items.length}건</span>
+                                                                </>
+                                                            ) : (
+                                                                <span>{grp.items[0].production_no}</span>
+                                                            )}
+
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {isMulti ? (
+                                                            <div className="text-gray-400 text-xs italic">
+                                                                {grp.items[0].product?.name} 외 {grp.items.length - 1}건
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="text-white font-medium">{grp.items[0].product?.name}</div>
+                                                                <div className="text-xs text-gray-500">{grp.items[0].product?.specification}</div>
+                                                            </>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-gray-300">{grp.partner?.name || '-'}</td>
+                                                    <td className="px-6 py-4 text-white font-semibold">
+                                                        {isMulti ? `${totalQty.toLocaleString()} (합계)` : grp.items[0].quantity?.toLocaleString()}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-gray-300">{grp.request_date}</div>
+                                                        {!isMulti && <div className="text-xs text-yellow-500/70">{grp.items[0].target_date || '-'}</div>}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {!isMulti && (
+                                                            <Badge className={cn(
+                                                                "px-2 py-0.5",
+                                                                grp.items[0].status === 'COMPLETED' ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                                                                grp.items[0].status === 'IN_PROGRESS' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                                                                "bg-gray-500/10 text-gray-500 border-gray-500/20"
+                                                            )}>
+                                                                {grp.items[0].status === 'COMPLETED' ? '생산완료' :
+                                                                 grp.items[0].status === 'IN_PROGRESS' ? '생산중' : '대기'}
+                                                            </Badge>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-gray-500 truncate max-w-[150px]">
+                                                        {!isMulti && (grp.items[0].note || '-')}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        {!isMulti && (
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button variant="ghost" size="icon"
+                                                                    className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                                                    onClick={(e) => { e.stopPropagation(); handleEdit(grp.items[0]); }}>
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon"
+                                                                    className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                                                    onClick={(e) => { e.stopPropagation(); handleDelete(grp.items[0].id); }}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+
+                                                {/* 그룹 펼침: 품목별 상세 행 */}
+                                                {isMulti && isExpanded && grp.items.map((p) => (
+                                                    <tr key={p.id} className="bg-gray-900/60 border-b border-gray-800 text-gray-400 text-xs">
+                                                        <td className="px-6 py-3 pl-12 font-mono text-blue-300/70">{p.production_no}</td>
+                                                        <td className="px-6 py-3">
+                                                            <div className="text-gray-200 font-medium">{p.product?.name}</div>
+                                                            <div className="text-gray-600">{p.product?.specification}</div>
+                                                        </td>
+                                                        <td className="px-6 py-3">-</td>
+                                                        <td className="px-6 py-3 text-white font-semibold">{p.quantity?.toLocaleString()}</td>
+                                                        <td className="px-6 py-3">
+                                                            <div className="text-gray-400">{p.request_date}</div>
+                                                            <div className="text-yellow-500/60">{p.target_date || '-'}</div>
+                                                        </td>
+                                                        <td className="px-6 py-3">
+                                                            <Badge className={cn(
+                                                                "px-2 py-0.5 text-[10px]",
+                                                                p.status === 'COMPLETED' ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                                                                p.status === 'IN_PROGRESS' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                                                                "bg-gray-500/10 text-gray-500 border-gray-500/20"
+                                                            )}>
+                                                                {p.status === 'COMPLETED' ? '완료' : p.status === 'IN_PROGRESS' ? '생산중' : '대기'}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="px-6 py-3 text-gray-600 truncate">{p.note || '-'}</td>
+                                                        <td className="px-6 py-3 text-right">
+                                                            <div className="flex justify-end gap-1">
+                                                                <Button variant="ghost" size="icon"
+                                                                    className="h-7 w-7 text-blue-400 hover:bg-blue-900/20"
+                                                                    onClick={(e) => { e.stopPropagation(); handleEdit(p); }}>
+                                                                    <Pencil className="h-3 w-3" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon"
+                                                                    className="h-7 w-7 text-red-400 hover:bg-red-900/20"
+                                                                    onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}>
+                                                                    <Trash2 className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                    {groupedProductions.length === 0 && (
+                            variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
                                                         onClick={() => handleDelete(p.id)}
