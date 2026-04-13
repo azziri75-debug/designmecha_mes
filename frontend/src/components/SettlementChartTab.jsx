@@ -17,8 +17,28 @@ const fmtShort = (n) => {
     return fmt(n);
 };
 
+// ── Tooltip 커스텀 ─────────────────────────────────────────────────────────────
+const CustomTooltip = ({ active, payload, unit }) => {
+    if (!active || !payload || !payload.length) return null;
+    const d = payload[0];
+    return (
+        <div style={{
+            background: '#1e293b',
+            border: '1px solid #475569',
+            borderRadius: 8,
+            padding: '8px 12px',
+            fontSize: 12,
+        }}>
+            <p style={{ color: '#ffffff', fontWeight: 600, marginBottom: 2 }}>{d.name}</p>
+            <p style={{ color: d.fill || '#60a5fa', fontWeight: 700 }}>
+                {unit === '건' ? `${fmt(d.value)}건` : `${fmt(d.value)}원`}
+            </p>
+        </div>
+    );
+};
+
 // ── 개별 파이 카드 ─────────────────────────────────────────────────────────────
-const PieCard = ({ title, data, unit = '원', color, countKey }) => {
+const PieCard = ({ title, data, unit = '원', color }) => {
     const total = data.reduce((s, d) => s + d.value, 0);
     const isEmpty = total === 0;
 
@@ -29,7 +49,7 @@ const PieCard = ({ title, data, unit = '원', color, countKey }) => {
         const x = cx + r * Math.cos(-midAngle * RADIAN);
         const y = cy + r * Math.sin(-midAngle * RADIAN);
         return (
-            <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
+            <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight="bold">
                 {`${(percent * 100).toFixed(0)}%`}
             </text>
         );
@@ -40,16 +60,16 @@ const PieCard = ({ title, data, unit = '원', color, countKey }) => {
             background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
             border: '1px solid #334155',
             borderRadius: 16,
-            padding: '20px 16px',
+            padding: '24px 20px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
-            minHeight: 320,
+            gap: 14,
+            minHeight: 480,
         }}>
             {/* 제목 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 4, height: 18, borderRadius: 2, background: color }} />
-                <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: 14 }}>{title}</span>
+                <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: 15 }}>{title}</span>
                 <span style={{ color: '#64748b', fontSize: 12, marginLeft: 'auto' }}>
                     총 {unit === '건' ? `${fmtShort(total)}건` : `${fmtShort(total)}원`}
                 </span>
@@ -61,13 +81,13 @@ const PieCard = ({ title, data, unit = '원', color, countKey }) => {
                 </div>
             ) : (
                 <>
-                    {/* 파이 */}
-                    <ResponsiveContainer width="100%" height={180}>
+                    {/* 파이 — 1.5배 크게 */}
+                    <ResponsiveContainer width="100%" height={270}>
                         <PieChart>
                             <Pie
                                 data={data}
                                 cx="50%" cy="50%"
-                                innerRadius={45} outerRadius={80}
+                                innerRadius={65} outerRadius={115}
                                 paddingAngle={2}
                                 dataKey="value"
                                 labelLine={false}
@@ -77,19 +97,12 @@ const PieCard = ({ title, data, unit = '원', color, countKey }) => {
                                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip
-                                formatter={(v, name) => [
-                                    unit === '건' ? `${fmt(v)}건` : `${fmt(v)}원`,
-                                    name
-                                ]}
-                                contentStyle={{ background: '#1e293b', border: '1px solid #475569', borderRadius: 8, fontSize: 12 }}
-                                labelStyle={{ color: '#94a3b8' }}
-                            />
+                            <Tooltip content={<CustomTooltip unit={unit} />} />
                         </PieChart>
                     </ResponsiveContainer>
 
                     {/* 범례 */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                         {data.map((d, i) => {
                             const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0';
                             return (
@@ -176,6 +189,7 @@ const SettlementChartTab = () => {
 
     const [year,  setYear]  = useState(prevYear);
     const [month, setMonth] = useState(prevMon);
+    const [exchangeRate, setExchangeRate] = useState(1350); // USD→KRW 기본 환율
     const [data,  setData]  = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -185,7 +199,7 @@ const SettlementChartTab = () => {
     const fetchChart = useCallback(async () => {
         setLoading(true);
         try {
-            const params = {};
+            const params = { exchange_rate: exchangeRate };
             if (year  !== '전체') params.year  = year;
             if (month !== '전체') params.month = month;
             const res = await api.get('/settlement/chart-summary', { params });
@@ -195,7 +209,7 @@ const SettlementChartTab = () => {
         } finally {
             setLoading(false);
         }
-    }, [year, month]);
+    }, [year, month, exchangeRate]);
 
     useEffect(() => { fetchChart(); }, [fetchChart]);
 
@@ -211,6 +225,10 @@ const SettlementChartTab = () => {
     const selStyle = {
         background: '#0f172a', border: '1px solid #334155', color: '#e2e8f0',
         borderRadius: 8, padding: '6px 12px', fontSize: 14, cursor: 'pointer', outline: 'none'
+    };
+    const inputStyle = {
+        ...selStyle,
+        width: 90, textAlign: 'right',
     };
 
     return (
@@ -229,6 +247,19 @@ const SettlementChartTab = () => {
                         {months.map(m => <option key={m} value={m}>{m === '전체' ? '전체 월' : `${m}월`}</option>)}
                     </select>
                 </div>
+                {/* 환율 입력 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: '#64748b', fontSize: 13 }}>USD 환율</span>
+                    <input
+                        type="number"
+                        value={exchangeRate}
+                        onChange={e => setExchangeRate(Number(e.target.value) || 1350)}
+                        style={inputStyle}
+                        min={1}
+                        step={10}
+                    />
+                    <span style={{ color: '#475569', fontSize: 12 }}>원/USD</span>
+                </div>
                 <span style={{ color: '#475569', fontSize: 12 }}>
                     {year === '전체' && month === '전체' ? '전체 기간' :
                      year === '전체' ? `매월 ${month}월` :
@@ -241,8 +272,8 @@ const SettlementChartTab = () => {
             {/* ── 파이 차트 그리드 ── */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: 16,
+                gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
+                gap: 20,
             }}>
                 {pieCards.map(card => (
                     <PieCard

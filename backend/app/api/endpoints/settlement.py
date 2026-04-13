@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, extract, and_, String
+from sqlalchemy import func, extract, and_, String, case
 from typing import List, Optional, Dict, Any
 from datetime import date
 
@@ -15,6 +15,7 @@ from app.models.basics import Partner
 from app.models.inventory import StockProduction
 
 router = APIRouter()
+
 
 def get_month_filter(model_attr, year: int, month: int):
     return and_(
@@ -299,9 +300,10 @@ async def get_settlement_complaints(
 async def get_chart_summary(
     year: Optional[int] = Query(None),
     month: Optional[int] = Query(None),
+    exchange_rate: float = Query(default=1350.0, description="USD→KRW 환율"),
     db: AsyncSession = Depends(get_db)
 ):
-    """사업부별 수주/매출/매입/생산/불량/고객불만 집계 + 매출처·매입처 Top10"""
+    """사업부별 수주/매출/매입/생산/불량/고객불만 집계 + 매출처·매입처 Top10 (USD→KRW 환산 포함)"""
 
     MinorGrp = ProductGroup.__table__.alias("minor_grp")
     MajorGrp = ProductGroup.__table__.alias("major_grp")
@@ -322,11 +324,19 @@ async def get_chart_summary(
         return [{"name": r[0] or "미분류", "value": float(r[1] or 0)}
                 for r in res.fetchall()]
 
-    # 수주
+    # USD→KRW 환산 CASE 표현식 생성 헬퍼
+    def krw_expr(amount_expr, currency_col):
+        return case(
+            (currency_col == 'USD', amount_expr * exchange_rate),
+            else_=amount_expr
+        )
+
+    # 수주 (USD 환산)
+    so_amount = SalesOrderItem.quantity * SalesOrderItem.unit_price
     r_orders = await db.execute(pd(
         with_grp(
             select(group_expr.label("g"),
-                   func.sum(SalesOrderItem.quantity * SalesOrderItem.unit_price).label("v"))
+                   func.sum(krw_expr(so_amount, SalesOrderItem.currency)).label("v"))
             .select_from(SalesOrderItem)
             .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
             .join(Product,    SalesOrderItem.product_id == Product.id)
@@ -335,11 +345,11 @@ async def get_chart_summary(
         ), SalesOrder.order_date
     ))
 
-    # 매출
+    # 매출 (USD 환산)
     r_sales = await db.execute(pd(
         with_grp(
             select(group_expr.label("g"),
-                   func.sum(SalesOrderItem.quantity * SalesOrderItem.unit_price).label("v"))
+                   func.sum(krw_expr(so_amount, SalesOrderItem.currency)).label("v"))
             .select_from(SalesOrderItem)
             .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
             .join(Product,    SalesOrderItem.product_id == Product.id)
@@ -348,11 +358,12 @@ async def get_chart_summary(
         ), SalesOrder.actual_delivery_date
     ))
 
-    # 매입 = 구매발주(자재/MRP/소모품) + 외주발주
+    # 매입 = 구매발주(자재/MRP/소모품) + 외주발주 (USD 환산)
+    po_amount = PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price
     r_pur_buy = await db.execute(pd(
         with_grp(
             select(group_expr.label("g"),
-                   func.sum(PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price).label("v"))
+                   func.sum(krw_expr(po_amount, PurchaseOrderItem.currency)).label("v"))
             .select_from(PurchaseOrderItem)
             .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
             .join(Product,       PurchaseOrderItem.product_id == Product.id)
@@ -360,10 +371,11 @@ async def get_chart_summary(
             .group_by(group_expr)
         ), PurchaseOrder.actual_delivery_date
     ))
+    oo_amount = OutsourcingOrderItem.unit_price * OutsourcingOrderItem.quantity
     r_pur_out = await db.execute(pd(
         with_grp(
             select(group_expr.label("g"),
-                   func.sum(OutsourcingOrderItem.unit_price * OutsourcingOrderItem.quantity).label("v"))
+                   func.sum(oo_amount).label("v"))   # 외주는 currency 컬럼 없음 → KRW 그대로
             .select_from(OutsourcingOrderItem)
             .join(OutsourcingOrder, OutsourcingOrderItem.outsourcing_order_id == OutsourcingOrder.id)
             .outerjoin(Product, OutsourcingOrderItem.product_id == Product.id)
@@ -378,6 +390,7 @@ async def get_chart_summary(
     for r in r_pur_out.fetchall():
         pur_map[r[0] or "미분류"] = pur_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
     purchases_data = [{"name": k, "value": v} for k, v in sorted(pur_map.items(), key=lambda x: -x[1])]
+
 
     # 생산 (완료일 폴백)
     eff = func.coalesce(
@@ -420,8 +433,9 @@ async def get_chart_summary(
         CustomerComplaint.receipt_date
     ))
 
-    # 매출처 순위 Top10
-    sal_sum = func.sum(SalesOrderItem.quantity * SalesOrderItem.unit_price)
+    # 매출처 순위 Top10 (USD 환산)
+    so_amount_rank = SalesOrderItem.quantity * SalesOrderItem.unit_price
+    sal_sum = func.sum(krw_expr(so_amount_rank, SalesOrderItem.currency))
     r_sales_rank = await db.execute(pd(
         select(Partner.name.label("g"), sal_sum.label("v"))
         .select_from(SalesOrderItem)
@@ -434,8 +448,9 @@ async def get_chart_summary(
         SalesOrder.actual_delivery_date
     ))
 
-    # 매입처 순위 Top10 = 구매발주 + 외주발주 합산
-    pur_sum_b = func.sum(PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price)
+    # 매입처 순위 Top10 = 구매발주 + 외주발주 합산 (USD 환산)
+    po_amount_rank = PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price
+    pur_sum_b = func.sum(krw_expr(po_amount_rank, PurchaseOrderItem.currency))
     r_pur_rank_buy = await db.execute(pd(
         select(Partner.name.label("g"), pur_sum_b.label("v"))
         .select_from(PurchaseOrderItem)
@@ -464,6 +479,7 @@ async def get_chart_summary(
         pur_rank_map[r[0] or "미분류"] = pur_rank_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
     purchase_ranking = [{"name": k, "value": v}
                         for k, v in sorted(pur_rank_map.items(), key=lambda x: -x[1])[:10]]
+
 
     return {
         "orders":           row2(r_orders),
