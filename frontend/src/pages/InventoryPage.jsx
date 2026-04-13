@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
     Boxes,
     Plus,
@@ -683,7 +683,13 @@ const InventoryPage = () => {
                                         <ResizableTableCell width={columnWidths.product} onResize={(w) => handleResize('product', w)} className="px-6 py-4 font-medium">품목명 / 규격</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.partner} onResize={(w) => handleResize('partner', w)} className="px-6 py-4 font-medium">거래처</ResizableTableCell>
                                         <ResizableTableCell width={columnWidths.req_qty} onResize={(w) => handleResize('req_qty', w)} className="px-6 py-4 font-medium">요청수량</ResizableTableCell>
-                                        <ResizableTableCell width={columnWidths.req_date} onResize={(w) =                                 <tbody className="divide-y divide-gray-800">
+                                        <ResizableTableCell width={columnWidths.req_date} onResize={(w) => handleResize('req_date', w)} className="px-6 py-4 font-medium">요청일 / 완료예정일</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.status} onResize={(w) => handleResize('status', w)} className="px-6 py-4 font-medium">상태</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.note} onResize={(w) => handleResize('note', w)} className="px-6 py-4 font-medium">비고</ResizableTableCell>
+                                        <ResizableTableCell width={columnWidths.actions} onResize={(w) => handleResize('actions', w)} className="px-6 py-4 font-medium text-right">관리</ResizableTableCell>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-800">
                                     {groupedProductions.map((grp) => {
                                         const isMulti = grp.items.length > 1;
                                         const isExpanded = expandedGroup === grp.key;
