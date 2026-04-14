@@ -515,9 +515,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                     <Typography variant="caption" color="textSecondary" display="block">수주량 (Order)</Typography>
                                     <Typography variant="body1" sx={{ color: '#64748b' }}>
                                         {(() => {
-                                            const sourceQty = order ? order.items.find(i => i.product_id === parseInt(productId))?.quantity :
-                                                              (plan?.order) ? plan.order.items.find(i => i.product_id === parseInt(productId))?.quantity :
-                                                              stockProduction ? stockProduction.quantity : 
+                                            const sourceQty = order?.items?.find(i => i.product_id === parseInt(productId))?.quantity ||
+                                                              plan?.order?.items?.find(i => i.product_id === parseInt(productId))?.quantity ||
+                                                              stockProduction?.quantity ||
                                                               plan?.stock_production?.quantity || 0;
                                             return (sourceQty || 0).toLocaleString();
                                         })()}
