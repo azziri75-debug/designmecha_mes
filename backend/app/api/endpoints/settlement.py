@@ -492,3 +492,133 @@ async def get_chart_summary(
         "sales_ranking":    row2(r_sales_rank),
         "purchase_ranking": purchase_ranking,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 품목별 연간 실적 (Annual Performance by Item)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/available-years")
+async def get_available_years(db: AsyncSession = Depends(get_db)):
+    """납품 실적이 존재하는 모든 연도 조회"""
+    from app.models.sales import DeliveryHistory
+    query = select(extract('year', DeliveryHistory.delivery_date).label("year"))\
+           .distinct()\
+           .order_by(extract('year', DeliveryHistory.delivery_date).desc())
+    result = await db.execute(query)
+    return [int(r[0]) for r in result if r[0] is not None]
+
+@router.get("/annual-performance")
+async def get_annual_performance(
+    year: int = Query(...),
+    major_group_id: Optional[int] = Query(None),
+    exchange_rate: float = Query(default=1350.0),
+    db: AsyncSession = Depends(get_db)
+):
+    """품목별 연간 실적: 고객사별 -> 제품별 -> 월별(1~12) 집계"""
+    from app.models.sales import DeliveryHistory, DeliveryHistoryItem, SalesOrderItem, SalesOrder
+    
+    # CASE expression for currency conversion
+    amount_expr = SalesOrderItem.quantity * SalesOrderItem.unit_price # Base item unit price
+    # But we need to use the quantity FROM delivery_history_item
+    item_amount = DeliveryHistoryItem.quantity * SalesOrderItem.unit_price
+    
+    krw_amount = case(
+        (SalesOrderItem.currency == 'USD', item_amount * exchange_rate),
+        else_=item_amount
+    )
+
+    query = select(
+        Partner.name.label("partner_name"),
+        Product.id.label("product_id"),
+        Product.name.label("product_name"),
+        Product.specification.label("specification"),
+        extract('month', DeliveryHistory.delivery_date).label("month"),
+        func.sum(DeliveryHistoryItem.quantity).label("total_qty"),
+        func.sum(krw_amount).label("total_amount")
+    ).select_from(DeliveryHistoryItem)\
+     .join(DeliveryHistory, DeliveryHistoryItem.delivery_id == DeliveryHistory.id)\
+     .join(SalesOrderItem, DeliveryHistoryItem.order_item_id == SalesOrderItem.id)\
+     .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)\
+     .join(Partner, SalesOrder.partner_id == Partner.id)\
+     .join(Product, SalesOrderItem.product_id == Product.id)\
+     .where(
+         extract('year', DeliveryHistory.delivery_date) == year
+     )\
+     .group_by(
+         Partner.name,
+         Product.id,
+         Product.name,
+         Product.specification,
+         extract('month', DeliveryHistory.delivery_date)
+     )
+
+    if major_group_id:
+        subq = select(ProductGroup.id).where(and_(ProductGroup.parent_id == major_group_id))
+        query = query.where(and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id)))
+
+    result = await db.execute(query)
+    rows = [dict(r._mapping) for r in result]
+
+    # Post-process into the nested structure requested by frontend
+    # customers -> products -> monthly_data[12]
+    structured = {}
+    for r in rows:
+        p_name = r["partner_name"]
+        pid = r["product_id"]
+        month = int(r["month"]) # 1-12
+        
+        if p_name not in structured:
+            structured[p_name] = {"partner_name": p_name, "products": {}}
+        
+        if pid not in structured[p_name]["products"]:
+            structured[p_name]["products"][pid] = {
+                "product_id": pid,
+                "product_name": r["product_name"],
+                "specification": r["specification"],
+                "monthly_qty": [0] * 12,
+                "monthly_amount": [0] * 12,
+                "annual_qty": 0,
+                "annual_amount": 0
+            }
+        
+        target = structured[p_name]["products"][pid]
+        idx = month - 1
+        qty = r["total_qty"] or 0
+        amt = r["total_amount"] or 0
+        
+        target["monthly_qty"][idx] = qty
+        target["monthly_amount"][idx] = amt
+        target["annual_qty"] += qty
+        target["annual_amount"] += amt
+
+    # Convert maps to sorted lists
+    final_list = []
+    overall_total_qty = 0
+    overall_total_amount = 0
+
+    for p_name in sorted(structured.keys()):
+        cust_data = structured[p_name]
+        cust_products = []
+        cust_total_qty = 0
+        cust_total_amount = 0
+        
+        for pid in sorted(cust_data["products"].keys()):
+            prod = cust_data["products"][pid]
+            cust_products.append(prod)
+            cust_total_qty += prod["annual_qty"]
+            cust_total_amount += prod["annual_amount"]
+        
+        cust_data["products"] = cust_products
+        cust_data["customer_total_qty"] = cust_total_qty
+        cust_data["customer_total_amount"] = cust_total_amount
+        
+        overall_total_qty += cust_total_qty
+        overall_total_amount += cust_total_amount
+        final_list.append(cust_data)
+
+    return {
+        "overall_total_qty": overall_total_qty,
+        "overall_total_amount": overall_total_amount,
+        "data": final_list
+    }

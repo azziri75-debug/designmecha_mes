@@ -28,6 +28,9 @@ const SettlementPage = () => {
     const [exchangeRate, setExchangeRate] = useState(1350); // 1 USD = N KRW
     const [rateLoading, setRateLoading] = useState(true);
     const [rateDate, setRateDate] = useState(null);
+    const [availableYears, setAvailableYears] = useState([today.getFullYear()]);
+    const [basis, setBasis] = useState("amount"); // "amount" or "qty"
+    const [annualData, setAnnualData] = useState({ data: [], overall_total_qty: 0, overall_total_amount: 0 });
 
     const tabs = [
         { id: "orders",     label: "수주내역" },
@@ -36,6 +39,7 @@ const SettlementPage = () => {
         { id: "production", label: "생산내역" },
         { id: "defects",    label: "불량내역" },
         { id: "complaints", label: "고객불만" },
+        { id: "annual",     label: "품목별 연간실적" },
         { id: "chart",      label: "📊 차트 분석" },
     ];
 
@@ -46,7 +50,16 @@ const SettlementPage = () => {
                 setGroups(res.data.filter(g => g.type === 'MAJOR') || []);
             } catch (e) { console.error(e); }
         };
+        const fetchYears = async () => {
+            try {
+                const res = await api.get('/settlement/available-years');
+                if (res.data && res.data.length > 0) {
+                    setAvailableYears(res.data);
+                }
+            } catch (e) { console.error(e); }
+        };
         fetchGroups();
+        fetchYears();
     }, []);
 
     // 실시간 환율 조회 (open.er-api.com - 무료, API키 불필요)
@@ -75,18 +88,27 @@ const SettlementPage = () => {
 
     useEffect(() => {
         if (activeTab !== 'chart') fetchData();
-    }, [year, month, majorGroupId, activeTab]);
+    }, [year, month, majorGroupId, activeTab, exchangeRate, basis]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const params = { year, month };
-            if (majorGroupId) params.major_group_id = majorGroupId;
-            const res = await api.get(`/settlement/${activeTab}`, { params });
-            setData(res.data || []);
+            if (activeTab === 'annual') {
+                const params = { year, exchange_rate: exchangeRate };
+                if (majorGroupId) params.major_group_id = majorGroupId;
+                const res = await api.get('/settlement/annual-performance', { params });
+                setAnnualData(res.data || { data: [], overall_total_qty: 0, overall_total_amount: 0 });
+                setData([]); // Clear standard data
+            } else {
+                const params = { year, month };
+                if (majorGroupId) params.major_group_id = majorGroupId;
+                const res = await api.get(`/settlement/${activeTab}`, { params });
+                setData(res.data || []);
+            }
         } catch (e) {
             console.error(e);
             setData([]);
+            setAnnualData({ data: [], overall_total_qty: 0, overall_total_amount: 0 });
         } finally {
             setLoading(false);
         }
@@ -176,6 +198,11 @@ const SettlementPage = () => {
     };
 
     const totalSums = useMemo(() => {
+        if (activeTab === 'annual') {
+            const total = basis === 'amount' ? annualData.overall_total_amount : annualData.overall_total_qty;
+            // For annual, we return a simpler structure or mock KRW/USD for compatibility
+            return { krw: total, usd: 0, converted: total, isAnnual: true };
+        }
         const sumKey = {
             orders: "total_price",
             sales: "total_price",
@@ -187,18 +214,58 @@ const SettlementPage = () => {
         const krw = data.filter(r => (r.currency || 'KRW') === 'KRW').reduce((a, c) => a + (c[sumKey] || 0), 0);
         const usd = data.filter(r => (r.currency || 'KRW') === 'USD').reduce((a, c) => a + (c[sumKey] || 0), 0);
         return { krw, usd, converted: krw + usd * exchangeRate };
-    }, [data, activeTab, exchangeRate]);
+    }, [data, activeTab, exchangeRate, annualData, basis]);
 
     const handleDownloadExcel = () => {
+        const tabLabel = tabs.find(t => t.id === activeTab)?.label || "";
+        const groupName = majorGroupId ? (groups.find(g => g.id === parseInt(majorGroupId))?.name || "") : "전체";
+        const dateStr = format(new Date(), 'yyyy-MM-dd');
+
+        if (activeTab === 'annual') {
+            if (!annualData.data || annualData.data.length === 0) return;
+            const fileName = `연간실적-${groupName}-${year}-${dateStr.replace(/-/g, '')}.xlsx`;
+            
+            const head1 = [`${year}년 품목별 연간 실적 (${basis === 'amount' ? '금액기준' : '수량기준'})`];
+            const head2 = [`사업부: ${groupName}`, `기준연도: ${year}년`, `작성일: ${dateStr}`, `기준단위: ${basis === 'amount' ? '원(KRW)' : 'EA'}`];
+            const head3 = ["고객사", "품명", "규격", "1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월", "누적합계", "비율(%)"];
+            
+            const body = [];
+            annualData.data.forEach(cust => {
+                cust.products.forEach((prod, pidx) => {
+                    const row = [
+                        pidx === 0 ? cust.partner_name : "",
+                        prod.product_name,
+                        prod.specification || "",
+                        ...(basis === 'amount' ? prod.monthly_amount : prod.monthly_qty),
+                        basis === 'amount' ? prod.annual_amount : prod.annual_qty,
+                        ((basis === 'amount' ? prod.annual_amount : prod.annual_qty) / 
+                         (basis === 'amount' ? annualData.overall_total_amount : annualData.overall_total_qty) * 100).toFixed(1) + "%"
+                    ];
+                    body.push(row);
+                });
+                // Customer Total Row
+                body.push([
+                    `${cust.partner_name} 합계`, "", "", 
+                    ...Array(12).fill(""),
+                    basis === 'amount' ? cust.customer_total_amount : cust.customer_total_qty,
+                    ((basis === 'amount' ? cust.customer_total_amount : cust.customer_total_qty) / 
+                     (basis === 'amount' ? annualData.overall_total_amount : annualData.overall_total_qty) * 100).toFixed(1) + "%"
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet([head1, [], head2, head3, ...body]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "AnnualPerformance");
+            XLSX.writeFile(wb, fileName);
+            return;
+        }
+
         if (!data || data.length === 0) {
             alert("다운로드할 데이터가 없습니다.");
             return;
         }
 
         const columns = getColumns();
-        const tabLabel = tabs.find(t => t.id === activeTab)?.label || "";
-        const groupName = majorGroupId ? (groups.find(g => g.id === parseInt(majorGroupId))?.name || "") : "전체";
-        const dateStr = format(new Date(), 'yyyy-MM-dd');
         const fileName = `${tabLabel}-${groupName}-${year}${String(month).padStart(2, '0')}-${dateStr.replace(/-/g, '')}.xlsx`;
 
         // 1. Prepare HeaderRows (for standard formatting)
@@ -247,20 +314,34 @@ const SettlementPage = () => {
                             value={year} onChange={(e) => setYear(parseInt(e.target.value))}
                             className="bg-gray-900 border border-gray-700 text-white rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-32 appearance-none"
                         >
-                            {years.map(y => <option key={y} value={y}>{y}년</option>)}
+                            {availableYears.map(y => <option key={y} value={y}>{y}년</option>)}
                         </select>
                     </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className={`space-y-1.5 transition-opacity ${activeTab === 'annual' ? 'opacity-30 pointer-events-none' : ''}`}>
                     <label className="text-xs text-gray-500 font-medium">조회 월</label>
                     <select 
                         value={month} onChange={(e) => setMonth(parseInt(e.target.value))}
-                        className="bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-24 appearance-none"
+                        disabled={activeTab === 'annual'}
+                        className="bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-24 appearance-none disabled:bg-gray-800"
                     >
-                        {months.map(m => <option key={m} value={m}>{m}월</option>)}
+                        {activeTab === 'annual' ? <option value="">전체</option> : months.map(m => <option key={m} value={m}>{m}월</option>)}
                     </select>
                 </div>
+
+                {activeTab === 'annual' && (
+                    <div className="space-y-1.5">
+                        <label className="text-xs text-gray-500 font-medium">기준값 선택</label>
+                        <select 
+                            value={basis} onChange={(e) => setBasis(e.target.value)}
+                            className="bg-gray-900 border border-blue-500 text-blue-400 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-32 appearance-none font-bold"
+                        >
+                            <option value="amount">납품 금액</option>
+                            <option value="qty">납품 수량</option>
+                        </select>
+                    </div>
+                )}
 
                 <div className="space-y-1.5 flex-1 min-w-[200px]">
                     <label className="text-xs text-gray-500 font-medium">사업부(대그룹)</label>
@@ -364,8 +445,96 @@ const SettlementPage = () => {
             {/* Table or Chart */}
             {activeTab === 'chart' ? (
                 <SettlementChartTab />
+            ) : activeTab === 'annual' ? (
+                <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-xl overflow-hidden min-h-[500px]">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left border-collapse">
+                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
+                                <tr>
+                                    <th className="px-4 py-3 border-r border-gray-700 text-center" rowSpan={2}>고객사</th>
+                                    <th className="px-4 py-3 border-r border-gray-700 text-center" rowSpan={2}>생산제품</th>
+                                    <th className="px-4 py-3 border-r border-gray-700 text-center" rowSpan={2}>규격</th>
+                                    <th className="px-4 py-3 border-b border-gray-700 text-center" colSpan={12}>{year}년 월별 실적 ({basis === 'amount' ? '금액: 원' : '수량: EA'})</th>
+                                    <th className="px-4 py-3 border-l border-gray-700 text-center" rowSpan={2}>연간 누적</th>
+                                    <th className="px-4 py-3 border-l border-gray-700 text-center" rowSpan={2}>비율(%)</th>
+                                </tr>
+                                <tr>
+                                    {months.map(m => (
+                                        <th key={m} className="px-2 py-2 text-center border-r border-gray-700/50 min-w-[60px]">{m}월</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="text-gray-300">
+                                {loading ? (
+                                    <tr><td colSpan={17} className="px-4 py-20 text-center animate-pulse">데이터를 불러오는 중...</td></tr>
+                                ) : annualData.data.length > 0 ? (
+                                    annualData.data.map((cust, cidx) => (
+                                        <React.Fragment key={cust.partner_name}>
+                                            {cust.products.map((prod, pidx) => (
+                                                <tr key={prod.product_id} className="hover:bg-gray-800/40 border-b border-gray-800">
+                                                    {pidx === 0 && (
+                                                        <td className="px-4 py-3 border-r border-gray-700 font-bold text-gray-100 align-top" rowSpan={cust.products.length + 1}>
+                                                            {cust.partner_name}
+                                                        </td>
+                                                    )}
+                                                    <td className="px-4 py-3 border-r border-gray-700">{prod.product_name}</td>
+                                                    <td className="px-4 py-3 border-r border-gray-700 text-xs text-gray-500">{prod.specification || '-'}</td>
+                                                    {(basis === 'amount' ? prod.monthly_amount : prod.monthly_qty).map((val, midx) => (
+                                                        <td key={midx} className="px-2 py-3 text-right border-r border-gray-800/50 font-mono text-xs">
+                                                            {val === 0 ? '-' : val.toLocaleString()}
+                                                        </td>
+                                                    ))}
+                                                    <td className="px-4 py-3 text-right font-bold bg-blue-500/5 text-blue-400">
+                                                        {(basis === 'amount' ? prod.annual_amount : prod.annual_qty).toLocaleString()}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-xs font-semibold text-gray-400">
+                                                        {((basis === 'amount' ? prod.annual_amount : prod.annual_qty) / 
+                                                          (basis === 'amount' ? annualData.overall_total_amount : annualData.overall_total_qty) * 100).toFixed(1)}%
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {/* Customer Total row */}
+                                            <tr className="bg-gray-800/20 border-b-2 border-gray-700">
+                                                <td className="px-4 py-2 text-right font-bold text-emerald-400" colSpan={2}>
+                                                    {cust.partner_name} 소계
+                                                </td>
+                                                <td className="px-2 py-2 text-center" colSpan={12}>
+                                                    <div className="h-px bg-gray-700/50 w-full" />
+                                                </td>
+                                                <td className="px-4 py-2 text-right font-black text-emerald-400 bg-emerald-500/5">
+                                                    {(basis === 'amount' ? cust.customer_total_amount : cust.customer_total_qty).toLocaleString()}
+                                                </td>
+                                                <td className="px-4 py-2 text-right font-bold text-emerald-500 bg-emerald-500/5">
+                                                    {((basis === 'amount' ? cust.customer_total_amount : cust.customer_total_qty) / 
+                                                      (basis === 'amount' ? annualData.overall_total_amount : annualData.overall_total_qty) * 100).toFixed(1)}%
+                                                </td>
+                                            </tr>
+                                        </React.Fragment>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={17} className="px-4 py-20 text-center text-gray-500">데이터가 없습니다.</td></tr>
+                                )}
+                            </tbody>
+                            <tfoot className="bg-blue-600/10 border-t border-blue-500/50 font-bold">
+                                <tr>
+                                    <td className="px-4 py-4 text-center text-blue-400" colSpan={3}>전체 총계 (Grand Total)</td>
+                                    <td className="px-2 py-4 text-center" colSpan={12}>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Calendar className="w-3 h-3" />
+                                            <span className="text-[10px] uppercase tracking-tighter opacity-50">연간 누적 실적</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-4 text-right text-lg text-blue-400">
+                                        {(basis === 'amount' ? annualData.overall_total_amount : annualData.overall_total_qty).toLocaleString()}
+                                    </td>
+                                    <td className="px-4 py-4 text-right text-blue-400">100.0%</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
             ) : (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-xl overflow-hidden min-h-[500px]">
+                <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-xl overflow-hidden min-h-[500px]">
                 <div className="overflow-x-auto">
                     <ResizableTable
                         columns={columns}
