@@ -3,13 +3,14 @@ import {
     Box, Button, TextField, Typography, Paper, Tabs, Tab,
     IconButton, Select, MenuItem, InputLabel, FormControl
 } from '@mui/material';
-import { Printer, FileDown, Plus, Trash2, FileText, Send, UserCheck, X, CheckCircle2 } from 'lucide-react';
+import { Printer, FileDown, Plus, Trash2, FileText, Send, UserCheck, X, CheckCircle2, MessageSquare } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../lib/api';
 import MultiFileUpload from './MultiFileUpload';
 import { formatNumber, safeParseJSON } from '../lib/utils';
+import { format } from 'date-fns';
 import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -337,6 +338,56 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     </Tabs>
                 )}
             </Paper>
+
+            {/* 결재자 의견 표시 (상단, 인쇄 제외) */}
+            {documentData?.steps && documentData.steps.some(s => s.comment && s.status === 'APPROVED') && (
+                <Box className="no-print" sx={{ width: '100%', maxWidth: '1100px', mb: 3, px: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#60a5fa', fontWeight: 'bold', fontSize: '0.875rem', mb: 1.5 }}>
+                        <MessageSquare size={16} />
+                        결재자 의견 (승인 코멘트)
+                    </Box>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                        {documentData.steps.filter(s => s.comment && s.status === 'APPROVED').map((step, idx) => (
+                            <Box 
+                                key={idx} 
+                                sx={{ 
+                                    bgcolor: 'rgba(30, 41, 59, 0.7)', 
+                                    backdropFilter: 'blur(8px)',
+                                    border: '1px solid rgba(59, 130, 246, 0.3)', 
+                                    borderLeft: '4px solid #3b82f6',
+                                    p: 2, 
+                                    borderRadius: 3, 
+                                    display: 'flex', 
+                                    gap: 2,
+                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                }}
+                            >
+                                <Box sx={{ bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 'bold', fontSize: '0.65rem', width: 24, height: 24, borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.2 }}>
+                                    {step.sequence}
+                                </Box>
+                                <Box sx={{ flex: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'between', alignItems: 'center', mb: 0.5 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography sx={{ color: '#f8fafc', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                {step.approver?.name} {step.approver?.role}
+                                            </Typography>
+                                            <Typography sx={{ px: 1, py: 0.2, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', fontSize: '0.6rem', fontWeight: 'bold', borderRadius: 0.5, textTransform: 'uppercase' }}>
+                                                APPROVED
+                                            </Typography>
+                                        </Box>
+                                        <Typography sx={{ color: '#94a3b8', fontSize: '0.65rem', ml: 'auto' }}>
+                                            {step.processed_at && format(new Date(step.processed_at), 'yyyy-MM-dd HH:mm')}
+                                        </Typography>
+                                    </Box>
+                                    <Typography sx={{ color: '#cbd5e1', fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                        {step.comment}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        ))}
+                    </Box>
+                </Box>
+            )}
 
             <Paper
                 ref={printRef}
