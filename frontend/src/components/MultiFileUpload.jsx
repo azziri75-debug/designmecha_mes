@@ -59,41 +59,41 @@ const MultiFileUpload = ({ files = [], onChange, label = "파일 업로드", isR
 
     return (
         <div className="space-y-3">
-            <div
-                onDragEnter={handleDrag}
-                onDragOver={handleDrag}
-                onDragLeave={handleDrag}
-                onDrop={handleDrop}
-                onClick={() => inputRef.current?.click()}
-                className={cn(
-                    "relative border-2 border-dashed rounded-xl p-6 transition-all cursor-pointer flex flex-col items-center justify-center gap-2",
-                    dragActive ? "border-blue-500 bg-blue-500/10" : "border-gray-700 bg-gray-900/50 hover:border-gray-500 hover:bg-gray-800",
-                    uploading && "opacity-50 pointer-events-none",
-                    isReadOnly && "opacity-60 cursor-default hover:bg-gray-900/50 hover:border-gray-700"
-                )}
-                style={isReadOnly ? { pointerEvents: 'none' } : {}}
-            >
-                <input
-                    ref={inputRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handleFiles(Array.from(e.target.files))}
-                />
+            {!isReadOnly && (
+                <div
+                    onDragEnter={handleDrag}
+                    onDragOver={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={() => inputRef.current?.click()}
+                    className={cn(
+                        "relative border-2 border-dashed rounded-xl p-6 transition-all cursor-pointer flex flex-col items-center justify-center gap-2",
+                        dragActive ? "border-blue-500 bg-blue-500/10" : "border-gray-700 bg-gray-900/50 hover:border-gray-500 hover:bg-gray-800",
+                        uploading && "opacity-50 pointer-events-none"
+                    )}
+                >
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleFiles(Array.from(e.target.files))}
+                    />
 
-                {uploading ? (
-                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                ) : (
-                    <Upload className={cn("w-8 h-8", dragActive ? "text-blue-500" : "text-gray-500")} />
-                )}
+                    {uploading ? (
+                        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                    ) : (
+                        <Upload className={cn("w-8 h-8", dragActive ? "text-blue-500" : "text-gray-500")} />
+                    )}
 
-                <div className="text-center">
-                    <p className="text-sm font-medium text-gray-300">{label}{isReadOnly && " (읽기 전용)"}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                        {isReadOnly ? "첨부된 파일을 확인하려면 파일명을 클릭하세요" : "파일을 드래그하여 올리거나 클릭하여 선택하세요"}
-                    </p>
+                    <div className="text-center">
+                        <p className="text-sm font-medium text-gray-300">{label}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            파일을 드래그하여 올리거나 클릭하여 선택하세요
+                        </p>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {files.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

@@ -340,14 +340,14 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             </Paper>
 
             {/* 결재자 의견 표시 (상단, 인쇄 제외) */}
-            {documentData?.steps && documentData.steps.some(s => s.comment && s.status === 'APPROVED') && (
+            {documentData?.steps && documentData.steps.some(s => s.comment && s.status === 'APPROVED' && s.comment !== '기안자 자동승인') && (
                 <Box className="no-print" sx={{ width: '100%', maxWidth: '1100px', mb: 3, px: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#60a5fa', fontWeight: 'bold', fontSize: '0.875rem', mb: 1.5 }}>
                         <MessageSquare size={16} />
                         결재자 의견 (승인 코멘트)
                     </Box>
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-                        {documentData.steps.filter(s => s.comment && s.status === 'APPROVED').map((step, idx) => (
+                        {documentData.steps.filter(s => s.comment && s.status === 'APPROVED' && s.comment !== '기안자 자동승인').map((step, idx) => (
                             <Box 
                                 key={idx} 
                                 sx={{ 
