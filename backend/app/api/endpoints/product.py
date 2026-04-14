@@ -660,7 +660,8 @@ async def update_bom(
             bom_row = BOM(
                 parent_product_id=product_id,
                 child_product_id=item.child_product_id,
-                required_quantity=item.required_quantity
+                required_quantity=item.required_quantity,
+                substitute_product_id=item.substitute_product_id
             )
             db.add(bom_row)
             new_items.append(bom_row)
@@ -764,7 +765,8 @@ async def clone_product_to_targets(
                 new_bom = BOM(
                     parent_product_id=target_id,
                     child_product_id=bom.child_product_id,
-                    required_quantity=bom.required_quantity
+                    required_quantity=bom.required_quantity,
+                    substitute_product_id=bom.substitute_product_id
                 )
                 db.add(new_bom)
 

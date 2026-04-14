@@ -86,12 +86,14 @@ class ProductSimpleForBOM(BaseModel):
 class BOMItemCreate(BaseModel):
     child_product_id: int
     required_quantity: float = 1.0
+    substitute_product_id: Optional[int] = None
 
 class BOMItemResponse(BaseModel):
     id: int
     parent_product_id: int
     child_product_id: int
     required_quantity: float
+    substitute_product_id: Optional[int] = None
     child_product: Optional[ProductSimpleForBOM] = None
 
     class Config:
