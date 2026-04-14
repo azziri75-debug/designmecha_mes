@@ -6,7 +6,7 @@ import {
     Plus, Search, Filter, Pencil, Trash, X, Check,
     Calendar, User, Layers, Info, Settings, ClipboardList,
     ChevronRight, ArrowRight, Download, Upload, Printer,
-    Paperclip, File, ExternalLink, FileDown
+    Paperclip, File, ExternalLink, FileDown, MessageSquare
 } from 'lucide-react';
 import api from '../lib/api';
 import { cn, getImageUrl } from '../lib/utils';
@@ -481,6 +481,37 @@ const ApprovalPage = () => {
 
                         <div className="p-0 overflow-y-auto flex-1 bg-[#eee] flex flex-col print:p-0">
                             <div className="py-8 flex flex-col items-center">
+                                {/* 결재자 의견 표시 (Desktop 전용, 인쇄 제외) */}
+                                {selectedDoc.steps && selectedDoc.steps.some(s => s.comment && s.status === 'APPROVED') && (
+                                    <div className="no-print w-full max-w-[210mm] mx-auto mb-6 px-4 space-y-3">
+                                        <div className="flex items-center gap-2 text-blue-600 font-bold text-sm mb-2 px-1">
+                                            <MessageSquare size={16} />
+                                            결재자 의견 (승인 코멘트)
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {selectedDoc.steps.filter(s => s.comment && s.status === 'APPROVED').map((step, idx) => (
+                                                <div key={idx} className="bg-white/80 backdrop-blur-sm border border-blue-100 p-4 rounded-xl flex gap-4 shadow-sm border-l-4 border-l-blue-500">
+                                                    <div className="bg-blue-100 text-blue-600 text-[10px] font-bold w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                        {step.sequence}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-gray-900 text-xs font-bold">{step.approver?.name} {step.approver?.role}</span>
+                                                                <span className="px-1.5 py-0.5 bg-blue-50 text-blue-500 text-[9px] font-bold rounded capitalize">APPROVED</span>
+                                                            </div>
+                                                            <span className="text-gray-400 text-[10px] font-medium">
+                                                                {step.processed_at && format(new Date(step.processed_at), 'yyyy-MM-dd HH:mm')}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">{step.comment}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="a4-wrapper no-shadow-on-print">
                                     <Box className="a4-paper-root" sx={{ 
                                         width: '210mm', height: '297mm', minHeight: '297mm', maxHeight: '297mm',
