@@ -325,6 +325,17 @@ const MobileWorkLogPage = () => {
             return;
         }
 
+        // [USER REQUEST] 수량 초과 검증 로직 추가
+        const totalPlanned = selectedItem.quantity || 0;
+        const currentPerformance = selectedItem.completed_quantity || 0;
+        const enteringQty = parseInt(goodQty) || 0;
+
+        if (currentPerformance + enteringQty > totalPlanned) {
+            if (!window.confirm("입력한 수량이 계획된 수량을 초과합니다. 계속하시겠습니까?")) {
+                return;
+            }
+        }
+
         setLoading(true);
         try {
             const uploadedPhotos = [];
@@ -850,6 +861,9 @@ const MobileWorkLogPage = () => {
                                     <Box sx={{ p: 2, backgroundColor: '#f0f4f8', borderRadius: 2, borderLeft: '4px solid #1976d2' }}>
                                         <Typography variant="caption" color="textSecondary" fontWeight="bold">선택 공정</Typography>
                                         <Typography variant="subtitle1" fontWeight="bold">{selectedItem.process_name}</Typography>
+                                        <Typography variant="body2" color="primary" fontWeight="bold">
+                                            (실적 : {selectedItem.completed_quantity || 0} / {selectedItem.quantity})
+                                        </Typography>
                                         <Typography variant="body2" color="textSecondary">{selectedItem.product?.name}</Typography>
                                         {selectedItem.product?.specification && (
                                             <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
