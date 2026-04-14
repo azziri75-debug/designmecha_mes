@@ -1785,6 +1785,7 @@ async def create_work_log(
                 selectinload(WorkLogItem.work_log),
                 selectinload(WorkLogItem.plan_item).options(
                     selectinload(ProductionPlanItem.product).options(
+                        selectinload(Product.partner),
                         selectinload(Product.standard_processes).selectinload(ProductProcess.process),
                         selectinload(Product.bom_items).selectinload(BOM.child_product),
                     ),
@@ -1804,7 +1805,7 @@ async def create_work_log(
         )
         .where(WorkLog.id == log.id)
     )
-    return result.scalars().first()
+    return result.unique().scalars().first()
 
 @router.put("/work-logs/{log_id}", response_model=schemas.WorkLog)
 async def update_work_log(
@@ -1883,6 +1884,7 @@ async def update_work_log(
                 selectinload(WorkLogItem.work_log),
                 selectinload(WorkLogItem.plan_item).options(
                     selectinload(ProductionPlanItem.product).options(
+                        selectinload(Product.partner),
                         selectinload(Product.standard_processes).selectinload(ProductProcess.process),
                         selectinload(Product.bom_items).selectinload(BOM.child_product),
                     ),
@@ -1902,7 +1904,7 @@ async def update_work_log(
         )
         .where(WorkLog.id == log.id)
     )
-    return result.scalars().first()
+    return result.unique().scalars().first()
 
 @router.delete("/work-logs/{log_id}")
 async def delete_work_log(
