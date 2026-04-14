@@ -48,14 +48,16 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
     if not plan_item:
         return
 
-    if total_good >= plan_item.quantity:
+    # [FIX] If no logs remain, status should revert to PLANNED (unless manually changed elsewhere, but usually PLANNED is the base)
+    if not items or total_good == 0:
+        if plan_item.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.COMPLETED]:
+            plan_item.status = ProductionStatus.PLANNED
+            db.add(plan_item)
+    elif total_good >= plan_item.quantity:
         # [NEW] 상태 연계 유틸리티 호출 (발주 완료 및 재고 반영 포함)
         await on_production_item_completed(db, plan_item, reference=f"WorkLog (PI#{plan_item_id})")
     elif total_good > 0:
         plan_item.status = ProductionStatus.IN_PROGRESS
-        db.add(plan_item)
-    elif total_good == 0 and plan_item.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.COMPLETED]:
-        plan_item.status = ProductionStatus.PLANNED
         db.add(plan_item)
     
     await db.flush()
@@ -1833,9 +1835,43 @@ async def update_work_log(
         else:
             log.attachment_file = log_in.attachment_file
 
-            # [NOTE] Stock movement is handled by sync_plan_item_status → on_production_item_completed.
-            # Do NOT add per-item stock movement here; it would multiply by process count.
+    # --- [NEW] Item Synchronization Logic ---
+    if log_in.items is not None:
+        current_items_map = {item.id: item for item in log.items}
+        incoming_items = log_in.items
+        
+        # 1. Track affected plan_items for status sync
+        affected_plan_item_ids = {item.plan_item_id for item in log.items}
+        for item_in in incoming_items:
+            affected_plan_item_ids.add(item_in.plan_item_id)
 
+        # 2. Synchronize Items
+        # Clear and Re-create for simplicity and consistency with Frontend's "full list" approach
+        for item in log.items:
+            await db.delete(item)
+        
+        await db.flush() # Ensure deletions are processed
+        
+        for item_in in incoming_items:
+            new_item = WorkLogItem(
+                work_log_id=log.id,
+                plan_item_id=item_in.plan_item_id,
+                worker_id=item_in.worker_id,
+                start_time=item_in.start_time,
+                end_time=item_in.end_time,
+                good_quantity=item_in.good_quantity,
+                bad_quantity=item_in.bad_quantity,
+                unit_price=item_in.unit_price,
+                note=item_in.note
+            )
+            db.add(new_item)
+        
+        await db.flush()
+
+        # 3. Post-Sync: Update Plan Item Statuses
+        for p_id in affected_plan_item_ids:
+            if p_id:
+                await sync_plan_item_status(db, p_id)
     await db.commit()
 
     result = await db.execute(

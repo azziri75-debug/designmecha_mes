@@ -779,7 +779,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                                                     <th className="px-3 py-2">시작일</th>
                                                     <th className="px-3 py-2">종료일</th>
                                                     <th className="px-3 py-2 text-right">공정비용</th>
-                                                    <th className="px-3 py-2 text-right">수량</th>
+                                                    <th className="px-3 py-2 text-center">실적 (완료/목표)</th>
                                                     <th className="px-3 py-2">상태</th>
                                                 </tr>
                                             </thead>
@@ -827,7 +827,16 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
                 <td className="px-3 py-3 text-gray-400 whitespace-nowrap">{item.start_date || '-'}</td>
                 <td className="px-3 py-3 text-gray-400 whitespace-nowrap">{item.end_date || '-'}</td>
                 <td className="px-3 py-3 text-right font-bold text-emerald-400">{item.cost ? item.cost.toLocaleString() + '원' : '-'}</td>
-                <td className="px-3 py-3 text-right">{item.quantity ?? '-'}</td>
+                <td className="px-3 py-3 text-center">
+                    <span className={cn(
+                        "font-bold",
+                        (item.completed_quantity || 0) >= (item.quantity || 0) ? "text-blue-400" : "text-orange-400"
+                    )}>
+                        {item.completed_quantity || 0}
+                    </span>
+                    <span className="text-gray-500 mx-1">/</span>
+                    <span className="text-gray-400">{item.quantity ?? '-'}</span>
+                </td>
                 <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <select value={item.status} onChange={async (e) => {
                         try { await api.patch(`/production/plan-items/${item.id}`, { status: e.target.value }); onRefresh(); } catch (err) { alert("오류 발생"); }
