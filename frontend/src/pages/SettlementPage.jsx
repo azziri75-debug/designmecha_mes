@@ -359,7 +359,12 @@ const SettlementPage = () => {
 
                 <button 
                     onClick={handleDownloadExcel}
-                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-lg shadow-emerald-500/20 h-[38px]"
+                    disabled={activeTab === 'chart'}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-lg h-[38px] ${
+                        activeTab === 'chart' 
+                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
+                    }`}
                 >
                     <Download className="w-4 h-4" />
                     <span>엑셀 다운로드</span>
@@ -444,7 +449,7 @@ const SettlementPage = () => {
 
             {/* Table or Chart */}
             {activeTab === 'chart' ? (
-                <SettlementChartTab />
+                <SettlementChartTab year={year} month={month} exchangeRate={exchangeRate} />
             ) : activeTab === 'annual' ? (
                 <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-xl overflow-hidden min-h-[500px]">
                     <div className="overflow-x-auto">

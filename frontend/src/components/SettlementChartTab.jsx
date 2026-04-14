@@ -181,27 +181,17 @@ const RankCard = ({ title, data, color }) => {
 };
 
 // ── 메인 ──────────────────────────────────────────────────────────────────────
-const SettlementChartTab = () => {
-    const today = new Date();
-    const prevMonth = today.getMonth(); // 0=Jan → 전달
-    const prevYear  = prevMonth === 0 ? today.getFullYear() - 1 : today.getFullYear();
-    const prevMon   = prevMonth === 0 ? 12 : prevMonth;
-
-    const [year,  setYear]  = useState(prevYear);
-    const [month, setMonth] = useState(prevMon);
-    const [exchangeRate, setExchangeRate] = useState(1350); // USD→KRW 기본 환율
+const SettlementChartTab = ({ year, month, exchangeRate }) => {
     const [data,  setData]  = useState(null);
     const [loading, setLoading] = useState(false);
 
-    const years  = ['전체', ...Array.from({ length: 5 }, (_, i) => today.getFullYear() - 2 + i)];
-    const months = ['전체', ...Array.from({ length: 12 }, (_, i) => i + 1)];
 
     const fetchChart = useCallback(async () => {
         setLoading(true);
         try {
             const params = { exchange_rate: exchangeRate };
-            if (year  !== '전체') params.year  = year;
-            if (month !== '전체') params.month = month;
+            if (year && year !== '전체') params.year  = year;
+            if (month && month !== '전체') params.month = month;
             const res = await api.get('/settlement/chart-summary', { params });
             setData(res.data);
         } catch (e) {
@@ -222,52 +212,15 @@ const SettlementChartTab = () => {
         { title: '고객불만',   data: data.complaints, color: '#fb923c', unit: '건' },
     ] : [];
 
-    const selStyle = {
-        background: '#0f172a', border: '1px solid #334155', color: '#e2e8f0',
-        borderRadius: 8, padding: '6px 12px', fontSize: 14, cursor: 'pointer', outline: 'none'
-    };
-    const inputStyle = {
-        ...selStyle,
-        width: 90, textAlign: 'right',
-    };
 
     return (
         <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {/* ── 필터 ── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#64748b', fontSize: 13 }}>연도</span>
-                    <select value={year} onChange={e => setYear(e.target.value === '전체' ? '전체' : Number(e.target.value))} style={selStyle}>
-                        {years.map(y => <option key={y} value={y}>{y === '전체' ? '전체 연도' : `${y}년`}</option>)}
-                    </select>
+            {/* ── 로딩 인디케이터 ── */}
+            {loading && (
+                <div style={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <span style={{ color: '#60a5fa', fontSize: 13 }} className="animate-pulse">데이터 분석 중...</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#64748b', fontSize: 13 }}>월</span>
-                    <select value={month} onChange={e => setMonth(e.target.value === '전체' ? '전체' : Number(e.target.value))} style={selStyle}>
-                        {months.map(m => <option key={m} value={m}>{m === '전체' ? '전체 월' : `${m}월`}</option>)}
-                    </select>
-                </div>
-                {/* 환율 입력 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#64748b', fontSize: 13 }}>USD 환율</span>
-                    <input
-                        type="number"
-                        value={exchangeRate}
-                        onChange={e => setExchangeRate(Number(e.target.value) || 1350)}
-                        style={inputStyle}
-                        min={1}
-                        step={10}
-                    />
-                    <span style={{ color: '#475569', fontSize: 12 }}>원/USD</span>
-                </div>
-                <span style={{ color: '#475569', fontSize: 12 }}>
-                    {year === '전체' && month === '전체' ? '전체 기간' :
-                     year === '전체' ? `매월 ${month}월` :
-                     month === '전체' ? `${year}년 전체` :
-                     `${year}년 ${month}월`}
-                </span>
-                {loading && <span style={{ color: '#60a5fa', fontSize: 12 }} className="animate-pulse">조회 중...</span>}
-            </div>
+            )}
 
             {/* ── 파이 차트 그리드 ── */}
             <div style={{
