@@ -235,7 +235,8 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
         const newItems = [...items];
         
         // Sync these fields across ALL processes of the same product
-        const syncFields = ['quantity', 'gross_quantity', 'stock_use_quantity'];
+        // Note: 'quantity' is intentionally excluded to allow individual process quantity adjustment
+        const syncFields = ['gross_quantity', 'stock_use_quantity'];
         
         if (syncFields.includes(field)) {
             const val = parseInt(value) || 0;
@@ -243,7 +244,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                 if (Number(it.product_id) === Number(productId)) {
                     newItems[idx][field] = val;
                     
-                    // If quantity changed, recalculate cost for this item (based on its own unit_cost)
+                    // If quantity changed via syncFields (no longer happens for 'quantity', but kept for 'gross_quantity' etc.)
                     if (field === 'quantity') {
                         const unitCost = it.unit_cost || 0;
                         newItems[idx].cost = unitCost * val;
@@ -258,6 +259,19 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
         } else {
             // Standard single-item update
             newItems[index][field] = value;
+
+            // Recalculate cost if quantity or cost was changed individually
+            if (field === 'quantity') {
+                const val = parseInt(value) || 0;
+                const unitCost = newItems[index].unit_cost || 0;
+                newItems[index].cost = unitCost * val;
+            }
+            
+            if (field === 'cost') {
+                const val = parseFloat(value) || 0;
+                const qty = parseInt(newItems[index].quantity) || 1;
+                newItems[index].unit_cost = val / qty;
+            }
 
             // Auto-lookup cost for INTERNAL processes
             if ((field === 'course_type' && value === 'INTERNAL') ||
@@ -274,10 +288,6 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                 }
             }
 
-            if (field === 'cost') {
-                const qty = parseInt(newItems[index].quantity) || 1;
-                newItems[index].unit_cost = parseFloat(value) / qty;
-            }
         }
 
         setItems(newItems);
@@ -506,7 +516,9 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                                     <Typography variant="body1" sx={{ color: '#64748b' }}>
                                         {(() => {
                                             const sourceQty = order ? order.items.find(i => i.product_id === parseInt(productId))?.quantity :
-                                                              stockProduction ? stockProduction.quantity : 0;
+                                                              (plan?.order) ? plan.order.items.find(i => i.product_id === parseInt(productId))?.quantity :
+                                                              stockProduction ? stockProduction.quantity : 
+                                                              plan?.stock_production?.quantity || 0;
                                             return (sourceQty || 0).toLocaleString();
                                         })()}
                                     </Typography>
