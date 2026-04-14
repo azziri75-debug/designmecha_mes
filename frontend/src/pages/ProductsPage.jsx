@@ -1860,11 +1860,11 @@ const ProductsPage = ({ type }) => {
                                                     .filter(p => p.id !== productFormData.id && p.item_type !== 'CONSUMABLE')
                                                     .map(p => ({ 
                                                         value: p.id, 
-                                                        label: `[${ITEM_TYPES[p.item_type] || p.item_type || '-'}] ${p.name} ${p.specification ? `(${p.specification})` : ''}` 
+                                                        label: `[${p.item_type === 'PRODUCED' ? '제품' : '부품'}] [${p.partner_name || '-'}] ${p.name} ${p.specification ? `(${p.specification})` : ''}` 
                                                     }))}
                                                 value={allParts.find(p => p.id == bomNewRow.child_product_id) ? { 
                                                     value: bomNewRow.child_product_id, 
-                                                    label: `[${ITEM_TYPES[allParts.find(p => p.id == bomNewRow.child_product_id).item_type] || '-'}] ${allParts.find(p => p.id == bomNewRow.child_product_id).name} ${allParts.find(p => p.id == bomNewRow.child_product_id).specification ? `(${allParts.find(p => p.id == bomNewRow.child_product_id).specification})` : ''}`
+                                                    label: `[${allParts.find(p => p.id == bomNewRow.child_product_id).item_type === 'PRODUCED' ? '제품' : '부품'}] [${allParts.find(p => p.id == bomNewRow.child_product_id).partner_name || '-'}] ${allParts.find(p => p.id == bomNewRow.child_product_id).name} ${allParts.find(p => p.id == bomNewRow.child_product_id).specification ? `(${allParts.find(p => p.id == bomNewRow.child_product_id).specification})` : ''}`
                                                 } : null}
                                                 onChange={(selected) => {
                                                     setBomNewRow(prev => ({ ...prev, child_product_id: selected ? selected.value : "" }));
@@ -1951,14 +1951,14 @@ const ProductsPage = ({ type }) => {
                                                                     isClearable
                                                                     placeholder="대체재 선택..."
                                                                     options={allParts
-                                                                        .filter(p => p.id !== productFormData.id && p.id !== item.child_product_id)
+                                                                        .filter(p => p.id !== productFormData.id && p.id !== item.child_product_id && p.item_type !== 'CONSUMABLE')
                                                                         .map(p => ({ 
                                                                             value: p.id, 
-                                                                            label: `[${ITEM_TYPES[p.item_type] || p.item_type}] ${p.name}` 
+                                                                            label: `[${p.item_type === 'PRODUCED' ? '제품' : '부품'}] [${p.partner_name || '-'}] ${p.name} ${p.specification ? `(${p.specification})` : ''}` 
                                                                         }))}
                                                                     value={allParts.find(p => p.id === item.substitute_product_id) ? {
                                                                         value: item.substitute_product_id,
-                                                                        label: `[${ITEM_TYPES[allParts.find(p => p.id === item.substitute_product_id).item_type] || '-'}] ${allParts.find(p => p.id === item.substitute_product_id).name}`
+                                                                        label: `[${allParts.find(p => p.id === item.substitute_product_id).item_type === 'PRODUCED' ? '제품' : '부품'}] [${allParts.find(p => p.id === item.substitute_product_id).partner_name || '-'}] ${allParts.find(p => p.id === item.substitute_product_id).name} ${allParts.find(p => p.id === item.substitute_product_id).specification ? `(${allParts.find(p => p.id === item.substitute_product_id).specification})` : ''}`
                                                                     } : null}
                                                                     onChange={(opt) => updateBomSubstitute(idx, opt?.value)}
                                                                     styles={selectStyles}
