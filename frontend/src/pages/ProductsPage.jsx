@@ -196,7 +196,8 @@ const ProductsPage = ({ type }) => {
 
     const fetchAllParts = async () => {
         try {
-            const res = await api.get('/product/products/', { params: { item_type: 'PART,CONSUMABLE' } });
+            // [MOD] 대체재 선정 및 제품 구매 발주 지원을 위해 생산제품(PRODUCED)도 함께 불러옵니다.
+            const res = await api.get('/product/products/', { params: { item_type: 'PART,CONSUMABLE,PRODUCED' } });
             setAllParts(res.data || []);
         } catch (error) {
             console.error('Failed to fetch all parts', error);
@@ -801,7 +802,8 @@ const ProductsPage = ({ type }) => {
         try {
             const payload = bomItems.map(item => ({
                 child_product_id: item.child_product_id,
-                required_quantity: item.required_quantity
+                required_quantity: item.required_quantity,
+                substitute_product_id: item.substitute_product_id || null
             }));
             const res = await api.put(`/product/products/${productFormData.id}/bom`, payload);
             setBomItems(res.data);
@@ -834,9 +836,16 @@ const ProductsPage = ({ type }) => {
             parent_product_id: productFormData.id,
             child_product_id: parseInt(bomNewRow.child_product_id),
             required_quantity: parseFloat(bomNewRow.required_quantity) || 1,
+            substitute_product_id: null,
             child_product: childProduct || { id: parseInt(bomNewRow.child_product_id), name: '(알 수 없음)' }
         }]);
         setBomNewRow({ child_product_id: '', required_quantity: 1 });
+    };
+
+    const updateBomSubstitute = (index, subId) => {
+        setBomItems(prev => prev.map((item, idx) => 
+            idx === index ? { ...item, substitute_product_id: subId ? parseInt(subId) : null } : item
+        ));
     };
 
     const removeBomRow = (index) => {
@@ -1911,6 +1920,7 @@ const ProductsPage = ({ type }) => {
                                                         <th className="px-4 py-3">규격</th>
                                                         <th className="px-4 py-3 text-right">소요량</th>
                                                         <th className="px-4 py-3">단위</th>
+                                                        <th className="px-4 py-3">대체 품목 (선택사항)</th>
                                                         <th className="px-4 py-3 text-right">최근 단가</th>
                                                         <th className="px-4 py-3 text-center">동작</th>
                                                     </tr>
@@ -1936,6 +1946,25 @@ const ProductsPage = ({ type }) => {
                                                                 />
                                                             </td>
                                                             <td className="px-4 py-3 text-xs text-gray-400">{item.child_product?.unit || 'EA'}</td>
+                                                            <td className="px-4 py-3" style={{ minWidth: '200px' }}>
+                                                                <Select
+                                                                    isClearable
+                                                                    placeholder="대체재 선택..."
+                                                                    options={allParts
+                                                                        .filter(p => p.id !== productFormData.id && p.id !== item.child_product_id)
+                                                                        .map(p => ({ 
+                                                                            value: p.id, 
+                                                                            label: `[${ITEM_TYPES[p.item_type] || p.item_type}] ${p.name}` 
+                                                                        }))}
+                                                                    value={allParts.find(p => p.id === item.substitute_product_id) ? {
+                                                                        value: item.substitute_product_id,
+                                                                        label: `[${ITEM_TYPES[allParts.find(p => p.id === item.substitute_product_id).item_type] || '-'}] ${allParts.find(p => p.id === item.substitute_product_id).name}`
+                                                                    } : null}
+                                                                    onChange={(opt) => updateBomSubstitute(idx, opt?.value)}
+                                                                    styles={selectStyles}
+                                                                    menuPortalTarget={document.body}
+                                                                />
+                                                            </td>
                                                             <td className="px-4 py-3 text-right font-medium text-blue-400">
                                                                 {(() => { const p = allParts.find(p => p.id === item.child_product_id); return p?.recent_price ? formatCurrency(p.recent_price, p.price_currency) : '-'; })()}
                                                             </td>

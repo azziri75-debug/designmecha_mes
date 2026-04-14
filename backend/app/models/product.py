@@ -102,11 +102,13 @@ class BOM(Base):
     id = Column(Integer, primary_key=True, index=True)
     parent_product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     child_product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    substitute_product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
     required_quantity = Column(Float, nullable=False, default=1.0)
 
     # Relationships
     parent_product = relationship("Product", foreign_keys=[parent_product_id], back_populates="bom_items")
     child_product = relationship("Product", foreign_keys=[child_product_id], lazy="selectin")
+    substitute_product = relationship("Product", foreign_keys=[substitute_product_id], lazy="selectin")
 
 class ProductPriceHistory(Base):
     """
