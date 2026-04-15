@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.inventory import Stock, StockTransaction, TransactionType
 from app.models.product import BOM, Product
+from sqlalchemy.orm import selectinload
 import logging
 
 logger = logging.getLogger(__name__)
