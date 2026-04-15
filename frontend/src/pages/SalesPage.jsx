@@ -21,6 +21,7 @@ const ESTIMATE_COLS = [
     { key: 'expand', label: '', width: 32, noResize: true },
     { key: 'date',   label: '견적일자',  width: 110 },
     { key: 'partner',label: '거래처',   width: 160 },
+    { key: 'product_name', label: '품목명', width: 220 },
     { key: 'amount', label: '총 금액',  width: 130 },
     { key: 'items',  label: '품목 수',  width: 80 },
     { key: 'attach', label: '첨부파일', width: 90 },
@@ -34,6 +35,7 @@ const ORDER_COLS = [
     { key: 'delivery',label: '납품요청일', width: 110 },
     { key: 'actual',  label: '실 납품일', width: 110 },
     { key: 'partner', label: '거래처',   width: 150 },
+    { key: 'product_name', label: '품목명', width: 220 },
     { key: 'status',  label: '상태',    width: 100 },
     { key: 'amount',  label: '총 금액',  width: 130 },
     { key: 'items',   label: '품목 수',  width: 80 },
@@ -414,6 +416,10 @@ const SalesPage = () => {
                                             <td className="px-2 py-4 text-center">{expandedEstimates.has(est.id) ? '▼' : '▶'}</td>
                                             <td className="px-4 py-4 truncate">{est.estimate_date}</td>
                                             <td className="px-4 py-4 font-medium text-white truncate">{est.partner?.name}</td>
+                                            <td className="px-4 py-4 truncate text-gray-300">
+                                                {est.items?.[0]?.product?.name || est.items?.[0]?.product_name || est.items?.[0]?.name}
+                                                {est.items?.length > 1 ? ` 외 ${est.items.length - 1}건` : ''}
+                                            </td>
                                             <td className="px-4 py-4 truncate">{formatCurrency(est.total_amount, est.items?.[0]?.currency || 'KRW')}</td>
                                             <td className="px-4 py-4 truncate">{est.items?.length || 0} 건</td>
                                             <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
@@ -485,6 +491,10 @@ const SalesPage = () => {
                                             <td className="px-4 py-4 text-orange-400 truncate">{ord.delivery_date || '-'}</td>
                                             <td className="px-4 py-4 text-emerald-400 truncate">{ord.actual_delivery_date || '-'}</td>
                                             <td className="px-4 py-4 font-medium text-white truncate">{ord.partner?.name}</td>
+                                            <td className="px-4 py-4 truncate text-gray-300">
+                                                {ord.items?.[0]?.product?.name || ord.items?.[0]?.product_name || ord.items?.[0]?.name}
+                                                {ord.items?.length > 1 ? ` 외 ${ord.items.length - 1}건` : ''}
+                                            </td>
                                             <td className="px-4 py-4">
                                                 <span className={cn("px-2 py-0.5 rounded text-xs font-medium", ord.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border border-yellow-700' : (ord.status === 'CONFIRMED' || ord.status === 'PRODUCTION_COMPLETED') ? 'bg-blue-900/50 text-blue-400 border border-blue-700' : ord.status === 'PARTIALLY_DELIVERED' ? 'bg-orange-900/50 text-orange-400 border border-orange-700' : (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? 'bg-green-900/50 text-green-400 border border-green-700' : 'bg-gray-800 text-gray-400')}>
                                                     {ord.status === 'PARTIALLY_DELIVERED' ? '부분납품' : (ord.status === 'DELIVERED' || ord.status === 'DELIVERY_COMPLETED') ? '납품완료' : ord.status === 'PRODUCTION_COMPLETED' ? '생산완료' : ord.status === 'PENDING' ? '대기' : ord.status === 'CONFIRMED' ? '확정' : ord.status}

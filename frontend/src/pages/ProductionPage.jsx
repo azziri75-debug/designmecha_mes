@@ -718,8 +718,9 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 <td className="px-4 py-4 truncate">{plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내'}</td>
                 <td className="px-4 py-4 truncate">
                     {(() => {
-                        const names = [...new Set(plan.items?.map(it => it.product?.name || it.product_name))];
-                        return names.length > 1 ? `${names[0]} 외 ${names.length - 1}건` : names[0] || '';
+                        const items = plan.items || [];
+                        const firstItemName = items[0]?.product?.name || items[0]?.product_name || "";
+                        return items.length > 1 ? `${firstItemName} 외 ${items.length - 1}건` : firstItemName;
                     })()}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-orange-600 font-medium">{order?.delivery_date || '-'}</td>
