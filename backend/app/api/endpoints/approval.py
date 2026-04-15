@@ -94,19 +94,32 @@ async def get_approval_lines(
     department_id: Optional[int] = Query(None),  # [NEW] 부서 ID (None=공통)
     db: AsyncSession = Depends(deps.get_db)
 ):
-    """문서 종류별 결재선 템플릿 조회 (대소문자 구분 없음)"""
+    """문서 종류별 결재선 템플릿 조회 (부서별 우선, 없으면 공통)"""
     doc_type_clean = doc_type.strip().upper()
-    query = (
+    
+    # 1. 부서 전용 결재선 시도
+    if department_id is not None:
+        dept_query = (
+            select(ApprovalLine)
+            .options(selectinload(ApprovalLine.approver))
+            .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
+            .where(ApprovalLine.department_id == department_id)
+            .order_by(ApprovalLine.sequence)
+        )
+        res = await db.execute(dept_query)
+        lines = res.scalars().all()
+        if lines:
+            return lines
+
+    # 2. 공통 결재선 (부서 전용이 없거나 department_id가 없는 경우)
+    common_query = (
         select(ApprovalLine)
         .options(selectinload(ApprovalLine.approver))
         .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
+        .where(ApprovalLine.department_id.is_(None))
         .order_by(ApprovalLine.sequence)
     )
-    if department_id is not None:
-        query = query.where(ApprovalLine.department_id == department_id)
-    else:
-        query = query.where(ApprovalLine.department_id.is_(None))
-    result = await db.execute(query)
+    result = await db.execute(common_query)
     return result.scalars().all()
 
 @router.post("/lines", response_model=List[ApprovalLineResponse])

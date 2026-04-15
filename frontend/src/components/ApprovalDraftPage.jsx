@@ -99,7 +99,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         if (!initialData && docType) {
             fetchDefaultLines(docType);
         }
-    }, [docType, initialData]);
+    }, [docType, initialData, currentUser]);
 
     const fetchDefaultLines = async (type) => {
         try {
