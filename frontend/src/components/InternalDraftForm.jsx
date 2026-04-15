@@ -11,6 +11,20 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const draftType = data.draft_type || 'GENERAL';
     const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }];
 
+    // Auto-fill applicant information from currentUser
+    useEffect(() => {
+        if (isReadOnly || !currentUser) return;
+        
+        let updates = {};
+        if (!data.staff_no && currentUser.staff_no) updates.staff_no = currentUser.staff_no;
+        if (!data.dept && currentUser.department) updates.dept = currentUser.department;
+        if (!data.role && currentUser.role) updates.role = currentUser.role;
+
+        if (Object.keys(updates).length > 0) {
+            onChange({ ...data, ...updates });
+        }
+    }, [currentUser]);
+
     // Parse [거래처]-제목 format when opening existing PAYMENT documents
     useEffect(() => {
         if (draftType === 'PAYMENT' && data.title && !data.partner_for_title && !data.title_body) {

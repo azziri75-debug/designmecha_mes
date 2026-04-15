@@ -21,7 +21,7 @@ const ExpenseReportForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
             updates.draft_date = rawToday;
         }
         if (!data.dept) {
-            updates.dept = currentUser?.dept || '';
+            updates.dept = currentUser?.department || '';
         }
         if (!data.name) {
             updates.name = currentUser?.name || '';

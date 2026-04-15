@@ -22,6 +22,7 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
         if (!data.vacation_reason && data.reason) updates.vacation_reason = data.reason;
         if (!data.staff_no && currentUser?.staff_no) updates.staff_no = currentUser.staff_no;
         if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
+        if (!data.role && currentUser?.role) updates.role = currentUser.role;
 
         let calcDays = data.leave_days;
 
@@ -128,7 +129,7 @@ const LeaveRequestForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>직 위</Box>
                         <td>
                             <input 
-                                value={data.role !== undefined ? data.role : (documentData?.author?.role || '')} 
+                                value={data.role !== undefined ? data.role : (documentData?.author?.role || currentUser?.role || '')} 
                                 onChange={(e) => handleChange('role', e.target.value)}
                                 readOnly={isReadOnly}
                                 style={{ border: 'none', width: '100%', outline: 'none' }}

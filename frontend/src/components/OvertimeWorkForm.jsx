@@ -11,6 +11,7 @@ const OvertimeWorkForm = ({ data = {}, onChange, isReadOnly, currentUser, docume
         // 1. 초기값 및 레거시 데이터 호환성
         if (!data.staff_no && currentUser?.staff_no) updates.staff_no = currentUser.staff_no;
         if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
+        if (!data.role && currentUser?.role) updates.role = currentUser.role;
         if (!data.start_time && data.time) updates.start_time = data.time;
 
         const startTime = data.start_time || data.time;

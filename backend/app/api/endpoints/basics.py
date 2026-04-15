@@ -89,7 +89,7 @@ async def login(
     stmt = select(Staff).where(or_(
         func.lower(Staff.login_id) == func.lower(search_id),
         func.lower(Staff.name) == func.lower(search_id)
-    ))
+    )).options(selectinload(Staff.dept))
     result = await db.execute(stmt)
     staff = result.scalars().first()
     
@@ -163,7 +163,7 @@ async def login(
         "is_sysadmin": staff.is_sysadmin,
         "login_id": staff.login_id,
         "staff_no": staff.staff_no,
-        "department": staff.department,
+        "department": (staff.dept.name if staff.dept else staff.department) or "",
         "can_access_external": staff.can_access_external,
         "can_view_others": staff.can_view_others,
         "menu_permissions": staff.menu_permissions or [],

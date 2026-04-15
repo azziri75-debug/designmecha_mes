@@ -22,6 +22,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         if (!data.date) updates.date = todayStr;
         if (!data.staff_no && currentUser?.staff_no) updates.staff_no = currentUser.staff_no;
         if (!data.dept && currentUser?.department) updates.dept = currentUser.department;
+        if (!data.role && currentUser?.role) updates.role = currentUser.role;
 
         // 2. 시간 계산 (입력 즉시 반응하도록 보정)
         const startTime = data.leave_time || data.time;
