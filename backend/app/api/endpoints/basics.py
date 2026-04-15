@@ -164,6 +164,7 @@ async def login(
         "login_id": staff.login_id,
         "staff_no": staff.staff_no,
         "department": (staff.dept.name if staff.dept else staff.department) or "",
+        "department_id": staff.department_id,
         "can_access_external": staff.can_access_external,
         "can_view_others": staff.can_view_others,
         "menu_permissions": staff.menu_permissions or [],
