@@ -39,7 +39,8 @@ ROLE_RANKING = {
     "차장": 4,
     "부장": 5,
     "이사": 6,
-    "대표이사": 7
+    "대표이사": 7,
+    "대표": 7
 }
 
 def get_staff_rank(role: str) -> int:

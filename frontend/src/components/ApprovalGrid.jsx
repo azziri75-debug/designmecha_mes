@@ -50,9 +50,9 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
     
     // [Bug #4] 중복 제거 및 직급 정렬 로직 추가
     const RANK_MAP = {
-        "사원": 1, "연구원": 1, "대리": 2, "과장": 3, "차장": 4, "부장": 5, "이사": 6, "대표이사": 7
+        "사원": 1, "연구원": 1, "대리": 2, "과장": 3, "차장": 4, "부장": 5, "이사": 6, "대표이사": 7, "대표": 7
     };
-    
+
     // (1) 실제 데이터에서 중복 제거 (approver_id 기준)
     const seenIds = new Set();
     let uniqueSteps = baseSteps.filter(step => {
@@ -62,8 +62,13 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
         return true;
     });
 
-    // (2) 실제 데이터 정렬 (역순 또는 직급순 고민 - 요구사항대로 직급순 기안자->부장->대표이사)
+    // (2) 정렬: sequence(순번) 기준 우선, 직급(Rank)은 보조 정렬
     uniqueSteps.sort((a, b) => {
+        // sequence가 있으면 최우선
+        if (a.sequence !== b.sequence) {
+            return (a.sequence || 0) - (b.sequence || 0);
+        }
+        // sequence가 같거나 없는 경우 직급 기준
         const rankA = RANK_MAP[a.approver?.role] || RANK_MAP[a.role] || 0;
         const rankB = RANK_MAP[b.approver?.role] || RANK_MAP[b.role] || 0;
         return rankA - rankB;

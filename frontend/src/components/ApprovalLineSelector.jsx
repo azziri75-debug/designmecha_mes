@@ -34,9 +34,10 @@ const ApprovalLineSelector = ({ open, onClose, onSelect, currentLines = [] }) =>
     if ((currentLines || []).length > 0) {
       const initial = { 부장: null, 이사: null, 대표이사: null };
       currentLines.forEach(line => {
-          if (line.role === '부장') initial.부장 = line;
-          if (line.role === '이사') initial.이사 = line;
-          if (line.role === '대표이사' || line.role === '대표') initial.대표이사 = line;
+          const role = line.role || '';
+          if (role.includes('부장')) initial.부장 = line;
+          else if (role.includes('이사') && !role.includes('대표')) initial.이사 = line;
+          else if (role.includes('대표')) initial.대표이사 = line;
       });
       setSelectedLines(initial);
     }
