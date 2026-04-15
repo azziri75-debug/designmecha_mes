@@ -826,8 +826,8 @@ const ProductsPage = ({ type }) => {
             return;
         }
         const childProduct = allParts.find(p => p.id === parseInt(bomNewRow.child_product_id));
-        if (!childProduct || childProduct.item_type !== 'PART') {
-            alert('BOM 하위 품목은 "부품" 유형만 선택할 수 있습니다.');
+        if (!childProduct || (childProduct.item_type !== 'PART' && childProduct.item_type !== 'PRODUCED')) {
+            alert('BOM 하위 품목은 "부품" 또는 "제품" 유형만 선택할 수 있습니다.');
             return;
         }
 
@@ -1896,7 +1896,7 @@ const ProductsPage = ({ type }) => {
                                                 className="w-24 bg-gray-900 border border-gray-600 text-white text-sm rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500 text-right"
                                                 placeholder="수량"
                                             />
-                                            <span className="text-xs text-gray-500">{products.find(p => p.id === parseInt(bomNewRow.child_product_id))?.unit || 'EA'}</span>
+                                            <span className="text-xs text-gray-500">{allParts.find(p => p.id === parseInt(bomNewRow.child_product_id))?.unit || 'EA'}</span>
                                         </div>
                                         <button
                                             type="button"
