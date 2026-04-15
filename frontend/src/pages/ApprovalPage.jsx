@@ -32,7 +32,7 @@ const APPROVAL_COLS = [
     { key: 'type',    label: '종류',    width: 130 },
     { key: 'title',   label: '제목',    width: 300 },
     { key: 'status',  label: '상태',    width: 110 },
-    { key: 'actions', label: '관리',   width: 60, noResize: true },
+    { key: 'actions', label: '관리',   width: 100, noResize: true },
 ];
 
 const DOC_TYPES = {
@@ -276,7 +276,7 @@ const ApprovalPage = () => {
     };
 
     const addApprover = (type) => {
-        const admins = staff.filter(s => s.user_type === 'ADMIN' && ['부장', '이사', '대표이사'].includes(s.role));
+        const admins = staff.filter(s => (s.user_type === 'ADMIN' || s.role === '대표이사') && ['부장', '이사', '대표이사'].includes(s.role));
         if (admins.length === 0) return alert('결재권자로 지정 가능한 부장급 이상의 관리자가 없습니다.');
         const currentRes = approvalLines[type] || [];
         const nextSeq = currentRes.length + 1;
@@ -322,7 +322,7 @@ const ApprovalPage = () => {
                         </button>
                         <div className="bg-gray-800 p-1 rounded-lg border border-gray-700 flex">
                             <button onClick={() => setActiveTab('documents')} className={cn("px-4 py-1.5 rounded-md text-sm transition-all", activeTab === 'documents' ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-white")}>문서 목록</button>
-                            <button onClick={() => setActiveTab('settings')} className={cn("px-4 py-1.5 rounded-md text-sm transition-all", activeTab === 'settings' ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-white")}>결재선 설정</button>
+                            <button onClick={() => setActiveTab('settings')} className={cn("px-4 py-1.5 rounded-md text-sm transition-all", activeTab === 'settings' ? "bg-gray-700 text-white shadow" : "text-gray-400 hover:text-white")}>공통 결재선 (기본)</button>
                         </div>
                     </div>
                 </div>
@@ -417,7 +417,27 @@ const ApprovalPage = () => {
                                                     {STATUS_MAP[doc.status]?.label}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right"><ChevronRight className="w-5 h-5 text-gray-500 ml-auto" /></td>
+                                            <td className="px-6 py-4 text-right flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                                {isEditable(doc) && (
+                                                    <>
+                                                        <button 
+                                                            onClick={() => handleEditDoc(doc)}
+                                                            className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                                            title="수정"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteDoc(doc.id)}
+                                                            className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                            title="삭제"
+                                                        >
+                                                            <Trash className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                )}
+                                                <ChevronRight className="w-5 h-5 text-gray-500" />
+                                            </td>
                                         </tr>
                                     ))}
                                 </ResizableTable>
@@ -430,15 +450,15 @@ const ApprovalPage = () => {
                         {Object.entries(DOC_TYPES).map(([type, info]) => (
                             <Card key={type} className="flex flex-col">
                                 <div className="p-4 border-b border-gray-700 bg-gray-900/30 flex items-center justify-between font-bold text-white">
-                                    {info.label} 결재선
+                                    {info.label} 기본 결재선
                                     <button onClick={() => addApprover(type)} className="text-blue-400"><Plus className="w-5 h-5" /></button>
                                 </div>
                                 <div className="p-4 flex-1 space-y-3 min-h-[300px]">
                                     {(approvalLines[type] || []).map((line, idx) => (
                                         <div key={idx} className="flex items-center gap-3 bg-gray-900 p-3 rounded-lg border border-gray-700 group">
                                             <span className="bg-gray-800 text-gray-500 text-[10px] font-bold w-6 h-6 flex items-center justify-center rounded-full border border-gray-700">{line.sequence}</span>
-                                            <select value={line.approver_id} onChange={(e) => updateApprover(type, idx, e.target.value)} className="bg-transparent border-none text-white text-xs outline-none">
-                                                {staff.filter(s => s.user_type === 'ADMIN' && ['부장', '이사', '대표이사'].includes(s.role)).map(s => <option key={s.id} value={s.id}>{s.name} ({s.role})</option>)}
+                                            <select value={line.approver_id} onChange={(e) => updateApprover(type, idx, e.target.value)} className="bg-transparent border-none text-white text-xs outline-none flex-1">
+                                                {staff.filter(s => (s.user_type === 'ADMIN' || s.role === '대표이사') && ['부장', '이사', '대표이사'].includes(s.role)).map(s => <option key={s.id} value={s.id}>{s.name} ({s.role})</option>)}
                                             </select>
                                             <button onClick={() => removeApprover(type, idx)} className="text-gray-600 hover:text-red-500 ml-auto"><X className="w-4 h-4" /></button>
                                         </div>

@@ -103,7 +103,9 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
 
     const fetchDefaultLines = async (type) => {
         try {
-            const res = await api.get(`/approval/lines?doc_type=${type}`);
+            const deptId = currentUser?.department_id;
+            const url = deptId ? `/approval/lines?doc_type=${type}&department_id=${deptId}` : `/approval/lines?doc_type=${type}`;
+            const res = await api.get(url);
             if (res.data && res.data.length > 0) {
                 const lines = res.data.map(line => ({
                     ...line.approver,

@@ -585,7 +585,7 @@ export default function DepartmentTab() {
                                 <select value={line.approver_id || ''} onChange={e => handleApprovalLineChange(idx, 'approver_id', e.target.value)}
                                   className="bg-gray-900 border border-gray-600 text-white text-xs rounded px-2 py-1 flex-1 focus:ring-1 focus:ring-blue-500">
                                   <option value="">결재자 선택</option>
-                                  {allStaff.map(s => <option key={s.id} value={s.id}>{s.name} ({s.role || '직급없음'})</option>)}
+                                  {allStaff.filter(s => (s.user_type === 'ADMIN' || s.role === '대표이사') && ['부장', '이사', '대표이사'].includes(s.role)).map(s => <option key={s.id} value={s.id}>{s.name} ({s.role || '직급없음'})</option>)}
                                 </select>
                                 <button onClick={() => setApprovalLineStaff(p => p.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 p-1"><X className="w-3 h-3" /></button>
                               </div>
