@@ -1013,7 +1013,7 @@ async def get_delivery_histories(
     return res.scalars().all()
 
 @router.put("/orders/{order_id}/delivery/{delivery_id}", response_model=schemas.DeliveryHistory)
-async def update_delivery_history(
+async def update_order_delivery(
     order_id: int,
     delivery_id: int,
     delivery_update: schemas.DeliveryHistoryUpdate,
@@ -1035,7 +1035,15 @@ async def update_delivery_history(
     
     await db.commit()
     await db.refresh(db_delivery)
-    return db_delivery
+    
+    # Eager load for response to avoid MissingGreenlet
+    query = select(DeliveryHistory).options(
+        selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product),
+        selectinload(DeliveryHistory.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
+        selectinload(DeliveryHistory.order).selectinload(SalesOrder.partner)
+    ).where(DeliveryHistory.id == delivery_id)
+    res = await db.execute(query)
+    return res.scalars().first()
 
 @router.post("/orders/delivery/{delivery_id}/attach-statement")
 async def attach_delivery_statement(
