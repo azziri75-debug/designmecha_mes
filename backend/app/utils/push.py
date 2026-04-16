@@ -2,7 +2,7 @@ import json
 from pywebpush import webpush, WebPushException
 from app.core.config import settings
 from app.models.notification import PushSubscription
-from app.db.session import async_session_maker
+from app.api.deps import AsyncSessionLocal
 from sqlalchemy import select
 from typing import Dict, Any, List
 
@@ -39,7 +39,7 @@ async def send_push_notification(user_id: int, title: str, body: str, url: str =
     """
     특정 사용자에게 푸시 알림 발송. 만료된 토큰이 있다면 DB에서 삭제합니다.
     """
-    async with async_session_maker() as db:
+    async with AsyncSessionLocal() as db:
         result = await db.execute(select(PushSubscription).where(PushSubscription.staff_id == user_id))
         subscriptions: List[PushSubscription] = result.scalars().all()
         
