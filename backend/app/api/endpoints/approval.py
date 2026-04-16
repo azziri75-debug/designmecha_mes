@@ -12,6 +12,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# SSE 브로드캐스터 임포트 (실시간 업데이트용)
+try:
+    from app.main import sse_broadcaster
+except ImportError:
+    sse_broadcaster = None
+
 from app.api import deps
 from app.core.timezone import now_kst
 from app.models.approval import ApprovalDocument, ApprovalLine, ApprovalStep, ApprovalStatus, ApprovalAttachment
@@ -503,7 +509,17 @@ async def create_document(
         )
         .where(ApprovalDocument.id == db_doc.id)
     )
-    return result.scalars().first()
+    created_doc = result.scalars().first()
+
+    # SSE 브로드캐스트: 새 문서 기안 수신
+    if sse_broadcaster:
+        import json
+        await sse_broadcaster.broadcast(
+            "approval_updated",
+            json.dumps({"type": "document_created", "doc_id": db_doc.id, "status": str(db_doc.status)})
+        )
+
+    return created_doc
 
 @router.get("/documents/{doc_id}", response_model=ApprovalDocumentResponse)
 async def get_document(
@@ -815,6 +831,15 @@ async def process_approval(
                 await sync_reference_status(db, doc)
             
     await db.commit()
+
+    # SSE 브로드캐스트: 결재 처리(승인/반려/개인) 완료 후 연결된 모든 클라이언트에 알림
+    if sse_broadcaster:
+        import json
+        await sse_broadcaster.broadcast(
+            "approval_updated",
+            json.dumps({"type": "process", "doc_id": doc_id, "status": str(doc.status)})
+        )
+
     return {"message": "처리되었습니다.", "status": doc.status}
 
 def calculate_ot_details(record_date, start_time_str, end_time_str):

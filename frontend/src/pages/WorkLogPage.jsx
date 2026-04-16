@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Collapse, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, KeyboardArrowDown, KeyboardArrowUp, AttachFile as AttachFileIcon, TrendingUp as PerformanceIcon, List as ListIcon, Save as SaveIcon } from '@mui/icons-material';
 import api from '../lib/api';
+import useSSE from '../hooks/useSSE';
 import { cn, safeParseJSON } from '../lib/utils';
 import ResizableTable from '../components/ResizableTable';
 import WorkLogModal from '../components/WorkLogModal';
@@ -108,6 +109,14 @@ const WorkLogPage = () => {
     useEffect(() => {
         fetchPerformanceData();
     }, [startDate, endDate, selectedWorker]);
+
+    // SSE: 작업일지 등록/수정 시 목록 자동 갱신
+    useSSE((eventType) => {
+        if (eventType === 'production_updated') {
+            fetchWorkLogs();
+            fetchPerformanceData();
+        }
+    });
 
     // Filter logic for work logs (client-side for now as before)
     const filteredLogs = workLogs.filter(log => {

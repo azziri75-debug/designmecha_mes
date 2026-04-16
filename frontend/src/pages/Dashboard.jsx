@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, AreaChart, Area, Legend
@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import ResizableTh from '../components/ResizableTh';
 import { formatCurrency } from '../utils/currency';
+import { useSSE } from '../hooks/useSSE';
 
 /* ─── Utility ───────────────────────────────────────────────── */
 const fmt = (n) => (n ?? 0).toLocaleString('ko-KR');
@@ -154,48 +155,59 @@ const Dashboard = () => {
         setMounted(true);
     }, []);
 
-    useEffect(() => {
-        const fetchAll = async () => {
-            setLoading(true);
-            try {
-                const results = await Promise.allSettled([
-                    api.get('/sales/orders/'),
-                    api.get('/production/plans/'),
-                    api.get('/purchasing/purchase/orders/'),
-                    api.get('/purchasing/outsourcing/orders/'),
-                    api.get('/purchasing/purchase/pending-items/'),
-                    api.get('/purchasing/outsourcing/pending-items/'),
-                    api.get('/basics/partners/'),
-                    api.get('/product/products'),
-                    api.get('/basics/staff/'),
-                    api.get('/inventory/productions'),
-                    api.get('/quality/defects/'),
-                    api.get('/product/groups/'),
-                    api.get('/approval/stats'),
-                    api.get('/dashboard/stats')
-                ]);
+    const fetchAll = useCallback(async () => {
+        setLoading(true);
+        try {
+            const results = await Promise.allSettled([
+                api.get('/sales/orders/'),
+                api.get('/production/plans/'),
+                api.get('/purchasing/purchase/orders/'),
+                api.get('/purchasing/outsourcing/orders/'),
+                api.get('/purchasing/purchase/pending-items/'),
+                api.get('/purchasing/outsourcing/pending-items/'),
+                api.get('/basics/partners/'),
+                api.get('/product/products'),
+                api.get('/basics/staff/'),
+                api.get('/inventory/productions'),
+                api.get('/quality/defects/'),
+                api.get('/product/groups/'),
+                api.get('/approval/stats'),
+                api.get('/dashboard/stats')
+            ]);
 
-                const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes, gRes, appRes, dshRes] = results;
+            const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes, gRes, appRes, dshRes] = results;
 
-                if (ordRes.status === 'fulfilled') setOrders(ordRes.value.data);
-                if (planRes.status === 'fulfilled') setPlans(planRes.value.data);
-                if (poRes.status === 'fulfilled') setPurchaseOrders(poRes.value.data);
-                if (ooRes.status === 'fulfilled') setOutsourcingOrders(ooRes.value.data);
-                if (ppRes.status === 'fulfilled') setPendingPurchase(ppRes.value.data);
-                if (opRes.status === 'fulfilled') setPendingOutsourcing(opRes.value.data);
-                if (partRes.status === 'fulfilled') setPartners(partRes.value.data);
-                if (prodRes.status === 'fulfilled') setProducts(prodRes.value.data);
-                if (staffRes.status === 'fulfilled') setStaff(staffRes.value.data);
-                if (spRes.status === 'fulfilled') setStockProductions(spRes.value.data);
-                if (defRes.status === 'fulfilled') setDefects(defRes.value.data);
-                if (gRes && gRes.status === 'fulfilled') setGroups(gRes.value.data || []);
-                if (appRes && appRes.status === 'fulfilled') setApprovalStats(appRes.value.data);
-                if (dshRes && dshRes.status === 'fulfilled') setDashboardStats(dshRes.value.data);
-            } catch (e) { console.error(e); }
-            setLoading(false);
-        };
-        fetchAll();
+            if (ordRes.status === 'fulfilled') setOrders(ordRes.value.data);
+            if (planRes.status === 'fulfilled') setPlans(planRes.value.data);
+            if (poRes.status === 'fulfilled') setPurchaseOrders(poRes.value.data);
+            if (ooRes.status === 'fulfilled') setOutsourcingOrders(ooRes.value.data);
+            if (ppRes.status === 'fulfilled') setPendingPurchase(ppRes.value.data);
+            if (opRes.status === 'fulfilled') setPendingOutsourcing(opRes.value.data);
+            if (partRes.status === 'fulfilled') setPartners(partRes.value.data);
+            if (prodRes.status === 'fulfilled') setProducts(prodRes.value.data);
+            if (staffRes.status === 'fulfilled') setStaff(staffRes.value.data);
+            if (spRes.status === 'fulfilled') setStockProductions(spRes.value.data);
+            if (defRes.status === 'fulfilled') setDefects(defRes.value.data);
+            if (gRes && gRes.status === 'fulfilled') setGroups(gRes.value.data || []);
+            if (appRes && appRes.status === 'fulfilled') setApprovalStats(appRes.value.data);
+            if (dshRes && dshRes.status === 'fulfilled') setDashboardStats(dshRes.value.data);
+        } catch (e) { console.error(e); }
+        setLoading(false);
     }, []);
+
+    useEffect(() => {
+        fetchAll();
+    }, [fetchAll]);
+
+    // SSE: 결재 이벤트 수신 시 대시보드 통계 즐시 갱신
+    useSSE((eventName) => {
+        if (eventName === 'approval_updated') {
+            // 결재 관련 지표만 가벼게 갱신
+            api.get('/approval/stats').then(res => {
+                if (res.data) setApprovalStats(res.data);
+            }).catch(() => {});
+        }
+    });
 
     /* ── computed stats ── */
     const stats = useMemo(() => {

@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import api from '../lib/api';
 import { useAuth } from './AuthContext';
+import { useSSE } from '../hooks/useSSE';
 
 const ApprovalBadgeContext = createContext({ waitingCount: 0, refresh: () => {} });
 
-const POLL_INTERVAL = 60 * 1000; // 60초마다 갱신
+const POLL_INTERVAL = 5 * 60 * 1000; // 5분마다 폴링 (SSE 백업용)
 
 export const ApprovalBadgeProvider = ({ children }) => {
     const { user } = useAuth();
@@ -24,6 +25,14 @@ export const ApprovalBadgeProvider = ({ children }) => {
         }
     }, [user]);
 
+    // SSE: 결재 이벤트 수신 시 즉시 배지 카운트 갱신
+    useSSE((eventName) => {
+        if (eventName === 'approval_updated') {
+            fetchWaitingCount();
+        }
+    }, { enabled: !!user });
+
+    // 폴링: SSE 연결 실패 시 백업 (5분 간격)
     useEffect(() => {
         fetchWaitingCount();
         timerRef.current = setInterval(fetchWaitingCount, POLL_INTERVAL);

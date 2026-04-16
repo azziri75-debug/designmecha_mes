@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSSE } from '../hooks/useSSE';
 import api from '../lib/api';
 import {
     ArrowLeftIcon,
@@ -78,6 +79,13 @@ const MobileAttendancePage = () => {
         }
         window.scrollTo(0, 0);
     }, [activeTab, user]);
+
+    // SSE: 결재 이벤트 수신 시 이력 탭이 활성화된 경우 자동 갱신
+    useSSE((eventName) => {
+        if (eventName === 'approval_updated' && activeTab === 'history') {
+            fetchMonthlyRecords();
+        }
+    });
 
     return (
         <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">

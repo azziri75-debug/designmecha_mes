@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Button } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
+import useSSE from '../hooks/useSSE';
 import {
     UsersIcon,
     CalendarDaysIcon,
@@ -139,6 +140,14 @@ const AttendancePage = () => {
     useEffect(() => {
         fetchSummary();
     }, [selectedStaff, fetchSummary]);
+
+    // SSE: 출퇴근 기록 또는 결재 상태 변경 시 근태 화면 자동 갱신
+    useSSE((eventType) => {
+        if (eventType === 'attendance_updated' || eventType === 'approval_updated') {
+            fetchAttendance();
+            fetchSummary();
+        }
+    });
 
     const changeMonth = (offset) => {
         const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1);

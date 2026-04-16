@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { printAsImage, generateA4PDF } from '../lib/printUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
+import { useSSE } from '../hooks/useSSE';
 import InternalDraftForm from '../components/InternalDraftForm';
 import ExpenseReportForm from '../components/ExpenseReportForm';
 import ConsumablesPurchaseForm from '../components/ConsumablesPurchaseForm';
@@ -137,6 +138,13 @@ const ApprovalPage = () => {
     useEffect(() => {
         fetchInitialData();
     }, [activeTab, viewMode, filterDocType, filterStartDate, filterEndDate, filterAuthorId]);
+
+    // SSE: 결재 이벤트 수신 시 문서 목록 즉시 갱신
+    useSSE((eventName) => {
+        if (eventName === 'approval_updated') {
+            fetchInitialData();
+        }
+    });
 
     const fetchInitialData = async () => {
         setLoading(true);

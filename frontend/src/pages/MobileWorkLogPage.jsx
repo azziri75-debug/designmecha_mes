@@ -68,6 +68,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
+import { useSSE } from '../hooks/useSSE';
 import api from '../lib/api';
 import { safeParseJSON } from '../lib/utils';
 
@@ -261,6 +262,13 @@ const MobileWorkLogPage = () => {
             setLoading(false);
         }
     };
+
+    // SSE: 결재 이벤트 수신 시 결재 탭이 활성화된 경우 자동 갱신
+    useSSE((eventName) => {
+        if (eventName === 'approval_updated') {
+            if (tab === 2) fetchApprovalDocs();
+        }
+    });
 
     const fetchAllPlans = async () => {
         setLoading(true);

@@ -24,6 +24,12 @@ from app.models.hr import EmployeeAnnualLeave, AttendanceLog, AttendanceLogType
 
 KST = timezone(timedelta(hours=9))
 
+# SSE 브로드캐스터 임포트 (실시간 업데이트용)
+try:
+    from app.main import sse_broadcaster
+except ImportError:
+    sse_broadcaster = None
+
 router = APIRouter()
 
 @router.post("/sync-attendance")
@@ -421,6 +427,15 @@ async def clock_in(
             record.record_source = "MANUAL"
 
     await db.commit()
+
+    # SSE 브로드캐스트: 출근 기록 후 직원 및 관리자 화면 즈시 갱신
+    if sse_broadcaster:
+        import json as _json
+        await sse_broadcaster.broadcast(
+            "attendance_updated",
+            _json.dumps({"type": "clock_in", "staff_id": data.staff_id})
+        )
+
     return {"message": "Clock-in recorded", "status": status, "time": now}
 
 
@@ -491,6 +506,15 @@ async def clock_out(
         status_updated = True
 
     await db.commit()
+
+    # SSE 브로드캐스트: 퇴근 기록 후 직원 및 관리자 화면 즈시 갱신
+    if sse_broadcaster:
+        import json as _json
+        await sse_broadcaster.broadcast(
+            "attendance_updated",
+            _json.dumps({"type": "clock_out", "staff_id": data.staff_id})
+        )
+
     return {"message": "Clock-out recorded", "is_early_leave": is_early, "time": now}
 
 

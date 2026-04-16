@@ -4,6 +4,7 @@ import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableConta
 import { KeyboardArrowDown, KeyboardArrowUp, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CheckCircle as CheckIcon, Print as PrintIcon, Description as DescIcon } from '@mui/icons-material';
 import { X, FileText, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
+import useSSE from '../hooks/useSSE';
 import { cn, safeParseJSON } from '../lib/utils';
 import ProductionPlanModal from '../components/ProductionPlanModal';
 import ProductionSheetModal from '../components/ProductionSheetModal';
@@ -190,6 +191,15 @@ const ProductionPage = () => {
         fetchOrders();
         fetchStockProductions();
     }, [startDate, endDate, filterPartner, searchQuery, selectedMajorGroupId]);
+
+    // SSE: 작업일지 등록 또는 생산계획 변경 시 생산현황 자동 갱신
+    useSSE((eventType) => {
+        if (eventType === 'production_updated') {
+            fetchPlans();
+            fetchOrders();
+            fetchStockProductions();
+        }
+    });
 
     const handleCreateClick = (order, stockProd = null) => {
         setSelectedOrder(order);

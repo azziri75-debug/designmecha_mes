@@ -29,6 +29,12 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 
+# SSE 브로드캐스터 임포트 (실시간 업데이트용)
+try:
+    from app.main import sse_broadcaster
+except ImportError:
+    sse_broadcaster = None
+
 router = APIRouter()
 
 
@@ -1805,7 +1811,17 @@ async def create_work_log(
         )
         .where(WorkLog.id == log.id)
     )
-    return result.unique().scalars().first()
+    work_log_result = result.unique().scalars().first()
+
+    # SSE 브로드캐스트: 작업일지 등록 완료 후 리터시 전송
+    if sse_broadcaster:
+        import json as _json
+        await sse_broadcaster.broadcast(
+            "production_updated",
+            _json.dumps({"type": "work_log_created", "log_id": log.id})
+        )
+
+    return work_log_result
 
 @router.put("/work-logs/{log_id}", response_model=schemas.WorkLog)
 async def update_work_log(

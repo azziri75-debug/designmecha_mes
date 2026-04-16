@@ -13,6 +13,12 @@ from app.schemas.inventory import (
     StockProductionResponse, StockProductionCreate, StockProductionUpdate
 )
 
+# SSE 브로드캐스터 임포트 (실시간 업데이트용)
+try:
+    from app.main import sse_broadcaster
+except ImportError:
+    sse_broadcaster = None
+
 router = APIRouter()
 
 # --- Stock Endpoints ---
@@ -406,6 +412,14 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
     res = await db.execute(q)
     stock_obj = res.scalar_one()
     
+    # SSE 브로드캐스트: 재고 수정 후 재고관리 화면 즈시 갱신
+    if sse_broadcaster:
+        import json as _json
+        await sse_broadcaster.broadcast(
+            "inventory_updated",
+            _json.dumps({"type": "stock_updated", "product_id": product_id})
+        )
+
     return {
         "id": stock_obj.id,
         "product_id": stock_obj.product_id,
@@ -418,6 +432,14 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
         "producing_so": producing_so,
         "producing_sp": producing_sp
     }
+
+    # SSE 브로드캐스트: 재고 수정 후 재고관리 화면 즈시 갱신
+    if sse_broadcaster:
+        import json as _json
+        await sse_broadcaster.broadcast(
+            "inventory_updated",
+            _json.dumps({"type": "stock_updated", "product_id": product_id})
+        )
 
 @router.delete("/stocks/{product_id}")
 async def delete_stock(product_id: int, db: AsyncSession = Depends(get_db)):

@@ -1,12 +1,45 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from app.api.api import api_router
 from app.core.config import settings
+import asyncio
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+# ─── SSE 브로드캐스터 ───────────────────────────────────────────────────────────
+# 서버에서 변경 이벤트 발생 시 연결된 모든 클라이언트에 push하는 브로드캐스터
+class SSEBroadcaster:
+    def __init__(self):
+        self._queues: list = []
+
+    def subscribe(self) -> asyncio.Queue:
+        q = asyncio.Queue(maxsize=20)
+        self._queues.append(q)
+        return q
+
+    def unsubscribe(self, q: asyncio.Queue):
+        try:
+            self._queues.remove(q)
+        except ValueError:
+            pass
+
+    async def broadcast(self, event: str, data: str = "{}"):
+        """연결된 모든 SSE 클라이언트에 이벤트 전송"""
+        dead = []
+        for q in list(self._queues):
+            try:
+                q.put_nowait(f"event: {event}\ndata: {data}\n\n")
+            except asyncio.QueueFull:
+                dead.append(q)
+        for d in dead:
+            self.unsubscribe(d)
+
+# 전역 싱글톤 — approval.py 등 다른 모듈에서 import해서 사용
+sse_broadcaster = SSEBroadcaster()
 
 from fastapi.staticfiles import StaticFiles
 import os
@@ -76,6 +109,43 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 from app.api.endpoints import quality
 app.include_router(quality.router, prefix=f"{settings.API_V1_STR}/quality", tags=["quality"])
+
+# ─── SSE 스트림 엔드포인트 ──────────────────────────────────────────────────────
+@app.get("/api/v1/events/stream")
+async def sse_stream(request: Request):
+    """
+    실시간 이벤트 스트림 (Server-Sent Events)
+    클라이언트가 연결하면 결재/데이터 변경 이벤트를 실시간으로 수신합니다.
+    30초마다 keepalive ping을 전송하여 연결을 유지합니다.
+    """
+    queue = sse_broadcaster.subscribe()
+
+    async def event_generator():
+        try:
+            # 연결 성공 확인용 최초 이벤트
+            yield "event: connected\ndata: {}\n\n"
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    # 이벤트 대기 (30초 타임아웃 → keepalive ping)
+                    msg = await asyncio.wait_for(queue.get(), timeout=30)
+                    yield msg
+                except asyncio.TimeoutError:
+                    # 연결 유지용 ping (화면 갱신 없음)
+                    yield "event: ping\ndata: {}\n\n"
+        finally:
+            sse_broadcaster.unsubscribe(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",   # 시놀로지 NAS Nginx 버퍼링 비활성화 (필수!)
+            "Connection": "keep-alive",
+        }
+    )
 
 @app.get("/")
 async def root():

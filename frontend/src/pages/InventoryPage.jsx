@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Boxes,
     Plus,
@@ -23,6 +23,7 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
+import useSSE from '../hooks/useSSE';
 import Select from 'react-select';
 import StockProductionModal from '../components/StockProductionModal';
 import StockEditModal from '../components/StockEditModal';
@@ -137,7 +138,7 @@ const InventoryPage = () => {
         }
     };
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const params = {};
@@ -161,7 +162,14 @@ const InventoryPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [activeTab, searchTerm, itemType, selectedPartnerId, startDate, endDate, statusFilter, majorGroupId]);
+
+    // SSE: 재고 수정 시 재고관리 화면 자동 갱신
+    useSSE((eventType) => {
+        if (eventType === 'inventory_updated' || eventType === 'production_updated') {
+            fetchData();
+        }
+    });
 
 
     const [hideEmpty, setHideEmpty] = useState(false);
