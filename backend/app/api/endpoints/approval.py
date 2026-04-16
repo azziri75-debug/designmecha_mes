@@ -1265,6 +1265,7 @@ async def sync_attachments_to_reference(db: AsyncSession, doc: ApprovalDocument)
 async def update_document(
     doc_id: int,
     doc_in: ApprovalDocumentCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ):
