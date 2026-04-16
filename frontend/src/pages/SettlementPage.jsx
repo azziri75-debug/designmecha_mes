@@ -254,6 +254,20 @@ const SettlementPage = () => {
             });
 
             const ws = XLSX.utils.aoa_to_sheet([head1, [], head2, head3, ...body]);
+
+            // 열 너비 자동 맞춤
+            const colWidths = head3.map((h, i) => {
+                const maxLen = Math.max(
+                    h.length * 2,
+                    ...body.map(row => {
+                        const val = String(row[i] ?? '');
+                        return val.split('').reduce((acc, ch) => acc + (ch.charCodeAt(0) > 127 ? 2 : 1), 0);
+                    })
+                );
+                return { wch: Math.min(maxLen + 2, 50) }; // 최대 너비 50으로 제한
+            });
+            ws['!cols'] = colWidths;
+
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "AnnualPerformance");
             XLSX.writeFile(wb, fileName);
@@ -287,6 +301,19 @@ const SettlementPage = () => {
             header3,
             ...body
         ]);
+
+        // 열 너비 자동 맞춤
+        const colWidths = header3.map((h, i) => {
+            const maxLen = Math.max(
+                h.length * 2,
+                ...body.map(row => {
+                    const val = String(row[i] ?? '');
+                    return val.split('').reduce((acc, ch) => acc + (ch.charCodeAt(0) > 127 ? 2 : 1), 0);
+                })
+            );
+            return { wch: Math.min(maxLen + 2, 50) };
+        });
+        ws['!cols'] = colWidths;
 
         // 4. Merge Cells for titles
         ws['!merges'] = [
