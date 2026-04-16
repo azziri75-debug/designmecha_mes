@@ -23,6 +23,7 @@ import AttendancePage from './pages/AttendancePage';
 import ApprovalDraftPage from './components/ApprovalDraftPage';
 import SettlementPage from './pages/SettlementPage';
 import WeightCalculatorPage from './pages/WeightCalculatorPage';
+import MobileLayout from './components/MobileLayout';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
