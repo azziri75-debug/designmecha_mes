@@ -71,7 +71,7 @@ export default function usePushNotifications(userId) {
                     });
                 }
 
-                // 5. 서버로 구독 정보 전송
+                // 5. 서버로 구독 정보 전송 (항상 전송하여 DB 정합성 유지)
                 const p256dh = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh'))));
                 const auth = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth'))));
 
@@ -81,8 +81,9 @@ export default function usePushNotifications(userId) {
                     auth: auth.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
                 };
 
+                console.log('Syncing push subscription with server...');
                 await axios.post('/api/v1/notifications/subscribe', subData);
-                console.log('Push subscription sent to server');
+                console.log('Push subscription synced');
                 isSubscribedRef.current = true;
 
             } catch (error) {
