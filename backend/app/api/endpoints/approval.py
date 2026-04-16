@@ -234,6 +234,33 @@ async def list_documents(
     result = await db.execute(query)
     return result.scalars().all()
 
+@router.get("/debug_pending")
+async def debug_pending_approvals(db: AsyncSession = Depends(deps.get_db)):
+    """현재 스케줄러가 '대기중'으로 인식하는 모든 결재 건들을 정확히 덤프합니다 (문제 원인 분석용)"""
+    stmt = select(
+        ApprovalDocument.id.label('doc_id'),
+        ApprovalDocument.title,
+        ApprovalDocument.status.label('doc_status'),
+        ApprovalDocument.current_sequence,
+        ApprovalStep.id.label('step_id'),
+        ApprovalStep.status.label('step_status'),
+        ApprovalStep.sequence.label('step_sequence'),
+        ApprovalStep.approver_id,
+        Staff.name.label('approver_name')
+    ).join(
+        ApprovalStep, ApprovalDocument.id == ApprovalStep.document_id
+    ).join(
+        Staff, Staff.id == ApprovalStep.approver_id
+    ).where(
+        ApprovalStep.status == "PENDING",
+        ApprovalDocument.status.in_(["PENDING", "IN_PROGRESS"]),
+        ApprovalStep.sequence == ApprovalDocument.current_sequence,
+        ApprovalDocument.current_sequence > 0
+    )
+    
+    res = await db.execute(stmt)
+    return [dict(r._mapping) for r in res]
+
 @router.get("/documents/by-reference", response_model=Optional[ApprovalDocumentResponse])
 async def get_document_by_reference(
     reference_id: int,
