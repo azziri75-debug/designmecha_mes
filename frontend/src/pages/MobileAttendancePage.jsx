@@ -101,8 +101,20 @@ const MobileAttendancePage = () => {
 
     return (
         <div className="flex flex-col h-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
-            {/* Header */}
-            {/* Header was removed (now handled by MobileLayout) */}
+            {/* Sub Tabs for Attendance */}
+            <MuiBox sx={{ bgcolor: 'white', borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
+                <Tabs 
+                    value={activeTab} 
+                    onChange={handleTabChange} 
+                    variant="fullWidth"
+                    sx={{
+                        '& .MuiTab-root': { py: 1.5, fontWeight: 'bold' }
+                    }}
+                >
+                    <Tab label="출퇴근 기록" value="action" />
+                    <Tab label="나의 기록/연차" value="history" />
+                </Tabs>
+            </MuiBox>
 
             {activeTab === 'action' ? (
                 <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 space-y-8 overflow-y-auto">
