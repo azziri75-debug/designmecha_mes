@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional, List
+from typing import Optional, List, ClassVar
+import os
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "MES ERP System"
@@ -58,9 +59,11 @@ class Settings(BaseSettings):
         # Use SQLite for development fallback
         return "sqlite+aiosqlite:///./mes_erp_v2.db"
 
-    import os
-    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
-    model_config = SettingsConfigDict(case_sensitive=True, env_file=env_path)
+    model_config = SettingsConfigDict(
+        case_sensitive=True, 
+        env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+    )
+
 
 settings = Settings()
 
