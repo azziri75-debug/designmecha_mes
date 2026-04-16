@@ -1200,6 +1200,7 @@ async def startup_event():
                     from app.api.utils.status_cascade import complete_production_for_order, on_production_item_completed
                     from app.models.sales import SalesOrder, OrderStatus
                     from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
+                    from app.core.timezone import now_kst
                     
                     # A. 납품 완료된 수주 조사 및 연계
                     so_stmt = select(SalesOrder).where(SalesOrder.status == OrderStatus.DELIVERY_COMPLETED)
