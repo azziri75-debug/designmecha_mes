@@ -113,9 +113,9 @@ const MobileLayout = () => {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', bgcolor: '#f8f9fa', overflow: 'hidden' }}>
-            {/* Unified Mobile Header */}
-            <AppBar position="static" color="inherit" elevation={0} sx={{ borderBottom: '1px solid #eee' }}>
+        <Box sx={{ position: 'relative', height: '100%', bgcolor: '#f8f9fa', overflow: 'hidden' }}>
+            {/* Unified Mobile Header - Fixed at Top */}
+            <AppBar position="fixed" color="inherit" elevation={0} sx={{ borderBottom: '1px solid #eee', z-index: 1100 }}>
                 <Toolbar variant="dense" sx={{ justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         {(isSubView || location.pathname.startsWith('/mobile/attendance')) && (
@@ -147,18 +147,34 @@ const MobileLayout = () => {
                 </Toolbar>
             </AppBar>
 
-            {/* Content Area */}
-            <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+            {/* Content Area - Scrollable with padding for header/footer */}
+            <Box sx={{ 
+                position: 'absolute', 
+                top: 48, // Dense Toolbar height
+                bottom: 64, // Bottom Nav height
+                left: 0, 
+                right: 0, 
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch' // Smooth scroll on iOS
+            }}>
                 <Outlet />
             </Box>
 
-            {/* Global Bottom Navigation */}
-            <Paper sx={{ flexShrink: 0, boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' }} elevation={3}>
+            {/* Global Bottom Navigation - Fixed at Bottom */}
+            <Paper sx={{ 
+                position: 'fixed', 
+                bottom: 0, 
+                left: 0, 
+                right: 0, 
+                flexShrink: 0, 
+                boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+                z-index: 1100 
+            }} elevation={3}>
                 <BottomNavigation
                     showLabels
                     value={getActiveTab()}
                     onChange={handleTabChange}
-                    sx={{ height: 64, pb: 1 }}
+                    sx={{ height: 64, pb: 2 }} // Added pb for safe areas
                 >
                     <BottomNavigationAction label="생산현황" icon={<AssignmentIcon />} />
                     <BottomNavigationAction label="내 실적" icon={<BarChartIcon />} />
