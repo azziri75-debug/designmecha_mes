@@ -47,10 +47,18 @@ export default function usePushNotifications(userId) {
                 // 3. 백엔드에서 VAPID Public Key 가져오기
                 // 프론트엔드 .env 또는 백엔드 API에서 읽어옵니다.
                 let publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-                if (!publicKey) {
+                if (!publicKey || publicKey.includes('YOUR_VAPID') || publicKey === '""' || publicKey === "''") {
                      const response = await axios.get('/api/v1/notifications/vapid-public-key');
                      publicKey = response.data.public_key;
                 }
+
+                if (!publicKey || publicKey === '""' || publicKey === '') {
+                    console.log('No valid VAPID Public Key found');
+                    return;
+                }
+                
+                // .env에 따옴표가 그대로 문자열로 들어가는 것을 방지
+                publicKey = publicKey.replace(/['"]/g, '').trim();
 
                 // 4. Push 구독
                 const applicationServerKey = urlBase64ToUint8Array(publicKey);
