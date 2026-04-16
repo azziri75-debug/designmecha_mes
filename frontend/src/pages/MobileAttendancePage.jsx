@@ -14,6 +14,14 @@ import {
     HomeIcon
 } from '@heroicons/react/24/outline';
 
+import { 
+    Tabs, 
+    Tab, 
+    Box as MuiBox, 
+    Typography as MuiTypography,
+    Divider
+} from '@mui/material';
+
 const MobileAttendancePage = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -23,6 +31,10 @@ const MobileAttendancePage = () => {
     const [status, setStatus] = useState(null); // 'success' or 'error'
     const [activeTab, setActiveTab] = useState('action'); // action, history
     const [attendanceRecords, setAttendanceRecords] = useState([]);
+
+    const handleTabChange = (event, newValue) => {
+        setActiveTab(newValue);
+    };
 
     // Real-time clock
     useEffect(() => {
