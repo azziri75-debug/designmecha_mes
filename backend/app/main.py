@@ -1144,6 +1144,16 @@ async def startup_event():
                             
                     await db.commit()
                     print(f"Startup: Successfully removed {len(admins)-1} duplicate admin accounts.")
+                    
+                # Fix any stringified menu_permissions across all staff
+                all_staff_res = await db.execute(select(Staff))
+                for s in all_staff_res.scalars().all():
+                    if isinstance(s.menu_permissions, str):
+                        try:
+                            s.menu_permissions = json.loads(s.menu_permissions)
+                        except Exception:
+                            pass
+                await db.commit()
             except Exception as e:
                 print(f"Startup: Failed to clean duplicate admins: {e}")
                 await db.rollback()
