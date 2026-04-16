@@ -271,29 +271,36 @@ async def create_document(
             doc_in.doc_type = "LEAVE_REQUEST"
 
         # 2. Duplicate Check for Attendance
+        from datetime import datetime, timedelta
         if doc_in.doc_type in ["LEAVE_REQUEST", "EARLY_LEAVE", "OVERTIME"]:
             content = doc_in.content or {}
-            target_dates = []
-            if doc_in.doc_type == "VACATION":
-                s_date = content.get("start_date")
-                e_date = content.get("end_date") or s_date
-                if s_date:
-                    # Basic range check (could be more sophisticated with daily overlaps)
-                    target_dates = [s_date] 
+            target_dates_set = set()
+
+            if doc_in.doc_type == "LEAVE_REQUEST":
+                s_date_str = content.get("start_date")
+                e_date_str = content.get("end_date") or s_date_str
+                if s_date_str and e_date_str:
+                    try:
+                        s_dt = datetime.strptime(s_date_str[:10], "%Y-%m-%d").date()
+                        e_dt = datetime.strptime(e_date_str[:10], "%Y-%m-%d").date()
+                        curr = s_dt
+                        while curr <= e_dt:
+                            target_dates_set.add(curr.strftime("%Y-%m-%d"))
+                            curr += timedelta(days=1)
+                    except ValueError:
+                        pass
             else:
                 t_date = content.get("date")
-                if t_date: target_dates = [t_date]
+                if t_date: 
+                    target_dates_set.add(t_date[:10])
             
-            if target_dates:
-                # Check for existing non-rejected documents of the same type or other attendance types on the same date
-                # To keep it simple and DB agnostic, we fetch recent docs for the user and filter in Python
-                # Usually only a handful of docs per user per month
+            if target_dates_set:
                 recent_limit = now_kst() - timedelta(days=60)
                 stmt = select(ApprovalDocument).where(
                     ApprovalDocument.author_id == current_user.id,
-                    ApprovalDocument.doc_type.in_(["VACATION", "EARLY_LEAVE", "OVERTIME", "LEAVE_REQUEST"]),
+                    ApprovalDocument.doc_type.in_(["VACATION", "LEAVE_REQUEST", "EARLY_LEAVE", "OVERTIME"]),
                     ApprovalDocument.status.notin_([ApprovalStatus.REJECTED, ApprovalStatus.CANCELLED]),
-                    ApprovalDocument.deleted_at.is_(None),  # 소프트 삭제된 문서 제외 (Bug #3 대응)
+                    ApprovalDocument.deleted_at.is_(None),
                     ApprovalDocument.created_at >= recent_limit
                 )
                 result = await db.execute(stmt)
@@ -301,12 +308,28 @@ async def create_document(
                 
                 for edoc in existing_docs:
                     ec = edoc.content or {}
-                    if edoc.doc_type == "VACATION":
-                        if ec.get("start_date") in target_dates or ec.get("end_date") in target_dates:
-                            raise HTTPException(status_code=400, detail="해당 일자 인근에 이미 등록된 근태 내역이 있습니다. 다른 날짜를 선택해 주세요.")
+                    edoc_dates = set()
+                    
+                    if edoc.doc_type in ["VACATION", "LEAVE_REQUEST"]:
+                        es_str = ec.get("start_date")
+                        ee_str = ec.get("end_date") or es_str
+                        if es_str and ee_str:
+                            try:
+                                es_dt = datetime.strptime(es_str[:10], "%Y-%m-%d").date()
+                                ee_dt = datetime.strptime(ee_str[:10], "%Y-%m-%d").date()
+                                curr = es_dt
+                                while curr <= ee_dt:
+                                    edoc_dates.add(curr.strftime("%Y-%m-%d"))
+                                    curr += timedelta(days=1)
+                            except ValueError:
+                                pass
                     else:
-                        if ec.get("date") in target_dates:
-                            raise HTTPException(status_code=400, detail="해당 일자에 이미 등록된 근태 내역이 있습니다. 다른 날짜를 선택해 주세요.")
+                        et_date = ec.get("date")
+                        if et_date:
+                            edoc_dates.add(et_date[:10])
+                    
+                    if target_dates_set.intersection(edoc_dates):
+                        raise HTTPException(status_code=400, detail="해당 일자에 이미 등록된 근태 내역이 있습니다. 다른 날짜를 선택해 주세요.")
 
         # 1.5 Duplicate Check for Linked Documents (Purchase Order, etc.)
         if doc_in.reference_id and doc_in.reference_type:
@@ -1294,6 +1317,69 @@ async def update_document(
         doc.title = doc_in.title
         doc.content = doc_in.content
         doc.attachment_file = doc_in.attachment_file
+
+        # 2. Duplicate Check for Attendance (update version)
+        from datetime import datetime, timedelta
+        if doc.doc_type in ["LEAVE_REQUEST", "EARLY_LEAVE", "OVERTIME", "VACATION"]:
+            # doc_in.doc_type may not be correctly passed on PUT sometimes, use doc.doc_type
+            content = doc_in.content or {}
+            target_dates_set = set()
+
+            if doc.doc_type in ["LEAVE_REQUEST", "VACATION"]:
+                s_date_str = content.get("start_date")
+                e_date_str = content.get("end_date") or s_date_str
+                if s_date_str and e_date_str:
+                    try:
+                        s_dt = datetime.strptime(s_date_str[:10], "%Y-%m-%d").date()
+                        e_dt = datetime.strptime(e_date_str[:10], "%Y-%m-%d").date()
+                        curr = s_dt
+                        while curr <= e_dt:
+                            target_dates_set.add(curr.strftime("%Y-%m-%d"))
+                            curr += timedelta(days=1)
+                    except ValueError:
+                        pass
+            else:
+                t_date = content.get("date")
+                if t_date: 
+                    target_dates_set.add(t_date[:10])
+            
+            if target_dates_set:
+                recent_limit = now_kst() - timedelta(days=60)
+                stmt = select(ApprovalDocument).where(
+                    ApprovalDocument.id != doc.id,  # Exclude self
+                    ApprovalDocument.author_id == current_user.id,
+                    ApprovalDocument.doc_type.in_(["VACATION", "LEAVE_REQUEST", "EARLY_LEAVE", "OVERTIME"]),
+                    ApprovalDocument.status.notin_([ApprovalStatus.REJECTED, ApprovalStatus.CANCELLED]),
+                    ApprovalDocument.deleted_at.is_(None),
+                    ApprovalDocument.created_at >= recent_limit
+                )
+                result = await db.execute(stmt)
+                existing_docs = result.scalars().all()
+                
+                for edoc in existing_docs:
+                    ec = edoc.content or {}
+                    edoc_dates = set()
+                    
+                    if edoc.doc_type in ["VACATION", "LEAVE_REQUEST"]:
+                        es_str = ec.get("start_date")
+                        ee_str = ec.get("end_date") or es_str
+                        if es_str and ee_str:
+                            try:
+                                es_dt = datetime.strptime(es_str[:10], "%Y-%m-%d").date()
+                                ee_dt = datetime.strptime(ee_str[:10], "%Y-%m-%d").date()
+                                curr = es_dt
+                                while curr <= ee_dt:
+                                    edoc_dates.add(curr.strftime("%Y-%m-%d"))
+                                    curr += timedelta(days=1)
+                            except ValueError:
+                                pass
+                    else:
+                        et_date = ec.get("date")
+                        if et_date:
+                            edoc_dates.add(et_date[:10])
+                    
+                    if target_dates_set.intersection(edoc_dates):
+                        raise HTTPException(status_code=400, detail="해당 일자(들)에 이미 작성된/제출된 다른 근태 내역이 겹칩니다. 다른 날짜를 선택해 주세요.")
         
         # Update attachments
         if doc_in.attachments_to_add is not None:
