@@ -7,7 +7,7 @@ from sqlalchemy import select
 from typing import Dict, Any, List
 
 def _send_web_push(subscription: PushSubscription, payload: Dict[str, Any]):
-    if not settings.VAPID_PRIVATE_KEY:
+    if not settings.VAPID_PRIVATE_KEY_STR:
         return False
         
     try:
@@ -22,7 +22,7 @@ def _send_web_push(subscription: PushSubscription, payload: Dict[str, Any]):
         webpush(
             subscription_info=sub_info,
             data=json.dumps(payload),
-            vapid_private_key=settings.VAPID_PRIVATE_KEY,
+            vapid_private_key=settings.VAPID_PRIVATE_KEY_STR,
             vapid_claims={"sub": settings.VAPID_SUBJECT}
         )
         print(f"[DEBUG] Web push success for staff_id: {subscription.staff_id}")

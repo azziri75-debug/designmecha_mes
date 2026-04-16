@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     VAPID_PUBLIC_KEY: str = ""
     VAPID_PRIVATE_KEY: str = ""
     VAPID_SUBJECT: str = "mailto:no-reply@designmecha.co.kr"
+
+    @property
+    def VAPID_PUBLIC_KEY_STR(self) -> str:
+        return self.VAPID_PUBLIC_KEY.replace('"', '').replace("'", "").strip()
+
+    @property
+    def VAPID_PRIVATE_KEY_STR(self) -> str:
+        return self.VAPID_PRIVATE_KEY.replace('"', '').replace("'", "").strip()
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [

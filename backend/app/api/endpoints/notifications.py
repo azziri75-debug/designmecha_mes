@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("/vapid-public-key")
 async def get_vapid_public_key() -> Any:
     """프론트엔드에 VAPID 퍼블릭 키 제공"""
-    return {"public_key": settings.VAPID_PUBLIC_KEY}
+    return {"public_key": settings.VAPID_PUBLIC_KEY_STR}
 
 @router.post("/subscribe")
 async def subscribe_push_notification(
