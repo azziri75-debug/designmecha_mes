@@ -87,8 +87,10 @@ const App = () => {
         <Route path="complaints" element={<ProtectedRoute menuKey="quality_complaints"><CustomerComplaintPage /></ProtectedRoute>} />
         <Route path="db-management" element={<ProtectedRoute menuKey="ADMIN"><DataManagementPage /></ProtectedRoute>} />
       </Route>
-      <Route path="/mobile/work-logs" element={<ProtectedRoute><MobileWorkLogPage /></ProtectedRoute>} />
-      <Route path="/mobile/attendance" element={<ProtectedRoute><MobileAttendancePage /></ProtectedRoute>} />
+      <Route path="/mobile" element={<ProtectedRoute><MobileLayout /></ProtectedRoute>}>
+        <Route path="work-logs" element={<MobileWorkLogPage />} />
+        <Route path="attendance" element={<MobileAttendancePage />} />
+      </Route>
       <Route path="/weight-calculator" element={<WeightCalculatorPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

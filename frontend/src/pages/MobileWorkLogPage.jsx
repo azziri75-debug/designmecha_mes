@@ -651,39 +651,11 @@ const MobileWorkLogPage = () => {
         <Box sx={{
             display: 'flex',
             flexDirection: 'column',
-            height: '100vh',
+            height: '100%',
             backgroundColor: '#f8f9fa',
             overflow: 'hidden'
         }}>
-            {/* Header */}
-            <Paper elevation={0} sx={{ p: 2, borderBottom: '1px solid #eee', flexShrink: 0, borderRadius: 0 }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between">
-                    <Stack direction="row" alignItems="center" spacing={1}>
-                        {(selectedPlan || selectedItem) && tab === 0 && (
-                            <IconButton size="small" onClick={() => {
-                                if (selectedItem) setSelectedItem(null);
-                                else setSelectedPlan(null);
-                            }}>
-                                <ArrowBackIcon fontSize="small" />
-                            </IconButton>
-                        )}
-                        <Typography variant="h6" fontWeight="bold">
-                            {tab === 0 ? (selectedItem ? "실적 등록" : selectedPlan ? "공정 선택" : "생산 현황") : tab === 1 ? "내 실적 확인" : tab === 2 ? "전자결재" : "근태 현황"}
-                        </Typography>
-                    </Stack>
-                    <Stack direction="row" spacing={0.5}>
-                        <IconButton size="small" onClick={() => navigate('/mobile/attendance')}>
-                            <ClockIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={handleLogout}>
-                            <LogoutIcon fontSize="small" />
-                        </IconButton>
-                    </Stack>
-                </Stack>
-                <Typography variant="caption" color="textSecondary">
-                    {user.name} ({user.role || '사용자'})
-                </Typography>
-            </Paper>
+            {/* Header was removed (now handled by MobileLayout) */}
 
             {/* Swipe Area */}
             <Box
@@ -1392,36 +1364,7 @@ const MobileWorkLogPage = () => {
                 </Box>
             </Box >
 
-            {/* Bottom Nav */}
-            < Paper sx={{ flexShrink: 0 }} elevation={10} >
-                <BottomNavigation
-                    showLabels
-                    value={tab}
-                    onChange={(event, newValue) => {
-                        setSearchParams({ tab: newValue });
-                        if (newValue !== 0) {
-                            setSearchParams({ tab: newValue });
-                        }
-                    }}
-                >
-                    <BottomNavigationAction label="생산현황" icon={<AssignmentIcon />} />
-                    <BottomNavigationAction label="내 실적" icon={<BarChartIcon />} />
-                    <BottomNavigationAction
-                        label="전자결재"
-                        icon={
-                            <Badge
-                                badgeContent={waitingCount}
-                                color="error"
-                                max={9}
-                                sx={{ '& .MuiBadge-badge': { fontSize: '9px', height: 16, minWidth: 16, right: -2, top: 2 } }}
-                            >
-                                <DescriptionIcon />
-                            </Badge>
-                        }
-                    />
-                    <BottomNavigationAction label="근태현황" icon={<AssignmentIndIcon />} />
-                </BottomNavigation>
-            </Paper >
+            {/* Bottom Nav was removed (now handled by MobileLayout) */}
 
             {/* Conflict Dialog */}
             < Dialog open={conflictOpen} onClose={() => setConflictOpen(false)}>

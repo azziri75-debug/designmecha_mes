@@ -88,25 +88,9 @@ const MobileAttendancePage = () => {
     });
 
     return (
-        <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
+        <div className="flex flex-col h-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
             {/* Header */}
-            <header className="flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-slate-100 shadow-sm">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-                >
-                    <ArrowLeftIcon className="w-6 h-6 text-slate-600" />
-                </button>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    근태 관리
-                </h1>
-                <button
-                    onClick={() => { if (window.confirm('로그아웃 하시겠습니까?')) { logout(); navigate('/login'); } }}
-                    className="p-2 hover:bg-red-50 rounded-full transition-colors"
-                >
-                    <ArrowRightOnRectangleIcon className="w-6 h-6 text-red-500" />
-                </button>
-            </header>
+            {/* Header was removed (now handled by MobileLayout) */}
 
             {activeTab === 'action' ? (
                 <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 space-y-8 overflow-y-auto">
@@ -255,32 +239,7 @@ const MobileAttendancePage = () => {
                 </main>
             )}
 
-            {/* Bottom Navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-200 flex justify-around py-2 pb-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                <button
-                    onClick={() => navigate('/mobile/work-logs')}
-                    className="flex flex-col items-center space-y-1 text-slate-400 active:scale-95 transition-all py-1 px-4"
-                >
-                    <HomeIcon className="w-6 h-6" />
-                    <span className="text-[10px] font-bold uppercase tracking-tighter">홈</span>
-                </button>
-                <button
-                    onClick={() => setActiveTab('action')}
-                    className={`flex flex-col items-center space-y-1 transition-all py-1 px-4 ${activeTab === 'action' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
-                >
-                    <ClockIcon className="w-6 h-6" />
-                    <span className="text-[10px] font-bold uppercase tracking-tighter">출퇴근</span>
-                    {activeTab === 'action' && <div className="w-1 h-1 bg-blue-600 rounded-full mt-0.5" />}
-                </button>
-                <button
-                    onClick={() => setActiveTab('history')}
-                    className={`flex flex-col items-center space-y-1 transition-all py-1 px-4 ${activeTab === 'history' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}
-                >
-                    <ListBulletIcon className="w-6 h-6" />
-                    <span className="text-[10px] font-bold uppercase tracking-tighter">기록</span>
-                    {activeTab === 'history' && <div className="w-1 h-1 bg-blue-600 rounded-full mt-0.5" />}
-                </button>
-            </nav>
+            {/* Bottom Nav was removed (now handled by MobileLayout) */}
 
             {/* Loading Overlay (Optional, but good for UX) */}
             {loading && (
