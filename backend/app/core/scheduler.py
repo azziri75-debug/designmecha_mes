@@ -16,36 +16,36 @@ async def check_pending_approvals_and_notify():
     """
     async with AsyncSessionLocal() as db:
         # 현재 내 차례(sequence == current_sequence)이면서, PENDING 상태인 Step 검색
+        # 결재 대기 중인 항목 조회 (문서 상태가 PENDING 혹은 IN_PROGRESS인 것만)
         stmt = select(ApprovalStep.approver_id, func.count(ApprovalStep.id)).join(
             ApprovalDocument, ApprovalDocument.id == ApprovalStep.document_id
         ).where(
             ApprovalStep.status == "PENDING",
             ApprovalDocument.status.in_(["PENDING", "IN_PROGRESS"]),
-            ApprovalStep.sequence == ApprovalDocument.current_sequence
+            ApprovalStep.sequence == ApprovalDocument.current_sequence,
+            # [ADD] Ensure we don't count logically finished but incorrectly marked documents
+            ApprovalDocument.current_sequence > 0
         ).group_by(ApprovalStep.approver_id)
         
         result = await db.execute(stmt)
-        pending_counts = result.all() # list of (approver_id, count)
+        pending_counts = result.fetchall()
         
-        if not pending_counts:
-            return
-            
-        # 직원의 이름 등을 가져오기 위해 활성 직원 목록 조회
-        staff_res = await db.execute(select(Staff).where(Staff.is_active == True))
-        active_staff_dict = {s.id: s.name for s in staff_res.scalars().all()}
+        print(f"[DEBUG] Scheduler found {len(pending_counts)} approvers with pending tasks.")
         
         for approver_id, count in pending_counts:
-            staff_name = active_staff_dict.get(approver_id)
-            if not staff_name:
-                continue
+            staff_result = await db.execute(select(Staff).where(Staff.id == approver_id))
+            staff = staff_result.scalar_one_or_none()
+            
+            if staff and count > 0:
+                title = "[결재 대기] 처리할 문서가 있습니다"
+                body = f"{staff.name}님, 현재 처리 대기 중인 결재 문서가 {count}건 있습니다."
+                # [FIX] URL should favor the mobile-redirect-ready path for mobile users
+                url = "/approval" 
                 
-            # 푸시 알림 발송
-            asyncio.create_task(send_push_notification(
-                user_id=approver_id,
-                title="[결재 대기] 처리할 문서가 있습니다",
-                body=f"{staff_name}님, 현재 처리 대기 중인 결재 문서가 {count}건 있습니다.",
-                url="/approval"
-            ))
+                print(f"[DEBUG] Sending pending reminder to {staff.name} (staff_id: {approver_id}), count: {count}")
+                # 푸시 알림 발송 - await to ensure database is not closed before task starts if needed, 
+                # but create_task is okay if we don't rely on the session inside the task.
+                await send_push_notification(approver_id, title, body, url)
 
 async def check_attendance_and_notify():
     """
