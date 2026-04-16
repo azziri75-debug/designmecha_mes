@@ -115,7 +115,7 @@ const MobileLayout = () => {
     return (
         <Box sx={{ position: 'relative', height: '100%', bgcolor: '#f8f9fa', overflow: 'hidden' }}>
             {/* Unified Mobile Header - Fixed at Top */}
-            <AppBar position="fixed" color="inherit" elevation={0} sx={{ borderBottom: '1px solid #eee', z-index: 1100 }}>
+            <AppBar position="fixed" color="inherit" elevation={0} sx={{ borderBottom: '1px solid #eee', zIndex: 1100 }}>
                 <Toolbar variant="dense" sx={{ justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         {(isSubView || location.pathname.startsWith('/mobile/attendance')) && (
@@ -168,7 +168,7 @@ const MobileLayout = () => {
                 right: 0, 
                 flexShrink: 0, 
                 boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
-                z-index: 1100 
+                zIndex: 1100 
             }} elevation={3}>
                 <BottomNavigation
                     showLabels
