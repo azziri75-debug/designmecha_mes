@@ -1132,7 +1132,7 @@ async def startup_event():
                     FULL_PERMISSIONS = {k: {"view": True, "edit": True, "price": True} for k in 
                         ["dashboard", "basics", "products", "sales", "production", "quality", 
                          "materials", "outsourcing", "attendance", "approval", "hr", "ADMIN"]}
-                    primary_admin.menu_permissions = json.dumps(FULL_PERMISSIONS)
+                    primary_admin.menu_permissions = FULL_PERMISSIONS
                     db.add(primary_admin)
                     
                     # Delete duplicates
