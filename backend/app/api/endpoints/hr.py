@@ -8,6 +8,8 @@ from app.api import deps
 from app.core.timezone import now_kst, KST
 from app.models.approval import ApprovalDocument, ApprovalStatus
 from app.models import Staff, Company, EmployeeTimeRecord, AttendanceStatus
+from app.utils.push import send_push_notification
+import asyncio
 from app.schemas.hr import (
     AttendanceSummaryResponse, 
     AttendanceDocItem, 
@@ -436,6 +438,14 @@ async def clock_in(
             _json.dumps({"type": "clock_in", "staff_id": data.staff_id})
         )
 
+    # 푸시 알림: 등록 성공 알림
+    asyncio.create_task(send_push_notification(
+        user_id=data.staff_id,
+        title="출근 완료",
+        body=f"{now.strftime('%H:%M')} 출근 기록이 성공적으로 등록되었습니다.",
+        url="/attendance"
+    ))
+
     return {"message": "Clock-in recorded", "status": status, "time": now}
 
 
@@ -514,6 +524,14 @@ async def clock_out(
             "attendance_updated",
             _json.dumps({"type": "clock_out", "staff_id": data.staff_id})
         )
+
+    # 푸시 알림: 등록 성공 알림
+    asyncio.create_task(send_push_notification(
+        user_id=data.staff_id,
+        title="퇴근 완료",
+        body=f"{now.strftime('%H:%M')} 퇴근 기록이{' (조퇴)' if is_early else ''} 성공적으로 등록되었습니다. 고생하셨습니다!",
+        url="/attendance"
+    ))
 
     return {"message": "Clock-out recorded", "is_early_leave": is_early, "time": now}
 

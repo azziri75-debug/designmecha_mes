@@ -52,7 +52,7 @@ async def check_attendance_and_notify():
     매 분마다 실행되어 현재 시각이 회사 출/퇴근 시각인지 확인.
     시각이 일치하면, 오늘자 출퇴근 기록이 없는 활성 직원들에게 푸시 알림.
     """
-    now = datetime.now()
+    now = now_kst()
     # 월~금 (0~4) 외에는 발송하지 않음
     if now.weekday() > 4:
         return
@@ -73,7 +73,12 @@ async def check_attendance_and_notify():
         is_end_time = (current_time_str == end_time_str)
         
         if not is_start_time and not is_end_time:
+            # 매 10분마다 스케줄러 생존 신고 로그 (선택 사항)
+            if now.minute % 10 == 0:
+                print(f"Scheduler: Attendance check active at {current_time_str} (Target: {start_time_str}/{end_time_str})")
             return
+            
+        print(f"⏰ [NOTIFY] Attendance trigger hit at {current_time_str}!")
             
         # 알림 발송 대상: 오늘(record_date == today) EmployeeTimeRecord가 아직 없는 직원 또는 출/퇴근 항목이 비어있는 직원
         today_date = now.date()
@@ -92,13 +97,13 @@ async def check_attendance_and_notify():
             record = today_records.get(staff.id)
             need_notify = False
             message = ""
-            title = "근태 알림"
+            title = "근태 관리 알람"
             
             if is_start_time:
                 # 출근 시각 검사
                 if not record or not record.clock_in_time:
                     need_notify = True
-                    message = f"{staff.name}님, 좋은 아침입니다! 출근 기록을 잊지 마세요."
+                    message = f"{staff.name}님, 좋은 아침입니다! 아직 출근 기록이 없습니다. 기록을 잊지 마세요."
             
             elif is_end_time:
                 # 퇴근 시각 검사
@@ -107,6 +112,7 @@ async def check_attendance_and_notify():
                     message = f"{staff.name}님, 오늘 하루 고생하셨습니다! 퇴근 전 기록을 잊지 마세요."
             
             if need_notify:
+                print(f"   >> Sending {title} to {staff.name} ({staff.id})")
                 # 비동기적으로 푸시 알림 백그라운드 발송
                 asyncio.create_task(send_push_notification(
                     user_id=staff.id,
