@@ -24,6 +24,7 @@ import ApprovalDraftPage from './components/ApprovalDraftPage';
 import SettlementPage from './pages/SettlementPage';
 import WeightCalculatorPage from './pages/WeightCalculatorPage';
 import MobileLayout from './components/MobileLayout';
+import MobileRedirectHandler from './components/MobileRedirectHandler';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -62,7 +63,9 @@ const App = () => {
   }
 
   return (
-    <Routes>
+    <>
+      <MobileRedirectHandler />
+      <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/" element={<Layout />}>
         <Route index element={<RootRedirect />} />
@@ -95,6 +98,7 @@ const App = () => {
       <Route path="/weight-calculator" element={<WeightCalculatorPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 };
 

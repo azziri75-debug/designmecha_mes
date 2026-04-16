@@ -509,7 +509,7 @@ async def create_document(
                 background_tasks.add_task(
                     send_push_notification,
                     user_id=next_step.approver_id,
-                    title="새로운 결재 요청",
+                    title="[결재 요청] 새로운 문서가 도착했습니다",
                     body=f"{current_user.name}님이 기안한 '{db_doc.title}' 건이 도착했습니다.",
                     url="/approval"
                 )
@@ -827,7 +827,7 @@ async def process_approval(
         background_tasks.add_task(
             send_push_notification,
             user_id=doc.author_id,
-            title="결재 반려 알림",
+            title="[결재 반려] 기안하신 문서가 반려되었습니다",
             body=f"기안하신 '{doc.title}' 건이 반려되었습니다.",
             url="/approval"
         )
@@ -862,9 +862,9 @@ async def process_approval(
                 background_tasks.add_task(
                     send_push_notification,
                     user_id=next_approver.id,
-                    title="새로운 결재 요청",
-                    body=f"'{doc.title}' 결재 차례입니다.",
-                    url="/approval"
+                title="[결재 요청] 결재 차례입니다",
+                body=f"'{doc.title}' 결재 차례입니다.",
+                url="/approval"
                 )
         else:
             doc.status = ApprovalStatus.COMPLETED
@@ -887,7 +887,7 @@ async def process_approval(
             background_tasks.add_task(
                 send_push_notification,
                 user_id=doc.author_id,
-                title="결재 완료 통보",
+                title="[결재 완료] 기안하신 문서가 승인되었습니다",
                 body=f"기안하신 '{doc.title}' 건이 최종 승인되었습니다.",
                 url="/approval"
             )
@@ -1510,7 +1510,7 @@ async def update_document(
                 background_tasks.add_task(
                     send_push_notification,
                     user_id=next_step.approver_id,
-                    title="새로운 결재 요청",
+                    title="[결재 요청] 새로운 문서가 도착했습니다",
                     body=f"{current_user.name}님이 기안한 '{doc.title}' 건이 도착했습니다.",
                     url="/approval"
                 )

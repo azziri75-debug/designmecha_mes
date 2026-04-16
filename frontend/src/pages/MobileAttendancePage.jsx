@@ -131,7 +131,7 @@ const MobileAttendancePage = () => {
             </MuiBox>
 
             {activeTab === 'action' ? (
-                <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 space-y-8 overflow-y-auto">
+                <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 space-y-8">
                     {/* User Info & Clock */}
                     <div className="text-center space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <p className="text-slate-500 text-sm font-medium">반갑습니다, <span className="text-slate-900 font-bold">{user?.name}님</span></p>

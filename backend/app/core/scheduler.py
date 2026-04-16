@@ -42,7 +42,7 @@ async def check_pending_approvals_and_notify():
             # 푸시 알림 발송
             asyncio.create_task(send_push_notification(
                 user_id=approver_id,
-                title="결재 대기 알림",
+                title="[결재 대기] 처리할 문서가 있습니다",
                 body=f"{staff_name}님, 현재 처리 대기 중인 결재 문서가 {count}건 있습니다.",
                 url="/approval"
             ))

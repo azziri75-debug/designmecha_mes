@@ -441,7 +441,7 @@ async def clock_in(
     # 푸시 알림: 등록 성공 알림
     asyncio.create_task(send_push_notification(
         user_id=data.staff_id,
-        title="출근 완료",
+        title="[근태] 출근 완료",
         body=f"{now.strftime('%H:%M')} 출근 기록이 성공적으로 등록되었습니다.",
         url="/attendance"
     ))
@@ -528,7 +528,7 @@ async def clock_out(
     # 푸시 알림: 등록 성공 알림
     asyncio.create_task(send_push_notification(
         user_id=data.staff_id,
-        title="퇴근 완료",
+        title="[근태] 퇴근 완료",
         body=f"{now.strftime('%H:%M')} 퇴근 기록이{' (조퇴)' if is_early else ''} 성공적으로 등록되었습니다. 고생하셨습니다!",
         url="/attendance"
     ))

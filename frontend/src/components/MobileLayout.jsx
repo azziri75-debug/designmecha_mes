@@ -113,7 +113,7 @@ const MobileLayout = () => {
     };
 
     return (
-        <Box sx={{ position: 'relative', height: '100%', bgcolor: '#f8f9fa', overflow: 'hidden' }}>
+        <Box sx={{ bgcolor: '#f8f9fa' }}>
             {/* Unified Mobile Header - Fixed at Top */}
             <AppBar position="fixed" color="inherit" elevation={0} sx={{ borderBottom: '1px solid #eee', zIndex: 1100 }}>
                 <Toolbar variant="dense" sx={{ justifyContent: 'space-between' }}>
@@ -147,15 +147,12 @@ const MobileLayout = () => {
                 </Toolbar>
             </AppBar>
 
-            {/* Content Area - Scrollable with padding for header/footer */}
+            {/* Content Area - Natural Scroll with padding for fixed header/footer */}
             <Box sx={{ 
-                position: 'absolute', 
-                top: 48, // Dense Toolbar height
-                bottom: 64, // Bottom Nav height
-                left: 0, 
-                right: 0, 
-                overflowY: 'auto',
-                WebkitOverflowScrolling: 'touch' // Smooth scroll on iOS
+                pt: '48px', // Dense Toolbar height
+                pb: '80px', // Bottom Nav height + extra space
+                minHeight: '100vh',
+                boxSizing: 'border-box'
             }}>
                 <Outlet />
             </Box>

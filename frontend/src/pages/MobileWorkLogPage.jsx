@@ -651,9 +651,7 @@ const MobileWorkLogPage = () => {
         <Box sx={{
             display: 'flex',
             flexDirection: 'column',
-            height: '100%',
             backgroundColor: '#f8f9fa',
-            overflow: 'hidden'
         }}>
             {/* Header was removed (now handled by MobileLayout) */}
 
@@ -661,8 +659,8 @@ const MobileWorkLogPage = () => {
             <Box
                 sx={{
                     flex: 1,
-                    overflow: 'hidden',
-                    position: 'relative'
+                    position: 'relative',
+                    overflowX: 'hidden' // Only hidden on X to allow swipes
                 }}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
@@ -671,12 +669,11 @@ const MobileWorkLogPage = () => {
                 <Box sx={{
                     display: 'flex',
                     width: '400%',
-                    height: '100%',
                     transform: `translateX(-${tab * 25}%)`,
                     transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}>
                     {/* Tab 1: Production Status */}
-                    <Box sx={{ width: '25%', p: 2, overflowY: 'auto' }}>
+                    <Box sx={{ width: '25%', p: 2 }}>
                         {!selectedPlan && !selectedItem ? (
                             /* Step 1: Browse Production Plans */
                             <Box>
@@ -948,7 +945,7 @@ const MobileWorkLogPage = () => {
                     </Box>
 
                     {/* Tab 2: Performance */}
-                    <Box sx={{ width: '25%', p: 2, overflowY: 'auto' }}>
+                    <Box sx={{ width: '25%', p: 2 }}>
                         {/* Filters & Summary */}
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 3, backgroundColor: '#1a237e', color: '#fff' }}>
                             <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
@@ -1165,7 +1162,7 @@ const MobileWorkLogPage = () => {
                     </Box>
 
                     {/* Tab 3: Approval */}
-                    <Box sx={{ width: '25%', p: 2, overflowY: 'auto', bgcolor: '#f1f5f9' }}>
+                    <Box sx={{ width: '25%', p: 2, bgcolor: '#f1f5f9' }}>
                         <Stack direction="row" spacing={1} sx={{ mb: 2, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { display: 'none' } }}>
                             {[
                                 { id: 'ALL', label: '전체' },
@@ -1263,7 +1260,7 @@ const MobileWorkLogPage = () => {
                     </Box>
 
                     {/* Tab 4: Attendance */}
-                    <Box sx={{ width: '25%', p: 2, overflowY: 'auto' }}>
+                    <Box sx={{ width: '25%', p: 2 }}>
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
                             <Stack direction="row" spacing={1} sx={{ mb: user?.user_type === 'ADMIN' ? 1.5 : 0 }}>
                                 <FormControl size="small" fullWidth>
