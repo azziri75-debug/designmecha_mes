@@ -1,9 +1,3 @@
-import bcrypt
-if not hasattr(bcrypt, "__about__"):
-    class About:
-        __version__ = getattr(bcrypt, "__version__", getattr(bcrypt, "__version", "4.0.0"))
-    bcrypt.__about__ = About()
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -1104,9 +1098,8 @@ async def startup_event():
 
             # 7. [EMERGENCY] Initialize Admin User via Raw SQL (Bypassing ORM constraints)
             try:
-                from passlib.context import CryptContext
-                pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-                hashed_pw = pwd_context.hash('5446220')
+                from app.api.endpoints.basics import get_password_hash
+                hashed_pw = get_password_hash('5446220')
                 
                 # Full permissions for admin (JSON structure)
                 FULL_PERMISSIONS = {

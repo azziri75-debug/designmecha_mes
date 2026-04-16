@@ -7,8 +7,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional, Any
 from pydantic import BaseModel
 import difflib
-from passlib.context import CryptContext
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 import openpyxl
 import io
 from datetime import date, timedelta
@@ -33,6 +32,16 @@ from app.schemas.basics import (
 from dateutil.relativedelta import relativedelta
 
 router = APIRouter()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except Exception:
+        return False
+
+def get_password_hash(password: str) -> str:
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 # --- Login ---
 class LoginRequest(BaseModel):
@@ -108,7 +117,7 @@ async def login(
     is_password_correct = False
     try:
         # 1. Try bcrypt verification first
-        is_password_correct = pwd_context.verify(input_pw, db_pw)
+        is_password_correct = verify_password(input_pw, db_pw)
     except Exception as e:
         print(f"Login Debug: Bcrypt verify error for {req.username}: {e}")
         is_password_correct = False
