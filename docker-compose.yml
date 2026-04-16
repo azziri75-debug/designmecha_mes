@@ -21,6 +21,9 @@ services:
     restart: always
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/mes_erp
+      VAPID_PUBLIC_KEY: "BFvMuX89nu5xk5ILOEW62q_annBOu1gMikcQt1fan57wjf8_F54YPuwCXAUtl13NlYxld4MAmJUqOSolMILr60c"
+      VAPID_PRIVATE_KEY: "2l1HeermhGSR-_3UlFHNlg4cTHkb7CdNBTot3ZOYnlg"
+      VAPID_SUBJECT: "mailto:no-reply@designmecha.co.kr"
     volumes:
       - ./backend/uploads:/app/uploads
     ports:

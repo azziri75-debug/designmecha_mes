@@ -59,10 +59,7 @@ class Settings(BaseSettings):
         # Use SQLite for development fallback
         return "sqlite+aiosqlite:///./mes_erp_v2.db"
 
-    model_config = SettingsConfigDict(
-        case_sensitive=True, 
-        env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
-    )
+    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 
 
 settings = Settings()
@@ -73,4 +70,5 @@ if not settings.VAPID_PUBLIC_KEY_STR:
     print("[WARNING] VAPID_PUBLIC_KEY is not set or empty!")
 else:
     print(f"[CONFIG] VAPID Public Key loaded (starts with: {settings.VAPID_PUBLIC_KEY_STR[:10]}...)")
+
 
