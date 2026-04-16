@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Any
 from app.api import deps
-from app.models.hr import Staff
+from app.models.basics import Staff
 from app.models.notification import PushSubscription
 from app.schemas.notification import PushSubscriptionCreate
 from app.core.config import settings
