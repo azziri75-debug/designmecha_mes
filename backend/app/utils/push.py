@@ -18,21 +18,24 @@ def _send_web_push(subscription: PushSubscription, payload: Dict[str, Any]):
                 "auth": subscription.auth
             }
         }
+        print(f"[DEBUG] Attempting web push to {subscription.endpoint[:50]}...")
         webpush(
             subscription_info=sub_info,
             data=json.dumps(payload),
             vapid_private_key=settings.VAPID_PRIVATE_KEY,
             vapid_claims={"sub": settings.VAPID_SUBJECT}
         )
+        print(f"[DEBUG] Web push success for staff_id: {subscription.staff_id}")
         return True
     except WebPushException as ex:
         # 410 Gone = subscription is no longer valid
         if ex.response and ex.response.status_code == 410:
+            print(f"[DEBUG] Web push subscription expired (410) for staff_id: {subscription.staff_id}")
             return "EXPIRED"
-        print("Web Push Error:", repr(ex))
+        print(f"[ERROR] Web Push Error (staff_id: {subscription.staff_id}): {repr(ex)}")
         return False
     except Exception as e:
-        print("Unexpected Push Error:", str(e))
+        print(f"[ERROR] Unexpected Push Error (staff_id: {subscription.staff_id}): {str(e)}")
         return False
 
 async def send_push_notification(user_id: int, title: str, body: str, url: str = "/"):
