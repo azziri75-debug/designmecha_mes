@@ -1107,9 +1107,47 @@ async def startup_event():
                 await db.rollback()
             # -------------------------------------------------------
 
-            # 7. Admin account is managed via init_db.py or consolidate_admins.py
-            pass
+            # 7. Cleanup duplicate admin accounts (One-time DB cleanup for production)
+            try:
+                from sqlalchemy.future import select
+                from app.models.basics import Staff
+                import json
                 
+                # Fetch all staff with login_id 'admin' or name '관리자'
+                result = await db.execute(select(Staff).where(Staff.login_id == 'admin'))
+                admins = result.scalars().all()
+                
+                # If no login_id 'admin', try checking by name '관리자'
+                if not admins:
+                    result = await db.execute(select(Staff).where(Staff.name == '관리자'))
+                    admins = result.scalars().all()
+                    
+                if len(admins) > 1:
+                    print(f"Startup: Found {len(admins)} admin accounts. Removing duplicates...")
+                    # Sort by id to keep the original (lowest id)
+                    admins = sorted(admins, key=lambda a: a.id)
+                    primary_admin = admins[0]
+                    
+                    # Ensure primary admin has full permissions
+                    FULL_PERMISSIONS = {k: {"view": True, "edit": True, "price": True} for k in 
+                        ["dashboard", "basics", "products", "sales", "production", "quality", 
+                         "materials", "outsourcing", "attendance", "approval", "hr", "ADMIN"]}
+                    primary_admin.menu_permissions = json.dumps(FULL_PERMISSIONS)
+                    db.add(primary_admin)
+                    
+                    # Delete duplicates
+                    for dup in admins[1:]:
+                        try:
+                            await db.delete(dup)
+                        except Exception as inner_e:
+                            print(f"Startup: Warn: Could not delete admin {dup.id}: {inner_e}")
+                            
+                    await db.commit()
+                    print(f"Startup: Successfully removed {len(admins)-1} duplicate admin accounts.")
+            except Exception as e:
+                print(f"Startup: Failed to clean duplicate admins: {e}")
+                await db.rollback()
+
             # 8. Initialize Default Form Templates
             try:
                 DEFAULT_FORMS = [
