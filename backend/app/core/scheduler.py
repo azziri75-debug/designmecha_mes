@@ -5,9 +5,47 @@ from sqlalchemy import func
 from datetime import datetime
 from app.api.deps import AsyncSessionLocal
 from app.models.basics import Company, Staff, EmployeeTimeRecord
+from app.models.approval import ApprovalDocument, ApprovalStep
 from app.utils.push import send_push_notification
 
 scheduler = AsyncIOScheduler()
+
+async def check_pending_approvals_and_notify():
+    """
+    매 정각(시간마다) 실행되어, 자신의 결재 차례인 미결재 문서가 있는 직원에게 알림을 발송.
+    """
+    async with AsyncSessionLocal() as db:
+        # 현재 내 차례(sequence == current_sequence)이면서, PENDING 상태인 Step 검색
+        stmt = select(ApprovalStep.approver_id, func.count(ApprovalStep.id)).join(
+            ApprovalDocument, ApprovalDocument.id == ApprovalStep.document_id
+        ).where(
+            ApprovalStep.status == "PENDING",
+            ApprovalDocument.status.in_(["PENDING", "IN_PROGRESS"]),
+            ApprovalStep.sequence == ApprovalDocument.current_sequence
+        ).group_by(ApprovalStep.approver_id)
+        
+        result = await db.execute(stmt)
+        pending_counts = result.all() # list of (approver_id, count)
+        
+        if not pending_counts:
+            return
+            
+        # 직원의 이름 등을 가져오기 위해 활성 직원 목록 조회
+        staff_res = await db.execute(select(Staff).where(Staff.is_active == True))
+        active_staff_dict = {s.id: s.name for s in staff_res.scalars().all()}
+        
+        for approver_id, count in pending_counts:
+            staff_name = active_staff_dict.get(approver_id)
+            if not staff_name:
+                continue
+                
+            # 푸시 알림 발송
+            asyncio.create_task(send_push_notification(
+                user_id=approver_id,
+                title="결재 대기 알림",
+                body=f"{staff_name}님, 현재 처리 대기 중인 결재 문서가 {count}건 있습니다.",
+                url="/approval"
+            ))
 
 async def check_attendance_and_notify():
     """
@@ -81,5 +119,7 @@ def start_scheduler():
     if not scheduler.running:
         # 매 1분마다 실행 (0초에 실행)
         scheduler.add_job(check_attendance_and_notify, 'cron', minute='*')
+        # 미결재 알림: 매 정각(0분) 마다 실행
+        scheduler.add_job(check_pending_approvals_and_notify, 'cron', minute='0')
         scheduler.start()
-        print("Backend: Scheduler started (Attendance Check interval).")
+        print("Backend: Scheduler started (Attendance Check & Approval Reminder).")
