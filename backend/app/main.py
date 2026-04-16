@@ -833,6 +833,17 @@ async def startup_event():
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
                 """),
+                ("push_subscriptions", """
+                    CREATE TABLE push_subscriptions (
+                        id SERIAL PRIMARY KEY,
+                        staff_id INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+                        endpoint VARCHAR(1000) NOT NULL UNIQUE,
+                        p256dh VARCHAR(300) NOT NULL,
+                        auth VARCHAR(300) NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """),
             ]
 
             # [Safe Migration] Add reference columns and deleted_at column to approval_documents if missing
