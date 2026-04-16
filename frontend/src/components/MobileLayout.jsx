@@ -113,7 +113,7 @@ const MobileLayout = () => {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#f8f9fa' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', bgcolor: '#f8f9fa', overflow: 'hidden' }}>
             {/* Unified Mobile Header */}
             <AppBar position="static" color="inherit" elevation={0} sx={{ borderBottom: '1px solid #eee' }}>
                 <Toolbar variant="dense" sx={{ justifyContent: 'space-between' }}>
@@ -148,7 +148,7 @@ const MobileLayout = () => {
             </AppBar>
 
             {/* Content Area */}
-            <Box sx={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+            <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
                 <Outlet />
             </Box>
 

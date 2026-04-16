@@ -31,6 +31,7 @@ const MobileAttendancePage = () => {
     const [status, setStatus] = useState(null); // 'success' or 'error'
     const [activeTab, setActiveTab] = useState('action'); // action, history
     const [attendanceRecords, setAttendanceRecords] = useState([]);
+    const [summaryData, setSummaryData] = useState(null);
 
     const handleTabChange = (event, newValue) => {
         setActiveTab(newValue);
@@ -85,9 +86,22 @@ const MobileAttendancePage = () => {
         }
     };
 
+    const fetchSummaryData = async () => {
+        if (!user) return;
+        try {
+            const res = await api.get('/hr/attendance/summary', {
+                params: { year: new Date().getFullYear(), user_id: user.id }
+            });
+            setSummaryData(res.data);
+        } catch (err) {
+            console.error('Summary Fetch Error:', err);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'history') {
             fetchMonthlyRecords();
+            fetchSummaryData();
         }
         window.scrollTo(0, 0);
     }, [activeTab, user]);
@@ -175,9 +189,33 @@ const MobileAttendancePage = () => {
                 </main>
             ) : (
                 <main className="flex-1 flex flex-col px-6 py-6 space-y-6 overflow-y-auto">
+                    {/* Attendance Summary Grid */}
+                    {summaryData && (
+                        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-4 rounded-3xl text-white shadow-lg shadow-blue-100">
+                                <p className="text-[10px] font-black uppercase tracking-wider opacity-70 mb-1">잔여 연차</p>
+                                <p className="text-2xl font-black">{summaryData.remaining_annual_days?.toFixed(1)} <span className="text-xs font-medium">일</span></p>
+                            </div>
+                            <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">총 연차 / 사용</p>
+                                <p className="text-lg font-black text-slate-800">
+                                    {summaryData.total_annual_days?.toFixed(1)} / {summaryData.total_vacation_days?.toFixed(1)}
+                                </p>
+                            </div>
+                            <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">외출/조퇴</p>
+                                <p className="text-lg font-black text-slate-800">{summaryData.total_leave_outing_hours?.toFixed(1)} <span className="text-xs font-medium">시간</span></p>
+                            </div>
+                            <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">야근/특근</p>
+                                <p className="text-lg font-black text-slate-800">{summaryData.total_overtime_hours?.toFixed(1)} <span className="text-xs font-medium">시간</span></p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-black text-slate-800">최근 근태 기록</h2>
-                        <button onClick={fetchMonthlyRecords} className="p-2 bg-slate-100 rounded-full text-slate-500 active:rotate-180 transition-transform duration-500">
+                        <h2 className="text-xl font-black text-slate-800">최근 근태 기록</h2>
+                        <button onClick={() => { fetchMonthlyRecords(); fetchSummaryData(); }} className="p-2 bg-slate-100 rounded-full text-slate-500 active:rotate-180 transition-transform duration-500">
                             <ArrowPathIcon className="w-5 h-5" />
                         </button>
                     </div>
