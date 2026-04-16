@@ -58,8 +58,14 @@ export default function usePushNotifications(userId) {
                 }
                 
                 // .env에 따옴표가 그대로 문자열로 들어가는 것을 방지
-                publicKey = publicKey.replace(/['"]/g, '').trim();
+                publicKey = publicKey ? publicKey.replace(/['"]/g, '').trim() : '';
+                console.log('Using VAPID Public Key:', publicKey ? (publicKey.substring(0, 10) + '...') : 'EMPTY');
 
+                if (!publicKey || publicKey === '""' || publicKey === '') {
+                    console.warn('No valid VAPID Public Key found. Subscription aborted.');
+                    return;
+                }
+                
                 // 4. Push 구독
                 const applicationServerKey = urlBase64ToUint8Array(publicKey);
                 let subscription = await registration.pushManager.getSubscription();

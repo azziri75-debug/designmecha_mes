@@ -22,6 +22,8 @@ async def subscribe_push_notification(
     current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
     """디바이스의 푸시 알림 구독 정보를 저장합니다."""
+    print(f"[DEBUG] Push subscription request for user {current_user.id} ({current_user.name})")
+    
     # 이미 같은 endpoint가 있는지 확인
     result = await db.execute(select(PushSubscription).where(PushSubscription.endpoint == sub_in.endpoint))
     existing_sub = result.scalars().first()
@@ -32,6 +34,7 @@ async def subscribe_push_notification(
         existing_sub.p256dh = sub_in.p256dh
         existing_sub.auth = sub_in.auth
         await db.commit()
+        print(f"[DEBUG] Updated existing subscription for user {current_user.id}")
         return {"status": "updated"}
         
     new_sub = PushSubscription(
@@ -42,4 +45,5 @@ async def subscribe_push_notification(
     )
     db.add(new_sub)
     await db.commit()
+    print(f"[DEBUG] Created NEW subscription for user {current_user.id}")
     return {"status": "created"}

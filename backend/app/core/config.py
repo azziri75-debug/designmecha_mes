@@ -26,11 +26,13 @@ class Settings(BaseSettings):
 
     @property
     def VAPID_PUBLIC_KEY_STR(self) -> str:
-        return self.VAPID_PUBLIC_KEY.replace('"', '').replace("'", "").strip()
+        key = self.VAPID_PUBLIC_KEY or ""
+        return key.replace('"', '').replace("'", "").strip()
 
     @property
     def VAPID_PRIVATE_KEY_STR(self) -> str:
-        return self.VAPID_PRIVATE_KEY.replace('"', '').replace("'", "").strip()
+        key = self.VAPID_PRIVATE_KEY or ""
+        return key.replace('"', '').replace("'", "").strip()
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
@@ -56,6 +58,16 @@ class Settings(BaseSettings):
         # Use SQLite for development fallback
         return "sqlite+aiosqlite:///./mes_erp_v2.db"
 
-    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
+    import os
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+    model_config = SettingsConfigDict(case_sensitive=True, env_file=env_path)
 
 settings = Settings()
+
+# 진단 로그
+print(f"[CONFIG] Project Name: {settings.PROJECT_NAME}")
+if not settings.VAPID_PUBLIC_KEY_STR:
+    print("[WARNING] VAPID_PUBLIC_KEY is not set or empty!")
+else:
+    print(f"[CONFIG] VAPID Public Key loaded (starts with: {settings.VAPID_PUBLIC_KEY_STR[:10]}...)")
+
