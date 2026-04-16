@@ -110,6 +110,9 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 from app.api.endpoints import quality
 app.include_router(quality.router, prefix=f"{settings.API_V1_STR}/quality", tags=["quality"])
 
+from app.api.endpoints import notifications
+app.include_router(notifications.router, prefix=f"{settings.API_V1_STR}/notifications", tags=["notifications"])
+
 # ─── SSE 스트림 엔드포인트 ──────────────────────────────────────────────────────
 @app.get("/api/v1/events/stream")
 async def sse_stream(request: Request):
@@ -233,11 +236,15 @@ async def fix_orphaned_mrp():
 @app.on_event("startup")
 async def startup_event():
     """Database migrations and initialization tasks on startup"""
+    from app.core.scheduler import start_scheduler
     from app.api.deps import AsyncSessionLocal, engine
     from app.models.basics import Staff
     from sqlalchemy.future import select
     from sqlalchemy import text
     import json
+    
+    # Start APScheduler for Push Notifications
+    start_scheduler()
     
     try:
         async with AsyncSessionLocal() as db:

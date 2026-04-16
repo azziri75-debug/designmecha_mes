@@ -1,0 +1,15 @@
+{
+  "short_name": "DM MES",
+  "name": "DesignMecha MES System",
+  "icons": [
+    {
+      "src": "vite.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff"
+}

@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = "ntsyulnwlpqlqbgd"
     SMTP_SENDER: str = "no-reply@designmecha.co.kr"
     
+    # Web Push (VAPID)
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_SUBJECT: str = "mailto:no-reply@designmecha.co.kr"
+    
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:5173",

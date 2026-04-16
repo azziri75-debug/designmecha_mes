@@ -31,6 +31,7 @@ import {
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
+import usePushNotifications from '../hooks/usePushNotifications';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Fab } from '@mui/material';
 
 const SidebarItem = ({ icon: Icon, label, to, active, badge }) => {
@@ -61,6 +62,9 @@ const Layout = () => {
     const navigate = useNavigate();
     const { user, logout, hasPermission } = useAuth();
     const { waitingCount } = useApprovalBadge();
+    
+    // 푸시 알람 구독 훅 (user.id가 존재할 때만 내부적으로 등록 수행)
+    usePushNotifications(user?.id);
     
     const [contactModalOpen, setContactModalOpen] = useState(false);
     const [contactForm, setContactForm] = useState({ subject: '', content: '' });

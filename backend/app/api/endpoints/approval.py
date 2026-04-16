@@ -460,7 +460,7 @@ async def create_document(
 
         await db.commit()
 
-        # 🚨 신규 로직: 1차(또는 다음) 결재권자 이메일 발송
+        # 🚨 신규 로직: 1차(또는 다음) 결재권자 이메일 & 푸시 발송
         if db_doc.status in [ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS]:
             next_step_res = await db.execute(
                 select(ApprovalStep)
@@ -481,6 +481,15 @@ async def create_document(
                         drafter_name=current_user.name,
                         reference_id=str(db_doc.id)
                     )
+                # 푸시 알림 발송
+                from app.utils.push import send_push_notification
+                background_tasks.add_task(
+                    send_push_notification,
+                    user_id=next_step.approver_id,
+                    title="새로운 결재 요청",
+                    body=f"{current_user.name}님이 기안한 '{db_doc.title}' 건이 도착했습니다.",
+                    url="/approval"
+                )
 
     except HTTPException:
         await db.rollback()
@@ -789,6 +798,16 @@ async def process_approval(
         # 구매발주/외주발주 상태 동기화 (반려 시 롤백)
         if doc.doc_type == "PURCHASE_ORDER" or doc.reference_id:
             await sync_reference_status(db, doc)
+            
+        # 기안자에게 푸시 알림 (반려)
+        from app.utils.push import send_push_notification
+        background_tasks.add_task(
+            send_push_notification,
+            user_id=doc.author_id,
+            title="결재 반려 알림",
+            body=f"기안하신 '{doc.title}' 건이 반려되었습니다.",
+            url="/approval"
+        )
     else:
         # 다음 단계가 있는지 확인
         next_step_res = await db.execute(
@@ -801,18 +820,28 @@ async def process_approval(
             doc.current_sequence += 1
             doc.status = ApprovalStatus.IN_PROGRESS
             
-            # 🚨 신규 로직: 다음 결재권자 이메일 발송
+            # 🚨 신규 로직: 다음 결재권자 이메일 & 푸시 발송
             next_step_approver_res = await db.execute(
                 select(Staff).where(Staff.id == next_step.approver_id)
             )
             next_approver = next_step_approver_res.scalars().first()
-            if next_approver and next_approver.email:
+            if next_approver:
+                if next_approver.email:
+                    background_tasks.add_task(
+                        send_approval_email,
+                        to_email=next_approver.email,
+                        doc_title=doc.title,
+                        drafter_name=doc.author.name if doc.author else "기안자",
+                        reference_id=str(doc.id)
+                    )
+                # 다음 결재자에게 푸시
+                from app.utils.push import send_push_notification
                 background_tasks.add_task(
-                    send_approval_email,
-                    to_email=next_approver.email,
-                    doc_title=doc.title,
-                    drafter_name=doc.author.name if doc.author else "기안자",
-                    reference_id=str(doc.id)
+                    send_push_notification,
+                    user_id=next_approver.id,
+                    title="새로운 결재 요청",
+                    body=f"'{doc.title}' 결재 차례입니다.",
+                    url="/approval"
                 )
         else:
             doc.status = ApprovalStatus.COMPLETED
@@ -829,6 +858,16 @@ async def process_approval(
             # 구매발주/외주발주 상태 동기화 (최종 승인 시)
             if doc.doc_type == "PURCHASE_ORDER" or doc.reference_id:
                 await sync_reference_status(db, doc)
+                
+            # 기안자에게 푸시 알림 (최종 승인)
+            from app.utils.push import send_push_notification
+            background_tasks.add_task(
+                send_push_notification,
+                user_id=doc.author_id,
+                title="결재 완료 통보",
+                body=f"기안하신 '{doc.title}' 건이 최종 승인되었습니다.",
+                url="/approval"
+            )
             
     await db.commit()
 
