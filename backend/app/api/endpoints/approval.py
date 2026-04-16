@@ -1397,6 +1397,37 @@ async def update_document(
                     await db.execute(delete(EmployeeTimeRecord).where(EmployeeTimeRecord.approval_id == doc.id))
                     await create_attendance_record(db, doc)
     
+        # 🚨 추가 로직: 업데이트 후 결재 대기/진행 중인 경우 다음 결재권자에게 이메일 & 푸시 발송
+        if should_reset_status and doc.status in [ApprovalStatus.PENDING, ApprovalStatus.IN_PROGRESS]:
+            next_step_res = await db.execute(
+                select(ApprovalStep)
+                .options(selectinload(ApprovalStep.approver))
+                .where(
+                    ApprovalStep.document_id == doc.id,
+                    ApprovalStep.status == "PENDING"
+                ).order_by(ApprovalStep.sequence.asc())
+            )
+            next_step = next_step_res.scalars().first()
+            if next_step and getattr(next_step, "approver", None):
+                approver_email = next_step.approver.email
+                if approver_email:
+                    background_tasks.add_task(
+                        send_approval_email,
+                        to_email=approver_email,
+                        doc_title=doc.title,
+                        drafter_name=current_user.name,
+                        reference_id=str(doc.id)
+                    )
+                # 푸시 알림 발송
+                from app.utils.push import send_push_notification
+                background_tasks.add_task(
+                    send_push_notification,
+                    user_id=next_step.approver_id,
+                    title="새로운 결재 요청",
+                    body=f"{current_user.name}님이 기안한 '{doc.title}' 건이 도착했습니다.",
+                    url="/approval"
+                )
+
         await db.commit()
 
     except HTTPException:
