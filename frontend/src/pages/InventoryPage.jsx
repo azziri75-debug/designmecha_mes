@@ -25,6 +25,7 @@ import { cn } from '../lib/utils';
 import api from '../lib/api';
 import useSSE from '../hooks/useSSE';
 import Select from 'react-select';
+import * as XLSX from 'xlsx';
 import StockProductionModal from '../components/StockProductionModal';
 import StockEditModal from '../components/StockEditModal';
 import StockInitModal from '../components/StockInitModal';
@@ -122,11 +123,12 @@ const InventoryPage = () => {
     const fetchGroups = async () => {
         try {
             const res = await api.get('/product/groups/');
-            setGroups(res.data.filter(g => g.type === 'MAJOR') || []);
+            setGroups(res.data || []); // 전체 그룹 저장 (MAJOR + MINOR) - 엑셀 출력 시 사업부 역추적 필요
         } catch (err) {
             console.error("Fetch groups failed", err);
         }
     };
+
 
 
     const fetchPartners = async () => {
@@ -261,6 +263,81 @@ const InventoryPage = () => {
         setShowStockEditModal(true);
     };
 
+    // ===== 엑셀 다운로드 =====
+    const handleExcelDownload = () => {
+        const headers = ['\uc0ac\uc5c5\ubd80', '\uad6c\ubd84', '\ud488\ubaa9\uba85', '\uaddc\uaca9', '\uace0\uac1d\uc0ac/\uacf5\uae09\uc0ac', '\ud604\uc7ac\uace0', '\uc0dd\uc0b0\uc911\uc7ac\uace0', '\ube44\uace0'];
+
+        const rows = filteredStocks.map(stock => {
+            // 사\uc5c5\ubd80 (MAJOR 그\ub8f9)
+            const productGroup = groups.find(g => g.id === stock.product?.group_id);
+            let majorGroupName = '-';
+            if (productGroup) {
+                if (productGroup.type === 'MAJOR') {
+                    majorGroupName = productGroup.name;
+                } else if (productGroup.parent_id) {
+                    const parentGroup = groups.find(g => g.id === productGroup.parent_id);
+                    majorGroupName = parentGroup?.name || productGroup.name;
+                } else {
+                    majorGroupName = productGroup.name;
+                }
+            }
+
+            // \uad6c\ubd84 \ub77c\ubca8
+            const typeMap = { PRODUCED: '\uc81c\ud488', PRODUCT: '\uc81c\ud488', PART: '\ubd80\ud488', RAW_MATERIAL: '\uc6d0\uc790\uc7ac' };
+            const typeLabel = typeMap[stock.product?.item_type] || stock.product?.item_type || '-';
+
+            // \uace0\uac1d\uc0ac/\uacf5\uae09\uc0ac
+            const partnerName = partners.find(p => p.id === stock.product?.partner_id)?.name || '-';
+
+            return [
+                majorGroupName,
+                typeLabel,
+                stock.product?.name || '-',
+                stock.product?.specification || '-',
+                partnerName,
+                stock.current_quantity ?? 0,
+                stock.producing_total ?? 0,
+                stock.location || '-',
+            ];
+        });
+
+        const wsData = [headers, ...rows];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // \ucee8\ud150\uce20 \uae30\ubc18 \uc5f4 \ub108\ube44 \uc790\ub3d9\ub9de\ucdb0\uc11c
+        const colWidths = headers.map((h, i) => {
+            const maxLen = Math.max(
+                h.length * 2,  // \ud55c\uae00 \ubb38\uc790 \uac04\uaca9 \ubcf4\uc815
+                ...rows.map(row => {
+                    const val = String(row[i] ?? '');
+                    // \ud55c\uae00/\uc601\ubb38 \ud63c\ud569 \ub108\ube44 \uacc4\uc0b0
+                    return val.split('').reduce((acc, ch) => acc + (ch.charCodeAt(0) > 127 ? 2 : 1), 0);
+                })
+            );
+            return { wch: maxLen + 2 };
+        });
+        ws['!cols'] = colWidths;
+
+        // \ud5e4\ub354 \uc2a4\ud0c0\uc77c (\uba85\uc870, \ubc30\uacbd\uc0c9)
+        const headerStyle = {
+            font: { bold: true, color: { rgb: 'FFFFFF' } },
+            fill: { fgColor: { rgb: '2563EB' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+        };
+        headers.forEach((_, i) => {
+            const cellAddr = XLSX.utils.encode_cell({ r: 0, c: i });
+            if (ws[cellAddr]) ws[cellAddr].s = headerStyle;
+        });
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '\uc7ac\uace0\ud604\ud669');
+
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+        XLSX.writeFile(wb, `\uc7ac\uace0\ud604\ud669_${dateStr}.xlsx`);
+    };
+    // ===========================
+
     const handleDelete = async (id) => {
         if (!window.confirm("정말 이 생산 요청을 삭제하시겠습니까? 관련 재고 정보가 롤백됩니다.")) return;
         try {
@@ -286,6 +363,15 @@ const InventoryPage = () => {
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={fetchData} size="sm">
                         새로고침
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExcelDownload}
+                        className="border-emerald-600 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-colors"
+                    >
+                        <ArrowUpRight className="w-4 h-4 mr-1.5 rotate-90" />
+                        엑셀 다운로드
                     </Button>
                     <Button
                         className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -351,7 +437,7 @@ const InventoryPage = () => {
                                 onChange={(e) => setMajorGroupId(e.target.value)}
                             >
                                 <option value="">전체 사업부</option>
-                                {groups.map(g => (
+                                {groups.filter(g => g.type === 'MAJOR').map(g => (
                                     <option key={g.id} value={g.id}>{g.name}</option>
                                 ))}
                             </select>
