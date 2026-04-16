@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Any
-from app.db.session import get_db
 from app.api import deps
 from app.models.hr import Staff
 from app.models.notification import PushSubscription
@@ -19,7 +18,7 @@ async def get_vapid_public_key() -> Any:
 @router.post("/subscribe")
 async def subscribe_push_notification(
     sub_in: PushSubscriptionCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
     """디바이스의 푸시 알림 구독 정보를 저장합니다."""

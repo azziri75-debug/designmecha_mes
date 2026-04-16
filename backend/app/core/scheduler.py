@@ -3,7 +3,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.future import select
 from sqlalchemy import func
 from datetime import datetime
-from app.db.session import async_session_maker
+from app.api.deps import AsyncSessionLocal
 from app.models.basics import Company, Staff, EmployeeTimeRecord
 from app.utils.push import send_push_notification
 
@@ -21,7 +21,7 @@ async def check_attendance_and_notify():
 
     current_time_str = now.strftime("%H:%M")
     
-    async with async_session_maker() as db:
+    async with AsyncSessionLocal() as db:
         result = await db.execute(select(Company).limit(1))
         company = result.scalars().first()
         
