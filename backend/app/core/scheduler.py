@@ -23,8 +23,8 @@ async def check_pending_approvals_and_notify():
             ApprovalStep.status == "PENDING",
             ApprovalDocument.status.in_(["PENDING", "IN_PROGRESS"]),
             ApprovalStep.sequence == ApprovalDocument.current_sequence,
-            # [ADD] Ensure we don't count logically finished but incorrectly marked documents
-            ApprovalDocument.current_sequence > 0
+            ApprovalDocument.current_sequence > 0,
+            ApprovalDocument.deleted_at.is_(None)
         ).group_by(ApprovalStep.approver_id)
         
         result = await db.execute(stmt)

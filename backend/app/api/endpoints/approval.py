@@ -255,7 +255,8 @@ async def debug_pending_approvals(db: AsyncSession = Depends(deps.get_db)):
         ApprovalStep.status == "PENDING",
         ApprovalDocument.status.in_(["PENDING", "IN_PROGRESS"]),
         ApprovalStep.sequence == ApprovalDocument.current_sequence,
-        ApprovalDocument.current_sequence > 0
+        ApprovalDocument.current_sequence > 0,
+        ApprovalDocument.deleted_at.is_(None)
     )
     
     res = await db.execute(stmt)
