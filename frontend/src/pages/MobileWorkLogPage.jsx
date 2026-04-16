@@ -87,10 +87,19 @@ const MobileWorkLogPage = () => {
     // Tab and selection state driven by URL to support "Back" button
     const tab = parseInt(searchParams.get('tab') || '0');
     const selectedPlanId = searchParams.get('planId');
+    // Navigation States
+    const tabFromUrl = parseInt(searchParams.get('tab') || '0', 10);
+    const selectedPlanId = searchParams.get('planId');
     const selectedItemId = searchParams.get('itemId');
+    const createDocInUrl = searchParams.get('create') === 'true';
+    const selectedDocIdInUrl = searchParams.get('docId');
+
+    const tab = isNaN(tabFromUrl) ? 0 : tabFromUrl;
 
     const setTab = (newTab) => {
-        setSearchParams({ tab: newTab });
+        const params = new URLSearchParams(searchParams);
+        params.set('tab', newTab);
+        setSearchParams(params);
     };
 
     const [loading, setLoading] = useState(false);
@@ -109,7 +118,7 @@ const MobileWorkLogPage = () => {
 
     const [comment, setComment] = useState('');
     const [editingDocId, setEditingDocId] = useState(null);
-    const [originalAuthor, setOriginalAuthor] = useState(null); // 수정 시 원본 기안자 정보 보존
+    const [originalAuthor, setOriginalAuthor] = useState(null);
 
     // Registration Form
     const [goodQty, setGoodQty] = useState('');
@@ -149,13 +158,27 @@ const MobileWorkLogPage = () => {
     }, [selectedPlan, selectedItemId]);
 
     const setSelectedPlan = (plan) => {
-        if (plan) setSearchParams({ tab: 0, planId: plan.id });
-        else setSearchParams({ tab: 0 });
+        const params = new URLSearchParams(searchParams);
+        if (plan) {
+            params.set('tab', '0');
+            params.set('planId', plan.id);
+        } else {
+            params.delete('planId');
+            params.delete('itemId');
+        }
+        setSearchParams(params);
     };
 
     const setSelectedItem = (item) => {
-        if (item) setSearchParams({ tab: 0, planId: selectedPlanId, itemId: item.id });
-        else setSearchParams({ tab: 0, planId: selectedPlanId });
+        const params = new URLSearchParams(searchParams);
+        if (item) {
+            params.set('tab', '0');
+            params.set('planId', selectedPlanId);
+            params.set('itemId', item.id);
+        } else {
+            params.delete('itemId');
+        }
+        setSearchParams(params);
     };
 
     const handleLogout = () => {
@@ -232,6 +255,51 @@ const MobileWorkLogPage = () => {
             setAttendanceLoading(false);
         }
     }, [user, tab, attendYear, attendUserId]);
+
+    // System Back Button / URL Sync Effect
+    useEffect(() => {
+        // Handle Create Modal
+        if (createDocInUrl) {
+            setShowCreateModal(true);
+        } else {
+            setShowCreateModal(false);
+        }
+
+        // Handle Detail Modal
+        if (selectedDocIdInUrl) {
+            const doc = approvalDocs.find(d => String(d.id) === selectedDocIdInUrl);
+            if (doc) {
+                setSelectedDoc(doc);
+                setShowDetailModal(true);
+            } else if (approvalDocs.length > 0) {
+                // If not found, close it (prevents stale state)
+                const params = new URLSearchParams(searchParams);
+                params.delete('docId');
+                setSearchParams(params);
+            }
+        } else {
+            setShowDetailModal(false);
+        }
+    }, [createDocInUrl, selectedDocIdInUrl, approvalDocs, searchParams, setSearchParams]);
+
+    const handleNewDraft = () => {
+        const params = new URLSearchParams(searchParams);
+        params.set('create', 'true');
+        setSearchParams(params);
+    };
+
+    const handleDocClick = (doc) => {
+        const params = new URLSearchParams(searchParams);
+        params.set('docId', doc.id);
+        setSearchParams(params);
+    };
+
+    const closeModals = () => {
+        const params = new URLSearchParams(searchParams);
+        params.delete('docId');
+        params.delete('create');
+        setSearchParams(params);
+    };
 
     useEffect(() => {
         if (!user) return;
@@ -649,8 +717,6 @@ const MobileWorkLogPage = () => {
 
     return (
         <Box sx={{
-            display: 'flex',
-            flexDirection: 'column',
             backgroundColor: '#f8f9fa',
         }}>
             {/* Header was removed (now handled by MobileLayout) */}
@@ -1194,7 +1260,7 @@ const MobileWorkLogPage = () => {
                             fullWidth
                             variant="contained"
                             startIcon={<AddIcon />}
-                            onClick={() => { setSelectedDocType('LEAVE_REQUEST'); setDocFormData({}); setEditingDocId(null); setShowCreateModal(true); }}
+                            onClick={() => { setSelectedDocType('LEAVE_REQUEST'); setDocFormData({}); setEditingDocId(null); handleNewDraft(); }}
                             sx={{ mb: 2, borderRadius: 2, py: 1.5, fontWeight: 'bold' }}
                         >
                             신규 문서 기안
@@ -1212,7 +1278,7 @@ const MobileWorkLogPage = () => {
                                             borderLeft: `4px solid ${STATUS_MAP[doc.status]?.color}`,
                                             boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                                         }}
-                                        onClick={() => { setSelectedDoc(doc); setShowDetailModal(true); }}
+                                        onClick={() => handleDocClick(doc)}
                                     >
                                         <CardContent sx={{ p: 2 }}>
                                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start">

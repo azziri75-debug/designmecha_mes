@@ -182,7 +182,7 @@ const ApprovalPage = () => {
         try {
             await api.delete(`/approval/documents/${docId}`);
             alert('삭제되었습니다.');
-            setShowDocDetail(false);
+            closeDocDetail();
             setDocuments(prev => prev.filter(doc => doc.id !== docId));
         } catch (error) {
             alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
@@ -191,7 +191,7 @@ const ApprovalPage = () => {
 
     const handleEditDoc = (doc) => {
         navigate(`/approval/draft?id=${doc.id}`);
-        setShowDocDetail(false);
+        closeDocDetail();
     };
 
     const handleSaveTitle = async (docId) => {
@@ -225,7 +225,7 @@ const ApprovalPage = () => {
         try {
             await api.post(`/approval/documents/${docId}/process`, { status, comment });
             alert(status === 'APPROVED' ? '승인되었습니다.' : '반려되었습니다.');
-            setShowDocDetail(false);
+            closeDocDetail();
             fetchInitialData();
         } catch (error) {
             alert('처리 실패: ' + (error.response?.data?.detail || error.message));
@@ -259,13 +259,55 @@ const ApprovalPage = () => {
 
     const openDocDetail = async (doc) => {
         try {
+            // Update URL to include docId instead of using local state only
+            setSearchParams(prev => {
+                prev.set('docId', doc.id);
+                return prev;
+            });
+            
             const res = await api.get(`/approval/documents/${doc.id}`);
             setSelectedDoc(res.data);
+            setShowDocDetail(true);
         } catch (e) {
             console.warn('Failed to fetch doc detail, using list data', e);
             setSelectedDoc(doc);
+            setShowDocDetail(true);
         }
-        setShowDocDetail(true);
+    };
+
+    // [ADD] Synchronize showDocDetail state with URL docId parameter
+    useEffect(() => {
+        const docId = searchParams.get('docId');
+        if (docId) {
+            const docIdNum = Number(docId);
+            if (!selectedDoc || selectedDoc.id !== docIdNum) {
+                // If we have docId in URL but no selectedDoc, fetch it
+                api.get(`/approval/documents/${docId}`).then(res => {
+                    setSelectedDoc(res.data);
+                    setShowDocDetail(true);
+                }).catch(() => {
+                    // If fail, clean URL
+                    setSearchParams(prev => {
+                        prev.delete('docId');
+                        return prev;
+                    });
+                });
+            } else {
+                setShowDocDetail(true);
+            }
+        } else {
+            setShowDocDetail(false);
+            // Optionally clear selectedDoc to prevent flicker when reopening another
+            // setSelectedDoc(null); 
+        }
+    }, [searchParams]);
+
+    const closeDocDetail = () => {
+        setSearchParams(prev => {
+            prev.delete('docId');
+            return prev;
+        });
+        // State will update via the useEffect above
     };
 
     const handleSaveLines = async (type) => {
@@ -506,7 +548,7 @@ const ApprovalPage = () => {
                             <div className="flex items-center gap-3">
                                 <button onClick={handlePrintApproval} className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2"><Printer className="w-4 h-4" /> 인쇄</button>
                                 <button onClick={handleDownloadPDFApproval} className="bg-white hover:bg-gray-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2"><FileDown className="w-4 h-4" /> PDF 저장</button>
-                                <button onClick={() => setShowDocDetail(false)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+                                <button onClick={closeDocDetail} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
                             </div>
                         </div>
 

@@ -5,6 +5,8 @@
     margin: 0;
     padding: 0;
     min-height: 100%;
+    /* [FIX] Prevent mobile browser default pull-to-refresh and elastic bounce */
+    overscroll-behavior-y: contain !important;
   }
   body {
     @apply antialiased text-slate-900 bg-white;
