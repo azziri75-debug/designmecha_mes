@@ -48,6 +48,36 @@ export function useSSE(onEvent, { enabled = true } = {}) {
             }
         });
 
+        // 생산 업데이트 이벤트 (작업일지, 생산계획)
+        es.addEventListener('production_updated', (e) => {
+            try {
+                const data = JSON.parse(e.data || '{}');
+                onEventRef.current?.('production_updated', data);
+            } catch {
+                onEventRef.current?.('production_updated', {});
+            }
+        });
+
+        // 재고 업데이트 이벤트
+        es.addEventListener('inventory_updated', (e) => {
+            try {
+                const data = JSON.parse(e.data || '{}');
+                onEventRef.current?.('inventory_updated', data);
+            } catch {
+                onEventRef.current?.('inventory_updated', {});
+            }
+        });
+
+        // 근태 업데이트 이벤트 (출/퇴근)
+        es.addEventListener('attendance_updated', (e) => {
+            try {
+                const data = JSON.parse(e.data || '{}');
+                onEventRef.current?.('attendance_updated', data);
+            } catch {
+                onEventRef.current?.('attendance_updated', {});
+            }
+        });
+
         // keepalive ping (무시)
         es.addEventListener('ping', () => {});
 
@@ -76,3 +106,5 @@ export function useSSE(onEvent, { enabled = true } = {}) {
         };
     }, [connect, enabled]);
 }
+
+export default useSSE;
