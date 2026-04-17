@@ -14,11 +14,12 @@ async def show_push_status():
     async with AsyncSessionLocal() as db:
         print("\n=== [MES Push Notification Subscription Status] ===")
         
-        # 전체 푸시 구독 정보 조회 (사용자 정보 포함)
+        # 전체 직원 대비 푸시 구독 정보 조회 (기기 0개인 사람도 포함)
         stmt = (
             select(Staff.id, Staff.name, Staff.role, func.count(PushSubscription.id))
-            .join(PushSubscription, Staff.id == PushSubscription.staff_id)
+            .outerjoin(PushSubscription, Staff.id == PushSubscription.staff_id)
             .group_by(Staff.id, Staff.name, Staff.role)
+            .order_by(func.count(PushSubscription.id).desc())
         )
         
         result = await db.execute(stmt)
