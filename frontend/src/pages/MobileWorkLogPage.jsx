@@ -85,16 +85,14 @@ const MobileWorkLogPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Tab and selection state driven by URL to support "Back" button
-    const tab = parseInt(searchParams.get('tab') || '0');
-    const selectedPlanId = searchParams.get('planId');
-    // Navigation States
     const tabFromUrl = parseInt(searchParams.get('tab') || '0', 10);
+    const tab = isNaN(tabFromUrl) ? 0 : tabFromUrl;
+    
+    // Selection States
     const selectedPlanId = searchParams.get('planId');
     const selectedItemId = searchParams.get('itemId');
     const createDocInUrl = searchParams.get('create') === 'true';
     const selectedDocIdInUrl = searchParams.get('docId');
-
-    const tab = isNaN(tabFromUrl) ? 0 : tabFromUrl;
 
     const setTab = (newTab) => {
         const params = new URLSearchParams(searchParams);
