@@ -600,6 +600,13 @@ async def update_stock_production(
 
     await db.commit()
     await db.refresh(db_prod)
+
+    # 생산부 부장 알림 발송 (수정 시 알림 추가)
+    asyncio.create_task(notify_production_manager(
+        title="[생산] 재고생산 요청 수정",
+        body=f"재고생산 요청({db_prod.production_no})이 수정되었습니다. 생산 대기 리스트를 확인해 주세요.",
+        url="/production/waiting"
+    ))
     
     query = select(StockProduction).where(StockProduction.id == prod_id).options(
         selectinload(StockProduction.product),

@@ -72,22 +72,37 @@ async def send_push_notification(user_id: int, title: str, body: str, url: str =
 async def notify_production_manager(title: str, body: str, url: str = "/"):
     """
     생산부 부장(Manager)에게 푸시 알림을 발송합니다.
+    - 부서명(String), 부서 모델(Relationship), 주업무(Main Duty) 중 하나라도 '생산'을 포함하고
+    - 직책이 '부장'인 전체 사원을 대상으로 함.
     """
-    from app.models.basics import Staff
+    from app.models.basics import Staff, Department
+    from sqlalchemy import or_
+    from sqlalchemy.orm import joinedload
+    
     async with AsyncSessionLocal() as db:
-        # 생산부 부장 찾기 (부서명에 '생산'이 포함되고 직책이 '부장'인 활성 직원)
-        stmt = select(Staff).where(
-            Staff.is_active == True,
-            Staff.department.ilike("%생산%"),
-            Staff.role == "부장"
+        # 생산부 부장 찾기 (다양한 필드 교차 검증)
+        stmt = (
+            select(Staff)
+            .outerjoin(Department, Staff.department_id == Department.id)
+            .where(
+                Staff.is_active == True,
+                or_(
+                    Staff.department.ilike("%생산%"),
+                    Department.name.ilike("%생산%"),
+                    Staff.main_duty.ilike("%생산%")
+                ),
+                Staff.role == "부장"
+            )
         )
+        
         result = await db.execute(stmt)
         managers = result.scalars().all()
         
         if not managers:
-            print("[DEBUG] No Production Manager found for notification.")
+            print(f"[DEBUG] [Push] No Production Manager found for notification (Keyword: '생산', Role: '부장').")
             return
 
+        print(f"[DEBUG] [Push] Found {len(managers)} Production Manager(s): {[m.name for m in managers]}")
+
         for manager in managers:
-            # send_push_notification 자체가 새로운 세션을 열어 처리하므로 개별 호출
             await send_push_notification(manager.id, title, body, url)

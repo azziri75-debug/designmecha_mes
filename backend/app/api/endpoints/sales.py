@@ -684,6 +684,13 @@ async def update_order(
         
     await db.commit()
     await db.refresh(db_order)
+
+    # 생산부 부장 알림 발송 (수정 시 알림 추가)
+    asyncio.create_task(notify_production_manager(
+        title="[생산] 수주 정보 수정",
+        body=f"수주 정보({db_order.order_no})가 수정되었습니다. 생산 대기 리스트를 확인해 주세요.",
+        url="/production/waiting"
+    ))
     
     # Re-fetch with full eager loading (including delivery_histories)
     query = select(SalesOrder).options(
