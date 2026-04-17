@@ -27,3 +27,4 @@ build/
 # Deployment Data
 postgres_data/
 backend/uploads/
+backend/scratch/
