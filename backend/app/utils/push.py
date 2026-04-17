@@ -46,6 +46,8 @@ async def send_push_notification(user_id: int, title: str, body: str, url: str =
         result = await db.execute(select(PushSubscription).where(PushSubscription.staff_id == user_id))
         subscriptions: List[PushSubscription] = result.scalars().all()
         
+        print(f"[DEBUG] [Push] Found {len(subscriptions)} subscription(s) for staff_id: {user_id}")
+        
         expired_ids = []
         payload = {
             "title": title,
