@@ -32,7 +32,11 @@ async def show_push_status():
             print(f"{'ID':<5} | {'이름':<12} | {'직급':<10} | {'등록 기기 수':<10}")
             print("-" * 55)
             for row in rows:
-                print(f"{row[0]:<5} | {row[1]:<12} | {row[2]:<10} | {row[3]:<10}개")
+                staff_id = str(row[0] or '')
+                staff_name = str(row[1] or '')
+                staff_role = str(row[2] or '')
+                device_count = str(row[3] or 0)
+                print(f"{staff_id:<5} | {staff_name:<12} | {staff_role:<10} | {device_count:<10}개")
         
         print("===================================================\n")
 
