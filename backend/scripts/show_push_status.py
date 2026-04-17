@@ -7,8 +7,9 @@ sys.path.append(os.getcwd())
 
 from sqlalchemy import select, func
 from app.api.deps import AsyncSessionLocal
-from app.models.basics import Staff
+from app.models.basics import Staff, EmployeeTimeRecord
 from app.models.notification import PushSubscription
+from app.models.approval import ApprovalDocument # 관계 설정을 위해 명시적 로드
 
 async def show_push_status():
     async with AsyncSessionLocal() as db:
