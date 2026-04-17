@@ -37,7 +37,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                 <ApprovalGrid documentData={documentData} currentUser={currentUser} docType="CONSUMABLES_PURCHASE" />
             </Box>
 
-            <Table size="small" sx={{ mb: 2, '& td': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>
+            <Table size="small" sx={{ width: '100%', mb: 2, '& td': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>
                 <TableBody>
                     <TableRow>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>신청일자</Box>
@@ -65,17 +65,23 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
             </Table>
 
             {/* Items Section - Responsive (Table for Desktop, Cards for Mobile) */}
-            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                <Table size="small" sx={{ mb: 1, tableLayout: 'fixed', borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '12px', textAlign: 'center' } }}>
+            <Box sx={{ display: { xs: 'none', md: 'block' }, width: '100%' }}>
+                <Table size="small" sx={{ 
+                    width: '100%', 
+                    mb: 1, 
+                    tableLayout: 'fixed', 
+                    borderCollapse: 'collapse', 
+                    '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '11px', textAlign: 'center' } 
+                }}>
                     <thead>
                         <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                             <th style={{ width: '40px' }}>순</th>
-                            <ResizableTh initialWidth={200}>품 명 (용 도)</ResizableTh>
-                            <ResizableTh initialWidth={120}>제조사</ResizableTh>
-                            <ResizableTh initialWidth={120}>규격</ResizableTh>
-                            <ResizableTh initialWidth={60}>단위</ResizableTh>
-                            <ResizableTh initialWidth={60}>수량</ResizableTh>
-                            <ResizableTh initialWidth={150}>비고(청구자)</ResizableTh>
+                            <ResizableTh initialWidth={180}>품 명 (용 도)</ResizableTh>
+                            <ResizableTh initialWidth={100}>제조사</ResizableTh>
+                            <ResizableTh initialWidth={100}>규격</ResizableTh>
+                            <ResizableTh initialWidth={50}>단위</ResizableTh>
+                            <ResizableTh initialWidth={50}>수량</ResizableTh>
+                            <ResizableTh initialWidth={120}>비고(청구자)</ResizableTh>
                             {!isReadOnly && <th className="idf-no-print" style={{ width: '40px' }}></th>}
                         </TableRow>
                     </thead>
@@ -175,7 +181,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                 </Box>
             )}
 
-            <Table size="small" sx={{ mb: 2, '& td': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>
+            <Table size="small" sx={{ width: '100%', mb: 2, '& td': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>
                 <TableBody>
                     <TableRow>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>특기사항</Box>
