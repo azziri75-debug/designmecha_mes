@@ -19,3 +19,4 @@ python-dotenv>=1.0.1
 psycopg2-binary>=2.9.9
 pywebpush>=1.14.0
 apscheduler>=3.10.4
+holidays>=0.45

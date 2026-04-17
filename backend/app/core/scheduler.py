@@ -2,12 +2,15 @@ import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.future import select
 from sqlalchemy import func
+import holidays
 from datetime import datetime
 from app.api.deps import AsyncSessionLocal
 from app.models.basics import Company, Staff, EmployeeTimeRecord
 from app.models.approval import ApprovalDocument, ApprovalStep
 from app.utils.push import send_push_notification
 from app.core.timezone import now_kst
+
+kr_holidays = holidays.KR()
 
 scheduler = AsyncIOScheduler()
 
@@ -56,6 +59,12 @@ async def check_attendance_and_notify():
     now = now_kst()
     # 월~금 (0~4) 외에는 발송하지 않음
     if now.weekday() > 4:
+        return
+        
+    # 공휴일 체크 (한국 법정 공휴일 및 대체 공휴일 포함)
+    if now.date() in kr_holidays:
+        holiday_name = kr_holidays.get(now.date())
+        print(f"[SKIP] Today is a public holiday ({holiday_name}). Attendance notification skipped.")
         return
 
     current_time_str = now.strftime("%H:%M")
