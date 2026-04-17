@@ -3,7 +3,7 @@ from pywebpush import webpush, WebPushException
 from app.core.config import settings
 from app.models.notification import PushSubscription
 from app.api.deps import AsyncSessionLocal
-from sqlalchemy import select
+from sqlalchemy import select, func
 from typing import Dict, Any, List
 
 def _send_web_push(subscription: PushSubscription, payload: Dict[str, Any]):
@@ -81,6 +81,11 @@ async def notify_production_manager(title: str, body: str, url: str = "/"):
     
     async with AsyncSessionLocal() as db:
         # 생산부 부장 찾기 (다양한 필드 교차 검증)
+        
+        # [DEBUG] 전체 사원 수 확인
+        total_staff_count = await db.execute(select(func.count(Staff.id)))
+        print(f"[DEBUG] [Push] Total active staff count: {total_staff_count.scalar()}")
+
         stmt = (
             select(Staff)
             .outerjoin(Department, Staff.department_id == Department.id)
@@ -99,10 +104,15 @@ async def notify_production_manager(title: str, body: str, url: str = "/"):
         managers = result.scalars().all()
         
         if not managers:
-            print(f"[DEBUG] [Push] No Production Manager found for notification (Keyword: '생산', Role: '부장').")
+            # 매칭 실패 시 더 상세한 분석 로그 출력
+            print(f"[DEBUG] [Push] No Production Manager found. Criteria: Role='부장' AND Dept/Duty like '%생산%'")
+            # 부장인 사람만이라도 출력해서 확인
+            role_check = await db.execute(select(Staff).where(Staff.role == "부장", Staff.is_active == True))
+            role_managers = role_check.scalars().all()
+            print(f"[DEBUG] [Push] Staff with '부장' role: {[f'{m.name}(Dept:{m.department}, Duty:{m.main_duty})' for m in role_managers]}")
             return
 
-        print(f"[DEBUG] [Push] Found {len(managers)} Production Manager(s): {[m.name for m in managers]}")
+        print(f"[DEBUG] [Push] Matched {len(managers)} Production Manager(s): {[m.name for m in managers]}")
 
         for manager in managers:
             await send_push_notification(manager.id, title, body, url)

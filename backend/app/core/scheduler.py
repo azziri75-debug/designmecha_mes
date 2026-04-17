@@ -7,6 +7,7 @@ from app.api.deps import AsyncSessionLocal
 from app.models.basics import Company, Staff, EmployeeTimeRecord
 from app.models.approval import ApprovalDocument, ApprovalStep
 from app.utils.push import send_push_notification
+from app.core.timezone import now_kst
 
 scheduler = AsyncIOScheduler()
 
@@ -84,7 +85,7 @@ async def check_attendance_and_notify():
         if not is_start_time and not is_end_time:
             # 매 10분마다 스케줄러 생존 신고 로그 (선택 사항)
             if now.minute % 10 == 0:
-                print(f"Scheduler: Attendance check active at {current_time_str} (Target: {start_time_str}/{end_time_str})")
+                print(f"Scheduler: Attendance check active at {current_time_str} (Target: {start_notify_time_str}/{end_time_str})")
             return
             
         print(f"⏰ [NOTIFY] Attendance trigger hit at {current_time_str}!")
