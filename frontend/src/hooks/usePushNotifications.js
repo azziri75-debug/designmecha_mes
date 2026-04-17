@@ -81,13 +81,17 @@ export default function usePushNotifications(userId) {
                 const p256dh = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh'))));
                 const auth = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth'))));
 
+                const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+                const deviceType = isMobile ? 'Mobile' : 'Desktop';
+
                 const subData = {
                     endpoint: subscription.endpoint,
                     p256dh: p256dh.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
-                    auth: auth.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+                    auth: auth.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+                    device_type: deviceType // DB에는 저장하지 않더라도 로그 확인용으로 전송
                 };
 
-                console.log('Syncing push subscription with server...');
+                console.log(`Syncing push subscription (${deviceType}) with server...`);
                 await api.post('/notifications/subscribe', subData);
                 console.log('Push subscription synced');
                 isSubscribedRef.current = true;

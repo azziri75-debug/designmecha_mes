@@ -124,7 +124,16 @@ const MobileLayout = () => {
                             </IconButton>
                         )}
                         <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-                            {location.pathname.startsWith('/mobile/attendance') ? '근태 관리' : '현장 작업관리'}
+                            {(() => {
+                                const tab = getActiveTab();
+                                switch(tab) {
+                                    case 0: return '생산현황';
+                                    case 1: return '내 실적';
+                                    case 2: return '전자결재';
+                                    case 3: return '근태관리';
+                                    default: return '현장 작업관리';
+                                }
+                            })()}
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

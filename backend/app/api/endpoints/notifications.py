@@ -22,7 +22,8 @@ async def subscribe_push_notification(
     current_user: Staff = Depends(deps.get_current_user)
 ) -> Any:
     """디바이스의 푸시 알림 구독 정보를 저장합니다."""
-    print(f"[DEBUG] Push subscription request for user {current_user.id} ({current_user.name})")
+    device_info = sub_in.device_type if sub_in.device_type else "Unknown"
+    print(f"[DEBUG] Push subscription request for user {current_user.id} ({current_user.name}) from {device_info}")
     
     # 이미 같은 endpoint가 있는지 확인
     result = await db.execute(select(PushSubscription).where(PushSubscription.endpoint == sub_in.endpoint))
