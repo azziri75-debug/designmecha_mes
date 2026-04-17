@@ -8,6 +8,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mes_erp
       PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Asia/Seoul
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     ports:
@@ -24,6 +25,7 @@ services:
       VAPID_PUBLIC_KEY: "BFvMuX89nu5xk5ILOEW62q_annBOu1gMikcQt1fan57wjf8_F54YPuwCXAUtl13NlYxld4MAmJUqOSolMILr60c"
       VAPID_PRIVATE_KEY: "2l1HeermhGSR-_3UlFHNlg4cTHkb7CdNBTot3ZOYnlg"
       VAPID_SUBJECT: "mailto:no-reply@designmecha.co.kr"
+      TZ: Asia/Seoul
     volumes:
       - ./backend/uploads:/app/uploads
     ports:
@@ -37,6 +39,8 @@ services:
       dockerfile: Dockerfile
     container_name: mes_frontend
     restart: always
+    environment:
+      TZ: Asia/Seoul
     ports:
       - "3000:3000"
     depends_on:
