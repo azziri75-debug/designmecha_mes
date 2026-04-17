@@ -18,6 +18,8 @@ from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder,
 from app.models.quality import InspectionResult, QualityDefect
 from app.models.purchasing import PurchaseOrder, PurchaseStatus, PurchaseOrderItem, OutsourcingOrder, OutsourcingStatus, OutsourcingOrderItem, MaterialRequirement
 from app.api.utils.status_cascade import complete_production_for_order
+from app.utils.push import notify_production_manager
+import asyncio
 
 import uuid
 from datetime import datetime, date
@@ -481,6 +483,13 @@ async def create_order(
     
     await db.commit()
     await db.refresh(db_order)
+
+    # 생산부 부장 알림 발송 (비동기)
+    asyncio.create_task(notify_production_manager(
+        title="[생산] 신규 수주 등록",
+        body=f"신규 수주({db_order.order_no})가 등록되어 생산 대기 리스트에 추가되었습니다.",
+        url="/production/waiting"
+    ))
     
     # Re-fetch with full eager loading for response
     query = select(SalesOrder).options(

@@ -68,3 +68,26 @@ async def send_push_notification(user_id: int, title: str, body: str, url: str =
                 if exp_sub:
                     await db.delete(exp_sub)
             await db.commit()
+
+async def notify_production_manager(title: str, body: str, url: str = "/"):
+    """
+    생산부 부장(Manager)에게 푸시 알림을 발송합니다.
+    """
+    from app.models.basics import Staff
+    async with AsyncSessionLocal() as db:
+        # 생산부 부장 찾기 (부서명에 '생산'이 포함되고 직책이 '부장'인 활성 직원)
+        stmt = select(Staff).where(
+            Staff.is_active == True,
+            Staff.department.ilike("%생산%"),
+            Staff.role == "부장"
+        )
+        result = await db.execute(stmt)
+        managers = result.scalars().all()
+        
+        if not managers:
+            print("[DEBUG] No Production Manager found for notification.")
+            return
+
+        for manager in managers:
+            # send_push_notification 자체가 새로운 세션을 열어 처리하므로 개별 호출
+            await send_push_notification(manager.id, title, body, url)

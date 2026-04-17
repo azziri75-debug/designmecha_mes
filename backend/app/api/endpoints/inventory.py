@@ -19,6 +19,9 @@ try:
 except ImportError:
     sse_broadcaster = None
 
+from app.utils.push import notify_production_manager
+import asyncio
+
 router = APIRouter()
 
 # --- Stock Endpoints ---
@@ -540,6 +543,13 @@ async def create_stock_production(
         
     await db.commit()
     await db.refresh(new_prod)
+
+    # 생산부 부장 알림 발송 (비동기)
+    asyncio.create_task(notify_production_manager(
+        title="[생산] 신규 재고생산 요청",
+        body=f"신규 재고생산 요청({new_prod.production_no})이 등록되어 생산 대기 리스트에 추가되었습니다.",
+        url="/production/waiting"
+    ))
     
     # Reload with product and its relations to avoid MissingGreenlet
     query = select(StockProduction).where(StockProduction.id == new_prod.id).options(

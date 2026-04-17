@@ -66,10 +66,19 @@ async def check_attendance_and_notify():
         if not company:
             return
             
-        start_time_str = company.work_start_time.strftime("%H:%M") if company.work_start_time else "08:30"
+        # 5분 전 알림을 위해 시간 계산
+        if company.work_start_time:
+            from datetime import timedelta, datetime, date
+            # time 객체를 datetime으로 변환하여 계산 후 다시 str
+            work_start_dt = datetime.combine(date.today(), company.work_start_time)
+            notify_dt = work_start_dt - timedelta(minutes=5)
+            start_notify_time_str = notify_dt.strftime("%H:%M")
+        else:
+            start_notify_time_str = "08:25"
+            
         end_time_str = company.work_end_time.strftime("%H:%M") if company.work_end_time else "17:30"
         
-        is_start_time = (current_time_str == start_time_str)
+        is_start_time = (current_time_str == start_notify_time_str)
         is_end_time = (current_time_str == end_time_str)
         
         if not is_start_time and not is_end_time:
