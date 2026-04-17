@@ -46,4 +46,9 @@ async def subscribe_push_notification(
     db.add(new_sub)
     await db.commit()
     print(f"[DEBUG] Created NEW subscription for user {current_user.id}")
+    
+    # [DEBUG] 최종 기기 개수 출력
+    count_res = await db.execute(select(func.count(PushSubscription.id)).where(PushSubscription.staff_id == current_user.id))
+    print(f"[DEBUG] User {current_user.id} ({current_user.name}) now has {count_res.scalar()} total device(s) registered.")
+    
     return {"status": "created"}
