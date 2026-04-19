@@ -302,7 +302,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     // 단일 양식 (blue / red)
     // ════════════════════════════════════════
     const StatementForm = ({ color, typeLabel, remarks, onRemarksChange }) => {
-        const C = color === 'blue' ? '#003AC1' : '#C10000';
+        const C = color === 'blue' ? '#0000ff' : '#ff0000';
         const sealSrc = companyStampUrl || makeSealURI(supplierInfo.company_name);
 
         const ROW_H = '24px';
