@@ -60,10 +60,10 @@ const td = (c, extra = {}) => ({
     color: c,
     borderStyle: 'solid',
     verticalAlign: 'middle',
-    wordBreak: 'keep-all',
-    overflow: 'hidden',
-    textOverflow: 'clip',
-    lineHeight: '1.2',
+    wordBreak: 'break-all',
+    whiteSpace: 'normal',
+    overflow: 'visible',
+    lineHeight: '1.1',
     ...extra,
 });
 
@@ -472,11 +472,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                         >삭제</button>
                                         <style>{`.tsm-item-row:hover button { opacity: 0.8 !important; }`}</style>
                                     </td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>
                                         <input 
                                             value={item.specification || item.product?.specification || ''} 
                                             onChange={e => updateItem(idx, 'specification', e.target.value)}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none' }}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', whiteSpace: 'normal' }}
                                         />
                                     </td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11.5px' }}>
@@ -487,12 +487,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none' }}
                                         />
                                     </td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '11.5px' }}>
+                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px' }}>
                                         <input 
-                                            type="number"
-                                            value={item.unit_price} 
-                                            onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
-                                            style={{ width: '100%', border: 'none', textAlign: 'right', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none' }}
+                                            value={formatNumber(item.unit_price)} 
+                                            onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value.replace(/,/g, '')) || 0)}
+                                            style={{ width: '100%', border: 'none', textAlign: 'right', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', fontWeight: 'bold' }}
                                         />
                                     </td>
                                     <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{formatNumber((item.quantity || 0) * (item.unit_price || 0))}</td>
