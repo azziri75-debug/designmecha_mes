@@ -450,20 +450,21 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         </thead>
                         <tbody>
                             {items.map((item, idx) => (
-                                <tr key={idx} style={{ height: ROW_H }} className="tsm-item-row group">
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11px' }}>
-                                        <input 
+                                <tr key={idx} style={{ minHeight: ROW_H, height: 'auto' }} className="tsm-item-row group">
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>
+                                        <textarea 
                                             value={(item.date || data.delivery_date || '').slice(5)} 
                                             onChange={e => updateItem(idx, 'date', e.target.value)}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none' }}
-                                            className="tsm-no-padding-input"
+                                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '2px 0', height: '100%', minHeight: '20px', fontFamily: 'inherit', overflow: 'hidden' }}
                                         />
                                     </td>
                                     <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all', textOverflow: 'clip' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative' }}>
-                                        <input 
+                                        <textarea 
                                             value={item.product?.name || item.product_name || item.item_name || ''} 
                                             onChange={e => updateItem(idx, 'product_name', e.target.value)}
-                                            style={{ width: '100%', border: 'none', background: 'transparent', color: C, fontSize: '11.5px', fontWeight: 'bold', outline: 'none' }}
+                                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                                            style={{ width: '100%', border: 'none', background: 'transparent', color: C, fontSize: '11.5px', fontWeight: 'bold', outline: 'none', resize: 'none', padding: '2px 0', height: '100%', minHeight: '20px', fontFamily: 'inherit', overflow: 'hidden' }}
                                         />
                                         <button 
                                             onClick={() => removeItem(idx)}
@@ -473,18 +474,19 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                         <style>{`.tsm-item-row:hover button { opacity: 0.8 !important; }`}</style>
                                     </td>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>
-                                        <input 
+                                        <textarea 
                                             value={item.specification || item.product?.specification || ''} 
                                             onChange={e => updateItem(idx, 'specification', e.target.value)}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', whiteSpace: 'normal' }}
+                                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '2px 0', height: '100%', minHeight: '20px', fontFamily: 'inherit', overflow: 'hidden' }}
                                         />
                                     </td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'center', fontSize: '11.5px' }}>
-                                        <input 
-                                            type="number"
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px' }}>
+                                        <textarea 
                                             value={item.quantity} 
                                             onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none' }}
+                                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', resize: 'none', padding: '2px 0', height: '100%', minHeight: '20px', fontFamily: 'inherit', overflow: 'hidden' }}
                                         />
                                     </td>
                                     <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px' }}>
@@ -494,8 +496,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             style={{ width: '100%', border: 'none', textAlign: 'right', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', fontWeight: 'bold' }}
                                         />
                                     </td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{formatNumber((item.quantity || 0) * (item.unit_price || 0))}</td>
-                                    <td style={{ ...td(C, { textOverflow: 'ellipsis' }), textAlign: 'right', fontSize: '12px' }}>{formatNumber(Math.floor((item.quantity || 0) * (item.unit_price || 0) * 0.1))}</td>
+                                    <td style={{ ...td(C), textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{formatNumber((item.quantity || 0) * (item.unit_price || 0))}</td>
+                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '12px' }}>{formatNumber(Math.floor((item.quantity || 0) * (item.unit_price || 0) * 0.1))}</td>
                                 </tr>
                             ))}
                             {emptyCount > 0 && (
