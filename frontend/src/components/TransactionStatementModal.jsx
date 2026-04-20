@@ -451,8 +451,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         <tbody>
                             {items.map((item, idx) => (
                                 <tr key={idx} style={{ minHeight: ROW_H, height: 'auto' }} className="tsm-item-row group">
-                                    <td style={{ ...td(C), padding: '0' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ROW_H, height: '100%' }}>
+                                    <td style={{ ...td(C), padding: '0', height: '1px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
                                             <textarea 
                                                 value={(item.date || data.delivery_date || '').slice(5)} 
                                                 onChange={e => updateItem(idx, 'date', e.target.value)}
@@ -461,8 +461,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             />
                                         </div>
                                     </td>
-                                    <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative', padding: '0' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: ROW_H, height: '100%', padding: '0 4px' }}>
+                                    <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative', padding: '0', height: '1px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', height: '100%', width: '100%', padding: '0 4px' }}>
                                             <textarea 
                                                 value={item.product?.name || item.product_name || item.item_name || ''} 
                                                 onChange={e => updateItem(idx, 'product_name', e.target.value)}
@@ -477,8 +477,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                         >삭제</button>
                                         <style>{`.tsm-item-row:hover button { opacity: 0.8 !important; }`}</style>
                                     </td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px', padding: '0' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ROW_H, height: '100%' }}>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px', padding: '0', height: '1px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
                                             <textarea 
                                                 value={item.specification || item.product?.specification || ''} 
                                                 onChange={e => updateItem(idx, 'specification', e.target.value)}
@@ -487,8 +487,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             />
                                         </div>
                                     </td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px', padding: '0' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ROW_H, height: '100%' }}>
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px', padding: '0', height: '1px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
                                             <textarea 
                                                 value={item.quantity} 
                                                 onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
@@ -497,8 +497,8 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             />
                                         </div>
                                     </td>
-                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px', padding: '0' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', minHeight: ROW_H, height: '100%', padding: '0 4px' }}>
+                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px', padding: '0', height: '1px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%', width: '100%', padding: '0 4px' }}>
                                             <input 
                                                 value={formatNumber(item.unit_price)} 
                                                 onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value.replace(/,/g, '')) || 0)}
@@ -562,7 +562,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             <td style={{ ...td(C), textAlign: 'right', fontWeight: '900', fontSize: '13px', paddingRight: '15px', whiteSpace: 'nowrap' }}>
                                 ￦{formatNumber(balance)}
                                 <span style={{ fontSize: '10px', marginLeft: '12px', fontWeight: 'bold' }}>인수자&nbsp;</span>
-                                <input value={footerInfo.receiver_name} onChange={e => setFooterInfo(p => ({ ...p, receiver_name: e.target.value }))} placeholder="성함" style={{ border: 'none', width: '60px', outline: 'none', color: C, fontSize: '11px', background: 'transparent', borderBottom: `1px solid ${C}`, textAlign: 'center', padding: '0 4px' }} />
+                                <input value={footerInfo.receiver_name} onChange={e => setFooterInfo(p => ({ ...p, receiver_name: e.target.value }))} style={{ border: 'none', width: '60px', outline: 'none', color: C, fontSize: '11px', background: 'transparent', borderBottom: `1px solid ${C}`, textAlign: 'center', padding: '0 4px' }} />
                                 <span style={{ fontSize: '11px', marginLeft: '6px', fontWeight: 'bold' }}>(인)</span>
                             </td>
                         </tr>
