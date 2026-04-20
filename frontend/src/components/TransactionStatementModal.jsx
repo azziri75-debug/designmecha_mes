@@ -451,21 +451,25 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         <tbody>
                             {items.map((item, idx) => (
                                 <tr key={idx} style={{ minHeight: ROW_H, height: 'auto' }} className="tsm-item-row group">
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>
-                                        <textarea 
-                                            value={(item.date || data.delivery_date || '').slice(5)} 
-                                            onChange={e => updateItem(idx, 'date', e.target.value)}
-                                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '2px 0', height: '100%', minHeight: '20px', fontFamily: 'inherit', overflow: 'hidden' }}
-                                        />
+                                    <td style={{ ...td(C), padding: '0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ROW_H, height: '100%' }}>
+                                            <textarea 
+                                                value={(item.date || data.delivery_date || '').slice(5)} 
+                                                onChange={e => updateItem(idx, 'date', e.target.value)}
+                                                onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                                                style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', display: 'block' }}
+                                            />
+                                        </div>
                                     </td>
-                                    <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all', textOverflow: 'clip' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative' }}>
-                                        <textarea 
-                                            value={item.product?.name || item.product_name || item.item_name || ''} 
-                                            onChange={e => updateItem(idx, 'product_name', e.target.value)}
-                                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                            style={{ width: '100%', border: 'none', background: 'transparent', color: C, fontSize: '11.5px', fontWeight: 'bold', outline: 'none', resize: 'none', padding: '2px 0', height: '100%', minHeight: '20px', fontFamily: 'inherit', overflow: 'hidden' }}
-                                        />
+                                    <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative', padding: '0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: ROW_H, height: '100%', padding: '0 4px' }}>
+                                            <textarea 
+                                                value={item.product?.name || item.product_name || item.item_name || ''} 
+                                                onChange={e => updateItem(idx, 'product_name', e.target.value)}
+                                                onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                                                style={{ width: '100%', border: 'none', background: 'transparent', color: C, fontSize: '11.5px', fontWeight: 'bold', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', display: 'block' }}
+                                            />
+                                        </div>
                                         <button 
                                             onClick={() => removeItem(idx)}
                                             className="tsm-no-print"
@@ -473,28 +477,34 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                         >삭제</button>
                                         <style>{`.tsm-item-row:hover button { opacity: 0.8 !important; }`}</style>
                                     </td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px' }}>
-                                        <textarea 
-                                            value={item.specification || item.product?.specification || ''} 
-                                            onChange={e => updateItem(idx, 'specification', e.target.value)}
-                                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '2px 0', height: '100%', minHeight: '20px', fontFamily: 'inherit', overflow: 'hidden' }}
-                                        />
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11px', padding: '0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ROW_H, height: '100%' }}>
+                                            <textarea 
+                                                value={item.specification || item.product?.specification || ''} 
+                                                onChange={e => updateItem(idx, 'specification', e.target.value)}
+                                                onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                                                style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', display: 'block' }}
+                                            />
+                                        </div>
                                     </td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px' }}>
-                                        <textarea 
-                                            value={item.quantity} 
-                                            onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', resize: 'none', padding: '2px 0', height: '100%', minHeight: '20px', fontFamily: 'inherit', overflow: 'hidden' }}
-                                        />
+                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px', padding: '0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ROW_H, height: '100%' }}>
+                                            <textarea 
+                                                value={item.quantity} 
+                                                onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                                                onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                                                style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', display: 'block' }}
+                                            />
+                                        </div>
                                     </td>
-                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px' }}>
-                                        <input 
-                                            value={formatNumber(item.unit_price)} 
-                                            onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value.replace(/,/g, '')) || 0)}
-                                            style={{ width: '100%', border: 'none', textAlign: 'right', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', fontWeight: 'bold' }}
-                                        />
+                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px', padding: '0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', minHeight: ROW_H, height: '100%', padding: '0 4px' }}>
+                                            <input 
+                                                value={formatNumber(item.unit_price)} 
+                                                onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value.replace(/,/g, '')) || 0)}
+                                                style={{ width: '100%', border: 'none', textAlign: 'right', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', fontWeight: 'bold' }}
+                                            />
+                                        </div>
                                     </td>
                                     <td style={{ ...td(C), textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{formatNumber((item.quantity || 0) * (item.unit_price || 0))}</td>
                                     <td style={{ ...td(C), textAlign: 'right', fontSize: '12px' }}>{formatNumber(Math.floor((item.quantity || 0) * (item.unit_price || 0) * 0.1))}</td>
