@@ -749,7 +749,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 <td className="px-4 py-4 truncate max-w-[150px]">{order?.note || sp?.note || '-'}</td>
                 <td className="px-4 py-4 text-center"><Chip label={plan.status} size="small" color={plan.status === 'COMPLETED' ? "success" : plan.status === 'CONFIRMED' ? "secondary" : "primary"} /></td>
                 <td className="px-4 py-4 text-center">{defects?.length > 0 && <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); onShowDefects(defects); }}><AlertCircle className="w-5 h-5" /></IconButton>}</td>
-                <td className="px-4 py-4 text-center">{Object.keys(groupedItems).length || 0}</td>
+                <td className="px-4 py-4 text-center">{plan.items?.length || 0}</td>
                 <td className="px-4 py-4 text-right font-bold text-emerald-400">{formatCurrency(plan.items?.reduce((sum, item) => sum + (item.cost || 0), 0) || 0, 'KRW')}</td>
                 <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                     {safeParseJSON(plan.attachment_file, []).length > 0 && <IconButton size="small" color="primary" onClick={() => onOpenFiles(safeParseJSON(plan.attachment_file, []), plan)}><FileText className="w-4 h-4" /></IconButton>}
