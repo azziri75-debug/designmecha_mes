@@ -275,6 +275,7 @@ const MobileInventoryPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [itemType, setItemType] = useState('');
     const [majorGroupId, setMajorGroupId] = useState('');
+    const [hideEmpty, setHideEmpty] = useState(true);
     const [filterOpen, setFilterOpen] = useState(false);
 
     // 편집
@@ -313,13 +314,19 @@ const MobileInventoryPage = () => {
             (res.data || []).forEach(s => {
                 if (s.product_id) uniqueMap.set(s.product_id, s);
             });
-            setStocks(Array.from(uniqueMap.values()));
+            let list = Array.from(uniqueMap.values());
+            if (hideEmpty) {
+                list = list.filter(s =>
+                    Number(s.current_quantity || 0) > 0 || Number(s.producing_total || 0) > 0
+                );
+            }
+            setStocks(list);
         } catch (e) {
             console.error('fetch stocks failed', e);
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, itemType, majorGroupId]);
+    }, [searchTerm, itemType, majorGroupId, hideEmpty]);
 
     useEffect(() => {
         fetchGroups();
@@ -346,7 +353,7 @@ const MobileInventoryPage = () => {
     };
 
     // 활성 필터 수
-    const activeFilterCount = [itemType, majorGroupId].filter(Boolean).length;
+    const activeFilterCount = [itemType, majorGroupId, hideEmpty ? 'hide' : ''].filter(Boolean).length;
 
     return (
         <Box sx={{ px: 2, pt: 2, pb: 2 }}>
@@ -410,6 +417,14 @@ const MobileInventoryPage = () => {
             {/* 활성 필터 칩 표시 */}
             {activeFilterCount > 0 && (
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                    {hideEmpty && (
+                        <Chip
+                            label="재고있는 품목만"
+                            size="small"
+                            onDelete={() => setHideEmpty(false)}
+                            sx={{ bgcolor: '#1e293b', color: '#34d399', border: '1px solid #34d39955' }}
+                        />
+                    )}
                     {itemType && (
                         <Chip
                             label={TYPE_MAP[itemType] || itemType}
@@ -484,11 +499,39 @@ const MobileInventoryPage = () => {
                     </Typography>
                     <Button
                         size="small"
-                        onClick={() => { setItemType(''); setMajorGroupId(''); }}
+                        onClick={() => { setItemType(''); setMajorGroupId(''); setHideEmpty(true); }}
                         sx={{ color: '#64748b', fontSize: '0.8rem' }}
                     >
                         초기화
                     </Button>
+                </Box>
+
+                {/* 재고없는 품목 숨기기 토글 */}
+                <Box sx={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    bgcolor: '#0f172a', borderRadius: 2, px: 2, py: 1.5, mb: 3,
+                    border: '1px solid', borderColor: hideEmpty ? '#34d39955' : '#334155',
+                    cursor: 'pointer',
+                }}
+                    onClick={() => setHideEmpty(v => !v)}
+                >
+                    <Box>
+                        <Typography sx={{ color: 'white', fontSize: '0.9rem', fontWeight: 500 }}>재고없는 품목 숨기기</Typography>
+                        <Typography sx={{ color: '#64748b', fontSize: '0.75rem', mt: 0.3 }}>현재고와 생산중이 모두 0인 품목을 숨깁니다</Typography>
+                    </Box>
+                    <Box sx={{
+                        width: 44, height: 24, borderRadius: 12,
+                        bgcolor: hideEmpty ? '#22c55e' : '#334155',
+                        position: 'relative', transition: 'background 0.2s', flexShrink: 0, ml: 2,
+                    }}>
+                        <Box sx={{
+                            position: 'absolute', top: 2,
+                            left: hideEmpty ? 22 : 2,
+                            width: 20, height: 20, borderRadius: '50%',
+                            bgcolor: 'white', transition: 'left 0.2s',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                        }} />
+                    </Box>
                 </Box>
 
                 {/* 사업부 */}
