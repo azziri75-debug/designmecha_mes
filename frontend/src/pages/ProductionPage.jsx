@@ -728,9 +728,11 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 <td className="px-4 py-4 truncate">{plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내'}</td>
                 <td className="px-4 py-4 truncate">
                     {(() => {
-                        const items = plan.items || [];
-                        const firstItemName = items[0]?.product?.name || items[0]?.product_name || "";
-                        return items.length > 1 ? `${firstItemName} 외 ${items.length - 1}건` : firstItemName;
+                        const uniqueProducts = Object.values(groupedItems);
+                        const firstProductName = uniqueProducts[0]?.product_name || "";
+                        return uniqueProducts.length > 1
+                            ? `${firstProductName} 외 ${uniqueProducts.length - 1}건`
+                            : firstProductName;
                     })()}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-orange-600 font-medium">{order?.delivery_date || '-'}</td>
