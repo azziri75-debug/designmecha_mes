@@ -25,6 +25,7 @@ import SettlementPage from './pages/SettlementPage';
 import WeightCalculatorPage from './pages/WeightCalculatorPage';
 import MobileLayout from './components/MobileLayout';
 import MobileRedirectHandler from './components/MobileRedirectHandler';
+import MobileInventoryPage from './pages/MobileInventoryPage';
 
 const ProtectedRoute = ({ children, menuKey }) => {
   const { user, hasPermission } = useAuth();
@@ -94,6 +95,7 @@ const App = () => {
       <Route path="/mobile" element={<ProtectedRoute><MobileLayout /></ProtectedRoute>}>
         <Route path="work-logs" element={<MobileWorkLogPage />} />
         <Route path="attendance" element={<MobileAttendancePage />} />
+        <Route path="inventory" element={<MobileInventoryPage />} />
       </Route>
       <Route path="/weight-calculator" element={<WeightCalculatorPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

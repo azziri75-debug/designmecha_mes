@@ -21,13 +21,15 @@ import {
     AssignmentInd as AssignmentIndIcon,
     ArrowBack as ArrowBackIcon,
     Logout as LogoutIcon,
-    MoreVert as MoreVertIcon
+    MoreVert as MoreVertIcon,
+    Inventory2 as InventoryIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
 
 const MobileLayout = () => {
     const { user, logout } = useAuth();
+    const isAdmin = user?.user_type === 'ADMIN';
     const { waitingCount } = useApprovalBadge();
     const navigate = useNavigate();
     const location = useLocation();
@@ -38,6 +40,7 @@ const MobileLayout = () => {
     // Sync bottom navigation with current path
     const getActiveTab = () => {
         if (location.pathname.startsWith('/mobile/attendance')) return 3;
+        if (location.pathname.startsWith('/mobile/inventory')) return 4;
         const tab = searchParams.get('tab');
         if (tab) return parseInt(tab);
         return 0;
@@ -46,6 +49,8 @@ const MobileLayout = () => {
     const handleTabChange = (event, newValue) => {
         if (newValue === 3) {
             navigate('/mobile/attendance');
+        } else if (newValue === 4) {
+            navigate('/mobile/inventory');
         } else {
             // Force return to work logs if navigating to work-log related tabs
             if (location.pathname !== '/mobile/work-logs') {
@@ -131,6 +136,7 @@ const MobileLayout = () => {
                                     case 1: return '내 실적';
                                     case 2: return '전자결재';
                                     case 3: return '근태관리';
+                                    case 4: return '재고현황';
                                     default: return '현장 작업관리';
                                 }
                             })()}
@@ -198,6 +204,9 @@ const MobileLayout = () => {
                         }
                     />
                     <BottomNavigationAction label="근태현황" icon={<AssignmentIndIcon />} />
+                    {isAdmin && (
+                        <BottomNavigationAction label="재고현황" icon={<InventoryIcon />} />
+                    )}
                 </BottomNavigation>
             </Paper>
         </Box>
