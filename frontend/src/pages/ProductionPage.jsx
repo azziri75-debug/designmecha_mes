@@ -778,7 +778,9 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                                 {Object.entries(groupedItems).map(([productId, group]) => (
                                     <div key={productId} className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
                                         <div className="mb-3 flex flex-wrap gap-4 items-center font-bold text-xs text-blue-400">
-                                            <span>품명: {group.product_name}</span><span>수량: {group.items[0]?.quantity}</span>
+                                            <span>품명: {group.product_name}</span>
+                                            {group.product_spec && <span className="text-gray-400 font-normal">규격: {group.product_spec}</span>}
+                                            <span>수량: {group.items[0]?.quantity}</span>
                                         </div>
                                         <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded-md">
                                             <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
