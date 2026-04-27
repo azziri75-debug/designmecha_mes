@@ -54,18 +54,31 @@ async def sync_plan_item_status(db: AsyncSession, plan_item_id: int):
     if not plan_item:
         return
 
+    old_status = plan_item.status
+    new_status = old_status
+
     # [FIX] If no logs remain, status should revert to PLANNED (unless manually changed elsewhere, but usually PLANNED is the base)
     if not items or total_good == 0:
         if plan_item.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.COMPLETED]:
-            plan_item.status = ProductionStatus.PLANNED
-            db.add(plan_item)
+            new_status = ProductionStatus.PLANNED
     elif total_good >= plan_item.quantity:
-        # [NEW] 상태 연계 유틸리티 호출 (발주 완료 및 재고 반영 포함)
-        await on_production_item_completed(db, plan_item, reference=f"WorkLog (PI#{plan_item_id})")
+        new_status = ProductionStatus.COMPLETED
     elif total_good > 0:
-        plan_item.status = ProductionStatus.IN_PROGRESS
-        db.add(plan_item)
+        new_status = ProductionStatus.IN_PROGRESS
+
+    plan_item.status = new_status
+    db.add(plan_item)
     
+    # [NEW] 상태 전이(State Transition) 기반 재고 동기화
+    from app.api.utils.status_cascade import revert_production_item_completed, on_production_item_completed
+    
+    if old_status == ProductionStatus.COMPLETED and new_status != ProductionStatus.COMPLETED:
+        # 생산 완료 -> 진행/대기: 재고 및 상태 롤백
+        await revert_production_item_completed(db, plan_item, reference=f"Status Sync (PI#{plan_item_id})")
+    elif old_status != ProductionStatus.COMPLETED and new_status == ProductionStatus.COMPLETED:
+        # 진행/대기 -> 생산 완료: 재고 입고 및 소진
+        await on_production_item_completed(db, plan_item, reference=f"WorkLog (PI#{plan_item_id})")
+
     await db.flush()
     
     # --- Auto-Complete Check for Parent Plan ---
@@ -1938,24 +1951,9 @@ async def delete_work_log(
     # Store item IDs to sync status after deletion
     plan_item_ids = [item.plan_item_id for item in log.items if item.plan_item_id]
 
-    # --- Stock Reversal Hook ---
-    for item in log.items:
-        if item.good_quantity > 0:
-            plan_item = await db.get(ProductionPlanItem, item.plan_item_id)
-            if plan_item:
-                await handle_stock_movement(
-                    db=db,
-                    product_id=plan_item.product_id,
-                    quantity=-item.good_quantity,
-                    transaction_type=TransactionType.ADJUSTMENT,
-                    reference=f"WorkLog Delete (Reverse Item {item.id})"
-                )
-                await handle_backflush(
-                    db=db,
-                    parent_product_id=plan_item.product_id,
-                    produced_quantity=-item.good_quantity,
-                    reference=f"WorkLog Delete (Reverse Item {item.id})"
-                )
+    # --- Stock Reversal Hook Removed ---
+    # 재고는 개별 실적 수량이 아닌 sync_plan_item_status에서의 상태 변경(COMPLETED -> IN_PROGRESS)에 의해
+    # revert_production_item_completed() 가 일괄 처리하도록 변경됨. (데이터 정합성 보장)
 
     await db.delete(log)
     await db.commit()

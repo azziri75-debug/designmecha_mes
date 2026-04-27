@@ -41,6 +41,19 @@ async def complete_production_for_order(db: AsyncSession, order_id: int, referen
                 completion_date=delivery_date
             )
 
+        # [FIX] 납품에 의한 일괄 완료 시, in_production_quantity 동기화 (감소 처리)
+        net_quantities = {}
+        for pi in items:
+            pid = pi.product_id
+            net_quantities[pid] = max(net_quantities.get(pid, 0), pi.quantity or 0)
+            
+        from app.models.inventory import Stock
+        for pid, qty in net_quantities.items():
+            stock_res = await db.execute(select(Stock).where(Stock.product_id == pid))
+            stock = stock_res.scalars().first()
+            if stock and stock.in_production_quantity >= qty:
+                stock.in_production_quantity -= qty
+
     await db.flush()
 
 async def on_production_item_completed(
@@ -327,3 +340,73 @@ async def on_production_item_completed(
         await handle_backflush(db, item.product_id, item.quantity, reference=f"Production #{item.plan_id}")
 
     await db.flush()
+
+async def revert_production_item_completed(
+    db: AsyncSession, 
+    item: ProductionPlanItem, 
+    reference: str = None
+):
+    """
+    생산 완료가 취소되어 다시 IN_PROGRESS나 PLANNED로 돌아갈 때, 
+    재고 변동 및 관련 상태를 되돌리는 함수.
+    """
+    from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem
+    from app.models.inventory import TransactionType
+    from app.api.utils.inventory import handle_stock_movement
+
+    if (item.quantity or 0) <= 0:
+        return
+
+    # 1. 마지막 공정일 경우: 완제품 재고 차감 및 부품 재고 복구
+    max_seq_stmt = select(func.max(ProductionPlanItem.sequence)).where(ProductionPlanItem.plan_id == item.plan_id)
+    max_seq_res = await db.execute(max_seq_stmt)
+    max_seq = max_seq_res.scalar()
+    is_last = (item.sequence == max_seq)
+
+    if is_last:
+        # 완제품 회수 (-)
+        await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.ADJUSTMENT, f"Revert Production Done ({reference or item.id})")
+        # BOM 하위 부품 회수 (+) - handle_backflush의 반대 동작 (기본 부품만 일괄 반환)
+        from app.models.product import BOM
+        bom_query = select(BOM).where(BOM.parent_product_id == item.product_id)
+        bom_items = (await db.execute(bom_query)).scalars().all()
+        for b_item in bom_items:
+            required_qty = int(b_item.required_quantity * item.quantity)
+            await handle_stock_movement(db, b_item.child_product_id, required_qty, TransactionType.IN, f"Revert Backflush ({reference or item.plan_id})")
+
+    # 2. 발주/외주 공정일 경우: 자동차감되었던 소비량 원복 및 입고량 취소
+    # 자재 발주 (PURCHASE)
+    if "PURCHASE" in (item.course_type or "").upper() or "구매" in (item.course_type or ""):
+        po_items_stmt = select(PurchaseOrderItem).where(PurchaseOrderItem.production_plan_item_id == item.id)
+        for po_item in (await db.execute(po_items_stmt)).scalars().all():
+            await handle_stock_movement(db, po_item.product_id, -po_item.quantity, TransactionType.ADJUSTMENT, f"Revert Auto-Receipt ({reference or 'Production'})")
+            await handle_stock_movement(db, po_item.product_id, po_item.quantity, TransactionType.IN, f"Revert Auto-Consumption ({reference or 'Production'})")
+    
+    # 외주 발주 (OUTSOURCING)
+    if "OUTSOURCING" in (item.course_type or "").upper() or "외주" in (item.course_type or ""):
+        os_items_stmt = select(OutsourcingOrderItem).where(OutsourcingOrderItem.production_plan_item_id == item.id)
+        for os_item in (await db.execute(os_items_stmt)).scalars().all():
+            await handle_stock_movement(db, os_item.product_id, -os_item.quantity, TransactionType.ADJUSTMENT, f"Revert Auto-OS-Receipt ({reference or 'Production'})")
+            await handle_stock_movement(db, os_item.product_id, os_item.quantity, TransactionType.IN, f"Revert Auto-OS-Consumption ({reference or 'Production'})")
+
+    # 3. 헤더 상태 롤백
+    plan = await db.get(ProductionPlan, item.plan_id)
+    if plan and plan.status == ProductionStatus.COMPLETED:
+        plan.status = ProductionStatus.IN_PROGRESS
+        plan.actual_completion_date = None
+        db.add(plan)
+        
+        # 수주가 생산완료 상태였다면 부분완료나 대기로 롤백
+        from app.models.sales import SalesOrder, OrderStatus
+        if plan.order_id:
+            order = await db.get(SalesOrder, plan.order_id)
+            if order and order.status == OrderStatus.PRODUCTION_COMPLETED:
+                delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
+                if delivered_qty > 0:
+                    order.status = OrderStatus.PARTIALLY_DELIVERED
+                else:
+                    order.status = OrderStatus.CONFIRMED
+                db.add(order)
+
+    await db.flush()
+
