@@ -143,6 +143,7 @@ const MobileWorkLogPage = () => {
     const [attendUserId, setAttendUserId] = useState(null);
     const [attendanceSummary, setAttendanceSummary] = useState(null);
     const [attendanceLoading, setAttendanceLoading] = useState(false);
+    const [workEndTime, setWorkEndTime] = useState('17:30'); // 회사 퇴근 시간
     const [attendanceError, setAttendanceError] = useState(null);
 
     // Derived selections
@@ -253,6 +254,14 @@ const MobileWorkLogPage = () => {
             setAttendanceLoading(false);
         }
     }, [user, tab, attendYear, attendUserId]);
+
+    // 회사 퇴근 시간 로드
+    useEffect(() => {
+        api.get('/basics/company').then(res => {
+            const wet = res.data?.work_end_time;
+            if (wet) setWorkEndTime(wet.substring(0, 5)); // 'HH:MM:SS' → 'HH:MM'
+        }).catch(() => {});
+    }, []);
 
     // System Back Button / URL Sync Effect
     useEffect(() => {
@@ -528,7 +537,7 @@ const MobileWorkLogPage = () => {
                         if (diff < 0) diff += 24;
                         calcHours = parseFloat(diff.toFixed(1));
                     } else if (type === '조퇴') {
-                        const workEnd = new Date(`2000-01-01T18:00`);
+                        const workEnd = new Date(`2000-01-01T${workEndTime}`);
                         let diff = (workEnd - start) / (1000 * 60 * 60);
                         calcHours = parseFloat(Math.max(0, diff).toFixed(1));
                     }
@@ -1570,7 +1579,7 @@ const MobileWorkLogPage = () => {
                                             if (diff < 0) diff += 24;
                                             h = parseFloat(diff.toFixed(1));
                                         } else if (type === '조퇴') {
-                                            const workEnd = new Date(`2000-01-01T18:00`);
+                                            const workEnd = new Date(`2000-01-01T${workEndTime}`);
                                             let diff = (workEnd - start) / (1000 * 60 * 60);
                                             h = parseFloat(Math.max(0, diff).toFixed(1));
                                         }

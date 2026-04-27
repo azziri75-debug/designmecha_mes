@@ -1,10 +1,19 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Typography, Table, TableBody, TableRow, TableCell, RadioGroup, FormControlLabel, Radio, Select, MenuItem, FormControl } from '@mui/material';
 import ApprovalGrid from './ApprovalGrid';
+import api from '../lib/api';
 
 const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     const today = new Date();
     const formattedDate = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+    const [workEndTime, setWorkEndTime] = useState('17:30');
+
+    useEffect(() => {
+        api.get('/basics/company').then(res => {
+            const wet = res.data?.work_end_time;
+            if (wet) setWorkEndTime(wet.substring(0, 5)); // 'HH:MM:SS' → 'HH:MM'
+        }).catch(() => {});
+    }, []);
 
     const isOuting = data.leave_type === '외출';
 
@@ -38,8 +47,8 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
                 if (diff < 0) diff += 24;
                 calcHours = isNaN(diff) ? 0 : parseFloat(diff.toFixed(1));
             } else if (data.leave_type === '조퇴') {
-                // 조퇴는 정규 퇴근 시간(18:00)까지의 시간을 계산
-                const workEnd = new Date(`2000-01-01T18:00`);
+                // 조퇴는 회사 설정 퇴근 시간까지의 시간을 계산
+                const workEnd = new Date(`2000-01-01T${workEndTime}`);
                 let diff = (workEnd - start) / (1000 * 60 * 60);
                 calcHours = isNaN(diff) ? 0 : parseFloat(Math.max(0, diff).toFixed(1));
             }
@@ -52,7 +61,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
         if (Object.keys(updates).length > 0 && typeof onChange === 'function') {
             onChange({ ...data, ...updates });
         }
-    }, [data.leave_type, data.date, data.leave_time, data.time, data.return_time, data.end_time, currentUser, onChange]);
+    }, [data.leave_type, data.date, data.leave_time, data.time, data.return_time, data.end_time, currentUser, onChange, workEndTime]);
 
     // [NEW] Display logic for read-only mode when hours might be missing
     const getDisplayHours = () => {
@@ -70,7 +79,7 @@ const EarlyLeaveForm = ({ data = {}, onChange, isReadOnly, currentUser, document
             if (diff < 0) diff += 24;
             calcHours = parseFloat(diff.toFixed(1));
         } else if (data.leave_type === '조퇴' || !data.leave_type) {
-            const workEnd = new Date(`2000-01-01T18:00`);
+            const workEnd = new Date(`2000-01-01T${workEndTime}`);
             let diff = (workEnd - start) / (1000 * 60 * 60);
             calcHours = parseFloat(Math.max(0, diff).toFixed(1));
         }
