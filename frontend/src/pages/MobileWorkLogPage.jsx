@@ -1024,25 +1024,24 @@ const MobileWorkLogPage = () => {
                                     ));
                                 })()}
                                 
-                                {/* Floating Bottom Button */}
+                                {/* Sticky Bottom Button */}
                                 {selectedItems.length > 0 && (
                                     <Box sx={{ 
-                                        position: 'fixed', 
-                                        bottom: 60, 
+                                        position: 'sticky', 
+                                        bottom: 0, 
                                         left: 0, 
-                                        width: '100%', 
+                                        right: 0,
                                         p: 2, 
                                         bgcolor: 'background.paper', 
                                         borderTop: '1px solid #e0e0e0', 
-                                        zIndex: 1000,
-                                        boxSizing: 'border-box'
+                                        zIndex: 10,
+                                        mt: 2
                                     }}>
                                         <Button 
                                             variant="contained" 
                                             fullWidth 
                                             size="large"
                                             onClick={() => {
-                                                // Initialize item records with bulk value if any
                                                 const initRecords = { ...itemRecords };
                                                 selectedItems.forEach(item => {
                                                     if (!initRecords[item.id]) {
