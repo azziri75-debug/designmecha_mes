@@ -845,23 +845,21 @@ const MobileWorkLogPage = () => {
                                         {filteredPlans.map(plan => {
                                             const orderNo = plan.order?.order_no || plan.stock_production?.production_no || '-';
                                             
-                                            const uniqueProducts = [];
-                                            plan.items?.forEach(item => {
-                                                const pName = item.product?.name || item.product_name;
-                                                if (pName && !uniqueProducts.includes(pName)) uniqueProducts.push(pName);
-                                            });
-                                            if (plan.order && plan.order.items) {
-                                                plan.order.items.forEach(item => {
-                                                    const pName = item.product?.name || item.product_name;
-                                                    if (pName && !uniqueProducts.includes(pName)) uniqueProducts.push(pName);
-                                                });
-                                            } else if (plan.stock_production) {
-                                                const pName = plan.stock_production.product?.name;
-                                                if (pName && !uniqueProducts.includes(pName)) uniqueProducts.push(pName);
+                                            const groupedItems = plan.items?.reduce((acc, item) => {
+                                                if (item.product_id && !acc[item.product_id]) {
+                                                    acc[item.product_id] = item.product?.name || item.product_name || '-';
+                                                }
+                                                return acc;
+                                            }, {}) || {};
+                                            
+                                            const uniqueProductNames = Object.values(groupedItems);
+                                            
+                                            if (uniqueProductNames.length === 0 && plan.stock_production) {
+                                                uniqueProductNames.push(plan.stock_production.product?.name || '-');
                                             }
                                             
-                                            const firstProd = uniqueProducts[0] || '-';
-                                            const cnt = uniqueProducts.length - 1;
+                                            const firstProd = uniqueProductNames[0] || '-';
+                                            const cnt = uniqueProductNames.length - 1;
                                             const productNameStr = cnt > 0 ? `${firstProd} 외 ${cnt}건` : firstProd;
 
                                             return (
