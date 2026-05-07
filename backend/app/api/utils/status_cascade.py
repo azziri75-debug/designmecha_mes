@@ -397,11 +397,16 @@ async def revert_production_item_completed(
         db.add(plan)
         
         # 수주가 생산완료 상태였다면 부분완료나 대기로 롤백
-        from app.models.sales import SalesOrder, OrderStatus
+        from app.models.sales import SalesOrder, OrderStatus, SalesOrderItem
         if plan.order_id:
             order = await db.get(SalesOrder, plan.order_id)
             if order and order.status == OrderStatus.PRODUCTION_COMPLETED:
-                delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
+                # [FIX] order.items 직접 접근 시 MissingGreenletError 발생 → 별도 쿼리 사용
+                from sqlalchemy import func as _func
+                delivered_sum_stmt = select(_func.sum(SalesOrderItem.delivered_quantity)).where(
+                    SalesOrderItem.order_id == plan.order_id
+                )
+                delivered_qty = (await db.execute(delivered_sum_stmt)).scalar() or 0
                 if delivered_qty > 0:
                     order.status = OrderStatus.PARTIALLY_DELIVERED
                 else:
