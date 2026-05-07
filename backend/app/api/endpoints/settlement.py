@@ -187,10 +187,13 @@ async def get_settlement_purchases(
         if request_date.year != year or request_date.month != month:
             continue
 
-        # 거래처명 파싱: 제목이 "[거래처]-본문" 형식
-        title = doc.title or ''
-        m = _re.match(r'^\[(.+?)\]-', title)
-        partner_name = m.group(1) if m else title
+        # 거래처명: content.partner_for_title 우선 사용, 없으면 title에서 파싱
+        partner_name = content.get('partner_for_title', '').strip()
+        if not partner_name:
+            import re as _re
+            title = doc.title or ''
+            m = _re.match(r'^\[(.+?)\]-', title)
+            partner_name = m.group(1).strip() if m else title.strip()
 
         currency = content.get('currency', 'KRW')
         items = content.get('items', [])
@@ -444,6 +447,50 @@ async def get_chart_summary(
         pur_map[r[0] or "미분류"] = pur_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
     for r in r_pur_out.fetchall():
         pur_map[r[0] or "미분류"] = pur_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
+
+    # 내부기안 대금지급 건 수집 (chart-summary용)
+    import re as _re_chart
+    from datetime import date as _date_chart
+    _pay_q = select(ApprovalDocument).where(
+        ApprovalDocument.doc_type == DocumentType.INTERNAL_DRAFT,
+        ApprovalDocument.status == ApprovalStatus.COMPLETED,
+        ApprovalDocument.deleted_at == None
+    )
+    _pay_docs = (await db.execute(_pay_q)).scalars().all()
+    _payment_rows = []  # (partner_name, amount_krw)
+    for _doc in _pay_docs:
+        _cnt = _doc.content or {}
+        if _cnt.get('draft_type') != 'PAYMENT':
+            continue
+        _date_str = _cnt.get('request_date')
+        try:
+            _req_date = _date_chart.fromisoformat(_date_str) if _date_str else None
+        except Exception:
+            _req_date = None
+        if not _req_date and _doc.created_at:
+            _req_date = _doc.created_at.date()
+        if not _req_date:
+            continue
+        if year and _req_date.year != year:
+            continue
+        if month and _req_date.month != month:
+            continue
+        _pname = (_cnt.get('partner_for_title') or '').strip()
+        if not _pname:
+            _m = _re_chart.match(r'^\[(.+?)\]-', _doc.title or '')
+            _pname = _m.group(1).strip() if _m else (_doc.title or '미분류')
+        _cur = _cnt.get('currency', 'KRW')
+        for _item in (_cnt.get('items') or []):
+            _amt = float(_item.get('amount', 0) or 0)
+            if _amt == 0:
+                continue
+            _amt_krw = _amt * exchange_rate if _cur == 'USD' else _amt
+            _payment_rows.append((_pname or '미분류', _amt_krw))
+
+    # 대금지급 합계를 "대금지급" 그룹으로 추가
+    for _pname, _amt_krw in _payment_rows:
+        pur_map["대금지급"] = pur_map.get("대금지급", 0.0) + _amt_krw
+
     purchases_data = [{"name": k, "value": v} for k, v in sorted(pur_map.items(), key=lambda x: -x[1])]
 
 
@@ -532,6 +579,9 @@ async def get_chart_summary(
         pur_rank_map[r[0] or "미분류"] = pur_rank_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
     for r in r_pur_rank_out.fetchall():
         pur_rank_map[r[0] or "미분류"] = pur_rank_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
+    # 대금지급 건 거래처별 순위 합산
+    for _pname, _amt_krw in _payment_rows:
+        pur_rank_map[_pname] = pur_rank_map.get(_pname, 0.0) + _amt_krw
     purchase_ranking = [{"name": k, "value": v}
                         for k, v in sorted(pur_rank_map.items(), key=lambda x: -x[1])[:10]]
 
