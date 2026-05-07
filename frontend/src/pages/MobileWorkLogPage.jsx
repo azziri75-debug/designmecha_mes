@@ -1026,7 +1026,17 @@ const MobileWorkLogPage = () => {
                                 
                                 {/* Floating Bottom Button */}
                                 {selectedItems.length > 0 && (
-                                    <Box sx={{ position: 'fixed', bottom: 65, left: 0, right: 0, p: 2, bgcolor: 'background.paper', borderTop: '1px solid #e0e0e0', zIndex: 10 }}>
+                                    <Box sx={{ 
+                                        position: 'fixed', 
+                                        bottom: 60, 
+                                        left: 0, 
+                                        width: '100%', 
+                                        p: 2, 
+                                        bgcolor: 'background.paper', 
+                                        borderTop: '1px solid #e0e0e0', 
+                                        zIndex: 1000,
+                                        boxSizing: 'border-box'
+                                    }}>
                                         <Button 
                                             variant="contained" 
                                             fullWidth 
@@ -1044,7 +1054,7 @@ const MobileWorkLogPage = () => {
                                             }}
                                             sx={{ py: 1.5, borderRadius: 2, fontWeight: 'bold' }}
                                         >
-                                            {selectedItems.length}개 공정 실적 등록하기
+                                            작업일지등록
                                         </Button>
                                     </Box>
                                 )}
