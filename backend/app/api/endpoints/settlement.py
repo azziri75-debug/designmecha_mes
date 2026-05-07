@@ -485,11 +485,12 @@ async def get_chart_summary(
             if _amt == 0:
                 continue
             _amt_krw = _amt * exchange_rate if _cur == 'USD' else _amt
-            _payment_rows.append((_pname or '미분류', _amt_krw))
+            _dept = (_cnt.get('dept') or '').strip() or '기타(대금지급)'
+            _payment_rows.append((_dept, _pname or '미분류', _amt_krw))
 
-    # 대금지급 합계를 "대금지급" 그룹으로 추가
-    for _pname, _amt_krw in _payment_rows:
-        pur_map["대금지급"] = pur_map.get("대금지급", 0.0) + _amt_krw
+    # 대금지급 합계를 기안부서(미입입력시 "기타") 그룹으로 추가
+    for _dept, _pname, _amt_krw in _payment_rows:
+        pur_map[_dept] = pur_map.get(_dept, 0.0) + _amt_krw
 
     purchases_data = [{"name": k, "value": v} for k, v in sorted(pur_map.items(), key=lambda x: -x[1])]
 
@@ -579,8 +580,8 @@ async def get_chart_summary(
         pur_rank_map[r[0] or "미분류"] = pur_rank_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
     for r in r_pur_rank_out.fetchall():
         pur_rank_map[r[0] or "미분류"] = pur_rank_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
-    # 대금지급 건 거래처별 순위 합산
-    for _pname, _amt_krw in _payment_rows:
+    # 대금지급 건 거래처별 순위 합산 (pur_rank_map은 거래처명 기준)
+    for _dept, _pname, _amt_krw in _payment_rows:
         pur_rank_map[_pname] = pur_rank_map.get(_pname, 0.0) + _amt_krw
     purchase_ranking = [{"name": k, "value": v}
                         for k, v in sorted(pur_rank_map.items(), key=lambda x: -x[1])[:10]]

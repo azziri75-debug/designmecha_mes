@@ -5,11 +5,20 @@ import {
 } from '@mui/material';
 import { Plus, Trash2 } from 'lucide-react';
 import ApprovalGrid from './ApprovalGrid';
+import api from '../lib/api';
 
 const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     // Default to Internal Draft type if not set
     const draftType = data.draft_type || 'GENERAL';
     const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }];
+    
+    const [departments, setDepartments] = useState([]);
+    
+    useEffect(() => {
+        api.get('/basics/departments/').then(res => {
+            setDepartments(res.data || []);
+        }).catch(() => {});
+    }, []);
 
     // Auto-fill applicant information from currentUser
     useEffect(() => {
@@ -205,13 +214,20 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                     <TableRow>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>기안부서</Box>
                         <td style={{ width: '35%' }}>
-                            <input 
-                                value={data.dept || ''} 
-                                onChange={(e) => handleChange({ dept: e.target.value })}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none' }}
-                                placeholder="작성 부서"
-                            />
+                            {isReadOnly ? (
+                                <span style={{ padding: '4px 0', display: 'block' }}>{data.dept || '-'}</span>
+                            ) : (
+                                <select
+                                    value={data.dept || ''}
+                                    onChange={(e) => handleChange({ dept: e.target.value })}
+                                    style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px', padding: '2px 0' }}
+                                >
+                                    <option value="">-- 부서 선택 --</option>
+                                    {departments.map(d => (
+                                        <option key={d.id} value={d.name}>{d.name}</option>
+                                    ))}
+                                </select>
+                            )}
                         </td>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>기안일자</Box>
                         <td>
