@@ -121,9 +121,11 @@ const MobileWorkLogPage = () => {
     const [editingDocId, setEditingDocId] = useState(null);
     const [originalAuthor, setOriginalAuthor] = useState(null);
 
-    // Registration Form
-    const [goodQty, setGoodQty] = useState('');
-    const [badQty, setBadQty] = useState('0');
+    const [selectedItems, setSelectedItems] = useState([]); // Array of process items
+    const [itemRecords, setItemRecords] = useState({}); // { [itemId]: { good: '', bad: '0' } }
+    const [showForm, setShowForm] = useState(false); // Step 3 flag
+    const [bulkGoodQty, setBulkGoodQty] = useState('');
+    const [bulkBadQty, setBulkBadQty] = useState('0');
     const [note, setNote] = useState('');
     const [workDate, setWorkDate] = useState(new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', ''));
     const [photos, setPhotos] = useState([]);
@@ -419,18 +421,26 @@ const MobileWorkLogPage = () => {
     };
 
     const handleSaveLog = async (mode = "CREATE") => {
-        if (!selectedItem || !goodQty) {
-            alert("수량을 입력해주세요.");
+        if (selectedItems.length === 0) {
+            alert("공정을 선택해주세요.");
             return;
         }
 
         // [USER REQUEST] 수량 초과 검증 로직 추가
-        const totalPlanned = selectedItem.quantity || 0;
-        const currentPerformance = selectedItem.completed_quantity || 0;
-        const enteringQty = parseInt(goodQty) || 0;
+        let hasExceeded = false;
+        for (const item of selectedItems) {
+            const totalPlanned = item.quantity || 0;
+            const currentPerformance = item.completed_quantity || 0;
+            const enteringQty = parseInt(itemRecords[item.id]?.good || 0);
 
-        if (currentPerformance + enteringQty > totalPlanned) {
-            if (!window.confirm("입력한 수량이 계획된 수량을 초과합니다. 계속하시겠습니까?")) {
+            if (currentPerformance + enteringQty > totalPlanned) {
+                hasExceeded = true;
+                break;
+            }
+        }
+
+        if (hasExceeded) {
+            if (!window.confirm("일부 공정의 입력한 수량이 계획된 수량을 초과합니다. 계속하시겠습니까?")) {
                 return;
             }
         }
@@ -458,22 +468,24 @@ const MobileWorkLogPage = () => {
                 note: note,
                 attachment_file: uploadedPhotos,
                 mode: mode,
-                items: [{
-                    plan_item_id: selectedItem.id,
+                items: selectedItems.map(item => ({
+                    plan_item_id: item.id,
                     worker_id: user.id,
-                    good_quantity: parseInt(goodQty),
-                    bad_quantity: parseInt(badQty),
+                    good_quantity: parseInt(itemRecords[item.id]?.good || 0),
+                    bad_quantity: parseInt(itemRecords[item.id]?.bad || 0),
                     note: note
-                }]
+                }))
             };
 
             await api.post('/production/work-logs', payload);
 
             alert("저장되었습니다.");
-            setSelectedItem(null);
+            setSelectedItems([]);
+            setItemRecords({});
+            setShowForm(false);
+            setBulkGoodQty('');
+            setBulkBadQty('0');
             setSelectedPlan(null);
-            setGoodQty('');
-            setBadQty('0');
             setNote('');
             setPhotos([]);
             setWorkDate(new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', ''));
@@ -920,12 +932,27 @@ const MobileWorkLogPage = () => {
                                     </Stack>
                                 )}
                             </Box>
-                        ) : selectedPlan && !selectedItem ? (
+                        ) : selectedPlan && !showForm ? (
                             /* Step 2: Select Process from Plan */
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ mb: 2, px: 1, color: 'textSecondary' }}>
-                                    {selectedPlan.order?.order_no || selectedPlan.stock_production?.production_no} 상세 공정
-                                </Typography>
+                            <Box sx={{ pb: 8 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, px: 1 }}>
+                                    <Typography variant="subtitle2" sx={{ color: 'textSecondary' }}>
+                                        {selectedPlan.order?.order_no || selectedPlan.stock_production?.production_no} 상세 공정
+                                    </Typography>
+                                    <Button 
+                                        size="small" 
+                                        onClick={() => {
+                                            const allValidItems = selectedPlan.items?.filter(it => it.status !== 'COMPLETED') || [];
+                                            if (selectedItems.length === allValidItems.length) {
+                                                setSelectedItems([]);
+                                            } else {
+                                                setSelectedItems(allValidItems);
+                                            }
+                                        }}
+                                    >
+                                        {(selectedPlan.items?.filter(it => it.status !== 'COMPLETED').length || 0) > 0 && selectedItems.length === (selectedPlan.items?.filter(it => it.status !== 'COMPLETED').length || 0) ? '전체 해제' : '전체 선택'}
+                                    </Button>
+                                </Box>
                                 {(() => {
                                     const grouped = (selectedPlan.items || []).reduce((acc, item) => {
                                         const pId = item.product_id || 'unknown';
@@ -948,55 +975,194 @@ const MobileWorkLogPage = () => {
                                             </Typography>
                                             <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
                                                 <List disablePadding>
-                                                    {group.items.sort((a,b) => a.sequence - b.sequence).map((item, idx, arr) => (
-                                                        <React.Fragment key={item.id}>
-                                                            <ListItemButton onClick={() => setSelectedItem(item)}>
-                                                                <ListItemText
-                                                                    primary={<>
-                                                                        <Typography variant="caption" sx={{ color: '#666', mr: 1, fontSize: '0.7rem' }}>[{item.sequence}]</Typography>
-                                                                        {item.process_name}
-                                                                    </>}
-                                                                    secondary={`실적: ${item.completed_quantity || 0} / ${item.quantity}`}
-                                                                    primaryTypographyProps={{ fontWeight: 500 }}
-                                                                />
-                                                                <Chip
-                                                                    size="small"
-                                                                    label={item.status}
-                                                                    color={item.status === 'COMPLETED' ? 'success' : 'default'}
-                                                                    variant="outlined"
-                                                                />
-                                                            </ListItemButton>
-                                                            {idx < arr.length - 1 && <Divider />}
-                                                        </React.Fragment>
-                                                    ))}
+                                                    {group.items.sort((a,b) => a.sequence - b.sequence).map((item, idx, arr) => {
+                                                        const isCompleted = item.status === 'COMPLETED';
+                                                        const isSelected = selectedItems.some(i => i.id === item.id);
+                                                        return (
+                                                            <React.Fragment key={item.id}>
+                                                                <ListItemButton 
+                                                                    disabled={isCompleted}
+                                                                    onClick={() => {
+                                                                        if (isSelected) {
+                                                                            setSelectedItems(prev => prev.filter(i => i.id !== item.id));
+                                                                        } else {
+                                                                            setSelectedItems(prev => [...prev, item]);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Checkbox 
+                                                                        edge="start" 
+                                                                        checked={isSelected} 
+                                                                        disabled={isCompleted} 
+                                                                        tabIndex={-1} 
+                                                                        disableRipple 
+                                                                        sx={{ p: 0.5, mr: 1 }}
+                                                                    />
+                                                                    <ListItemText
+                                                                        primary={<>
+                                                                            <Typography variant="caption" sx={{ color: '#666', mr: 1, fontSize: '0.7rem' }}>[{item.sequence}]</Typography>
+                                                                            {item.process_name}
+                                                                        </>}
+                                                                        secondary={`실적: ${item.completed_quantity || 0} / ${item.quantity}`}
+                                                                        primaryTypographyProps={{ fontWeight: 500 }}
+                                                                    />
+                                                                    <Chip
+                                                                        size="small"
+                                                                        label={item.status}
+                                                                        color={isCompleted ? 'success' : 'default'}
+                                                                        variant="outlined"
+                                                                    />
+                                                                </ListItemButton>
+                                                                {idx < arr.length - 1 && <Divider />}
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
                                                 </List>
                                             </Paper>
                                         </Box>
                                     ));
                                 })()}
+                                
+                                {/* Floating Bottom Button */}
+                                {selectedItems.length > 0 && (
+                                    <Box sx={{ position: 'fixed', bottom: 65, left: 0, right: 0, p: 2, bgcolor: 'background.paper', borderTop: '1px solid #e0e0e0', zIndex: 10 }}>
+                                        <Button 
+                                            variant="contained" 
+                                            fullWidth 
+                                            size="large"
+                                            onClick={() => {
+                                                // Initialize item records with bulk value if any
+                                                const initRecords = { ...itemRecords };
+                                                selectedItems.forEach(item => {
+                                                    if (!initRecords[item.id]) {
+                                                        initRecords[item.id] = { good: bulkGoodQty || '', bad: bulkBadQty || '0' };
+                                                    }
+                                                });
+                                                setItemRecords(initRecords);
+                                                setShowForm(true);
+                                            }}
+                                            sx={{ py: 1.5, borderRadius: 2, fontWeight: 'bold' }}
+                                        >
+                                            {selectedItems.length}개 공정 실적 등록하기
+                                        </Button>
+                                    </Box>
+                                )}
                             </Box>
                         ) : (
                             /* Step 3: Registration Form */
                             <Box component={Paper} sx={{ p: 3, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                                    <IconButton onClick={() => setShowForm(false)} sx={{ mr: 1, ml: -1.5 }}>
+                                        <ArrowBackIcon />
+                                    </IconButton>
+                                    <Typography variant="subtitle1" fontWeight="bold">실적 등록 ({selectedItems.length}개 공정)</Typography>
+                                </Box>
+
                                 <Stack spacing={3}>
-                                    <Box sx={{ p: 2, backgroundColor: '#f0f4f8', borderRadius: 2, borderLeft: '4px solid #1976d2' }}>
-                                        <Typography variant="caption" color="textSecondary" fontWeight="bold">선택 공정</Typography>
-                                        <Typography variant="subtitle1" fontWeight="bold">{selectedItem.process_name}</Typography>
-                                        <Typography variant="body2" color="primary" fontWeight="bold">
-                                            (실적 : {selectedItem.completed_quantity || 0} / {selectedItem.quantity})
+                                    {/* Bulk Apply Section */}
+                                    <Box sx={{ p: 2, backgroundColor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                        <Typography variant="subtitle2" color="primary" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                                            <CheckCircleIcon sx={{ fontSize: 18, mr: 0.5 }} /> 일괄 적용 수량
                                         </Typography>
-                                        <Typography variant="body2" color="textSecondary">{selectedItem.product?.name}</Typography>
-                                        {selectedItem.product?.specification && (
-                                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
-                                                규격: {selectedItem.product.specification}
-                                            </Typography>
-                                        )}
-                                        {(selectedPlan?.order?.note || selectedPlan?.stock_production?.note) && (
-                                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#d97706', fontWeight: 'bold' }}>
-                                                비고: {selectedPlan.order?.note || selectedPlan.stock_production?.note}
-                                            </Typography>
-                                        )}
+                                        <Stack direction="row" spacing={2}>
+                                            <TextField
+                                                label="양품 수량"
+                                                type="number"
+                                                value={bulkGoodQty}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setBulkGoodQty(val);
+                                                    setItemRecords(prev => {
+                                                        const next = { ...prev };
+                                                        selectedItems.forEach(item => {
+                                                            if (!next[item.id]) next[item.id] = { good: '', bad: '0' };
+                                                            next[item.id].good = val;
+                                                        });
+                                                        return next;
+                                                    });
+                                                }}
+                                                fullWidth
+                                                variant="outlined"
+                                                size="small"
+                                            />
+                                            <TextField
+                                                label="불량 수량"
+                                                type="number"
+                                                value={bulkBadQty}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setBulkBadQty(val);
+                                                    setItemRecords(prev => {
+                                                        const next = { ...prev };
+                                                        selectedItems.forEach(item => {
+                                                            if (!next[item.id]) next[item.id] = { good: '', bad: '0' };
+                                                            next[item.id].bad = val;
+                                                        });
+                                                        return next;
+                                                    });
+                                                }}
+                                                fullWidth
+                                                variant="outlined"
+                                                size="small"
+                                            />
+                                        </Stack>
                                     </Box>
+
+                                    {/* Individual Process List */}
+                                    <Box>
+                                        <Typography variant="caption" color="textSecondary" fontWeight="bold" sx={{ mb: 1, display: 'block' }}>선택된 공정 개별 수량</Typography>
+                                        <Stack spacing={1.5}>
+                                            {selectedItems.map(item => (
+                                                <Paper key={item.id} sx={{ p: 1.5, borderRadius: 2, border: '1px solid #e0e0e0', backgroundColor: '#fafafa' }} elevation={0}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                        <Typography variant="body2" fontWeight="bold">
+                                                            <span style={{ color: '#666', marginRight: 4 }}>[{item.sequence}]</span>
+                                                            {item.process_name}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="primary" fontWeight="bold">
+                                                            잔여: {Math.max(0, (item.quantity || 0) - (item.completed_quantity || 0))}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Stack direction="row" spacing={1}>
+                                                        <TextField
+                                                            label="양품"
+                                                            type="number"
+                                                            value={itemRecords[item.id]?.good ?? ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setItemRecords(prev => ({
+                                                                    ...prev,
+                                                                    [item.id]: { ...prev[item.id], good: val }
+                                                                }));
+                                                            }}
+                                                            fullWidth
+                                                            variant="standard"
+                                                            size="small"
+                                                            InputProps={{ sx: { fontSize: '0.875rem' } }}
+                                                        />
+                                                        <TextField
+                                                            label="불량"
+                                                            type="number"
+                                                            value={itemRecords[item.id]?.bad ?? ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setItemRecords(prev => ({
+                                                                    ...prev,
+                                                                    [item.id]: { ...prev[item.id], bad: val }
+                                                                }));
+                                                            }}
+                                                            fullWidth
+                                                            variant="standard"
+                                                            size="small"
+                                                            InputProps={{ sx: { fontSize: '0.875rem' } }}
+                                                        />
+                                                    </Stack>
+                                                </Paper>
+                                            ))}
+                                        </Stack>
+                                    </Box>
+
+                                    <Divider />
 
                                     <TextField
                                         label="등록일"
@@ -1007,23 +1173,6 @@ const MobileWorkLogPage = () => {
                                         variant="outlined"
                                         size="small"
                                         InputLabelProps={{ shrink: true }}
-                                    />
-
-                                    <TextField
-                                        label="양품 수량"
-                                        type="number"
-                                        value={goodQty}
-                                        onChange={e => setGoodQty(e.target.value)}
-                                        fullWidth
-                                        variant="outlined"
-                                    />
-                                    <TextField
-                                        label="불량 수량"
-                                        type="number"
-                                        value={badQty}
-                                        onChange={e => setBadQty(e.target.value)}
-                                        fullWidth
-                                        variant="outlined"
                                     />
                                     <TextField
                                         label="작업 비고"
@@ -1072,17 +1221,11 @@ const MobileWorkLogPage = () => {
                                         startIcon={<SaveIcon />}
                                         fullWidth
                                         onClick={() => handleSaveLog()}
-                                        disabled={loading || selectedItem?.status === 'COMPLETED'}
+                                        disabled={loading}
                                         sx={{ py: 1.5, borderRadius: 2, fontWeight: 'bold' }}
                                     >
-                                        {loading ? "처리 중..." : selectedItem?.status === 'COMPLETED' ? "작업 완료됨" : "실적 제출하기"}
+                                        {loading ? "처리 중..." : "실적 제출하기"}
                                     </Button>
-
-                                    {selectedItem?.status === 'COMPLETED' && (
-                                        <Alert severity="success" sx={{ mt: 2, borderRadius: 2 }}>
-                                            이 공정은 이미 완료되었습니다. 실적을 추가할 수 없습니다.
-                                        </Alert>
-                                    )}
                                 </Stack>
                             </Box>
                         )}
