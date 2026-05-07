@@ -13,6 +13,7 @@ import OrderModal from '../components/OrderModal';
 import StockProductionModal from '../components/StockProductionModal';
 import ResizableTable from '../components/ResizableTable';
 import { formatCurrency } from '../utils/currency';
+import { getProductNameStr } from '../lib/productionUtils';
 
 const Card = ({ children, className }) => (
     <div className={cn("bg-gray-800 rounded-xl border border-gray-700", className)}>
@@ -708,10 +709,17 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
     const sp = plan.stock_production;
 
     const groupedItems = plan.items?.reduce((acc, item) => {
-        if (!acc[item.product_id]) {
-            acc[item.product_id] = { product_name: item.product?.name || item.product_id, product_spec: item.product?.specification || "", product_unit: item.product?.unit || "EA", items: [] };
+        const pid = item.product_id || 'unknown';
+        if (!acc[pid]) {
+            acc[pid] = { 
+                product_id: item.product_id,
+                product_name: item.product?.name || item.product_name || `품목(${pid})`, 
+                product_spec: item.product?.specification || "", 
+                product_unit: item.product?.unit || "EA", 
+                items: [] 
+            };
         }
-        acc[item.product_id].items.push(item);
+        acc[pid].items.push(item);
         return acc;
     }, {}) || {};
 
@@ -727,13 +735,7 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 </td>
                 <td className="px-4 py-4 truncate">{plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내'}</td>
                 <td className="px-4 py-4 truncate">
-                    {(() => {
-                        const uniqueProducts = Object.values(groupedItems);
-                        const firstProductName = uniqueProducts[0]?.product_name || "";
-                        return uniqueProducts.length > 1
-                            ? `${firstProductName} 외 ${uniqueProducts.length - 1}건`
-                            : firstProductName;
-                    })()}
+                    {getProductNameStr(plan)}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-orange-600 font-medium">{order?.delivery_date || '-'}</td>
                 <td className="px-4 py-4 whitespace-nowrap">

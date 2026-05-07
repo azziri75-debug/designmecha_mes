@@ -42,6 +42,7 @@ import {
     Badge,
     Checkbox
 } from '@mui/material';
+import { getProductNameStr } from '../lib/productionUtils';
 import {
     Assignment as AssignmentIcon,
     BarChart as BarChartIcon,
@@ -708,9 +709,9 @@ const MobileWorkLogPage = () => {
         if (!planMatchesGroup(p)) return false;
 
         const orderNo = p.order?.order_no || p.stock_production?.production_no || '';
-        const productName = p.items?.[0]?.product?.name || '';
+        const productNameStr = getProductNameStr(p);
         return orderNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            productName.toLowerCase().includes(searchQuery.toLowerCase());
+            productNameStr.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
     // Performance Aggregation with fallback price
@@ -858,22 +859,7 @@ const MobileWorkLogPage = () => {
                                         {filteredPlans.map(plan => {
                                             const orderNo = plan.order?.order_no || plan.stock_production?.production_no || '-';
                                             
-                                            const groupedItems = plan.items?.reduce((acc, item) => {
-                                                if (item.product_id && !acc[item.product_id]) {
-                                                    acc[item.product_id] = item.product?.name || item.product_name || '-';
-                                                }
-                                                return acc;
-                                            }, {}) || {};
-                                            
-                                            const uniqueProductNames = Object.values(groupedItems);
-                                            
-                                            if (uniqueProductNames.length === 0 && plan.stock_production) {
-                                                uniqueProductNames.push(plan.stock_production.product?.name || '-');
-                                            }
-                                            
-                                            const firstProd = uniqueProductNames[0] || '-';
-                                            const cnt = uniqueProductNames.length - 1;
-                                            const productNameStr = cnt > 0 ? `${firstProd} 외 ${cnt}건` : firstProd;
+                                            const productNameStr = getProductNameStr(plan);
 
                                             return (
                                                 <Card key={plan.id} sx={{ borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedPlan(plan)}>
@@ -955,11 +941,12 @@ const MobileWorkLogPage = () => {
                                     </Button>
                                 </Box>
                                 {(() => {
-                                    const grouped = (selectedPlan.items || []).reduce((acc, item) => {
-                                        const pId = item.product_id || 'unknown';
+                                    const grouped = (selectedPlan.items || []).reduce((acc, item, index) => {
+                                        const pId = item.product_id || `unknown_${index}`;
                                         if (!acc[pId]) {
                                             acc[pId] = {
                                                 product: item.product,
+                                                product_name: item.product?.name || item.product_name || `품목(${item.product_id || '?'})`,
                                                 items: []
                                             };
                                         }
@@ -971,7 +958,7 @@ const MobileWorkLogPage = () => {
                                         <Box key={`group-${groupIdx}`} sx={{ mb: 2 }}>
                                             <Typography variant="body2" fontWeight="bold" color="primary" sx={{ px: 1, mb: 1, display: 'flex', alignItems: 'center' }}>
                                                 <div style={{ width: 4, height: 14, backgroundColor: '#1976d2', marginRight: 8, borderRadius: 2 }} />
-                                                품명: {group.product?.name || '미지정'} 
+                                                품명: {group.product_name} 
                                                 {group.product?.specification ? ` (${group.product?.specification})` : ''}
                                             </Typography>
                                             <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>

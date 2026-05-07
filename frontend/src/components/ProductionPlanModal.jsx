@@ -79,12 +79,17 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     const productMap = {};
                     
                     try {
-                        await Promise.all(productIds.map(async (pid) => {
-                            const res = await api.get(`/product/products/${pid}`);
-                            productMap[pid] = res.data;
+                        const validPids = [...new Set(productIds.filter(pid => pid && !isNaN(parseInt(pid))))];
+                        await Promise.all(validPids.map(async (pid) => {
+                            try {
+                                const res = await api.get(`/product/products/${pid}`);
+                                productMap[pid] = res.data;
+                            } catch (err) {
+                                console.error(`Failed to fetch product ${pid}`, err);
+                            }
                         }));
                     } catch (err) {
-                        console.error("Failed to fetch fresh product details", err);
+                        console.error("General failure in product details fetch", err);
                     }
 
                     // Fetch stocks
@@ -452,15 +457,17 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
 
     // Grouping Logic
     const groupedItems = items.reduce((acc, item, index) => {
-        if (!acc[item.product_id]) {
-            acc[item.product_id] = {
-                product_name: item.product_name,
-                product_spec: item.product_spec,
-                product_unit: item.product_unit,
+        const pid = item.product_id || `temp_${index}`;
+        if (!acc[pid]) {
+            acc[pid] = {
+                product_id: item.product_id,
+                product_name: item.product_name || item.product?.name || "품명 미상",
+                product_spec: item.product_spec || item.product?.specification || "",
+                product_unit: item.product_unit || item.product?.unit || "EA",
                 items: []
             };
         }
-        acc[item.product_id].items.push({ ...item, originalIndex: index });
+        acc[pid].items.push({ ...item, originalIndex: index });
         return acc;
     }, {});
 
