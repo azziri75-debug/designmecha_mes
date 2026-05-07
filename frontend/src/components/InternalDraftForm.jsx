@@ -13,10 +13,15 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }];
     
     const [departments, setDepartments] = useState([]);
+    const [productGroups, setProductGroups] = useState([]);
     
     useEffect(() => {
         api.get('/basics/departments/').then(res => {
             setDepartments(res.data || []);
+        }).catch(() => {});
+        api.get('/product/groups/').then(res => {
+            const all = res.data || [];
+            setProductGroups(all.filter(g => g.type === 'MAJOR'));
         }).catch(() => {});
     }, []);
 
@@ -223,9 +228,18 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                     style={{ border: 'none', width: '100%', outline: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px', padding: '2px 0' }}
                                 >
                                     <option value="">-- 부서 선택 --</option>
-                                    {departments.map(d => (
-                                        <option key={d.id} value={d.name}>{d.name}</option>
-                                    ))}
+                                    <optgroup label="── 부서">
+                                        {departments.map(d => (
+                                            <option key={d.id} value={d.name}>{d.name}</option>
+                                        ))}
+                                    </optgroup>
+                                    {productGroups.length > 0 && (
+                                        <optgroup label="── 생산제품그룹">
+                                            {productGroups.map(g => (
+                                                <option key={`grp-${g.id}`} value={g.name}>{g.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    )}
                                 </select>
                             )}
                         </td>
