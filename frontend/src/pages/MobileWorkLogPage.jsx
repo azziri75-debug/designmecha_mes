@@ -107,6 +107,9 @@ const MobileWorkLogPage = () => {
     const [myPerformance, setMyPerformance] = useState([]);
     const [staffList, setStaffList] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('IN_PROGRESS'); // 기본: 생산중
+    const [allProductGroups, setAllProductGroups] = useState([]);
+    const [selectedGroupId, setSelectedGroupId] = useState(null); // null = 로딩 전
 
     // Performance Filters
     const now = new Date();
@@ -260,6 +263,19 @@ const MobileWorkLogPage = () => {
         api.get('/basics/company').then(res => {
             const wet = res.data?.work_end_time;
             if (wet) setWorkEndTime(wet.substring(0, 5)); // 'HH:MM:SS' → 'HH:MM'
+        }).catch(() => {});
+    }, []);
+
+    // 사업부 그룹 로드 및 나이프 자동 선택
+    useEffect(() => {
+        api.get('/product/groups/').then(res => {
+            const groups = res.data || [];
+            setAllProductGroups(groups);
+            if (selectedGroupId === null) {
+                const majors = groups.filter(g => g.type === 'MAJOR');
+                const knife = majors.find(g => g.name.includes('나이프'));
+                setSelectedGroupId(knife ? knife.id : '');
+            }
         }).catch(() => {});
     }, []);
 
@@ -646,15 +662,37 @@ const MobileWorkLogPage = () => {
         }
     };
 
-    const filteredPlans = allPlans.filter(p => {
-        const isCompleted = p.status === 'COMPLETED';
-        const isCanceled = p.status === 'CANCELED';
-        if (isCanceled) return false;
+    const majorGroups = allProductGroups.filter(g => g.type === 'MAJOR');
 
-        // [USER REQUEST] Hide if delivery is also complete (납품완료 건은 표시 안함)
+    const planMatchesGroup = (plan) => {
+        if (!selectedGroupId) return true;
+        const items = plan.items || [];
+        return items.some(item => {
+            const gid = item.product?.group_id;
+            if (!gid) return false;
+            const grp = allProductGroups.find(g => g.id === gid);
+            if (!grp) return false;
+            return grp.id === selectedGroupId || grp.parent_id === selectedGroupId;
+        });
+    };
+
+    const filteredPlans = allPlans.filter(p => {
+        if (p.status === 'CANCELED') return false;
+
         const orderStatus = p.order?.status;
         const isDelivered = orderStatus === 'DELIVERY_COMPLETED' || orderStatus === 'DELIVERED';
-        if (isDelivered) return false;
+        const isProdCompleted = p.status === 'COMPLETED';
+
+        if (statusFilter === 'IN_PROGRESS') {
+            if (isProdCompleted || isDelivered) return false;
+        } else if (statusFilter === 'COMPLETED') {
+            if (!isProdCompleted || isDelivered) return false;
+        } else if (statusFilter === 'DELIVERED') {
+            if (!isDelivered) return false;
+        }
+        // 'ALL': CANCELED만 제외
+
+        if (!planMatchesGroup(p)) return false;
 
         const orderNo = p.order?.order_no || p.stock_production?.production_no || '';
         const productName = p.items?.[0]?.product?.name || '';
@@ -750,6 +788,41 @@ const MobileWorkLogPage = () => {
                         {!selectedPlan && !selectedItem ? (
                             /* Step 1: Browse Production Plans */
                             <Box>
+                                {/* 사업부 필터 */}
+                                <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+                                    <Select
+                                        value={selectedGroupId === null ? '' : (selectedGroupId || '')}
+                                        onChange={e => setSelectedGroupId(e.target.value === '' ? '' : Number(e.target.value))}
+                                        displayEmpty
+                                        sx={{ backgroundColor: '#fff', fontSize: '13px' }}
+                                    >
+                                        <MenuItem value="">전체 사업부</MenuItem>
+                                        {majorGroups.map(g => (
+                                            <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+
+                                {/* 상태 필터 칩 */}
+                                <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5, flexWrap: 'wrap' }}>
+                                    {[
+                                        { key: 'ALL', label: '전체' },
+                                        { key: 'IN_PROGRESS', label: '생산중' },
+                                        { key: 'COMPLETED', label: '생산완료' },
+                                        { key: 'DELIVERED', label: '납품완료' },
+                                    ].map(({ key, label }) => (
+                                        <Chip
+                                            key={key}
+                                            label={label}
+                                            size="small"
+                                            onClick={() => setStatusFilter(key)}
+                                            color={statusFilter === key ? 'primary' : 'default'}
+                                            variant={statusFilter === key ? 'filled' : 'outlined'}
+                                            sx={{ fontSize: '11px', fontWeight: statusFilter === key ? 'bold' : 'normal', cursor: 'pointer' }}
+                                        />
+                                    ))}
+                                </Box>
+
                                 <TextField
                                     fullWidth
                                     size="small"
