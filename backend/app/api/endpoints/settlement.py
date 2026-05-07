@@ -13,6 +13,7 @@ from app.models.quality import QualityDefect, CustomerComplaint, DefectStatus
 from app.models.product import Product, ProductGroup
 from app.models.basics import Partner
 from app.models.inventory import StockProduction
+from app.models.approval import ApprovalDocument, ApprovalStatus, DocumentType
 
 router = APIRouter()
 
@@ -156,7 +157,61 @@ async def get_settlement_purchases(
     
     data.extend([dict(r._mapping) for r in res_p])
     data.extend([dict(r._mapping) for r in res_o])
-    
+
+    # --- 내부기안 대금지급 건 추가 집계 ---
+    import re as _re
+    from datetime import date as _date
+    payment_query = select(ApprovalDocument).where(
+        ApprovalDocument.doc_type == DocumentType.INTERNAL_DRAFT,
+        ApprovalDocument.status == ApprovalStatus.COMPLETED,
+        ApprovalDocument.deleted_at == None
+    )
+    payment_res = await db.execute(payment_query)
+    payment_docs = payment_res.scalars().all()
+
+    for doc in payment_docs:
+        content = doc.content or {}
+        if content.get('draft_type') != 'PAYMENT':
+            continue
+
+        # 기안일자 파싱 (content.request_date → 매입일)
+        request_date_str = content.get('request_date')
+        try:
+            request_date = _date.fromisoformat(request_date_str) if request_date_str else None
+        except Exception:
+            request_date = None
+        if not request_date and doc.created_at:
+            request_date = doc.created_at.date()
+        if not request_date:
+            continue
+        if request_date.year != year or request_date.month != month:
+            continue
+
+        # 거래처명 파싱: 제목이 "[거래처]-본문" 형식
+        title = doc.title or ''
+        m = _re.match(r'^\[(.+?)\]-', title)
+        partner_name = m.group(1) if m else title
+
+        currency = content.get('currency', 'KRW')
+        items = content.get('items', [])
+        for item in items:
+            amount = float(item.get('amount', 0) or 0)
+            quantity = float(item.get('quantity', 0) or 0)
+            if amount == 0 and quantity == 0:
+                continue
+            data.append({
+                'category': 'PAYMENT',
+                'partner_name': partner_name,
+                'order_date': request_date,
+                'delivery_date': request_date,
+                'product_name': item.get('name', ''),
+                'specification': item.get('spec', ''),
+                'quantity': quantity,
+                'unit_price': float(item.get('unit_price', 0) or 0),
+                'total_price': amount,
+                'currency': currency,
+            })
+
     return data
 
 @router.get("/production")

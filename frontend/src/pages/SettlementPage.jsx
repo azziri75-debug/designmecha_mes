@@ -151,16 +151,27 @@ const SettlementPage = () => {
             case "purchases":
                 return [
                     noCol,
-                    { key: "category", label: "구분", width: 100 },
+                    { key: "category", label: "구분", width: 110, renderCell: (val) => {
+                        const labels = {
+                            'PAYMENT': '대금지급기안',
+                            'OUTSOURCING': '외주',
+                            'PART': '부품',
+                            'MATERIAL': '자재',
+                            'MRP': 'MRP',
+                            'CONSUMABLE': '소모품',
+                        };
+                        return labels[val] || val || '-';
+                    }},
                     { key: "partner_name", label: "공급사", width: 140 },
-                    { key: "order_date", label: "발주일", width: 110 },
-                    { key: "delivery_date", label: "실제입고일", width: 110 },
-                    { key: "product_name", label: "품명", width: 180 },
+                    { key: "order_date", label: "발주/기안일", width: 110 },
+                    { key: "delivery_date", label: "입고/기안일", width: 110 },
+                    { key: "product_name", label: "품명/항목", width: 180 },
                     { key: "specification", label: "규격", width: 150 },
                     { key: "quantity", label: "수량", align: "right", width: 80 },
-                    { key: "unit_price", label: "단가", align: "right", format: fmtWon, width: 120 },
-                    { key: "total_price", label: "합계", align: "right", format: fmtWon, width: 140 },
+                    { key: "unit_price", label: "단가", align: "right", width: 120, renderCell: (val, row) => formatCurrency(val, row?.currency || 'KRW') },
+                    { key: "total_price", label: "합계", align: "right", width: 140, renderCell: (val, row) => formatCurrency(val, row?.currency || 'KRW') },
                 ];
+
             case "production":
                 return [
                     noCol,
