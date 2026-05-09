@@ -231,20 +231,28 @@ const PurchasePage = ({ type }) => {
     const handleApprovalSubmit = async (order) => {
         if (!window.confirm("이 발주서로 결재 요청을 진행하시겠습니까?")) return;
 
-        const firstItemProcess = order.items?.[0]?.process_name || (type === 'CONSUMABLE' ? '소모품' : '구매자재');
-        const customerName = order.related_customer_names || '재고용';
+        const isConsumable = type === 'CONSUMABLE';
+        const firstItemProcess = order.items?.[0]?.process_name || (isConsumable ? '소모품' : '구매자재');
         const partnerName = order.partner?.name || '공급사미지정';
 
         const existingAttachments = safeParseJSON(order.attachment_file, []);
 
-        const isStockProduction = !!(order.items?.[0]?.plan?.stock_production);
-        const baseCustomer = order.related_customer_names || '';
-        const customerSuffix = isStockProduction
-            ? (baseCustomer ? `${baseCustomer}-재고용` : '재고용')
-            : (baseCustomer || '고객사미지정');
+        // 소모품 발주: 재고용 없이 거래처-품목명만 표시
+        // 구매자재 발주: 수주/재고 고객사 정보 포함
+        let orderTitle;
+        if (isConsumable) {
+            orderTitle = `[소모품발주서] (${partnerName}) - ${firstItemProcess}`;
+        } else {
+            const isStockProduction = !!(order.items?.[0]?.plan?.stock_production);
+            const baseCustomer = order.related_customer_names || '';
+            const customerSuffix = isStockProduction
+                ? (baseCustomer ? `${baseCustomer}-재고용` : '재고용')
+                : (baseCustomer || '고객사미지정');
+            orderTitle = `[구매발주서] (${partnerName}) - ${firstItemProcess} - ${customerSuffix}`;
+        }
 
         const approvalPayload = {
-            title: `[구매발주서] (${partnerName}) - ${firstItemProcess} - ${customerSuffix}`,
+            title: orderTitle,
             doc_type: 'PURCHASE_ORDER',
             content: {
                 order_no: order.order_no,
@@ -254,6 +262,7 @@ const PurchasePage = ({ type }) => {
                 order_date: order.order_date,
                 delivery_date: order.delivery_date,
                 special_notes: order.note,
+                purchase_type: isConsumable ? 'CONSUMABLE' : 'PART',
                 items: (order.items || []).map((item, idx) => {
                     const baseName = item.product?.name || '';
                     const processName = item.process_name;
@@ -280,18 +289,16 @@ const PurchasePage = ({ type }) => {
         };
 
         try {
-            // 결재선 데이터 미리 가져오기 (PURCHASE_ORDER 타입의 기본 결재선)
+            // 공통 결재선 로드 (구매자재·소모품 공통 적용)
             const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
-            const customApprovers = lineRes.data.map(line => ({
+            const customApprovers = (lineRes.data || []).map(line => ({
                 staff_id: line.approver_id || line.staff_id || line.user_id || line.id || line.approver?.id || line.value,
                 sequence: line.sequence
-            }));
-            console.log("현재 결재자 배열 상태:", customApprovers);
+            })).filter(a => a.staff_id);
 
-            // 페이로드에 결재선 정보 포함
             const finalPayload = {
                 ...approvalPayload,
-                custom_approvers: customApprovers
+                ...(customApprovers.length > 0 ? { custom_approvers: customApprovers } : {})
             };
 
             await api.post('/approval/documents', finalPayload);
@@ -299,7 +306,7 @@ const PurchasePage = ({ type }) => {
             navigate('/approval?mode=MY_WAITING');
         } catch (error) {
             console.error("Failed to submit approval", error);
-            const errorMsg = error.response?.data?.detail 
+            const errorMsg = error.response?.data?.detail
                 ? (typeof error.response.data.detail === 'string' ? error.response.data.detail : JSON.stringify(error.response.data.detail))
                 : error.message;
             alert("결재 요청 실패: " + errorMsg);

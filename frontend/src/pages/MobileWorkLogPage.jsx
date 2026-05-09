@@ -588,8 +588,35 @@ const MobileWorkLogPage = () => {
             const authorName = (editingDocId && originalAuthor?.name) ? originalAuthor.name : user.name;
             const label = DOC_TYPES[selectedDocType]?.label || '문서';
             const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '').replace(/\.$/, '');
+            const fmtDate = (d) => d ? d.replace(/-/g, '.') : '';
+
+            let docTitle;
+            if (selectedDocType === 'LEAVE_REQUEST') {
+                const start = fmtDate(finalDocFormData.start_date);
+                const end = fmtDate(finalDocFormData.end_date);
+                const period = (start && end && start !== end) ? `${start}~${end}` : (start || todayStr);
+                docTitle = `[휴가원] ${authorName} - ${period}`;
+            } else if (selectedDocType === 'EARLY_LEAVE') {
+                const targetDate = fmtDate(finalDocFormData.date) || todayStr;
+                const leaveType = finalDocFormData.leave_type || '';
+                docTitle = `[조퇴/외출원] ${authorName}${leaveType ? `(${leaveType})` : ''} - ${targetDate}`;
+            } else if (selectedDocType === 'OVERTIME') {
+                const targetDate = fmtDate(finalDocFormData.date) || todayStr;
+                docTitle = `[야근/특근신청서] ${authorName} - ${targetDate}`;
+            } else if (selectedDocType === 'CONSUMABLES_PURCHASE') {
+                const items = Array.isArray(finalDocFormData.items) ? finalDocFormData.items : [];
+                const firstName = items[0]?.product_name || '';
+                const extra = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
+                const itemPart = firstName ? `${firstName}${extra}` : '';
+                docTitle = itemPart
+                    ? `[소모품 구매신청서] ${authorName} - ${itemPart}`
+                    : `[소모품 구매신청서] ${authorName} - ${todayStr}`;
+            } else {
+                docTitle = `[${label}] ${authorName} - ${todayStr}`;
+            }
+
             const payload = {
-                title: `[${label}] ${authorName} - ${todayStr}`,
+                title: docTitle,
                 doc_type: selectedDocType,
                 // [FIX] Ensure content is a valid dictionary (Object) for Pydantic
                 content: typeof finalDocFormData === 'string' ? safeParseJSON(finalDocFormData, {}) : (finalDocFormData || {}),

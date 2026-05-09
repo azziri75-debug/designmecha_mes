@@ -191,12 +191,39 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         const authorName = currentUser?.name || '';
         const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '').replace(/\.$/, '');
 
+        // 날짜 포맷 헬퍼 (YYYY-MM-DD → YYYY.MM.DD)
+        const fmtDate = (d) => d ? d.replace(/-/g, '.') : '';
+
         let finalTitle = title;
         if (docType === 'INTERNAL_DRAFT') {
             const formTitle = formContent?.title || '';
             finalTitle = formTitle
                 ? `[내부기안] ${formTitle} - ${authorName}`
                 : `[내부기안] - ${authorName}`;
+        } else if (docType === 'LEAVE_REQUEST') {
+            // 휴가원: 대상 기간 표시
+            const start = fmtDate(formContent?.start_date);
+            const end = fmtDate(formContent?.end_date);
+            const period = (start && end && start !== end) ? `${start}~${end}` : (start || todayStr);
+            finalTitle = `[휴가원] ${authorName} - ${period}`;
+        } else if (docType === 'EARLY_LEAVE') {
+            // 조퇴/외출원: 대상 일자 표시
+            const targetDate = fmtDate(formContent?.date) || todayStr;
+            const leaveType = formContent?.leave_type || '';
+            finalTitle = `[조퇴/외출원] ${authorName}${leaveType ? `(${leaveType})` : ''} - ${targetDate}`;
+        } else if (docType === 'OVERTIME') {
+            // 야근/특근: 대상 일자 표시
+            const targetDate = fmtDate(formContent?.date) || todayStr;
+            finalTitle = `[야근/특근신청서] ${authorName} - ${targetDate}`;
+        } else if (docType === 'CONSUMABLES_PURCHASE') {
+            // 소모품 구매신청서: 첫 품명 + 추가건수
+            const items = Array.isArray(formContent?.items) ? formContent.items : [];
+            const firstName = items[0]?.product_name || '';
+            const extra = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
+            const itemPart = firstName ? `${firstName}${extra}` : '';
+            finalTitle = itemPart
+                ? `[소모품 구매신청서] ${authorName} - ${itemPart}`
+                : `[소모품 구매신청서] ${authorName} - ${todayStr}`;
         } else {
             finalTitle = `[${label}] ${authorName} - ${todayStr}`;
         }
