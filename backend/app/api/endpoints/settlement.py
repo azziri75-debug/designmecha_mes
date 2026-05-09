@@ -260,48 +260,6 @@ async def get_settlement_purchases(
                 'dept': (content.get('dept') or '').strip(),
             })
 
-    # --- 소모품 구매신청서(CONSUMABLES_PURCHASE) 완료 결재 문서 추가 집계 ---
-    # ConsumablesPurchaseForm에는 unit_price가 없으므로 금액 0으로 표시, quantity만 집계
-    # 단, 소모품 필터이거나 전체 조회일 때만 포함 (제품그룹 필터 시는 제외)
-    if is_consumable_filter or (not major_group_id and not dept_filter_name):
-        cons_query = select(ApprovalDocument).where(
-            ApprovalDocument.doc_type == DocumentType.CONSUMABLES_PURCHASE,
-            ApprovalDocument.status == ApprovalStatus.COMPLETED,
-            ApprovalDocument.deleted_at == None
-        )
-        cons_docs = (await db.execute(cons_query)).scalars().all()
-        for cdoc in cons_docs:
-            ccnt = cdoc.content or {}
-            c_date_str = ccnt.get('request_date')
-            try:
-                c_fallback = _date.fromisoformat(c_date_str) if c_date_str else None
-            except Exception:
-                c_fallback = None
-            if not c_fallback and cdoc.created_at:
-                c_fallback = cdoc.created_at.date()
-            c_dept = (ccnt.get('dept') or '').strip()
-            for citem in (ccnt.get('items') or []):
-                cqty = float(citem.get('quantity', 0) or 0)
-                if cqty == 0:
-                    continue
-                if not c_fallback:
-                    continue
-                if c_fallback.year != year or c_fallback.month != month:
-                    continue
-                data.append({
-                    'category': 'CONSUMABLES_REQUEST',
-                    'partner_name': citem.get('partner_name', '') or '-',
-                    'order_date': c_fallback,
-                    'delivery_date': c_fallback,
-                    'product_name': citem.get('product_name', ''),
-                    'specification': citem.get('spec', ''),
-                    'quantity': cqty,
-                    'unit_price': 0.0,
-                    'total_price': 0.0,
-                    'currency': 'KRW',
-                    'dept': c_dept,
-                })
-
     return data
 
 @router.get("/production")

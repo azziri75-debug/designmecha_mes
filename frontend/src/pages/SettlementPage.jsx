@@ -87,6 +87,10 @@ const SettlementPage = () => {
     }, []);
 
     useEffect(() => {
+        // 매입내역 탭이 아닌 경우 소모품 필터 초기화
+        if (activeTab !== 'purchases' && majorGroupId === '소모품') {
+            setMajorGroupId('');
+        }
         if (activeTab !== 'chart') fetchData();
     }, [year, month, majorGroupId, activeTab, exchangeRate, basis]);
 
@@ -163,20 +167,19 @@ const SettlementPage = () => {
                             'PART': '부품',
                             'MATERIAL': '자재',
                             'MRP': 'MRP',
-                            'CONSUMABLE': '소모품(발주)',
-                            'CONSUMABLES_REQUEST': '소모품(신청)',
+                            'CONSUMABLE': '소모품',
                         };
                         return labels[val] || val || '-';
                     }},
-                    { key: "dept", label: "기안/신청부서", width: 120, renderCell: (val, row) => ['PAYMENT','CONSUMABLES_REQUEST'].includes(row?.category) ? (val || '-') : '-' },
+                    { key: "dept", label: "기안부서", width: 120, renderCell: (val, row) => row?.category === 'PAYMENT' ? (val || '-') : '-' },
                     { key: "partner_name", label: "공급사", width: 140 },
                     { key: "order_date", label: "발주/기안일", width: 110 },
                     { key: "delivery_date", label: "입고/기안일", width: 110 },
                     { key: "product_name", label: "품명/항목", width: 180 },
                     { key: "specification", label: "규격", width: 150 },
                     { key: "quantity", label: "수량", align: "right", width: 80 },
-                    { key: "unit_price", label: "단가", align: "right", width: 120, renderCell: (val, row) => row?.category === 'CONSUMABLES_REQUEST' ? '-' : formatCurrency(val, row?.currency || 'KRW') },
-                    { key: "total_price", label: "합계", align: "right", width: 140, renderCell: (val, row) => row?.category === 'CONSUMABLES_REQUEST' ? '-' : formatCurrency(val, row?.currency || 'KRW') },
+                    { key: "unit_price", label: "단가", align: "right", width: 120, renderCell: (val, row) => formatCurrency(val, row?.currency || 'KRW') },
+                    { key: "total_price", label: "합계", align: "right", width: 140, renderCell: (val, row) => formatCurrency(val, row?.currency || 'KRW') },
                 ];
 
             case "production":
@@ -398,7 +401,9 @@ const SettlementPage = () => {
                             className="bg-gray-900 border border-gray-700 text-white rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full appearance-none disabled:bg-gray-800"
                         >
                         <option value="">전체 사업부</option>
-                            <option value="소모품" style={{ color: '#f59e0b', fontWeight: 'bold' }}>🧴 소모품 (구매신청/발주)</option>
+                            {activeTab === 'purchases' && (
+                                <option value="소모품" style={{ color: '#f59e0b', fontWeight: 'bold' }}>🧴 소모품</option>
+                            )}
                             {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                         </select>
                     </div>
