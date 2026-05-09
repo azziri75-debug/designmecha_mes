@@ -486,6 +486,16 @@ const ApprovalPage = () => {
                                                         </button>
                                                     </>
                                                 )}
+                                                {/* ADMIN 전용: 결재완료 문서 내용 수정 버튼 */}
+                                                {currentUser?.user_type === 'ADMIN' && doc.status === 'COMPLETED' && (
+                                                    <button
+                                                        onClick={() => navigate(`/approval/draft?id=${doc.id}`)}
+                                                        className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
+                                                        title="내용 수정 (관리자)"
+                                                    >
+                                                        <Settings className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 <ChevronRight className="w-5 h-5 text-gray-500" />
                                             </td>
                                         </tr>

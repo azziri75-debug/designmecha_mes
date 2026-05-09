@@ -56,6 +56,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
     const [attachments, setAttachments] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [adminEditMode, setAdminEditMode] = useState(false); // ADMIN 전용 수정 모드
     const printRef = useRef();
 
     useEffect(() => {
@@ -240,7 +241,39 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         }
     };
 
-    const isReadOnly = (documentData && !['PENDING', 'REJECTED', 'IN_PROGRESS'].includes(documentData.status)) || (documentData && parseInt(documentData.author_id) !== parseInt(currentUser?.id));
+    // ADMIN 전용: 결재완료 문서의 내용만 수정 (상태 유지)
+    const handleAdminSaveContent = async () => {
+        if (!documentData?.id) return;
+        setIsSaving(true);
+        try {
+            const payload = {
+                title: documentData.title,
+                doc_type: docType,
+                content: typeof formContent === 'string' ? safeParseJSON(formContent, {}) : (formContent || {}),
+                attachment_file: attachments?.map(a => ({ filename: a.name || a.filename, url: a.url })) || [],
+                attachments_to_add: attachments?.map(a => ({ filename: a.name || a.filename, url: a.url })) || [],
+                custom_approvers: null,
+                reference_id: referenceId,
+                reference_type: referenceType
+            };
+            await api.put(`/approval/documents/${documentData.id}`, payload);
+            alert('관리자 수정이 저장되었습니다. (결재 상태 유지)');
+            setAdminEditMode(false);
+            await fetchDocument(documentData.id);
+        } catch (err) {
+            console.error(err);
+            alert('저장 실패: ' + (err.response?.data?.detail || err.message));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const isAdmin = currentUser?.user_type === 'ADMIN';
+    // 기본 readonly: COMPLETED 또는 작성자가 아닌 경우
+    const baseReadOnly = (documentData && !['PENDING', 'REJECTED', 'IN_PROGRESS'].includes(documentData.status))
+        || (documentData && parseInt(documentData.author_id) !== parseInt(currentUser?.id));
+    // ADMIN이 수정 모드를 활성화하면 편집 가능
+    const isReadOnly = isAdmin && adminEditMode ? false : baseReadOnly;
 
     const virtualDocData = documentData || {
         author: currentUser,
@@ -286,7 +319,37 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                         </h3>
                     </div>
                     <div className="flex items-center gap-3">
-                        {!isReadOnly && (
+                        {/* ADMIN 전용: 결제완료 문서 수정 토글 */}
+                        {isAdmin && documentData?.id && documentData?.status === 'COMPLETED' && (
+                            <>
+                                {adminEditMode ? (
+                                    <>
+                                        <button
+                                            onClick={handleAdminSaveContent}
+                                            disabled={isSaving}
+                                            className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                                        >
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            {isSaving ? '저장 중...' : '관리자 수정 저장'}
+                                        </button>
+                                        <button
+                                            onClick={() => { setAdminEditMode(false); setFormContent(documentData.content || {}); }}
+                                            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm"
+                                        >
+                                            취소
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={() => setAdminEditMode(true)}
+                                        className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-400/40 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                                    >
+                                        내용 수정 (관리자)
+                                    </button>
+                                )}
+                            </>
+                        )}
+                        {!isReadOnly && !adminEditMode && (
                             <button 
                                 onClick={handleSubmit} 
                                 disabled={isSaving}
