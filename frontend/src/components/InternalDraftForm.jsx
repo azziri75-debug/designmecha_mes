@@ -10,7 +10,7 @@ import api from '../lib/api';
 const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     // Default to Internal Draft type if not set
     const draftType = data.draft_type || 'GENERAL';
-    const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }];
+    const items = data.items || [{ name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', trade_date: '', remarks: '' }];
     
     const [departments, setDepartments] = useState([]);
     const [productGroups, setProductGroups] = useState([]);
@@ -52,7 +52,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
 
     // --- Column Resizing Logic (Percentage-based to always fit container) ---
     // Percentages sum to 100 (excluding the optional delete-button column)
-    const initialPcts = data.colPcts || [5, 22, 11, 7, 7, 11, 14, 23]; // sum = 100
+    const initialPcts = data.colPcts || [4, 19, 10, 6, 7, 10, 12, 12, 20]; // sum = 100
     const [colPcts, setColPcts] = useState(initialPcts);
     // Tracks resizing in pixel space, converts delta to % on mouse move
     const resizingRef = useRef({ index: -1, startX: 0, startPct: 0, nextStartPct: 0, containerWidth: 0 });
@@ -124,7 +124,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
     };
 
     const addItem = () => {
-        handleChange({ items: [...items, { name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', remarks: '' }] });
+        handleChange({ items: [...items, { name: '', spec: '', unit: '', quantity: '', unit_price: '', amount: '', trade_date: '', remarks: '' }] });
     };
 
     const removeItem = (idx) => {
@@ -329,7 +329,8 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                 <th>수량 <Resizer index={4} /></th>
                                 <th>단가 <Resizer index={5} /></th>
                                 <th>금액 <Resizer index={6} /></th>
-                                <th>비고 <Resizer index={7} /></th>
+                                <th>거래명세서날짜 <Resizer index={7} /></th>
+                                <th>비고 <Resizer index={8} /></th>
                                 {!isReadOnly && <th className="idf-no-print"></th>}
                             </TableRow>
                         </thead>
@@ -345,6 +346,15 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                     <td data-label="금액" style={{ textAlign: 'right', paddingRight: '8px' }}>
                                         { data.currency === 'USD' ? '$ ' : '₩ ' }{ (item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: data.currency === 'USD' ? 2 : 0 }) }
                                     </td>
+                                    <td data-label="거래명세서날짜">
+                                        <input
+                                            type="date"
+                                            value={item.trade_date || ''}
+                                            onChange={(e) => handleItemChange(idx, 'trade_date', e.target.value)}
+                                            readOnly={isReadOnly}
+                                            style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center', fontSize: '11px' }}
+                                        />
+                                    </td>
                                     <td data-label="비고"><input value={item.remarks} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none', textAlign: 'center' }} /></td>
                                     {!isReadOnly && (
                                         <td className="idf-no-print">
@@ -354,7 +364,7 @@ const InternalDraftForm = ({ data = {}, onChange, isReadOnly, currentUser, docum
                                 </TableRow>
                             ))}
                             <TableRow sx={{ bgcolor: '#fffde7', fontWeight: 'bold' }}>
-                                <td colSpan={6} style={{ textAlign: 'center' }}>합 계</td>
+                                <td colSpan={7} style={{ textAlign: 'center' }}>합 계</td>
                                 <td style={{ textAlign: 'right', paddingRight: '8px' }}>
                                     { data.currency === 'USD' ? '$ ' : '₩ ' }{ totalAmount.toLocaleString(undefined, { minimumFractionDigits: data.currency === 'USD' ? 2 : 0 }) }
                                 </td>

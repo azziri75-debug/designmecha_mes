@@ -174,18 +174,14 @@ async def get_settlement_purchases(
         if content.get('draft_type') != 'PAYMENT':
             continue
 
-        # 기안일자 파싱 (content.request_date → 매입일)
+        # 기안일자 파싱 (항목별 거래명세서 날짜 없으면 폴백)
         request_date_str = content.get('request_date')
         try:
-            request_date = _date.fromisoformat(request_date_str) if request_date_str else None
+            fallback_date = _date.fromisoformat(request_date_str) if request_date_str else None
         except Exception:
-            request_date = None
-        if not request_date and doc.created_at:
-            request_date = doc.created_at.date()
-        if not request_date:
-            continue
-        if request_date.year != year or request_date.month != month:
-            continue
+            fallback_date = None
+        if not fallback_date and doc.created_at:
+            fallback_date = doc.created_at.date()
 
         # 거래처명: content.partner_for_title 우선 사용, 없으면 title에서 파싱
         partner_name = content.get('partner_for_title', '').strip()
@@ -202,11 +198,22 @@ async def get_settlement_purchases(
             quantity = float(item.get('quantity', 0) or 0)
             if amount == 0 and quantity == 0:
                 continue
+            # 항목별 거래명세서 날짜 우선, 없으면 기안일자 폴백
+            trade_date_str = item.get('trade_date', '')
+            try:
+                item_date = _date.fromisoformat(trade_date_str) if trade_date_str else None
+            except Exception:
+                item_date = None
+            effective_date = item_date or fallback_date
+            if not effective_date:
+                continue
+            if effective_date.year != year or effective_date.month != month:
+                continue
             data.append({
                 'category': 'PAYMENT',
                 'partner_name': partner_name,
-                'order_date': request_date,
-                'delivery_date': request_date,
+                'order_date': effective_date,
+                'delivery_date': effective_date,
                 'product_name': item.get('name', ''),
                 'specification': item.get('spec', ''),
                 'quantity': quantity,
@@ -464,17 +471,11 @@ async def get_chart_summary(
             continue
         _date_str = _cnt.get('request_date')
         try:
-            _req_date = _date_chart.fromisoformat(_date_str) if _date_str else None
+            _fallback_date = _date_chart.fromisoformat(_date_str) if _date_str else None
         except Exception:
-            _req_date = None
-        if not _req_date and _doc.created_at:
-            _req_date = _doc.created_at.date()
-        if not _req_date:
-            continue
-        if year and _req_date.year != year:
-            continue
-        if month and _req_date.month != month:
-            continue
+            _fallback_date = None
+        if not _fallback_date and _doc.created_at:
+            _fallback_date = _doc.created_at.date()
         _pname = (_cnt.get('partner_for_title') or '').strip()
         if not _pname:
             _m = _re_chart.match(r'^\[(.+?)\]-', _doc.title or '')
@@ -483,6 +484,19 @@ async def get_chart_summary(
         for _item in (_cnt.get('items') or []):
             _amt = float(_item.get('amount', 0) or 0)
             if _amt == 0:
+                continue
+            # 항목별 거래명세서 날짜 우선, 없으면 기안일자 폴백
+            _td_str = _item.get('trade_date', '')
+            try:
+                _item_date = _date_chart.fromisoformat(_td_str) if _td_str else None
+            except Exception:
+                _item_date = None
+            _eff_date = _item_date or _fallback_date
+            if not _eff_date:
+                continue
+            if year and _eff_date.year != year:
+                continue
+            if month and _eff_date.month != month:
                 continue
             _amt_krw = _amt * exchange_rate if _cur == 'USD' else _amt
             _dept = (_cnt.get('dept') or '').strip() or '기타(대금지급)'
