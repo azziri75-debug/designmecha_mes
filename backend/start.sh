@@ -10,6 +10,10 @@ set -e
 # Run migrations on startup
 # alembic upgrade head 
 
+# Run data correction scripts
+echo "Running data correction scripts..."
+python scripts/fix_missing_plan_items.py || true
+
 # Start Uvicorn with explicit host and port
 # Render sets PORT environment variable.
 echo "Starting Uvicorn on 0.0.0.0:${PORT:-10000}"
