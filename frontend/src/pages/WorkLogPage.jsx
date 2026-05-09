@@ -398,6 +398,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                             <th className="px-3 py-2">고객사</th>
                                             <th className="px-3 py-2">수주일/납기일</th>
                                             <th className="px-3 py-2">품명</th>
+                                            <th className="px-3 py-2">규격</th>
                                             <th className="px-3 py-2">공정명</th>
                                             <th className="px-3 py-2 text-right">양품</th>
                                             <th className="px-3 py-2 text-right">불량</th>
@@ -405,7 +406,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                     </thead>
                                     <tbody className="divide-y divide-gray-700 text-gray-300">
                                         {(!log.items || log.items.length === 0) ? (
-                                            <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-500">세부 작업 내역이 없습니다.</td></tr>
+                                            <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-500">세부 작업 내역이 없습니다.</td></tr>
                                         ) : (
                                             log.items.map(item => {
                                                 const plan = item.plan_item?.plan;
@@ -416,10 +417,13 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                                     orderNo = `[재고] ${plan.stock_production.production_no}`;
                                                 }
 
+                                                const partnerName = plan?.order?.partner?.name
+                                                    || plan?.stock_production?.partner?.name
+                                                    || '-';
                                                 return (
                                                     <tr key={item.id} className="hover:bg-gray-700/40">
                                                         <td className="px-3 py-2">{orderNo}</td>
-                                                        <td className="px-3 py-2">{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</td>
+                                                        <td className="px-3 py-2">{partnerName}</td>
                                                         <td className="px-3 py-2 text-[0.7rem] leading-tight">
                                                             {plan?.order?.order_date ? (
                                                                 <div>
@@ -429,6 +433,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                                             ) : (plan?.stock_production ? '재고생산' : '-')}
                                                         </td>
                                                         <td className="px-3 py-2 font-bold">{item.plan_item?.product?.name || '-'}</td>
+                                                        <td className="px-3 py-2 text-gray-400">{item.plan_item?.product?.specification || '-'}</td>
                                                         <td className="px-3 py-2">{item.plan_item?.process_name || '-'}</td>
                                                         <td className="px-3 py-2 text-right font-bold text-green-700">{item.good_quantity}</td>
                                                         <td className="px-3 py-2 text-right font-bold text-red-600">{item.bad_quantity}</td>
@@ -521,7 +526,9 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
                                             <th className="px-3 py-2">수주/재고번호</th>
                                             <th className="px-3 py-2">고객사</th>
                                             <th className="px-3 py-2 text-right">수주일/납기일</th>
-                                            <th className="px-3 py-2">공정명 (품명)</th>
+                                            <th className="px-3 py-2">품명</th>
+                                            <th className="px-3 py-2">규격</th>
+                                            <th className="px-3 py-2">공정명</th>
                                             <th className="px-3 py-2 text-right">양품수량</th>
                                             <th className="px-3 py-2 text-right">공정단가</th>
                                             <th className="px-3 py-2 text-right">합계</th>
@@ -530,7 +537,7 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
                                     </thead>
                                     <tbody className="divide-y divide-gray-700 text-gray-300">
                                         {details.length === 0 ? (
-                                            <tr><td colSpan={9} className="px-3 py-8 text-center text-gray-500">조회된 상세 내역이 없습니다.</td></tr>
+                                            <tr><td colSpan={11} className="px-3 py-8 text-center text-gray-500">조회된 상세 내역이 없습니다.</td></tr>
                                         ) : (
                                             details.map(item => (
                                                 <PerformanceDetailRow key={item.id} item={item} onUpdate={() => { fetchDetails(); onUpdate(); }} />
@@ -577,11 +584,15 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
         }
     };
 
+    const perfPartnerName = plan?.order?.partner?.name
+        || plan?.stock_production?.partner?.name
+        || '-';
+
     return (
         <tr className="hover:bg-gray-800/40 text-gray-300">
             <td className="px-3 py-2 text-gray-400 font-medium">{item.work_log?.work_date}</td>
             <td className="px-3 py-2 text-[0.75rem]">{orderNo}</td>
-            <td className="px-3 py-2 text-[0.75rem]">{plan?.order?.partner?.name || plan?.stock_production?.product?.name || '-'}</td>
+            <td className="px-3 py-2 text-[0.75rem]">{perfPartnerName}</td>
             <td className="px-3 py-2 text-[0.7rem] leading-tight text-right">
                 {plan?.order?.order_date ? (
                     <div>
@@ -590,10 +601,9 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
                     </div>
                 ) : (plan?.stock_production ? '재고생산' : '-')}
             </td>
-            <td className="px-3 py-2">
-                <div className="font-bold text-gray-200">{item.plan_item?.process_name}</div>
-                <div className="text-xs text-gray-500">({item.plan_item?.product?.name})</div>
-            </td>
+            <td className="px-3 py-2 font-bold text-gray-200">{item.plan_item?.product?.name || '-'}</td>
+            <td className="px-3 py-2 text-gray-400">{item.plan_item?.product?.specification || '-'}</td>
+            <td className="px-3 py-2">{item.plan_item?.process_name || '-'}</td>
             <td className="px-3 py-2 text-right">
                 <input
                     type="number"
