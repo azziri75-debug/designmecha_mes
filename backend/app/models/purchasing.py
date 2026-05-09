@@ -213,6 +213,9 @@ class ConsumablePurchaseWait(Base):
     
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True) # Changed to nullable
     requested_item_name = Column(String, nullable=True) # 원본 기안에서 넘어온 품목명
+    requested_spec = Column(String, nullable=True)         # 원본 기안의 규격
+    requested_manufacturer = Column(String, nullable=True) # 원본 기안의 제조사
+    requested_partner_name = Column(String, nullable=True) # 원본 기안의 거래처(공급사)명
     
     quantity = Column(Integer, nullable=False)
     remarks = Column(String, nullable=True) # 용도/비고

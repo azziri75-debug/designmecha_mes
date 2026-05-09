@@ -40,13 +40,15 @@ const PENDING_COLS = [
 
 const PENDING_CONSUMABLE_COLS = [
     { key: 'checkbox', label: '', width: 40, noResize: true },
-    { key: 'doc', label: '연관 결재문서', width: 180 },
-    { key: 'author', label: '기안자', width: 100 },
-    { key: 'product', label: '품목명', width: 200 },
-    { key: 'spec', label: '규격', width: 150 },
-    { key: 'qty', label: '신청 수량', width: 100 },
-    { key: 'remarks', label: '사유/비고', width: 200 },
-    { key: 'date', label: '신청일자', width: 120 },
+    { key: 'doc', label: '연관 결재문서', width: 160 },
+    { key: 'author', label: '기안자', width: 90 },
+    { key: 'product', label: '품목명', width: 160 },
+    { key: 'spec', label: '규격 / 제조사', width: 150 },
+    { key: 'partner', label: '희망 거래처', width: 120 },
+    { key: 'qty', label: '신청 수량', width: 90 },
+    { key: 'remarks', label: '사유/비고', width: 160 },
+    { key: 'date', label: '신청일자', width: 110 },
+    { key: 'action', label: '발주', width: 80, noResize: true },
 ];
 
 const MRP_COLS = [
@@ -91,6 +93,7 @@ const PurchasePage = ({ type }) => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [initialModalItems, setInitialModalItems] = useState([]);
     const [consumableModalOpen, setConsumableModalOpen] = useState(false);
+    const [selectedConsumableWaitItem, setSelectedConsumableWaitItem] = useState(null);
 
     // 견적의뢰서/구매발주서 모달
     const [sheetModalOpen, setSheetModalOpen] = useState(false);
@@ -423,9 +426,15 @@ const PurchasePage = ({ type }) => {
 
         setSelectedOrder(null);
         if (type === 'CONSUMABLE') {
-            // Bulk consumable ordering via standard PurchaseOrderModal
-            setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'CONSUMABLE_WAIT' })));
-            setModalOpen(true);
+            if (itemsToOrder.length === 1) {
+                // 단일 항목: ConsumableOrderModal로 직접 열기
+                setSelectedConsumableWaitItem(itemsToOrder[0]);
+                setConsumableModalOpen(true);
+            } else {
+                // 여러 항목: 기존 PurchaseOrderModal로 처리
+                setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'CONSUMABLE_WAIT' })));
+                setModalOpen(true);
+            }
         } else {
             setInitialModalItems(itemsToOrder.map(i => ({ ...i, type: 'PENDING' }))); // Mark as pending item
             setModalOpen(true);
@@ -683,10 +692,26 @@ const PurchasePage = ({ type }) => {
                                             <td className="px-4 py-4 font-bold text-blue-700">{item.approval_title || '-'}</td>
                                             <td className="px-4 py-4">{item.requester_name || item.author_name || '-'} {item.department ? `(${item.department})` : ''}</td>
                                             <td className="px-4 py-4 font-bold">{item.requested_item_name || item.product?.name || '-'}</td>
-                                            <td className="px-4 py-4">{item.product?.specification || item.remarks || '-'}</td>
+                                            <td className="px-4 py-4">
+                                                <div>{item.requested_spec || item.product?.specification || '-'}</div>
+                                                {item.requested_manufacturer && <div className="text-xs text-gray-400">{item.requested_manufacturer}</div>}
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                {item.requested_partner_name ? (
+                                                    <span className="text-blue-400 font-medium">{item.requested_partner_name}</span>
+                                                ) : <span className="text-gray-500">-</span>}
+                                            </td>
                                             <td className="px-4 py-4">{item.quantity} {item.product?.unit || 'EA'}</td>
-                                            <td className="px-4 py-4 truncate max-w-[200px]" title={item.remarks}>{item.remarks}</td>
+                                            <td className="px-4 py-4 truncate max-w-[160px]" title={item.remarks}>{item.remarks || '-'}</td>
                                             <td className="px-4 py-4 whitespace-nowrap">{item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
+                                            <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    onClick={() => { setSelectedConsumableWaitItem(item); setConsumableModalOpen(true); }}
+                                                    className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 text-xs rounded transition-colors font-bold"
+                                                >
+                                                    발주
+                                                </button>
+                                            </td>
                                         </>
                                     ) : (
                                         <>
@@ -864,9 +889,9 @@ const PurchasePage = ({ type }) => {
 
             <ConsumableOrderModal
                 open={consumableModalOpen}
-                onClose={() => setConsumableModalOpen(false)}
+                onClose={() => { setConsumableModalOpen(false); setSelectedConsumableWaitItem(null); }}
                 onSuccess={handleSuccess}
-                waitItem={initialModalItems[0]}
+                waitItem={selectedConsumableWaitItem || initialModalItems[0]}
             />
             <PurchaseOrderModal
                 isOpen={modalOpen}

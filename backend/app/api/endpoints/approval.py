@@ -1024,18 +1024,25 @@ async def process_consumables(db: AsyncSession, doc: ApprovalDocument):
             except (ValueError, TypeError):
                 qty = 1
             remarks = item.get("remarks", "")
+            spec = item.get("spec", "")
+            manufacturer = item.get("manufacturer", "")
+            # 신청서 폼에서 직접 입력한 거래처명 사용
+            partner_name = item.get("partner_name", "") or item.get("supplier", "")
             
             if not name: 
                 print("[DEBUG] Skipping item with no product_name")
                 continue
             
-            print(f"[DEBUG] Adding to ConsumablePurchaseWait (No Master Create): {name}, Qty: {qty}")
+            print(f"[DEBUG] Adding to ConsumablePurchaseWait (No Master Create): {name}, Qty: {qty}, Spec: {spec}")
             
             # 대기열 등록 (품목 마스터 없이 기안 텍스트 그대로 저장)
             wait_record = ConsumablePurchaseWait(
                 approval_id=doc.id,
                 product_id=None,
                 requested_item_name=name,
+                requested_spec=spec or None,
+                requested_manufacturer=manufacturer or None,
+                requested_partner_name=partner_name or None,
                 quantity=qty,
                 remarks=remarks,
                 requester_name=doc.author.name if doc.author else None,

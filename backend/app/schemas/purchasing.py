@@ -246,6 +246,9 @@ class ConsumablePurchaseWaitBase(BaseModel):
     approval_id: int
     product_id: Optional[int] = None
     requested_item_name: Optional[str] = None
+    requested_spec: Optional[str] = None           # 원본 기안의 규격
+    requested_manufacturer: Optional[str] = None   # 원본 기안의 제조사
+    requested_partner_name: Optional[str] = None   # 원본 기안의 거래처명
     quantity: int
     remarks: Optional[str] = None
     requester_name: Optional[str] = None

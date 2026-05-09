@@ -5,7 +5,7 @@ import ApprovalGrid from './ApprovalGrid';
 import ResizableTh from './ResizableTh';
 
 const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
-    const items = data.items || [{ product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, remarks: '' }];
+    const items = data.items || [{ product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, partner_name: '', remarks: '' }];
     
     const handleChange = (newData) => {
         if (isReadOnly || typeof onChange !== 'function') return;
@@ -19,7 +19,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
     };
 
     const addItem = () => {
-        handleChange({ items: [...items, { product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, remarks: '' }] });
+        handleChange({ items: [...items, { product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, partner_name: '', remarks: '' }] });
     };
 
     const removeItem = (idx) => {
@@ -76,12 +76,13 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                     <thead>
                         <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                             <th style={{ width: '40px' }}>순</th>
-                            <ResizableTh initialWidth={180}>품 명 (용 도)</ResizableTh>
-                            <ResizableTh initialWidth={100}>제조사</ResizableTh>
-                            <ResizableTh initialWidth={100}>규격</ResizableTh>
-                            <ResizableTh initialWidth={50}>단위</ResizableTh>
-                            <ResizableTh initialWidth={50}>수량</ResizableTh>
-                            <ResizableTh initialWidth={120}>비고(청구자)</ResizableTh>
+                            <ResizableTh initialWidth={160}>품 명 (용 도)</ResizableTh>
+                            <ResizableTh initialWidth={90}>제조사</ResizableTh>
+                            <ResizableTh initialWidth={90}>규격</ResizableTh>
+                            <ResizableTh initialWidth={45}>단위</ResizableTh>
+                            <ResizableTh initialWidth={45}>수량</ResizableTh>
+                            <ResizableTh initialWidth={100}>거래처(공급사)</ResizableTh>
+                            <ResizableTh initialWidth={110}>비고(청구자)</ResizableTh>
                             {!isReadOnly && <th className="idf-no-print" style={{ width: '40px' }}></th>}
                         </TableRow>
                     </thead>
@@ -94,6 +95,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                                 <td><InputBase multiline value={item.spec || ''} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& textarea': { textAlign: 'center', fontSize: '13px', lineHeight: '1.4' } }} /></td>
                                 <td><InputBase value={item.unit || 'EA'} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& input': { textAlign: 'center', fontSize: '13px' } }} /></td>
                                 <td><InputBase type="number" value={item.quantity} onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& input': { textAlign: 'center', fontSize: '13px' } }} /></td>
+                                <td><InputBase multiline value={item.partner_name || ''} onChange={(e) => handleItemChange(idx, 'partner_name', e.target.value)} readOnly={isReadOnly} placeholder="공급사 이름" sx={{ width: '100%', p: 0, '& textarea': { textAlign: 'center', fontSize: '13px', lineHeight: '1.4' } }} /></td>
                                 <td><InputBase multiline value={item.remarks || ''} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& textarea': { textAlign: 'center', fontSize: '13px', lineHeight: '1.4' } }} /></td>
                                 {!isReadOnly && (
                                     <td className="idf-no-print">

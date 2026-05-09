@@ -1595,6 +1595,20 @@ async def startup_event():
                     await fix_purchase_type(db)
                 except Exception as e:
                     print(f"Startup: Purchase type fix failed: {e}")
+
+                # [NEW] Add spec/manufacturer/partner columns to consumable_purchase_waits
+                try:
+                    await db.execute(text("""
+                        ALTER TABLE consumable_purchase_waits
+                        ADD COLUMN IF NOT EXISTS requested_spec VARCHAR,
+                        ADD COLUMN IF NOT EXISTS requested_manufacturer VARCHAR,
+                        ADD COLUMN IF NOT EXISTS requested_partner_name VARCHAR
+                    """))
+                    await db.commit()
+                    print("Startup: consumable_purchase_waits spec/manufacturer/partner columns added")
+                except Exception as e:
+                    await db.rollback()
+                    print(f"Startup: consumable_purchase_waits column migration failed: {e}")
             except Exception as e:
                 print(f"Startup: MRP auto-patch failed: {e}")
                 await db.rollback()
