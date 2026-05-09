@@ -98,6 +98,7 @@ async def get_settlement_purchases(
     year: int = Query(...),
     month: int = Query(...),
     major_group_id: Optional[int] = Query(None),
+    dept: Optional[str] = Query(None),  # 특수 필터: "소모품" 전달 시 소모품만 조회
     db: AsyncSession = Depends(get_db)
 ):
     """3. 매입내역: 구매발주서 + 외주발주서 기준 (실제 입고일 기준)"""
@@ -145,34 +146,70 @@ async def get_settlement_purchases(
          get_month_filter(OutsourcingOrder.actual_delivery_date, year, month)
      )
 
-    if major_group_id:
-        subq = select(ProductGroup.id).where(ProductGroup.parent_id == major_group_id)
-        # For p_query, filter by product group
-        p_query = p_query.where(and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id)))
-        # For o_query, often outsourcing is for a produced product, so filter by that
-        o_query = o_query.where(and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id)))
+    # 소모품 필터: dept='소모품' 이거나 major_group_id 없이 소모품 전용 조회인 경우
+    is_consumable_filter = (dept == '소모품')
 
-    res_p = await db.execute(p_query)
-    res_o = await db.execute(o_query)
-    
-    data.extend([dict(r._mapping) for r in res_p])
-    data.extend([dict(r._mapping) for r in res_o])
+    if is_consumable_filter:
+        # 소모품만 조회: p_query는 purchase_type=CONSUMABLE만, o_query는 제외
+        p_query = p_query.where(PurchaseOrder.purchase_type == 'CONSUMABLE')
+        res_p = await db.execute(p_query)
+        data.extend([dict(r._mapping) for r in res_p])
+    else:
+        if major_group_id:
+            subq = select(ProductGroup.id).where(ProductGroup.parent_id == major_group_id)
+            # 소모품(CONSUMABLE) 발주는 product group 대신 별도 분류이므로 제품그룹 필터에서 제외
+            p_query = p_query.where(
+                PurchaseOrder.purchase_type != 'CONSUMABLE',
+                and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id))
+            )
+            o_query = o_query.where(and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id)))
+        else:
+            # 전체 조회: 소모품 PurchaseOrder는 product group 무관하게 포함
+            pass
+
+        res_p = await db.execute(p_query)
+        res_o = await db.execute(o_query)
+        data.extend([dict(r._mapping) for r in res_p])
+        data.extend([dict(r._mapping) for r in res_o])
 
     # --- 내부기안 대금지급 건 추가 집계 ---
     import re as _re
     from datetime import date as _date
-    payment_query = select(ApprovalDocument).where(
-        ApprovalDocument.doc_type == DocumentType.INTERNAL_DRAFT,
-        ApprovalDocument.status == ApprovalStatus.COMPLETED,
-        ApprovalDocument.deleted_at == None
-    )
-    payment_res = await db.execute(payment_query)
-    payment_docs = payment_res.scalars().all()
+
+    # major_group_id가 선택된 경우 해당 그룹의 이름을 조회하여 기안부서 필터로 사용
+    dept_filter_name: Optional[str] = None
+    if dept and dept != '소모품':
+        dept_filter_name = dept
+    elif major_group_id:
+        grp_res = await db.execute(
+            select(ProductGroup.name).where(ProductGroup.id == major_group_id)
+        )
+        grp_row = grp_res.first()
+        if grp_row:
+            dept_filter_name = grp_row[0]
+
+    # 소모품 필터가 아닐 때만 대금지급기안 집계
+    if not is_consumable_filter:
+        payment_query = select(ApprovalDocument).where(
+            ApprovalDocument.doc_type == DocumentType.INTERNAL_DRAFT,
+            ApprovalDocument.status == ApprovalStatus.COMPLETED,
+            ApprovalDocument.deleted_at == None
+        )
+        payment_res = await db.execute(payment_query)
+        payment_docs = payment_res.scalars().all()
+    else:
+        payment_docs = []
 
     for doc in payment_docs:
         content = doc.content or {}
         if content.get('draft_type') != 'PAYMENT':
             continue
+
+        # [FIX] 사업부 필터: 기안부서(dept)가 선택된 그룹명과 일치하는 건만 포함
+        if dept_filter_name:
+            doc_dept = (content.get('dept') or '').strip()
+            if doc_dept != dept_filter_name:
+                continue
 
         # 기안일자 파싱 (항목별 거래명세서 날짜 없으면 폴백)
         request_date_str = content.get('request_date')
@@ -220,7 +257,50 @@ async def get_settlement_purchases(
                 'unit_price': float(item.get('unit_price', 0) or 0),
                 'total_price': amount,
                 'currency': currency,
+                'dept': (content.get('dept') or '').strip(),
             })
+
+    # --- 소모품 구매신청서(CONSUMABLES_PURCHASE) 완료 결재 문서 추가 집계 ---
+    # ConsumablesPurchaseForm에는 unit_price가 없으므로 금액 0으로 표시, quantity만 집계
+    # 단, 소모품 필터이거나 전체 조회일 때만 포함 (제품그룹 필터 시는 제외)
+    if is_consumable_filter or (not major_group_id and not dept_filter_name):
+        cons_query = select(ApprovalDocument).where(
+            ApprovalDocument.doc_type == DocumentType.CONSUMABLES_PURCHASE,
+            ApprovalDocument.status == ApprovalStatus.COMPLETED,
+            ApprovalDocument.deleted_at == None
+        )
+        cons_docs = (await db.execute(cons_query)).scalars().all()
+        for cdoc in cons_docs:
+            ccnt = cdoc.content or {}
+            c_date_str = ccnt.get('request_date')
+            try:
+                c_fallback = _date.fromisoformat(c_date_str) if c_date_str else None
+            except Exception:
+                c_fallback = None
+            if not c_fallback and cdoc.created_at:
+                c_fallback = cdoc.created_at.date()
+            c_dept = (ccnt.get('dept') or '').strip()
+            for citem in (ccnt.get('items') or []):
+                cqty = float(citem.get('quantity', 0) or 0)
+                if cqty == 0:
+                    continue
+                if not c_fallback:
+                    continue
+                if c_fallback.year != year or c_fallback.month != month:
+                    continue
+                data.append({
+                    'category': 'CONSUMABLES_REQUEST',
+                    'partner_name': citem.get('partner_name', '') or '-',
+                    'order_date': c_fallback,
+                    'delivery_date': c_fallback,
+                    'product_name': citem.get('product_name', ''),
+                    'specification': citem.get('spec', ''),
+                    'quantity': cqty,
+                    'unit_price': 0.0,
+                    'total_price': 0.0,
+                    'currency': 'KRW',
+                    'dept': c_dept,
+                })
 
     return data
 
@@ -423,7 +503,7 @@ async def get_chart_summary(
         ), SalesOrder.actual_delivery_date
     ))
 
-    # 매입 = 구매발주(자재/MRP/소모품) + 외주발주 (USD 환산)
+    # 매입 = 구매발주(자재/MRP, 소모품 제외) + 외주발주 (USD 환산)
     po_amount = PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price
     r_pur_buy = await db.execute(pd(
         with_grp(
@@ -432,10 +512,26 @@ async def get_chart_summary(
             .select_from(PurchaseOrderItem)
             .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
             .join(Product,       PurchaseOrderItem.product_id == Product.id)
-            .where(PurchaseOrder.status == PurchaseStatus.COMPLETED)
+            .where(
+                PurchaseOrder.status == PurchaseStatus.COMPLETED,
+                PurchaseOrder.purchase_type != 'CONSUMABLE'  # 소모품은 별도 버킷으로 분리
+            )
             .group_by(group_expr)
         ), PurchaseOrder.actual_delivery_date
     ))
+    # 소모품 PurchaseOrder 별도 집계 → "소모품" 버킷
+    r_pur_cons = await db.execute(pd(
+        select(func.sum(krw_expr(po_amount, PurchaseOrderItem.currency)).label("v"))
+        .select_from(PurchaseOrderItem)
+        .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+        .where(
+            PurchaseOrder.status == PurchaseStatus.COMPLETED,
+            PurchaseOrder.purchase_type == 'CONSUMABLE'
+        ),
+        PurchaseOrder.actual_delivery_date
+    ))
+    cons_po_total = float((r_pur_cons.scalar() or 0))
+
     oo_amount = OutsourcingOrderItem.unit_price * OutsourcingOrderItem.quantity
     r_pur_out = await db.execute(pd(
         with_grp(
@@ -448,12 +544,17 @@ async def get_chart_summary(
             .group_by(group_expr)
         ), OutsourcingOrder.actual_delivery_date
     ))
-    # 두 소스 합산
+    # 두 소스 합산 (비소모품)
     pur_map: dict = {}
     for r in r_pur_buy.fetchall():
-        pur_map[r[0] or "미분류"] = pur_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
+        grp_key = r[0] or "미분류"
+        pur_map[grp_key] = pur_map.get(grp_key, 0.0) + float(r[1] or 0)
     for r in r_pur_out.fetchall():
-        pur_map[r[0] or "미분류"] = pur_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
+        grp_key = r[0] or "미분류"
+        pur_map[grp_key] = pur_map.get(grp_key, 0.0) + float(r[1] or 0)
+    # 소모품 발주 합계를 "소모품" 버킷에 추가
+    if cons_po_total > 0:
+        pur_map["소모품"] = pur_map.get("소모품", 0.0) + cons_po_total
 
     # 내부기안 대금지급 건 수집 (chart-summary용)
     import re as _re_chart
@@ -502,9 +603,37 @@ async def get_chart_summary(
             _dept = (_cnt.get('dept') or '').strip() or '기타(대금지급)'
             _payment_rows.append((_dept, _pname or '미분류', _amt_krw))
 
-    # 대금지급 합계를 기안부서(미입입력시 "기타") 그룹으로 추가
+    # 대금지급 합계를 기안부서(미입력시 "기타") 그룹으로 추가
     for _dept, _pname, _amt_krw in _payment_rows:
         pur_map[_dept] = pur_map.get(_dept, 0.0) + _amt_krw
+
+    # 소모품 구매신청서(CONSUMABLES_PURCHASE) 완료 결재 문서 → "소모품" 버킷
+    from datetime import date as _date_cons
+    _cons_q = select(ApprovalDocument).where(
+        ApprovalDocument.doc_type == DocumentType.CONSUMABLES_PURCHASE,
+        ApprovalDocument.status == ApprovalStatus.COMPLETED,
+        ApprovalDocument.deleted_at == None
+    )
+    _cons_docs = (await db.execute(_cons_q)).scalars().all()
+    for _cdoc in _cons_docs:
+        _ccnt = _cdoc.content or {}
+        _c_date_str = _ccnt.get('request_date')
+        try:
+            _c_fallback = _date_cons.fromisoformat(_c_date_str) if _c_date_str else None
+        except Exception:
+            _c_fallback = None
+        if not _c_fallback and _cdoc.created_at:
+            _c_fallback = _cdoc.created_at.date()
+        if not _c_fallback:
+            continue
+        if year and _c_fallback.year != year:
+            continue
+        if month and _c_fallback.month != month:
+            continue
+        # ConsumablesPurchaseForm에는 unit_price가 없으므로 금액 집계는 0 (건수 파악용)
+        # pur_map의 소모품 버킷에 항목 수만 표시 (금액 없음 → 건수 * 1원 임시 처리 않고 그냥 누적)
+        # 실제 발주가 생성되면 cons_po_total에 포함되므로 중복 방지를 위해 여기서는 포함 안 함
+        pass  # 소모품 구매신청서는 금액 데이터가 없어 chart 집계에서는 PO 기준으로만 반영
 
     purchases_data = [{"name": k, "value": v} for k, v in sorted(pur_map.items(), key=lambda x: -x[1])]
 
