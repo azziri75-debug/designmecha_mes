@@ -178,26 +178,23 @@ const PurchaseOrderTemplate = ({
             // 제목 생성 — 소모품 발주서 vs 일반 발주서 분기
             let docTitle;
             if (data.purchase_type === 'CONSUMABLE') {
-                // 소모품: [소모품발주서] (거래처)-제품명-yyyy.mm.dd
-                const rawDate = data.order_date || new Date().toISOString().slice(0, 10);
-                const dateStr = rawDate.slice(0, 10).replace(/-/g, '.');
-                docTitle = `[소모품발주서] (${partnerName})-${productPart}-${dateStr}`;
+                // 소모품발주서: [소모품발주서] (거래처) - 품명  (날짜·재고용 없음)
+                docTitle = `[소모품발주서] (${partnerName}) - ${productPart}`;
             } else {
                 // 자재구매/외주발주: [문서종류] (거래처)-제품명-공정명-고객사|재고용
                 const docLabel = purchaseType === 'OUTSOURCING' ? '외주발주서' : '구매발주서';
                 const processPart = firstProcessName ? `-${firstProcessName}` : '';
-                
+
                 // 고객사 명칭 및 재고용 접미사 처리
                 const customerBase = data.related_customer_names || '';
                 const stockSuffix = data.is_stock ? '-재고용' : '';
                 const customerPart = customerBase ? `-${customerBase}${stockSuffix}` : (stockSuffix || '-재고용');
-                
+
                 docTitle = `[${docLabel}] (${partnerName})-${productPart}${processPart}${customerPart}`;
             }
 
             const approvalPayload = {
                 title: docTitle,
-
                 doc_type: docType,
                 content: {
                     order_no: data.order_no,
@@ -228,8 +225,20 @@ const PurchaseOrderTemplate = ({
                 reference_id: orderId,
                 reference_type: purchaseType === 'OUTSOURCING' ? 'OUTSOURCING' : 'PURCHASE'
             };
-            
-            await api.post('/approval/documents', approvalPayload);
+
+            // 공통 결재선 자동 로드 (설정된 결재선이 없으면 없이 상신)
+            const lineRes = await api.get('/approval/lines?doc_type=PURCHASE_ORDER');
+            const customApprovers = (lineRes.data || []).map(line => ({
+                staff_id: line.approver_id || line.staff_id || line.user_id || line.id || line.approver?.id || line.value,
+                sequence: line.sequence
+            })).filter(a => a.staff_id);
+
+            const finalPayload = {
+                ...approvalPayload,
+                ...(customApprovers.length > 0 ? { custom_approvers: customApprovers } : {})
+            };
+
+            await api.post('/approval/documents', finalPayload);
             alert("결재 요청이 상신되었습니다.");
             if (onSubmitApproval) onSubmitApproval();
             navigate('/approval?mode=MY_WAITING');
