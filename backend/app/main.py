@@ -336,6 +336,25 @@ async def startup_event():
                     if "total_weight" not in ooi_cols_list:
                         await db.execute(text("ALTER TABLE outsourcing_order_items ADD COLUMN total_weight FLOAT"))
                         print("Startup: Added total_weight to outsourcing_order_items (SQLite)")
+
+                    # ── estimates 수출견적 컬럼 (SQLite) ──
+                    est_cols = await db.execute(text("PRAGMA table_info('estimates')"))
+                    est_cols_list = [row[1] for row in est_cols.fetchall()]
+                    if "is_export" not in est_cols_list:
+                        await db.execute(text("ALTER TABLE estimates ADD COLUMN is_export BOOLEAN DEFAULT 0"))
+                        print("Startup: Added is_export to estimates (SQLite)")
+                    if "offer_no" not in est_cols_list:
+                        await db.execute(text("ALTER TABLE estimates ADD COLUMN offer_no VARCHAR"))
+                        print("Startup: Added offer_no to estimates (SQLite)")
+                    if "messrs" not in est_cols_list:
+                        await db.execute(text("ALTER TABLE estimates ADD COLUMN messrs VARCHAR"))
+                        print("Startup: Added messrs to estimates (SQLite)")
+                    if "freight" not in est_cols_list:
+                        await db.execute(text("ALTER TABLE estimates ADD COLUMN freight FLOAT DEFAULT 0"))
+                        print("Startup: Added freight to estimates (SQLite)")
+                    if "export_terms" not in est_cols_list:
+                        await db.execute(text("ALTER TABLE estimates ADD COLUMN export_terms JSON"))
+                        print("Startup: Added export_terms to estimates (SQLite)")
                 else:
                     # stamp_image
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
@@ -427,6 +446,22 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE outsourcing_order_items ADD COLUMN total_weight DOUBLE PRECISION"))
                         print("Startup: Added total_weight to outsourcing_order_items (Postgres)")
+
+                    # ── estimates 수출견적 컬럼 (Postgres) ──
+                    for col, col_def in [
+                        ("is_export", "BOOLEAN DEFAULT FALSE"),
+                        ("offer_no",  "VARCHAR"),
+                        ("messrs",    "VARCHAR"),
+                        ("freight",   "DOUBLE PRECISION DEFAULT 0.0"),
+                        ("export_terms", "JSONB"),
+                    ]:
+                        r = await db.execute(text(
+                            f"SELECT column_name FROM information_schema.columns "
+                            f"WHERE table_name='estimates' AND column_name='{col}'"
+                        ))
+                        if not r.scalar():
+                            await db.execute(text(f"ALTER TABLE estimates ADD COLUMN {col} {col_def}"))
+                            print(f"Startup: Added {col} to estimates (Postgres)")
 
                     # 4. stock_productions.batch_no
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='stock_productions' AND column_name='batch_no'"))
