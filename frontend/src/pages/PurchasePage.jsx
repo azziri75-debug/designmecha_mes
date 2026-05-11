@@ -235,22 +235,27 @@ const PurchasePage = ({ type }) => {
         if (!window.confirm("이 발주서로 결재 요청을 진행하시겠습니까?")) return;
 
         const isConsumable = type === 'CONSUMABLE';
-        const firstItemProcess = order.items?.[0]?.process_name || (isConsumable ? '소모품' : '구매자재');
         const partnerName = order.partner?.name || '공급사미지정';
 
         const existingAttachments = safeParseJSON(order.attachment_file, []);
 
+        // 제목용 품목/공정명 추출
+        const firstItem = order.items?.[0];
+        const firstItemProcess = firstItem?.process_name || (isConsumable ? '소모품' : '구매자재');
+        const firstItemProductName = firstItem?.product?.name || firstItemProcess;
+
         // 소모품 발주: 재고용 없이 거래처-품목명만 표시
-        // 구매자재 발주: 수주/재고 고객사 정보 포함
+        // 구매자재 발주: 수주건 → 고객사명 필수, 재고용 → '재고용' 만 표시
         let orderTitle;
         if (isConsumable) {
-            orderTitle = `[소모품발주서] (${partnerName}) - ${firstItemProcess}`;
+            orderTitle = `[소모품발주서] (${partnerName}) - ${firstItemProductName}`;
         } else {
-            const isStockProduction = !!(order.items?.[0]?.plan?.stock_production);
-            const baseCustomer = order.related_customer_names || '';
+            const isStockProduction = !!(firstItem?.plan?.stock_production);
+            // 수주건: 고객사명 표시 (없으면 '고객사미지정')
+            // 재고용: 고객사와 무관하게 '재고용' 고정
             const customerSuffix = isStockProduction
-                ? (baseCustomer ? `${baseCustomer}-재고용` : '재고용')
-                : (baseCustomer || '고객사미지정');
+                ? '재고용'
+                : (order.related_customer_names || '고객사미지정');
             orderTitle = `[구매발주서] (${partnerName}) - ${firstItemProcess} - ${customerSuffix}`;
         }
 

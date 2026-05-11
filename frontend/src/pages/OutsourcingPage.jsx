@@ -185,10 +185,11 @@ const OutsourcingPage = () => {
         }
 
         const isStockProduction = !!(order.items?.[0]?.plan?.stock_production);
-        const baseCustomer = order.related_customer_names || '';
+        // 수주건: 고객사명 표시 (없으면 '고객사미지정')
+        // 재고용: 고객사와 무관하게 '재고용' 고정 (ABC-재고용 형태 방지)
         const customerSuffix = isStockProduction
-            ? (baseCustomer ? `${baseCustomer}-재고용` : '재고용')
-            : (baseCustomer || '고객사미지정');
+            ? '재고용'
+            : (order.related_customer_names || '고객사미지정');
 
         const approvalPayload = {
             title: `[외주발주서] (${partnerName}) - ${firstItemProcess} - ${customerSuffix}`,

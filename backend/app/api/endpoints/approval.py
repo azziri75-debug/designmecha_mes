@@ -780,9 +780,14 @@ async def retitle_all_documents(
                     else:
                         customer_base = last_part
 
-                stock_suffix = "-재고용" if is_stock else ""
-                customer_part = (f"-{customer_base}{stock_suffix}" if customer_base
-                                 else (stock_suffix if stock_suffix else "-재고용"))
+                # 수주건: 고객사명만 표시 (없으면 '고객사미지정')
+                # 재고용: 고객사와 무관하게 '재고용' 고정 (ABC-재고용 형태 방지)
+                if is_stock:
+                    customer_part = "-재고용"
+                elif customer_base:
+                    customer_part = f"-{customer_base}"
+                else:
+                    customer_part = "-고객사미지정"
                 process_part = f"-{first_process}" if first_process else ""
 
                 if partner:
