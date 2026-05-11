@@ -113,7 +113,9 @@ const ProductModal = ({
             const payload = {
                 ...productFormData,
                 item_type: type,
-                unit: productFormData.unit || 'EA'
+                unit: productFormData.unit || 'EA',
+                // 거래처 미선택(공용) 시 null로 변환 (빈 문자열은 int 파싱 오류 유발)
+                partner_id: productFormData.partner_id || null,
             };
 
             let res;
