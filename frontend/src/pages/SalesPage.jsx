@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { safeParseJSON } from '../lib/utils';
 import api from '../lib/api';
-import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, Printer, X } from 'lucide-react';
+import { Plus, Search, FileText, Calendar, DollarSign, User, Package, Save, Download, Printer, X, Globe } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Select from 'react-select';
 import FileViewerModal from '../components/FileViewerModal';
 import EstimateModal from '../components/EstimateModal';
 import OrderModal from '../components/OrderModal';
 import EstimateSheetModal from '../components/EstimateSheetModal';
+import ExportQuotationPrintModal from '../components/ExportQuotationPrintModal';
 import ResizableTable from '../components/ResizableTable';
 import { formatCurrency } from '../utils/currency';
 
@@ -60,6 +61,10 @@ const SalesPage = () => {
     // Sheet Modal
     const [showSheetModal, setShowSheetModal] = useState(false);
     const [sheetEstimate, setSheetEstimate] = useState(null);
+
+    // Export Quotation Print Modal
+    const [showExportPrintModal, setShowExportPrintModal] = useState(false);
+    const [exportPrintEstimate, setExportPrintEstimate] = useState(null);
 
     // Expand States
     const [expandedEstimates, setExpandedEstimates] = useState(new Set());
@@ -421,7 +426,15 @@ const SalesPage = () => {
                                                 {est.items?.length > 1 ? ` 외 ${est.items.length - 1}건` : ''}
                                             </td>
                                             <td className="px-4 py-4 truncate">{formatCurrency(est.total_amount, est.items?.[0]?.currency || 'KRW')}</td>
-                                            <td className="px-4 py-4 truncate">{est.items?.length || 0} 건</td>
+                                            <td className="px-4 py-4 truncate">
+                                                {est.is_export ? (
+                                                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-400 border border-emerald-700/50">
+                                                        <Globe className="w-3 h-3" /> {est.items?.length || 0}건
+                                                    </span>
+                                                ) : (
+                                                    <span>{est.items?.length || 0} 건</span>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                                 {(() => {
                                                     const files = safeParseJSON(est.attachment_file, []);
@@ -438,7 +451,15 @@ const SalesPage = () => {
                                             <td className="px-4 py-4 truncate">{est.note}</td>
                                             <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center gap-1">
-                                                    <button onClick={() => { setSheetEstimate(est); setShowSheetModal(true); }} className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded" title="견적서 인쇄"><Printer className="w-4 h-4" /></button>
+                                                    {est.is_export ? (
+                                                        <button onClick={() => { setExportPrintEstimate(est); setShowExportPrintModal(true); }} className="p-1 text-emerald-400 hover:text-emerald-300 hover:bg-gray-700 rounded" title="수출견적서 인쇄">
+                                                            <Globe className="w-4 h-4" />
+                                                        </button>
+                                                    ) : (
+                                                        <button onClick={() => { setSheetEstimate(est); setShowSheetModal(true); }} className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded" title="견적서 인쇄">
+                                                            <Printer className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                     <button onClick={() => handleEdit(est)} className="text-blue-400 hover:underline text-xs">수정</button>
                                                     <button onClick={() => handleDelete(est.id)} className="text-red-400 hover:underline text-xs ml-1">삭제</button>
                                                 </div>
@@ -569,6 +590,12 @@ const SalesPage = () => {
                 }}
                 files={viewingFiles}
                 onDeleteFile={(index) => handleDeleteAttachment(viewingTargetId, index)}
+            />
+
+            <ExportQuotationPrintModal
+                isOpen={showExportPrintModal}
+                onClose={() => { setShowExportPrintModal(false); setExportPrintEstimate(null); }}
+                estimate={exportPrintEstimate}
             />
 
             <EstimateModal

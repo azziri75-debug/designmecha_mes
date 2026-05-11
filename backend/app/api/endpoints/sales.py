@@ -39,6 +39,27 @@ async def create_estimate(
     estimate_in: schemas.EstimateCreate,
     db: AsyncSession = Depends(deps.get_db)
 ):
+    # offer_no 자동채번 (수출견적인 경우)
+    offer_no = estimate_in.offer_no
+    if estimate_in.is_export and not offer_no:
+        date_str = now_kst().strftime("%Y%m%d")
+        last_res = await db.execute(
+            select(Estimate.offer_no)
+            .where(Estimate.offer_no.like(f"DM{date_str}-%"))
+            .order_by(desc(Estimate.offer_no))
+            .limit(1)
+        )
+        last_no = last_res.scalar()
+        if last_no:
+            try:
+                last_seq = int(last_no.split("-")[-1])
+                new_seq = last_seq + 1
+            except (ValueError, IndexError):
+                new_seq = 1
+        else:
+            new_seq = 1
+        offer_no = f"DM{date_str}-{new_seq:03d}"
+
     # 1. Create Estimate Header
     db_estimate = Estimate(
         partner_id=estimate_in.partner_id,
@@ -46,7 +67,12 @@ async def create_estimate(
         valid_until=estimate_in.valid_until,
         total_amount=estimate_in.total_amount,
         note=estimate_in.note,
-        attachment_file=estimate_in.attachment_file
+        attachment_file=estimate_in.attachment_file,
+        is_export=estimate_in.is_export or False,
+        offer_no=offer_no,
+        messrs=estimate_in.messrs,
+        freight=estimate_in.freight or 0.0,
+        export_terms=estimate_in.export_terms,
     )
     db.add(db_estimate)
     await db.flush() # Get ID
@@ -363,6 +389,19 @@ async def update_estimate(
     update_data = estimate_in.model_dump(exclude_unset=True)
     items_data = update_data.pop("items", None)
     
+    # 수출견적: offer_no 자동채번 (기존에 없을 때)
+    if update_data.get("is_export") and not update_data.get("offer_no") and not db_estimate.offer_no:
+        date_str = now_kst().strftime("%Y%m%d")
+        last_res = await db.execute(
+            select(Estimate.offer_no)
+            .where(Estimate.offer_no.like(f"DM{date_str}-%"))
+            .order_by(desc(Estimate.offer_no))
+            .limit(1)
+        )
+        last_no = last_res.scalar()
+        new_seq = int(last_no.split("-")[-1]) + 1 if last_no else 1
+        update_data["offer_no"] = f"DM{date_str}-{new_seq:03d}"
+
     for field, value in update_data.items():
         setattr(db_estimate, field, value)
 

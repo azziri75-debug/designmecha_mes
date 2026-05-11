@@ -212,19 +212,38 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
     const handleEstimateSelect = (estimate) => {
         const newItems = estimate.items.map(item => ({
             product_id: item.product_id,
-            product_name: item.product?.name || item.product_id, // Fallback
+            product_name: item.product?.name || item.product_id,
             product_spec: item.product?.specification || '',
             unit: item.product?.unit || 'EA',
             quantity: item.quantity,
             unit_price: item.unit_price,
+            currency: item.currency || 'KRW',
             note: item.note || ''
         }));
+
+        // 수출견적인 경우 Terms 자동삽입
+        let termsNote = '';
+        if (estimate.is_export && estimate.export_terms) {
+            const t = estimate.export_terms;
+            const lines = [
+                `[\uc218\ucd9c\uacac\uc801 Ref: ${estimate.offer_no || ''}]`,
+                `Origin: ${t.origin || ''} | Packing: ${t.packing || ''} | Terms: ${t.incoterms || ''}`,
+                `Shipment: ${t.shipment || ''} | Shipping Port: ${t.shipping_port || ''}`,
+                `Destination: ${t.destination || ''}`,
+                `Payment: ${t.payment || ''}`,
+                t.bank_name ? `Bank: ${t.bank_name} | A/C: ${t.account_no || ''} | SWIFT: ${t.swift_code || ''}` : '',
+                `Validity: ${t.validity || ''}`,
+                t.remarks ? `Remarks: ${t.remarks}` : '',
+            ].filter(Boolean);
+            termsNote = lines.join('\n');
+        }
 
         setFormData(prev => ({
             ...prev,
             items: [...prev.items, ...newItems],
-            // Optional: Copy note/terms from estimate?
-            note: prev.note ? prev.note + '\n' + (estimate.note || '') : (estimate.note || '')
+            note: termsNote
+                ? (prev.note ? prev.note + '\n' + termsNote : termsNote)
+                : (prev.note ? prev.note + '\n' + (estimate.note || '') : (estimate.note || ''))
         }));
         setShowEstimateSelect(false);
     };

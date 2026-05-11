@@ -33,7 +33,13 @@ class EstimateBase(BaseModel):
     total_amount: float
     note: Optional[str] = None
     attachment_file: Optional[Union[List[Any], str]] = None # JSON list or stringified JSON
-    sheet_metadata: Optional[dict] = None # 견적서 편집 상태
+    sheet_metadata: Optional[dict] = None # 견적서 편집 상태 저장 (JSON)
+    # 수출 견적 전용
+    is_export: Optional[bool] = False
+    offer_no: Optional[str] = None
+    messrs: Optional[str] = None
+    freight: Optional[float] = 0.0
+    export_terms: Optional[dict] = None
 
 
 class EstimateCreate(EstimateBase):
@@ -48,6 +54,12 @@ class EstimateUpdate(BaseModel):
     attachment_file: Optional[Union[List[Any], str]] = None
     sheet_metadata: Optional[dict] = None
     items: Optional[List[EstimateItemCreate]] = None
+    # 수출 견적 전용
+    is_export: Optional[bool] = None
+    offer_no: Optional[str] = None
+    messrs: Optional[str] = None
+    freight: Optional[float] = None
+    export_terms: Optional[dict] = None
 
 class Estimate(EstimateBase):
     id: int

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime, Enum as SqEnum, Text, JSON
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime, Enum as SqEnum, Text, JSON, Boolean
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from app.db.base import Base
@@ -33,6 +33,13 @@ class Estimate(Base):
     attachment_file = Column(JSON, nullable=True) # 첨부파일 (JSON List of {name, url})
     sheet_metadata = Column(JSON, nullable=True) # 견적서 편집 상태 저장 (JSON)
     created_at = Column(DateTime, default=now_kst)
+
+    # 수출 견적 전용 필드
+    is_export = Column(Boolean, default=False)  # 수출 여부
+    offer_no = Column(String, nullable=True)     # Offer No. (DMyyyymmdd-001)
+    messrs = Column(String, nullable=True)       # 수신자 (Messrs.)
+    freight = Column(Float, default=0.0)         # 운임 (USD)
+    export_terms = Column(JSON, nullable=True)   # Terms 전체 (JSON)
 
     partner = relationship("Partner")
     items = relationship("EstimateItem", back_populates="estimate", cascade="all, delete-orphan")

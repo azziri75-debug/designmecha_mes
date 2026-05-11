@@ -55,7 +55,30 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
         valid_until: '',
         items: [],
         note: '',
-        attachment_file: []
+        attachment_file: [],
+        // 수출 견적 전용
+        is_export: false,
+        offer_no: '',
+        messrs: '',
+        freight: 0,
+        export_terms: {
+            origin: 'KOREA',
+            packing: 'Wooden Box',
+            incoterms: 'FOB',
+            incoterms_other: '',
+            shipment: '',
+            shipping_port: 'INCHEON',
+            destination: '',
+            payment: '',
+            bank_name: 'KOOKMIN BANK',
+            bank_address: '',
+            account_no: '',
+            swift_code: 'CZNBKRSE',
+            validity: 'Two weeks from the date of issue',
+            remarks: 'VAT is NOT included.',
+            accepted_by: '',
+            contacts: 'clkjh@designmecha.co.kr  +82-10-9510-4767',
+        }
     });
 
     const [partnerProducts, setPartnerProducts] = useState([]);
@@ -94,7 +117,20 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                         if (!estimateToEdit.attachment_file) return [];
                         if (Array.isArray(estimateToEdit.attachment_file)) return estimateToEdit.attachment_file;
                         return safeParseJSON(estimateToEdit.attachment_file, []);
-                    })()
+                    })(),
+                    is_export: estimateToEdit.is_export || false,
+                    offer_no: estimateToEdit.offer_no || '',
+                    messrs: estimateToEdit.messrs || '',
+                    freight: estimateToEdit.freight || 0,
+                    export_terms: estimateToEdit.export_terms || {
+                        origin: 'KOREA', packing: 'Wooden Box', incoterms: 'FOB',
+                        incoterms_other: '', shipment: '', shipping_port: 'INCHEON',
+                        destination: '', payment: '', bank_name: 'KOOKMIN BANK',
+                        bank_address: '', account_no: '', swift_code: 'CZNBKRSE',
+                        validity: 'Two weeks from the date of issue',
+                        remarks: 'VAT is NOT included.', accepted_by: '',
+                        contacts: 'clkjh@designmecha.co.kr  +82-10-9510-4767',
+                    }
                 });
             } else {
                 setFormData({
@@ -103,7 +139,20 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                     valid_until: '',
                     items: [],
                     note: '',
-                    attachment_file: []
+                    attachment_file: [],
+                    is_export: false,
+                    offer_no: '',
+                    messrs: '',
+                    freight: 0,
+                    export_terms: {
+                        origin: 'KOREA', packing: 'Wooden Box', incoterms: 'FOB',
+                        incoterms_other: '', shipment: '', shipping_port: 'INCHEON',
+                        destination: '', payment: '', bank_name: 'KOOKMIN BANK',
+                        bank_address: '', account_no: '', swift_code: 'CZNBKRSE',
+                        validity: 'Two weeks from the date of issue',
+                        remarks: 'VAT is NOT included.', accepted_by: '',
+                        contacts: 'clkjh@designmecha.co.kr  +82-10-9510-4767',
+                    }
                 });
             }
             setPartnerProducts([]);
@@ -292,7 +341,13 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
             items: formData.items.map(item => ({
                 ...item,
                 unit_price: item.is_discount ? -Math.abs(item.unit_price) : item.unit_price
-            }))
+            })),
+            // 수출 견적 필드
+            is_export: formData.is_export,
+            offer_no: formData.offer_no || null,
+            messrs: formData.messrs || null,
+            freight: formData.is_export ? (parseFloat(formData.freight) || 0) : 0,
+            export_terms: formData.is_export ? formData.export_terms : null,
         };
 
         try {
@@ -319,6 +374,21 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                 <div className="p-6 border-b border-gray-700 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         <h2 className="text-xl font-bold text-white">{estimateToEdit ? '견적 수정' : '신규 견적 등록'}</h2>
+                        {/* 국내/수울 토글 */}
+                        <div className="flex items-center rounded-lg overflow-hidden border border-gray-600 text-sm">
+                            <button
+                                onClick={() => setFormData(prev => ({ ...prev, is_export: false }))}
+                                className={`px-3 py-1.5 font-medium transition-colors ${!formData.is_export ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+                            >
+                                국내
+                            </button>
+                            <button
+                                onClick={() => setFormData(prev => ({ ...prev, is_export: true }))}
+                                className={`px-3 py-1.5 font-medium transition-colors ${formData.is_export ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+                            >
+                                수출 (Export)
+                            </button>
+                        </div>
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setShowEstimateSelect(true)}
@@ -342,6 +412,59 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {/* 수출 견적 전용 필드 */}
+                    {formData.is_export && (
+                        <div className="border border-emerald-700/50 rounded-lg p-4 bg-emerald-900/10 space-y-4">
+                            <h3 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
+                                📦 수출 견적 정보 (Export Quotation)
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">Offer No. <span className="text-gray-500">(\uBE48 칸은 저장 시 자동생성)</span></label>
+                                    <input type="text" value={formData.offer_no} onChange={e => setFormData(p => ({ ...p, offer_no: e.target.value }))} className="w-full bg-gray-700 border-gray-600 rounded text-white p-2 text-sm" placeholder="DM20250511-001" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">Messrs. (수신자)</label>
+                                    <input type="text" value={formData.messrs} onChange={e => setFormData(p => ({ ...p, messrs: e.target.value }))} className="w-full bg-gray-700 border-gray-600 rounded text-white p-2 text-sm" placeholder="Prof. Name, University" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">Freight (USD)</label>
+                                    <input type="number" value={formData.freight} onChange={e => setFormData(p => ({ ...p, freight: parseFloat(e.target.value) || 0 }))} className="w-full bg-gray-700 border-gray-600 rounded text-white p-2 text-sm" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {[['origin','출처국 (Origin)'],['packing','포장 (Packing)'],['shipping_port','선적항 (Shipping Port)'],['destination','목적지 (Destination)'],['shipment','선적 (Shipment)'],['validity','유효기간 (Validity)']].map(([k, label]) => (
+                                    <div key={k}>
+                                        <label className="block text-xs text-gray-400 mb-1">{label}</label>
+                                        <input type="text" value={formData.export_terms[k] || ''} onChange={e => setFormData(p => ({ ...p, export_terms: { ...p.export_terms, [k]: e.target.value } }))} className="w-full bg-gray-700 border-gray-600 rounded text-white p-2 text-sm" />
+                                    </div>
+                                ))}
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1">Incoterms</label>
+                                <div className="flex gap-2">
+                                    {['Ex-work','FOB','CIF','Others'].map(t => (
+                                        <label key={t} className="flex items-center gap-1 text-sm text-gray-300 cursor-pointer">
+                                            <input type="radio" name="incoterms" value={t} checked={formData.export_terms.incoterms === t} onChange={() => setFormData(p => ({ ...p, export_terms: { ...p.export_terms, incoterms: t } }))} className="accent-emerald-500" />
+                                            {t}
+                                        </label>
+                                    ))}
+                                    {formData.export_terms.incoterms === 'Others' && (
+                                        <input type="text" value={formData.export_terms.incoterms_other || ''} onChange={e => setFormData(p => ({ ...p, export_terms: { ...p.export_terms, incoterms_other: e.target.value } }))} className="flex-1 bg-gray-700 border-gray-600 rounded text-white px-2 py-1 text-sm" placeholder="적용 모델 입력" />
+                                    )}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {[['payment','결제 (Payment)'],['bank_name','은행명 (Bank Name)'],['bank_address','은행주소 (Bank Address)'],['account_no','계좌번호 (Account No.)'],['swift_code','SWIFT Code'],['accepted_by','담당자 (Accepted By)'],['remarks','버말 (Remarks)'],['contacts','Contacts']].map(([k, label]) => (
+                                    <div key={k}>
+                                        <label className="block text-xs text-gray-400 mb-1">{label}</label>
+                                        <input type="text" value={formData.export_terms[k] || ''} onChange={e => setFormData(p => ({ ...p, export_terms: { ...p.export_terms, [k]: e.target.value } }))} className="w-full bg-gray-700 border-gray-600 rounded text-white p-2 text-sm" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">거래처 (고객사)</label>
