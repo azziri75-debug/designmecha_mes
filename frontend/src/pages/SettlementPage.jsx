@@ -247,7 +247,7 @@ const SettlementPage = () => {
             const fileName = `연간실적-${groupName}-${year}-${dateStr.replace(/-/g, '')}.xlsx`;
             
             const head1 = [`${year}년 품목별 연간 실적 (${basis === 'amount' ? '금액기준' : '수량기준'})`];
-            const head2 = [`사업부: ${groupName}`, `기준연도: ${year}년`, `작성일: ${dateStr}`, `기준단위: ${basis === 'amount' ? '원(KRW)' : 'EA'}`];
+            const head2 = [`사업부: ${groupName}`, `기준연도: ${year}년`, `작성일: ${dateStr}`, `기준단위: ${basis === 'amount' ? '원(KRW)' : 'EA'}`, `적용환율: 1 USD = ${exchangeRate.toLocaleString()} KRW`];
             const head3 = ["고객사", "품명", "규격", "1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월", "누적합계", "비율(%)"];
             
             const body = [];
@@ -305,12 +305,17 @@ const SettlementPage = () => {
 
         // 1. Prepare HeaderRows (for standard formatting)
         const header1 = [`${year}년 ${month}월 ${tabLabel} 결산`];
-        const header2 = [`사업부: ${groupName}`, `기준연월: ${year}년 ${month}월`, `작성일: ${dateStr}`];
+        const header2 = [`사업부: ${groupName}`, `기준연월: ${year}년 ${month}월`, `작성일: ${dateStr}`, `적용환율: 1 USD = ${exchangeRate.toLocaleString()} KRW`];
         const header3 = columns.map(c => c.label);
 
-        // 2. Prepare Data Body
+        // 2. Prepare Data Body — USD 항목은 현재 환율로 원화 변환
+        const PRICE_KEYS = ['unit_price', 'total_price', 'amount'];
         const body = data.map(item => columns.map(col => {
-            const val = item[col.key];
+            let val = item[col.key];
+            // USD → KRW 변환 (단가·합계 필드만)
+            if (item.currency === 'USD' && PRICE_KEYS.includes(col.key) && val != null) {
+                val = Math.round(val * exchangeRate);
+            }
             return val !== null && val !== undefined ? val : "";
         }));
 
