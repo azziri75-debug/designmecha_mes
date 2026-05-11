@@ -340,7 +340,9 @@ const ProductsPage = ({ type }) => {
         try {
             const payload = {
                 ...productFormData,
-                unit: productFormData.unit || 'EA'
+                unit: productFormData.unit || 'EA',
+                // 거래처 미선택(공용) 시 null 변환 (빈 문자열은 int_parsing 오류 유발)
+                partner_id: productFormData.partner_id || null,
             };
 
             // Auto-assign item_type based on the 'type' prop (PRODUCED, PART, CONSUMABLE)
