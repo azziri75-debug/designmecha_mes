@@ -263,7 +263,22 @@ const PurchaseOrderTemplate = ({
                 {/* Left: NO */}
                 <div className="pt-8 idf-header-no text-gray-400" style={{ minWidth: '80px', fontSize: '6px' }}>
                     <p className="font-bold whitespace-nowrap">
-                        NO : <EditableText value={data.order_no} placeholder="" onChange={(v) => handleMetaChange('order_no', v)} isReadOnly={isReadOnly} className="inline-block border-b border-gray-100" style={{ minWidth: '40px', fontSize: '6px' }} />
+                        NO : <EditableText
+                            value={(() => {
+                                if (data.order_no) {
+                                    // "PO-YYYYMMDD-001" or "OS-YYYYMMDD-001" → "YYYYMMDD-001"
+                                    return data.order_no.replace(/^[A-Z]+-/, '');
+                                }
+                                // 없으면 발주일(order_date) 기반 자동 생성
+                                const base = (data.order_date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+                                return `${base}-001`;
+                            })()}
+                            placeholder=""
+                            onChange={(v) => handleMetaChange('order_no', v)}
+                            isReadOnly={isReadOnly}
+                            className="inline-block border-b border-gray-100"
+                            style={{ minWidth: '40px', fontSize: '6px' }}
+                        />
                     </p>
                 </div>
 
