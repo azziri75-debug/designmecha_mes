@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tabs, Tab, Checkbox, Tooltip,
@@ -49,6 +50,7 @@ const PENDING_CONSUMABLE_COLS = [
     { key: 'remarks', label: '사유/비고', width: 160 },
     { key: 'date', label: '신청일자', width: 110 },
     { key: 'action', label: '발주', width: 80, noResize: true },
+    { key: 'delete', label: '삭제', width: 70, noResize: true },
 ];
 
 const MRP_COLS = [
@@ -80,6 +82,7 @@ const ORDER_COLS = [
 
 const PurchasePage = ({ type }) => {
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth();
     const [tabValue, setTabValue] = useState(0);
     const [orders, setOrders] = useState([]);
     const [pendingItems, setPendingItems] = useState([]);
@@ -325,6 +328,18 @@ const PurchasePage = ({ type }) => {
             setSelectedPendingItems([]); // Reset selection on refresh
         } catch (error) {
             console.error("Failed to fetch pending items", error);
+        }
+    };
+
+    const handleDeleteConsumableWait = async (waitId) => {
+        if (!window.confirm('정말로 이 소모품 발주 대기 항목을 삭제하시겠습니까?\n(이 작업은 시스템 관리자만 수행할 수 있습니다)')) return;
+        try {
+            await api.delete(`/purchasing/purchase/consumable-waits/${waitId}`);
+            alert('삭제되었습니다.');
+            fetchPendingItems();
+        } catch (error) {
+            console.error('Delete failed', error);
+            alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -719,6 +734,16 @@ const PurchasePage = ({ type }) => {
                                                     발주
                                                 </button>
                                             </td>
+                                            {currentUser?.user_type === 'ADMIN' && (
+                                                <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={() => handleDeleteConsumableWait(item.id)}
+                                                        className="px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs rounded transition-colors font-bold"
+                                                    >
+                                                        삭제
+                                                    </button>
+                                                </td>
+                                            )}
                                         </>
                                     ) : (
                                         <>

@@ -231,6 +231,27 @@ async def register_consumable_order(
     return {"message": "발주가 성공적으로 등록되었습니다.", "id": new_po.id, "order_no": order_no}
 
 
+@router.delete("/purchase/consumable-waits/{wait_id}")
+async def delete_consumable_wait(
+    wait_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Any = Depends(deps.get_current_user)
+):
+    """소모품 발주 대기 항목 삭제 (시스템관리자 전용)"""
+    if getattr(current_user, 'user_type', None) != 'ADMIN':
+        raise HTTPException(status_code=403, detail="시스템 관리자만 삭제할 수 있습니다.")
+
+    wait_res = await db.execute(
+        select(ConsumablePurchaseWait).where(ConsumablePurchaseWait.id == wait_id)
+    )
+    wait_item = wait_res.scalars().first()
+    if not wait_item:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다.")
+
+    await db.delete(wait_item)
+    await db.commit()
+    return {"message": "소모품 발주 대기 항목이 삭제되었습니다."}
+
 
     # 2. 총 소요량(Demand) 계산 (부품별 합계)
     total_demand = {} # product_id -> quantity
