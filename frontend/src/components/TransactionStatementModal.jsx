@@ -344,7 +344,17 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', height: '22px', borderBottom: `1.5px solid ${C}` }}>
                             <div style={{ width: '40px', borderRight: `1.5px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', fontStyle: 'italic', color: C }}>No.</div>
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '13px', fontWeight: 'bold', color: C }}>{data.delivery_no?.slice(-8) || '00000000'}</div>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '13px', fontWeight: 'bold', color: C }}>{
+                                (() => {
+                                    if (data.delivery_no) {
+                                        // "DH-YYYYMMDD-001" → "YYYYMMDD-001"
+                                        return data.delivery_no.replace(/^[A-Z]+-/, '');
+                                    }
+                                    // 없으면 오늘 날짜로 자동 생성
+                                    const today = (data.delivery_date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+                                    return `${today}-001`;
+                                })()
+                            }</div>
                         </div>
                         <div style={{ display: 'flex', height: '22px', borderBottom: `1.5px solid ${C}` }}>
                             <div style={{ width: '40px', borderRight: `1.5px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', color: C }}>일자</div>
