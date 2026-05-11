@@ -86,6 +86,7 @@ async def create_estimate(
                 product_name=item.product_name,
                 unit_price=item.unit_price,
                 quantity=item.quantity,
+                currency=item.currency or 'KRW',
                 note=item.note
             )
             db.add(db_item)
@@ -421,6 +422,7 @@ async def update_estimate(
                 product_name=item_in.product_name,
                 unit_price=item_in.unit_price,
                 quantity=item_in.quantity,
+                currency=item_in.currency or 'KRW',
                 note=item_in.note
             )
             db.add(db_item)

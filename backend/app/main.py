@@ -355,6 +355,13 @@ async def startup_event():
                     if "export_terms" not in est_cols_list:
                         await db.execute(text("ALTER TABLE estimates ADD COLUMN export_terms JSON"))
                         print("Startup: Added export_terms to estimates (SQLite)")
+
+                    # ── estimate_items.currency (SQLite) ──
+                    ei_cols = await db.execute(text("PRAGMA table_info('estimate_items')"))
+                    ei_cols_list = [row[1] for row in ei_cols.fetchall()]
+                    if "currency" not in ei_cols_list:
+                        await db.execute(text("ALTER TABLE estimate_items ADD COLUMN currency VARCHAR(3) DEFAULT 'KRW'"))
+                        print("Startup: Added currency to estimate_items (SQLite)")
                 else:
                     # stamp_image
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='staff' AND column_name='stamp_image'"))
@@ -462,6 +469,15 @@ async def startup_event():
                         if not r.scalar():
                             await db.execute(text(f"ALTER TABLE estimates ADD COLUMN {col} {col_def}"))
                             print(f"Startup: Added {col} to estimates (Postgres)")
+
+                    # ── estimate_items.currency (Postgres) ──
+                    r = await db.execute(text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name='estimate_items' AND column_name='currency'"
+                    ))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE estimate_items ADD COLUMN currency VARCHAR(3) DEFAULT 'KRW'"))
+                        print("Startup: Added currency to estimate_items (Postgres)")
 
                     # 4. stock_productions.batch_no
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='stock_productions' AND column_name='batch_no'"))
