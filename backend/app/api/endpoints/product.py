@@ -218,7 +218,10 @@ async def read_products(
         query = query.where(Product.group_id == group_id)
     
     if partner_id:
-        query = query.where(Product.partner_id == partner_id)
+        # 해당 거래처 제품 + 공용 제품(partner_id 없음) 모두 포함
+        query = query.where(
+            or_(Product.partner_id == partner_id, Product.partner_id == None)
+        )
     
     if item_type:
         # 지원하는 경우 콤마로 구분된 여러 타입을 받을 수 있도록 처리

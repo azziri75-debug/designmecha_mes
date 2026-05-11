@@ -543,7 +543,11 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                                                         <span className="text-gray-300 text-sm px-2">{item.product_name}</span>
                                                     ) : (
                                                     <Select
-                                                        options={partnerProducts.map(p => ({ value: p, label: p.specification ? `${p.name} (${p.specification})` : p.name }))}
+                                                        options={partnerProducts.map(p => {
+                                                            const base = p.specification ? `${p.name} (${p.specification})` : p.name;
+                                                            const label = !p.partner_id ? `[공용] ${base}` : base;
+                                                            return { value: p, label };
+                                                        })}
                                                         value={item.product_id ? { value: item, label: item.product_spec ? `${item.product_name} (${item.product_spec})` : item.product_name } : null}
                                                         onChange={(opt) => handleProductSelect(index, opt.value)}
                                                         styles={{

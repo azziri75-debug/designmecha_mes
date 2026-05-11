@@ -174,7 +174,10 @@ const ProductModal = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">거래처 <span className="text-red-500">*</span></label>
+                                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                        거래처
+                                        <span className="ml-1 text-[10px] text-amber-400 normal-case font-normal">(미선택 시 공용 제품으로 등록)</span>
+                                    </label>
                                     <CreatableSelect
                                         isClearable
                                         options={partnerOptions}
@@ -214,7 +217,6 @@ const ProductModal = ({
                                         }}
                                     />
                                 </div>
-
                                 {type !== 'CONSUMABLE' && (
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-2">
