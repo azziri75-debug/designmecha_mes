@@ -1626,8 +1626,8 @@ async def delete_document(
     if not await is_editable(doc, current_user):
         raise HTTPException(status_code=400, detail="결재가 이미 진행되어 삭제할 수 없습니다.")
     
-    # 소모품 신청 기안(SUPPLIES)인 경우의 비즈니스 로직 처리
-    if doc.doc_type == "SUPPLIES":
+    # 소모품 신청 기안(SUPPLIES 레거시 + CONSUMABLES_PURCHASE)인 경우의 비즈니스 로직 처리
+    if doc.doc_type in ["SUPPLIES", "CONSUMABLES_PURCHASE"]:
         from app.models.purchasing import ConsumablePurchaseWait, PurchaseOrder, PurchaseOrderItem, PurchaseStatus
         
         # 1. 연결된 소모품 발주 대기 데이터 조회
