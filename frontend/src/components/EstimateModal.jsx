@@ -66,17 +66,17 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
             packing: 'Wooden Box',
             incoterms: 'FOB',
             incoterms_other: '',
-            shipment: '',
+            shipment: 'Three months Later after PO',
             shipping_port: 'INCHEON',
             destination: '',
-            payment: '',
+            payment: 'T.T, 50% with PO, 50% Before shipment from Factory',
             bank_name: 'KOOKMIN BANK',
-            bank_address: '',
-            account_no: '',
+            bank_address: '9th FL. Sewoo Bldg. 10, Yeouido-dong, Yeongdeungpo-gu, Seoul, Korea',
+            account_no: '484668-11-000215',
             swift_code: 'CZNBKRSE',
             validity: 'Two weeks from the date of issue',
             remarks: 'VAT is NOT included.',
-            accepted_by: '',
+            accepted_by: 'IN HO, CHO',
             contacts: 'clkjh@designmecha.co.kr  +82-10-9510-4767',
         }
     });
@@ -124,11 +124,13 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                     freight: estimateToEdit.freight || 0,
                     export_terms: estimateToEdit.export_terms || {
                         origin: 'KOREA', packing: 'Wooden Box', incoterms: 'FOB',
-                        incoterms_other: '', shipment: '', shipping_port: 'INCHEON',
-                        destination: '', payment: '', bank_name: 'KOOKMIN BANK',
-                        bank_address: '', account_no: '', swift_code: 'CZNBKRSE',
+                        incoterms_other: '', shipment: 'Three months Later after PO', shipping_port: 'INCHEON',
+                        destination: '', payment: 'T.T, 50% with PO, 50% Before shipment from Factory',
+                        bank_name: 'KOOKMIN BANK',
+                        bank_address: '9th FL. Sewoo Bldg. 10, Yeouido-dong, Yeongdeungpo-gu, Seoul, Korea',
+                        account_no: '484668-11-000215', swift_code: 'CZNBKRSE',
                         validity: 'Two weeks from the date of issue',
-                        remarks: 'VAT is NOT included.', accepted_by: '',
+                        remarks: 'VAT is NOT included.', accepted_by: 'IN HO, CHO',
                         contacts: 'clkjh@designmecha.co.kr  +82-10-9510-4767',
                     }
                 });
@@ -146,11 +148,13 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
                     freight: 0,
                     export_terms: {
                         origin: 'KOREA', packing: 'Wooden Box', incoterms: 'FOB',
-                        incoterms_other: '', shipment: '', shipping_port: 'INCHEON',
-                        destination: '', payment: '', bank_name: 'KOOKMIN BANK',
-                        bank_address: '', account_no: '', swift_code: 'CZNBKRSE',
+                        incoterms_other: '', shipment: 'Three months Later after PO', shipping_port: 'INCHEON',
+                        destination: '', payment: 'T.T, 50% with PO, 50% Before shipment from Factory',
+                        bank_name: 'KOOKMIN BANK',
+                        bank_address: '9th FL. Sewoo Bldg. 10, Yeouido-dong, Yeongdeungpo-gu, Seoul, Korea',
+                        account_no: '484668-11-000215', swift_code: 'CZNBKRSE',
                         validity: 'Two weeks from the date of issue',
-                        remarks: 'VAT is NOT included.', accepted_by: '',
+                        remarks: 'VAT is NOT included.', accepted_by: 'IN HO, CHO',
                         contacts: 'clkjh@designmecha.co.kr  +82-10-9510-4767',
                     }
                 });

@@ -67,7 +67,6 @@ const ExportQuotationPrintModal = ({ isOpen, onClose, estimate }) => {
         ['SWIFT Code', terms.swift_code || 'CZNBKRSE'],
         ['Validity', terms.validity || 'Two weeks from the date of issue'],
         ['Remarks', terms.remarks || 'VAT is NOT included.'],
-        ['Accepted By', `${terms.accepted_by || ''}    Very Truly Yours`],
         ['Contacts', terms.contacts || 'clkjh@designmecha.co.kr  +82-10-9510-4767'],
     ];
 
@@ -144,10 +143,6 @@ const ExportQuotationPrintModal = ({ isOpen, onClose, estimate }) => {
                                         <tr>
                                             <td style={{ border: 'none', paddingRight: '6px' }}>Date</td>
                                             <td style={{ border: 'none' }}>: {estimate.estimate_date || ''}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style={{ border: 'none', paddingRight: '6px' }}>Ref No.</td>
-                                            <td style={{ border: 'none' }}>: {estimate.offer_no || ''}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -266,6 +261,28 @@ const ExportQuotationPrintModal = ({ isOpen, onClose, estimate }) => {
                         ))}
                     </tbody>
                 </table>
+
+                {/* ── 서명 섹션 ── */}
+                <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ textAlign: 'center', minWidth: '200px' }}>
+                        <div style={{ fontSize: '9pt', marginBottom: '4px' }}>Very Truly Yours,</div>
+                        <div style={{ fontSize: '9pt', fontWeight: 'bold', marginBottom: '2px' }}>DESIGNMECHA CO., LTD.</div>
+                        <div style={{
+                            borderBottom: '1px solid #000',
+                            width: '180px',
+                            height: '50px',
+                            margin: '8px auto',
+                            display: 'flex',
+                            alignItems: 'flex-end',
+                            justifyContent: 'center',
+                            paddingBottom: '2px',
+                            fontSize: '8pt',
+                            color: '#666'
+                        }}>( Signature )</div>
+                        <div style={{ fontSize: '9pt', fontWeight: 'bold' }}>{terms.accepted_by || 'IN HO, CHO'}</div>
+                        <div style={{ fontSize: '8.5pt' }}>President &amp; CEO</div>
+                    </div>
+                </div>
             </div>
         </div>
     );
