@@ -288,8 +288,8 @@ const ExportQuotationPrintModal = ({ isOpen, onClose, estimate }) => {
                         <div style={{ fontSize: '9pt', fontWeight: 'bold', marginBottom: '2px' }}>DESIGNMECHA CO., LTD.</div>
                         <div style={{
                             borderBottom: '1px solid #000',
-                            width: '180px',
-                            height: '60px',
+                            width: '340px',
+                            height: '120px',
                             margin: '4px auto',
                             display: 'flex',
                             alignItems: 'center',
@@ -301,7 +301,7 @@ const ExportQuotationPrintModal = ({ isOpen, onClose, estimate }) => {
                                 <img
                                     src={stampUrl}
                                     alt="signature"
-                                    style={{ maxHeight: '55px', maxWidth: '170px', objectFit: 'contain', opacity: 0.9 }}
+                                    style={{ maxHeight: '110px', maxWidth: '320px', objectFit: 'contain', opacity: 0.9 }}
                                 />
                             ) : (
                                 <span style={{ fontSize: '8pt', color: '#aaa' }}>( Signature )</span>
