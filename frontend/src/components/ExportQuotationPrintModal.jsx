@@ -18,8 +18,12 @@ const ExportQuotationPrintModal = ({ isOpen, onClose, estimate }) => {
                 const ceo = (res.data || []).find(s =>
                     s.role && (s.role.includes('대표') || s.role.toLowerCase().includes('ceo') || s.role.toLowerCase().includes('president'))
                 );
-                const url = ceo?.stamp_image?.url;
-                if (url) setStampUrl(url.startsWith('http') ? url : `/${url}`);
+                const raw = ceo?.stamp_image?.url;
+                if (raw) {
+                    // http(s):// → 그대로, /로 시작 → 그대로, 나머지 → / 추가
+                    const resolved = raw.startsWith('http') || raw.startsWith('/') ? raw : `/${raw}`;
+                    setStampUrl(resolved);
+                }
             }).catch(() => {});
         }
     }, [isOpen]);
