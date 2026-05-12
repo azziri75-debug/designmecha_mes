@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { X, Printer, Download } from 'lucide-react';
+import api from '../lib/api';
 
 /**
  * 수출 견적서 인쇄 모달
@@ -8,6 +9,16 @@ import { X, Printer, Download } from 'lucide-react';
  */
 const ExportQuotationPrintModal = ({ isOpen, onClose, estimate }) => {
     const printRef = useRef(null);
+    const [stampUrl, setStampUrl] = useState(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            api.get('/basics/company').then(res => {
+                const url = res.data?.stamp_image?.url;
+                if (url) setStampUrl(url.startsWith('http') ? url : `/${url}`);
+            }).catch(() => {});
+        }
+    }, [isOpen]);
 
     if (!isOpen || !estimate) return null;
 
@@ -270,15 +281,24 @@ const ExportQuotationPrintModal = ({ isOpen, onClose, estimate }) => {
                         <div style={{
                             borderBottom: '1px solid #000',
                             width: '180px',
-                            height: '50px',
-                            margin: '8px auto',
+                            height: '60px',
+                            margin: '4px auto',
                             display: 'flex',
-                            alignItems: 'flex-end',
+                            alignItems: 'center',
                             justifyContent: 'center',
-                            paddingBottom: '2px',
-                            fontSize: '8pt',
-                            color: '#666'
-                        }}>( Signature )</div>
+                            position: 'relative',
+                            overflow: 'hidden',
+                        }}>
+                            {stampUrl ? (
+                                <img
+                                    src={stampUrl}
+                                    alt="signature"
+                                    style={{ maxHeight: '55px', maxWidth: '170px', objectFit: 'contain', opacity: 0.9 }}
+                                />
+                            ) : (
+                                <span style={{ fontSize: '8pt', color: '#aaa' }}>( Signature )</span>
+                            )}
+                        </div>
                         <div style={{ fontSize: '9pt', fontWeight: 'bold' }}>{terms.accepted_by || 'IN HO, CHO'}</div>
                         <div style={{ fontSize: '8.5pt' }}>President &amp; CEO</div>
                     </div>

@@ -192,7 +192,7 @@ const EstimateModal = ({ isOpen, onClose, onSuccess, partners, estimateToEdit = 
             unit: 'EA',
             quantity: 1,
             unit_price: 0,
-            currency: 'KRW',
+            currency: formData.is_export ? 'USD' : 'KRW', // 수출견적이면 달러 자동 적용
             note: '',
             is_new: true
         };
