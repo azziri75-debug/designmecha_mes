@@ -13,8 +13,12 @@ const ExportQuotationPrintModal = ({ isOpen, onClose, estimate }) => {
 
     useEffect(() => {
         if (isOpen) {
-            api.get('/basics/company').then(res => {
-                const url = res.data?.stamp_image?.url;
+            api.get('/basics/staff/').then(res => {
+                // 직책에 '대표'가 포함된 사원의 stamp_image 사용
+                const ceo = (res.data || []).find(s =>
+                    s.role && (s.role.includes('대표') || s.role.toLowerCase().includes('ceo') || s.role.toLowerCase().includes('president'))
+                );
+                const url = ceo?.stamp_image?.url;
                 if (url) setStampUrl(url.startsWith('http') ? url : `/${url}`);
             }).catch(() => {});
         }
