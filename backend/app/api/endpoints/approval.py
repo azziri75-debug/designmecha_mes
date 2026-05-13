@@ -450,7 +450,23 @@ async def create_document(
                 print(f"[DEBUG] Found {len(lines)} common (fallback) lines for {doc_type_clean}")
 
             if not lines:
-                print(f"[WARNING] No default approval lines found for {doc_type_clean}")
+                # [IMPORT PO FALLBACK] IMPORT_PURCHASE_ORDER has no separate lines;
+                # reuse PURCHASE_ORDER lines so both follow the same approval chain.
+                if doc_type_clean == "IMPORT_PURCHASE_ORDER":
+                    fallback_res = await db.execute(
+                        select(ApprovalLine)
+                        .options(selectinload(ApprovalLine.approver))
+                        .where(
+                            func.upper(ApprovalLine.doc_type) == "PURCHASE_ORDER",
+                            ApprovalLine.department_id.is_(None)
+                        )
+                        .order_by(ApprovalLine.sequence)
+                    )
+                    lines = fallback_res.scalars().all()
+                    if lines:
+                        print(f"[DEBUG] IMPORT_PURCHASE_ORDER: falling back to PURCHASE_ORDER lines ({len(lines)} lines)")
+                else:
+                    print(f"[WARNING] No default approval lines found for {doc_type_clean}")
             for line in lines:
                 if line.approver:
                     lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
@@ -460,7 +476,7 @@ async def create_document(
         # Validate approval lines for non-draft documents
         if not lines_to_process:
             # Check if this document type is one that *must* have a predefined line
-            if doc_in.doc_type not in ["INTERNAL_DRAFT", "EXPENSE_REPORT", "CONSUMABLES_PURCHASE", "EARLY_LEAVE", "LEAVE_REQUEST", "PURCHASE_ORDER", "OVERTIME"]:
+            if doc_in.doc_type not in ["INTERNAL_DRAFT", "EXPENSE_REPORT", "CONSUMABLES_PURCHASE", "EARLY_LEAVE", "LEAVE_REQUEST", "PURCHASE_ORDER", "OVERTIME", "IMPORT_PURCHASE_ORDER"]:
                 pass 
         
         author_rank = get_staff_rank(current_user.role)

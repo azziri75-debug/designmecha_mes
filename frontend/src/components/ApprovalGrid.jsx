@@ -23,7 +23,9 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [], e
     const fetchDefaultLines = async () => {
         setLoadingDefault(true);
         try {
-            const res = await api.get(`/approval/lines?doc_type=${docType}`);
+            // IMPORT_PURCHASE_ORDER shares the same approval chain as PURCHASE_ORDER
+            const effectiveDocType = docType === 'IMPORT_PURCHASE_ORDER' ? 'PURCHASE_ORDER' : docType;
+            const res = await api.get(`/approval/lines?doc_type=${effectiveDocType}`);
             const steps = (res.data || []).sort((a,b) => a.sequence - b.sequence).map(line => ({
                 approver_id: line.approver_id,
                 // [FIX] approver 객체가 있으면 실제 role, 없으면 line의 role 필드 사용

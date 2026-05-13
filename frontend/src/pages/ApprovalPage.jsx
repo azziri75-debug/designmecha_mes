@@ -46,7 +46,7 @@ const DOC_TYPES = {
     CONSUMABLES_PURCHASE: { label: '소모품 구매신청서', color: 'cyan' },
     OVERTIME: { label: '연장/특근신청서', color: 'orange' },
     PURCHASE_ORDER: { label: '구매발주서', color: 'amber' },
-    IMPORT_PURCHASE_ORDER: { label: '해외발주서 (Import PO)', color: 'emerald' }
+    IMPORT_PURCHASE_ORDER: { label: '해외발주서 (Import PO)', color: 'emerald', showInSettings: false }
 };
 
 const STATUS_MAP = {
@@ -509,7 +509,7 @@ const ApprovalPage = () => {
                 ) : (
                     <>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {Object.entries(DOC_TYPES).map(([type, info]) => (
+                        {Object.entries(DOC_TYPES).filter(([, info]) => info.showInSettings !== false).map(([type, info]) => (
                             <Card key={type} className="flex flex-col">
                                 <div className="p-4 border-b border-gray-700 bg-gray-900/30 flex items-center justify-between font-bold text-white">
                                     {info.label} 기본 결재선
