@@ -280,8 +280,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         } else if (initialItems && initialItems.length > 0) {
             // 1. 공급사 자동 매칭 보강
             const firstItem = initialItems[0];
-            const firstPartnerName = firstItem.partner_name || firstItem.supplier_name || '';
-            const foundPartner = partners.find(p => p.name === firstPartnerName);
+            const rawPartnerName = (firstItem.partner_name || firstItem.supplier_name || '').trim();
+            const foundPartner = rawPartnerName
+                ? partners.find(p =>
+                    p.name.trim() === rawPartnerName ||
+                    p.name.trim().toLowerCase() === rawPartnerName.toLowerCase()
+                  )
+                : null;
 
             // 2. 소모품(CONSUMABLE) 여부 판단 (waitItem 여부로 더 확실하게 체크)
             const isConsumableOrder = purchaseType === 'CONSUMABLE' || firstItem.type === 'CONSUMABLE_WAIT';

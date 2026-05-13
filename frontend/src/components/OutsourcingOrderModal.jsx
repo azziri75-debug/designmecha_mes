@@ -267,6 +267,26 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
+    // [Fix] partners 비동기 로드 후 partner_id 자동기입
+    // 메인 effect 실행 시점에 partners가 []이므로, partners가 채워진 후 한 번 더 시도
+    useEffect(() => {
+        if (!isOpen || !partners.length || !initialItems?.length) return;
+        if (formData.partner_id) return; // 이미 설정된 경우 skip
+        const firstItem = initialItems[0];
+        const rawName = (
+            firstItem.partner_name ||
+            (firstItem.partner && (typeof firstItem.partner === 'string' ? firstItem.partner : firstItem.partner.name)) ||
+            firstItem.outsourcing_company || ''
+        ).trim();
+        if (!rawName) return;
+        const found = partners.find(p =>
+            p.name.trim() === rawName ||
+            p.name.trim().toLowerCase() === rawName.toLowerCase()
+        );
+        if (found) setFormData(prev => ({ ...prev, partner_id: found.id }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [partners]);
+
     const fetchPartners = async () => {
         try {
             const response = await api.get('/basics/partners/', { params: { type: 'SUBCONTRACTOR' } });
