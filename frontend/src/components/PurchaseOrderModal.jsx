@@ -164,7 +164,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [vendorTel, setVendorTel] = useState('');
     const [vendorFax, setVendorFax] = useState('');
     const printRef = React.useRef(null);
-    const autoFilledRef = React.useRef(false); // prevent duplicate auto-fill
 
     useEffect(() => {
         if (purchaseType) setPurchaseTypeState(purchaseType);
@@ -341,13 +340,19 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         parsedSpec = pObj?.specification || item?.specification || item?.spec || item?.remarks || '';
                     }
 
+                    // Inline auto-fill from product master if products already loaded
+                    const masterProduct = products.length > 0
+                        ? products.find(p => String(p.id) === String(parsedProductId))
+                        : null;
+
                     return {
                         ...item,
                         product_id: parsedProductId,
                         product_name: parsedProductName,
                         specification: parsedSpec,
                         quantity: item.quantity || 1,
-                        unit_price: item.unit_price || 0,
+                        unit_price: item.unit_price || (masterProduct?.recent_price ?? 0),
+                        material: item.material || masterProduct?.material || '',
                         note: item.note || item.remarks || '',
                         production_plan_item_id: item.type === 'PENDING' ? item.id : (item.production_plan_item_id || null),
                         consumable_purchase_wait_id: isConsumableOrder ? item.id : (item.consumable_purchase_wait_id || null),
@@ -375,9 +380,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     // Removed separate sync effect to prevent initialization loops
 
     // Auto-fill material & unit_price from product master for initial items
+    // (catches the case where products loaded AFTER initialItems were set)
     useEffect(() => {
-        if (!isOpen) { autoFilledRef.current = false; return; }
-        if (autoFilledRef.current) return;
+        if (!isOpen) return;
         if (!products || products.length === 0) return;
         if (!formData.items || formData.items.length === 0) return;
 
@@ -398,12 +403,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             return updated;
         });
 
+        // Only update state if something changed — this prevents infinite re-render
         if (needsUpdate) {
-            autoFilledRef.current = true;
             setFormData(prev => ({ ...prev, items: newItems }));
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, products, formData.items.length]);
+    }, [isOpen, products.length, formData.items.length]);
 
     const fetchPartners = async () => {
         try {
