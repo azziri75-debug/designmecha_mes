@@ -13,6 +13,7 @@ set -e
 # Run data correction scripts
 echo "Running data correction scripts..."
 python scripts/fix_missing_plan_items.py || true
+python scripts/add_export_delivery_columns.py || true
 
 # Start Uvicorn with explicit host and port
 # Render sets PORT environment variable.
