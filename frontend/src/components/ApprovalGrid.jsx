@@ -3,7 +3,7 @@ import { Box, Table, TableBody, TableRow, Typography } from '@mui/material';
 import { getImageUrl, safeParseJSON } from '../lib/utils';
 import api from '../lib/api';
 
-const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] }) => {
+const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [], englishMode = false }) => {
     // 1. Author (기안자) info
     const author = documentData?.author || currentUser;
     const createdAt = documentData?.created_at || new Date().toISOString();
@@ -139,13 +139,13 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
                         />
                     ) : (
                         <>
-                            <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '11px', zIndex: 1 }}>승인</Typography>
+                            <Typography variant="caption" sx={{ color: 'blue', fontWeight: 'bold', fontSize: '11px', zIndex: 1 }}>{englishMode ? 'APPROVED' : '승인'}</Typography>
                             <Box sx={{ 
                                 position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                                 width: '38px', height: '38px', border: '1.2px solid rgba(0,0,255,0.3)', borderRadius: '50%',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5
                             }}>
-                                <Typography sx={{ color: 'blue', fontSize: '10px', fontWeight: 'bold' }}>인</Typography>
+                                <Typography sx={{ color: 'blue', fontSize: '10px', fontWeight: 'bold' }}>{englishMode ? 'OK' : '인'}</Typography>
                             </Box>
                         </>
                     )}
@@ -156,7 +156,7 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
         if (step?.status === 'REJECTED') {
             return (
                 <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Typography sx={{ color: 'red', fontWeight: 'bold', fontSize: '15px', border: '2px solid red', px: 0.5, py: 0.2, borderRadius: '4px', transform: 'rotate(-15deg)' }}>반 려</Typography>
+                    <Typography sx={{ color: 'red', fontWeight: 'bold', fontSize: '15px', border: '2px solid red', px: 0.5, py: 0.2, borderRadius: '4px', transform: 'rotate(-15deg)' }}>{englishMode ? 'REJECTED' : '반 려'}</Typography>
                 </Box>
             );
         }
@@ -170,7 +170,7 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
     };
 
     if (loadingDefault && steps.length === 0) {
-        return <Box sx={{ fontSize: '12px', color: 'text.secondary', textAlign: 'right', p: 1 }}>결재선 불러오는 중...</Box>;
+        return <Box sx={{ fontSize: '12px', color: 'text.secondary', textAlign: 'right', p: 1 }}>{englishMode ? 'Loading approval lines...' : '결재선 불러오는 중...'}</Box>;
     }
 
     // Calculate columns: 1 (Author) + N (Steps)
@@ -190,11 +190,11 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [] })
             <TableBody>
                 {/* 1. Header Row (Roles) */}
                 <TableRow sx={{ height: '22px' }}>
-                    <Box component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold', fontSize: '10px' }}>기안자</Box>
+                    <Box component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold', fontSize: '10px' }}>{englishMode ? 'Drafter' : '기안자'}</Box>
                     {steps.map((step, i) => (
                         <Box key={i} component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold', fontSize: '10px' }}>
                             {/* [FIX] approver 객체의 role → step.role 순서로 fallback */}
-                            {step.approver?.role || step.role || '결재'}
+                            {englishMode ? (step.approver?.role || step.role || 'Approver') : (step.approver?.role || step.role || '결재')}
                         </Box>
                     ))}
                 </TableRow>

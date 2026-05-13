@@ -197,7 +197,12 @@ const ImportPurchaseOrderTemplate = ({
                     {/* Right: Approval grid */}
                     <div style={{ minWidth: '140px', display: 'flex', justifyContent: 'flex-end' }}>
                         {!hideApprovalGrid && (
-                            <ApprovalGrid documentData={documentData} currentUser={currentUser} docType={docType} />
+                            <ApprovalGrid
+                                documentData={documentData}
+                                currentUser={currentUser}
+                                docType="PURCHASE_ORDER"
+                                englishMode={true}
+                            />
                         )}
                     </div>
                 </div>
@@ -354,11 +359,11 @@ const ImportPurchaseOrderTemplate = ({
                             </div>
                             <div className="p-1">
                                 <EditableText
-                                    value={data.payment_terms || ''}
+                                    value={/[\uAC00-\uD7A3]/.test(data.payment_terms || '') ? '' : (data.payment_terms || '')}
                                     onChange={(v) => handleMetaChange('payment_terms', v)}
                                     isReadOnly={isReadOnly}
                                     className="flex-1 text-[11px]"
-                                    placeholder="Payment terms"
+                                    placeholder="Payment terms (e.g. Net 30 days after receipt)"
                                 />
                             </div>
                         </div>
