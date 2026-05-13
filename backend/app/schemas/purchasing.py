@@ -10,10 +10,11 @@ class PurchaseOrderItemBase(BaseModel):
     product_id: int
     quantity: int
     unit_price: float
-    currency: str = 'KRW' # 통화 (KRW/USD)
+    currency: str = 'KRW'
     note: Optional[str] = None
     order_size: Optional[str] = None
     material: Optional[str] = None
+    manufacturer: Optional[str] = None  # 제조사
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
     consumable_purchase_wait_id: Optional[int] = None
@@ -24,7 +25,7 @@ class PurchaseOrderItemCreate(PurchaseOrderItemBase):
     pass
 
 class PurchaseOrderItemUpdate(BaseModel):
-    id: Optional[int] = None # For identifying item to update
+    id: Optional[int] = None
     product_id: Optional[int] = None
     quantity: Optional[int] = None
     unit_price: Optional[float] = None
@@ -33,6 +34,7 @@ class PurchaseOrderItemUpdate(BaseModel):
     note: Optional[str] = None
     order_size: Optional[str] = None
     material: Optional[str] = None
+    manufacturer: Optional[str] = None  # 제조사
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
     pricing_type: Optional[PricingType] = None
@@ -268,9 +270,10 @@ class ConsumablePurchaseWaitResponse(ConsumablePurchaseWaitBase):
 class ConsumableOrderRequest(BaseModel):
     wait_id: int
     partner_id: int
-    product_id: Optional[int] = None # If mapping to existing
-    new_product_name: Optional[str] = None # If creating new
+    product_id: Optional[int] = None
+    new_product_name: Optional[str] = None
     new_product_spec: Optional[str] = None
     new_product_unit: Optional[str] = "EA"
     unit_price: float = 0
+    manufacturer: Optional[str] = None  # 제조사
     note: Optional[str] = None

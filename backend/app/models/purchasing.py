@@ -102,6 +102,7 @@ class PurchaseOrderItem(Base):
     note = Column(String, nullable=True)
     order_size = Column(String, nullable=True)
     material = Column(String, nullable=True)
+    manufacturer = Column(String, nullable=True)  # 제조사
     pricing_type = Column(SqlEnum(PricingType), default=PricingType.UNIT)
     total_weight = Column(Float, nullable=True)
     

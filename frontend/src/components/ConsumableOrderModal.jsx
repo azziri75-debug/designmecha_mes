@@ -90,6 +90,7 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
 
     // 발주 조건
     const [unitPrice, setUnitPrice] = useState('');
+    const [manufacturer, setManufacturer] = useState('');
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -116,6 +117,7 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
                 setNewSpec(initialSpec);
                 setNewUnit(waitItem.product?.unit || 'EA');
                 setPartnerSearchQuery(waitItem.requested_partner_name || '');
+                setManufacturer(waitItem.requested_manufacturer || '');
                 if (initialName) {
                     performSearch(initialName);
                 }
@@ -126,6 +128,7 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
             setSelectedProductId(null);
             setMatchedProducts([]);
             setUnitPrice('');
+            setManufacturer('');
             setNote('');
             setSelectedPartnerId('');
             setPartnerSearchQuery('');
@@ -262,6 +265,7 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
                 wait_id: waitItem.id,
                 partner_id: parseInt(selectedPartnerId, 10),
                 unit_price: parseFloat(unitPrice) || 0,
+                manufacturer: manufacturer || undefined,
                 note: note
             };
 
@@ -580,6 +584,17 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
                                     최근 단가 자동기입: ₩{Number(unitPrice).toLocaleString()}
                                 </Typography>
                             )}
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                label="제조사"
+                                value={manufacturer}
+                                onChange={(e) => setManufacturer(e.target.value)}
+                                placeholder="제조사를 입력하세요 (선택)"
+                                helperText={waitItem?.requested_manufacturer ? `기안 원본 제조사: ${waitItem.requested_manufacturer}` : ''}
+                            />
                         </Grid>
                         <Grid item xs={6}>
                             <TextField

@@ -294,6 +294,9 @@ async def startup_event():
                     if "consumable_purchase_wait_id" not in poi_cols_list:
                         await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN consumable_purchase_wait_id INTEGER"))
                         print("Startup: Added consumable_purchase_wait_id to purchase_order_items (SQLite)")
+                    if "manufacturer" not in poi_cols_list:
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN manufacturer VARCHAR"))
+                        print("Startup: Added manufacturer to purchase_order_items (SQLite)")
 
                     # PurchaseOrders, OutsourcingOrders migrations
                     po_cols = await db.execute(text("PRAGMA table_info('purchase_orders')"))
@@ -478,6 +481,15 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE estimate_items ADD COLUMN currency VARCHAR(3) DEFAULT 'KRW'"))
                         print("Startup: Added currency to estimate_items (Postgres)")
+
+                    # ── purchase_order_items.manufacturer (Postgres) ──
+                    r = await db.execute(text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name='purchase_order_items' AND column_name='manufacturer'"
+                    ))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN manufacturer VARCHAR"))
+                        print("Startup: Added manufacturer to purchase_order_items (Postgres)")
 
                     # 4. stock_productions.batch_no
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='stock_productions' AND column_name='batch_no'"))

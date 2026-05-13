@@ -295,6 +295,21 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
         }
     };
 
+    // ADMIN 전용: 문서 삭제
+    const handleAdminDelete = async () => {
+        if (!documentData?.id) return;
+        const confirmed = window.confirm(`[관리자] 문서 "${documentData.title}"을(를) 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`);
+        if (!confirmed) return;
+        try {
+            await api.delete(`/approval/documents/${documentData.id}`);
+            alert('문서가 삭제되었습니다.');
+            if (onSave) onSave();
+            else navigate('/approval');
+        } catch (err) {
+            alert('삭제 실패: ' + (err.response?.data?.detail || err.message));
+        }
+    };
+
     const isAdmin = currentUser?.user_type === 'ADMIN';
     // 기본 readonly: COMPLETED 또는 작성자가 아닌 경우
     const baseReadOnly = (documentData && !['PENDING', 'REJECTED', 'IN_PROGRESS'].includes(documentData.status))
@@ -347,31 +362,45 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
                     </div>
                     <div className="flex items-center gap-3">
                         {/* ADMIN 전용: 결제완료 문서 수정 토글 */}
-                        {isAdmin && documentData?.id && documentData?.status === 'COMPLETED' && (
+                        {isAdmin && documentData?.id && (
                             <>
-                                {adminEditMode ? (
+                                {/* 관리자 수정 (결재완료 문서) */}
+                                {documentData?.status === 'COMPLETED' && (
                                     <>
-                                        <button
-                                            onClick={handleAdminSaveContent}
-                                            disabled={isSaving}
-                                            className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
-                                        >
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            {isSaving ? '저장 중...' : '관리자 수정 저장'}
-                                        </button>
-                                        <button
-                                            onClick={() => { setAdminEditMode(false); setFormContent(documentData.content || {}); }}
-                                            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm"
-                                        >
-                                            취소
-                                        </button>
+                                        {adminEditMode ? (
+                                            <>
+                                                <button
+                                                    onClick={handleAdminSaveContent}
+                                                    disabled={isSaving}
+                                                    className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                                                >
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                    {isSaving ? '저장 중...' : '관리자 수정 저장'}
+                                                </button>
+                                                <button
+                                                    onClick={() => { setAdminEditMode(false); setFormContent(documentData.content || {}); }}
+                                                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm"
+                                                >
+                                                    취소
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                onClick={() => setAdminEditMode(true)}
+                                                className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-400/40 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                                            >
+                                                내용 수정 (관리자)
+                                            </button>
+                                        )}
                                     </>
-                                ) : (
+                                )}
+                                {/* 관리자 삭제 버튼 (모든 상태에서 표시) */}
+                                {!adminEditMode && (
                                     <button
-                                        onClick={() => setAdminEditMode(true)}
-                                        className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-400/40 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                                        onClick={handleAdminDelete}
+                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-400/40 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
                                     >
-                                        내용 수정 (관리자)
+                                        문서 삭제 (관리자)
                                     </button>
                                 )}
                             </>

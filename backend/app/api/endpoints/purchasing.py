@@ -223,10 +223,11 @@ async def register_consumable_order(
         product_id=product_id,
         quantity=wait_item.quantity,
         unit_price=req.unit_price,
+        manufacturer=req.manufacturer or wait_item.requested_manufacturer,
         consumable_purchase_wait_id=wait_item.id
     )
     db.add(po_item)
-    
+
     await db.commit()
     return {"message": "발주가 성공적으로 등록되었습니다.", "id": new_po.id, "order_no": order_no}
 
