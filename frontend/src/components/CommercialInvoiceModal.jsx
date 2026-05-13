@@ -65,8 +65,14 @@ const CommercialInvoiceModal = ({ open, onClose, order, deliveryId, deliveryDate
             // Load CEO signature
             try {
                 const staffRes = await api.get('/basics/staff/');
-                const ceo = (staffRes.data || []).find(s => s.role === '대표이사' || s.role === 'CEO');
-                if (ceo?.stamp_image) setCeoSignature(ceo.stamp_image);
+                const ceo = (staffRes.data || []).find(s =>
+                    s.role && (s.role.includes('대표') || s.role.toLowerCase().includes('ceo') || s.role.toLowerCase().includes('president'))
+                );
+                const raw = ceo?.stamp_image?.url;
+                if (raw) {
+                    const resolved = raw.startsWith('http') || raw.startsWith('/') ? raw : `/${raw}`;
+                    setCeoSignature(resolved);
+                }
             } catch (e) { console.warn('CEO fetch failed', e); }
 
             // Load company info
@@ -120,11 +126,24 @@ const CommercialInvoiceModal = ({ open, onClose, order, deliveryId, deliveryDate
     };
 
     const handlePrint = () => {
-        setIsPrint(true);
-        setTimeout(() => {
-            window.print();
-            setIsPrint(false);
-        }, 300);
+        const win = window.open('', '_blank');
+        if (!win) return;
+        const templateDiv = document.getElementById('ci-print-root');
+        const content = templateDiv?.innerHTML || '';
+        win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8" />
+<title>${tab === 'ci' ? 'Commercial Invoice' : 'Packing List'} - ${invoiceNo}</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #fff; }
+.ci-print-area { width: 190mm; margin: 10mm auto; padding: 0; }
+table { border-collapse: collapse; }
+@media print { @page { size: A4; margin: 10mm; } body { margin: 0; } }
+</style></head>
+<body><div class="ci-print-area">${content}</div></body></html>`);
+        win.document.close();
+        win.focus();
+        setTimeout(() => { win.print(); }, 400);
     };
 
     if (!open || !ciDoc) return null;

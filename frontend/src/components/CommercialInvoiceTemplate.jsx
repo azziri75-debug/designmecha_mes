@@ -1,5 +1,4 @@
 import React from 'react';
-import { getImageUrl } from '../lib/utils';
 
 const HISTORY_KEY = 'ci_field_history_';
 
@@ -206,7 +205,7 @@ const CommercialInvoiceTemplate = ({ doc, setDoc, isPrint, ceoSignature, company
                         <td style={{ ...cell, width: '40%', textAlign: 'center', verticalAlign: 'bottom', paddingBottom: '8px' }}>
                             <div style={{ marginBottom: '8px', fontStyle: 'italic', fontSize: '12px' }}>Signature</div>
                             {ceoSignature && (
-                                <img src={getImageUrl(ceoSignature)} alt="Signature" style={{ height: '60px', objectFit: 'contain' }} />
+                                <img src={ceoSignature} alt="Signature" style={{ height: '60px', objectFit: 'contain' }} />
                             )}
                             <div style={{ borderTop: '1px solid #000', marginTop: '4px', paddingTop: '4px', fontSize: '11px' }}>
                                 {companyName || 'Designmecha Co.,Ltd.'} / InHoCho
