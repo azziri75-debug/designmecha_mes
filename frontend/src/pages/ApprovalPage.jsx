@@ -24,6 +24,7 @@ import EarlyLeaveForm from '../components/EarlyLeaveForm';
 import LeaveRequestForm from '../components/LeaveRequestForm';
 import OvertimeWorkForm from '../components/OvertimeWorkForm';
 import PurchaseOrderForm from '../components/PurchaseOrderForm';
+import ImportPurchaseOrderForm from '../components/ImportPurchaseOrderForm';
 import BusinessTripExpenseForm from '../components/BusinessTripExpenseForm';
 import ResizableTable from '../components/ResizableTable';
 
@@ -44,7 +45,8 @@ const DOC_TYPES = {
     EARLY_LEAVE: { label: '조퇴/외출서', color: 'purple' },
     CONSUMABLES_PURCHASE: { label: '소모품 구매신청서', color: 'cyan' },
     OVERTIME: { label: '연장/특근신청서', color: 'orange' },
-    PURCHASE_ORDER: { label: '구매발주서', color: 'amber' }
+    PURCHASE_ORDER: { label: '구매발주서', color: 'amber' },
+    IMPORT_PURCHASE_ORDER: { label: '해외발주서 (Import PO)', color: 'emerald' }
 };
 
 const STATUS_MAP = {
@@ -612,6 +614,7 @@ const ApprovalPage = () => {
                                             {(selectedDoc.doc_type === 'CONSUMABLES_PURCHASE' || selectedDoc.doc_type === 'SUPPLIES') && <ConsumablesPurchaseForm data={{...(selectedDoc.content||{}), items: Array.isArray(selectedDoc.content?.items) ? selectedDoc.content.items : []}} isReadOnly={true} onChange={() => {}} documentData={selectedDoc} currentUser={currentUser} />}
                                             {selectedDoc.doc_type === 'OVERTIME' && <OvertimeWorkForm data={{...(selectedDoc.content||{}), items: Array.isArray(selectedDoc.content?.items) ? selectedDoc.content.items : []}} isReadOnly={true} onChange={() => {}} documentData={selectedDoc} currentUser={currentUser} />}
                                             {selectedDoc.doc_type === 'PURCHASE_ORDER' && <PurchaseOrderForm data={{...(selectedDoc.content||{}), items: Array.isArray(selectedDoc.content?.items) ? selectedDoc.content.items : []}} isReadOnly={true} onChange={() => {}} documentData={selectedDoc} currentUser={currentUser} />}
+                                            {selectedDoc.doc_type === 'IMPORT_PURCHASE_ORDER' && <ImportPurchaseOrderForm data={{...(selectedDoc.content||{}), items: Array.isArray(selectedDoc.content?.items) ? selectedDoc.content.items : []}} isReadOnly={true} onChange={() => {}} documentData={selectedDoc} currentUser={currentUser} />}
                                         </Box>
                                     </Box>
                                 </div>
