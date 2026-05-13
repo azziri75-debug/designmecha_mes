@@ -386,27 +386,29 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         if (!products || products.length === 0) return;
         if (!formData.items || formData.items.length === 0) return;
 
-        let needsUpdate = false;
-        const newItems = formData.items.map(item => {
-            if (!item.product_id) return item;
-            const product = products.find(p => String(p.id) === String(item.product_id));
-            if (!product) return item;
-            const updated = { ...item };
-            if (!item.material && product.material) {
-                updated.material = product.material;
-                needsUpdate = true;
-            }
-            if ((!item.unit_price || item.unit_price === 0) && product.recent_price) {
-                updated.unit_price = product.recent_price;
-                needsUpdate = true;
-            }
-            return updated;
+        // Use functional update so we always work on the LATEST prev.items
+        // (avoids stale closure when multiple async updates race)
+        setFormData(prev => {
+            if (!prev.items || prev.items.length === 0) return prev;
+            let needsUpdate = false;
+            const newItems = prev.items.map(item => {
+                if (!item.product_id) return item;
+                const product = products.find(p => String(p.id) === String(item.product_id));
+                if (!product) return item;
+                const updated = { ...item };
+                if (!item.material && product.material) {
+                    updated.material = product.material;
+                    needsUpdate = true;
+                }
+                if ((!item.unit_price || Number(item.unit_price) === 0) && product.recent_price) {
+                    updated.unit_price = product.recent_price;
+                    needsUpdate = true;
+                }
+                return updated;
+            });
+            // Return new state only if something changed to avoid infinite re-render
+            return needsUpdate ? { ...prev, items: newItems } : prev;
         });
-
-        // Only update state if something changed — this prevents infinite re-render
-        if (needsUpdate) {
-            setFormData(prev => ({ ...prev, items: newItems }));
-        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, products.length, formData.items.length]);
 
