@@ -138,7 +138,9 @@ const CommercialInvoiceModal = ({ open, onClose, order, deliveryId, deliveryDate
 body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #fff; }
 .ci-print-area { width: 190mm; margin: 10mm auto; padding: 0; }
 table { border-collapse: collapse; }
-@media print { @page { size: A4; margin: 10mm; } body { margin: 0; } }
+input, textarea { border: none; outline: none; background: transparent; font-family: Arial, sans-serif; font-size: 11px; }
+@page { size: A4 portrait; margin: 10mm; }
+@media print { body { margin: 0; } }
 </style></head>
 <body><div class="ci-print-area">${content}</div></body></html>`);
         win.document.close();
@@ -159,12 +161,12 @@ table { border-collapse: collapse; }
                     #ci-print-root { display: block !important; position: static !important; }
                     .ci-modal-bg, .ci-toolbar { display: none !important; }
                     .ci-print-area { box-shadow: none !important; padding: 10mm !important; }
-                    @page { size: A4; margin: 10mm; }
+                    @page { size: A4 portrait; margin: 10mm; }
                 }
             `}</style>
 
             <div className="ci-modal-bg fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto py-6">
-                <div className="w-full max-w-5xl mx-4">
+                <div className="w-full mx-4" style={{ maxWidth: '820px' }}>
                     {/* Toolbar */}
                     <div className="ci-toolbar bg-gray-800 rounded-t-xl border border-gray-700 p-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
