@@ -164,6 +164,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [vendorTel, setVendorTel] = useState('');
     const [vendorFax, setVendorFax] = useState('');
     const printRef = React.useRef(null);
+    const autoFilledRef = React.useRef(false); // prevent duplicate auto-fill
 
     useEffect(() => {
         if (purchaseType) setPurchaseTypeState(purchaseType);
@@ -373,6 +374,37 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
 
     // Removed separate sync effect to prevent initialization loops
 
+    // Auto-fill material & unit_price from product master for initial items
+    useEffect(() => {
+        if (!isOpen) { autoFilledRef.current = false; return; }
+        if (autoFilledRef.current) return;
+        if (!products || products.length === 0) return;
+        if (!formData.items || formData.items.length === 0) return;
+
+        let needsUpdate = false;
+        const newItems = formData.items.map(item => {
+            if (!item.product_id) return item;
+            const product = products.find(p => String(p.id) === String(item.product_id));
+            if (!product) return item;
+            const updated = { ...item };
+            if (!item.material && product.material) {
+                updated.material = product.material;
+                needsUpdate = true;
+            }
+            if ((!item.unit_price || item.unit_price === 0) && product.recent_price) {
+                updated.unit_price = product.recent_price;
+                needsUpdate = true;
+            }
+            return updated;
+        });
+
+        if (needsUpdate) {
+            autoFilledRef.current = true;
+            setFormData(prev => ({ ...prev, items: newItems }));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, products, formData.items.length]);
+
     const fetchPartners = async () => {
         try {
             const response = await api.get('/basics/partners/', { params: { type: 'SUPPLIER' } });
@@ -467,18 +499,30 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 const res = await api.get('/purchasing/price-history', { params: historyParams });
                 if (res.data && res.data.length > 0) {
                     newItems[index].unit_price = res.data[0].unit_price;
-                } else if (product && product.standard_processes) {
-                    // 2. Fallback to standard process cost
-                    const purchaseProc = product.standard_processes.find(sp =>
-                        sp.course_type?.includes('PURCHASE') ||
-                        sp.process?.course_type?.includes('PURCHASE')
-                    );
-                    if (purchaseProc) {
-                        newItems[index].unit_price = purchaseProc.cost || 0;
+                } else {
+                    let filled = false;
+                    // 2. Fallback: standard process purchase cost
+                    if (product && product.standard_processes) {
+                        const purchaseProc = product.standard_processes.find(sp =>
+                            sp.course_type?.includes('PURCHASE') ||
+                            sp.process?.course_type?.includes('PURCHASE')
+                        );
+                        if (purchaseProc && purchaseProc.cost) {
+                            newItems[index].unit_price = purchaseProc.cost;
+                            filled = true;
+                        }
+                    }
+                    // 3. Final fallback: product master recent_price
+                    if (!filled && product && product.recent_price) {
+                        newItems[index].unit_price = product.recent_price;
                     }
                 }
             } catch (err) {
                 console.error("Failed to fetch latest price", err);
+                // On error, still try product.recent_price
+                if (product && product.recent_price) {
+                    newItems[index].unit_price = product.recent_price;
+                }
             }
         }
 
