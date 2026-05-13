@@ -511,7 +511,16 @@ async def startup_event():
                         await db.execute(text("UPDATE stock_productions SET batch_no = production_no WHERE batch_no IS NULL"))
                         print("Startup: Added batch_no to stock_productions (Postgres)")
 
-                    
+                    # 5. delivery_histories export columns
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='delivery_histories' AND column_name='is_export'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE delivery_histories ADD COLUMN is_export BOOLEAN DEFAULT FALSE"))
+                        print("Startup: Added is_export to delivery_histories (Postgres)")
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='delivery_histories' AND column_name='invoice_no'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE delivery_histories ADD COLUMN invoice_no VARCHAR"))
+                        print("Startup: Added invoice_no to delivery_histories (Postgres)")
+
                     # [Hard Cleanup] 유령 근태 데이터 강제 삭제
                     # approval_id가 NULL이거나 연결된 결재 문서가 삭제된 기록을 서버 시작 시 자동으로 정리
                     await db.execute(text("""
