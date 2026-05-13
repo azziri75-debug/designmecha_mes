@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Truck, Calendar, CheckCircle, Upload, FileText, Trash2, FileSearch } from 'lucide-react';
+import { X, Save, Truck, Calendar, CheckCircle, Upload, FileText, Trash2, FileSearch, Globe } from 'lucide-react';
 import api from '../lib/api';
 import { getImageUrl } from '../lib/utils';
 import MultiFileUpload from './MultiFileUpload';
 import TransactionStatementModal from './TransactionStatementModal';
+import CommercialInvoiceModal from './CommercialInvoiceModal';
 
 const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
     const [loading, setLoading] = useState(false);
@@ -11,11 +12,14 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
         delivery_date: '',
         note: '',
         items: [],
-        attachment_files: []
+        attachment_files: [],
+        is_export: false
     });
 
     const [showStatement, setShowStatement] = useState(false);
+    const [showInvoice, setShowInvoice] = useState(false);
     const [lastDelivery, setLastDelivery] = useState(null);
+    const [nextInvoiceNo, setNextInvoiceNo] = useState('');
 
     useEffect(() => {
         if (order) {
@@ -27,10 +31,23 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                     remaining_quantity: item.quantity - (item.delivered_quantity || 0),
                     current_delivered_quantity: 0
                 })),
-                attachment_files: []
+                attachment_files: [],
+                is_export: false
             });
         }
     }, [order]);
+
+    // Fetch next invoice number when export mode is toggled on
+    useEffect(() => {
+        if (formData.is_export && !nextInvoiceNo) {
+            api.get('/sales/invoice/next-number').then(r => {
+                setNextInvoiceNo(r.data.invoice_no);
+            }).catch(() => {
+                const year = new Date().getFullYear();
+                setNextInvoiceNo(`DM${year}001`);
+            });
+        }
+    }, [formData.is_export]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -48,6 +65,8 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                 delivery_date: formData.delivery_date,
                 note: formData.note,
                 attachment_files: formData.attachment_files,
+                is_export: formData.is_export,
+                invoice_no: formData.is_export ? nextInvoiceNo : null,
                 items: validItems.map(item => ({
                     order_item_id: item.id,
                     quantity: item.current_delivered_quantity
@@ -67,12 +86,17 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                 }
             }
 
-            // Ask for statement
-            if (window.confirm("거래명세서를 지금 바로 확인/출력하시겠습니까?")) {
-                setShowStatement(true);
+            if (formData.is_export) {
+                // Show Commercial Invoice modal
+                setShowInvoice(true);
             } else {
-                onSuccess();
-                onClose();
+                // Show transaction statement
+                if (window.confirm("거래명세서를 지금 바로 확인/출력하시겠습니까?")) {
+                    setShowStatement(true);
+                } else {
+                    onSuccess();
+                    onClose();
+                }
             }
         } catch (error) {
             console.error("Delivery failed", error);
@@ -111,6 +135,28 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
         );
     }
 
+    if (showInvoice && lastDelivery) {
+        return (
+            <CommercialInvoiceModal
+                open={showInvoice}
+                onClose={() => {
+                    setShowInvoice(false);
+                    onSuccess();
+                    onClose();
+                }}
+                order={{ ...order, items: lastDelivery.items.map(di => ({ ...di.order_item, current_delivered_quantity: di.quantity })) }}
+                deliveryId={lastDelivery.id}
+                deliveryDate={lastDelivery.delivery_date}
+                initialInvoiceNo={nextInvoiceNo}
+                onSaved={() => {}}
+            />
+        );
+    }
+
+    const isExport = formData.is_export;
+    const currency = isExport ? 'USD' : 'KRW';
+    const currencySymbol = isExport ? '$' : '₩';
+
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -125,13 +171,41 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* Export Toggle */}
+                    <div className="flex items-center gap-4 p-3 bg-gray-900/50 rounded-lg border border-gray-700">
+                        <span className="text-sm font-semibold text-gray-300">납품 유형</span>
+                        <div className="flex gap-3">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="delivery_type" checked={!isExport}
+                                    onChange={() => setFormData({ ...formData, is_export: false })}
+                                    className="accent-blue-500" />
+                                <span className="text-sm text-white">🏭 국내 납품</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="delivery_type" checked={isExport}
+                                    onChange={() => setFormData({ ...formData, is_export: true })}
+                                    className="accent-emerald-500" />
+                                <span className="text-sm text-white flex items-center gap-1">
+                                    <Globe className="w-4 h-4 text-emerald-400" /> 수출 (Commercial Invoice)
+                                </span>
+                            </label>
+                        </div>
+                        {isExport && nextInvoiceNo && (
+                            <span className="ml-auto text-emerald-400 text-xs font-mono bg-emerald-400/10 px-2 py-1 rounded">
+                                Invoice: {nextInvoiceNo}
+                            </span>
+                        )}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                 <Calendar className="w-4 h-4" /> 납품 정보
                             </h3>
                             <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">납품 일자</label>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">
+                                    {isExport ? '선적일 (Shipping Date)' : '납품 일자'}
+                                </label>
                                 <input
                                     type="date"
                                     required
@@ -188,7 +262,9 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                             <td className="px-4 py-3 text-right text-gray-500">{item.quantity}</td>
                                             <td className="px-4 py-3 text-right text-green-500">{item.delivered_quantity || 0}</td>
                                             <td className="px-4 py-3 text-right font-bold">{item.remaining_quantity}</td>
-                                            <td className="px-4 py-3 text-right text-gray-400 font-mono">₩{(item.unit_price || 0).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right text-gray-400 font-mono">
+                                                {currencySymbol}{(item.unit_price || 0).toLocaleString()}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="number"
@@ -205,7 +281,7 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                                 />
                                             </td>
                                             <td className="px-4 py-3 text-right font-black text-blue-400">
-                                                ₩{(item.current_delivered_quantity * (item.unit_price || 0)).toLocaleString()}
+                                                {currencySymbol}{(item.current_delivered_quantity * (item.unit_price || 0)).toLocaleString()}
                                             </td>
                                         </tr>
                                     ))}
@@ -215,20 +291,14 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                     </div>
 
                     <div className="pt-4 border-t border-gray-700 flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-6 py-2.5 bg-gray-700 text-white rounded-xl font-bold hover:bg-gray-600"
-                        >
+                        <button type="button" onClick={onClose}
+                            className="px-6 py-2.5 bg-gray-700 text-white rounded-xl font-bold hover:bg-gray-600">
                             취소
                         </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 flex items-center gap-2"
-                        >
-                            <Truck className="w-5 h-5" />
-                            {loading ? '처리 중...' : '납품 기록 저장'}
+                        <button type="submit" disabled={loading}
+                            className={`px-8 py-2.5 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 ${isExport ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'}`}>
+                            {isExport ? <Globe className="w-5 h-5" /> : <Truck className="w-5 h-5" />}
+                            {loading ? '처리 중...' : isExport ? '납품 저장 & Invoice 작성' : '납품 기록 저장'}
                         </button>
                     </div>
                 </form>

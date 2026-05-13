@@ -116,6 +116,8 @@ class DeliveryHistory(Base):
     attachment_files = Column(JSON, nullable=True)
     statement_json = Column(JSON, nullable=True)
     supplier_info = Column(JSON, nullable=True)
+    is_export = Column(Boolean, default=False)   # 수출 납품 여부
+    invoice_no = Column(String, nullable=True)   # Commercial Invoice 번호 (DM2026001)
     created_at = Column(DateTime, default=now_kst)
 
     order = relationship("SalesOrder", back_populates="delivery_histories")

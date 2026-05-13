@@ -195,6 +195,8 @@ class DeliveryHistoryBase(BaseModel):
     attachment_files: Optional[List[Any]] = None
     statement_json: Optional[dict] = None
     supplier_info: Optional[dict] = None
+    is_export: Optional[bool] = False
+    invoice_no: Optional[str] = None
 
 class DeliveryHistoryCreate(DeliveryHistoryBase):
     items: List[DeliveryHistoryItemCreate]
@@ -204,6 +206,7 @@ class DeliveryHistoryUpdate(BaseModel):
     note: Optional[str] = None
     statement_json: Optional[dict] = None
     supplier_info: Optional[dict] = None
+    invoice_no: Optional[str] = None
     items: Optional[List[DeliveryHistoryItemCreate]] = None
 
 class DeliveryHistory(DeliveryHistoryBase):
@@ -226,6 +229,8 @@ class DeliveryHistoryForStatus(BaseModel):
     attachment_files: Optional[List[Any]] = None
     statement_json: Optional[dict] = None
     supplier_info: Optional[dict] = None
+    is_export: Optional[bool] = False
+    invoice_no: Optional[str] = None
     delivery_amount: float = 0.0
     # items: shallow (no product join required for list view)
     items: List[DeliveryHistoryItem] = []

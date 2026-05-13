@@ -946,6 +946,27 @@ async def get_product_sales_history(
 
 # --- Delivery History Endpoints ---
 
+@router.get("/invoice/next-number")
+async def get_next_invoice_number(db: AsyncSession = Depends(deps.get_db)):
+    """Generate next Commercial Invoice number: DMyyyy### (e.g. DM2026001)"""
+    year_str = now_kst().strftime("%Y")
+    prefix = f"DM{year_str}"
+    res = await db.execute(
+        select(DeliveryHistory.invoice_no)
+        .where(DeliveryHistory.invoice_no.like(f"{prefix}%"))
+        .order_by(desc(DeliveryHistory.invoice_no))
+        .limit(1)
+    )
+    last_no = res.scalar()
+    if last_no:
+        try:
+            seq = int(last_no[len(prefix):]) + 1
+        except (ValueError, IndexError):
+            seq = 1
+    else:
+        seq = 1
+    return {"invoice_no": f"{prefix}{seq:03d}"}
+
 @router.post("/orders/{order_id}/delivery", response_model=schemas.DeliveryHistory)
 async def create_delivery(
     order_id: int,
@@ -983,7 +1004,9 @@ async def create_delivery(
         note=delivery_in.note,
         attachment_files=delivery_in.attachment_files,
         statement_json=delivery_in.statement_json,
-        supplier_info=delivery_in.supplier_info
+        supplier_info=delivery_in.supplier_info,
+        is_export=delivery_in.is_export or False,
+        invoice_no=delivery_in.invoice_no,
     )
     db.add(db_delivery)
     await db.flush()
@@ -1089,6 +1112,8 @@ async def update_order_delivery(
         db_delivery.statement_json = delivery_update.statement_json
     if delivery_update.supplier_info is not None:
         db_delivery.supplier_info = delivery_update.supplier_info
+    if delivery_update.invoice_no is not None:
+        db_delivery.invoice_no = delivery_update.invoice_no
     
     await db.commit()
     await db.refresh(db_delivery)
