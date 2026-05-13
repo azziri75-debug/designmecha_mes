@@ -3,9 +3,11 @@ import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
     TextField, Grid, Typography, Box, Paper, RadioGroup, FormControlLabel, Radio,
     List, ListItem, ListItemText, CircularProgress, Divider, Chip, Alert,
-    Collapse, InputAdornment, IconButton
+    Collapse, InputAdornment, IconButton, Popover, Tooltip, Table, TableBody,
+    TableRow, TableCell
 } from '@mui/material';
 import { Search, CheckCircle, Plus, Store, Package } from 'lucide-react';
+import { History as HistoryIcon } from '@mui/icons-material';
 import api from '../lib/api';
 import ProductModal from './ProductModal';
 
@@ -90,6 +92,11 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
     const [unitPrice, setUnitPrice] = useState('');
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // 단가 이력 Popover
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [priceHistory, setPriceHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
 
     // 신규 품목 마스터 등록 모달
     const [newProductModalOpen, setNewProductModalOpen] = useState(false);
@@ -196,6 +203,39 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
         }, 300);
         return () => clearTimeout(timer);
     }, [searchQuery]);
+
+    // 제품 선택 시 최근단가 자동기입
+    useEffect(() => {
+        if (!selectedProductId) return;
+        api.get('/purchasing/price-history', {
+            params: { product_id: selectedProductId, limit: 1 }
+        }).then(res => {
+            if (res.data && res.data.length > 0) {
+                setUnitPrice(String(res.data[0].unit_price));
+            }
+        }).catch(() => {});
+    }, [selectedProductId]);
+
+    const handleLookupHistory = async (event) => {
+        if (!selectedProductId) return;
+        setAnchorEl(event.currentTarget);
+        setLoadingHistory(true);
+        try {
+            const res = await api.get('/purchasing/price-history', {
+                params: { product_id: selectedProductId }
+            });
+            setPriceHistory(res.data || []);
+        } catch (err) {
+            console.error('Failed to fetch price history', err);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
+    const handleSelectHistoryPrice = (price) => {
+        setUnitPrice(String(price));
+        setAnchorEl(null);
+    };
 
     const filteredPartners = partners.filter(p =>
         !partnerSearchQuery || p.name.toLowerCase().includes(partnerSearchQuery.toLowerCase())
@@ -513,15 +553,33 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
                     <Typography variant="subtitle2" color="primary" sx={{ mb: 2 }}>발주 조건</Typography>
                     <Grid container spacing={2}>
                         <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                type="number"
-                                size="small"
-                                label="구매 단가 (₩)"
-                                value={unitPrice}
-                                onChange={(e) => setUnitPrice(e.target.value)}
-                                placeholder="단가를 입력하세요"
-                            />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <TextField
+                                    fullWidth
+                                    type="number"
+                                    size="small"
+                                    label="구매 단가 (₩)"
+                                    value={unitPrice}
+                                    onChange={(e) => setUnitPrice(e.target.value)}
+                                    placeholder="단가를 입력하세요"
+                                />
+                                <Tooltip title="단가 이력 조회">
+                                    <span>
+                                        <IconButton
+                                            size="small"
+                                            onClick={handleLookupHistory}
+                                            disabled={!selectedProductId}
+                                        >
+                                            <HistoryIcon fontSize="small" />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
+                            </Box>
+                            {unitPrice && Number(unitPrice) > 0 && (
+                                <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block' }}>
+                                    최근 단가 자동기입: ₩{Number(unitPrice).toLocaleString()}
+                                </Typography>
+                            )}
                         </Grid>
                         <Grid item xs={6}>
                             <TextField
@@ -535,6 +593,43 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
                     </Grid>
                 </Paper>
             </DialogContent>
+
+            {/* 단가 이력 팝오버 */}
+            <Popover
+                open={Boolean(anchorEl)}
+                anchorEl={anchorEl}
+                onClose={() => setAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Box sx={{ p: 2, minWidth: 300, maxWidth: 420 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>과거 단가 이력 (최근 10건)</Typography>
+                    {loadingHistory ? (
+                        <CircularProgress size={24} sx={{ display: 'block', m: 'auto' }} />
+                    ) : priceHistory.length === 0 ? (
+                        <Typography variant="body2" color="textSecondary">이력이 없습니다.</Typography>
+                    ) : (
+                        <Table size="small">
+                            <TableBody>
+                                {priceHistory.slice(0, 10).map((h, i) => (
+                                    <TableRow
+                                        key={i}
+                                        hover
+                                        onClick={() => handleSelectHistoryPrice(h.unit_price)}
+                                        sx={{ cursor: 'pointer' }}
+                                    >
+                                        <TableCell sx={{ fontSize: '0.8rem', color: '#555' }}>{h.order_date || '-'}</TableCell>
+                                        <TableCell sx={{ fontSize: '0.8rem', color: '#555' }}>{h.partner_name || '-'}</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                                            ₩{Number(h.unit_price || 0).toLocaleString()}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </Box>
+            </Popover>
 
             <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #ddd' }}>
                 <Button onClick={onClose} disabled={loading} color="inherit">취소</Button>
