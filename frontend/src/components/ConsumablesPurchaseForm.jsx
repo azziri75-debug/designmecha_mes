@@ -65,7 +65,7 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
             </Table>
 
             {/* Items Section - Responsive (Table for Desktop, Cards for Mobile) */}
-            <Box sx={{ display: { xs: 'none', md: 'block' }, width: '100%' }}>
+            <Box sx={{ display: { xs: 'none', md: 'block' }, width: '100%', overflowX: 'auto' }}>
                 <Table size="small" sx={{ 
                     width: '100%', 
                     mb: 1, 
@@ -75,15 +75,15 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                 }}>
                     <thead>
                         <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                            <th style={{ width: '40px' }}>순</th>
-                            <ResizableTh initialWidth={160}>품 명 (용 도)</ResizableTh>
-                            <ResizableTh initialWidth={90}>제조사</ResizableTh>
-                            <ResizableTh initialWidth={90}>규격</ResizableTh>
-                            <ResizableTh initialWidth={45}>단위</ResizableTh>
-                            <ResizableTh initialWidth={45}>수량</ResizableTh>
-                            <ResizableTh initialWidth={100}>거래처(공급사)</ResizableTh>
-                            <ResizableTh initialWidth={110}>비고(청구자)</ResizableTh>
-                            {!isReadOnly && <th className="idf-no-print" style={{ width: '40px' }}></th>}
+                            <th style={{ width: '30px' }}>순</th>
+                            <ResizableTh initialWidth={120}>품 명 (용 도)</ResizableTh>
+                            <ResizableTh initialWidth={75}>제조사</ResizableTh>
+                            <ResizableTh initialWidth={75}>규격</ResizableTh>
+                            <th style={{ width: '38px' }}>단위</th>
+                            <th style={{ width: '38px' }}>수량</th>
+                            <ResizableTh initialWidth={85}>거래처(공급사)</ResizableTh>
+                            <ResizableTh initialWidth={85}>비고(청구자)</ResizableTh>
+                            {!isReadOnly && <th className="idf-no-print" style={{ width: '30px' }}></th>}
                         </TableRow>
                     </thead>
                     <TableBody>
