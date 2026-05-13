@@ -458,10 +458,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             }
 
             // 1. Try to fetch LATEST purchase price from history
+            // For import orders: skip partner filter to broaden results
             try {
-                const res = await api.get('/purchasing/price-history', {
-                    params: { product_id: value, limit: 1 }
-                });
+                const historyParams = { product_id: value, limit: 1 };
+                if (!isImport && formData.partner_id) {
+                    historyParams.partner_id = formData.partner_id;
+                }
+                const res = await api.get('/purchasing/price-history', { params: historyParams });
                 if (res.data && res.data.length > 0) {
                     newItems[index].unit_price = res.data[0].unit_price;
                 } else if (product && product.standard_processes) {
@@ -703,8 +706,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                 <TableCell sx={{ fontWeight: 'bold', width: 90, textAlign: 'center' }}>
                                     {formData.items?.[0]?.pricing_type === 'WEIGHT' ? '총중량(kg)' : '총수량(EA)'}
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>단가</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>금액</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>
+                                    {isImport ? 'Unit Price (USD)' : '단가'}
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>
+                                    {isImport ? 'Amount (USD)' : '금액'}
+                                </TableCell>
                                 <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
                             </TableRow>
                         </TableHead>
@@ -850,8 +857,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                 </Box>
                                             </TableCell>
                                             <TableCell sx={{ width: 130, textAlign: 'right' }}>
-                                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                    ₩{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString()}
+                                                <Typography variant="body2" sx={{ fontWeight: 'bold', color: isImport ? '#1565c0' : 'inherit' }}>
+                                                    {isImport ? '$' : '\u20a9'}{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toLocaleString(isImport ? 'en-US' : 'ko-KR', { minimumFractionDigits: isImport ? 2 : 0, maximumFractionDigits: isImport ? 2 : 0 })}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell rowSpan={2} align="center" sx={{ borderLeft: '1px solid #eee' }}>
