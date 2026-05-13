@@ -194,7 +194,9 @@ const ApprovalGrid = ({ documentData, currentUser, docType, defaultSteps = [], e
                     {steps.map((step, i) => (
                         <Box key={i} component="td" sx={{ width: `${100/totalCols}%`, bgcolor: '#f1f3f5', fontWeight: 'bold', fontSize: '10px' }}>
                             {/* [FIX] approver 객체의 role → step.role 순서로 fallback */}
-                            {englishMode ? (step.approver?.role || step.role || 'Approver') : (step.approver?.role || step.role || '결재')}
+                            {englishMode
+                                ? (i === steps.length - 1 ? 'Approved' : 'Approver')
+                                : (step.approver?.role || step.role || '결재')}
                         </Box>
                     ))}
                 </TableRow>

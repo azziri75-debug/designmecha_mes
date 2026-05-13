@@ -211,9 +211,9 @@ const ImportPurchaseOrderTemplate = ({
                 <div className="flex flex-row justify-between mb-3 text-xs">
                     {/* Left: Vendor info */}
                     <div style={{ flex: 1, fontSize: '11px', lineHeight: '1.8' }}>
-                        <div>
-                            <strong>PO # :</strong>&nbsp;
-                            <span style={{ textDecoration: 'underline' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', whiteSpace: 'nowrap', gap: '4px' }}>
+                            <strong>PO No. :</strong>
+                            <span style={{ textDecoration: 'underline', display: 'inline-block' }}>
                                 <EditableText
                                     value={data.order_no || ''}
                                     onChange={(v) => handleMetaChange('order_no', v)}
@@ -294,8 +294,8 @@ const ImportPurchaseOrderTemplate = ({
                     />
 
                     {/* Total Amount */}
-                    <div className="flex border-2 border-black border-t-0 font-bold text-[10px] h-10 items-center bg-gray-50">
-                        <div className="border-r border-black flex-1 text-center uppercase tracking-widest text-gray-600 flex items-center justify-center gap-2">
+                    <div className="flex border-2 border-black border-t-0 font-bold text-[12px] h-10 items-center bg-gray-50">
+                        <div className="border-r border-black flex-1 text-center uppercase tracking-widest text-gray-600 flex items-center justify-center gap-2" style={{ fontSize: '12px' }}>
                             TOTAL AMOUNT
                             {!isReadOnly && onAddItem && (
                                 <button
@@ -307,7 +307,7 @@ const ImportPurchaseOrderTemplate = ({
                         </div>
                         <div className="w-[60px] border-r border-black" />
                         <div className="w-[80px] border-r border-black" />
-                        <div className="w-[100px] text-right px-2 text-black">
+                        <div className="w-[100px] text-right px-2 text-black" style={{ fontSize: '12px' }}>
                             {isRFQ ? '' : `${fmt(totalAmount)} $`}
                         </div>
                     </div>
