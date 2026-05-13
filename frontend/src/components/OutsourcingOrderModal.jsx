@@ -362,9 +362,10 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
             if (product && product.material) {
                 newItems[index].material = product.material;
             }
+            const processName = newItems[index].note || '';
             try {
                 const res = await api.get('/purchasing/price-history', {
-                    params: { product_id: value, limit: 1 }
+                    params: { product_id: value, purchase_type: 'OUTSOURCING', process_name: processName || undefined, limit: 1 }
                 });
                 if (res.data && res.data.length > 0) {
                     newItems[index].unit_price = res.data[0].unit_price;
@@ -398,9 +399,15 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         setAnchorEl(event.currentTarget);
         setActiveItemIndex(index);
         setLoadingHistory(true);
+        const processName = formData.items[index]?.note || '';
         try {
             const response = await api.get('/purchasing/price-history', {
-                params: { product_id: productId }
+                params: {
+                    product_id: productId,
+                    purchase_type: 'OUTSOURCING',
+                    process_name: processName || undefined,
+                    partner_id: formData.partner_id || undefined
+                }
             });
             setPriceHistory(response.data);
         } catch (error) {

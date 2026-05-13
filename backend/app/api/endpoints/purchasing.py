@@ -334,49 +334,55 @@ async def get_price_history(
     product_id: int,
     partner_id: Optional[int] = None,
     purchase_type: Optional[str] = None,
+    process_name: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db)
 ) -> List[Any]:
     """
     Get past price history for a specific product.
-    Includes both Material Purchase and Outsourcing history.
+    - purchase_type='OUTSOURCING': returns only outsourcing history (skips material purchase)
+    - process_name: filters outsourcing history by note field (process name)
     """
     history = []
-    
-    # 1. Material Purchase History
-    purchase_query = select(PurchaseOrderItem).join(PurchaseOrder)\
-        .options(joinedload(PurchaseOrderItem.purchase_order).joinedload(PurchaseOrder.partner))\
-        .where(PurchaseOrderItem.product_id == product_id)\
-        .where(PurchaseOrder.status.in_([PurchaseStatus.ORDERED, PurchaseStatus.COMPLETED]))
-    
-    if partner_id:
-        purchase_query = purchase_query.where(PurchaseOrder.partner_id == partner_id)
-    if purchase_type:
-        purchase_query = purchase_query.where(PurchaseOrder.purchase_type == purchase_type)
-        
-    purchase_query = purchase_query.order_by(desc(PurchaseOrder.order_date)).limit(10)
-    
-    res_p = await db.execute(purchase_query)
-    for item in res_p.scalars().all():
-        history.append({
-            "type": "PURCHASE",
-            "order_date": item.purchase_order.order_date,
-            "partner_name": item.purchase_order.partner.name if item.purchase_order.partner else "-",
-            "quantity": item.quantity,
-            "unit_price": item.unit_price,
-            "order_no": item.purchase_order.order_no
-        })
-        
+
+    # 1. Material Purchase History — skip when querying outsourcing-only
+    if purchase_type != 'OUTSOURCING':
+        purchase_query = select(PurchaseOrderItem).join(PurchaseOrder)\
+            .options(joinedload(PurchaseOrderItem.purchase_order).joinedload(PurchaseOrder.partner))\
+            .where(PurchaseOrderItem.product_id == product_id)\
+            .where(PurchaseOrder.status.in_([PurchaseStatus.ORDERED, PurchaseStatus.COMPLETED]))
+
+        if partner_id:
+            purchase_query = purchase_query.where(PurchaseOrder.partner_id == partner_id)
+        if purchase_type:
+            purchase_query = purchase_query.where(PurchaseOrder.purchase_type == purchase_type)
+
+        purchase_query = purchase_query.order_by(desc(PurchaseOrder.order_date)).limit(10)
+
+        res_p = await db.execute(purchase_query)
+        for item in res_p.scalars().all():
+            history.append({
+                "type": "PURCHASE",
+                "order_date": item.purchase_order.order_date,
+                "partner_name": item.purchase_order.partner.name if item.purchase_order.partner else "-",
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+                "order_no": item.purchase_order.order_no
+            })
+
     # 2. Outsourcing History
     out_query = select(OutsourcingOrderItem).join(OutsourcingOrder)\
         .options(joinedload(OutsourcingOrderItem.outsourcing_order).joinedload(OutsourcingOrder.partner))\
         .where(OutsourcingOrderItem.product_id == product_id)\
         .where(OutsourcingOrder.status.in_([OutsourcingStatus.ORDERED, OutsourcingStatus.COMPLETED]))
-        
+
     if partner_id:
         out_query = out_query.where(OutsourcingOrder.partner_id == partner_id)
-        
+    if process_name:
+        # 공정명이 note 필드에 저장됨 — 유사 일치 허용
+        out_query = out_query.where(OutsourcingOrderItem.note.ilike(f'%{process_name}%'))
+
     out_query = out_query.order_by(desc(OutsourcingOrder.order_date)).limit(10)
-    
+
     res_o = await db.execute(out_query)
     for item in res_o.scalars().all():
         history.append({
@@ -385,12 +391,13 @@ async def get_price_history(
             "partner_name": item.outsourcing_order.partner.name if item.outsourcing_order.partner else "-",
             "quantity": item.quantity,
             "unit_price": item.unit_price,
-            "order_no": item.outsourcing_order.order_no
+            "order_no": item.outsourcing_order.order_no,
+            "process_name": item.note or ''
         })
-        
+
     # Sort merged history by date DESC
     history.sort(key=lambda x: str(x["order_date"]), reverse=True)
-    
+
     return history[:10]
 
 # --- Pending Items (Waiting List) ---
