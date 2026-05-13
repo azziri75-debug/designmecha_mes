@@ -307,6 +307,9 @@ async def startup_event():
                     if "purchase_type" not in po_cols_list:
                         await db.execute(text("ALTER TABLE purchase_orders ADD COLUMN purchase_type VARCHAR DEFAULT 'PART'"))
                         print("Startup: Added purchase_type to purchase_orders (SQLite)")
+                    if "is_import" not in po_cols_list:
+                        await db.execute(text("ALTER TABLE purchase_orders ADD COLUMN is_import BOOLEAN DEFAULT 0"))
+                        print("Startup: Added is_import to purchase_orders (SQLite)")
                         
                     oo_cols = await db.execute(text("PRAGMA table_info('outsourcing_orders')"))
                     oo_cols_list = [row[1] for row in oo_cols.fetchall()]
@@ -490,6 +493,15 @@ async def startup_event():
                     if not r.scalar():
                         await db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN manufacturer VARCHAR"))
                         print("Startup: Added manufacturer to purchase_order_items (Postgres)")
+
+                    # ── purchase_orders.is_import (Postgres) ──
+                    r = await db.execute(text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name='purchase_orders' AND column_name='is_import'"
+                    ))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE purchase_orders ADD COLUMN is_import BOOLEAN DEFAULT FALSE"))
+                        print("Startup: Added is_import to purchase_orders (Postgres)")
 
                     # 4. stock_productions.batch_no
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='stock_productions' AND column_name='batch_no'"))

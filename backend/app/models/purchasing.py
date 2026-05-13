@@ -36,6 +36,7 @@ class PurchaseOrder(Base):
     attachment_file = Column(JSON, nullable=True)  # JSON array of {name, url}
     status = Column(SqlEnum(PurchaseStatus), default=PurchaseStatus.PENDING)
     purchase_type = Column(String, default="PART", nullable=True) # PART(부품), CONSUMABLE(소모품)
+    is_import = Column(Boolean, default=False)  # 해외수입 발주 여부
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True)
     
     # Relationships

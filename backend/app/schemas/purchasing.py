@@ -66,7 +66,8 @@ class PurchaseOrderBase(BaseModel):
     actual_delivery_date: Optional[date] = None
     note: Optional[str] = None
     status: Optional[PurchaseStatus] = PurchaseStatus.PENDING
-    purchase_type: Optional[str] = "PART" # PART, CONSUMABLE
+    purchase_type: Optional[str] = "PART"  # PART, CONSUMABLE
+    is_import: Optional[bool] = False  # 해외수입 발주 여부
 
 class PurchaseOrderCreate(PurchaseOrderBase):
     items: List[PurchaseOrderItemCreate] = []
@@ -78,6 +79,7 @@ class PurchaseOrderUpdate(BaseModel):
     note: Optional[str] = None
     status: Optional[PurchaseStatus] = None
     purchase_type: Optional[str] = None
+    is_import: Optional[bool] = None
     attachment_file: Optional[Any] = None
     items: Optional[List[PurchaseOrderItemUpdate]] = None
 

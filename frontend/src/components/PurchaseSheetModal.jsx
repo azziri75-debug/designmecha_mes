@@ -9,6 +9,7 @@ import { cn, safeParseJSON } from '../lib/utils';
 import ApprovalGrid from './ApprovalGrid';
 import { useAuth } from '../contexts/AuthContext';
 import PurchaseOrderTemplate from './PurchaseOrderTemplate';
+import ImportPurchaseOrderTemplate from './ImportPurchaseOrderTemplate';
 
 const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_order', orderType = 'purchase', onSave }) => {
     const [company, setCompany] = useState(null);
@@ -100,13 +101,18 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
             }
         } catch (e) { }
 
-        const defaultWidths = activeTab === 'purchase_order'
-            ? [40, 200, 120, 60, 80, 100]
-            : [40, 200, 120, 60, 180];
+        const isImportOrder = !!(order.is_import);
+        const defaultWidths = isImportOrder
+            ? [40, 200, 180, 50, 80, 100]
+            : (activeTab === 'purchase_order' || activeTab === 'import_po'
+                ? [40, 200, 120, 60, 80, 100]
+                : [40, 200, 120, 60, 180]);
 
         setMetadata(prev => ({
             ...prev,
-            title: activeTab === 'purchase_order' ? "구 매 발 주 서" : "견 적 의 뢰 서",
+            title: isImportOrder
+                ? (activeTab === 'rfq' ? 'REQUEST FOR QUOTATION' : 'PURCHASE ORDER')
+                : (activeTab === 'purchase_order' ? "구 매 발 주 서" : "견 적 의 뢰 서"),
             order_no: order.order_no || "",
             partner_name: order.partner?.name || "",
             partner_phone: order.partner?.phone || "",
@@ -114,6 +120,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
             order_date: order.order_date || '',
             delivery_date: order.delivery_date || '',
             special_notes: order.note || "",
+            is_import: isImportOrder,
             colWidths: savedColWidths || defaultWidths,
             items: items
         }));
@@ -154,7 +161,10 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
         if (!sheetRef.current) return;
         setSaving(true);
         try {
-            const type = activeTab === 'purchase_order' ? '구매발주서' : '견적의뢰서';
+            const isImportOrder = !!(order.is_import);
+            const type = isImportOrder
+                ? (activeTab === 'rfq' ? 'RFQ' : 'ImportPO')
+                : (activeTab === 'purchase_order' ? '구매발주서' : '견적의뢰서');
             const vendorName = order.partner?.name || '공급사';
             const items = order.items || [];
             const firstItemName = items[0]?.product?.name || '품명';
@@ -237,8 +247,17 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
             <div className="bg-gray-900 w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
                 <div className="flex items-center justify-between p-4 border-b border-gray-700">
                     <div className="flex bg-gray-800 rounded-lg p-0.5 gap-0.5">
-                        <button onClick={() => setActiveTab('estimate_request')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-colors", activeTab === 'estimate_request' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}>견적의뢰서</button>
-                        <button onClick={() => setActiveTab('purchase_order')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-colors", activeTab === 'purchase_order' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}>구매발주서</button>
+                        {order.is_import ? (
+                            <>
+                                <button onClick={() => setActiveTab('rfq')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-colors", activeTab === 'rfq' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}>RFQ</button>
+                                <button onClick={() => setActiveTab('import_po')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-colors", activeTab === 'import_po' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}>Purchase Order (EN)</button>
+                            </>
+                        ) : (
+                            <>
+                                <button onClick={() => setActiveTab('estimate_request')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-colors", activeTab === 'estimate_request' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}>견적의뢰서</button>
+                                <button onClick={() => setActiveTab('purchase_order')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-colors", activeTab === 'purchase_order' ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}>구매발주서</button>
+                            </>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
                         {/* 수정 및 재결재 모드 */}
@@ -299,7 +318,7 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
 
                                         const approvalPayload = {
                                             title: `(${partnerName}) - ${firstItemProcess} - ${customerName}`,
-                                            doc_type: 'PURCHASE_ORDER',
+                                            doc_type: order.is_import ? 'IMPORT_PURCHASE_ORDER' : 'PURCHASE_ORDER',
                                             content: {
                                                 order_no: metadata.order_no,
                                                 partner_name: metadata.partner_name,
@@ -355,18 +374,33 @@ const PurchaseSheetModal = ({ isOpen, onClose, order, sheetType = 'purchase_orde
                         className="bg-white shadow-2xl min-w-[794px] min-h-[1123px] flex flex-col a4-paper-root"
                         style={{ padding: '15mm', boxSizing: 'border-box' }}
                     >
-                        <PurchaseOrderTemplate
-                            data={metadata}
-                            onChange={handleMetaChange}
-                            isReadOnly={isReadOnly}
-                            documentData={approvalDoc}
-                            currentUser={currentUser}
-                            company={company}
-                            orderId={order.id}
-                            purchaseType={orderType === 'outsourcing' ? 'OUTSOURCING' : 'PURCHASE'}
-                            docType={activeTab === 'purchase_order' ? 'PURCHASE_ORDER' : 'ESTIMATE_REQUEST'}
-                            onSubmitApproval={fetchApprovalDoc}
-                        />
+                        {order.is_import ? (
+                            <ImportPurchaseOrderTemplate
+                                data={metadata}
+                                onChange={handleMetaChange}
+                                isReadOnly={isReadOnly}
+                                documentData={approvalDoc}
+                                currentUser={currentUser}
+                                company={company}
+                                orderId={order.id}
+                                isRFQ={activeTab === 'rfq'}
+                                docType="IMPORT_PURCHASE_ORDER"
+                                onSubmitApproval={fetchApprovalDoc}
+                            />
+                        ) : (
+                            <PurchaseOrderTemplate
+                                data={metadata}
+                                onChange={handleMetaChange}
+                                isReadOnly={isReadOnly}
+                                documentData={approvalDoc}
+                                currentUser={currentUser}
+                                company={company}
+                                orderId={order.id}
+                                purchaseType={orderType === 'outsourcing' ? 'OUTSOURCING' : 'PURCHASE'}
+                                docType={activeTab === 'purchase_order' ? 'PURCHASE_ORDER' : 'ESTIMATE_REQUEST'}
+                                onSubmitApproval={fetchApprovalDoc}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

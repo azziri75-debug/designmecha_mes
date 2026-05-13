@@ -1013,7 +1013,14 @@ const PurchaseOrderRow = ({ order, type, expanded, onToggle, onEdit, onDelete, o
                     onEdit(order);
                 }}
             >
-                <td className="px-4 py-4">{order.order_no}</td>
+                <td className="px-4 py-4">
+                    <div className="flex items-center gap-1">
+                        {order.is_import && (
+                            <span title="해외발주 (수입건)" style={{ fontSize: '12px', background: '#1565c0', color: '#fff', borderRadius: '3px', padding: '1px 5px', fontWeight: 'bold' }}>🌐 Import</span>
+                        )}
+                        {order.order_no}
+                    </div>
+                </td>
                 <td className="px-4 py-4">
                     <Box>
                         <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
@@ -1078,13 +1085,13 @@ const PurchaseOrderRow = ({ order, type, expanded, onToggle, onEdit, onDelete, o
                                 <DeleteIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title="견적의뢰서">
-                            <IconButton size="small" color="info" onClick={() => onOpenSheet(order, 'estimate_request')}>
+                        <Tooltip title={order.is_import ? "RFQ (견적의뢰서)" : "견적의뢰서"}>
+                            <IconButton size="small" color="info" onClick={() => onOpenSheet(order, order.is_import ? 'rfq' : 'estimate_request')}>
                                 <DescIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title="구매발주서">
-                            <IconButton size="small" color="success" onClick={() => onOpenSheet(order, 'purchase_order')}>
+                        <Tooltip title={order.is_import ? "Purchase Order (EN)" : "구매발주서"}>
+                            <IconButton size="small" color="success" onClick={() => onOpenSheet(order, order.is_import ? 'import_po' : 'purchase_order')}>
                                 <PrintIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    IconButton, MenuItem, Box, Typography, Tooltip, Autocomplete
+    IconButton, MenuItem, Box, Typography, Tooltip, Autocomplete, Switch
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
 import { Popover, List, ListItem, ListItemText, Divider } from '@mui/material';
@@ -160,6 +160,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [activeRowIndex, setActiveRowIndex] = useState(null);
 
     const [purchaseTypeState, setPurchaseTypeState] = useState(purchaseType || 'PART');
+    const [isImport, setIsImport] = useState(false);     // 해외발주 여부
+    const [vendorTel, setVendorTel] = useState('');
+    const [vendorFax, setVendorFax] = useState('');
     const printRef = React.useRef(null);
 
     useEffect(() => {
@@ -216,9 +219,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             fetchSalesOrders();
             if (order) fetchApprovalDoc();
             else fetchDefaultLines();
+            // 수입건 초기화
+            setIsImport(!!(order?.is_import));
+            setVendorTel(order?.partner?.phone || '');
+            setVendorFax(order?.partner?.fax || '');
         } else {
             setApprovalDoc(null);
             setDefaultSteps([]);
+            setIsImport(false);
+            setVendorTel('');
+            setVendorFax('');
         }
     }, [isOpen, purchaseType, order]);
 
@@ -527,6 +537,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                 ...formData,
                 partner_id: formData.partner_id || null,
                 order_id: formData.order_id || null,
+                is_import: isImport,
                 items: formData.items.map(item => ({
                     id: item.id || undefined,
                     product_id: item.product_id,
@@ -535,6 +546,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     note: item.note || '',
                     order_size: item.order_size || '',
                     material: item.material || '',
+                    currency: isImport ? 'USD' : 'KRW',
                     production_plan_item_id: item.production_plan_item_id || null,
                     material_requirement_id: item.material_requirement_id || null,
                     consumable_purchase_wait_id: item.consumable_purchase_wait_id || null
@@ -621,11 +633,56 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                             연결 번호: {formData.display_order_no}
                         </Typography>
                     )}
+
+                    {/* 해외발주 토글 */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto', flexShrink: 0 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: isImport ? '#1565c0' : '#888' }}>
+                            🌐 해외발주
+                        </Typography>
+                        <Switch
+                            checked={isImport}
+                            size="small"
+                            onChange={(e) => {
+                                const val = e.target.checked;
+                                setIsImport(val);
+                                if (val) {
+                                    const sel = partners.find(p => String(p.id) === String(formData.partner_id));
+                                    setVendorTel(sel?.phone || '');
+                                    setVendorFax(sel?.fax || '');
+                                }
+                            }}
+                            color="primary"
+                        />
+                    </Box>
                 </Paper>
+
+                {/* 해외발주 Vendor TEL/FAX */}
+                {isImport && (
+                    <Paper variant="outlined" sx={{ p: 1.5, mb: 2, bgcolor: '#e3f2fd', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#1565c0' }}>🌐 Vendor Contact (Import PO)</Typography>
+                        <TextField
+                            label="Vendor TEL"
+                            value={vendorTel}
+                            onChange={(e) => setVendorTel(e.target.value)}
+                            size="small"
+                            placeholder="+86-379-XXXX-XXXX"
+                            sx={{ minWidth: 200 }}
+                        />
+                        <TextField
+                            label="Vendor FAX"
+                            value={vendorFax}
+                            onChange={(e) => setVendorFax(e.target.value)}
+                            size="small"
+                            placeholder="+86-379-XXXX-XXXX"
+                            sx={{ minWidth: 200 }}
+                        />
+                        <Typography variant="caption" sx={{ color: '#1565c0' }}>💵 금액 단위: USD ($) 자동 적용</Typography>
+                    </Paper>
+                )}
 
                 {/* Items Section: Proper Interactive Table */}
                 <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <ChevronRight size={18} /> 발주 품목 상세
+                    <ChevronRight size={18} /> 발주 품목 상세{isImport ? ' (USD $)' : ''}
                 </Typography>
                 <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
                     <Table size="small">

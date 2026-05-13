@@ -23,6 +23,7 @@ import EarlyLeaveForm from './EarlyLeaveForm';
 import LeaveRequestForm from './LeaveRequestForm';
 import OvertimeWorkForm from './OvertimeWorkForm';
 import PurchaseOrderForm from './PurchaseOrderForm';
+import ImportPurchaseOrderForm from './ImportPurchaseOrderForm';
 import BusinessTripExpenseForm from './BusinessTripExpenseForm';
 import ApprovalGrid from './ApprovalGrid';
 
@@ -35,6 +36,7 @@ const DOC_TYPES = [
     { value: 'CONSUMABLES_PURCHASE', label: '소모품 구매신청서' },
     { value: 'OVERTIME', label: '야근/특근신청서' },
     { value: 'PURCHASE_ORDER', label: '구매발주서' },
+    { value: 'IMPORT_PURCHASE_ORDER', label: '해외발주서 (Import PO)' },
 ];
 
 const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
@@ -339,6 +341,7 @@ const ApprovalDraftPage = ({ documentData: initialData, onSave, onCancel }) => {
             case 'LEAVE_REQUEST': return <LeaveRequestForm {...commonProps} />;
             case 'OVERTIME': return <OvertimeWorkForm {...commonProps} />;
             case 'PURCHASE_ORDER': return <PurchaseOrderForm {...commonProps} />;
+            case 'IMPORT_PURCHASE_ORDER': return <ImportPurchaseOrderForm {...commonProps} />;
             case 'INTERNAL_DRAFT':
             default:
                 return (
