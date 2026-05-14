@@ -98,49 +98,25 @@ async def get_approval_stats(
 @router.get("/lines", response_model=List[ApprovalLineResponse])
 async def get_approval_lines(
     doc_type: str = Query(...),
-    department_id: Optional[int] = Query(None),  # [NEW] 부서 ID (None=공통)
+    department_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(deps.get_db)
 ):
-    """문서 종류별 결재선 템플릿 조회
-    부서 전용선 + 공통선 병합: 부서선에 없는 공통 결재자는 항상 포함.
-    (부서선이 공통선을 완전히 덮어쓰지 않음)
-    """
+    """문서 종류별 결재선 조회 (부서 전용만 사용 — 공통 결재선 폴백 없음)"""
     doc_type_clean = doc_type.strip().upper()
 
-    # 1. 공통 결재선 항상 조회
-    common_res = await db.execute(
-        select(ApprovalLine)
-        .options(selectinload(ApprovalLine.approver))
-        .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
-        .where(ApprovalLine.department_id.is_(None))
-        .order_by(ApprovalLine.sequence)
-    )
-    common_lines = list(common_res.scalars().all())
+    if department_id is not None:
+        res = await db.execute(
+            select(ApprovalLine)
+            .options(selectinload(ApprovalLine.approver))
+            .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
+            .where(ApprovalLine.department_id == department_id)
+            .order_by(ApprovalLine.sequence)
+        )
+        return res.scalars().all()
 
-    if department_id is None:
-        return common_lines
+    # department_id 미전달 → 빈 목록 반환 (공통 결재선 사용 안 함)
+    return []
 
-    # 2. 부서 전용 결재선 조회
-    dept_res = await db.execute(
-        select(ApprovalLine)
-        .options(selectinload(ApprovalLine.approver))
-        .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
-        .where(ApprovalLine.department_id == department_id)
-        .order_by(ApprovalLine.sequence)
-    )
-    dept_lines = list(dept_res.scalars().all())
-
-    if not dept_lines:
-        return common_lines
-
-    # 3. 병합: 부서선 우선 + 공통선에만 있는 결재자 추가
-    dept_approver_ids = {l.approver_id for l in dept_lines}
-    merged = list(dept_lines)
-    for cl in common_lines:
-        if cl.approver_id not in dept_approver_ids:
-            merged.append(cl)
-    merged.sort(key=lambda l: l.sequence)
-    return merged
 
 @router.post("/lines", response_model=List[ApprovalLineResponse])
 async def set_approval_lines(
@@ -430,23 +406,9 @@ async def create_document(
             doc_type_clean = doc_in.doc_type.strip().upper()
             print(f"[DEBUG] Fetching approval lines for: '{doc_type_clean}' (Original: '{doc_in.doc_type}')")
 
-            # 부서 전용선 + 공통선 병합: 부서선에 없는 공통 결재자는 항상 포함
+            # 부서 전용 결재선만 사용 (공통 결재선 폴백 없음)
             author_dept_id = current_user.department_id
-
-            # 공통 결재선 항상 조회
-            common_lines_res = await db.execute(
-                select(ApprovalLine)
-                .options(selectinload(ApprovalLine.approver))
-                .where(
-                    func.upper(ApprovalLine.doc_type) == doc_type_clean,
-                    ApprovalLine.department_id.is_(None)
-                )
-                .order_by(ApprovalLine.sequence)
-            )
-            common_lines = list(common_lines_res.scalars().all())
-            print(f"[DEBUG] Found {len(common_lines)} common lines for {doc_type_clean}")
-
-            lines = common_lines  # default to common
+            lines = []
 
             if author_dept_id:
                 dept_lines_res = await db.execute(
@@ -458,17 +420,14 @@ async def create_document(
                     )
                     .order_by(ApprovalLine.sequence)
                 )
-                dept_lines = list(dept_lines_res.scalars().all())
-                if dept_lines:
-                    print(f"[DEBUG] Found {len(dept_lines)} dept-specific lines for dept_id={author_dept_id}, merging")
-                    # 병합: 부서선 우선 + 공통선에만 있는 결재자 추가
-                    dept_approver_ids = {l.approver_id for l in dept_lines}
-                    merged = list(dept_lines)
-                    for cl in common_lines:
-                        if cl.approver_id not in dept_approver_ids:
-                            merged.append(cl)
-                    merged.sort(key=lambda l: l.sequence)
-                    lines = merged
+                lines = list(dept_lines_res.scalars().all())
+                if lines:
+                    print(f"[DEBUG] Using dept-specific lines for dept_id={author_dept_id}: {len(lines)} lines")
+                else:
+                    print(f"[WARNING] No dept-specific lines for dept_id={author_dept_id}, doc_type={doc_type_clean}")
+            else:
+                print(f"[WARNING] User {current_user.id} has no department_id, no approval lines loaded")
+
 
             if not lines:
                 # [IMPORT PO FALLBACK] IMPORT_PURCHASE_ORDER has no separate lines;
