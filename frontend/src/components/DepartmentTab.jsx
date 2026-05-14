@@ -8,9 +8,11 @@ const DOC_TYPES = [
   { value: 'OVERTIME', label: '야근/특근' },
   { value: 'INTERNAL_DRAFT', label: '내부기안' },
   { value: 'EXPENSE_REPORT', label: '지출결의서' },
+  { value: 'BUSINESS_TRIP', label: '출장여비정산서' },
   { value: 'CONSUMABLES_PURCHASE', label: '소모품 신청' },
   { value: 'PURCHASE_ORDER', label: '구매발주서' },
 ];
+
 
 const sortByRankThenName = (a, b) =>
   getRank(a.role) - getRank(b.role) || (a.name || '').localeCompare(b.name || '', 'ko');
@@ -562,7 +564,7 @@ export default function DepartmentTab() {
                   <div className="flex items-center gap-2 mb-3">
                     <Shield className="w-4 h-4 text-purple-400" />
                     <h4 className="text-sm font-semibold text-white">결재선 설정</h4>
-                    <span className="text-xs text-gray-500">- 미설정 시 공통 결재선이 적용됩니다.</span>
+                    <span className="text-xs text-gray-500">- 미설정 시 결재 단계가 생성되지 않습니다.</span>
                   </div>
                   {DOC_TYPES.map(dt => {
                     const lines = allLines[dept.id]?.[dt.value] || [];
@@ -598,7 +600,7 @@ export default function DepartmentTab() {
                             </div>
                           </div>
                         ) : lines.length === 0 ? (
-                          <p className="text-xs text-gray-500 italic">공통 결재선 사용 (별도 설정 없음)</p>
+                          <p className="text-xs text-gray-500 italic">미설정 (결재선 없음)</p>
                         ) : (
                           <div className="flex items-center gap-2 flex-wrap">
                             {lines.sort((a, b) => a.sequence - b.sequence).map((line, i) => (
