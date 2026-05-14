@@ -1274,15 +1274,25 @@ async def read_delivery_status(
     )
 
     # 1. Date Type Filtering
-    target_date_col = SalesOrder.delivery_date if date_type == "delivery" else SalesOrder.order_date
-    
-    if start_date:
-        query = query.where(target_date_col >= start_date)
-    if end_date:
-        query = query.where(target_date_col <= end_date)
-        
-    # 2. Ordering
-    query = query.order_by(desc(target_date_col))
+    if date_type == "delivery":
+        # 실제납품일 기준: delivery_histories.delivery_date 필터 (서브쿼리)
+        if start_date or end_date:
+            dh_subq = select(DeliveryHistory.order_id)
+            if start_date:
+                dh_subq = dh_subq.where(DeliveryHistory.delivery_date >= start_date)
+            if end_date:
+                dh_subq = dh_subq.where(DeliveryHistory.delivery_date <= end_date)
+            query = query.where(SalesOrder.id.in_(dh_subq))
+        # 납품일 기준 정렬: 최근 납품 이력 기준이 복잡하므로 수주일 내림차순 유지
+        query = query.order_by(desc(SalesOrder.order_date))
+    else:
+        # 수주일 기준
+        if start_date:
+            query = query.where(SalesOrder.order_date >= start_date)
+        if end_date:
+            query = query.where(SalesOrder.order_date <= end_date)
+        # 2. Ordering
+        query = query.order_by(desc(SalesOrder.order_date))
 
     if partner_name:
         query = query.join(Partner).where(Partner.name.ilike(f"%{partner_name}%"))
