@@ -254,8 +254,8 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                                         <p className="flex items-center gap-2">
                                             <span className="font-bold">견적일자:</span> <EditableText value={metadata.estimate_date} onChange={(v) => handleMetaChange('estimate_date', v)} className="w-32" />
                                         </p>
-                                        <p className="flex items-center gap-2">
-                                            <span className="font-bold">합계금액:</span> <span className="font-bold underline text-base">{metadata.total_amount_text}</span>
+                                        <p className="flex items-center gap-2 whitespace-nowrap">
+                                            <span className="font-bold">합계금액:</span> <span className="font-bold underline text-base whitespace-nowrap">{metadata.total_amount_text}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -302,11 +302,11 @@ const EstimateSheetModal = ({ isOpen, onClose, estimate, onSave }) => {
                         </div>
 
                         {/* Summary Bar */}
-                        <div className="bg-gray-50 border-2 border-black p-3 mb-6 flex justify-between items-center font-bold text-base shadow-sm">
-                            <span>합계금액 (VAT 별도)</span>
-                            <div className="flex items-center gap-6">
-                                <span className="text-gray-600 font-normal text-sm">{metadata.total_amount_text}</span>
-                                <span className="text-xl tracking-tight">￦ {metadata.items.reduce((s, i) => s + (parseFloat(i.total?.toString().replace(/,/g, '')) || 0), 0).toLocaleString()}</span>
+                        <div className="bg-gray-50 border-2 border-black p-3 mb-6 flex justify-between items-center font-bold text-sm shadow-sm flex-nowrap gap-2">
+                            <span className="shrink-0 whitespace-nowrap">합계금액 (VAT 별도)</span>
+                            <div className="flex items-center gap-4 shrink-0">
+                                <span className="text-gray-600 font-normal text-xs whitespace-nowrap shrink-0">{metadata.total_amount_text}</span>
+                                <span className="text-base font-extrabold tracking-tight whitespace-nowrap shrink-0">￦ {metadata.items.reduce((s, i) => s + (parseFloat(i.total?.toString().replace(/,/g, '')) || 0), 0).toLocaleString()}</span>
                             </div>
                         </div>
 
