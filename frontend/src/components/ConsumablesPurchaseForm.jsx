@@ -165,6 +165,15 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                                 />
                             </Box>
                             <Box sx={{ gridColumn: 'span 2' }}>
+                                <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>거래처 (공급사)</Typography>
+                                <TextField 
+                                    fullWidth size="small" variant="outlined" value={item.partner_name || ''} 
+                                    onChange={(e) => handleItemChange(idx, 'partner_name', e.target.value)} 
+                                    placeholder="공급사 이름 입력 (발주 연동됨)"
+                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
+                                />
+                            </Box>
+                            <Box sx={{ gridColumn: 'span 2' }}>
                                 <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>비고 (청구자)</Typography>
                                 <TextField 
                                     fullWidth size="small" variant="outlined" value={item.remarks || ''} 
