@@ -1835,7 +1835,7 @@ const MobileWorkLogPage = () => {
                         {selectedDocType === 'CONSUMABLES_PURCHASE' && (
                             <Stack spacing={2}>
                                 {(() => {
-                                    const items = Array.isArray(docFormData.items) ? docFormData.items : [{ product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, remarks: '' }];
+                                    const items = Array.isArray(docFormData.items) ? docFormData.items : [{ product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, partner_name: '', remarks: '' }];
                                     
                                     const updateItems = (newItems) => {
                                         setDocFormData({ ...docFormData, items: newItems });
@@ -1902,6 +1902,16 @@ const MobileWorkLogPage = () => {
                                                             />
                                                         </Box>
                                                         <TextField 
+                                                            label="거래처 (공급사)" fullWidth size="small" 
+                                                            value={item.partner_name || ''} 
+                                                            onChange={e => {
+                                                                const next = [...items];
+                                                                next[idx].partner_name = e.target.value;
+                                                                updateItems(next);
+                                                            }} 
+                                                            placeholder="공급사 이름 (발주 연동)"
+                                                        />
+                                                        <TextField 
                                                             label="비고" fullWidth size="small" 
                                                             value={item.remarks || ''} 
                                                             onChange={e => {
@@ -1916,7 +1926,7 @@ const MobileWorkLogPage = () => {
                                             <Button 
                                                 variant="outlined" 
                                                 startIcon={<AddIcon />} 
-                                                onClick={() => updateItems([...items, { product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, remarks: '' }])}
+                                                onClick={() => updateItems([...items, { product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, partner_name: '', remarks: '' }])}
                                                 sx={{ mt: 1, borderRadius: 2 }}
                                             >
                                                 품목 추가
