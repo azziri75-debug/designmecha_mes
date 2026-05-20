@@ -110,7 +110,45 @@ const CommercialInvoiceModal = ({ open, onClose, order, deliveryId, deliveryDate
         if (ciDoc) setCiDoc(prev => ({ ...prev, invoice_no: invoiceNo }));
         if (plDoc) setPlDoc(prev => ({ ...prev, invoice_no: invoiceNo }));
     }, [invoiceNo]);
+    // ── CI ↔ PL 동기화 ──────────────────────────────────────────
+    const SYNC_HEADER = ['shipper','invoice_no','invoice_date','lc_no','consignee','notify',
+        'sailing_date','other_references','vessel_flight','terms','from_port','to_port',
+        'shipping_marks','total_ctn'];
+    const SYNC_ITEM = ['name','hs_code','qty','unit'];
 
+    const syncDocTo = (source, setTarget) => {
+        setTarget(prev => {
+            if (!prev) return prev;
+            const next = { ...prev };
+            SYNC_HEADER.forEach(k => { if (source[k] !== undefined) next[k] = source[k]; });
+            if (source.items) {
+                const prevItems = prev.items || [];
+                next.items = source.items.map((srcItem, idx) => {
+                    const merged = { ...(prevItems[idx] || {}) };
+                    SYNC_ITEM.forEach(k => { merged[k] = srcItem[k]; });
+                    return merged;
+                });
+            }
+            return next;
+        });
+    };
+
+    const handleSetCiDoc = (updater) => {
+        setCiDoc(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            if (next) syncDocTo(next, setPlDoc);
+            return next;
+        });
+    };
+
+    const handleSetPlDoc = (updater) => {
+        setPlDoc(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            if (next) syncDocTo(next, setCiDoc);
+            return next;
+        });
+    };
+    // ────────────────────────────────────────────────────────────
     const handleSave = async () => {
         setLoading(true);
         try {
@@ -212,9 +250,9 @@ input, textarea { border: none; outline: none; background: transparent; font-fam
                     {/* Document area */}
                     <div id="ci-print-root" className="ci-print-area bg-white rounded-b-xl border border-gray-700 p-8 shadow-xl" ref={printRef}>
                         {tab === 'ci' ? (
-                            <CommercialInvoiceTemplate doc={ciDoc} setDoc={setCiDoc} {...sharedProps} />
+                            <CommercialInvoiceTemplate doc={ciDoc} setDoc={handleSetCiDoc} {...sharedProps} />
                         ) : (
-                            <PackingListTemplate doc={plDoc} setDoc={setPlDoc} {...sharedProps} />
+                            <PackingListTemplate doc={plDoc} setDoc={handleSetPlDoc} {...sharedProps} />
                         )}
                     </div>
                 </div>

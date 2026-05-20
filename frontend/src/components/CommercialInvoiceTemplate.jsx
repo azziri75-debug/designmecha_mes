@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 const HISTORY_KEY = 'ci_field_history_';
 
@@ -6,6 +6,7 @@ const HISTORY_KEY = 'ci_field_history_';
 const EF = ({ v, onChange, historyKey, placeholder = '', multiline, style = {}, isPrint }) => {
     const listId = historyKey ? `dl-${historyKey}` : undefined;
     const history = historyKey ? JSON.parse(localStorage.getItem(HISTORY_KEY + historyKey) || '[]') : [];
+    const taRef = useRef(null);
     const save = (val) => {
         if (!historyKey || !val.trim()) return;
         const updated = [val, ...history.filter(h => h !== val)].slice(0, 10);
@@ -16,10 +17,20 @@ const EF = ({ v, onChange, historyKey, placeholder = '', multiline, style = {}, 
         background: 'transparent', fontFamily: 'Arial, sans-serif',
         fontSize: '11px', boxSizing: 'border-box', padding: '0', ...style
     };
-    if (isPrint) return <span style={base}>{v}</span>;
+    const autoResize = (el) => {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    };
+    useEffect(() => { autoResize(taRef.current); }, [v]);
+    if (isPrint) return <span style={{ ...base, whiteSpace: 'pre-wrap' }}>{v}</span>;
     if (multiline) return (
-        <textarea value={v} rows={3} onChange={e => onChange(e.target.value)} onBlur={e => save(e.target.value)}
-            placeholder={placeholder} style={{ ...base, resize: 'vertical' }} />
+        <textarea ref={taRef} value={v} rows={1}
+            onChange={e => { onChange(e.target.value); autoResize(e.target); }}
+            onBlur={e => save(e.target.value)}
+            placeholder={placeholder}
+            style={{ ...base, resize: 'none', overflow: 'hidden', lineHeight: '1.4' }}
+        />
     );
     return (
         <>
