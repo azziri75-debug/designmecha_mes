@@ -8,6 +8,7 @@ import ResizableTable from '../components/ResizableTable';
 import DeliveryModal from '../components/DeliveryModal';
 import FileViewerModal from '../components/FileViewerModal';
 import TransactionStatementModal from '../components/TransactionStatementModal';
+import CommercialInvoiceModal from '../components/CommercialInvoiceModal';
 import { formatCurrency } from '../utils/currency';
 
 const DELIVERY_COLS = [
@@ -49,6 +50,13 @@ const DeliveryPage = () => {
 
     // Delivery History Edit Modal
     const [editHistoryModal, setEditHistoryModal] = useState(null); // { id, delivery_date, note }
+
+    // Commercial Invoice / Packing List Modal (수출)
+    const [showCiModal, setShowCiModal] = useState(false);
+    const [ciModalOrder, setCiModalOrder] = useState(null);
+    const [ciModalDeliveryId, setCiModalDeliveryId] = useState(null);
+    const [ciModalInvoiceNo, setCiModalInvoiceNo] = useState('');
+    const [ciModalDeliveryDate, setCiModalDeliveryDate] = useState('');
 
     // Filters
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -420,29 +428,38 @@ const DeliveryPage = () => {
                                                                                     <button
                                                                                         className="text-[10px] bg-blue-900/30 text-blue-400 border border-blue-900/50 px-2 py-1 rounded hover:bg-blue-900/50 flex items-center gap-1"
                                                                                         onClick={() => {
-                                                                                            setStatementData({
-                                                                                                id: dh.id,
-                                                                                                delivery_id: dh.id,
-                                                                                                order_id: ord.id,
-                                                                                                delivery_no: dh.delivery_no,
-                                                                                                delivery_date: dh.delivery_date,
-                                                                                                order_no: ord.order_no,
-                                                                                                partner: ord.partner,
-                                                                                                note: dh.note || '',   // 비고 연결
-                                                                                                remarks: dh.note || '', // TransactionStatementModal용 fallback
-                                                                                                items: (dh.items || []).map(it => ({
-                                                                                                    date: dh.delivery_date,
-                                                                                                    item_name: it.order_item?.product?.name || '',
-                                                                                                    product: it.order_item?.product || {},
-                                                                                                    quantity: it.quantity,
-                                                                                                    unit_price: it.order_item?.unit_price || 0,
-                                                                                                })),
-                                                                                                ...(dh.statement_json || {}),
-                                                                                            });
-                                                                                            setShowStatementModal(true);
+                                                                                            if (dh.is_export) {
+                                                                                                // 수출: Commercial Invoice / Packing List
+                                                                                                setCiModalOrder(ord);
+                                                                                                setCiModalDeliveryId(dh.id);
+                                                                                                setCiModalInvoiceNo(dh.invoice_no || '');
+                                                                                                setCiModalDeliveryDate(dh.delivery_date || '');
+                                                                                                setShowCiModal(true);
+                                                                                            } else {
+                                                                                                setStatementData({
+                                                                                                    id: dh.id,
+                                                                                                    delivery_id: dh.id,
+                                                                                                    order_id: ord.id,
+                                                                                                    delivery_no: dh.delivery_no,
+                                                                                                    delivery_date: dh.delivery_date,
+                                                                                                    order_no: ord.order_no,
+                                                                                                    partner: ord.partner,
+                                                                                                    note: dh.note || '',
+                                                                                                    remarks: dh.note || '',
+                                                                                                    items: (dh.items || []).map(it => ({
+                                                                                                        date: dh.delivery_date,
+                                                                                                        item_name: it.order_item?.product?.name || '',
+                                                                                                        product: it.order_item?.product || {},
+                                                                                                        quantity: it.quantity,
+                                                                                                        unit_price: it.order_item?.unit_price || 0,
+                                                                                                    })),
+                                                                                                    ...(dh.statement_json || {}),
+                                                                                                });
+                                                                                                setShowStatementModal(true);
+                                                                                            }
                                                                                         }}
                                                                                     >
-                                                                                        <FileText className="w-3 h-3" /> 명세서
+                                                                                        <FileText className="w-3 h-3" /> {dh.is_export ? 'Invoice/PL' : '명세서'}
                                                                                     </button>
                                                                                     <button
                                                                                         className="text-[10px] bg-yellow-900/30 text-yellow-400 border border-yellow-900/50 px-2 py-1 rounded hover:bg-yellow-900/50 flex items-center gap-1"
@@ -524,6 +541,17 @@ const DeliveryPage = () => {
                         setShowStatementModal(false);
                         setStatementData(null);
                     }}
+                />
+            )}
+            {showCiModal && ciModalOrder && (
+                <CommercialInvoiceModal
+                    open={showCiModal}
+                    onClose={() => { setShowCiModal(false); setCiModalOrder(null); }}
+                    order={ciModalOrder}
+                    deliveryId={ciModalDeliveryId}
+                    deliveryDate={ciModalDeliveryDate}
+                    initialInvoiceNo={ciModalInvoiceNo}
+                    onSaved={fetchOrders}
                 />
             )}
             {/* Delivery History Edit Modal */}

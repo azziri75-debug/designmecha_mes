@@ -126,7 +126,7 @@ const CommercialInvoiceModal = ({ open, onClose, order, deliveryId, deliveryDate
     };
 
     const handlePrint = () => {
-        const win = window.open('', '_blank');
+        const win = window.open('', '_blank', 'width=794,height=1123');
         if (!win) return;
         const templateDiv = document.getElementById('ci-print-root');
         const content = templateDiv?.innerHTML || '';
@@ -135,12 +135,13 @@ const CommercialInvoiceModal = ({ open, onClose, order, deliveryId, deliveryDate
 <title>${tab === 'ci' ? 'Commercial Invoice' : 'Packing List'} - ${invoiceNo}</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 210mm; min-height: 297mm; margin: 0; padding: 0; }
 body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #fff; }
-.ci-print-area { width: 190mm; margin: 10mm auto; padding: 0; }
+.ci-print-area { width: 190mm; min-height: 277mm; margin: 0 auto; padding: 0; }
 table { border-collapse: collapse; }
 input, textarea { border: none; outline: none; background: transparent; font-family: Arial, sans-serif; font-size: 11px; }
 @page { size: A4 portrait; margin: 10mm; }
-@media print { body { margin: 0; } }
+@media print { html, body { width: 210mm; } body { margin: 0; } }
 </style></head>
 <body><div class="ci-print-area">${content}</div></body></html>`);
         win.document.close();

@@ -59,7 +59,7 @@ const CommercialInvoiceTemplate = ({ doc, setDoc, isPrint, ceoSignature, company
     };
 
     return (
-        <div style={{ width: '190mm', margin: '0 auto', background: '#fff', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#000' }}>
+        <div style={{ width: '190mm', minHeight: '277mm', margin: '0 auto', background: '#fff', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#000', display: 'flex', flexDirection: 'column' }}>
             <h2 style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '18px', letterSpacing: '2px', margin: '0 0 8px' }}>COMMERCIAL INVOICE</h2>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <tbody>
