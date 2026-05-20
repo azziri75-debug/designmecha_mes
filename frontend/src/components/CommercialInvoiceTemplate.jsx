@@ -193,6 +193,9 @@ const CommercialInvoiceTemplate = ({ doc, setDoc, isPrint, ceoSignature, company
                 </tbody>
             </table>
 
+            {/* Flexible spacer - fills remaining page height for A4 form */}
+            <div style={{ flex: 1 }} />
+
             {/* Shipping Marks + Signature */}
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '-1px' }}>
                 <tbody>
@@ -204,9 +207,11 @@ const CommercialInvoiceTemplate = ({ doc, setDoc, isPrint, ceoSignature, company
                         </td>
                         <td style={{ ...cell, width: '40%', textAlign: 'center', verticalAlign: 'bottom', paddingBottom: '8px' }}>
                             <div style={{ marginBottom: '8px', fontStyle: 'italic', fontSize: '12px' }}>Signature</div>
-                            {ceoSignature && (
-                                <img src={ceoSignature} alt="Signature" style={{ height: '60px', objectFit: 'contain' }} />
-                            )}
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80px' }}>
+                                {ceoSignature && (
+                                    <img src={ceoSignature} alt="Signature" style={{ height: '120px', objectFit: 'contain' }} />
+                                )}
+                            </div>
                             <div style={{ borderTop: '1px solid #000', marginTop: '4px', paddingTop: '4px', fontSize: '11px' }}>
                                 {companyName || 'Designmecha Co.,Ltd.'} / InHoCho
                             </div>

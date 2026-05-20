@@ -1044,13 +1044,10 @@ async def create_delivery(
         if order_item.delivered_quantity < order_item.quantity:
             all_completed = False
 
-    # Check remaining items in order
-    for oi in db_order.items:
-        if oi.delivered_quantity < oi.quantity:
-            all_completed = False
-            break
-
-    # Update Order Status
+    # Update Order Status: sum-based check (더 안정적)
+    total_qty = sum(oi.quantity for oi in db_order.items)
+    delivered_qty = sum(oi.delivered_quantity or 0 for oi in db_order.items)
+    all_completed = (delivered_qty >= total_qty)
     if all_completed:
         db_order.status = OrderStatus.DELIVERY_COMPLETED
         db_order.actual_delivery_date = db_delivery.delivery_date
