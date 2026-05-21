@@ -111,8 +111,14 @@ async def check_and_complete_production_plan(db: AsyncSession, plan_id: int):
         plan.actual_completion_date = now_kst().date()
         db.add(plan)
         await db.flush()
-        await _handle_production_completion_effects(db, plan)
-        await db.commit()
+        await db.commit()  # 완료 상태 먼저 확정
+        try:
+            await _handle_production_completion_effects(db, plan)
+            await db.commit()
+        except Exception as e:
+            print(f'[check_and_complete_production_plan] completion effects failed (non-fatal): {e}')
+            try: await db.rollback()
+            except: pass
 
 async def process_stock_deduction(db: AsyncSession, plan_id: int):
     """
@@ -458,6 +464,7 @@ async def create_production_plan(
         
         # 4. Generate Items
         if plan_in.items:
+            plan_items_created = []  # plan.items ORM 접근 대신 직접 추적
             for item_in in plan_in.items:
                 plan_item = ProductionPlanItem(
                     plan_id=plan.id,
@@ -481,17 +488,17 @@ async def create_production_plan(
                     cost=item_in.cost
                 )
                 db.add(plan_item)
+                plan_items_created.append(plan_item)
                 await sync_plan_item_cost(db, plan_item)
             
             await db.flush()
             
-            # [FIX] Check for Auto-Completion (Fully satisfied by stock)
-            is_fully_stock_satisfied = all((item.quantity or 0) == 0 for item in plan_in.items) if plan_in.items else False
+            # [FIX] plan.items ORM 접근 없이 직접 수집한 리스트 사용
+            is_fully_stock_satisfied = all((item.quantity or 0) == 0 for item in plan_items_created) if plan_items_created else False
             if is_fully_stock_satisfied:
                 plan.status = ProductionStatus.COMPLETED
-                plan.actual_completion_date = now_kst().date()  # [FIX] 완료일 기록
-                # [FIX] 하위 모든 공정도 함께 완료 처리 (발주 대기 목록 노출 방지)
-                for itm in plan.items:
+                plan.actual_completion_date = now_kst().date()
+                for itm in plan_items_created:  # ORM relationship 아닌 직접 수집한 리스트 사용
                     itm.status = ProductionStatus.COMPLETED
             elif plan.status == ProductionStatus.IN_PROGRESS: 
                 plan.status = ProductionStatus.CONFIRMED
@@ -511,12 +518,22 @@ async def create_production_plan(
                     selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
                 ).where(ProductionPlan.id == plan.id))
                 refetched_plan = res.scalars().first()
-                await _handle_production_completion_effects(db, refetched_plan)
-                await db.commit()
+                try:
+                    await _handle_production_completion_effects(db, refetched_plan)
+                    await db.commit()
+                except Exception as e:
+                    print(f'[create_production_plan] completion effects failed (non-fatal): {e}')
+                    try: await db.rollback()
+                    except: pass
             elif plan.status == ProductionStatus.CONFIRMED:
                 await process_stock_deduction(db, plan_id=plan.id)
-                from app.api.utils.mrp import calculate_and_record_mrp
-                await calculate_and_record_mrp(db, plan_id=plan.id)
+                try:
+                    from app.api.utils.mrp import calculate_and_record_mrp
+                    await calculate_and_record_mrp(db, plan_id=plan.id)
+                except Exception as e:
+                    print(f'[create_production_plan] MRP calculation failed (non-fatal): {e}')
+                    try: await db.rollback()
+                    except: pass
         else:
             # Default logic for Sales Order (already exists) or Stock Production
             # If stock production, it's usually just one product.
