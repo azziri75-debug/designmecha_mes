@@ -1044,15 +1044,27 @@ async def create_delivery(
         if order_item.delivered_quantity < order_item.quantity:
             all_completed = False
 
-    # Update Order Status: sum-based check (더 안정적)
-    total_qty = sum(oi.quantity for oi in db_order.items)
-    delivered_qty = sum(oi.delivered_quantity or 0 for oi in db_order.items)
-    all_completed = (delivered_qty >= total_qty)
+    # 모든 in-memory 변경사항을 DB에 flush (delivered_quantity 포함)
+    await db.flush()
+
+    # DB에서 직접 합계 조회 (가장 신뢰할 수 있는 방법)
+    from sqlalchemy import func as _sfunc
+    qty_stmt = select(
+        _sfunc.sum(SalesOrderItem.quantity).label('total'),
+        _sfunc.sum(SalesOrderItem.delivered_quantity).label('delivered')
+    ).where(SalesOrderItem.order_id == order_id)
+    qty_res = await db.execute(qty_stmt)
+    qty_row = qty_res.first()
+    total_qty = int(qty_row.total or 0)
+    delivered_qty = int(qty_row.delivered or 0)
+
+    all_completed = (total_qty > 0 and delivered_qty >= total_qty)
     if all_completed:
         db_order.status = OrderStatus.DELIVERY_COMPLETED
         db_order.actual_delivery_date = db_delivery.delivery_date
-    else:
+    elif delivered_qty > 0:
         db_order.status = OrderStatus.PARTIALLY_DELIVERED
+    # else: 납품 수량이 0이면 상태 유지 (비정상 케이스)
 
     # [Fix] 납품 완료 시 연관 생산계획 자동 완료 처리 및 재고 로직 반영
     if all_completed:
