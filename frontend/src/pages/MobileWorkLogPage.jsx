@@ -977,8 +977,10 @@ const MobileWorkLogPage = () => {
                                             }
                                         }}
                                     >
-                                        {selectedPlan.items?.filter(it => it.status !== 'COMPLETED' || (it.completed_quantity || 0) < (it.quantity || 0)).length || 0} > 0 &&
-                                         selectedItems.length === (selectedPlan.items?.filter(it => it.status !== 'COMPLETED' || (it.completed_quantity || 0) < (it.quantity || 0)).length || 0) ? '전체 해제' : '전체 선택'}
+                                        {(() => {
+                                            const validCount = selectedPlan.items?.filter(it => it.status !== 'COMPLETED' || (it.completed_quantity || 0) < (it.quantity || 0)).length || 0;
+                                            return validCount > 0 && selectedItems.length === validCount ? '전체 해제' : '전체 선택';
+                                        })()}
                                     </Button>
                                 </Box>
                                 {(() => {
