@@ -743,8 +743,13 @@ const MobileWorkLogPage = () => {
 
         const orderNo = p.order?.order_no || p.stock_production?.production_no || '';
         const productNameStr = getProductNameStr(p);
-        return orderNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            productNameStr.toLowerCase().includes(searchQuery.toLowerCase());
+        const partnerName = p.order?.partner?.name || p.stock_production?.partner?.name || '';
+        const specStr = p.items?.map(it => it.product?.specification || '').join(' ');
+        const q = searchQuery.toLowerCase();
+        return orderNo.toLowerCase().includes(q) ||
+            productNameStr.toLowerCase().includes(q) ||
+            partnerName.toLowerCase().includes(q) ||
+            specStr.toLowerCase().includes(q);
     });
 
     // Performance Aggregation with fallback price
@@ -873,7 +878,7 @@ const MobileWorkLogPage = () => {
                                 <TextField
                                     fullWidth
                                     size="small"
-                                    placeholder="수주번호 또는 제품명 검색"
+                                    placeholder="수주번호, 고객사명, 제품명, 규격 검색"
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
                                     sx={{ mb: 2, backgroundColor: '#fff' }}
