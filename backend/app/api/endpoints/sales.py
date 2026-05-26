@@ -1066,7 +1066,10 @@ async def create_delivery(
         db_order.status = OrderStatus.PARTIALLY_DELIVERED
     # else: 납품 수량이 0이면 상태 유지 (비정상 케이스)
 
-    # [Fix] 납품 완료 시 연관 생산계획 자동 완료 처리 및 재고 로직 반영
+    # 납품 + 상태 먼저 확정 commit (부수효과와 분리)
+    await db.commit()
+
+    # [Fix] 납품 완료 시 연관 생산계획 자동 완료 처리 (non-fatal)
     if all_completed:
         try:
             await complete_production_for_order(db, order_id=order_id, reference=delivery_no)
@@ -1077,10 +1080,14 @@ async def create_delivery(
                 .where(MaterialRequirement.status != "COMPLETED")
                 .values(status="COMPLETED")
             )
+            await db.commit()
         except Exception as e:
-            print(f'[create_delivery] Auto-complete production plan failed: {e}')
+            print(f'[create_delivery] Auto-complete production plan failed (non-fatal): {e}')
+            try:
+                await db.rollback()
+            except Exception:
+                pass
 
-    await db.commit()
     await db.refresh(db_delivery)
     
     # Eager load for response

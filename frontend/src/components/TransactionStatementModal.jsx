@@ -335,6 +335,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
+                    /* 세로 중앙정렬 강제 */
+                    .tsm-form-paper td { vertical-align: middle !important; }
+                    .tsm-form-paper textarea { vertical-align: middle; }
                     /* fix: prevent html-to-image SVG culling on mathematically empty cells */
                     .tsm-form-paper td:empty::before { 
                         content: "\\00a0"; 
@@ -466,6 +469,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                 <tr key={idx} style={{ minHeight: ROW_H, height: 'auto' }} className="tsm-item-row group">
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px', verticalAlign: 'middle' }}>
                                         <textarea 
+                                            rows={1}
                                             value={(item.date || data.delivery_date || '').slice(5)} 
                                             onChange={e => updateItem(idx, 'date', e.target.value)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
@@ -474,6 +478,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     </td>
                                     <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative', verticalAlign: 'middle' }}>
                                         <textarea 
+                                            rows={1}
                                             value={item.product?.name || item.product_name || item.item_name || ''} 
                                             onChange={e => updateItem(idx, 'product_name', e.target.value)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
@@ -488,6 +493,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     </td>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px', verticalAlign: 'middle' }}>
                                         <textarea 
+                                            rows={1}
                                             value={item.specification || item.product?.specification || ''} 
                                             onChange={e => updateItem(idx, 'specification', e.target.value)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
@@ -496,6 +502,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     </td>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px', verticalAlign: 'middle' }}>
                                         <textarea 
+                                            rows={1}
                                             value={item.quantity} 
                                             onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
@@ -513,15 +520,19 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <td style={{ ...td(C), textAlign: 'right', fontSize: '12px' }}>{formatNumber(Math.floor((item.quantity || 0) * (item.unit_price || 0) * 0.1))}</td>
                                 </tr>
                             ))}
-                            {/* 이하여백 - items < ROWS 일 때만 렌더 (인쇄 시 빈 row 방지) */}
-                            {items.length < ROWS && (
-                                <tr style={{ height: `${(ROWS - items.length) * 24}px` }}>
-                                    <td style={{ ...td(C), textAlign: 'center', verticalAlign: 'top' }}>{"\u00A0"}</td>
-                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', textAlign: 'center', verticalAlign: 'top', paddingTop: '4px' }}>= 이하여백 =</td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
+                    {/* 이하여백 - flex:1로 렬더링 영역을 동적으로 채움 */}
+                    {items.length >= ROWS && (
+                        <div style={{ border: `1.5px solid ${C}`, borderTop: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, height: '24px' }}>
+                            <span style={{ color: '#bbb', fontSize: '11.5px' }}>= 이하여백 =</span>
+                        </div>
+                    )}
+                    {items.length < ROWS && (
+                        <div style={{ flex: 1, border: `1.5px solid ${C}`, borderTop: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '24px' }}>
+                            <span style={{ color: '#bbb', fontSize: '11.5px' }}>= 이하여백 =</span>
+                        </div>
+                    )}
                 </div>
                 {/* 비고 - 상승하는 items table 밖, 항상 하단 고정 */}
                 <div style={{ border: `1.5px solid ${C}`, padding: '4px 8px', height: '60px', flexShrink: 0 }}>
