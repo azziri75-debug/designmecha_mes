@@ -1744,8 +1744,8 @@ async def read_work_logs(
                     ),
                     selectinload(ProductionPlanItem.equipment),
                     selectinload(ProductionPlanItem.worker),
-                    selectinload(ProductionPlanItem.purchase_items),
-                    selectinload(ProductionPlanItem.outsourcing_items),
+                    selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                    selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
                     selectinload(ProductionPlanItem.plan).options(
                         selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                         selectinload(ProductionPlan.stock_production).options(
