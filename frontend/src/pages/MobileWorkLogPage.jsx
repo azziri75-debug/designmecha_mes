@@ -725,7 +725,13 @@ const MobileWorkLogPage = () => {
         const isProdCompleted = p.status === 'COMPLETED';
 
         if (statusFilter === 'IN_PROGRESS') {
-            if (isProdCompleted || isDelivered) return false;
+            if (isProdCompleted || isDelivered) {
+                // 생산/납품 완료여도 실적 미달 공정이 있으면 표시 (실적 등록 가능하도록)
+                const hasUnfinishedItem = p.items?.some(
+                    it => (it.completed_quantity || 0) < (it.quantity || 0)
+                );
+                if (!hasUnfinishedItem) return false;
+            }
         } else if (statusFilter === 'COMPLETED') {
             if (!isProdCompleted || isDelivered) return false;
         } else if (statusFilter === 'DELIVERED') {
@@ -956,7 +962,9 @@ const MobileWorkLogPage = () => {
                                     <Button 
                                         size="small" 
                                         onClick={() => {
-                                            const allValidItems = selectedPlan.items?.filter(it => it.status !== 'COMPLETED') || [];
+                                            const allValidItems = selectedPlan.items?.filter(it =>
+                                                it.status !== 'COMPLETED' || (it.completed_quantity || 0) < (it.quantity || 0)
+                                            ) || [];
                                             if (selectedItems.length === allValidItems.length) {
                                                 setSelectedItems([]);
                                             } else {
@@ -964,7 +972,8 @@ const MobileWorkLogPage = () => {
                                             }
                                         }}
                                     >
-                                        {(selectedPlan.items?.filter(it => it.status !== 'COMPLETED').length || 0) > 0 && selectedItems.length === (selectedPlan.items?.filter(it => it.status !== 'COMPLETED').length || 0) ? '전체 해제' : '전체 선택'}
+                                        {selectedPlan.items?.filter(it => it.status !== 'COMPLETED' || (it.completed_quantity || 0) < (it.quantity || 0)).length || 0} > 0 &&
+                                         selectedItems.length === (selectedPlan.items?.filter(it => it.status !== 'COMPLETED' || (it.completed_quantity || 0) < (it.quantity || 0)).length || 0) ? '전체 해제' : '전체 선택'}
                                     </Button>
                                 </Box>
                                 {(() => {
@@ -991,7 +1000,8 @@ const MobileWorkLogPage = () => {
                                             <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
                                                 <List disablePadding>
                                                     {group.items.sort((a,b) => a.sequence - b.sequence).map((item, idx, arr) => {
-                                                        const isCompleted = item.status === 'COMPLETED';
+                                                        // 완료 상태여도 실적이 목표수량에 미달이면 활성화
+                                                        const isCompleted = item.status === 'COMPLETED' && (item.completed_quantity || 0) >= (item.quantity || 0);
                                                         const isSelected = selectedItems.some(i => i.id === item.id);
                                                         return (
                                                             <React.Fragment key={item.id}>
