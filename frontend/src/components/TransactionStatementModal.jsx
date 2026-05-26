@@ -105,15 +105,13 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const [isSaving, setIsSaving] = useState(false);
     const printRef = useRef();
 
-    // ── Resizable Columns State & Logic ───────────────────────
-    const [colWidths, setColWidths] = useState({
-        date: 35,
-        name: 160,
-        spec: 75,
-        qty: 35,
-        price: 60,
-        supply: 65,
-        tax: 50
+    // ── Resizable Columns State & Logic ─────────────────────── (localStorage 유지)
+    const [colWidths, setColWidths] = useState(() => {
+        try {
+            const saved = localStorage.getItem('tsm_col_widths');
+            if (saved) return JSON.parse(saved);
+        } catch {}
+        return { date: 35, name: 160, spec: 75, qty: 35, price: 60, supply: 65, tax: 50 };
     });
     const resizingCol = useRef(null);
     const startX = useRef(0);
@@ -170,6 +168,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         document.removeEventListener('mousemove', onResizerMouseMove);
         document.removeEventListener('mouseup', onResizerMouseUp);
         document.body.style.cursor = 'default';
+        // localStorage에 저장
+        setColWidths(prev => {
+            try { localStorage.setItem('tsm_col_widths', JSON.stringify(prev)); } catch {}
+            return prev;
+        });
     }, [onResizerMouseMove]);
 
     // 모달 열릴 때: (1) 인쇄 CSS 주입, (2) 회사 직인 이미지 로드
@@ -466,7 +469,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             value={(item.date || data.delivery_date || '').slice(5)} 
                                             onChange={e => updateItem(idx, 'date', e.target.value)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', display: 'block', verticalAlign: 'middle' }}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', verticalAlign: 'middle' }}
                                         />
                                     </td>
                                     <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative', verticalAlign: 'middle' }}>
@@ -474,7 +477,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             value={item.product?.name || item.product_name || item.item_name || ''} 
                                             onChange={e => updateItem(idx, 'product_name', e.target.value)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                            style={{ width: '100%', border: 'none', background: 'transparent', color: C, fontSize: '11.5px', fontWeight: 'bold', outline: 'none', resize: 'none', padding: '0 4px', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', display: 'block', verticalAlign: 'middle' }}
+                                            style={{ width: '100%', border: 'none', background: 'transparent', color: C, fontSize: '11.5px', fontWeight: 'bold', outline: 'none', resize: 'none', padding: '0 4px', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', verticalAlign: 'middle' }}
                                         />
                                         <button 
                                             onClick={() => removeItem(idx)}
@@ -488,7 +491,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             value={item.specification || item.product?.specification || ''} 
                                             onChange={e => updateItem(idx, 'specification', e.target.value)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', display: 'block', verticalAlign: 'middle' }}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', verticalAlign: 'middle' }}
                                         />
                                     </td>
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px', verticalAlign: 'middle' }}>
@@ -496,7 +499,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             value={item.quantity} 
                                             onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', display: 'block', verticalAlign: 'middle' }}
+                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', verticalAlign: 'middle' }}
                                         />
                                     </td>
                                     <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px', verticalAlign: 'middle' }}>
@@ -510,13 +513,13 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <td style={{ ...td(C), textAlign: 'right', fontSize: '12px' }}>{formatNumber(Math.floor((item.quantity || 0) * (item.unit_price || 0) * 0.1))}</td>
                                 </tr>
                             ))}
-                            {/* 이하여백 - 단일 row, 동적 높이 (ROWS=13, ROW_H=24px 기준) */}
-                            <tr style={{ height: `${Math.max(24, (ROWS - items.length) * 24)}px` }}>
-                                <td style={{ ...td(C), textAlign: 'center', verticalAlign: 'top' }}>{"\u00A0"}</td>
-                                <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', textAlign: 'center', verticalAlign: 'top', paddingTop: '4px' }}>
-                                    {items.length < ROWS ? '= 이하여백 =' : ''}
-                                </td>
-                            </tr>
+                            {/* 이하여백 - items < ROWS 일 때만 렌더 (인쇄 시 빈 row 방지) */}
+                            {items.length < ROWS && (
+                                <tr style={{ height: `${(ROWS - items.length) * 24}px` }}>
+                                    <td style={{ ...td(C), textAlign: 'center', verticalAlign: 'top' }}>{"\u00A0"}</td>
+                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', textAlign: 'center', verticalAlign: 'top', paddingTop: '4px' }}>= 이하여백 =</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
