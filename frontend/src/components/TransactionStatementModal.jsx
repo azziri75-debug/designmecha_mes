@@ -521,7 +521,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     </table>
                 </div>
                 {/* 비고 - 상승하는 items table 밖, 항상 하단 고정 */}
-                <div style={{ border: `1.5px solid ${C}`, borderTop: 'none', padding: '4px 8px', height: '60px', flexShrink: 0 }}>
+                <div style={{ border: `1.5px solid ${C}`, padding: '4px 8px', height: '60px', flexShrink: 0 }}>
                     <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: C }}>비고:</div>
                     <textarea value={remarks} onChange={(e) => onRemarksChange(e.target.value)} placeholder="비고 사항을 입력하세요..." style={{ width: '100%', height: '35px', border: 'none', resize: 'none', background: 'transparent', fontSize: '11px', color: C, outline: 'none', padding: '0', fontFamily: 'inherit' }} className="tsm-remarks-textarea" />
                 </div>
