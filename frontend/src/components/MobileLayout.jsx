@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
     BottomNavigation,
@@ -12,7 +12,9 @@ import {
     Badge,
     Avatar,
     Menu,
-    MenuItem
+    MenuItem,
+    Fab,
+    Zoom,
 } from '@mui/material';
 import {
     Assignment as AssignmentIcon,
@@ -23,6 +25,7 @@ import {
     Logout as LogoutIcon,
     MoreVert as MoreVertIcon,
     Inventory2 as InventoryIcon,
+    KeyboardArrowUp as KeyboardArrowUpIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
@@ -36,6 +39,21 @@ const MobileLayout = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     
     const [anchorEl, setAnchorEl] = useState(null);
+    const [showScrollTop, setShowScrollTop] = useState(false);
+
+    // 스크롤 위치 감지 → 상단 이동 버튼 표시 여부
+    const handleScroll = useCallback(() => {
+        setShowScrollTop(window.scrollY > 200);
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [handleScroll]);
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     // Sync bottom navigation with current path
     const getActiveTab = () => {
@@ -171,6 +189,30 @@ const MobileLayout = () => {
             }}>
                 <Outlet />
             </Box>
+
+            {/* 상단 이동 버튼 - 스크롤 200px 이상 시 하단 중앙에 표시 */}
+            <Zoom in={showScrollTop} unmountOnExit>
+                <Fab
+                    onClick={scrollToTop}
+                    size="medium"
+                    sx={{
+                        position: 'fixed',
+                        bottom: 80,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 1050,
+                        bgcolor: 'rgba(59, 130, 246, 0.92)',
+                        color: 'white',
+                        backdropFilter: 'blur(4px)',
+                        boxShadow: '0 4px 16px rgba(59,130,246,0.4)',
+                        '&:hover': { bgcolor: '#2563eb' },
+                        width: 44,
+                        height: 44,
+                    }}
+                >
+                    <KeyboardArrowUpIcon fontSize="medium" />
+                </Fab>
+            </Zoom>
 
             {/* Global Bottom Navigation - Fixed at Bottom */}
             <Paper sx={{ 
