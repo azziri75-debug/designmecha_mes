@@ -427,7 +427,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     <span style={{ fontSize: '9px', color: C }}>(전잔금+금기)</span>
                 </div>
 
-                <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <table style={{ ...tblStyle(C), tableLayout: 'fixed', width: '100%' }}>
                         <colgroup>
                             <col style={{ width: colWidths.date }} />
@@ -510,31 +510,20 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <td style={{ ...td(C), textAlign: 'right', fontSize: '12px' }}>{formatNumber(Math.floor((item.quantity || 0) * (item.unit_price || 0) * 0.1))}</td>
                                 </tr>
                             ))}
-                            {emptyCount > 0 && (
-                                <tr style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C), textAlign: 'center' }}>{"\u00A0"}</td>
-                                    <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', textAlign: 'center' }}>= 이하여백 =</td>
-                                </tr>
-                            )}
-                            {Array(Math.max(0, emptyCount - 1)).fill(null).map((_, i) => (
-                                <tr key={i} style={{ height: ROW_H }}>
-                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
-                                    <td style={{ ...td(C) }}>{"\u00A0"}</td>
-                                </tr>
-                            ))}
-                            <tr style={{ height: '60px' }}>
-                                <td colSpan={7} style={{ ...td(C), padding: '4px 8px', verticalAlign: 'top' }}>
-                                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '2px' }}>비고:</div>
-                                    <textarea value={remarks} onChange={(e) => onRemarksChange(e.target.value)} placeholder="비고 사항을 입력하세요..." style={{ width: '100%', height: '35px', border: 'none', resize: 'none', background: 'transparent', fontSize: '11px', color: C, outline: 'none', padding: '0', fontFamily: 'inherit' }} className="tsm-remarks-textarea" />
+                            {/* 이하여백 - 단일 row, 동적 높이 (ROWS=13, ROW_H=24px 기준) */}
+                            <tr style={{ height: `${Math.max(24, (ROWS - items.length) * 24)}px` }}>
+                                <td style={{ ...td(C), textAlign: 'center', verticalAlign: 'top' }}>{"\u00A0"}</td>
+                                <td colSpan={6} style={{ ...td(C), color: '#bbb', fontSize: '11.5px', textAlign: 'center', verticalAlign: 'top', paddingTop: '4px' }}>
+                                    {items.length < ROWS ? '= 이하여백 =' : ''}
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                {/* 비고 - 상승하는 items table 밖, 항상 하단 고정 */}
+                <div style={{ border: `1.5px solid ${C}`, borderTop: 'none', padding: '4px 8px', height: '60px', flexShrink: 0 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: C }}>비고:</div>
+                    <textarea value={remarks} onChange={(e) => onRemarksChange(e.target.value)} placeholder="비고 사항을 입력하세요..." style={{ width: '100%', height: '35px', border: 'none', resize: 'none', background: 'transparent', fontSize: '11px', color: C, outline: 'none', padding: '0', fontFamily: 'inherit' }} className="tsm-remarks-textarea" />
                 </div>
 
                 <table style={{ ...tblStyle(C), borderTop: `1.8px solid ${C}` }}>
@@ -599,7 +588,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     {pdfStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
                     <div ref={printRef} className="tsm-print-container print-safe-area a4-paper-root landscape" style={{ width: '297mm', height: '210mm', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', transform: `scale(${scale})`, transformOrigin: 'top center', marginBottom: `calc(210mm * ${scale} - 210mm)`, display: 'flex', flexDirection: 'row', boxShadow: '0 12px 60px rgba(0,0,0,0.5)', padding: '10mm', backgroundColor: 'white' }}>
                         {/* 좌측 폼 (500px) */}
-                        <div style={{ width: '500px', flexShrink: 0, visibility: showRecipient ? 'visible' : 'hidden' }}><StatementForm color="blue" typeLabel="<공급받는자용>" remarks={remarks} onRemarksChange={setRemarks} /></div>
+                        <div style={{ width: '500px', flexShrink: 0, visibility: showRecipient ? 'visible' : 'hidden' }}>{StatementForm({ color: 'blue', typeLabel: '<공급받는자용>', remarks, onRemarksChange: setRemarks })}</div>
                         
                         {/* 중앙 절개선 (46px - 고정 픽셀) */}
                         <div style={{ width: '46px', flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'stretch', visibility: (showRecipient && showSupplier) ? 'visible' : 'hidden' }}>
@@ -614,7 +603,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                         </div>
 
                         {/* 우측 폼 (500px) */}
-                        <div style={{ width: '500px', flexShrink: 0, visibility: showSupplier ? 'visible' : 'hidden' }}><StatementForm color="red" typeLabel="<공급자용>" remarks={remarks} onRemarksChange={setRemarks} /></div>
+                        <div style={{ width: '500px', flexShrink: 0, visibility: showSupplier ? 'visible' : 'hidden' }}>{StatementForm({ color: 'red', typeLabel: '<공급자용>', remarks, onRemarksChange: setRemarks })}</div>
                     </div>
                 </Box>
                 <Box className="tsm-no-print" sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'center', gap: 3, borderTop: '1px solid #e2e8f0', bgcolor: '#f1f5f9' }}>
