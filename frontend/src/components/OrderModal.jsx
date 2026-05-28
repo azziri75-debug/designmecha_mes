@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Plus, Trash2, Search, FileText, Download, Upload, History } from 'lucide-react';
 import api from '../lib/api';
 import { cn, safeParseJSON } from '../lib/utils';
@@ -10,6 +10,52 @@ import { CurrencySelect } from '../components/CurrencySelect';
 
 
 const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }) => {
+    // ── Resizable Columns ───────────────────────────────────────
+    const COL_KEYS = ['name', 'spec', 'qty', 'price', 'amount', 'note'];
+    const DEFAULT_WIDTHS = { name: 260, spec: 120, qty: 80, price: 130, amount: 110, note: 120 };
+    const LS_KEY = 'order_modal_col_widths';
+
+    const [colWidths, setColWidths] = useState(() => {
+        try {
+            const saved = localStorage.getItem(LS_KEY);
+            if (saved) return JSON.parse(saved);
+        } catch {}
+        return DEFAULT_WIDTHS;
+    });
+    const resizingCol = useRef(null);
+    const startX = useRef(0);
+    const startWidth = useRef(0);
+
+    const onResizerMouseMove = useCallback((e) => {
+        if (!resizingCol.current) return;
+        const delta = e.clientX - startX.current;
+        const newW = Math.max(50, startWidth.current + delta);
+        setColWidths(prev => ({ ...prev, [resizingCol.current]: newW }));
+    }, []);
+
+    const onResizerMouseUp = useCallback(() => {
+        resizingCol.current = null;
+        document.removeEventListener('mousemove', onResizerMouseMove);
+        document.removeEventListener('mouseup', onResizerMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        setColWidths(prev => {
+            try { localStorage.setItem(LS_KEY, JSON.stringify(prev)); } catch {}
+            return prev;
+        });
+    }, [onResizerMouseMove]);
+
+    const onResizerMouseDown = (col, e) => {
+        e.preventDefault();
+        resizingCol.current = col;
+        startX.current = e.clientX;
+        startWidth.current = colWidths[col];
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onResizerMouseMove);
+        document.addEventListener('mouseup', onResizerMouseUp);
+    };
+
     // Select styling
     const selectStyles = {
         control: (base) => ({
@@ -506,24 +552,33 @@ const OrderModal = ({ isOpen, onClose, onSuccess, partners, orderToEdit = null }
                         </div>
 
                         <div className="bg-gray-900 rounded-lg overflow-x-auto border border-gray-700">
-                            <table className="w-full text-sm text-left text-gray-400" style={{minWidth: '800px'}}>
+                            <table className="w-full text-sm text-left text-gray-400" style={{ tableLayout: 'fixed', minWidth: '800px' }}>
                                 <colgroup>
-                                    <col style={{width: '260px', minWidth: '260px'}} />
-                                    <col style={{width: '120px', minWidth: '120px'}} />
-                                    <col style={{width: '80px', minWidth: '80px'}} />
-                                    <col style={{width: '130px', minWidth: '130px'}} />
-                                    <col style={{width: '110px', minWidth: '110px'}} />
-                                    <col style={{minWidth: '120px'}} />
-                                    <col style={{width: '40px'}} />
+                                    <col style={{ width: colWidths.name + 'px' }} />
+                                    <col style={{ width: colWidths.spec + 'px' }} />
+                                    <col style={{ width: colWidths.qty + 'px' }} />
+                                    <col style={{ width: colWidths.price + 'px' }} />
+                                    <col style={{ width: colWidths.amount + 'px' }} />
+                                    <col style={{ width: colWidths.note + 'px' }} />
+                                    <col style={{ width: '40px' }} />
                                 </colgroup>
                                 <thead className="bg-gray-800 text-xs uppercase font-medium">
                                     <tr>
-                                        <th className="px-4 py-2">품명</th>
-                                        <th className="px-4 py-2">규격</th>
-                                        <th className="px-4 py-2 text-center">수량</th>
-                                        <th className="px-4 py-2">단가</th>
-                                        <th className="px-4 py-2 text-right">금액</th>
-                                        <th className="px-4 py-2">비고</th>
+                                        {[['name','품명'],['spec','규격'],['qty','수량'],['price','단가'],['amount','금액'],['note','비고']].map(([key, label]) => (
+                                            <th key={key} className="px-4 py-2" style={{ position: 'relative', userSelect: 'none' }}>
+                                                {label}
+                                                <div
+                                                    onMouseDown={(e) => onResizerMouseDown(key, e)}
+                                                    style={{
+                                                        position: 'absolute', right: 0, top: 0, bottom: 0,
+                                                        width: '6px', cursor: 'col-resize',
+                                                        background: 'transparent',
+                                                        zIndex: 1,
+                                                    }}
+                                                    title="드래그하여 열 너비 조정"
+                                                />
+                                            </th>
+                                        ))}
                                         <th className="px-4 py-2 w-10"></th>
                                     </tr>
                                 </thead>
