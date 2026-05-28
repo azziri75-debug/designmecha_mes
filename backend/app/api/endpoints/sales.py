@@ -746,6 +746,31 @@ async def update_order(
     result = await db.execute(query)
     return result.scalars().first()
 
+@router.patch("/orders/{order_id}/status")
+async def patch_order_status(
+    order_id: int,
+    body: dict,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    """상태만 변경하는 경량 PATCH 엔드포인트 (e.g. 부분납품 → 납품완료 강제처리)."""
+    new_status = body.get("status")
+    if not new_status:
+        raise HTTPException(status_code=400, detail="status field is required")
+
+    allowed = {"DELIVERY_COMPLETED", "DELIVERED", "CONFIRMED", "PARTIALLY_DELIVERED", "CANCELED"}
+    if new_status not in allowed:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {new_status}")
+
+    result = await db.execute(select(SalesOrder).where(SalesOrder.id == order_id))
+    db_order = result.scalars().first()
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    db_order.status = new_status
+    await db.commit()
+    return {"id": order_id, "status": new_status}
+
+
 @router.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_order(
     order_id: int,

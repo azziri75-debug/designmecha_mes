@@ -129,6 +129,17 @@ const DeliveryPage = () => {
         }
     };
 
+    const handleForceComplete = async (ord) => {
+        const msg = `[${ord.order_no}] ${ord.partner?.name}\n\n부분납품 상태의 수주를 납품완료로 강제 처리합니다.\n잔여 수량이 남아있더라도 납품완료 처리됩니다.\n\n계속하시겠습니까?`;
+        if (!window.confirm(msg)) return;
+        try {
+            await api.patch(`/sales/orders/${ord.id}/status`, { status: 'DELIVERY_COMPLETED' });
+            fetchOrders();
+        } catch (err) {
+            alert('처리 실패: ' + (err?.response?.data?.detail || err.message));
+        }
+    };
+
     const handleSaveDeliveryEdit = async () => {
         if (!editHistoryModal) return;
         try {
@@ -324,7 +335,7 @@ const DeliveryPage = () => {
                                                     <span className="text-sm font-black text-blue-400">{formatCurrency(ord.total_delivered_amount || 0, ord.items?.[0]?.currency || 'KRW')}</span>
                                                 </td>
                                                 <td className="px-6 py-5">
-                                                    {/* 👇 상태 렌더링 배지 로직도 DELIVERY_COMPLETED를 인식하도록 수정 👇 */}
+                                                    {/* 상태 배지 */}
                                                     <div className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-black italic tracking-tighter ${
                                                         (ord.status === 'COMPLETED' || ord.status === 'DELIVERY_COMPLETED' || ord.status === 'DELIVERED') ? 'bg-green-500/10 text-green-500' :
                                                         (ord.status === 'PARTIALLY_DELIVERED' || ord.status === 'PRODUCTION_COMPLETED' || ord.status === 'CONFIRMED') ? 'bg-blue-500/10 text-blue-500' :
@@ -335,6 +346,16 @@ const DeliveryPage = () => {
                                                           ord.status === 'PRODUCTION_COMPLETED' ? '생산완료' :
                                                           ord.status === 'CONFIRMED' ? '확정' : ord.status}
                                                     </div>
+                                                    {/* 부분납품 → 납품완료 강제처리 버튼 */}
+                                                    {ord.status === 'PARTIALLY_DELIVERED' && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleForceComplete(ord); }}
+                                                            title="부분납품 상태를 납품완료로 강제 처리"
+                                                            className="mt-1 block px-2 py-0.5 bg-green-900/40 hover:bg-green-700/60 text-green-400 border border-green-800/60 rounded text-[9px] font-black tracking-tight transition-all active:scale-95"
+                                                        >
+                                                            ✓ 납품완료 처리
+                                                        </button>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-5 text-center">
                                                     <button
