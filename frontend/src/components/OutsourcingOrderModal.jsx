@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
@@ -70,6 +70,40 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     const [partners, setPartners] = useState([]);
     const [products, setProducts] = useState([]);
     const [salesOrders, setSalesOrders] = useState([]);
+
+    // ── Resizable Columns ─────────────────────────────────────
+    const OO_LS_KEY = 'outsourcing_order_modal_col_widths';
+    const OO_DEFAULT = { name: 220, pricingType: 120, qty: 150, price: 130, amount: 130 };
+    const [ooColW, setOoColW] = useState(() => {
+        try { const s = localStorage.getItem(OO_LS_KEY); if (s) return JSON.parse(s); } catch {}
+        return OO_DEFAULT;
+    });
+    const ooResizingCol = useRef(null);
+    const ooStartX = useRef(0);
+    const ooStartWidth = useRef(0);
+    const ooResizerStyle = { position: 'absolute', right: 0, top: 0, bottom: 0, width: '6px', cursor: 'col-resize', background: 'transparent', zIndex: 1 };
+    const ooMouseMove = useCallback((e) => {
+        if (!ooResizingCol.current) return;
+        setOoColW(prev => ({ ...prev, [ooResizingCol.current]: Math.max(50, ooStartWidth.current + e.clientX - ooStartX.current) }));
+    }, []);
+    const ooMouseUp = useCallback(() => {
+        ooResizingCol.current = null;
+        document.removeEventListener('mousemove', ooMouseMove);
+        document.removeEventListener('mouseup', ooMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        setOoColW(prev => { try { localStorage.setItem(OO_LS_KEY, JSON.stringify(prev)); } catch {} return prev; });
+    }, [ooMouseMove]);
+    const ooMouseDown = (col, e) => {
+        e.preventDefault();
+        ooResizingCol.current = col;
+        ooStartX.current = e.clientX;
+        ooStartWidth.current = ooColW[col];
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', ooMouseMove);
+        document.addEventListener('mouseup', ooMouseUp);
+    };
 
     const { user: currentUser } = useAuth();
     const [formData, setFormData] = useState({
@@ -524,17 +558,39 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     <ChevronRight size={18} /> 외주 발주 품목 상세
                 </Typography>
                 <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-                    <Table size="small">
+                    <Table size="small" sx={{ tableLayout: 'fixed' }}>
+                        <colgroup>
+                            <col style={{ width: '50px' }} />
+                            <col style={{ width: ooColW.name + 'px' }} />
+                            <col style={{ width: ooColW.pricingType + 'px' }} />
+                            <col style={{ width: ooColW.qty + 'px' }} />
+                            <col style={{ width: ooColW.price + 'px' }} />
+                            <col style={{ width: ooColW.amount + 'px' }} />
+                            <col style={{ width: '60px' }} />
+                        </colgroup>
                         <TableHead sx={{ bgcolor: '#f4f4f5' }}>
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 'bold', width: 50, textAlign: 'center' }}>No</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>품목명 / 규격</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 120, textAlign: 'center' }}>단가기준</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 150, textAlign: 'center' }}>
-                                    {formData.items?.[0]?.pricing_type === 'WEIGHT' ? '총중량(kg)' : '총수량(EA)'}
+                                <TableCell sx={{ fontWeight: 'bold', position: 'relative', userSelect: 'none' }}>
+                                    품목명 / 규격
+                                    <div onMouseDown={(e) => ooMouseDown('name', e)} style={ooResizerStyle} title="드래그하여 열 너비 조정" />
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>단가</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 130, textAlign: 'right' }}>금액</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', position: 'relative', userSelect: 'none' }}>
+                                    단가기준
+                                    <div onMouseDown={(e) => ooMouseDown('pricingType', e)} style={ooResizerStyle} title="드래그하여 열 너비 조정" />
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', position: 'relative', userSelect: 'none' }}>
+                                    {formData.items?.[0]?.pricing_type === 'WEIGHT' ? '총중량(kg)' : '총수량(EA)'}
+                                    <div onMouseDown={(e) => ooMouseDown('qty', e)} style={ooResizerStyle} title="드래그하여 열 너비 조정" />
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', position: 'relative', userSelect: 'none' }}>
+                                    단가
+                                    <div onMouseDown={(e) => ooMouseDown('price', e)} style={ooResizerStyle} title="드래그하여 열 너비 조정" />
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', position: 'relative', userSelect: 'none' }}>
+                                    금액
+                                    <div onMouseDown={(e) => ooMouseDown('amount', e)} style={ooResizerStyle} title="드래그하여 열 너비 조정" />
+                                </TableCell>
                                 <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
                             </TableRow>
                         </TableHead>

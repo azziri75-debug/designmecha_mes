@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
@@ -164,6 +164,40 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const [vendorTel, setVendorTel] = useState('');
     const [vendorFax, setVendorFax] = useState('');
     const printRef = React.useRef(null);
+
+    // ── Resizable Columns ─────────────────────────────────────
+    const PO_LS_KEY = 'purchase_order_modal_col_widths';
+    const PO_DEFAULT = { itemName: 200, spec: 150, material: 100, orderSize: 120, qty: 90, price: 110, amount: 110 };
+    const [colW, setColW] = useState(() => {
+        try { const s = localStorage.getItem(PO_LS_KEY); if (s) return JSON.parse(s); } catch {}
+        return PO_DEFAULT;
+    });
+    const poResizingCol = useRef(null);
+    const poStartX = useRef(0);
+    const poStartWidth = useRef(0);
+    const poResizerStyle = { position: 'absolute', right: 0, top: 0, bottom: 0, width: '6px', cursor: 'col-resize', background: 'transparent', zIndex: 1 };
+    const poMouseMove = useCallback((e) => {
+        if (!poResizingCol.current) return;
+        setColW(prev => ({ ...prev, [poResizingCol.current]: Math.max(50, poStartWidth.current + e.clientX - poStartX.current) }));
+    }, []);
+    const poMouseUp = useCallback(() => {
+        poResizingCol.current = null;
+        document.removeEventListener('mousemove', poMouseMove);
+        document.removeEventListener('mouseup', poMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        setColW(prev => { try { localStorage.setItem(PO_LS_KEY, JSON.stringify(prev)); } catch {} return prev; });
+    }, [poMouseMove]);
+    const poMouseDown = (col, e) => {
+        e.preventDefault();
+        poResizingCol.current = col;
+        poStartX.current = e.clientX;
+        poStartWidth.current = colW[col];
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', poMouseMove);
+        document.addEventListener('mouseup', poMouseUp);
+    };
 
     useEffect(() => {
         if (purchaseType) setPurchaseTypeState(purchaseType);
@@ -739,29 +773,58 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     <ChevronRight size={18} /> 발주 품목 상세{isImport ? ' (USD $)' : ''}
                 </Typography>
                 <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-                    <Table size="small">
+                    <Table size="small" sx={{ tableLayout: 'fixed' }}>
+                        <colgroup>
+                            <col style={{ width: '50px' }} />
+                            <col style={{ width: colW.itemName + 'px' }} />
+                            {purchaseTypeState === 'CONSUMABLE' ? (
+                                <col style={{ width: colW.spec + 'px' }} />
+                            ) : (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') ? (
+                                <>
+                                    <col style={{ width: colW.material + 'px' }} />
+                                    <col style={{ width: colW.orderSize + 'px' }} />
+                                </>
+                            ) : null}
+                            <col style={{ width: colW.qty + 'px' }} />
+                            <col style={{ width: colW.price + 'px' }} />
+                            <col style={{ width: colW.amount + 'px' }} />
+                            <col style={{ width: '60px' }} />
+                        </colgroup>
                         <TableHead sx={{ bgcolor: '#f4f4f5' }}>
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 'bold', width: 50, textAlign: 'center' }}>No</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>
+                                <TableCell sx={{ fontWeight: 'bold', position: 'relative', userSelect: 'none' }}>
                                     품목명
+                                    <div onMouseDown={(e) => poMouseDown('itemName', e)} style={poResizerStyle} title="드래그하여 열 너비 조정" />
                                 </TableCell>
                                 {purchaseTypeState === 'CONSUMABLE' ? (
-                                    <TableCell sx={{ fontWeight: 'bold', width: 150 }}>규격</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', position: 'relative', userSelect: 'none' }}>
+                                        규격
+                                        <div onMouseDown={(e) => poMouseDown('spec', e)} style={poResizerStyle} title="드래그하여 열 너비 조정" />
+                                    </TableCell>
                                 ) : (purchaseTypeState === 'PART' || purchaseTypeState === 'RAW_MATERIAL') ? (
                                     <>
-                                        <TableCell sx={{ fontWeight: 'bold', width: 100 }}>재질</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>주문사이즈</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold', position: 'relative', userSelect: 'none' }}>
+                                            재질
+                                            <div onMouseDown={(e) => poMouseDown('material', e)} style={poResizerStyle} title="드래그하여 열 너비 조정" />
+                                        </TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold', position: 'relative', userSelect: 'none' }}>
+                                            주문사이즈
+                                            <div onMouseDown={(e) => poMouseDown('orderSize', e)} style={poResizerStyle} title="드래그하여 열 너비 조정" />
+                                        </TableCell>
                                     </>
                                 ) : null}
-                                <TableCell sx={{ fontWeight: 'bold', width: 90, textAlign: 'center' }}>
+                                <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', position: 'relative', userSelect: 'none' }}>
                                     {formData.items?.[0]?.pricing_type === 'WEIGHT' ? '총중량(kg)' : '총수량(EA)'}
+                                    <div onMouseDown={(e) => poMouseDown('qty', e)} style={poResizerStyle} title="드래그하여 열 너비 조정" />
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>
+                                <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', position: 'relative', userSelect: 'none' }}>
                                     {isImport ? 'Unit Price (USD)' : '단가'}
+                                    <div onMouseDown={(e) => poMouseDown('price', e)} style={poResizerStyle} title="드래그하여 열 너비 조정" />
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', width: 110, textAlign: 'right' }}>
+                                <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', position: 'relative', userSelect: 'none' }}>
                                     {isImport ? 'Amount (USD)' : '금액'}
+                                    <div onMouseDown={(e) => poMouseDown('amount', e)} style={poResizerStyle} title="드래그하여 열 너비 조정" />
                                 </TableCell>
                                 <TableCell align="center" sx={{ width: 60 }}>삭제</TableCell>
                             </TableRow>
