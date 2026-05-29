@@ -210,7 +210,15 @@ const SettlementPage = () => {
                     { key: "quantity", label: "수량", align: "right", width: 80 },
                     { key: "order_amount", label: "수주금액", align: "right", width: 140,
                       renderCell: (val) => val != null && val > 0 ? fmtWon(val) : '-' },
-                    { key: "process_cost", label: "총 공정비용", align: "right", format: fmtWon, width: 140 },
+                    { key: "process_cost", label: "총 공정비용", align: "right", width: 140,
+                      renderCell: (val, row) => {
+                          const overCost = row.order_amount > 0 && (val || 0) > row.order_amount;
+                          return (
+                              <span className={overCost ? 'text-red-400 font-black' : ''}>
+                                  {fmtWon(val)}
+                              </span>
+                          );
+                      }},
                 ];
             case "defects":
                 return [
