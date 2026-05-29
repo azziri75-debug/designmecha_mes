@@ -334,18 +334,43 @@ async def get_production_plan_processes(
     plan_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """생산계획 공정별 공정비용 상세 조회 (더블클릭 팝업용)"""
+    """생산계획 공정별 공정비용 상세 조회 (더블클릭 팝업용)
+    completed_quantity는 DB 컬럼이 아니므로 WorkLogItem.good_quantity 합계로 계산.
+    """
+    from app.models.production import WorkLogItem
+
+    # 공정별 작업실적 합계 서브쿼리
+    completed_subq = (
+        select(
+            WorkLogItem.plan_item_id,
+            func.sum(WorkLogItem.good_quantity).label("completed_qty")
+        )
+        .group_by(WorkLogItem.plan_item_id)
+        .subquery()
+    )
+
     result = await db.execute(
         select(
             ProductionPlanItem.process_name,
+            ProductionPlanItem.course_type,
+            ProductionPlanItem.status,
             ProductionPlanItem.quantity,
-            ProductionPlanItem.completed_quantity,
             ProductionPlanItem.cost,
+            func.coalesce(completed_subq.c.completed_qty, 0).label("completed_quantity"),
         )
+        .outerjoin(completed_subq, completed_subq.c.plan_item_id == ProductionPlanItem.id)
         .where(ProductionPlanItem.plan_id == plan_id)
-        .order_by(ProductionPlanItem.id)
+        .order_by(ProductionPlanItem.sequence)
     )
-    return [dict(r._mapping) for r in result]
+
+    rows = []
+    for r in result:
+        row = dict(r._mapping)
+        # PURCHASE/OUTSOURCING 완료 공정은 수량 = 완료수량으로 처리
+        if row.get("course_type") in ("PURCHASE", "OUTSOURCING") and str(row.get("status")) in ("COMPLETED", "ProductionStatus.COMPLETED"):
+            row["completed_quantity"] = row["quantity"]
+        rows.append(row)
+    return rows
 
 @router.get("/defects")
 async def get_settlement_defects(
