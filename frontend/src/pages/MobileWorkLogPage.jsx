@@ -893,7 +893,7 @@ const MobileWorkLogPage = () => {
                                 {loading && allPlans.length === 0 ? (
                                     <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress size={24} /></Box>
                                 ) : (
-                                    <Stack spacing={1.5}>
+                                    <Stack spacing={0.8}>
                                         {filteredPlans.map(plan => {
                                             const orderNo = plan.order?.order_no || plan.stock_production?.production_no || '-';
                                             
@@ -901,10 +901,11 @@ const MobileWorkLogPage = () => {
 
                                             return (
                                                 <Card key={plan.id} sx={{ borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedPlan(plan)}>
-                                                    <CardContent sx={{ p: '16px !important' }}>
+                                                    <CardContent sx={{ p: '10px !important' }}>
                                                         <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                             <Box sx={{ flex: 1 }}>
-                                                                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
+                                                                {/* 수주번호 + 배지 */}
+                                                                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.3 }}>
                                                                     {plan.status === 'COMPLETED' ? (
                                                                         <Chip label="생산완료" size="small" sx={{ height: 18, fontSize: '10px', bgcolor: '#64748b', color: '#fff', fontWeight: 'bold' }} />
                                                                     ) : plan.order?.order_no ? (
@@ -912,39 +913,46 @@ const MobileWorkLogPage = () => {
                                                                     ) : (
                                                                         <Chip label="재고" size="small" sx={{ height: 18, fontSize: '10px', bgcolor: '#10b981', color: '#fff', fontWeight: 'bold' }} />
                                                                     )}
-                                                                    <Typography variant="caption" color="primary" fontWeight="bold">
+                                                                    {/* 수주번호: 기존 제품명 크기(1rem) */}
+                                                                    <Typography color="primary" fontWeight="bold" sx={{ fontSize: '1rem', lineHeight: 1.2 }}>
                                                                         {orderNo}
                                                                     </Typography>
                                                                 </Stack>
-                                                                <Typography variant="subtitle1" fontWeight="bold">
+                                                                {/* 제품명: 크기 업 */}
+                                                                <Typography fontWeight="bold" sx={{ fontSize: '1.15rem', lineHeight: 1.25, mb: 0.2 }}>
                                                                     {productNameStr}
                                                                 </Typography>
+                                                                {/* 규격: 제품명과 동일 크기 */}
                                                                 {plan.items?.[0]?.product?.specification && (
-                                                                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: -0.5, mb: 0.5 }}>
+                                                                    <Typography color="textSecondary" sx={{ display: 'block', fontSize: '1.15rem', lineHeight: 1.25, mb: 0.2 }}>
                                                                         규격: {plan.items[0].product.specification}
                                                                     </Typography>
                                                                 )}
+                                                                {/* 비고 */}
                                                                 {(plan.order?.note || plan.stock_production?.note) && (
-                                                                    <Typography variant="caption" sx={{ display: 'block', mt: -0.5, mb: 0.5, color: '#d97706', fontWeight: 'bold' }}>
+                                                                    <Typography sx={{ display: 'block', fontSize: '0.75rem', lineHeight: 1.3, mb: 0.2, color: '#d97706', fontWeight: 'bold' }}>
                                                                         비고: {plan.order?.note || plan.stock_production?.note}
                                                                     </Typography>
                                                                 )}
-                                                                <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
+                                                                {/* 고객사: 제품명과 동일 크기 */}
+                                                                <Box sx={{ mt: 0.3, display: 'flex', flexDirection: 'column', gap: 0.2 }}>
+                                                                    <Typography color="textSecondary" sx={{ fontWeight: 'bold', fontSize: '1.15rem', lineHeight: 1.25 }}>
                                                                         고객사: {plan.order?.partner?.name || plan.stock_production?.partner?.name || '-'}
                                                                     </Typography>
+                                                                    {/* 수주일·납기: 기존 제품명 크기(1rem) */}
                                                                     {plan.order?.order_date && (
                                                                         <Box sx={{ display: 'flex', gap: 1 }}>
-                                                                            <Typography variant="caption" color="textSecondary">
+                                                                            <Typography color="textSecondary" sx={{ fontSize: '1rem', lineHeight: 1.3 }}>
                                                                                 수주일: {plan.order.order_date}
                                                                             </Typography>
-                                                                            <Typography variant="caption" color="primary" sx={{ fontWeight: 'bold' }}>
+                                                                            <Typography color="primary" sx={{ fontWeight: 'bold', fontSize: '1rem', lineHeight: 1.3 }}>
                                                                                 납기: {plan.order.delivery_date || '-'}
                                                                             </Typography>
                                                                         </Box>
                                                                     )}
                                                                 </Box>
-                                                                <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                                                                {/* 공정수: 기존 caption 크기 유지 */}
+                                                                <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
                                                                     {plan.items?.length || 0}개 공정
                                                                 </Typography>
                                                             </Box>
@@ -952,6 +960,7 @@ const MobileWorkLogPage = () => {
                                                         </Stack>
                                                     </CardContent>
                                                 </Card>
+
                                             );
                                         })}
                                     </Stack>
