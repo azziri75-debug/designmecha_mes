@@ -284,32 +284,29 @@ async def get_settlement_production(
     )
 
     query = select(
-        # 업체명: 수주생산이면 수주처, 재고생산이면 재고요청 고객사
-        func.coalesce(
-            Partner.name,
-            StockPartner.c.name
-        ).label("partner_name"),
-        # 수주일: 수주생산이면 수주일, 재고생산이면 재고생산 요청일
-        func.coalesce(
-            SalesOrder.order_date,
-            StockProduction.request_date
-        ).label("order_date"),
-        # 생산완료일: 없으면 최근수정일(updated_at)로 대체
+        ProductionPlan.id.label("plan_id"),
+        func.coalesce(Partner.name, StockPartner.c.name).label("partner_name"),
+        func.coalesce(SalesOrder.order_date, StockProduction.request_date).label("order_date"),
         effective_end_col.label("end_date"),
         Product.name.label("product_name"),
         Product.specification,
         func.max(ProductionPlanItem.quantity).label("quantity"),
+        # 수주합계금액: 수주품목의 수량 × 단가 (재고생산은 NULL)
+        func.max(SalesOrderItem.quantity * SalesOrderItem.unit_price).label("order_amount"),
         func.sum(ProductionPlanItem.cost).label("process_cost")
     ).select_from(ProductionPlan)\
      .join(ProductionPlanItem, ProductionPlanItem.plan_id == ProductionPlan.id)\
      .outerjoin(SalesOrder, ProductionPlan.order_id == SalesOrder.id)\
      .outerjoin(Partner, SalesOrder.partner_id == Partner.id)\
+     .outerjoin(SalesOrderItem, and_(
+         SalesOrderItem.order_id == SalesOrder.id,
+         SalesOrderItem.product_id == ProductionPlanItem.product_id
+     ))\
      .outerjoin(StockProduction, ProductionPlan.stock_production_id == StockProduction.id)\
      .outerjoin(StockPartner, StockProduction.partner_id == StockPartner.c.id)\
      .join(Product, ProductionPlanItem.product_id == Product.id)\
      .where(
          ProductionPlan.status == ProductionStatus.COMPLETED,
-         # 완료일 OR 최근수정일 중 하나가 해당 월에 속하면 포함
          get_month_filter(effective_end_col, year, month)
      )\
      .group_by(
@@ -329,6 +326,25 @@ async def get_settlement_production(
         query = query.where(and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id)))
 
     result = await db.execute(query)
+    return [dict(r._mapping) for r in result]
+
+
+@router.get("/production/{plan_id}/processes")
+async def get_production_plan_processes(
+    plan_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """생산계획 공정별 공정비용 상세 조회 (더블클릭 팝업용)"""
+    result = await db.execute(
+        select(
+            ProductionPlanItem.process_name,
+            ProductionPlanItem.quantity,
+            ProductionPlanItem.completed_quantity,
+            ProductionPlanItem.cost,
+        )
+        .where(ProductionPlanItem.plan_id == plan_id)
+        .order_by(ProductionPlanItem.id)
+    )
     return [dict(r._mapping) for r in result]
 
 @router.get("/defects")

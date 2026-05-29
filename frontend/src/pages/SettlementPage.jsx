@@ -24,6 +24,8 @@ const SettlementPage = () => {
     const [activeTab, setActiveTab] = useState("orders");
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
+    const [prodDetail, setProdDetail] = useState(null); // 생산내역 공정별 상세모달
+    const [prodDetailLoading, setProdDetailLoading] = useState(false);
     const [groups, setGroups] = useState([]);
     const [exchangeRate, setExchangeRate] = useState(1350); // 1 USD = N KRW
     const [rateLoading, setRateLoading] = useState(true);
@@ -125,6 +127,21 @@ const SettlementPage = () => {
 
     const fmtWon = (val) => new Intl.NumberFormat('ko-KR').format(val || 0) + '원';
     const fmtNum = (val) => new Intl.NumberFormat('ko-KR').format(val || 0);
+
+    const fetchProdDetail = async (item) => {
+        if (!item.plan_id) return;
+        setProdDetailLoading(true);
+        setProdDetail({ item, processes: [] });
+        try {
+            const res = await api.get(`/settlement/production/${item.plan_id}/processes`);
+            setProdDetail({ item, processes: res.data || [] });
+        } catch (e) {
+            console.error(e);
+            setProdDetail(null);
+        } finally {
+            setProdDetailLoading(false);
+        }
+    };
     // 통화 인식 포맷 (currency 필드 필요)
     const fmtWithCurrency = (val, row, key) => {
         const cur = row?.currency || 'KRW';
@@ -191,6 +208,8 @@ const SettlementPage = () => {
                     { key: "product_name", label: "품명", width: 180 },
                     { key: "specification", label: "규격", width: 150 },
                     { key: "quantity", label: "수량", align: "right", width: 80 },
+                    { key: "order_amount", label: "수주금액", align: "right", width: 140,
+                      renderCell: (val) => val != null && val > 0 ? fmtWon(val) : '-' },
                     { key: "process_cost", label: "총 공정비용", align: "right", format: fmtWon, width: 140 },
                 ];
             case "defects":
@@ -228,7 +247,7 @@ const SettlementPage = () => {
             orders: "total_price",
             sales: "total_price",
             purchases: "total_price",
-            production: "total_cost",
+            production: "process_cost",
             defects: "amount"
         }[activeTab];
         if (!sumKey) return null;
@@ -355,8 +374,58 @@ const SettlementPage = () => {
     const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() - 2 + i);
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
+    const totalProcCost = prodDetail?.processes.reduce((s, p) => s + (p.cost || 0), 0) || 0;
+
     return (
         <div className="space-y-6">
+            {/* 생산내역 공정별 상세 모달 */}
+            {prodDetail && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setProdDetail(null)}>
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-black text-white mb-1">공정별 비용 상세</h3>
+                        <p className="text-sm text-gray-400 mb-4">
+                            {prodDetail.item.product_name}
+                            {prodDetail.item.specification && <span className="text-gray-600 ml-1">/ {prodDetail.item.specification}</span>}
+                            <span className="text-blue-400 ml-2">{prodDetail.item.partner_name}</span>
+                        </p>
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="text-left text-gray-500 border-b border-gray-700 text-xs uppercase tracking-wider">
+                                    <th className="pb-2 pr-4">공정명</th>
+                                    <th className="pb-2 text-right pr-4">목표수량</th>
+                                    <th className="pb-2 text-right pr-4">실적수량</th>
+                                    <th className="pb-2 text-right">공정비용</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-800">
+                                {prodDetail.processes.map((p, i) => (
+                                    <tr key={i} className="hover:bg-gray-800/30">
+                                        <td className="py-2.5 pr-4 text-gray-300 font-medium">{p.process_name || '-'}</td>
+                                        <td className="py-2.5 pr-4 text-right text-gray-400">{p.quantity?.toLocaleString()}</td>
+                                        <td className="py-2.5 pr-4 text-right text-green-400">{p.completed_quantity?.toLocaleString()}</td>
+                                        <td className="py-2.5 text-right font-bold text-blue-400">{formatCurrency(p.cost, 'KRW')}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr className="border-t-2 border-gray-600">
+                                    <td colSpan={3} className="pt-3 font-bold text-white text-right pr-4">총 공정비용</td>
+                                    <td className="pt-3 text-right font-black text-white text-lg">{formatCurrency(totalProcCost, 'KRW')}</td>
+                                </tr>
+                                {prodDetail.item.order_amount > 0 && (
+                                    <tr>
+                                        <td colSpan={3} className="pt-1 text-gray-400 text-sm text-right pr-4">수주금액</td>
+                                        <td className="pt-1 text-right text-gray-300 font-bold">{formatCurrency(prodDetail.item.order_amount, 'KRW')}</td>
+                                    </tr>
+                                )}
+                            </tfoot>
+                        </table>
+                        <div className="mt-5 text-right">
+                            <button onClick={() => setProdDetail(null)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Filters */}
             <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 flex flex-wrap items-end gap-6 shadow-sm">
                 <div className="space-y-1.5">
@@ -612,7 +681,12 @@ const SettlementPage = () => {
                             ))
                         ) : data.length > 0 ? (
                             data.map((item, idx) => (
-                                <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-700 text-gray-300">
+                                <tr
+                                    key={idx}
+                                    className={`hover:bg-gray-800/40 transition-colors border-b border-gray-700 text-gray-300 ${activeTab === 'production' ? 'cursor-pointer select-none' : ''}`}
+                                    onDoubleClick={activeTab === 'production' ? () => fetchProdDetail(item) : undefined}
+                                    title={activeTab === 'production' ? '더블클릭하면 공정별 비용을 확인할 수 있습니다' : undefined}
+                                >
                                     {columns.map(col => {
                                         if (col.key === 'no') {
                                             return <td key={col.key} className="px-4 py-3 text-center text-gray-500 font-mono text-xs">{idx + 1}</td>;
