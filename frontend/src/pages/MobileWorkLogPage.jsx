@@ -725,13 +725,8 @@ const MobileWorkLogPage = () => {
         const isProdCompleted = p.status === 'COMPLETED';
 
         if (statusFilter === 'IN_PROGRESS') {
-            if (isProdCompleted || isDelivered) {
-                // 생산/납품 완료여도 실적 미달 공정이 있으면 표시 (실적 등록 가능하도록)
-                const hasUnfinishedItem = p.items?.some(
-                    it => (it.completed_quantity || 0) < (it.quantity || 0)
-                );
-                if (!hasUnfinishedItem) return false;
-            }
+            // plan.status가 COMPLETED이거나 수주가 납품완료이면 생산중 탭에서 제외
+            if (isProdCompleted || isDelivered) return false;
         } else if (statusFilter === 'COMPLETED') {
             if (!isProdCompleted || isDelivered) return false;
         } else if (statusFilter === 'DELIVERED') {
