@@ -285,6 +285,7 @@ async def get_settlement_production(
 
     query = select(
         ProductionPlan.id.label("plan_id"),
+        Product.id.label("product_id"),
         func.coalesce(Partner.name, StockPartner.c.name).label("partner_name"),
         func.coalesce(SalesOrder.order_date, StockProduction.request_date).label("order_date"),
         effective_end_col.label("end_date"),
@@ -311,6 +312,7 @@ async def get_settlement_production(
      )\
      .group_by(
          ProductionPlan.id,
+         Product.id,
          Partner.name,
          StockPartner.c.name,
          SalesOrder.order_date,
@@ -332,10 +334,12 @@ async def get_settlement_production(
 @router.get("/production/{plan_id}/processes")
 async def get_production_plan_processes(
     plan_id: int,
+    product_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
     """생산계획 공정별 공정비용 상세 조회 (더블클릭 팝업용)
-    completed_quantity는 DB 컬럼이 아니므로 WorkLogItem.good_quantity 합계로 계산.
+    - product_id 전달 시 해당 품목의 공정만 조회 (다품목 수주 지원)
+    - completed_quantity는 DB 컬럼이 아니므로 WorkLogItem.good_quantity 합계로 계산.
     """
     from app.models.production import WorkLogItem
 
@@ -349,7 +353,7 @@ async def get_production_plan_processes(
         .subquery()
     )
 
-    result = await db.execute(
+    stmt = (
         select(
             ProductionPlanItem.process_name,
             ProductionPlanItem.course_type,
@@ -362,6 +366,12 @@ async def get_production_plan_processes(
         .where(ProductionPlanItem.plan_id == plan_id)
         .order_by(ProductionPlanItem.sequence)
     )
+
+    # 품목 필터: 다품목 수주에서 해당 품목 공정만 조회
+    if product_id is not None:
+        stmt = stmt.where(ProductionPlanItem.product_id == product_id)
+
+    result = await db.execute(stmt)
 
     rows = []
     for r in result:

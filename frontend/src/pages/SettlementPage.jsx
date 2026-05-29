@@ -133,7 +133,8 @@ const SettlementPage = () => {
         setProdDetailLoading(true);
         setProdDetail({ item, processes: [] });
         try {
-            const res = await api.get(`/settlement/production/${item.plan_id}/processes`);
+            const params = item.product_id ? { product_id: item.product_id } : {};
+            const res = await api.get(`/settlement/production/${item.plan_id}/processes`, { params });
             setProdDetail({ item, processes: res.data || [] });
         } catch (e) {
             console.error(e);
