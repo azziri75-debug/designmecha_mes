@@ -2177,7 +2177,7 @@ async def get_worker_performance_details(
 @router.patch("/work-log-items/{item_id}", response_model=schemas.WorkLogItem)
 async def update_work_log_item(
     item_id: int,
-    item_in: schemas.WorkLogItemBase, # Using Base as it contains all editable fields
+    item_in: schemas.WorkLogItemPatch,  # 모든 필드 선택적 - plan_item_id 불필요
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """

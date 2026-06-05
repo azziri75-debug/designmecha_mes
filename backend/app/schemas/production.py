@@ -157,6 +157,16 @@ class WorkLogItemBase(BaseModel):
 class WorkLogItemCreate(WorkLogItemBase):
     pass
 
+class WorkLogItemPatch(BaseModel):
+    """PATCH 전용: 모든 필드 선택적 (공정단가/양품수량 수정 시 사용)"""
+    good_quantity: Optional[int] = None
+    bad_quantity: Optional[int] = None
+    unit_price: Optional[float] = None
+    worker_id: Optional[int] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    note: Optional[str] = None
+
 class WorkLogSimple(BaseModel):
     id: int
     work_date: date
