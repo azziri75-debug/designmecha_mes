@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Collapse, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, KeyboardArrowDown, KeyboardArrowUp, AttachFile as AttachFileIcon, TrendingUp as PerformanceIcon, List as ListIcon, Save as SaveIcon } from '@mui/icons-material';
+import { Download as DownloadIcon } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
 import api from '../lib/api';
 import useSSE from '../hooks/useSSE';
 import { cn, safeParseJSON } from '../lib/utils';
@@ -171,6 +174,79 @@ const WorkLogPage = () => {
         fetchPerformanceData();
     };
 
+    const handleDownloadExcel = async () => {
+        if (performanceData.length === 0) {
+            alert('다운로드할 실적 데이터가 없습니다.');
+            return;
+        }
+        try {
+            // 모든 작업자 상세 실적을 병렬 조회
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            const qs = params.toString();
+
+            const allDetails = [];
+            const results = await Promise.all(
+                performanceData.map(w =>
+                    api.get(`/production/performance/workers/${w.worker_id}/details${qs ? '?' + qs : ''}`)
+                        .then(res => res.data.map(item => ({ ...item, _worker_name: w.worker_name })))
+                )
+            );
+            results.forEach(rows => allDetails.push(...rows));
+
+            const headers = [
+                '작업일자', '작업자', '수주/재고번호', '고객사',
+                '수주일', '납기일', '품명', '규격', '공정명',
+                '양품수량', '공정단가', '합계금액'
+            ];
+
+            const body = allDetails.map(item => {
+                const plan = item.plan_item?.plan;
+                let orderNo = '-';
+                if (plan?.order?.order_no) orderNo = `[수주] ${plan.order.order_no}`;
+                else if (plan?.stock_production?.production_no) orderNo = `[재고] ${plan.stock_production.production_no}`;
+                const partner = plan?.order?.partner?.name || plan?.stock_production?.partner?.name || '-';
+                const qty = item.good_quantity || 0;
+                const price = item.unit_price || 0;
+                return [
+                    item.work_log?.work_date || '-',
+                    item._worker_name || '-',
+                    orderNo,
+                    partner,
+                    plan?.order?.order_date || (plan?.stock_production ? '재고생산' : '-'),
+                    plan?.order?.delivery_date || '-',
+                    item.plan_item?.product?.name || '-',
+                    item.plan_item?.product?.specification || '-',
+                    item.plan_item?.process_name || '-',
+                    qty,
+                    price,
+                    qty * price,
+                ];
+            });
+
+            // 합계 행
+            const totalAmt = body.reduce((s, r) => s + (r[11] || 0), 0);
+            body.push(['합계', '', '', '', '', '', '', '', '', '', '', totalAmt]);
+
+            const dateLabel = startDate && endDate
+                ? `${startDate}~${endDate}`
+                : format(new Date(), 'yyyy-MM');
+            const title = [`실적관리 (${dateLabel})`];
+
+            const ws = XLSX.utils.aoa_to_sheet([title, [], headers, ...body]);
+            ws['!cols'] = [110,80,130,110,90,90,150,130,110,70,90,110].map(w => ({ wch: Math.round(w / 7) }));
+            ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '실적관리');
+            XLSX.writeFile(wb, `실적관리_${dateLabel.replace(/[~:]/g, '_')}.xlsx`);
+        } catch (e) {
+            console.error(e);
+            alert('엑셀 다운로드 실패: ' + (e?.message || ''));
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center no-print">
@@ -314,12 +390,23 @@ const WorkLogPage = () => {
                             )}
                         </ResizableTable>
                     ) : (
-                        <PerformanceManagementList
-                            data={performanceData}
-                            onUpdate={() => { fetchPerformanceData(); fetchWorkLogs(); }}
-                            startDate={startDate}
-                            endDate={endDate}
-                        />
+                        <>
+                            <div className="flex justify-end mb-3">
+                                <button
+                                    onClick={handleDownloadExcel}
+                                    className="flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors shadow"
+                                >
+                                    <DownloadIcon size={15} />
+                                    엑셀 다운로드
+                                </button>
+                            </div>
+                            <PerformanceManagementList
+                                data={performanceData}
+                                onUpdate={() => { fetchPerformanceData(); fetchWorkLogs(); }}
+                                startDate={startDate}
+                                endDate={endDate}
+                            />
+                        </>
                     )}
                 </div>
             </Card>
