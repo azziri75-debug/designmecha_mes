@@ -2174,7 +2174,7 @@ async def get_worker_performance_details(
     result = await db.execute(stmt.order_by(WorkLog.work_date.desc(), WorkLogItem.id.desc()))
     return result.scalars().all()
 
-@router.patch("/work-log-items/{item_id}", response_model=schemas.WorkLogItem)
+@router.patch("/work-log-items/{item_id}")
 async def update_work_log_item(
     item_id: int,
     item_in: schemas.WorkLogItemPatch,  # 모든 필드 선택적 - plan_item_id 불필요
@@ -2228,19 +2228,5 @@ async def update_work_log_item(
                 )
         await db.commit()
 
-    # Re-fetch for full schema
-    result = await db.execute(
-        select(WorkLogItem)
-        .options(
-            selectinload(WorkLogItem.work_log),
-            selectinload(WorkLogItem.plan_item).options(
-                selectinload(ProductionPlanItem.product),
-                selectinload(ProductionPlanItem.plan).options(
-                    selectinload(ProductionPlan.order),
-                    selectinload(ProductionPlan.stock_production)
-                )
-            )
-        )
-        .where(WorkLogItem.id == item_id)
-    )
-    return result.scalars().first()
+    # 단순 성공 응답 반환 (response_model 직렬화 오류 방지)
+    return {"ok": True, "id": item.id, "good_quantity": item.good_quantity, "unit_price": item.unit_price}
