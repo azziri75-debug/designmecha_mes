@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 import { Card, Button, Typography, TextField, Grid, Divider, CircularProgress, IconButton, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import { Search, Plus, Printer, FileText, CheckCircle2, Clock, AlertCircle, TrendingUp, Package, Truck, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 import ResizableTable from '../components/ResizableTable';
@@ -109,6 +111,81 @@ const DeliveryPage = () => {
         fetchGroups();
     }, [selectedMajorGroupId, dateRange.start, dateRange.end, dateType, statusFilter]);
 
+    const handleDownloadExcel = () => {
+        if (displayedOrders.length === 0) {
+            alert('다운로드할 데이터가 없습니다.');
+            return;
+        }
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const periodLabel = dateRange.start && dateRange.end
+            ? `${dateRange.start} ~ ${dateRange.end}`
+            : '전체 기간';
+        const fileName = `납품관리-${periodLabel.replace(/[~:\s]/g, '_')}-${today.replace(/-/g, '')}.xlsx`;
+
+        const header1 = ['납품관리 현황'];
+        const header2 = [`기간: ${periodLabel}`, `작성일: ${today}`];
+        const header3 = ['No', '고객사', '수주번호', '수주일', '납품예정일', '실납품일',
+            '품명', '규격', '수주수량', '단가', '수주금액',
+            '기납품수량', '잔량', '상태', '비고'];
+
+        const statusLabel = (s) =>
+            (s === 'DELIVERY_COMPLETED' || s === 'DELIVERED') ? '납품완료' :
+            s === 'PARTIALLY_DELIVERED' ? '부분납품' :
+            s === 'PRODUCTION_COMPLETED' ? '생산완료' :
+            s === 'CONFIRMED' ? '확정' : (s || '-');
+
+        const body = [];
+        let no = 1;
+        for (const ord of displayedOrders) {
+            const sLabel = statusLabel(ord.status);
+            const latestDH = (ord.delivery_histories || []).reduce(
+                (a, b) => ((a.delivery_date || '') > (b.delivery_date || '') ? a : b), {}
+            );
+            const actualDate = latestDH.delivery_date || '-';
+
+            if (!ord.items || ord.items.length === 0) {
+                body.push([no++, ord.partner?.name || '-', ord.order_no || '-',
+                    ord.order_date || '-', ord.delivery_date || '-', actualDate,
+                    '-', '-', 0, 0, 0, 0, 0, sLabel, ord.note || '']);
+            } else {
+                for (const it of ord.items) {
+                    const qty = it.quantity || 0;
+                    const delivered = it.delivered_quantity || 0;
+                    const unitPrice = it.unit_price || 0;
+                    body.push([no++, ord.partner?.name || '-', ord.order_no || '-',
+                        ord.order_date || '-', ord.delivery_date || '-', actualDate,
+                        it.product?.name || '-',
+                        it.specification || it.product?.specification || '-',
+                        qty, unitPrice, qty * unitPrice, delivered, qty - delivered,
+                        sLabel, ord.note || '']);
+                }
+            }
+        }
+
+        // 합계행
+        const totalOrderAmt = body.reduce((s, r) => s + (r[10] || 0), 0);
+        const totalDelivered = body.reduce((s, r) => s + (r[11] || 0), 0);
+        body.push(['합계', '', '', '', '', '', '', '', '', '', totalOrderAmt, totalDelivered, '', '', '']);
+
+        const ws = XLSX.utils.aoa_to_sheet([header1, [], header2, header3, ...body]);
+
+        const colWidths = header3.map((h, i) => {
+            const maxLen = Math.max(
+                h.length * 2,
+                ...body.map(row => {
+                    const val = String(row[i] ?? '');
+                    return val.split('').reduce((acc, ch) => acc + (ch.charCodeAt(0) > 127 ? 2 : 1), 0);
+                })
+            );
+            return { wch: Math.min(maxLen + 2, 50) };
+        });
+        ws['!cols'] = colWidths;
+        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: header3.length - 1 } }];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '납품관리');
+        XLSX.writeFile(wb, fileName);
+    };
 
     const handleDeliveryClick = (order) => {
         setSelectedOrder(order);
@@ -271,6 +348,14 @@ const DeliveryPage = () => {
                                 sx={{ bgcolor: '#3b82f6', '&:hover': { bgcolor: '#2563eb' }, borderRadius: '0.75rem', px: 4, py: 1 }}
                             >
                                 SEARCH
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                onClick={handleDownloadExcel}
+                                startIcon={<FileDown className="w-4 h-4" />}
+                                sx={{ color: '#10b981', borderColor: '#10b981', '&:hover': { bgcolor: '#10b98120', borderColor: '#10b981' }, borderRadius: '0.75rem', px: 3, py: 1 }}
+                            >
+                                EXCEL
                             </Button>
                         </Grid>
                     </Grid>
