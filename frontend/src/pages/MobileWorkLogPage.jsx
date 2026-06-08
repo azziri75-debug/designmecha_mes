@@ -1526,7 +1526,20 @@ const MobileWorkLogPage = () => {
                             fullWidth
                             variant="contained"
                             startIcon={<AddIcon />}
-                            onClick={() => { setSelectedDocType('LEAVE_REQUEST'); setDocFormData({}); setEditingDocId(null); handleNewDraft(); }}
+                            onClick={() => {
+                                setSelectedDocType('LEAVE_REQUEST');
+                                const today = new Date().toISOString().split('T')[0];
+                                setDocFormData({
+                                    date: today,
+                                    request_date: today,
+                                    draft_date: today,
+                                    staff_no: user?.staff_no || '',
+                                    dept: user?.department || '',
+                                    role: user?.role || '',
+                                });
+                                setEditingDocId(null);
+                                handleNewDraft();
+                            }}
                             sx={{ mb: 2, borderRadius: 2, py: 1.5, fontWeight: 'bold' }}
                         >
                             신규 문서 기안
@@ -1736,7 +1749,18 @@ const MobileWorkLogPage = () => {
                                     <Chip
                                         key={key}
                                         label={info.label}
-                                        onClick={() => setSelectedDocType(key)}
+                                        onClick={() => {
+                                            setSelectedDocType(key);
+                                            const today = new Date().toISOString().split('T')[0];
+                                            setDocFormData({
+                                                date: today,
+                                                request_date: today,
+                                                draft_date: today,
+                                                staff_no: user?.staff_no || '',
+                                                dept: user?.department || '',
+                                                role: user?.role || '',
+                                            });
+                                        }}
                                         color={selectedDocType === key ? "primary" : "default"}
                                         variant={selectedDocType === key ? "filled" : "outlined"}
                                         size="small"
