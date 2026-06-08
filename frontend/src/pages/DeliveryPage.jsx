@@ -120,10 +120,16 @@ const DeliveryPage = () => {
         const periodLabel = dateRange.start && dateRange.end
             ? `${dateRange.start} ~ ${dateRange.end}`
             : '전체 기간';
-        const fileName = `납품관리-${periodLabel.replace(/[~:\s]/g, '_')}-${today.replace(/-/g, '')}.xlsx`;
+        // 사업부명 (미선택이면 '전체')
+        const groupName = selectedMajorGroupId
+            ? (groups.find(g => g.id === Number(selectedMajorGroupId))?.name || '전체')
+            : '전체';
+        // 납품완료 숨김이면 '미납내역', 아니면 '납품관리'
+        const docLabel = hideCompleted ? '미납내역' : '납품관리';
+        const fileName = `${docLabel}-${groupName}-${periodLabel.replace(/[~:\s]/g, '_')}-${today.replace(/-/g, '')}.xlsx`;
 
-        const header1 = ['납품관리 현황'];
-        const header2 = [`기간: ${periodLabel}`, `작성일: ${today}`];
+        const header1 = [`${docLabel} 현황 (${groupName})`];
+        const header2 = [`기간: ${periodLabel}`, `사업부: ${groupName}`, `작성일: ${today}`];
         const header3 = ['No', '고객사', '수주번호', '수주일', '납품예정일', '실납품일',
             '품명', '규격', '수주수량', '단가', '수주금액',
             '기납품수량', '잔량', '상태', '비고'];
