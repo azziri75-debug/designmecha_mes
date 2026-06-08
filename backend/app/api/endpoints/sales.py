@@ -1469,19 +1469,33 @@ async def update_delivery_history(
                         reference=history.delivery_no
                     )
 
-        # 3) 수주 상태 재계산
-        order = history.order
-        if order:
-            total_qty = sum(it.quantity for it in order.items)
-            delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
-            
+        # 3) 수주 상태 재계산 — flush 후 DB 최신값으로 직접 재조회 (selectinload stale 캐시 문제 방지)
+        # !! 이 블록은 if delivery_update.items 밖으로 이동 !!
+
+    # 수주 상태 재계산 (항상 실행, items 제공 여부와 무관)
+    order_id = history.order_id
+    if order_id:
+        await db.flush()  # pending delivered_quantity 변경을 DB에 먼저 반영
+
+        # 최신 수주 품목 수량을 DB에서 직접 재조회
+        fresh_items_res = await db.execute(
+            select(SalesOrderItem).where(SalesOrderItem.order_id == order_id)
+        )
+        fresh_items = fresh_items_res.scalars().all()
+        total_qty = sum(it.quantity for it in fresh_items)
+        delivered_qty = sum(it.delivered_quantity or 0 for it in fresh_items)
+
+        # SalesOrder 직접 재조회 (세션에 제대로 트래킹되도록)
+        ord_res = await db.execute(select(SalesOrder).where(SalesOrder.id == order_id))
+        order = ord_res.scalars().first()
+
+        if order and total_qty > 0:
             if delivered_qty >= total_qty:
                 order.status = OrderStatus.DELIVERY_COMPLETED
-                order.actual_delivery_date = history.delivery_date
-                # [NEW] 납품 완료 시 생산 계획 자동 완료 처리
+                if not order.actual_delivery_date and history.delivery_date:
+                    order.actual_delivery_date = history.delivery_date
                 try:
                     await complete_production_for_order(db, order_id=order.id, reference=history.delivery_no)
-                    # [Fix] 수주 직접 연결 MRP 소요량 자동 완결 처리
                     await db.execute(
                         update(MaterialRequirement)
                         .where(MaterialRequirement.order_id == order.id)
@@ -1492,8 +1506,7 @@ async def update_delivery_history(
                     print(f'[update_delivery_history] Auto-complete production plan failed: {e}')
             elif delivered_qty > 0:
                 order.status = OrderStatus.PARTIALLY_DELIVERED
-            else:
-                order.status = OrderStatus.CONFIRMED
+            # delivered_qty == 0: 상태 변경 안 함 (CONFIRMED 강제 복귀 방지)
 
     await db.commit()
     await db.refresh(history)
