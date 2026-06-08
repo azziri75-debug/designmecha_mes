@@ -66,6 +66,18 @@ async def get_unordered_requirements(
                      .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))
         query = query.where(Product.id.in_(subquery))
 
+    # 생산완료(COMPLETED)된 생산계획에 연결된 소요량 제외
+    completed_plan_subq = select(ProductionPlan.id).where(
+        cast(ProductionPlan.status, String) == ProductionStatus.COMPLETED.value
+    )
+    query = query.where(
+        or_(
+            MaterialRequirement.plan_id.is_(None),
+            MaterialRequirement.plan_id.notin_(completed_plan_subq)
+        )
+    )
+
+
     result = await db.execute(query)
     rows = result.all()
 
@@ -441,7 +453,8 @@ async def read_pending_purchase_items(
         )\
         .where(ProductionPlanItem.status != ProductionStatus.COMPLETED)\
         .where(ProductionPlanItem.quantity > 0)\
-        .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+        .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)\
+        .where(cast(ProductionPlan.status, String) != ProductionStatus.COMPLETED.value)
         
     if major_group_id and str(major_group_id).isdigit():
         major_group_id_int = int(major_group_id)
@@ -507,7 +520,8 @@ async def read_pending_outsourcing_items(
         )\
         .where(ProductionPlanItem.status != ProductionStatus.COMPLETED)\
         .where(ProductionPlanItem.quantity > 0)\
-        .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+        .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)\
+        .where(cast(ProductionPlan.status, String) != ProductionStatus.COMPLETED.value)
         
     if major_group_id and str(major_group_id).isdigit():
         major_group_id_int = int(major_group_id)
