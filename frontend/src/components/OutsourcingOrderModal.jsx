@@ -669,10 +669,9 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                             <TableCell sx={{ width: 150, textAlign: 'right' }}>
                                                 <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                                                     ₩{(
-                                                        (item.pricing_type === 'WEIGHT' 
-                                                            ? (parseFloat(item.total_weight) || 0) 
-                                                            : (parseFloat(item.quantity) || 0)
-                                                        ) * (parseFloat(item.unit_price) || 0)
+                                                        item.pricing_type === 'WEIGHT'
+                                                            ? (parseFloat(item.total_weight) || 0) * (parseFloat(item.weight_price) || 0)
+                                                            : (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)
                                                     ).toLocaleString()}
                                                 </Typography>
                                             </TableCell>
