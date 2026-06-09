@@ -428,23 +428,25 @@ const MobileWorkLogPage = () => {
             return;
         }
 
-        // [USER REQUEST] 수량 초과 검증 로직 추가
-        let hasExceeded = false;
+        // 수량 초과 검증
+        const exceededItems = [];
         for (const item of selectedItems) {
-            const totalPlanned = item.quantity || 0;
-            const currentPerformance = item.completed_quantity || 0;
-            const enteringQty = parseInt(itemRecords[item.id]?.good || 0);
-
-            if (currentPerformance + enteringQty > totalPlanned) {
-                hasExceeded = true;
-                break;
+            const completedQty = (item.work_log_items || [])
+                .reduce((sum, wl) => sum + (wl.good_quantity || 0) + (wl.bad_quantity || 0), 0);
+            const remaining = Math.max(0, (item.quantity || 0) - completedQty);
+            const enteringQty = parseInt(itemRecords[item.id]?.good || 0) + parseInt(itemRecords[item.id]?.bad || 0);
+            if (enteringQty > 0 && enteringQty > remaining) {
+                exceededItems.push({ item, entering: enteringQty, remaining });
             }
         }
 
-        if (hasExceeded) {
-            if (!window.confirm("일부 공정의 입력한 수량이 계획된 수량을 초과합니다. 계속하시겠습니까?")) {
-                return;
-            }
+        if (exceededItems.length > 0) {
+            const details = exceededItems
+                .map(({ item, entering, remaining }) =>
+                    `• ${item.process_name}: 입력 ${entering}개 / 잔량 ${remaining}개`
+                ).join('\n');
+            alert(`⚠️ 수량 초과\n\n${details}\n\n잔량을 초과하여 입력할 수 없습니다. 수량을 확인해주세요.`);
+            return;
         }
 
         setLoading(true);
@@ -1165,7 +1167,7 @@ const MobileWorkLogPage = () => {
                                                             {item.process_name}
                                                         </Typography>
                                                         <Typography variant="caption" color="primary" fontWeight="bold">
-                                                            잔여: {Math.max(0, (item.quantity || 0) - (item.completed_quantity || 0))}
+                                                            잔여: {Math.max(0, (item.quantity || 0) - (item.work_log_items || []).reduce((s, wl) => s + (wl.good_quantity || 0) + (wl.bad_quantity || 0), 0))}
                                                         </Typography>
                                                     </Box>
                                                     <Stack direction="row" spacing={1}>
@@ -1202,6 +1204,19 @@ const MobileWorkLogPage = () => {
                                                             InputProps={{ sx: { fontSize: '0.875rem' } }}
                                                         />
                                                     </Stack>
+                                                    {(() => {
+                                                        const completedQty = (item.work_log_items || []).reduce((s, wl) => s + (wl.good_quantity || 0) + (wl.bad_quantity || 0), 0);
+                                                        const remaining = Math.max(0, (item.quantity || 0) - completedQty);
+                                                        const entering = parseInt(itemRecords[item.id]?.good || 0) + parseInt(itemRecords[item.id]?.bad || 0);
+                                                        if (entering > 0 && entering > remaining) {
+                                                            return (
+                                                                <Alert severity="error" sx={{ mt: 0.5, py: 0.25, fontSize: '0.72rem', '& .MuiAlert-message': { py: 0 } }}>
+                                                                    ⚠️ 잔량({remaining})을 {entering - remaining}개 초과
+                                                                </Alert>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
                                                 </Paper>
                                             ))}
                                         </Stack>

@@ -78,6 +78,17 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
         setPlanSelectorOpen(false);
     };
 
+    // 잔량 계산: plan_item.quantity - 기등록된 타 작업일지 수량 (수정 시 현재 log 제외)
+    const getRemainingQty = (planItem, currentLogId) => {
+        if (!planItem) return 0;
+        const totalQty = planItem.quantity || 0;
+        const wlItems = planItem.work_log_items || [];
+        const completedQty = wlItems
+            .filter(wl => !currentLogId || wl.work_log_id !== currentLogId)
+            .reduce((sum, wl) => sum + (wl.good_quantity || 0) + (wl.bad_quantity || 0), 0);
+        return Math.max(0, totalQty - completedQty);
+    };
+
     const handleItemChange = (index, field, value) => {
         const newItems = [...items];
         newItems[index][field] = value;
@@ -124,6 +135,23 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
         if (!workDate) {
             alert('작업일자를 입력해주세요.');
             return;
+        }
+
+        // 잔량 초과 검증
+        const exceededItems = items.filter(item => {
+            const remaining = getRemainingQty(item.plan_item, log?.id);
+            const entering = (parseInt(item.good_quantity) || 0) + (parseInt(item.bad_quantity) || 0);
+            return entering > 0 && entering > remaining;
+        });
+        if (exceededItems.length > 0) {
+            const details = exceededItems.map(item => {
+                const remaining = getRemainingQty(item.plan_item, log?.id);
+                const entering = (parseInt(item.good_quantity) || 0) + (parseInt(item.bad_quantity) || 0);
+                return `• ${item.plan_item?.process_name || '공정'} (${item.plan_item?.product?.name || '-'}): 입력 ${entering} / 잔량 ${remaining}`;
+            }).join('\n');
+            if (!window.confirm(`⚠️ 수량 초과 경고\n\n${details}\n\n잔량을 초과하여 입력하셨습니다. 계속 저장하시겠습니까?`)) {
+                return;
+            }
         }
 
         setLoading(true);
@@ -282,8 +310,9 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                                 <TableCell>품명</TableCell>
                                 <TableCell>공정명</TableCell>
                                 <TableCell>개별 작업자</TableCell>
-                                <TableCell width="10%">양품 수량</TableCell>
-                                <TableCell width="10%">불량 수량</TableCell>
+                                <TableCell width="12%">양품 수량</TableCell>
+                                <TableCell width="12%">불량 수량</TableCell>
+                                <TableCell width="12%">잔량</TableCell>
                                 <TableCell>비고</TableCell>
                                 <TableCell width="50px">삭제</TableCell>
                             </TableRow>
@@ -304,8 +333,12 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                                     orderNo = `[재고] ${plan.stock_production.production_no}`;
                                 }
 
+                                const remaining = getRemainingQty(item.plan_item, log?.id);
+                                const entering = (parseInt(item.good_quantity) || 0) + (parseInt(item.bad_quantity) || 0);
+                                const isExceeded = entering > 0 && entering > remaining;
+
                                 return (
-                                    <TableRow key={item.cid}>
+                                    <TableRow key={item.cid} sx={isExceeded ? { backgroundColor: '#fff8f8' } : {}}>
                                         <TableCell sx={{ fontSize: '0.8rem' }}>{orderNo}</TableCell>
                                         <TableCell sx={{ fontSize: '0.8rem' }}>{item.plan_item?.product?.name || '-'}</TableCell>
                                         <TableCell sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{item.plan_item?.process_name || '-'}</TableCell>
@@ -333,6 +366,7 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                                                 size="small"
                                                 variant="standard"
                                                 inputProps={{ min: 0 }}
+                                                sx={isExceeded ? { '& input': { color: 'error.main', fontWeight: 'bold' } } : {}}
                                             />
                                         </TableCell>
                                         <TableCell>
@@ -343,7 +377,27 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                                                 size="small"
                                                 variant="standard"
                                                 inputProps={{ min: 0 }}
+                                                sx={isExceeded ? { '& input': { color: 'error.main', fontWeight: 'bold' } } : {}}
                                             />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                                <Typography
+                                                    variant="body2"
+                                                    sx={{
+                                                        fontWeight: 'bold',
+                                                        color: isExceeded ? 'error.main' : remaining === 0 ? 'success.main' : 'text.secondary',
+                                                        fontSize: '0.85rem'
+                                                    }}
+                                                >
+                                                    {remaining}
+                                                </Typography>
+                                                {isExceeded && (
+                                                    <Typography variant="caption" color="error" sx={{ display: 'block', lineHeight: 1.1 }}>
+                                                        ⚠️ {entering - remaining}개 초과
+                                                    </Typography>
+                                                )}
+                                            </Box>
                                         </TableCell>
                                         <TableCell>
                                             <TextField
