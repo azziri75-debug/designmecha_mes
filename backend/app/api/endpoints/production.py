@@ -1342,9 +1342,14 @@ async def delete_production_plan(
             await db.delete(wo)
 
     # Update linked sales order status (rollback to CONFIRMED)
+    # 보호: 이미 납품완료된 수주는 되돌리지 않음
     if plan.order:
-        plan.order.status = OrderStatus.CONFIRMED
-        db.add(plan.order)
+        if plan.order.status not in [
+            OrderStatus.DELIVERY_COMPLETED,
+            OrderStatus.PARTIALLY_DELIVERED,
+        ]:
+            plan.order.status = OrderStatus.CONFIRMED
+            db.add(plan.order)
 
     # Finally, delete the plan itself
     await db.delete(plan)
@@ -1531,8 +1536,13 @@ async def update_production_plan_status(
                             stock.in_production_quantity += item.quantity
                 
                 # Sync Sales Order status
-                plan.order.status = OrderStatus.CONFIRMED
-                db.add(plan.order)
+                # 보호: 이미 납품완료된 수주는 되돌리지 않음
+                if plan.order.status not in [
+                    OrderStatus.DELIVERY_COMPLETED,
+                    OrderStatus.PARTIALLY_DELIVERED,
+                ]:
+                    plan.order.status = OrderStatus.CONFIRMED
+                    db.add(plan.order)
 
             # 2. Rollback Linked Orders (Back to PENDING)
             affected_po_ids = set()
@@ -1568,8 +1578,13 @@ async def update_production_plan_status(
 
         elif status == ProductionStatus.IN_PROGRESS:
             if plan.order:
-                plan.order.status = OrderStatus.CONFIRMED 
-                db.add(plan.order)
+                # 보호: 이미 납품완료된 수주는 되돌리지 않음
+                if plan.order.status not in [
+                    OrderStatus.DELIVERY_COMPLETED,
+                    OrderStatus.PARTIALLY_DELIVERED,
+                ]:
+                    plan.order.status = OrderStatus.CONFIRMED
+                    db.add(plan.order)
             elif plan.stock_production:
                 plan.stock_production.status = StockProductionStatus.IN_PROGRESS
                 db.add(plan.stock_production)
