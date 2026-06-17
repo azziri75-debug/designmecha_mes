@@ -430,21 +430,39 @@ async def create_document(
 
 
             if not lines:
-                # [IMPORT PO FALLBACK] IMPORT_PURCHASE_ORDER has no separate lines;
-                # reuse PURCHASE_ORDER lines so both follow the same approval chain.
                 if doc_type_clean == "IMPORT_PURCHASE_ORDER":
-                    fallback_res = await db.execute(
-                        select(ApprovalLine)
-                        .options(selectinload(ApprovalLine.approver))
-                        .where(
-                            func.upper(ApprovalLine.doc_type) == "PURCHASE_ORDER",
-                            ApprovalLine.department_id.is_(None)
+                    # [FIX] 폴백 우선순위:
+                    # 1순위: 기안자 부서의 PURCHASE_ORDER 결재선
+                    # 2순위: 공통(department_id IS NULL) PURCHASE_ORDER 결재선
+                    if author_dept_id:
+                        dept_po_res = await db.execute(
+                            select(ApprovalLine)
+                            .options(selectinload(ApprovalLine.approver))
+                            .where(
+                                func.upper(ApprovalLine.doc_type) == "PURCHASE_ORDER",
+                                ApprovalLine.department_id == author_dept_id
+                            )
+                            .order_by(ApprovalLine.sequence)
                         )
-                        .order_by(ApprovalLine.sequence)
-                    )
-                    lines = fallback_res.scalars().all()
-                    if lines:
-                        print(f"[DEBUG] IMPORT_PURCHASE_ORDER: falling back to PURCHASE_ORDER lines ({len(lines)} lines)")
+                        lines = list(dept_po_res.scalars().all())
+                        if lines:
+                            print(f"[DEBUG] IMPORT_PURCHASE_ORDER: using same-dept PURCHASE_ORDER lines for dept_id={author_dept_id} ({len(lines)} lines)")
+
+                    if not lines:
+                        global_po_res = await db.execute(
+                            select(ApprovalLine)
+                            .options(selectinload(ApprovalLine.approver))
+                            .where(
+                                func.upper(ApprovalLine.doc_type) == "PURCHASE_ORDER",
+                                ApprovalLine.department_id.is_(None)
+                            )
+                            .order_by(ApprovalLine.sequence)
+                        )
+                        lines = list(global_po_res.scalars().all())
+                        if lines:
+                            print(f"[DEBUG] IMPORT_PURCHASE_ORDER: falling back to global PURCHASE_ORDER lines ({len(lines)} lines)")
+                        else:
+                            print(f"[WARNING] IMPORT_PURCHASE_ORDER: no PURCHASE_ORDER lines found for dept_id={author_dept_id} or global")
                 else:
                     print(f"[WARNING] No default approval lines found for {doc_type_clean}")
             for line in lines:
@@ -1506,20 +1524,35 @@ async def update_document(
                 else:
                     print(f"[WARNING] update_document: User {current_user.id} has no department_id, no approval lines loaded")
 
-                # IMPORT_PURCHASE_ORDER 폴백 (부서 전용 결재선이 없을 경우)
+                # IMPORT_PURCHASE_ORDER 폴백: 1순위=동일부서 PURCHASE_ORDER, 2순위=공통(NULL)
                 if not lines and doc_type_clean == "IMPORT_PURCHASE_ORDER":
-                    fallback_res = await db.execute(
-                        select(ApprovalLine)
-                        .options(selectinload(ApprovalLine.approver))
-                        .where(
-                            func.upper(ApprovalLine.doc_type) == "PURCHASE_ORDER",
-                            ApprovalLine.department_id.is_(None)
+                    if author_dept_id:
+                        dept_po_res = await db.execute(
+                            select(ApprovalLine)
+                            .options(selectinload(ApprovalLine.approver))
+                            .where(
+                                func.upper(ApprovalLine.doc_type) == "PURCHASE_ORDER",
+                                ApprovalLine.department_id == author_dept_id
+                            )
+                            .order_by(ApprovalLine.sequence)
                         )
-                        .order_by(ApprovalLine.sequence)
-                    )
-                    lines = list(fallback_res.scalars().all())
-                    if lines:
-                        print(f"[DEBUG] update_document: IMPORT_PURCHASE_ORDER falling back to PURCHASE_ORDER lines ({len(lines)} lines)")
+                        lines = list(dept_po_res.scalars().all())
+                        if lines:
+                            print(f"[DEBUG] update_document IMPORT_PURCHASE_ORDER: using same-dept PURCHASE_ORDER lines for dept_id={author_dept_id} ({len(lines)} lines)")
+
+                    if not lines:
+                        global_po_res = await db.execute(
+                            select(ApprovalLine)
+                            .options(selectinload(ApprovalLine.approver))
+                            .where(
+                                func.upper(ApprovalLine.doc_type) == "PURCHASE_ORDER",
+                                ApprovalLine.department_id.is_(None)
+                            )
+                            .order_by(ApprovalLine.sequence)
+                        )
+                        lines = list(global_po_res.scalars().all())
+                        if lines:
+                            print(f"[DEBUG] update_document IMPORT_PURCHASE_ORDER: falling back to global PURCHASE_ORDER lines ({len(lines)} lines)")
 
                 for line in lines:
                     if line.approver:
