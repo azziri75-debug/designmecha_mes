@@ -1482,16 +1482,50 @@ async def update_document(
                         lines_to_process.append({"approver_id": ca.staff_id, "sequence": ca.sequence, "role": target_s.role})
             else:
                 doc_type_clean = doc.doc_type.strip().upper()
-                lines_res = await db.execute(
-                    select(ApprovalLine)
-                    .options(selectinload(ApprovalLine.approver))
-                    .where(func.upper(ApprovalLine.doc_type) == doc_type_clean)
-                    .order_by(ApprovalLine.sequence)
-                )
-                lines = lines_res.scalars().all()
+
+                # [FIX] 부서별 결재선 필터링 - create_document와 동일한 로직 적용
+                # 기존 코드는 부서 필터 없이 전체 결재선을 불러와 중복 생성 버그 발생
+                author_dept_id = current_user.department_id
+                lines = []
+
+                if author_dept_id:
+                    dept_lines_res = await db.execute(
+                        select(ApprovalLine)
+                        .options(selectinload(ApprovalLine.approver))
+                        .where(
+                            func.upper(ApprovalLine.doc_type) == doc_type_clean,
+                            ApprovalLine.department_id == author_dept_id
+                        )
+                        .order_by(ApprovalLine.sequence)
+                    )
+                    lines = list(dept_lines_res.scalars().all())
+                    if lines:
+                        print(f"[DEBUG] update_document: Using dept-specific lines for dept_id={author_dept_id}: {len(lines)} lines")
+                    else:
+                        print(f"[WARNING] update_document: No dept-specific lines for dept_id={author_dept_id}, doc_type={doc_type_clean}")
+                else:
+                    print(f"[WARNING] update_document: User {current_user.id} has no department_id, no approval lines loaded")
+
+                # IMPORT_PURCHASE_ORDER 폴백 (부서 전용 결재선이 없을 경우)
+                if not lines and doc_type_clean == "IMPORT_PURCHASE_ORDER":
+                    fallback_res = await db.execute(
+                        select(ApprovalLine)
+                        .options(selectinload(ApprovalLine.approver))
+                        .where(
+                            func.upper(ApprovalLine.doc_type) == "PURCHASE_ORDER",
+                            ApprovalLine.department_id.is_(None)
+                        )
+                        .order_by(ApprovalLine.sequence)
+                    )
+                    lines = list(fallback_res.scalars().all())
+                    if lines:
+                        print(f"[DEBUG] update_document: IMPORT_PURCHASE_ORDER falling back to PURCHASE_ORDER lines ({len(lines)} lines)")
+
                 for line in lines:
                     if line.approver:
                         lines_to_process.append({"approver_id": line.approver_id, "sequence": line.sequence, "role": line.approver.role})
+                    else:
+                        print(f"[WARNING] update_document: ApprovalLine ID {line.id} has no approver")
             
             author_rank = get_staff_rank(current_user.role)
             # [FIX] 하드코딩된 1 대신 결재선의 최소 순번부터 시작하도록 수정 (순번 어긋남 방지)
