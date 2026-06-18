@@ -470,12 +470,22 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px', verticalAlign: 'middle' }}>
                                         <textarea 
                                             rows={1}
-                                            value={(item.date || data.delivery_date || '').slice(5)} 
-                                            onChange={e => updateItem(idx, 'date', e.target.value)}
+                                            value={(item.date || data.delivery_date || '').replace(/^(\d{4})-/, '')} 
+                                            onChange={e => {
+                                                // 사용자는 MM-DD 형식으로 입력, 저장은 YYYY-MM-DD 형식 유지
+                                                const origDate = item.date || data.delivery_date || '';
+                                                const year = origDate.match(/^\d{4}/) 
+                                                    ? origDate.slice(0, 4) 
+                                                    : new Date().getFullYear().toString();
+                                                const userVal = e.target.value; // e.g. "06-20"
+                                                // 완전한 YYYY-MM-DD로 복원하여 저장
+                                                updateItem(idx, 'date', `${year}-${userVal}`);
+                                            }}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                                             style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', verticalAlign: 'middle' }}
                                         />
                                     </td>
+
                                     <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative', verticalAlign: 'middle' }}>
                                         <textarea 
                                             rows={1}
