@@ -74,14 +74,18 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     // ── Data State ────────────────────────────────
     const [items, setItems] = useState([]);
     
-    // Initialize items from snapshot or props
+    // Initialize items from snapshot or props — normalize to flat structure
     useEffect(() => {
         if (!open) return;
-        if (data.statement_json?.items) {
-            setItems(data.statement_json.items);
-        } else {
-            setItems(data.items || []);
-        }
+        const rawItems = data.statement_json?.items || data.items || [];
+        const normalized = rawItems.map(item => ({
+            date:          item.date || data.delivery_date || new Date().toISOString().split('T')[0],
+            product_name:  item.product?.name || item.product_name || item.item_name || '',
+            specification: item.specification || item.product?.specification || '',
+            quantity:      item.quantity  ?? 0,
+            unit_price:    item.unit_price ?? 0,
+        }));
+        setItems(normalized);
     }, [open, data]);
 
     const [supplierInfo, setSupplierInfo] = useState(data.supplier_info || {
@@ -489,7 +493,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <td style={{ ...td(C, { whiteSpace: 'normal', wordBreak: 'break-all' }), fontWeight: 'bold', fontSize: '11.5px', position: 'relative', verticalAlign: 'middle' }}>
                                         <textarea 
                                             rows={1}
-                                            value={item.product?.name || item.product_name || item.item_name || ''} 
+                                            value={item.product_name || ''} 
                                             onChange={e => updateItem(idx, 'product_name', e.target.value)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                                             style={{ width: '100%', border: 'none', background: 'transparent', color: C, fontSize: '11.5px', fontWeight: 'bold', outline: 'none', resize: 'none', padding: '0 4px', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', verticalAlign: 'middle' }}
@@ -504,7 +508,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px', verticalAlign: 'middle' }}>
                                         <textarea 
                                             rows={1}
-                                            value={item.specification || item.product?.specification || ''} 
+                                            value={item.specification || ''} 
                                             onChange={e => updateItem(idx, 'specification', e.target.value)}
                                             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                                             style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', verticalAlign: 'middle' }}
