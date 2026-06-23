@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Any
 from datetime import date
 
 from app.api.deps import get_db
-from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
+from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus, DeliveryHistory, DeliveryHistoryItem
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, OutsourcingOrder, OutsourcingOrderItem, PurchaseStatus, OutsourcingStatus
 from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
 from app.models.quality import QualityDefect, CustomerComplaint, DefectStatus
@@ -65,9 +65,10 @@ async def get_settlement_sales(
     major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """2. 매출내역: 납품관리(납품완료) 기준"""
-    # Focusing on delivery_completed orders
-    query = select(
+    """2. 매출내역: 납품완료 + 거래명세서가 발행된 부분납품 포함"""
+
+    # ── Query 1: DELIVERY_COMPLETED / DELIVERED 수주 ──────────────────────────────
+    q1 = select(
         Partner.name.label("partner_name"),
         SalesOrder.order_date,
         SalesOrder.actual_delivery_date.label("delivery_date"),
@@ -86,12 +87,42 @@ async def get_settlement_sales(
          get_month_filter(SalesOrder.actual_delivery_date, year, month)
      )
 
+    # ── Query 2: 거래명세서(statement_json)가 발행된 부분납품 수주 ─────────────────
+    # PARTIALLY_DELIVERED 상태여도 해당월에 statement_json이 있으면 매출 집계 포함
+    # 수량: DeliveryHistoryItem.quantity (실제 납품 수량)
+    # 단가: SalesOrderItem.unit_price (수주 단가)
+    q2 = select(
+        Partner.name.label("partner_name"),
+        SalesOrder.order_date,
+        DeliveryHistory.delivery_date.label("delivery_date"),
+        Product.name.label("product_name"),
+        Product.specification,
+        DeliveryHistoryItem.quantity,
+        SalesOrderItem.unit_price,
+        SalesOrderItem.currency,
+        (DeliveryHistoryItem.quantity * SalesOrderItem.unit_price).label("total_price")
+    ).select_from(DeliveryHistory)\
+     .join(DeliveryHistoryItem, DeliveryHistory.id == DeliveryHistoryItem.delivery_id)\
+     .join(SalesOrderItem, DeliveryHistoryItem.order_item_id == SalesOrderItem.id)\
+     .join(SalesOrder, DeliveryHistory.order_id == SalesOrder.id)\
+     .join(Partner, SalesOrder.partner_id == Partner.id)\
+     .join(Product, SalesOrderItem.product_id == Product.id)\
+     .where(
+         SalesOrder.status == OrderStatus.PARTIALLY_DELIVERED,
+         DeliveryHistory.statement_json.isnot(None),
+         get_month_filter(DeliveryHistory.delivery_date, year, month)
+     )
+
     if major_group_id:
         subq = select(ProductGroup.id).where(ProductGroup.parent_id == major_group_id)
-        query = query.where(and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id)))
+        group_filter = and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id))
+        q1 = q1.where(group_filter)
+        q2 = q2.where(group_filter)
 
-    result = await db.execute(query)
-    return [dict(r._mapping) for r in result]
+    res1 = await db.execute(q1)
+    res2 = await db.execute(q2)
+
+    return [dict(r._mapping) for r in res1] + [dict(r._mapping) for r in res2]
 
 @router.get("/purchases")
 async def get_settlement_purchases(
