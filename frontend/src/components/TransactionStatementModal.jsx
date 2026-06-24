@@ -514,13 +514,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                             style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', verticalAlign: 'middle' }}
                                         />
                                     </td>
-                                    <td style={{ ...td(C), textAlign: 'center', fontSize: '11.5px', verticalAlign: 'middle' }}>
-                                        <textarea 
-                                            rows={1}
-                                            value={item.quantity} 
-                                            onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                            style={{ width: '100%', border: 'none', textAlign: 'center', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', resize: 'none', padding: '0', height: 'auto', fontFamily: 'inherit', overflow: 'hidden', verticalAlign: 'middle' }}
+                                    <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px', verticalAlign: 'middle' }}>
+                                        <input 
+                                            value={formatNumber(item.quantity)} 
+                                            onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value.replace(/,/g, '')) || 0)}
+                                            style={{ width: '100%', border: 'none', textAlign: 'right', background: 'transparent', color: C, fontSize: '11.5px', outline: 'none', verticalAlign: 'middle', padding: '0 4px' }}
                                         />
                                     </td>
                                     <td style={{ ...td(C), textAlign: 'right', fontSize: '11.5px', verticalAlign: 'middle' }}>
