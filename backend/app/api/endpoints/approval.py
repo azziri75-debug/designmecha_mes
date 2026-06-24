@@ -55,6 +55,77 @@ def get_staff_rank(role: str) -> int:
         return 0
     return ROLE_RANKING.get(role.strip(), 0)
 
+@router.get("/team-schedule")
+async def get_team_schedule(
+    year: int = Query(...),
+    month: int = Query(...),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user)
+):
+    """전 직원 승인 완료된 일정 조회 (연차/병가/조퇴/외출/야근/특근) - 월별 캘린더용"""
+    from datetime import date as _date, timedelta as _timedelta
+
+    result = await db.execute(
+        select(ApprovalDocument)
+        .options(selectinload(ApprovalDocument.author))
+        .where(
+            ApprovalDocument.deleted_at.is_(None),
+            ApprovalDocument.status == ApprovalStatus.COMPLETED,
+            ApprovalDocument.doc_type.in_(["LEAVE_REQUEST", "EARLY_LEAVE", "OVERTIME"])
+        )
+    )
+    docs = result.scalars().all()
+
+    events = []
+    for doc in docs:
+        content = doc.content or {}
+        author = doc.author.name if doc.author else "?"
+
+        if doc.doc_type == "LEAVE_REQUEST":
+            start_str = (content.get("start_date") or "")[:10]
+            end_str   = (content.get("end_date")   or start_str)[:10]
+            leave_type = content.get("leave_type") or "휴가"
+            if not start_str:
+                continue
+            try:
+                cur = _date.fromisoformat(start_str)
+                end = _date.fromisoformat(end_str)
+                while cur <= end:
+                    if cur.year == year and cur.month == month:
+                        events.append({"date": cur.isoformat(), "name": author,
+                                       "type": leave_type, "category": "LEAVE"})
+                    cur += _timedelta(days=1)
+            except Exception:
+                pass
+
+        elif doc.doc_type == "EARLY_LEAVE":
+            date_str   = (content.get("date") or "")[:10]
+            leave_type = content.get("leave_type") or content.get("type") or "조퇴"
+            if not date_str:
+                continue
+            try:
+                ev = _date.fromisoformat(date_str)
+                if ev.year == year and ev.month == month:
+                    events.append({"date": date_str, "name": author,
+                                   "type": leave_type, "category": "EARLY_LEAVE"})
+            except Exception:
+                pass
+
+        elif doc.doc_type == "OVERTIME":
+            date_str    = (content.get("date") or "")[:10]
+            work_type   = content.get("work_type") or "야근"
+            if not date_str:
+                continue
+            try:
+                ev = _date.fromisoformat(date_str)
+                if ev.year == year and ev.month == month:
+                    events.append({"date": date_str, "name": author,
+                                   "type": work_type, "category": "OVERTIME"})
+            except Exception:
+                pass
+
+    return events
+
 @router.get("/stats", response_model=ApprovalStats)
 async def get_approval_stats(
     db: AsyncSession = Depends(deps.get_db),

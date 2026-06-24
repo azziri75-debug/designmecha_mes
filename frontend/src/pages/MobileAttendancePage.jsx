@@ -11,8 +11,10 @@ import {
     ExclamationCircleIcon,
     ListBulletIcon,
     ArrowPathIcon,
-    HomeIcon
+    HomeIcon,
+    CalendarDaysIcon
 } from '@heroicons/react/24/outline';
+import MobileTeamCalendar from '../components/MobileTeamCalendar';
 
 import { 
     Tabs, 
@@ -127,6 +129,7 @@ const MobileAttendancePage = () => {
                 >
                     <Tab label="출퇴근 기록" value="action" />
                     <Tab label="나의 기록/연차" value="history" />
+                    <Tab label="팀 일정" value="schedule" icon={<CalendarDaysIcon style={{width:16,height:16}}/>} iconPosition="start" />
                 </Tabs>
             </MuiBox>
 
@@ -187,6 +190,8 @@ const MobileAttendancePage = () => {
                         </button>
                     </div>
                 </main>
+            ) : activeTab === 'schedule' ? (
+                <MobileTeamCalendar />
             ) : (
                 <main className="flex-1 flex flex-col px-6 py-6 space-y-6 overflow-y-auto">
                     {/* Attendance Summary Grid */}
