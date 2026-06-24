@@ -129,8 +129,8 @@ const BasicsPageContent = () => {
     // Position rank for sorting staff (higher rank = lower index number)
     const POSITION_RANK = {
         '대표이사': 1, '사장': 2, '부사장': 3, '전무': 4, '상무': 5, '이사': 6,
-        '실장': 7, '부장': 8, '차장': 9, '과장': 10, '팀장': 11, '계장': 12,
-        '주임': 13, '선임': 14, '중임': 15, '쳐임': 16, '사원': 17
+        '공장장': 7, '실장': 8, '부장': 9, '차장': 10, '과장': 11, '팀장': 12, '계장': 13,
+        '주임': 14, '선임': 15, '중임': 16, '쳐임': 17, '사원': 18
     };
 
     const getPositionRank = (role) => {
@@ -236,7 +236,7 @@ const BasicsPageContent = () => {
             
             // Phase 2: Role-based Permission Auto-Sync
             if (name === 'role') {
-                const highRanks = ['대표이사', '사장', '부사장', '전무', '상무', '이사', '관리자'];
+                const highRanks = ['대표이사', '사장', '부사장', '전무', '상무', '이사', '공장장', '관리자'];
                 const isHighRank = highRanks.some(rank => value.includes(rank));
                 
                 if (isHighRank) {
@@ -1871,6 +1871,7 @@ const BasicsPageContent = () => {
                                                             <option value="과장">과장</option>
                                                             <option value="차장">차장</option>
                                                             <option value="부장">부장</option>
+                                                            <option value="공장장">공장장</option>
                                                             <option value="이사">이사</option>
                                                             <option value="대표이사">대표이사</option>
                                                         </select>
