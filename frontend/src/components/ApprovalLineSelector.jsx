@@ -90,10 +90,10 @@ const ApprovalLineSelector = ({ open, onClose, onSelect, currentLines = [] }) =>
 
   const handleConfirm = () => {
     // Convert to the backend-friendly format: [{approver_id, sequence, role}]
-    // 결재 순서: 부장(2) → 공장장(3) → 이사(4) → 대표이사(5)
+    // 결재 순서: 공장장(2) → 부장(3) → 이사(4) → 대표이사(5)
     const lines = [];
-    if (selectedLines.부장)    lines.push({ ...selectedLines.부장,    sequence: 2, role: '부장'    });
-    if (selectedLines.공장장)  lines.push({ ...selectedLines.공장장,  sequence: 3, role: '공장장'  });
+    if (selectedLines.공장장)  lines.push({ ...selectedLines.공장장,  sequence: 2, role: '공장장'  });
+    if (selectedLines.부장)    lines.push({ ...selectedLines.부장,    sequence: 3, role: '부장'    });
     if (selectedLines.이사)    lines.push({ ...selectedLines.이사,    sequence: 4, role: '이사'    });
     if (selectedLines.대표이사) lines.push({ ...selectedLines.대표이사, sequence: 5, role: '대표이사' });
     
@@ -187,8 +187,8 @@ const ApprovalLineSelector = ({ open, onClose, onSelect, currentLines = [] }) =>
           <Box sx={{ width: '260px', p: 2, bgcolor: '#f9f9f9', borderRadius: 1, border: '1px solid #ddd', overflowY: 'auto' }}>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: '#666' }}>지정된 결재선</Typography>
             <Divider sx={{ mb: 2 }} />
-            <SlotBox slot="부장"    label="부장"    step={2} />
-            <SlotBox slot="공장장"  label="공장장"  step={3} />
+            <SlotBox slot="공장장"  label="공장장"  step={2} />
+            <SlotBox slot="부장"    label="부장"    step={3} />
             <SlotBox slot="이사"    label="이사"    step={4} />
             <SlotBox slot="대표이사" label="대표이사" step={5} />
           </Box>
