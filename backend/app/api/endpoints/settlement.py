@@ -145,7 +145,8 @@ async def get_settlement_purchases(
         Product.specification,
         PurchaseOrderItem.quantity,
         PurchaseOrderItem.unit_price,
-        (PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price).label("total_price")
+        (PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price).label("total_price"),
+        PurchaseOrderItem.currency
     ).select_from(PurchaseOrder)\
      .join(PurchaseOrderItem, PurchaseOrder.id == PurchaseOrderItem.purchase_order_id)\
      .join(Partner, PurchaseOrder.partner_id == Partner.id)\
@@ -166,7 +167,8 @@ async def get_settlement_purchases(
         Product.specification,
         OutsourcingOrderItem.quantity,
         OutsourcingOrderItem.unit_price,
-        (OutsourcingOrderItem.quantity * OutsourcingOrderItem.unit_price).label("total_price")
+        (OutsourcingOrderItem.quantity * OutsourcingOrderItem.unit_price).label("total_price"),
+        func.cast("KRW", String).label("currency")
     ).select_from(OutsourcingOrder)\
      .join(OutsourcingOrderItem, OutsourcingOrder.id == OutsourcingOrderItem.outsourcing_order_id)\
      .join(Partner, OutsourcingOrder.partner_id == Partner.id)\
