@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
+import { useTheme } from '../contexts/ThemeContext';
 import ResizableTable from '../components/ResizableTable';
 import DeliveryModal from '../components/DeliveryModal';
 import FileViewerModal from '../components/FileViewerModal';
@@ -29,6 +30,7 @@ const DELIVERY_COLS = [
 ];
 
 const DeliveryPage = () => {
+    const { isDark } = useTheme();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [hideCompleted, setHideCompleted] = useState(false);
@@ -254,7 +256,7 @@ const DeliveryPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-black text-gray-100 p-8">
+        <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
             <div className="w-full space-y-8">
                 {/* Header Section */}
                 <div className="flex justify-between items-end">
@@ -290,7 +292,12 @@ const DeliveryPage = () => {
                 </div>
 
                 {/* Filter section */}
-                <Card sx={{ bgcolor: '#111', border: '1px solid #333', borderRadius: '1.5rem', p: 3 }}>
+                <Card sx={{
+                    bgcolor: isDark ? '#111' : '#f8fafc',
+                    border: isDark ? '1px solid #333' : '1px solid #cbd5e1',
+                    borderRadius: '1.5rem',
+                    p: 3
+                }}>
                     <Grid container spacing={4} alignItems="center">
                         <Grid item xs={12} md={2}>
                             <div className="space-y-1">
@@ -298,7 +305,12 @@ const DeliveryPage = () => {
                                 <select
                                     value={selectedMajorGroupId}
                                     onChange={(e) => setSelectedMajorGroupId(e.target.value)}
-                                    className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-bold"
+                                    className={cn(
+                                        "w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-all font-bold",
+                                        isDark
+                                            ? "bg-gray-900 border-gray-800 text-white"
+                                            : "bg-white border-slate-300 text-slate-800"
+                                    )}
                                 >
                                     <option value="">전체 사업부</option>
                                     {groups.filter(g => g.type === 'MAJOR').map(g => (
@@ -315,8 +327,11 @@ const DeliveryPage = () => {
                                 value={partnerFilter}
                                 onChange={(e) => setPartnerFilter(e.target.value)}
                                 sx={{
-                                    '& .MuiOutlinedInput-root': { color: '#fff', '& fieldset': { borderColor: '#333' } },
-                                    '& .MuiInputLabel-root': { color: '#666' }
+                                    '& .MuiOutlinedInput-root': {
+                                        color: isDark ? '#fff' : '#1e293b',
+                                        '& fieldset': { borderColor: isDark ? '#333' : '#cbd5e1' }
+                                    },
+                                    '& .MuiInputLabel-root': { color: isDark ? '#666' : '#64748b' }
                                 }}
                             />
                         </Grid>
@@ -325,7 +340,12 @@ const DeliveryPage = () => {
                                 <select
                                     value={dateType}
                                     onChange={(e) => setDateType(e.target.value)}
-                                    className="bg-gray-900 border border-gray-800 rounded-xl px-2 py-2 text-xs text-gray-400 focus:outline-none focus:border-blue-500 transition-all font-bold"
+                                    className={cn(
+                                        "border rounded-xl px-2 py-2 text-xs focus:outline-none focus:border-blue-500 transition-all font-bold",
+                                        isDark
+                                            ? "bg-gray-900 border-gray-800 text-gray-400"
+                                            : "bg-white border-slate-300 text-slate-600"
+                                    )}
                                 >
                                     <option value="order">수주일 기준</option>
                                     <option value="delivery">납품일 기준</option>
@@ -335,7 +355,7 @@ const DeliveryPage = () => {
                                     size="small"
                                     value={dateRange.start}
                                     onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                                    sx={{ '& .MuiOutlinedInput-root': { color: '#fff', '& fieldset': { borderColor: '#333' } } }}
+                                    sx={{ '& .MuiOutlinedInput-root': { color: isDark ? '#fff' : '#1e293b', '& fieldset': { borderColor: isDark ? '#333' : '#cbd5e1' } } }}
                                 />
                                 <span className="text-gray-600">to</span>
                                 <TextField
@@ -343,7 +363,7 @@ const DeliveryPage = () => {
                                     size="small"
                                     value={dateRange.end}
                                     onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                                    sx={{ '& .MuiOutlinedInput-root': { color: '#fff', '& fieldset': { borderColor: '#333' } } }}
+                                    sx={{ '& .MuiOutlinedInput-root': { color: isDark ? '#fff' : '#1e293b', '& fieldset': { borderColor: isDark ? '#333' : '#cbd5e1' } } }}
                                 />
                             </div>
                         </Grid>

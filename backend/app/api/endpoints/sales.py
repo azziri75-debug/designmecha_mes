@@ -890,7 +890,7 @@ async def get_recent_price(
 ):
     """
     Get the most recent unit price for a product and partner.
-    Checks SalesOrder first, then Estimate.
+    Priority: 1) Last SalesOrder → 2) Last Estimate → 3) Product.recent_price (등록 단가)
     """
     # Check last order
     # Joined eager load or just join? We just need unit_price and date.
@@ -921,6 +921,12 @@ async def get_recent_price(
         
     if last_estimate_item:
         return {"price": last_estimate_item.unit_price, "source": "estimate", "date": last_estimate_item.estimate.estimate_date}
+
+    # 거래 이력 없음 → 제품에 등록된 표준단가(recent_price) 폴백
+    prod_result = await db.execute(select(Product).where(Product.id == product_id))
+    product = prod_result.scalars().first()
+    if product and product.recent_price and product.recent_price > 0:
+        return {"price": product.recent_price, "source": "product_default", "date": None}
 
     return {"price": 0, "source": None}
 
