@@ -214,3 +214,63 @@ body.resizing {
 .is-capturing .no-print {
     display: none !important;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   라이트 모드 (Light Mode) 오버라이드
+   html.light-mode 클래스 적용 시 다크 배경 → 밝은 배경으로 전환
+   ═══════════════════════════════════════════════════════════ */
+html.light-mode body {
+    background-color: #f8fafc !important;
+    color: #1e293b !important;
+}
+
+/* 레이아웃 루트 */
+html.light-mode .bg-gray-900  { background-color: #f1f5f9 !important; }
+html.light-mode .bg-gray-950  { background-color: #e2e8f0 !important; }
+html.light-mode .bg-gray-800  { background-color: #e2e8f0 !important; }
+html.light-mode .bg-gray-800\/80 { background-color: rgba(226,232,240,0.8) !important; }
+html.light-mode .bg-gray-900\/50 { background-color: rgba(248,250,252,0.9) !important; }
+
+/* 텍스트 색상 */
+html.light-mode .text-gray-100 { color: #1e293b !important; }
+html.light-mode .text-gray-200 { color: #334155 !important; }
+html.light-mode .text-gray-300 { color: #475569 !important; }
+html.light-mode .text-gray-400 { color: #64748b !important; }
+html.light-mode .text-gray-500 { color: #6b7280 !important; }
+html.light-mode .text-white    { color: #0f172a !important; }
+
+/* 사이드바 */
+html.light-mode aside  { background-color: #e2e8f0 !important; border-right-color: #cbd5e1 !important; }
+html.light-mode header { background-color: rgba(248,250,252,0.95) !important; border-bottom-color: #cbd5e1 !important; }
+
+/* 사이드바 아이템 */
+html.light-mode .hover\:bg-gray-800:hover { background-color: #cbd5e1 !important; }
+html.light-mode .hover\:text-white:hover  { color: #0f172a !important; }
+
+/* 테두리 */
+html.light-mode .border-gray-800 { border-color: #cbd5e1 !important; }
+html.light-mode .border-gray-700 { border-color: #94a3b8 !important; }
+
+/* 카드/패널 */
+html.light-mode .bg-gray-800    { background-color: #e9eef4 !important; }
+html.light-mode .bg-gray-900    { background-color: #f1f5f9 !important; }
+
+/* 입력 폼 요소 */
+html.light-mode input:not(.no-theme),
+html.light-mode select:not(.no-theme),
+html.light-mode textarea:not(.no-theme) {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    border-color: #94a3b8 !important;
+}
+
+/* 테이블 */
+html.light-mode table thead { background-color: #e2e8f0 !important; }
+html.light-mode table tbody tr:hover { background-color: #f0f4f8 !important; }
+html.light-mode table th, html.light-mode table td { border-color: #cbd5e1 !important; color: #1e293b; }
+html.light-mode .text-gray-100 th, html.light-mode .text-gray-100 td { color: #1e293b; }
+html.light-mode .bg-gray-900 table { background-color: #f8fafc !important; }
+
+/* 스크롤바 */
+html.light-mode ::-webkit-scrollbar-track { background: #e2e8f0 !important; }
+html.light-mode ::-webkit-scrollbar-thumb { background-color: #94a3b8 !important; }

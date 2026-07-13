@@ -60,6 +60,15 @@ const DeliveryPage = () => {
     const [ciModalInvoiceNo, setCiModalInvoiceNo] = useState('');
     const [ciModalDeliveryDate, setCiModalDeliveryDate] = useState('');
 
+    // 환율 (USD→KRW) — 엑셀 출력 시 원화 환산용
+    const [exchangeRate, setExchangeRate] = useState(1350);
+    useEffect(() => {
+        fetch('https://open.er-api.com/v6/latest/USD')
+            .then(r => r.json())
+            .then(j => { if (j?.rates?.KRW) setExchangeRate(Math.round(j.rates.KRW)); })
+            .catch(() => {});
+    }, []);
+
     // Filters
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [dateType, setDateType] = useState('order'); // 'order' or 'delivery'
@@ -129,9 +138,9 @@ const DeliveryPage = () => {
         const fileName = `${docLabel}-${groupName}-${periodLabel.replace(/[~:\s]/g, '_')}-${today.replace(/-/g, '')}.xlsx`;
 
         const header1 = [`${docLabel} 현황 (${groupName})`];
-        const header2 = [`기간: ${periodLabel}`, `사업부: ${groupName}`, `작성일: ${today}`];
+        const header2 = [`기간: ${periodLabel}`, `사업부: ${groupName}`, `작성일: ${today}`, `적용환율: 1 USD = ${exchangeRate.toLocaleString()} KRW (수출건 원화 환산 적용)`];
         const header3 = ['No', '고객사', '수주번호', '수주일', '납품예정일', '실납품일',
-            '품명', '규격', '수주수량', '단가', '수주금액',
+            '품명', '규격', '수주수량', '단가(원)', '수주금액(원)',
             '기납품수량', '잔량', '상태', '비고'];
 
         const statusLabel = (s) =>
@@ -157,7 +166,10 @@ const DeliveryPage = () => {
                 for (const it of ord.items) {
                     const qty = it.quantity || 0;
                     const delivered = it.delivered_quantity || 0;
-                    const unitPrice = it.unit_price || 0;
+                    const rawUnitPrice = it.unit_price || 0;
+                    const isUSD = (it.currency || 'KRW') === 'USD';
+                    // USD 통화인 경우 환율 적용하여 원화로 환산
+                    const unitPrice = isUSD ? Math.round(rawUnitPrice * exchangeRate) : rawUnitPrice;
                     body.push([no++, ord.partner?.name || '-', ord.order_no || '-',
                         ord.order_date || '-', ord.delivery_date || '-', actualDate,
                         it.product?.name || '-',

@@ -532,7 +532,7 @@ async def get_chart_summary(
         ), SalesOrder.order_date
     ))
 
-    # 매출 (USD 환산)
+    # 매출 (USD 환산) — 납품완료/완납 수주
     r_sales = await db.execute(pd(
         with_grp(
             select(group_expr.label("g"),
@@ -544,6 +544,35 @@ async def get_chart_summary(
             .group_by(group_expr)
         ), SalesOrder.actual_delivery_date
     ))
+
+    # 매출 추가 집계 — 부분납품 중 거래명세서 발행건 (매출내역 탭과 동일 기준)
+    dhi_amount = DeliveryHistoryItem.quantity * SalesOrderItem.unit_price
+    r_sales_partial = await db.execute(pd(
+        with_grp(
+            select(group_expr.label("g"),
+                   func.sum(krw_expr(dhi_amount, SalesOrderItem.currency)).label("v"))
+            .select_from(DeliveryHistory)
+            .join(DeliveryHistoryItem, DeliveryHistory.id == DeliveryHistoryItem.delivery_id)
+            .join(SalesOrderItem, DeliveryHistoryItem.order_item_id == SalesOrderItem.id)
+            .join(SalesOrder, DeliveryHistory.order_id == SalesOrder.id)
+            .join(Product, SalesOrderItem.product_id == Product.id)
+            .where(
+                SalesOrder.status == OrderStatus.PARTIALLY_DELIVERED,
+                DeliveryHistory.statement_json.isnot(None)
+            )
+            .group_by(group_expr)
+        ), DeliveryHistory.delivery_date
+    ))
+
+    # 두 매출 소스 합산
+    sales_map: dict = {}
+    for r in r_sales.fetchall():
+        key = r[0] or "미분류"
+        sales_map[key] = sales_map.get(key, 0.0) + float(r[1] or 0)
+    for r in r_sales_partial.fetchall():
+        key = r[0] or "미분류"
+        sales_map[key] = sales_map.get(key, 0.0) + float(r[1] or 0)
+    sales_data = [{"name": k, "value": v} for k, v in sorted(sales_map.items(), key=lambda x: -x[1])]
 
     # 매입 = 구매발주(자재/MRP, 소모품 제외) + 외주발주 (USD 환산)
     po_amount = PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price
@@ -774,7 +803,7 @@ async def get_chart_summary(
 
     return {
         "orders":           row2(r_orders),
-        "sales":            row2(r_sales),
+        "sales":            sales_data,
         "purchases":        purchases_data,
         "production":       row2(r_prod),
         "defects":          [{"name": r[0] or "미분류", "value": float(r[1] or 0), "count": int(r[2] or 0)}

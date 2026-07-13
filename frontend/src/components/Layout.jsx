@@ -26,11 +26,14 @@ import {
     Plus,
     Mail, Send,
     AlertCircle,
-    Calculator
+    Calculator,
+    Sun,
+    Moon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
+import { useTheme } from '../contexts/ThemeContext';
 import usePushNotifications from '../hooks/usePushNotifications';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Fab } from '@mui/material';
 
@@ -62,6 +65,7 @@ const Layout = () => {
     const navigate = useNavigate();
     const { user, logout, hasPermission } = useAuth();
     const { waitingCount } = useApprovalBadge();
+    const { isDark, toggleTheme } = useTheme();
     
     // 푸시 알람 구독 훅 (user.id가 존재할 때만 내부적으로 등록 수행)
     usePushNotifications(user?.id);
@@ -163,6 +167,31 @@ const Layout = () => {
                         </div>
                     </div>
                     
+                    {/* 다크/라이트 모드 토글 */}
+                    <button
+                        onClick={toggleTheme}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 w-full text-sm rounded-md transition-all duration-200 font-semibold",
+                            isDark
+                                ? "text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/10"
+                                : "text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
+                        )}
+                        title={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
+                    >
+                        {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        <span>{isDark ? '라이트 모드' : '다크 모드'}</span>
+                        {/* 토글 슬라이더 시각화 */}
+                        <div className={cn(
+                            "ml-auto w-10 h-5 rounded-full relative transition-colors duration-300",
+                            isDark ? "bg-indigo-600" : "bg-amber-400"
+                        )}>
+                            <div className={cn(
+                                "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-300",
+                                isDark ? "left-5" : "left-0.5"
+                            )} />
+                        </div>
+                    </button>
+
                     <button
                         onClick={() => setContactModalOpen(true)}
                         className="flex items-center gap-2 px-3 py-2 w-full text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-md transition-colors"
