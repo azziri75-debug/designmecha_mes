@@ -299,6 +299,7 @@ async def read_production_plans(
     product_name: Optional[str] = None,
     customer_id: Optional[int] = None,
     major_group_id: Optional[int] = None,
+    order_id: Optional[int] = None,
     db: AsyncSession = Depends(deps.get_db),
 ):
     """
@@ -330,6 +331,8 @@ async def read_production_plans(
         subquery = select(ProductionPlanItem.plan_id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
                    .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         stmt = stmt.where(ProductionPlan.id.in_(subquery))
+    if order_id:
+        stmt = stmt.where(ProductionPlan.order_id == order_id)
 
     result = await db.execute(
         stmt

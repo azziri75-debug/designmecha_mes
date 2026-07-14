@@ -200,6 +200,10 @@ class DeliveryHistoryBase(BaseModel):
 
 class DeliveryHistoryCreate(DeliveryHistoryBase):
     items: List[DeliveryHistoryItemCreate]
+    # 생산계획 없는 수주 납품 시 재고 처리 방식
+    # "STOCK"   : 기존 재고에서 차감 (재고 소진)
+    # "PRODUCE" : 생산 완료 납품 (생산계획 자동 생성 → 재고 입고+출고 상쇄, 기존 재고 불변)
+    no_plan_source: Optional[str] = None  # "STOCK" | "PRODUCE" | None
 
 class DeliveryHistoryUpdate(BaseModel):
     delivery_date: Optional[date] = None

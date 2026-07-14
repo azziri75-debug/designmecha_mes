@@ -1009,6 +1009,12 @@ async def create_delivery(
     1. SalesOrderItem의 delivered_quantity 업데이트
     2. SalesOrder 상태를 PARTIALLY_DELIVERED 또는 DELIVERED로 변경
     3. DeliveryHistory 및 품목 생성
+
+    [no_plan_source 처리]
+    - "PRODUCE": 생산계획 없는 생산 완료 납품 → 생산계획 자동 생성·완료 후 재고 IN 기록
+                 납품 OUT과 상쇄되어 기존 재고 수준 유지 (기존 재고 차감 없음)
+    - "STOCK"  : 기존 재고에서 직접 차감 (기존 동작과 동일)
+    - None     : 생산계획이 있거나 이미 선택된 경우 → 기존 동작
     """
     order_query = select(SalesOrder).options(selectinload(SalesOrder.items)).where(SalesOrder.id == order_id)
     order_res = await db.execute(order_query)
@@ -1026,6 +1032,69 @@ async def create_delivery(
         try: new_seq = int(last_dh_no.split("-")[-1]) + 1
         except: pass
     delivery_no = f"DH-{date_str}-{new_seq:03d}"
+
+    # ─────────────────────────────────────────────────────────────
+    # [no_plan_source == "PRODUCE"] 생산계획 자동 생성 및 완료 처리
+    #   납품 수량만큼 생산계획 IN(+qty) 기록 → 이후 납품 OUT(-qty)과 상쇄
+    #   결과: 기존 재고는 변동 없음 (새로 생산하여 납품한 것으로 기록)
+    # ─────────────────────────────────────────────────────────────
+    if delivery_in.no_plan_source == "PRODUCE":
+        from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
+        from app.api.utils.inventory import handle_stock_movement, handle_backflush
+        from app.models.inventory import TransactionType
+
+        # 생산 계획 번호 생성
+        pp_prefix = f"PP-AUTO-{date_str}-"
+        pp_last = (await db.execute(
+            select(ProductionPlan.plan_no).where(ProductionPlan.plan_no.like(f"{pp_prefix}%"))
+            .order_by(desc(ProductionPlan.plan_no)).limit(1)
+        )).scalar()
+        pp_seq = (int(pp_last.split("-")[-1]) + 1) if pp_last else 1
+        auto_plan_no = f"{pp_prefix}{pp_seq:03d}"
+
+        # 생산 계획 헤더 생성 (COMPLETED 상태로 직접 확정)
+        auto_plan = ProductionPlan(
+            plan_no=auto_plan_no,
+            order_id=order_id,
+            status=ProductionStatus.COMPLETED,
+            actual_completion_date=delivery_in.delivery_date or now_kst().date(),
+            note=f"생산계획 없음 납품 처리에 의한 자동 생성 ({delivery_no})"
+        )
+        db.add(auto_plan)
+        await db.flush()  # plan.id 확보
+
+        # 납품 품목별 공정 아이템 + 재고 입고(IN) 처리
+        product_qty_map = {}
+        for item_in in delivery_in.items:
+            order_item = next((oi for oi in db_order.items if oi.id == item_in.order_item_id), None)
+            if not order_item or item_in.quantity <= 0:
+                continue
+            pid = order_item.product_id
+            product_qty_map[pid] = product_qty_map.get(pid, 0) + item_in.quantity
+
+        for seq_idx, (pid, qty) in enumerate(product_qty_map.items(), start=1):
+            # 생산 공정 아이템 (간단히 INTERNAL 단일 공정)
+            auto_item = ProductionPlanItem(
+                plan_id=auto_plan.id,
+                product_id=pid,
+                quantity=qty,
+                sequence=seq_idx,
+                course_type="INTERNAL",
+                status=ProductionStatus.COMPLETED,
+            )
+            db.add(auto_item)
+            # 완제품 재고 입고 기록 (Production IN → 이후 납품 OUT과 상쇄)
+            await handle_stock_movement(
+                db=db, product_id=pid, quantity=qty,
+                transaction_type=TransactionType.IN,
+                reference=f"Auto-Produce ({auto_plan_no})"
+            )
+            # BOM 부품 백플러시 (실제 생산 시 부품 소모로 간주)
+            await handle_backflush(db=db, parent_product_id=pid, produced_quantity=qty,
+                                   reference=auto_plan_no)
+
+        await db.flush()
+        print(f"[create_delivery] Auto production plan created: {auto_plan_no} for order {order_id}")
 
     # Create Delivery History Header
     db_delivery = DeliveryHistory(
