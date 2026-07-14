@@ -27,6 +27,8 @@ import {
     Mail, Send,
     AlertCircle,
     Calculator,
+    Code2,
+    Palette,
     Sun,
     Moon
 } from 'lucide-react';
@@ -206,6 +208,22 @@ const Layout = () => {
                     >
                         <Calculator className="w-4 h-4" />
                         <span>중량 계산기</span>
+                    </button>
+
+                    <button
+                        onClick={() => window.open('https://nc-visualization-pwa.vercel.app', '_blank', 'noopener,noreferrer')}
+                        className="flex items-center gap-2 px-3 py-2 w-full text-sm text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-md transition-colors font-semibold"
+                    >
+                        <Code2 className="w-4 h-4" />
+                        <span>NC Generator</span>
+                    </button>
+
+                    <button
+                        onClick={() => window.open('https://crb-designer.vercel.app', '_blank', 'noopener,noreferrer')}
+                        className="flex items-center gap-2 px-3 py-2 w-full text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-md transition-colors font-semibold"
+                    >
+                        <Palette className="w-4 h-4" />
+                        <span>CRB Designer</span>
                     </button>
 
                     <button
