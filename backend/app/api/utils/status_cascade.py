@@ -1,9 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, desc
 from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
+from app.core.timezone import now_kst
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 async def complete_production_for_order(db: AsyncSession, order_id: int, reference: str = "Delivery"):
     """
@@ -330,16 +332,21 @@ async def on_production_item_completed(
     if is_last:
         # A. 완제품 입고 (+)
         if auto_delivery:
-            # 입고 후 즉시 출고 (FG Net 0)
+            # [FIX] 납품 완료에 의한 자동 처리인 경우:
+            # 납품 시점에 이미 sales.py에서 OUT(-qty) 처리됨.
+            # 따라서 여기서는 생산 완료 기록용으로 IN(+qty)만 남김.
+            # (IN from production) + (OUT from delivery, already done) = net 0 → 정상.
+            # 이전 코드의 IN + 추가 OUT 방식은 이중 차감을 유발했음.
             await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Auto-Production ({reference})")
-            await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.OUT, f"Auto-Delivery ({reference})")
         else:
             await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Production Done ({reference or item.id})")
         
-        # B. BOM 하위 부품 자동 차감 (-)
+        # B. BOM 하위 부품 자동 차감 (-) - 생산 계획이 없을 때만 실행
+        # auto_delivery의 경우도 BOM 차감은 정상 처리 (생산이 실제 이루어진 것으로 간주)
         await handle_backflush(db, item.product_id, item.quantity, reference=f"Production #{item.plan_id}")
 
     await db.flush()
+
 
 async def revert_production_item_completed(
     db: AsyncSession, 
