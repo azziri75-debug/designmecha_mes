@@ -105,6 +105,25 @@ async def global_exception_handler(request: Request, exc: Exception):
         headers=headers
     )
 
+@app.get("/api/v1/debug-migrate-enum")
+async def debug_migrate_enum():
+    from app.api.deps import engine
+    db_url = str(engine.url)
+    results = []
+    try:
+        async with engine.connect() as conn:
+            conn_raw = await conn.get_raw_connection()
+            asyncpg_conn = conn_raw.driver_connection
+            for val in ['QUOTATION', 'QUOTATION_COMPLETE']:
+                try:
+                    await asyncpg_conn.execute(f"ALTER TYPE outsourcingstatus ADD VALUE '{val}';")
+                    results.append(f"Successfully added {val}")
+                except Exception as inner_e:
+                    results.append(f"Error adding {val}: {inner_e}")
+    except Exception as e:
+        results.append(f"Global connection error: {e}")
+    return {"db_url": db_url, "results": results}
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 from app.api.endpoints import quality
