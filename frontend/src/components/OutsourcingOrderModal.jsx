@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    IconButton, MenuItem, Box, Typography, Tooltip, Autocomplete, Popover, List, ListItem, ListItemText, Divider
+    IconButton, MenuItem, Box, Typography, Tooltip, Autocomplete, Popover, List, ListItem, ListItemText, Divider,
+    Checkbox, FormControlLabel
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -484,7 +485,12 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
     const handleSubmit = async () => {
         if (!formData.partner_id) return alert("외주처를 선택해 주세요.");
-        if (!formData.delivery_date) return alert("납기일자를 입력해 주세요.");
+        
+        // 견적의뢰 전용이 아닌 경우에만 납기일자 검사
+        const isQuotation = formData.status === 'QUOTATION' || formData.status === 'QUOTATION_COMPLETE';
+        if (!isQuotation && !formData.delivery_date) {
+            return alert("납기일자를 입력해 주세요.");
+        }
         if (formData.items.length === 0) return alert("품목을 최소 1개 이상 추가해 주세요.");
 
         for (let i = 0; i < formData.items.length; i++) {
@@ -568,8 +574,37 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         renderInput={(params) => <TextField {...params} label="외주처 검색/선택" size="small" sx={{ minWidth: 250 }} required />}
                         sx={{ flexGrow: 1 }}
                     />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, border: '1px solid #ddd', borderRadius: 1, px: 1.5, py: 0.5, height: 38, bgcolor: (formData.status === 'QUOTATION' || formData.status === 'QUOTATION_COMPLETE') ? '#f3e5f5' : 'transparent' }}>
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={formData.status === 'QUOTATION' || formData.status === 'QUOTATION_COMPLETE'}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            status: checked ? 'QUOTATION' : 'PENDING'
+                                        }));
+                                    }}
+                                    size="small"
+                                    color="secondary"
+                                    disabled={!!order && (order.status === 'QUOTATION_COMPLETE' || order.status === 'COMPLETED')}
+                                />
+                            }
+                            label={<Typography variant="body2" sx={{ fontWeight: 'bold', color: '#7b1fa2' }}>견적의뢰 전용</Typography>}
+                            sx={{ margin: 0 }}
+                        />
+                    </Box>
                     <TextField label="발주일자" type="date" value={formData.order_date} onChange={(e) => setFormData(prev => ({ ...prev, order_date: e.target.value }))} size="small" InputLabelProps={{ shrink: true }} />
-                    <TextField label="납기일자" type="date" value={formData.delivery_date} onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))} size="small" InputLabelProps={{ shrink: true }} required />
+                    <TextField 
+                        label={(formData.status === 'QUOTATION' || formData.status === 'QUOTATION_COMPLETE') ? "납기일자 (선택)" : "납기일자"} 
+                        type="date" 
+                        value={formData.delivery_date} 
+                        onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))} 
+                        size="small" 
+                        InputLabelProps={{ shrink: true }} 
+                        required={!(formData.status === 'QUOTATION' || formData.status === 'QUOTATION_COMPLETE')} 
+                    />
                     <TextField label="비고" value={formData.note} onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))} size="small" placeholder="특이사항" sx={{ flexGrow: 2 }} />
                 </Paper>
 

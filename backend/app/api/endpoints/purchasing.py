@@ -796,6 +796,34 @@ async def complete_outsourcing_order(
     await db.commit()
     return {"message": "외주 완료 및 정상 입고 처리되었습니다.", "order_no": order.order_no}
 
+@router.post("/outsourcing/orders/{order_id}/quotation-complete")
+async def quotation_complete_outsourcing_order(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Any = Depends(deps.get_current_user)
+):
+    """외주 견적의뢰 완료 처리 (재고 이동 없음 - 견적 접수만 완료)"""
+    from app.models.purchasing import OutsourcingOrder
+
+    query = select(OutsourcingOrder).where(OutsourcingOrder.id == order_id)
+    res = await db.execute(query)
+    order = res.scalars().first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="외주 발주서를 찾을 수 없습니다.")
+    if order.status != "QUOTATION":
+        raise HTTPException(status_code=400, detail="견적의뢰 상태인 건만 견적완료 처리가 가능합니다.")
+
+    order.status = "QUOTATION_COMPLETE"
+    order.actual_delivery_date = now_kst().date()
+    if order.note:
+        order.note = order.note + f"\n[견적완료: {now_kst().strftime('%Y-%m-%d %H:%M')}]"
+    else:
+        order.note = f"[견적완료: {now_kst().strftime('%Y-%m-%d %H:%M')}]"
+
+    await db.commit()
+    return {"message": "견적완료 처리되었습니다.", "order_no": order.order_no}
+
 @router.get("/fix-consumable-types")
 async def trigger_fix_consumable_types(
     db: AsyncSession = Depends(deps.get_db)
@@ -1258,7 +1286,10 @@ async def read_outsourcing_orders(
             )
         )
         if status:
-            query = query.where(OutsourcingOrder.status == status)
+            if status == "COMPLETED" or status == OutsourcingStatus.COMPLETED:
+                query = query.where(OutsourcingOrder.status.in_(["COMPLETED", "QUOTATION_COMPLETE"]))
+            else:
+                query = query.where(OutsourcingOrder.status == status)
         if partner_id:
             query = query.where(OutsourcingOrder.partner_id == partner_id)
         if start_date:

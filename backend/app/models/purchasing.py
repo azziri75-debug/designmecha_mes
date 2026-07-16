@@ -13,10 +13,12 @@ class PurchaseStatus(str, enum.Enum):
     CANCELED = "CANCELED"   # 취소됨
 
 class OutsourcingStatus(str, enum.Enum):
-    PENDING = "PENDING"     # 발주 대기
-    ORDERED = "ORDERED"     # 발주 완료
-    COMPLETED = "COMPLETED" # 작업 완료 (입고)
-    CANCELED = "CANCELED"   # 취소됨
+    PENDING             = "PENDING"              # 발주 대기
+    ORDERED             = "ORDERED"              # 발주 완료
+    COMPLETED           = "COMPLETED"            # 작업 완료 (입고)
+    CANCELED            = "CANCELED"             # 취소됨
+    QUOTATION           = "QUOTATION"            # 견적의뢰 중
+    QUOTATION_COMPLETE  = "QUOTATION_COMPLETE"   # 견적완료
 
 class PricingType(str, enum.Enum):
     UNIT = "UNIT"
@@ -129,7 +131,7 @@ class OutsourcingOrder(Base):
     total_amount = Column(Float, default=0.0)
     note = Column(String, nullable=True)
     attachment_file = Column(JSON, nullable=True)  # JSON array of {name, url}
-    status = Column(SqlEnum(OutsourcingStatus), default=OutsourcingStatus.PENDING)
+    status = Column(String, default="PENDING", nullable=False)  # PENDING/ORDERED/COMPLETED/CANCELED/QUOTATION/QUOTATION_COMPLETE
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True)
     
     # Relationships

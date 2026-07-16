@@ -142,7 +142,7 @@ const OutsourcingPage = () => {
             };
 
             const response = await api.get('/purchasing/outsourcing/orders/', { params });
-            setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
+            setOrders(response.data.filter(o => o.status !== 'COMPLETED' && o.status !== 'QUOTATION_COMPLETE'));
         } catch (error) {
             console.error("Failed to fetch outsourcing orders", error);
         }
@@ -295,6 +295,18 @@ const OutsourcingPage = () => {
         } catch (error) {
             console.error("Delete failed", error);
             alert("삭제 실패: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const handleQuotationComplete = async (orderId) => {
+        if (!window.confirm("견적 회신을 받으셨습니까? 견적완료 상태로 변경하시겠습니까? (완료 탭으로 이동하며, 재고는 변동되지 않습니다)")) return;
+        try {
+            await api.post(`/purchasing/outsourcing/orders/${orderId}/quotation-complete`);
+            alert('견적완료 처리되었습니다.');
+            handleSuccess();
+        } catch (error) {
+            console.error('Quotation complete failed', error);
+            alert('처리 실패: ' + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -577,6 +589,7 @@ const OutsourcingPage = () => {
                                     onEdit={handleEditClick}
                                     onDelete={handleDeleteOrder}
                                     onComplete={handleCompleteOrder}
+                                    onQuotationComplete={handleQuotationComplete}
                                     onApproval={handleApprovalSubmit}
                                     onOpenFiles={(files, ord) => {
                                         setViewingFiles(files);
@@ -683,7 +696,26 @@ const OutsourcingPage = () => {
     );
 };
 
-const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onComplete, onApproval, onOpenFiles, onRefresh, onOpenSheet, readonly }) => {
+const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onComplete, onQuotationComplete, onApproval, onOpenFiles, onRefresh, onOpenSheet, readonly }) => {
+    const getStatusChip = (status) => {
+        switch(status) {
+            case 'PENDING':
+                return <Chip label="발주 대기" size="small" color="warning" sx={{ height: 20, fontSize: '0.7rem' }} />;
+            case 'ORDERED':
+                return <Chip label="발주 완료" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />;
+            case 'QUOTATION':
+                return <Chip label="견적의뢰 중" size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: '#e1bee7', color: '#4a148c', fontWeight: 'bold' }} />;
+            case 'QUOTATION_COMPLETE':
+                return <Chip label="견적 완료" size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: '#c8e6c9', color: '#1b5e20', fontWeight: 'bold' }} />;
+            case 'COMPLETED':
+                return <Chip label="입고 완료" size="small" color="success" sx={{ height: 20, fontSize: '0.7rem' }} />;
+            case 'CANCELED':
+                return <Chip label="취소됨" size="small" color="error" sx={{ height: 20, fontSize: '0.7rem' }} />;
+            default:
+                return <Chip label={status} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />;
+        }
+    };
+
     return (
         <React.Fragment>
             <tr
@@ -730,19 +762,14 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
                     })()}
                 </td>
                 <td className="px-4 py-4">{order.items.length} 품목</td>
-                <td className="px-4 py-4 text-orange-600 font-bold">{order.delivery_date}</td>
+                <td className="px-4 py-4 text-orange-600 font-bold">{order.delivery_date || '-'}</td>
                 <td className="px-4 py-4 font-bold">
                     {order.actual_delivery_date
                         ? <span className="text-green-400">{order.actual_delivery_date}</span>
                         : <span className="text-gray-500">-</span>}
                 </td>
                 <td className="px-4 py-4">
-                    <Chip
-                        label={order.status}
-                        size="small"
-                        color={order.status === 'COMPLETED' ? "success" : order.status === 'PENDING' ? "warning" : "primary"}
-                        sx={{ height: 20, fontSize: '0.7rem' }}
-                    />
+                    {getStatusChip(order.status)}
                 </td>
                 <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1 justify-center">
@@ -766,14 +793,21 @@ const OutsourcingOrderRow = ({ order, expanded, onToggle, onEdit, onDelete, onCo
                                 <PrintIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
-                        {(order.status === 'PENDING' || order.status === 'ORDERED') && (
+                        {(order.status === 'PENDING' || order.status === 'ORDERED' || order.status === 'QUOTATION') && (
                             <Tooltip title="결재요청">
                                 <IconButton size="small" color="primary" onClick={() => onApproval(order)}>
                                     <SendIcon fontSize="small" />
                                 </IconButton>
                             </Tooltip>
                         )}
-                        {!readonly && order.status !== 'COMPLETED' && (
+                        {!readonly && order.status === 'QUOTATION' && (
+                            <Tooltip title="견적완료 처리">
+                                <IconButton size="small" color="secondary" onClick={() => onQuotationComplete(order.id)}>
+                                    <CheckCircleIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                        {!readonly && order.status !== 'COMPLETED' && order.status !== 'QUOTATION' && order.status !== 'QUOTATION_COMPLETE' && (
                             <Tooltip title="외주 완료(입고)">
                                 <IconButton size="small" color="success" onClick={() => onComplete(order.id)}>
                                     <CheckCircleIcon fontSize="small" />
