@@ -254,17 +254,18 @@ async def startup_event():
             # PostgreSQL인 경우, outsourcingstatus enum 타입의 신규 값 등록 시도
             if not is_sqlite:
                 try:
-                    conn_raw = await db.get_bind().raw_connection()
-                    asyncpg_conn = conn_raw.driver_connection
-                    for val in ['QUOTATION', 'QUOTATION_COMPLETE']:
-                        try:
-                            await asyncpg_conn.execute(f"ALTER TYPE outsourcingstatus ADD VALUE '{val}';")
-                            print(f"[AUTO-MIGRATION] Added ENUM value '{val}' to outsourcingstatus.")
-                        except Exception as inner_e:
-                            if "already exists" in str(inner_e).lower() or "duplicate" in str(inner_e).lower():
-                                pass
-                            else:
-                                print(f"[AUTO-MIGRATION] Error adding ENUM value '{val}': {inner_e}")
+                    async with engine.connect() as raw_conn:
+                        conn_raw = await raw_conn.get_raw_connection()
+                        asyncpg_conn = conn_raw.driver_connection
+                        for val in ['QUOTATION', 'QUOTATION_COMPLETE']:
+                            try:
+                                await asyncpg_conn.execute(f"ALTER TYPE outsourcingstatus ADD VALUE '{val}';")
+                                print(f"[AUTO-MIGRATION] Added ENUM value '{val}' to outsourcingstatus.")
+                            except Exception as inner_e:
+                                if "already exists" in str(inner_e).lower() or "duplicate" in str(inner_e).lower():
+                                    pass
+                                else:
+                                    print(f"[AUTO-MIGRATION] Error adding ENUM value '{val}': {inner_e}")
                 except Exception as pg_e:
                     print(f"[AUTO-MIGRATION] Failed raw PostgreSQL connection block: {pg_e}")
 
