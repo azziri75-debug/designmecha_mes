@@ -195,7 +195,7 @@ async def create_product(
 @router.get("/products/", response_model=List[ProductResponse])
 async def read_products(
     skip: int = 0,
-    limit: int = 200,
+    limit: int = 9999,
     item_type: Optional[str] = None,
     partner_id: Optional[int] = None,
     group_id: Optional[int] = None,

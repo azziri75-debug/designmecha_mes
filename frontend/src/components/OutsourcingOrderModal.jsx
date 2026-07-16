@@ -332,9 +332,10 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
     const fetchProducts = async () => {
         try {
-            // Outsourcing should only show PRODUCT or HALF_PRODUCT
-            // CEO instructed to remove the partner_id filter to allow searching all items
-            const response = await api.get('/product/products');
+            // limit을 충분히 크게 지정하여 모든 품목이 표시되도록 함
+            const response = await api.get('/product/products', {
+                params: { limit: 9999 }
+            });
             setProducts(response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
@@ -610,7 +611,16 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     isOptionEqualToValue={(option, value) => String(option.id) === String(value?.id)}
                                                     value={products.find(p => String(p.id) === String(item.product_id)) || null}
                                                     onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
-                                                    renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택" variant="outlined" />}
+                                                    filterOptions={(options, { inputValue }) => {
+                                                        const q = inputValue.toLowerCase();
+                                                        if (!q) return options;
+                                                        return options.filter(o =>
+                                                            (o.name || '').toLowerCase().includes(q) ||
+                                                            (o.specification || '').toLowerCase().includes(q) ||
+                                                            (o.code || o.product_code || '').toLowerCase().includes(q)
+                                                        );
+                                                    }}
+                                                    renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택 (품명·규격·코드)" variant="outlined" />}
                                                     renderOption={(props, option) => (
                                                         <li {...props}>
                                                             <Box>

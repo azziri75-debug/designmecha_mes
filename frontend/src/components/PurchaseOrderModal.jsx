@@ -458,8 +458,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
     const fetchProducts = async () => {
         try {
             // 백엔드가 필터링하지 못하도록 모든 타입을 강제로 다 요청한다!
+            // limit=9999로 모든 품목이 반환되도록 지정
             const response = await api.get('/product/products', {
-                params: { item_type: 'PART,CONSUMABLE,RAW_MATERIAL,PRODUCED' }
+                params: { item_type: 'PART,CONSUMABLE,RAW_MATERIAL,PRODUCED', limit: 9999 }
             });
             setProducts(response.data);
         } catch (error) {
