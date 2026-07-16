@@ -131,7 +131,7 @@ class OutsourcingOrder(Base):
     total_amount = Column(Float, default=0.0)
     note = Column(String, nullable=True)
     attachment_file = Column(JSON, nullable=True)  # JSON array of {name, url}
-    status = Column(String, default="PENDING", nullable=False)  # PENDING/ORDERED/COMPLETED/CANCELED/QUOTATION/QUOTATION_COMPLETE
+    status = Column(SqlEnum(OutsourcingStatus), default=OutsourcingStatus.PENDING)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True)
     
     # Relationships
