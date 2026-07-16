@@ -128,6 +128,9 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
     const [activeItemIndex, setActiveItemIndex] = useState(null);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
+    // 외주업체 선택 시 해당 업체의 외주공정이 등록된 제품만 필터링
+    const [filterByPartner, setFilterByPartner] = useState(true);
+
     const fetchDefaultLines = async () => {
         try {
             const res = await api.get('/approval/lines', { params: { doc_type: 'PURCHASE_ORDER' } });
@@ -536,6 +539,21 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         return `[${code || 'N/A'}] ${name}${spec ? ` (${spec})` : ''}`;
     };
 
+    // [Helper] 선택된 외주업체 이름
+    const selectedPartnerName = partners.find(
+        p => String(p.id) === String(formData.partner_id)
+    )?.name || null;
+
+    // [Helper] 제품에 선택된 외주업체의 외주공정이 등록되어 있는지 확인
+    const hasOutsourcingProcess = (product) => {
+        if (!selectedPartnerName || !product.standard_processes?.length) return false;
+        return product.standard_processes.some(sp => {
+            const ct = (sp.course_type || sp.process?.course_type || '').toUpperCase();
+            const pn = (sp.partner_name || '').trim();
+            return ct.includes('OUTSOURCING') && pn === selectedPartnerName.trim();
+        });
+    };
+
     return (
         <Dialog open={isOpen} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>{order ? "외주 발주 수정" : "외주 발주 등록"}</DialogTitle>
@@ -555,8 +573,30 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     <TextField label="비고" value={formData.note} onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))} size="small" placeholder="특이사항" sx={{ flexGrow: 2 }} />
                 </Paper>
 
-                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
                     <ChevronRight size={18} /> 외주 발주 품목 상세
+                    {/* 외주업체 필터 토글 - 외주처가 선택된 경우에만 표시 */}
+                    {formData.partner_id && (
+                        <Box
+                            component="label"
+                            sx={{
+                                ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5,
+                                fontSize: '0.75rem', cursor: 'pointer',
+                                color: filterByPartner ? 'primary.main' : 'text.secondary',
+                                border: '1px solid', borderColor: filterByPartner ? 'primary.main' : 'divider',
+                                borderRadius: 1, px: 1, py: 0.3,
+                                userSelect: 'none'
+                            }}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={filterByPartner}
+                                onChange={e => setFilterByPartner(e.target.checked)}
+                                style={{ width: 14, height: 14, cursor: 'pointer' }}
+                            />
+                            {selectedPartnerName ? `"${selectedPartnerName}" 외주공정 제품만 표시` : '업체별 필터'}
+                        </Box>
+                    )}
                 </Typography>
                 <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
                     <Table size="small" sx={{ tableLayout: 'fixed' }}>
@@ -612,27 +652,58 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     value={products.find(p => String(p.id) === String(item.product_id)) || null}
                                                     onChange={(_, newValue) => handleItemChange(index, 'product_id', newValue ? newValue.id : '')}
                                                     filterOptions={(options, { inputValue }) => {
+                                                        // 1단계: 외주체 필터 (선택 시)
+                                                        let base = options;
+                                                        if (filterByPartner && selectedPartnerName) {
+                                                            base = options.filter(o => hasOutsourcingProcess(o));
+                                                        }
+                                                        // 2단계: 텍스트 검색 필터
                                                         const q = inputValue.toLowerCase();
-                                                        if (!q) return options;
-                                                        return options.filter(o =>
+                                                        if (!q) return base;
+                                                        return base.filter(o =>
                                                             (o.name || '').toLowerCase().includes(q) ||
                                                             (o.specification || '').toLowerCase().includes(q) ||
                                                             (o.code || o.product_code || '').toLowerCase().includes(q)
                                                         );
                                                     }}
-                                                    renderInput={(params) => <TextField {...params} placeholder="품목 검색/선택 (품명·규격·코드)" variant="outlined" />}
-                                                    renderOption={(props, option) => (
-                                                        <li {...props}>
-                                                            <Box>
-                                                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                                    [{option.code || option.product_code || 'N/A'}] {option.name}
-                                                                </Typography>
-                                                                <Typography variant="caption" color="textSecondary">
-                                                                    규격: {option.specification || '-'}
-                                                                </Typography>
-                                                            </Box>
-                                                        </li>
+                                                    renderInput={(params) => (
+                                                        <TextField
+                                                            {...params}
+                                                            placeholder={
+                                                                filterByPartner && selectedPartnerName
+                                                                    ? `외주공정 등록 품목 검색 (품명·규격·코드)`
+                                                                    : `품목 검색/선택 (품명·규격·코드)`
+                                                            }
+                                                            variant="outlined"
+                                                        />
                                                     )}
+                                                    renderOption={(props, option) => {
+                                                        // 선택된 외주체의 공정 정보 추출
+                                                        const matchedProcess = selectedPartnerName
+                                                            ? option.standard_processes?.find(sp => {
+                                                                const ct = (sp.course_type || sp.process?.course_type || '').toUpperCase();
+                                                                return ct.includes('OUTSOURCING') && (sp.partner_name || '').trim() === selectedPartnerName.trim();
+                                                              })
+                                                            : null;
+                                                        return (
+                                                            <li {...props}>
+                                                                <Box>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                                                        [{option.code || option.product_code || 'N/A'}] {option.name}
+                                                                    </Typography>
+                                                                    <Typography variant="caption" color="textSecondary">
+                                                                        규격: {option.specification || '-'}
+                                                                        {matchedProcess && (
+                                                                            <Box component="span" sx={{ ml: 1, color: 'primary.main', fontWeight: 'bold' }}>
+                                                                                ✔ {matchedProcess.process?.name || '외주공정'}
+                                                                                {matchedProcess.cost ? ` (₩${Number(matchedProcess.cost).toLocaleString()})` : ''}
+                                                                            </Box>
+                                                                        )}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </li>
+                                                        );
+                                                    }}
                                                     sx={{ width: '100%' }}
                                                     readOnly={!!item.production_plan_item_id}
                                                 />
