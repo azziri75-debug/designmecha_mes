@@ -501,14 +501,22 @@ async def create_production_plan(
             raise HTTPException(status_code=400, detail="Either order_id or stock_production_id is required")
 
         # 3. Create Plan Header
+        # Ensure stock_production_id is set if stock_production_order_id is provided
+        target_stock_prod_id = plan_in.stock_production_id
+        if not target_stock_prod_id and plan_in.stock_production_order_id:
+            sub_res = await db.execute(select(StockProduction.id).where(StockProduction.order_id == plan_in.stock_production_order_id).limit(1))
+            target_stock_prod_id = sub_res.scalars().first()
+
         plan = ProductionPlan(
             order_id=plan_in.order_id,
-            stock_production_id=plan_in.stock_production_id,
+            stock_production_id=target_stock_prod_id,
+            stock_production_order_id=plan_in.stock_production_order_id,
             plan_date=plan_in.plan_date,
             status=ProductionStatus.IN_PROGRESS
         )
         db.add(plan)
         await db.flush()
+
         
         # 4. Generate Items
         if plan_in.items:

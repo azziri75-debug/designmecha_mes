@@ -116,16 +116,7 @@ const ProductionPage = () => {
 
             const response = await api.get('/production/plans/', { params });
             setPlans(response.data);
-
-            if (!selectedMajorGroupId && !searchQuery && !startDate && !endDate && filterPartner === 'all') {
-                setAllPlannedIds({
-                    orders: response.data.map(p => p.order_id).filter(id => id != null),
-                    stocks: [
-                        ...response.data.map(p => p.stock_production_order_id).filter(id => id != null),
-                        ...response.data.map(p => p.stock_production_id).filter(id => id != null)
-                    ]
-                });
-            }
+            fetchAllPlannedIds();
         } catch (error) {
             console.error("Failed to fetch plans", error);
         }
@@ -133,18 +124,26 @@ const ProductionPage = () => {
 
     const fetchAllPlannedIds = async () => {
         try {
-            const response = await api.get('/production/plans/', { params: { limit: 2000 } });
-            setAllPlannedIds({
-                orders: response.data.map(p => p.order_id).filter(id => id != null),
-                stocks: [
-                    ...response.data.map(p => p.stock_production_order_id).filter(id => id != null),
-                    ...response.data.map(p => p.stock_production_id).filter(id => id != null)
-                ]
+            const response = await api.get('/production/plans/', { params: { limit: 5000 } });
+            const orders = [];
+            const stocks = [];
+            response.data.forEach(p => {
+                if (p.order_id) orders.push(Number(p.order_id));
+                if (p.order?.id) orders.push(Number(p.order.id));
+                
+                if (p.stock_production_order_id) stocks.push(Number(p.stock_production_order_id));
+                if (p.stock_production_id) stocks.push(Number(p.stock_production_id));
+                if (p.stock_production_order?.id) stocks.push(Number(p.stock_production_order.id));
+                if (p.stock_production?.id) stocks.push(Number(p.stock_production.id));
+                if (p.stock_production?.order_id) stocks.push(Number(p.stock_production.order_id));
             });
+            setAllPlannedIds({ orders, stocks });
         } catch (error) {
             console.error("Failed to fetch all planned IDs", error);
         }
     };
+
+
 
 
     const fetchStockProductions = async () => {
@@ -587,7 +586,16 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
     const planStockProdIds = (plannedIds?.stocks || []).map(id => Number(id));
 
     let unplannedOrders = orders.filter(o => !planOrderIds.includes(Number(o.id)) && (o.status === 'PENDING' || o.status === 'CONFIRMED'));
-    let unplannedStockProductions = stockProductions.filter(sp => !planStockProdIds.includes(Number(sp.id)));
+    let unplannedStockProductions = stockProductions.filter(sp => {
+        const spId = Number(sp.id);
+        const spOrderId = Number(sp.order_id);
+        if (planStockProdIds.includes(spId)) return false;
+        if (spOrderId && planStockProdIds.includes(spOrderId)) return false;
+        if (sp.items && sp.items.some(item => planStockProdIds.includes(Number(item.id)))) return false;
+        return true;
+    });
+
+
 
     if (searchQuery) {
         const query = searchQuery.toLowerCase();

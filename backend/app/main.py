@@ -1808,9 +1808,26 @@ async def startup_event():
                 except Exception as e:
                     await db.rollback()
                     print(f"Startup: consumable_purchase_waits column migration failed: {e}")
+
+                # [NEW] Backfill missing stock_production_order_id on production_plans
+                try:
+                    await db.execute(text("""
+                        UPDATE production_plans
+                        SET stock_production_order_id = stock_productions.order_id
+                        FROM stock_productions
+                        WHERE production_plans.stock_production_id = stock_productions.id
+                          AND production_plans.stock_production_order_id IS NULL
+                          AND stock_productions.order_id IS NOT NULL;
+                    """))
+                    await db.commit()
+                    print("Startup: Backfilled stock_production_order_id on production_plans")
+                except Exception as e:
+                    await db.rollback()
+                    print(f"Startup: production_plans backfill failed: {e}")
             except Exception as e:
                 print(f"Startup: MRP auto-patch failed: {e}")
                 await db.rollback()
+
 
     except Exception as e:
         print(f"Startup: DB initialization crashed: {e}")
