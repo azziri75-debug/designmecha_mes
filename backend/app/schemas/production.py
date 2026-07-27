@@ -68,18 +68,11 @@ class ProductionPlanBase(BaseModel):
     attachment_file: Optional[Union[List[Any], str]] = None
     sheet_metadata: Optional[dict] = None
 
-# --- Plan Schemas (Forward Declaration for Item) ---
-class ProductionPlanSimple(ProductionPlanBase):
-    id: int
-    order_id: Optional[int] = None
-    stock_production_id: Optional[int] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    order: Optional[SalesOrderSimple] = None
 # Forward refs for Purchasing
 from app.schemas.purchasing import PurchaseOrderItemSimple, OutsourcingOrderItemSimple
-from app.schemas.inventory import StockProductionResponse, StockProductionSimple, StockProductionOrderResponse
+from app.schemas.inventory import StockProductionResponse, StockProductionSimple, StockProductionOrderSimple
 
+# --- Plan Schemas (Forward Declaration for Item) ---
 class ProductionPlanSimple(ProductionPlanBase):
     id: int
     order_id: Optional[int] = None
@@ -89,7 +82,7 @@ class ProductionPlanSimple(ProductionPlanBase):
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
     stock_production: Optional[StockProductionResponse] = None
-    stock_production_order: Optional[StockProductionOrderResponse] = None
+    stock_production_order: Optional[StockProductionOrderSimple] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -142,8 +135,11 @@ class ProductionPlan(ProductionPlanBase):
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
     stock_production: Optional[StockProductionResponse] = None
-    stock_production_order: Optional[StockProductionOrderResponse] = None
+    stock_production_order: Optional[StockProductionOrderSimple] = None
     items: List[ProductionPlanItem] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
     model_config = ConfigDict(from_attributes=True)

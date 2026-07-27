@@ -90,6 +90,16 @@ class StockProductionOrderUpdate(BaseModel):
     note: Optional[str] = None
     items: Optional[List[StockProductionOrderItemCreate]] = None  # None이면 품목 변경 안 함
 
+class StockProductionOrderSimple(BaseModel):
+    id: int
+    order_no: str
+    partner_id: Optional[int] = None
+    request_date: date
+    note: Optional[str] = None
+    created_at: datetime
+    partner: Optional[PartnerResponse] = None
+    model_config = ConfigDict(from_attributes=True)
+
 class StockProductionOrderResponse(BaseModel):
     id: int
     order_no: str
@@ -100,4 +110,5 @@ class StockProductionOrderResponse(BaseModel):
     partner: Optional[PartnerResponse] = None
     items: List[StockProductionResponse] = []
     model_config = ConfigDict(from_attributes=True)
+
 

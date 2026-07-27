@@ -16,7 +16,8 @@ from app.models.purchasing import (
     PurchaseStatus, OutsourcingStatus, MaterialRequirement
 )
 from app.models.basics import Partner, Staff, Equipment
-from app.models.inventory import StockProduction, Stock, StockProductionStatus, TransactionType
+from app.models.inventory import StockProduction, StockProductionOrder, Stock, StockProductionStatus, TransactionType
+
 from app.api.utils.inventory import handle_stock_movement, handle_backflush
 from app.api.utils.status_cascade import on_production_item_completed
 from app.schemas import production as schemas
@@ -353,11 +354,17 @@ async def read_production_plans(
                 selectinload(StockProduction.product),
                 selectinload(StockProduction.partner)
             ),
+            selectinload(ProductionPlan.stock_production_order).options(
+                selectinload(StockProductionOrder.partner)
+            ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).options(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlan.stock_production).options(
                     selectinload(StockProduction.product),
                     selectinload(StockProduction.partner)
+                ),
+                selectinload(ProductionPlan.stock_production_order).options(
+                    selectinload(StockProductionOrder.partner)
                 )
             ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items).options(
@@ -365,6 +372,7 @@ async def read_production_plans(
                 selectinload(WorkLogItem.worker)
             )
         )
+
         .offset(skip)
         .limit(limit)
     )

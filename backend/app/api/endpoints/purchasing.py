@@ -424,9 +424,10 @@ async def read_pending_purchase_items(
     Get Production Plan Items that need purchasing and are not yet ordered.
     Includes items from PLANNED and IN_PROGRESS plans.
     """
-    # Local import restored to avoid circular dependency
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem
-    from app.models.inventory import StockProduction
+    from app.models.inventory import StockProduction, StockProductionOrder
+
+
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .options(
