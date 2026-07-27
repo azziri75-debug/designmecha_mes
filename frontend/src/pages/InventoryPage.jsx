@@ -877,18 +877,25 @@ const InventoryPage = () => {
                                                         {!isMulti && <div className="text-xs text-yellow-500/70">{grp.items[0].target_date || '-'}</div>}
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        {!isMulti && (
-                                                            <Badge className={cn(
-                                                                "px-2 py-0.5",
-                                                                grp.items[0].status === 'COMPLETED' ? "bg-green-500/10 text-green-500 border-green-500/20" :
-                                                                grp.items[0].status === 'IN_PROGRESS' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
-                                                                "bg-gray-500/10 text-gray-500 border-gray-500/20"
-                                                            )}>
-                                                                {grp.items[0].status === 'COMPLETED' ? '생산완료' :
-                                                                 grp.items[0].status === 'IN_PROGRESS' ? '생산중' : '대기'}
-                                                            </Badge>
-                                                        )}
+                                                        {(() => {
+                                                            const statuses = grp.items.map(i => i.status);
+                                                            const isAllCompleted = statuses.every(s => s === 'COMPLETED');
+                                                            const isAnyProgress = statuses.some(s => s === 'IN_PROGRESS');
+                                                            const displayStatus = isAllCompleted ? '생산완료' : isAnyProgress ? '생산중' : '대기';
+                                                            
+                                                            return (
+                                                                <Badge className={cn(
+                                                                    "px-2 py-0.5",
+                                                                    isAllCompleted ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                                                                    isAnyProgress ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                                                                    "bg-gray-500/10 text-gray-500 border-gray-500/20"
+                                                                )}>
+                                                                    {displayStatus}
+                                                                </Badge>
+                                                            );
+                                                        })()}
                                                     </td>
+
                                                     <td className="px-6 py-4 text-gray-500 truncate max-w-[150px]">
                                                         {!isMulti && (grp.items[0].note || '-')}
                                                     </td>
@@ -931,12 +938,13 @@ const InventoryPage = () => {
                                                 {/* 그룹 펼침: 품목별 상세 행 */}
                                                 {isMulti && isExpanded && grp.items.map((p) => (
                                                     <tr key={p.id} className="bg-gray-900/60 border-b border-gray-800 text-gray-400 text-xs">
-                                                        <td className="px-6 py-3 pl-12 font-mono text-blue-300/70">{p.production_no}</td>
+                                                        <td className="px-6 py-3 pl-12 font-mono text-blue-300/70">{p.production_no || grp.batch_no}</td>
                                                         <td className="px-6 py-3">
                                                             <div className="text-gray-200 font-medium">{p.product?.name}</div>
                                                             <div className="text-gray-600">{p.product?.specification}</div>
                                                         </td>
-                                                        <td className="px-6 py-3">-</td>
+                                                        <td className="px-6 py-3 text-gray-300">{grp.partner?.name || p.partner?.name || '사내'}</td>
+
                                                         <td className="px-6 py-3 text-white font-semibold">{p.quantity?.toLocaleString()}</td>
                                                         <td className="px-6 py-3">
                                                             <div className="text-gray-400">{p.request_date}</div>

@@ -1026,22 +1026,24 @@ const PurchaseOrderRow = ({ order, type, expanded, onToggle, onEdit, onDelete, o
                 </td>
                 <td className="px-4 py-4">
                     <Box>
-                        <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-                            {order.sales_order_number ? (
-                                <>
-                                    {order.sales_order_number.includes('SP') ? (
-                                        <span style={{ color: '#2e7d32' }}>[재고] </span>
-                                    ) : (
-                                        <span style={{ color: '#1976d2' }}>[수주] </span>
-                                    )}
-                                    {order.sales_order_number}
-                                </>
+                        {(() => {
+                            const rawCode = order.sales_order_number || order.order?.order_no;
+                            const displayCode = rawCode ? (
+                                rawCode.startsWith('[') ? rawCode : (rawCode.includes('SP') ? `[재고] ${rawCode}` : `[수주] ${rawCode}`)
+                            ) : null;
+                            return displayCode ? (
+                                <Typography variant="body2" sx={{ color: displayCode.includes('재고') ? '#66bb6a' : '#42a5f5', fontWeight: 'bold' }}>
+                                    {displayCode}
+                                </Typography>
                             ) : (
-                                <span style={{ color: '#757575' }}>{type === 'CONSUMABLE' ? '소모품' : '재고용'}</span>
-                            )}
-                        </Typography>
+                                <Typography variant="body2" sx={{ color: '#757575' }}>
+                                    {type === 'CONSUMABLE' ? '소모품' : '재고용'}
+                                </Typography>
+                            );
+                        })()}
                         <Typography variant="caption" color="textSecondary">{order.order?.partner?.name || order.related_customer_names || '-'}</Typography>
                     </Box>
+
                 </td>
                 <td className="px-4 py-4">{order.order_date}</td>
                 <td className="px-4 py-4 font-bold">{order.partner?.name}</td>

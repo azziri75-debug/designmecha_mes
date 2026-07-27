@@ -728,9 +728,11 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
 const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onRefresh, readonly }) => {
     const [open, setOpen] = useState(false);
     const order = plan.order;
-    const spo = plan.stock_production_order;
+    const spo = plan.stock_production_order || plan.stock_production?.order;
     const sp = plan.stock_production;
 
+    const orderNo = order?.order_no || spo?.order_no || sp?.production_no || sp?.batch_no;
+    const partnerName = order?.partner?.name || spo?.partner?.name || sp?.partner?.name || '사내';
 
     const groupedItems = plan.items?.reduce((acc, item) => {
         const pid = item.product_id || 'unknown';
@@ -762,11 +764,12 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                     ) : (spo || sp || plan.stock_production_order_id || plan.stock_production_id) ? (
                         <div className="flex items-center gap-1">
                             <Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />
-                            {spo?.order_no || sp?.production_no || sp?.batch_no || `SP-Plan-${plan.id}`}
+                            {orderNo || `SP-Plan-${plan.id}`}
                         </div>
                     ) : '-'}
                 </td>
-                <td className="px-4 py-4 truncate">{plan.order?.partner?.name || plan.stock_production_order?.partner?.name || plan.stock_production?.partner?.name || '사내'}</td>
+                <td className="px-4 py-4 truncate">{partnerName}</td>
+
 
 
                 <td className="px-4 py-4 truncate">

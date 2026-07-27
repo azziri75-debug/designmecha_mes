@@ -476,20 +476,16 @@ async def read_pending_purchase_items(
                 i.client_name = i.plan.order.partner.name if i.plan.order.partner else "-"
                 if i.plan.order.items:
                     i.product_name_of_plan = i.plan.order.items[0].product.name if i.plan.order.items[0].product else "-"
-            elif getattr(i.plan, 'stock_production_order', None):
-                spo = i.plan.stock_production_order
-                i.client_name = spo.partner.name if (spo and spo.partner) else "사내 생산"
-                i.product_name_of_plan = i.product.name if i.product else (spo.items[0].product.name if (spo and spo.items and spo.items[0].product) else "-")
-            elif getattr(i.plan, 'stock_production', None):
-                sp = i.plan.stock_production
-                i.client_name = sp.partner.name if (sp and sp.partner) else "사내 생산"
-                i.product_name_of_plan = i.product.name if i.product else (sp.product.name if (sp and sp.product) else "-")
             else:
-                i.client_name = "사내 생산"
-                i.product_name_of_plan = i.product.name if i.product else "-"
+                spo = getattr(i.plan, 'stock_production_order', None) or (i.plan.stock_production.order if (getattr(i.plan, 'stock_production', None) and getattr(i.plan.stock_production, 'order', None)) else None)
+                sp = getattr(i.plan, 'stock_production', None)
+                partner_obj = (spo.partner if (spo and spo.partner) else None) or (sp.partner if (sp and sp.partner) else None)
+                i.client_name = partner_obj.name if partner_obj else "사내 생산"
+                i.product_name_of_plan = i.product.name if i.product else (sp.product.name if (sp and sp.product) else "-")
         else:
             i.client_name = "-"
             i.product_name_of_plan = i.product.name if i.product else "-"
+
 
     print(f"[DEBUG] Pending Purchase Items: Found {len(items)} items.")
     return items
@@ -554,20 +550,16 @@ async def read_pending_outsourcing_items(
                 i.client_name = i.plan.order.partner.name if i.plan.order.partner else "-"
                 if i.plan.order.items:
                     i.product_name_of_plan = i.plan.order.items[0].product.name if i.plan.order.items[0].product else "-"
-            elif getattr(i.plan, 'stock_production_order', None):
-                spo = i.plan.stock_production_order
-                i.client_name = spo.partner.name if (spo and spo.partner) else "사내 생산"
-                i.product_name_of_plan = i.product.name if i.product else (spo.items[0].product.name if (spo and spo.items and spo.items[0].product) else "-")
-            elif getattr(i.plan, 'stock_production', None):
-                sp = i.plan.stock_production
-                i.client_name = sp.partner.name if (sp and sp.partner) else "사내 생산"
-                i.product_name_of_plan = i.product.name if i.product else (sp.product.name if (sp and sp.product) else "-")
             else:
-                i.client_name = "사내 생산"
-                i.product_name_of_plan = i.product.name if i.product else "-"
+                spo = getattr(i.plan, 'stock_production_order', None) or (i.plan.stock_production.order if (getattr(i.plan, 'stock_production', None) and getattr(i.plan.stock_production, 'order', None)) else None)
+                sp = getattr(i.plan, 'stock_production', None)
+                partner_obj = (spo.partner if (spo and spo.partner) else None) or (sp.partner if (sp and sp.partner) else None)
+                i.client_name = partner_obj.name if partner_obj else "사내 생산"
+                i.product_name_of_plan = i.product.name if i.product else (sp.product.name if (sp and sp.product) else "-")
         else:
             i.client_name = "-"
             i.product_name_of_plan = i.product.name if i.product else "-"
+
 
     print(f"[DEBUG] Pending Outsourcing Items: Found {len(items)} items.")
     return items

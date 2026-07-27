@@ -354,7 +354,8 @@ async def read_production_plans(
             ),
             selectinload(ProductionPlan.stock_production).options(
                 selectinload(StockProduction.product),
-                selectinload(StockProduction.partner)
+                selectinload(StockProduction.partner),
+                selectinload(StockProduction.order).selectinload(StockProductionOrder.partner)
             ),
             selectinload(ProductionPlan.stock_production_order).options(
                 selectinload(StockProductionOrder.partner)
@@ -363,12 +364,14 @@ async def read_production_plans(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlan.stock_production).options(
                     selectinload(StockProduction.product),
-                    selectinload(StockProduction.partner)
+                    selectinload(StockProduction.partner),
+                    selectinload(StockProduction.order).selectinload(StockProductionOrder.partner)
                 ),
                 selectinload(ProductionPlan.stock_production_order).options(
                     selectinload(StockProductionOrder.partner)
                 )
             ),
+
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items).options(
                 selectinload(WorkLogItem.work_log).selectinload(WorkLog.worker),
                 selectinload(WorkLogItem.worker)
