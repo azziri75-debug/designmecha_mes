@@ -288,7 +288,47 @@ async def backfill_completion_dates(
     await db.commit()
     return {"updated": updated_count, "message": f"{updated_count}건의 생산 완료일이 업데이트되었습니다."}
 
+@router.get("/plans/planned-ids")
+async def read_planned_ids(
+    db: AsyncSession = Depends(deps.get_db),
+):
+    """
+    Fast, lightweight endpoint to fetch all active planned order_ids and stock_production_ids.
+    Used for filtering out planned items from waiting lists without downloading full plan objects.
+    """
+    stmt = (
+        select(
+            ProductionPlan.order_id,
+            ProductionPlan.stock_production_id,
+            ProductionPlan.stock_production_order_id,
+            StockProduction.order_id.label("sp_order_id")
+        )
+        .outerjoin(StockProduction, ProductionPlan.stock_production_id == StockProduction.id)
+        .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    orders = set()
+    stocks = set()
+
+    for order_id, sp_id, spo_id, sp_order_id in rows:
+        if order_id is not None:
+            orders.add(order_id)
+        if sp_id is not None:
+            stocks.add(sp_id)
+        if spo_id is not None:
+            stocks.add(spo_id)
+        if sp_order_id is not None:
+            stocks.add(sp_order_id)
+
+    return {
+        "orders": list(orders),
+        "stocks": list(stocks)
+    }
+
 @router.get("/plans", response_model=List[schemas.ProductionPlan])
+
 async def read_production_plans(
     skip: int = 0,
     limit: int = 1000,

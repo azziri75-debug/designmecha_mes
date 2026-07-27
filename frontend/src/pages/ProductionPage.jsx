@@ -124,24 +124,16 @@ const ProductionPage = () => {
 
     const fetchAllPlannedIds = async () => {
         try {
-            const response = await api.get('/production/plans/', { params: { limit: 5000 } });
-            const orders = [];
-            const stocks = [];
-            response.data.forEach(p => {
-                if (p.order_id) orders.push(Number(p.order_id));
-                if (p.order?.id) orders.push(Number(p.order.id));
-                
-                if (p.stock_production_order_id) stocks.push(Number(p.stock_production_order_id));
-                if (p.stock_production_id) stocks.push(Number(p.stock_production_id));
-                if (p.stock_production_order?.id) stocks.push(Number(p.stock_production_order.id));
-                if (p.stock_production?.id) stocks.push(Number(p.stock_production.id));
-                if (p.stock_production?.order_id) stocks.push(Number(p.stock_production.order_id));
+            const response = await api.get('/production/plans/planned-ids');
+            setAllPlannedIds({
+                orders: (response.data?.orders || []).map(id => Number(id)),
+                stocks: (response.data?.stocks || []).map(id => Number(id))
             });
-            setAllPlannedIds({ orders, stocks });
         } catch (error) {
             console.error("Failed to fetch all planned IDs", error);
         }
     };
+
 
 
 
