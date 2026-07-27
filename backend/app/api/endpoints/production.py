@@ -1104,9 +1104,11 @@ async def update_production_plan(
                 selectinload(StockProduction.product),
                 selectinload(StockProduction.partner)
             ),
+            selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).options(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+                selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner)
             ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
@@ -1811,6 +1813,7 @@ async def update_production_plan_status(
                             selectinload(StockProduction.product),
                             selectinload(StockProduction.partner),
                         ),
+                        selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
                     ),
                     selectinload(ProductionPlanItem.work_log_items),  # Fix: MissingGreenlet
                     selectinload(ProductionPlanItem.equipment),
@@ -1819,7 +1822,8 @@ async def update_production_plan_status(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
                 selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
-                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner)
+                selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner)
             )
             .where(ProductionPlan.id == plan_id)
         )
@@ -1916,7 +1920,8 @@ async def update_production_plan_item(
                         selectinload(Product.standard_processes).selectinload(ProductProcess.process)
                     ),
                     selectinload(StockProduction.partner)
-                )
+                ),
+                selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner)
             ),
             selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlanItem.work_log_items)
@@ -1973,7 +1978,8 @@ async def read_work_logs(
                         selectinload(ProductionPlan.stock_production).options(
                             selectinload(StockProduction.product),
                             selectinload(StockProduction.partner)
-                        )
+                        ),
+                        selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner)
                     )
                 )
             )
@@ -2095,6 +2101,7 @@ async def create_work_log(
                             selectinload(StockProduction.product),
                             selectinload(StockProduction.partner),
                         ),
+                        selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
                     ),
                 )
             )
@@ -2204,6 +2211,7 @@ async def update_work_log(
                             selectinload(StockProduction.product),
                             selectinload(StockProduction.partner),
                         ),
+                        selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
                     ),
                 )
             )
@@ -2331,7 +2339,8 @@ async def get_performance_details(
                     selectinload(ProductionPlan.stock_production).options(
                         selectinload(StockProduction.product),
                         selectinload(StockProduction.partner),
-                    )
+                    ),
+                    selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner)
                 )
             )
         )
@@ -2381,7 +2390,8 @@ async def get_worker_performance_details(
                     selectinload(ProductionPlan.stock_production).options(
                         selectinload(StockProduction.product),
                         selectinload(StockProduction.partner),
-                    )
+                    ),
+                    selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner)
                 )
             )
         )
