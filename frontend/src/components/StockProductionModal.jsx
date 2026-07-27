@@ -136,10 +136,10 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess, initialData }) => {
                 });
                 const batchNo = firstRes.data.production_no; // 이게 이 그룹의 대표 재고번호
 
-                // 나머지 품목들은 batch_no 공유
+                // 나머지 품목들은 batch_no 공유 (동시 채번 중복 방지를 위해 순차 실행)
                 if (items.length > 1) {
-                    await Promise.all(items.slice(1).map(it =>
-                        api.post('/inventory/productions', {
+                    for (const it of items.slice(1)) {
+                        await api.post('/inventory/productions', {
                             product_id: it.product.id,
                             partner_id: selectedPartner?.id || null,
                             quantity: it.quantity,
@@ -147,8 +147,8 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess, initialData }) => {
                             target_date: it.target_date,
                             note: it.note,
                             batch_no: batchNo,
-                        })
-                    ));
+                        });
+                    }
                 }
                 alert(`재고생산 요청 ${items.length}건이 등록되었습니다. (재고번호: ${batchNo})`);
             }
