@@ -306,7 +306,7 @@ async def read_production_plans(
     """
     Retrieve production plans with advanced filtering.
     """
-    stmt = select(ProductionPlan).outerjoin(SalesOrder).outerjoin(StockProduction)
+    stmt = select(ProductionPlan).outerjoin(SalesOrder).outerjoin(StockProduction).outerjoin(StockProductionOrder)
     
     if worker_id:
         subquery = select(ProductionPlanItem.plan_id).where(ProductionPlanItem.worker_id == worker_id)
@@ -321,8 +321,10 @@ async def read_production_plans(
     if partner_id:
         stmt = stmt.where(or_(
             SalesOrder.partner_id == partner_id,
-            StockProduction.partner_id == partner_id
+            StockProduction.partner_id == partner_id,
+            StockProductionOrder.partner_id == partner_id
         ))
+
     if customer_id:
         stmt = stmt.where(SalesOrder.partner_id == customer_id)
     if product_name:

@@ -583,16 +583,21 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
 };
 
 const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePlan, searchQuery, filterPartner }) => {
-    const planOrderIds = plannedIds?.orders || [];
-    const planStockProdIds = plannedIds?.stocks || [];
+    const planOrderIds = (plannedIds?.orders || []).map(id => Number(id));
+    const planStockProdIds = (plannedIds?.stocks || []).map(id => Number(id));
 
-    let unplannedOrders = orders.filter(o => !planOrderIds.includes(o.id) && (o.status === 'PENDING' || o.status === 'CONFIRMED'));
-    let unplannedStockProductions = stockProductions.filter(sp => !planStockProdIds.includes(sp.id));
+    let unplannedOrders = orders.filter(o => !planOrderIds.includes(Number(o.id)) && (o.status === 'PENDING' || o.status === 'CONFIRMED'));
+    let unplannedStockProductions = stockProductions.filter(sp => !planStockProdIds.includes(Number(sp.id)));
 
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
         unplannedOrders = unplannedOrders.filter(o => o.order_no?.toLowerCase().includes(query) || o.partner?.name?.toLowerCase().includes(query) || o.items?.some(it => it.product?.name?.toLowerCase().includes(query)));
-        unplannedStockProductions = unplannedStockProductions.filter(sp => sp.production_no?.toLowerCase().includes(query) || sp.product?.name?.toLowerCase().includes(query));
+        unplannedStockProductions = unplannedStockProductions.filter(sp => 
+            (sp.order_no || sp.production_no || '').toLowerCase().includes(query) || 
+            sp.partner?.name?.toLowerCase().includes(query) || 
+            sp.items?.some(it => it.product?.name?.toLowerCase().includes(query)) ||
+            sp.product?.name?.toLowerCase().includes(query)
+        );
     }
 
     if (filterPartner !== 'all') {
@@ -655,12 +660,18 @@ const UnplannedOrderRow = ({ order, onCreatePlan }) => {
 
 const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     const [open, setOpen] = useState(false);
+    const orderNo = stockProduction.order_no || stockProduction.production_no || `SP-${stockProduction.id}`;
+    const partnerName = stockProduction.partner?.name || '사내';
+    const items = stockProduction.items || (stockProduction.product ? [{ product: stockProduction.product, quantity: stockProduction.quantity }] : []);
+    const firstProductName = items[0]?.product?.name || stockProduction.product?.name || '-';
+    const productDisplay = items.length > 1 ? `${firstProductName} 외 ${items.length - 1}건` : firstProductName;
+
     return (
         <React.Fragment>
             <tr className="hover:bg-gray-800/40 transition-colors cursor-pointer select-none divide-x divide-gray-700/30 text-gray-300" onClick={() => setOpen(!open)} onDoubleClick={() => onCreatePlan(null, stockProduction)}>
-                <td className="px-4 py-4 truncate"><Chip label="재고" size="small" sx={{ mr: 1, height: 20, bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />{stockProduction.production_no}</td>
-                <td className="px-4 py-4 truncate">{stockProduction.partner?.name || '사내'}</td>
-                <td className="px-4 py-4 truncate">{stockProduction.product?.name}</td>
+                <td className="px-4 py-4 truncate"><Chip label="재고" size="small" sx={{ mr: 1, height: 20, bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />{orderNo}</td>
+                <td className="px-4 py-4 truncate">{partnerName}</td>
+                <td className="px-4 py-4 truncate">{productDisplay}</td>
                 <td className="px-4 py-4 whitespace-nowrap">{stockProduction.request_date}</td>
                 <td className="px-4 py-4 whitespace-nowrap text-orange-600">{stockProduction.target_date || '-'}</td>
                 <td className="px-4 py-4 truncate">{stockProduction.note || '-'}</td>
@@ -672,17 +683,19 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
                     <td colSpan={UNPLANNED_COLS.length} className="p-0 border-none">
                         <Collapse in={open} timeout="auto" unmountOnExit>
                             <div className="p-4 bg-gray-900 rounded-lg border border-gray-700 mx-4 my-2">
-                                <h4 className="text-sm font-semibold mb-2 text-gray-300">재고 생산 제품 상세</h4>
+                                <h4 className="text-sm font-semibold mb-2 text-gray-300">재고 생산 제품 상세 목록</h4>
                                 <table className="w-full text-xs text-left text-gray-300 bg-gray-950 border border-gray-800 overflow-hidden rounded-md">
                                     <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-700">
                                         <tr><th className="px-4 py-2">품명</th><th className="px-4 py-2">규격</th><th className="px-4 py-2 text-right">수량</th></tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-800">
-                                        <tr className="hover:bg-gray-800/40">
-                                            <td className="px-4 py-2">{stockProduction.product?.name}</td>
-                                            <td className="px-4 py-2">{stockProduction.product?.specification}</td>
-                                            <td className="px-4 py-2 text-right">{stockProduction.quantity}</td>
-                                        </tr>
+                                        {items.map((it, idx) => (
+                                            <tr key={it.id || idx} className="hover:bg-gray-800/40">
+                                                <td className="px-4 py-2">{it.product?.name || '-'}</td>
+                                                <td className="px-4 py-2">{it.product?.specification || '-'}</td>
+                                                <td className="px-4 py-2 text-right">{it.quantity?.toLocaleString() || 0}</td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
@@ -695,6 +708,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
 };
 
 const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onRefresh, readonly }) => {
+
     const [managedCols, setManagedCols] = useState(PLAN_COLS);
     return (
         <ResizableTable columns={managedCols} className="w-full text-left text-sm" theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700" thClassName="px-4 py-3" onResizeEnd={({ leftKey, newLeft, rightKey, newRight }) => {

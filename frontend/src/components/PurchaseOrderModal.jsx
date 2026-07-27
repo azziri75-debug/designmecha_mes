@@ -338,23 +338,27 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
             const isStock = !!(firstItem?.plan?.stock_production_order_id || firstItem?.plan?.stock_production_id || firstItem?.stock_production_id || firstItem?.type === 'MRP' || firstItem?.type === 'PENDING');
             const customerName = firstItem?.plan?.order?.partner?.name || firstItem?.plan?.stock_production_order?.partner?.name || firstItem?.plan?.stock_production?.partner?.name || firstItem?.customer_name || '';
 
+            const stockNo = firstItem?.plan?.stock_production_order?.order_no || 
+                            firstItem?.plan?.stock_production?.production_no || 
+                            firstItem?.plan?.stock_production?.batch_no;
+            const formattedOrderNo = firstItem?.sales_order_number || 
+                                     firstItem?.plan?.order?.order_no || 
+                                     (stockNo ? `[재고] ${stockNo}` : null);
+
             setFormData({
                 partner_id: foundPartner ? foundPartner.id : '',
                 order_id: (firstItem?.type === 'MRP' ? (firstItem?.order_id || firstItem?.plan?.order_id) : firstItem?.plan?.order_id) || '',
                 order_date: new Date().toISOString().split('T')[0],
                 delivery_date: '',
                 note: '',
-                display_order_no: (firstItem?.sales_order_number || 
-                                  firstItem?.plan?.order?.order_no || 
-                                  firstItem?.plan?.stock_production_order?.order_no ||
-                                  firstItem?.plan?.stock_production?.production_no) || 
+                display_order_no: formattedOrderNo || 
                                   (firstItem?.type === 'MRP' ? "재고용 (MRP)" : 
                                    firstItem?.type === 'PENDING' ? "재고용 (생산)" : "직접발주"),
                 purchase_type: purchaseType || 'PART',
-
                 is_stock: isStock,
                 related_customer_names: customerName,
                 items: initialItems.map(item => {
+
                     let parsedProductId = '';
                     let parsedProductName = '';
                     let parsedSpec = '';
