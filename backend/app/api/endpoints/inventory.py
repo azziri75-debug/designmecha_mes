@@ -500,49 +500,60 @@ async def create_stock_production(
     prod_in: StockProductionCreate,
     db: AsyncSession = Depends(get_db)
 ) :
-    # Generate production number if not provided
-    if not prod_in.production_no:
-        today = date.today().strftime("%Y%m%d")
-        # Robust numbering: get the max production_no for today and increment its sequence
-        query = select(StockProduction.production_no).filter(StockProduction.production_no.like(f"SP-{today}-%")).order_by(desc(StockProduction.production_no)).limit(1)
-        result = await db.execute(query)
-        last_prod_no = result.scalar()
-        
-        if last_prod_no:
-            try:
-                last_seq = int(last_prod_no.split("-")[-1])
-                new_seq = last_seq + 1
-            except (ValueError, IndexError):
-                new_seq = 1
-        else:
-            new_seq = 1
-            
-        prod_in.production_no = f"SP-{today}-{new_seq:03d}"
+    MAX_RETRIES = 5
+    for attempt in range(MAX_RETRIES):
+        try:
+            # Generate production number if not provided
+            if not prod_in.production_no:
+                today = date.today().strftime("%Y%m%d")
+                # 매 시도마다 DB에서 최신 번호를 다시 조회
+                query = select(StockProduction.production_no).filter(StockProduction.production_no.like(f"SP-{today}-%")).order_by(desc(StockProduction.production_no)).limit(1)
+                result = await db.execute(query)
+                last_prod_no = result.scalar()
+                
+                if last_prod_no:
+                    try:
+                        last_seq = int(last_prod_no.split("-")[-1])
+                        new_seq = last_seq + 1
+                    except (ValueError, IndexError):
+                        new_seq = 1
+                else:
+                    new_seq = 1
+                    
+                prod_in.production_no = f"SP-{today}-{new_seq:03d}"
 
-    # batch_no: 제공되지 않은 경우 production_no를 그대로 사용 (단건 = 자기 자신이 그룹)
-    batch_no = prod_in.batch_no or prod_in.production_no
-    req_date = prod_in.request_date or date.today()
+            # batch_no: 제공되지 않은 경우 production_no를 그대로 사용 (단건 = 자기 자신이 그룹)
+            batch_no = prod_in.batch_no or prod_in.production_no
+            req_date = prod_in.request_date or date.today()
 
-    dump = prod_in.model_dump()
-    dump['batch_no'] = batch_no
-    dump['request_date'] = req_date
+            dump = prod_in.model_dump()
+            dump['batch_no'] = batch_no
+            dump['request_date'] = req_date
 
-    new_prod = StockProduction(**dump)
-    db.add(new_prod)
+            new_prod = StockProduction(**dump)
+            db.add(new_prod)
 
-    
-    # Update in_production_quantity in Stock
-    stock_query = select(Stock).where(Stock.product_id == prod_in.product_id)
-    res = await db.execute(stock_query)
-    stock = res.scalar_one_or_none()
-    if not stock:
-        stock = Stock(product_id=prod_in.product_id, in_production_quantity=prod_in.quantity)
-        db.add(stock)
-    else:
-        stock.in_production_quantity += prod_in.quantity
-        
-    await db.commit()
-    await db.refresh(new_prod)
+            # Update in_production_quantity in Stock
+            stock_query = select(Stock).where(Stock.product_id == prod_in.product_id)
+            res = await db.execute(stock_query)
+            stock = res.scalar_one_or_none()
+            if not stock:
+                stock = Stock(product_id=prod_in.product_id, in_production_quantity=prod_in.quantity)
+                db.add(stock)
+            else:
+                stock.in_production_quantity += prod_in.quantity
+                
+            await db.commit()
+            await db.refresh(new_prod)
+            break  # 성공 시 루프 종료
+
+        except Exception as e:
+            await db.rollback()
+            # 중복 production_no 에러인 경우 재시도
+            if "unique" in str(e).lower() and "production_no" in str(e).lower() and attempt < MAX_RETRIES - 1:
+                prod_in.production_no = None  # 번호 초기화하여 다음 루프에서 재채번
+                continue
+            raise  # 다른 에러이거나 재시도 횟수 초과 시 그대로 예외 발생
 
     # 생산부 부장 알림 발송 (비동기)
     asyncio.create_task(notify_production_manager(
