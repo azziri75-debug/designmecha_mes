@@ -6,11 +6,12 @@ from typing import List, Optional
 from datetime import date
 
 from app.api.deps import get_db
-from app.models.inventory import Stock, StockProduction, StockProductionStatus
+from app.models.inventory import Stock, StockProduction, StockProductionStatus, StockProductionOrder
 from app.models.product import Product, ProductProcess, BOM
 from app.schemas.inventory import (
     StockResponse, StockUpdate,
-    StockProductionResponse, StockProductionCreate, StockProductionUpdate
+    StockProductionResponse, StockProductionCreate, StockProductionUpdate,
+    StockProductionOrderCreate, StockProductionOrderUpdate, StockProductionOrderResponse
 )
 
 # SSE 브로드캐스터 임포트 (실시간 업데이트용)
@@ -842,3 +843,268 @@ async def read_bom_stock(product_id: int, db: AsyncSession = Depends(get_db)):
         })
         
     return res_data
+
+
+# ─── Stock Production Orders (헤더 CRUD) ──────────────────────────────────────
+
+async def _generate_order_no(db: AsyncSession) -> str:
+    """재고생산 주문번호 채번 (SP-YYYYMMDD-XXX), 재시도 로직 포함"""
+    from datetime import date as dt_date
+    today = dt_date.today().strftime("%Y%m%d")
+    query = select(StockProductionOrder.order_no)\
+        .filter(StockProductionOrder.order_no.like(f"SP-{today}-%"))\
+        .order_by(desc(StockProductionOrder.order_no)).limit(1)
+    result = await db.execute(query)
+    last_no = result.scalar()
+    if last_no:
+        try:
+            new_seq = int(last_no.split("-")[-1]) + 1
+        except (ValueError, IndexError):
+            new_seq = 1
+    else:
+        new_seq = 1
+    return f"SP-{today}-{new_seq:03d}"
+
+
+async def _generate_item_production_no(db: AsyncSession) -> str:
+    """품목별 내부 production_no 채번"""
+    from datetime import date as dt_date
+    today = dt_date.today().strftime("%Y%m%d")
+    query = select(StockProduction.production_no)\
+        .filter(StockProduction.production_no.like(f"SP-{today}-%"))\
+        .order_by(desc(StockProduction.production_no)).limit(1)
+    result = await db.execute(query)
+    last_no = result.scalar()
+    if last_no:
+        try:
+            new_seq = int(last_no.split("-")[-1]) + 1
+        except (ValueError, IndexError):
+            new_seq = 1
+    else:
+        new_seq = 1
+    return f"SP-{today}-{new_seq:03d}"
+
+
+@router.get("/production-orders", response_model=List[StockProductionOrderResponse])
+async def read_production_orders(
+    status: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    partner_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """재고생산 주문 목록 (헤더 + 품목 포함)"""
+    query = select(StockProductionOrder).options(
+        selectinload(StockProductionOrder.partner),
+        selectinload(StockProductionOrder.items).selectinload(StockProduction.product),
+        selectinload(StockProductionOrder.items).selectinload(StockProduction.partner),
+    ).order_by(desc(StockProductionOrder.created_at))
+
+    if partner_id:
+        query = query.where(StockProductionOrder.partner_id == partner_id)
+    if start_date:
+        query = query.where(StockProductionOrder.request_date >= start_date)
+    if end_date:
+        query = query.where(StockProductionOrder.request_date <= end_date)
+    if status:
+        # 헤더 상태 필터 — 품목 중 하나라도 해당 상태이면 포함
+        subq = select(StockProduction.order_id).where(
+            StockProduction.status == status,
+            StockProduction.order_id.is_not(None)
+        ).scalar_subquery()
+        query = query.where(StockProductionOrder.id.in_(subq))
+
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+@router.post("/production-orders", response_model=StockProductionOrderResponse)
+async def create_production_order(
+    order_in: StockProductionOrderCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """재고생산 주문 등록 (헤더 + 품목 일괄 생성)"""
+    MAX_RETRIES = 5
+    for attempt in range(MAX_RETRIES):
+        try:
+            req_date = order_in.request_date or date.today()
+            order_no = await _generate_order_no(db)
+
+            new_order = StockProductionOrder(
+                order_no=order_no,
+                partner_id=order_in.partner_id,
+                request_date=req_date,
+                note=order_in.note,
+            )
+            db.add(new_order)
+            await db.flush()  # order.id 확보
+
+            for item_in in order_in.items:
+                item_no = await _generate_item_production_no(db)
+                new_item = StockProduction(
+                    order_id=new_order.id,
+                    production_no=item_no,
+                    batch_no=order_no,  # 하위호환용
+                    product_id=item_in.product_id,
+                    partner_id=order_in.partner_id,
+                    quantity=item_in.quantity,
+                    request_date=req_date,
+                    target_date=item_in.target_date,
+                    note=item_in.note,
+                )
+                db.add(new_item)
+                await db.flush()
+
+                # 재고 생산중 수량 갱신
+                stock_q = select(Stock).where(Stock.product_id == item_in.product_id)
+                stock_res = await db.execute(stock_q)
+                stock = stock_res.scalar_one_or_none()
+                if not stock:
+                    db.add(Stock(product_id=item_in.product_id, in_production_quantity=item_in.quantity))
+                else:
+                    stock.in_production_quantity = (stock.in_production_quantity or 0) + item_in.quantity
+
+            await db.commit()
+
+            # 알림 전송
+            asyncio.create_task(notify_production_manager(
+                title="[생산] 신규 재고생산 요청",
+                body=f"신규 재고생산 요청({order_no}, {len(order_in.items)}건)이 등록되었습니다.",
+                url="/production/waiting"
+            ))
+
+            # 완전한 관계 포함해서 재조회
+            result = await db.execute(
+                select(StockProductionOrder).where(StockProductionOrder.id == new_order.id).options(
+                    selectinload(StockProductionOrder.partner),
+                    selectinload(StockProductionOrder.items).selectinload(StockProduction.product),
+                    selectinload(StockProductionOrder.items).selectinload(StockProduction.partner),
+                )
+            )
+            return result.scalar_one()
+
+        except Exception as e:
+            await db.rollback()
+            if "unique" in str(e).lower() and "order_no" in str(e).lower() and attempt < MAX_RETRIES - 1:
+                continue
+            raise
+
+
+@router.get("/production-orders/{order_id}", response_model=StockProductionOrderResponse)
+async def read_production_order(
+    order_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """재고생산 주문 단건 조회"""
+    result = await db.execute(
+        select(StockProductionOrder).where(StockProductionOrder.id == order_id).options(
+            selectinload(StockProductionOrder.partner),
+            selectinload(StockProductionOrder.items).selectinload(StockProduction.product),
+            selectinload(StockProductionOrder.items).selectinload(StockProduction.partner),
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Production order not found")
+    return order
+
+
+@router.put("/production-orders/{order_id}", response_model=StockProductionOrderResponse)
+async def update_production_order(
+    order_id: int,
+    order_in: StockProductionOrderUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """재고생산 주문 수정 (헤더 + 품목 교체)"""
+    result = await db.execute(
+        select(StockProductionOrder).where(StockProductionOrder.id == order_id).options(
+            selectinload(StockProductionOrder.items)
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Production order not found")
+
+    if order_in.partner_id is not None:
+        order.partner_id = order_in.partner_id
+    if order_in.request_date is not None:
+        order.request_date = order_in.request_date
+    if order_in.note is not None:
+        order.note = order_in.note
+
+    if order_in.items is not None:
+        # 기존 품목의 재고 생산중 수량 롤백
+        for old_item in order.items:
+            stock_q = select(Stock).where(Stock.product_id == old_item.product_id)
+            stock_res = await db.execute(stock_q)
+            stock = stock_res.scalar_one_or_none()
+            if stock:
+                stock.in_production_quantity = max(0, (stock.in_production_quantity or 0) - old_item.quantity)
+            await db.delete(old_item)
+        await db.flush()
+
+        # 새 품목 추가
+        req_date = order_in.request_date or order.request_date
+        for item_in in order_in.items:
+            item_no = await _generate_item_production_no(db)
+            new_item = StockProduction(
+                order_id=order.id,
+                production_no=item_no,
+                batch_no=order.order_no,
+                product_id=item_in.product_id,
+                partner_id=order.partner_id,
+                quantity=item_in.quantity,
+                request_date=req_date,
+                target_date=item_in.target_date,
+                note=item_in.note,
+            )
+            db.add(new_item)
+            await db.flush()
+
+            stock_q = select(Stock).where(Stock.product_id == item_in.product_id)
+            stock_res = await db.execute(stock_q)
+            stock = stock_res.scalar_one_or_none()
+            if not stock:
+                db.add(Stock(product_id=item_in.product_id, in_production_quantity=item_in.quantity))
+            else:
+                stock.in_production_quantity = (stock.in_production_quantity or 0) + item_in.quantity
+
+    await db.commit()
+
+    result = await db.execute(
+        select(StockProductionOrder).where(StockProductionOrder.id == order_id).options(
+            selectinload(StockProductionOrder.partner),
+            selectinload(StockProductionOrder.items).selectinload(StockProduction.product),
+            selectinload(StockProductionOrder.items).selectinload(StockProduction.partner),
+        )
+    )
+    return result.scalar_one()
+
+
+@router.delete("/production-orders/{order_id}")
+async def delete_production_order(
+    order_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """재고생산 주문 삭제 (품목 cascade 삭제 + 재고 롤백)"""
+    result = await db.execute(
+        select(StockProductionOrder).where(StockProductionOrder.id == order_id).options(
+            selectinload(StockProductionOrder.items)
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Production order not found")
+
+    # 재고 생산중 수량 롤백
+    for item in order.items:
+        if item.status not in (StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED):
+            stock_q = select(Stock).where(Stock.product_id == item.product_id)
+            stock_res = await db.execute(stock_q)
+            stock = stock_res.scalar_one_or_none()
+            if stock:
+                stock.in_production_quantity = max(0, (stock.in_production_quantity or 0) - item.quantity)
+
+    await db.delete(order)
+    await db.commit()
+    return {"status": "success"}

@@ -26,13 +26,28 @@ class Stock(Base):
 
     product = relationship("Product")
 
+class StockProductionOrder(Base):
+    """재고생산 주문 헤더 (수주와 유사한 1:N 구조)"""
+    __tablename__ = "stock_production_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_no = Column(String, unique=True, index=True)  # SP-YYYYMMDD-XXX
+    partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)
+    request_date = Column(Date, default=now_kst)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=now_kst)
+
+    partner = relationship("app.models.basics.Partner")
+    items = relationship("StockProduction", back_populates="order", cascade="all, delete-orphan", lazy="selectin")
+
 class StockProduction(Base):
     """수주 없는 재고 보충용 생산 계획 요청 (수주와 유사한 역할)"""
     __tablename__ = "stock_productions"
 
     id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("stock_production_orders.id", ondelete="CASCADE"), nullable=True)  # 헤더 참조
     production_no = Column(String, unique=True, index=True) # 재고생산번호 (SP-YYYYMMDD-XXX)
-    batch_no = Column(String, nullable=True, index=True)    # 묶음번호 (다중등록 시 첫 번호 공유)
+    batch_no = Column(String, nullable=True, index=True)    # 묶음번호 (deprecated, order_id로 대체)
     
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True) # 보충 요청 거래처
@@ -48,6 +63,7 @@ class StockProduction(Base):
 
     product = relationship("Product")
     partner = relationship("app.models.basics.Partner") # Use string reference to avoid circularities
+    order = relationship("StockProductionOrder", back_populates="items")
     # ProductionPlan과의 역참조는 production.py에서 정의됨 (backref 또는 relationship)
 
 class TransactionType(str, enum.Enum):

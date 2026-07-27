@@ -110,8 +110,24 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess, initialData }) => {
 
         setSubmitting(true);
         try {
-            if (isEdit) {
-                // 단건 수정
+            const payload = {
+                partner_id: selectedPartner?.id || null,
+                request_date: commonDate,
+                note: '',
+                items: items.map(it => ({
+                    product_id: it.product.id,
+                    quantity: it.quantity,
+                    target_date: it.target_date,
+                    note: it.note,
+                })),
+            };
+
+            if (isEdit && initialData?.order_id) {
+                // 헤더 기준 수정
+                await api.put(`/inventory/production-orders/${initialData.order_id}`, payload);
+                alert('재고 생산 요청이 수정되었습니다.');
+            } else if (isEdit) {
+                // 기존 단건(order_id 없는) 수정 — 이전 방식 유지
                 const it = items[0];
                 await api.put(`/inventory/productions/${initialData.id}`, {
                     product_id: it.product.id,
@@ -123,34 +139,10 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess, initialData }) => {
                 });
                 alert('재고 생산 요청이 수정되었습니다.');
             } else {
-                // 다중 등록:
-                // 첫 번째 품목을 먼저 등록 → 받은 production_no를 batch_no로 나머지에 공유
-                const firstItem = items[0];
-                const firstRes = await api.post('/inventory/productions', {
-                    product_id: firstItem.product.id,
-                    partner_id: selectedPartner?.id || null,
-                    quantity: firstItem.quantity,
-                    request_date: commonDate,
-                    target_date: firstItem.target_date,
-                    note: firstItem.note,
-                });
-                const batchNo = firstRes.data.production_no; // 이게 이 그룹의 대표 재고번호
-
-                // 나머지 품목들은 batch_no 공유 (동시 채번 중복 방지를 위해 순차 실행)
-                if (items.length > 1) {
-                    for (const it of items.slice(1)) {
-                        await api.post('/inventory/productions', {
-                            product_id: it.product.id,
-                            partner_id: selectedPartner?.id || null,
-                            quantity: it.quantity,
-                            request_date: commonDate,
-                            target_date: it.target_date,
-                            note: it.note,
-                            batch_no: batchNo,
-                        });
-                    }
-                }
-                alert(`재고생산 요청 ${items.length}건이 등록되었습니다. (재고번호: ${batchNo})`);
+                // 신규 등록: 헤더 + 품목 일괄 생성
+                const res = await api.post('/inventory/production-orders', payload);
+                const orderNo = res.data.order_no;
+                alert(`재고생산 요청 ${items.length}건이 등록되었습니다. (주문번호: ${orderNo})`);
             }
             onSuccess();
         } catch (e) {
@@ -159,6 +151,7 @@ const StockProductionModal = ({ isOpen, onClose, onSuccess, initialData }) => {
             setSubmitting(false);
         }
     };
+
 
     if (!isOpen) return null;
 

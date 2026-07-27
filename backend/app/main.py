@@ -548,6 +548,66 @@ async def startup_event():
                         await db.execute(text("UPDATE stock_productions SET batch_no = production_no WHERE batch_no IS NULL"))
                         print("Startup: Added batch_no to stock_productions (Postgres)")
 
+                    # 5-A. stock_production_orders 테이블 생성 (헤더)
+                    r = await db.execute(text("SELECT to_regclass('public.stock_production_orders')"))
+                    if not r.scalar():
+                        await db.execute(text("""
+                            CREATE TABLE stock_production_orders (
+                                id SERIAL PRIMARY KEY,
+                                order_no VARCHAR UNIQUE NOT NULL,
+                                partner_id INTEGER REFERENCES partners(id),
+                                request_date DATE,
+                                note TEXT,
+                                created_at TIMESTAMP DEFAULT NOW()
+                            )
+                        """))
+                        await db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_stock_production_orders_order_no ON stock_production_orders (order_no)"))
+                        print("Startup: Created stock_production_orders table (Postgres)")
+
+                    # 5-B. stock_productions.order_id FK 컬럼 추가
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='stock_productions' AND column_name='order_id'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE stock_productions ADD COLUMN order_id INTEGER REFERENCES stock_production_orders(id) ON DELETE CASCADE"))
+                        print("Startup: Added order_id to stock_productions (Postgres)")
+
+                    # 5-C. 기존 데이터 마이그레이션: batch_no 기준으로 stock_production_orders 헤더 생성
+                    r = await db.execute(text("""
+                        SELECT COUNT(*) FROM stock_productions
+                        WHERE order_id IS NULL AND batch_no IS NOT NULL
+                    """))
+                    if r.scalar() > 0:
+                        # batch_no 별 대표 정보(파트너, 요청일)를 가져와서 헤더 생성
+                        batches = await db.execute(text("""
+                            SELECT DISTINCT ON (batch_no) batch_no, partner_id, request_date
+                            FROM stock_productions
+                            WHERE order_id IS NULL AND batch_no IS NOT NULL
+                            ORDER BY batch_no, id ASC
+                        """))
+                        for row in batches.fetchall():
+                            b_no, b_partner, b_date = row
+                            # 해당 batch_no로 이미 헤더가 있는지 확인
+                            exists_r = await db.execute(text(
+                                "SELECT id FROM stock_production_orders WHERE order_no = :order_no"
+                            ), {"order_no": b_no})
+                            existing_order = exists_r.scalar()
+                            if not existing_order:
+                                ins_r = await db.execute(text("""
+                                    INSERT INTO stock_production_orders (order_no, partner_id, request_date, created_at)
+                                    VALUES (:order_no, :partner_id, :request_date, NOW())
+                                    RETURNING id
+                                """), {"order_no": b_no, "partner_id": b_partner, "request_date": b_date})
+                                new_order_id = ins_r.scalar()
+                            else:
+                                new_order_id = existing_order
+                            # 해당 batch의 모든 items를 연결
+                            await db.execute(text("""
+                                UPDATE stock_productions
+                                SET order_id = :order_id
+                                WHERE batch_no = :batch_no AND order_id IS NULL
+                            """), {"order_id": new_order_id, "batch_no": b_no})
+                        await db.commit()
+                        print("Startup: Migrated existing stock_productions to stock_production_orders (Postgres)")
+
                     # 5. delivery_histories export columns
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='delivery_histories' AND column_name='is_export'"))
                     if not r.scalar():

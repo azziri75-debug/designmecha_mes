@@ -28,7 +28,7 @@ class StockResponse(StockBase):
     has_bom: Optional[bool] = False
     model_config = ConfigDict(from_attributes=True)
 
-# --- Stock Production ---
+# --- Stock Production (Item) ---
 
 class StockProductionBase(BaseModel):
     product_id: int
@@ -59,6 +59,7 @@ class StockProductionSimple(StockProductionBase):
 
 class StockProductionResponse(StockProductionBase):
     id: int
+    order_id: Optional[int] = None
     production_no: str
     batch_no: Optional[str] = None
     request_date: date
@@ -67,3 +68,36 @@ class StockProductionResponse(StockProductionBase):
     product: Optional[ProductSimple] = None
     partner: Optional[PartnerResponse] = None
     model_config = ConfigDict(from_attributes=True)
+
+# --- Stock Production Order (Header) ---
+
+class StockProductionOrderItemCreate(BaseModel):
+    """헤더 생성 시 포함되는 품목 데이터"""
+    product_id: int
+    quantity: int
+    target_date: Optional[date] = None
+    note: Optional[str] = None
+
+class StockProductionOrderCreate(BaseModel):
+    partner_id: Optional[int] = None
+    request_date: Optional[date] = None
+    note: Optional[str] = None
+    items: List[StockProductionOrderItemCreate]
+
+class StockProductionOrderUpdate(BaseModel):
+    partner_id: Optional[int] = None
+    request_date: Optional[date] = None
+    note: Optional[str] = None
+    items: Optional[List[StockProductionOrderItemCreate]] = None  # None이면 품목 변경 안 함
+
+class StockProductionOrderResponse(BaseModel):
+    id: int
+    order_no: str
+    partner_id: Optional[int] = None
+    request_date: date
+    note: Optional[str] = None
+    created_at: datetime
+    partner: Optional[PartnerResponse] = None
+    items: List[StockProductionResponse] = []
+    model_config = ConfigDict(from_attributes=True)
+

@@ -156,7 +156,8 @@ const InventoryPage = () => {
                 if (startDate) params.start_date = startDate;
                 if (endDate) params.end_date = endDate;
                 if (statusFilter) params.status = statusFilter;
-                const res = await api.get('/inventory/productions', { params });
+                // 신규 헤더 기반 API 사용
+                const res = await api.get('/inventory/production-orders', { params });
                 setProductions(res.data);
             }
         } catch (err) {
@@ -165,6 +166,7 @@ const InventoryPage = () => {
             setLoading(false);
         }
     }, [activeTab, searchTerm, itemType, selectedPartnerId, startDate, endDate, statusFilter, majorGroupId]);
+
 
     // SSE: 재고 수정 시 재고관리 화면 자동 갱신
     useSSE((eventType) => {
@@ -200,16 +202,32 @@ const InventoryPage = () => {
         });
     }, [stocks, hideEmpty]);
     
-    // 재고생산 내역 그룹화: batch_no 기준 (다중등록 시 첫 번째 production_no 공유)
+    // 재고생산 내역 그룹화: 새 API는 이미 헤더(주문) 단위로 응답
+    // productions 배열이 StockProductionOrderResponse 목록인 경우 직접 사용
     const groupedProductions = React.useMemo(() => {
+        if (!Array.isArray(productions) || productions.length === 0) return [];
+
+        // 새 API (production-orders) 응답: { id, order_no, partner, items, request_date, ... }
+        if (productions[0]?.order_no !== undefined) {
+            return productions.map(order => ({
+                key: order.order_no,
+                batch_no: order.order_no,
+                order_id: order.id,
+                request_date: order.request_date,
+                partner: order.partner,
+                items: order.items || [],
+            }));
+        }
+
+        // fallback: 구 API (/productions) 응답 형식 (order_id 없는 레거시 데이터)
         const groups = new Map();
         productions.forEach(p => {
-            // batch_no가 있으면 그 기준으로, 없으면 production_no로 단독 그룹
             const key = p.batch_no || p.production_no;
             if (!groups.has(key)) {
                 groups.set(key, {
                     key,
                     batch_no: key,
+                    order_id: null,
                     request_date: p.request_date,
                     partner: p.partner,
                     items: []
@@ -220,7 +238,7 @@ const InventoryPage = () => {
         return Array.from(groups.values());
     }, [productions]);
 
-    const filteredProductions = productions;
+
 
     const selectStyles = {
         control: (base) => ({
@@ -349,6 +367,27 @@ const InventoryPage = () => {
             alert("삭제 실패: " + (err.response?.data?.detail || err.message));
         }
     };
+
+    const handleGroupDelete = async (grp) => {
+        if (!window.confirm(`주문번호 ${grp.batch_no} (총 ${grp.items.length}건)을 삭제하시겠습니까? 관련 재고 정보가 롤백됩니다.`)) return;
+        try {
+            if (grp.order_id) {
+                await api.delete(`/inventory/production-orders/${grp.order_id}`);
+            } else {
+                // 레거시: 품목 개별 삭제
+                for (const item of grp.items) {
+                    await api.delete(`/inventory/productions/${item.id}`);
+                }
+            }
+            alert("삭제되었습니다.");
+            fetchData();
+        } catch (err) {
+            console.error("Delete failed", err);
+            alert("삭제 실패: " + (err.response?.data?.detail || err.message));
+        }
+    };
+
+
 
     return (
         <div className="space-y-6">
@@ -854,21 +893,39 @@ const InventoryPage = () => {
                                                         {!isMulti && (grp.items[0].note || '-')}
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        {!isMulti && (
-                                                            <div className="flex justify-end gap-2">
-                                                                <Button variant="ghost" size="icon"
-                                                                    className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                                                                    onClick={(e) => { e.stopPropagation(); handleEdit(grp.items[0]); }}>
-                                                                    <Pencil className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button variant="ghost" size="icon"
-                                                                    className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                                                    onClick={(e) => { e.stopPropagation(); handleDelete(grp.items[0].id); }}>
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        )}
+                                                        <div className="flex justify-end gap-2">
+                                                            {isMulti ? (
+                                                                // 다중 품목: 헤더(주문) 단위 수정/삭제
+                                                                <>
+                                                                    <Button variant="ghost" size="icon"
+                                                                        className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                                                        onClick={(e) => { e.stopPropagation(); handleEdit({ ...grp.items[0], order_id: grp.order_id }); }}>
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon"
+                                                                        className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                                                        onClick={(e) => { e.stopPropagation(); handleGroupDelete(grp); }}>
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </>
+                                                            ) : (
+                                                                // 단일 품목
+                                                                <>
+                                                                    <Button variant="ghost" size="icon"
+                                                                        className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                                                        onClick={(e) => { e.stopPropagation(); handleEdit(grp.items[0]); }}>
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon"
+                                                                        className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                                                        onClick={(e) => { e.stopPropagation(); handleGroupDelete(grp); }}>
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </td>
+
                                                 </tr>
 
                                                 {/* 그룹 펼침: 품목별 상세 행 */}
