@@ -913,7 +913,7 @@ async def create_production_plan(
         await db.commit()
         await db.refresh(plan)
         
-        # Reload logic (Update options to include stock_production)
+        # Reload logic (Update options to include stock_production and stock_production_order)
         result = await db.execute(
             select(ProductionPlan)
             .options(
@@ -926,11 +926,16 @@ async def create_production_plan(
                 selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                 selectinload(ProductionPlan.stock_production).options(
                     selectinload(StockProduction.product),
-                    selectinload(StockProduction.partner)
+                    selectinload(StockProduction.partner),
+                    selectinload(StockProduction.order).selectinload(StockProductionOrder.partner)
+                ),
+                selectinload(ProductionPlan.stock_production_order).options(
+                    selectinload(StockProductionOrder.partner)
                 ),
                 selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).options(
                     selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
-                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product)
+                    selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
+                    selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner)
                 ),
                 selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
                 selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
@@ -941,6 +946,7 @@ async def create_production_plan(
             )
             .where(ProductionPlan.id == plan.id)
         )
+
         plan = result.scalars().first()
         for item in plan.items:
             item.completed_quantity = calculate_completed_quantity(item)
