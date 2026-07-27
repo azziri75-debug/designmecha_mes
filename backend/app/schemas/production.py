@@ -78,16 +78,18 @@ class ProductionPlanSimple(ProductionPlanBase):
     order: Optional[SalesOrderSimple] = None
 # Forward refs for Purchasing
 from app.schemas.purchasing import PurchaseOrderItemSimple, OutsourcingOrderItemSimple
-from app.schemas.inventory import StockProductionResponse, StockProductionSimple
+from app.schemas.inventory import StockProductionResponse, StockProductionSimple, StockProductionOrderResponse
 
 class ProductionPlanSimple(ProductionPlanBase):
     id: int
     order_id: Optional[int] = None
     stock_production_id: Optional[int] = None
+    stock_production_order_id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
     stock_production: Optional[StockProductionResponse] = None
+    stock_production_order: Optional[StockProductionOrderResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -117,12 +119,14 @@ class ProductionPlanItem(ProductionPlanItemSimple):
 class ProductionPlanCreate(BaseModel):
     order_id: Optional[int] = None
     stock_production_id: Optional[int] = None
+    stock_production_order_id: Optional[int] = None
     plan_date: date
     items: Optional[List[ProductionPlanItemCreate]] = None
 
 class ProductionPlanUpdate(BaseModel):
     order_id: Optional[int] = None
     stock_production_id: Optional[int] = None
+    stock_production_order_id: Optional[int] = None
     plan_date: Optional[date] = None
     status: Optional[ProductionStatus] = None
     attachment_file: Optional[Union[List[Any], str]] = None
@@ -133,11 +137,14 @@ class ProductionPlan(ProductionPlanBase):
     id: int
     order_id: Optional[int] = None
     stock_production_id: Optional[int] = None
+    stock_production_order_id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order: Optional[SalesOrderSimple] = None
     stock_production: Optional[StockProductionResponse] = None
+    stock_production_order: Optional[StockProductionOrderResponse] = None
     items: List[ProductionPlanItem] = []
+
 
     model_config = ConfigDict(from_attributes=True)
 

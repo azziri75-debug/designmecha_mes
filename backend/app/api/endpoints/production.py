@@ -420,6 +420,37 @@ async def create_production_plan(
                     .limit(1)
                 )
                 return result.scalars().first()
+        elif plan_in.stock_production_order_id:
+            result = await db.execute(select(StockProductionOrder).where(StockProductionOrder.id == plan_in.stock_production_order_id))
+            spo = result.scalars().first()
+            if not spo:
+                raise HTTPException(status_code=404, detail="Stock Production Order not found")
+
+            # Check if ACTIVE Plan already exists for this stock production order
+            result = await db.execute(select(ProductionPlan).where(
+                ProductionPlan.stock_production_order_id == plan_in.stock_production_order_id,
+                cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value
+            ).limit(1))
+            if result.scalars().first():
+                result = await db.execute(
+                    select(ProductionPlan)
+                    .options(
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
+                            selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                            selectinload(Product.bom_items).selectinload(BOM.child_product)
+                        ),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
+                        selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
+                        selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                        selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                        selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
+                    )
+                    .where(ProductionPlan.stock_production_order_id == plan_in.stock_production_order_id, cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)
+                    .limit(1)
+                )
+                return result.scalars().first()
         elif plan_in.stock_production_id:
             result = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
             sp = result.scalars().first()
@@ -444,6 +475,7 @@ async def create_production_plan(
                         selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
                         selectinload(ProductionPlan.order).selectinload(SalesOrder.partner),
                         selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+                        selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
                         selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
                         selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
                         selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order)
@@ -540,14 +572,102 @@ async def create_production_plan(
         else:
             # Default logic for Sales Order (already exists) or Stock Production
             # If stock production, it's usually just one product.
-            if plan_in.stock_production_id:
+            if plan_in.stock_production_order_id:
+                # Fetch StockProductionOrder with all items
+                res = await db.execute(
+                    select(StockProductionOrder)
+                    .options(selectinload(StockProductionOrder.items))
+                    .where(StockProductionOrder.id == plan_in.stock_production_order_id)
+                )
+                spo = res.scalars().first()
+                if spo:
+                    import json
+                    seq_counter = 1
+                    for sp in spo.items:
+                        stmt = (
+                            select(ProductProcess, Process.name, Process.course_type, Product.drawing_file, Product.item_type)
+                            .join(Process, ProductProcess.process_id == Process.id)
+                            .join(Product, ProductProcess.product_id == Product.id)
+                            .where(ProductProcess.product_id == sp.product_id)
+                            .order_by(ProductProcess.sequence)
+                        )
+                        result = await db.execute(stmt)
+                        processes = result.all()
+
+                        if not processes:
+                            # 표준 공정이 없는 경우 기본 공정 생성 (자재/외주 자동 판별)
+                            prod_obj = await db.get(Product, sp.product_id)
+                            c_type = "PURCHASE" if (prod_obj and prod_obj.item_type in ["RAW_MATERIAL", "PART"]) else "INTERNAL"
+                            plan_item = ProductionPlanItem(
+                                plan_id=plan.id,
+                                product_id=sp.product_id,
+                                process_name="기본 생산 공정",
+                                sequence=seq_counter,
+                                course_type=c_type,
+                                quantity=sp.quantity,
+                                status=ProductionStatus.PLANNED,
+                                cost=0
+                            )
+                            db.add(plan_item)
+                            seq_counter += 1
+                            continue
+
+                        for proc, proc_name, proc_course_type, prod_drawing, prod_item_type in processes:
+                            final_attachments = []
+                            if prod_drawing:
+                                try:
+                                    parsed = json.loads(prod_drawing) if isinstance(prod_drawing, str) else prod_drawing
+                                    if isinstance(parsed, list): final_attachments.extend(parsed)
+                                    else: final_attachments.append(parsed)
+                                except: final_attachments.append(prod_drawing)
+                            
+                            if proc.attachment_file:
+                                try:
+                                    parsed = json.loads(proc.attachment_file) if isinstance(proc.attachment_file, str) else proc.attachment_file
+                                    if isinstance(parsed, list): final_attachments.extend(parsed)
+                                    else: final_attachments.append(parsed)
+                                except: final_attachments.append(proc.attachment_file)
+                            
+                            unique_attachments = []
+                            seen_urls = set()
+                            for att in final_attachments:
+                                if isinstance(att, dict) and att.get('url'):
+                                    if att['url'] not in seen_urls:
+                                        unique_attachments.append(att)
+                                        seen_urls.add(att['url'])
+                                elif isinstance(att, str):
+                                    if att not in seen_urls:
+                                        unique_attachments.append(att)
+                                        seen_urls.add(att)
+
+                            final_attachment_json = json.dumps(unique_attachments, ensure_ascii=False) if unique_attachments else None
+                            final_course_type = proc.course_type or proc_course_type or ("PURCHASE" if prod_item_type in ["RAW_MATERIAL", "PART"] else "INTERNAL")
+
+                            plan_item = ProductionPlanItem(
+                                plan_id=plan.id,
+                                product_id=sp.product_id,
+                                process_name=proc_name,
+                                sequence=seq_counter,
+                                course_type=final_course_type,
+                                partner_name=proc.partner_name,
+                                work_center=proc.equipment_name,
+                                estimated_time=proc.estimated_time,
+                                attachment_file=final_attachment_json,
+                                quantity=sp.quantity,
+                                status=ProductionStatus.PLANNED,
+                                cost=(getattr(proc, 'cost', 0) or 0) * sp.quantity
+                            )
+                            db.add(plan_item)
+                            seq_counter += 1
+
+            elif plan_in.stock_production_id:
                 # Fetch StockProduction to get product_id and quantity
                 res = await db.execute(select(StockProduction).where(StockProduction.id == plan_in.stock_production_id))
                 sp = res.scalars().first()
                 
                 # Fetch processes and Product
                 stmt = (
-                    select(ProductProcess, Process.name, Process.course_type, Product.drawing_file)
+                    select(ProductProcess, Process.name, Process.course_type, Product.drawing_file, Product.item_type)
                     .join(Process, ProductProcess.process_id == Process.id)
                     .join(Product, ProductProcess.product_id == Product.id)
                     .where(ProductProcess.product_id == sp.product_id)
@@ -557,57 +677,73 @@ async def create_production_plan(
                 processes = result.all()
                 
                 import json
-                for proc, proc_name, proc_course_type, prod_drawing in processes:
-                    # Merge attachments: process attachment + product drawing
-                    final_attachments = []
-                    
-                    # Add product drawing files
-                    if prod_drawing:
-                        try:
-                            parsed = json.loads(prod_drawing) if isinstance(prod_drawing, str) else prod_drawing
-                            if isinstance(parsed, list): final_attachments.extend(parsed)
-                            else: final_attachments.append(parsed)
-                        except: final_attachments.append(prod_drawing)
-                    
-                    # Add process attachment files
-                    if proc.attachment_file:
-                        try:
-                            parsed = json.loads(proc.attachment_file) if isinstance(proc.attachment_file, str) else proc.attachment_file
-                            if isinstance(parsed, list): final_attachments.extend(parsed)
-                            else: final_attachments.append(parsed)
-                        except: final_attachments.append(proc.attachment_file)
-                    
-                    # Deduplicate and format
-                    unique_attachments = []
-                    seen_urls = set()
-                    for att in final_attachments:
-                        if isinstance(att, dict) and att.get('url'):
-                            if att['url'] not in seen_urls:
-                                unique_attachments.append(att)
-                                seen_urls.add(att['url'])
-                        elif isinstance(att, str):
-                            if att not in seen_urls:
-                                unique_attachments.append(att)
-                                seen_urls.add(att)
-
-                    final_attachment_json = json.dumps(unique_attachments, ensure_ascii=False) if unique_attachments else None
-
-                    final_course_type = proc.course_type or proc_course_type or "INTERNAL"
+                if not processes:
+                    prod_obj = await db.get(Product, sp.product_id)
+                    c_type = "PURCHASE" if (prod_obj and prod_obj.item_type in ["RAW_MATERIAL", "PART"]) else "INTERNAL"
                     plan_item = ProductionPlanItem(
                         plan_id=plan.id,
                         product_id=sp.product_id,
-                        process_name=proc_name,
-                        sequence=proc.sequence,
-                        course_type=final_course_type,
-                        partner_name=proc.partner_name,
-                        work_center=proc.equipment_name,
-                        estimated_time=proc.estimated_time,
-                        attachment_file=final_attachment_json,
+                        process_name="기본 생산 공정",
+                        sequence=1,
+                        course_type=c_type,
                         quantity=sp.quantity,
                         status=ProductionStatus.PLANNED,
-                        cost=(getattr(proc, 'cost', 0) or 0) * sp.quantity
+                        cost=0
                     )
                     db.add(plan_item)
+                else:
+                    for proc, proc_name, proc_course_type, prod_drawing, prod_item_type in processes:
+                        # Merge attachments: process attachment + product drawing
+                        final_attachments = []
+                        
+                        # Add product drawing files
+                        if prod_drawing:
+                            try:
+                                parsed = json.loads(prod_drawing) if isinstance(prod_drawing, str) else prod_drawing
+                                if isinstance(parsed, list): final_attachments.extend(parsed)
+                                else: final_attachments.append(parsed)
+                            except: final_attachments.append(prod_drawing)
+                        
+                        # Add process attachment files
+                        if proc.attachment_file:
+                            try:
+                                parsed = json.loads(proc.attachment_file) if isinstance(proc.attachment_file, str) else proc.attachment_file
+                                if isinstance(parsed, list): final_attachments.extend(parsed)
+                                else: final_attachments.append(parsed)
+                            except: final_attachments.append(proc.attachment_file)
+                        
+                        # Deduplicate and format
+                        unique_attachments = []
+                        seen_urls = set()
+                        for att in final_attachments:
+                            if isinstance(att, dict) and att.get('url'):
+                                if att['url'] not in seen_urls:
+                                    unique_attachments.append(att)
+                                    seen_urls.add(att['url'])
+                            elif isinstance(att, str):
+                                if att not in seen_urls:
+                                    unique_attachments.append(att)
+                                    seen_urls.add(att)
+
+                        final_attachment_json = json.dumps(unique_attachments, ensure_ascii=False) if unique_attachments else None
+
+                        final_course_type = proc.course_type or proc_course_type or ("PURCHASE" if prod_item_type in ["RAW_MATERIAL", "PART"] else "INTERNAL")
+                        plan_item = ProductionPlanItem(
+                            plan_id=plan.id,
+                            product_id=sp.product_id,
+                            process_name=proc_name,
+                            sequence=proc.sequence,
+                            course_type=final_course_type,
+                            partner_name=proc.partner_name,
+                            work_center=proc.equipment_name,
+                            estimated_time=proc.estimated_time,
+                            attachment_file=final_attachment_json,
+                            quantity=sp.quantity,
+                            status=ProductionStatus.PLANNED,
+                            cost=(getattr(proc, 'cost', 0) or 0) * sp.quantity
+                        )
+                        db.add(plan_item)
+
             else:
                 # Sales Order logic
                 if plan_in.items:

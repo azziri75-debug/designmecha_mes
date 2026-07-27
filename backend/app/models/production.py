@@ -23,7 +23,8 @@ class ProductionPlan(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True) # 수주 참조 (재고생산의 경우 null)
-    stock_production_id = Column(Integer, ForeignKey("stock_productions.id", ondelete="CASCADE"), nullable=True) # 재고생산 참조
+    stock_production_id = Column(Integer, ForeignKey("stock_productions.id", ondelete="CASCADE"), nullable=True) # 재고생산 참조 (단건/레거시)
+    stock_production_order_id = Column(Integer, ForeignKey("stock_production_orders.id", ondelete="CASCADE"), nullable=True) # 재고생산 주문 헤더 참조
     plan_date = Column(Date, nullable=False) # 계획 수립일
     
     status = Column(Enum(ProductionStatus), default=ProductionStatus.PLANNED)
@@ -38,8 +39,10 @@ class ProductionPlan(Base):
     # Relationships
     order = relationship("SalesOrder")
     stock_production = relationship("StockProduction", backref="production_plans")
+    stock_production_order = relationship("app.models.inventory.StockProductionOrder", backref="production_plans")
     items = relationship("ProductionPlanItem", back_populates="plan", cascade="all, delete-orphan", lazy="selectin", order_by="ProductionPlanItem.sequence")
     material_requirements = relationship("app.models.purchasing.MaterialRequirement", back_populates="plan")
+
 
 class ProductionPlanItem(Base):
     """

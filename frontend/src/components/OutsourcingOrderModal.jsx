@@ -233,12 +233,14 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
 
             const displayCode = firstItem?.sales_order_number ||
                 firstItem?.plan?.order?.order_no ||
+                firstItem?.plan?.stock_production_order?.order_no ||
                 firstItem?.plan?.stock_production?.production_no || 
                 (firstItem ? "재고용 (외주)" : "직접발주");
             
             // 제목 생성을 위한 메타데이터 추출 (수주건 vs 재고건)
-            const isStock = !!(firstItem?.plan?.stock_production_id || firstItem?.stock_production_id || String(displayCode).includes('재고용'));
-            const customerName = firstItem?.plan?.order?.partner?.name || firstItem?.plan?.stock_production?.partner?.name || firstItem?.customer_name || '';
+            const isStock = !!(firstItem?.plan?.stock_production_order_id || firstItem?.plan?.stock_production_id || firstItem?.stock_production_id || String(displayCode).includes('재고용'));
+            const customerName = firstItem?.plan?.order?.partner?.name || firstItem?.plan?.stock_production_order?.partner?.name || firstItem?.plan?.stock_production?.partner?.name || firstItem?.customer_name || '';
+
 
             setFormData({
                 partner_id: foundPartner ? foundPartner.id : '',

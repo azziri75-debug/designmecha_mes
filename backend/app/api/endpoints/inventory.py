@@ -891,6 +891,8 @@ async def read_production_orders(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     partner_id: Optional[int] = None,
+    product_name: Optional[str] = None,
+    major_group_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """재고생산 주문 목록 (헤더 + 품목 포함)"""
@@ -914,8 +916,26 @@ async def read_production_orders(
         ).scalar_subquery()
         query = query.where(StockProductionOrder.id.in_(subq))
 
+    if product_name:
+        subq = select(StockProduction.order_id).join(Product)\
+            .where(Product.name.ilike(f"%{product_name}%"), StockProduction.order_id.is_not(None))\
+            .scalar_subquery()
+        query = query.where(StockProductionOrder.id.in_(subq))
+
+    if major_group_id:
+        from app.models.product import ProductGroup
+        subq = select(StockProduction.order_id)\
+            .join(Product)\
+            .join(ProductGroup, Product.group_id == ProductGroup.id)\
+            .where(
+                or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id),
+                StockProduction.order_id.is_not(None)
+            ).scalar_subquery()
+        query = query.where(StockProductionOrder.id.in_(subq))
+
     result = await db.execute(query)
     return result.scalars().all()
+
 
 
 @router.post("/production-orders", response_model=StockProductionOrderResponse)

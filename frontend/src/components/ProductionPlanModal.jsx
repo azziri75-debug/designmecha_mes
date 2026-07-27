@@ -66,13 +66,14 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                 setPlanDate(new Date().toISOString().split('T')[0]);
                 
                 const initCreateMode = async () => {
-                    const sourceItems = order ? order.items : (stockProduction ? [{ 
+                    const sourceItems = order ? order.items : (stockProduction ? (stockProduction.items || [{ 
                         product: stockProduction.product, 
                         quantity: stockProduction.quantity, 
                         product_id: stockProduction.product_id 
-                    }] : []);
+                    }]) : []);
                     
                     if (sourceItems.length === 0) return;
+
 
                     // Fetch fresh product details to ensure we have standard_processes
                     const productIds = sourceItems.map(si => si.product_id);
@@ -399,11 +400,14 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
     const handleSubmit = async () => {
         setLoading(true);
         try {
+            const isHeaderOrder = stockProduction && Boolean(stockProduction.order_no || stockProduction.items);
             const payload = {
                 order_id: order ? order.id : undefined,
-                stock_production_id: stockProduction ? stockProduction.id : undefined,
+                stock_production_order_id: isHeaderOrder ? stockProduction.id : undefined,
+                stock_production_id: stockProduction && !isHeaderOrder ? stockProduction.id : undefined,
                 plan_date: planDate,
                 items: items
+
                     .filter(item => item.product_id && !isNaN(parseInt(item.product_id)))
                     .map((item) => ({
                         id: item.id,

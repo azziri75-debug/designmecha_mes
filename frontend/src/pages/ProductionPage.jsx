@@ -120,7 +120,10 @@ const ProductionPage = () => {
             if (!selectedMajorGroupId && !searchQuery && !startDate && !endDate && filterPartner === 'all') {
                 setAllPlannedIds({
                     orders: response.data.map(p => p.order_id).filter(id => id != null),
-                    stocks: response.data.map(p => p.stock_production_id).filter(id => id != null)
+                    stocks: [
+                        ...response.data.map(p => p.stock_production_order_id).filter(id => id != null),
+                        ...response.data.map(p => p.stock_production_id).filter(id => id != null)
+                    ]
                 });
             }
         } catch (error) {
@@ -133,23 +136,28 @@ const ProductionPage = () => {
             const response = await api.get('/production/plans/', { params: { limit: 2000 } });
             setAllPlannedIds({
                 orders: response.data.map(p => p.order_id).filter(id => id != null),
-                stocks: response.data.map(p => p.stock_production_id).filter(id => id != null)
+                stocks: [
+                    ...response.data.map(p => p.stock_production_order_id).filter(id => id != null),
+                    ...response.data.map(p => p.stock_production_id).filter(id => id != null)
+                ]
             });
         } catch (error) {
             console.error("Failed to fetch all planned IDs", error);
         }
     };
 
+
     const fetchStockProductions = async () => {
         try {
             const params = { status: 'PENDING' };
             if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
-            const response = await api.get('/inventory/productions', { params });
+            const response = await api.get('/inventory/production-orders', { params });
             setStockProductions(response.data);
         } catch (error) {
             console.error("Failed to fetch stock productions", error);
         }
     };
+
 
     const fetchDefects = async () => {
         try {
@@ -706,7 +714,9 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
 const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onRefresh, readonly }) => {
     const [open, setOpen] = useState(false);
     const order = plan.order;
+    const spo = plan.stock_production_order;
     const sp = plan.stock_production;
+
 
     const groupedItems = plan.items?.reduce((acc, item) => {
         const pid = item.product_id || 'unknown';
@@ -731,9 +741,11 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
                 <td className="px-4 py-4 text-center"><IconButton size="small" sx={{ color: 'text.secondary' }} onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>{open ? <KeyboardArrowUp sx={{ fontSize: 18 }} /> : <KeyboardArrowDown sx={{ fontSize: 18 }} />}</IconButton></td>
                 <td className="px-4 py-4 truncate">
                     {order ? <div className="flex items-center gap-1"><Chip label="수주" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd' }} />{order.order_no}</div> :
+                        spo ? <div className="flex items-center gap-1"><Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />{spo.order_no}</div> :
                         sp ? <div className="flex items-center gap-1"><Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />{sp.production_no || `Stock-${sp.id}`}</div> : '-'}
                 </td>
-                <td className="px-4 py-4 truncate">{plan.order?.partner?.name || plan.stock_production?.partner?.name || '사내'}</td>
+                <td className="px-4 py-4 truncate">{plan.order?.partner?.name || plan.stock_production_order?.partner?.name || plan.stock_production?.partner?.name || '사내'}</td>
+
                 <td className="px-4 py-4 truncate">
                     {getProductNameStr(plan)}
                 </td>

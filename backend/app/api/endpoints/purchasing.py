@@ -438,6 +438,8 @@ async def read_pending_purchase_items(
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.items).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.purchase_items),
             selectinload(ProductionPlanItem.outsourcing_items),
             selectinload(ProductionPlanItem.work_log_items)
@@ -463,9 +465,6 @@ async def read_pending_purchase_items(
                      .where(or_(ProductGroup.id == major_group_id_int, ProductGroup.parent_id == major_group_id_int))
         query = query.where(ProductionPlanItem.id.in_(subquery))
         
-    # Debug: Print Query
-    # print(f"[DEBUG] Query: {query}")
-        
     result = await db.execute(query)
     items = result.scalars().all()
     
@@ -476,6 +475,10 @@ async def read_pending_purchase_items(
                 i.client_name = i.plan.order.partner.name if i.plan.order.partner else "-"
                 if i.plan.order.items:
                     i.product_name_of_plan = i.plan.order.items[0].product.name if i.plan.order.items[0].product else "-"
+            elif getattr(i.plan, 'stock_production_order', None):
+                spo = i.plan.stock_production_order
+                i.client_name = spo.partner.name if spo.partner else "사내 생산"
+                i.product_name_of_plan = i.product.name if i.product else (spo.items[0].product.name if spo.items and spo.items[0].product else "-")
             elif i.plan.stock_production:
                 i.client_name = i.plan.stock_production.partner.name if i.plan.stock_production.partner else "-"
                 i.product_name_of_plan = i.plan.stock_production.product.name if i.plan.stock_production.product else "-"
@@ -493,7 +496,7 @@ async def read_pending_outsourcing_items(
     """
     # Local import restored
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem
-    from app.models.inventory import StockProduction
+    from app.models.inventory import StockProduction, StockProductionOrder
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .options(
@@ -505,6 +508,8 @@ async def read_pending_outsourcing_items(
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.order).selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
+            selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.items).selectinload(StockProduction.product),
             selectinload(ProductionPlanItem.purchase_items),
             selectinload(ProductionPlanItem.outsourcing_items),
             selectinload(ProductionPlanItem.work_log_items)
@@ -540,9 +545,14 @@ async def read_pending_outsourcing_items(
                 i.client_name = i.plan.order.partner.name if i.plan.order.partner else "-"
                 if i.plan.order.items:
                     i.product_name_of_plan = i.plan.order.items[0].product.name if i.plan.order.items[0].product else "-"
+            elif getattr(i.plan, 'stock_production_order', None):
+                spo = i.plan.stock_production_order
+                i.client_name = spo.partner.name if spo.partner else "사내 생산"
+                i.product_name_of_plan = i.product.name if i.product else (spo.items[0].product.name if spo.items and spo.items[0].product else "-")
             elif i.plan.stock_production:
                 i.client_name = i.plan.stock_production.partner.name if i.plan.stock_production.partner else "-"
                 i.product_name_of_plan = i.plan.stock_production.product.name if i.plan.stock_production.product else "-"
+
 
     print(f"[DEBUG] Pending Outsourcing Items: Found {len(items)} items.")
     return items

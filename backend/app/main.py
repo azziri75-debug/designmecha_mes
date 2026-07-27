@@ -608,6 +608,21 @@ async def startup_event():
                         await db.commit()
                         print("Startup: Migrated existing stock_productions to stock_production_orders (Postgres)")
 
+                    # 5-D. production_plans.stock_production_order_id 컬럼 추가 및 기존 연결 백필
+                    r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='production_plans' AND column_name='stock_production_order_id'"))
+                    if not r.scalar():
+                        await db.execute(text("ALTER TABLE production_plans ADD COLUMN stock_production_order_id INTEGER REFERENCES stock_production_orders(id) ON DELETE CASCADE"))
+                        # 기존 production_plans 중 stock_production_id가 있고 연결된 stock_productions.order_id가 있으면 업데이트
+                        await db.execute(text("""
+                            UPDATE production_plans pp
+                            SET stock_production_order_id = sp.order_id
+                            FROM stock_productions sp
+                            WHERE pp.stock_production_id = sp.id AND sp.order_id IS NOT NULL AND pp.stock_production_order_id IS NULL
+                        """))
+                        await db.commit()
+                        print("Startup: Added stock_production_order_id to production_plans (Postgres)")
+
+
                     # 5. delivery_histories export columns
                     r = await db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='delivery_histories' AND column_name='is_export'"))
                     if not r.scalar():
