@@ -740,11 +740,20 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
             <tr className={cn("hover:bg-gray-800/40 transition-colors select-none divide-x divide-gray-700/30 text-gray-300 cursor-pointer", open && "bg-gray-800/30")} onClick={() => setOpen(!open)} onDoubleClick={() => onEdit(plan)}>
                 <td className="px-4 py-4 text-center"><IconButton size="small" sx={{ color: 'text.secondary' }} onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>{open ? <KeyboardArrowUp sx={{ fontSize: 18 }} /> : <KeyboardArrowDown sx={{ fontSize: 18 }} />}</IconButton></td>
                 <td className="px-4 py-4 truncate">
-                    {order ? <div className="flex items-center gap-1"><Chip label="수주" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd' }} />{order.order_no}</div> :
-                        spo ? <div className="flex items-center gap-1"><Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />{spo.order_no}</div> :
-                        sp ? <div className="flex items-center gap-1"><Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />{sp.production_no || `Stock-${sp.id}`}</div> : '-'}
+                    {order ? (
+                        <div className="flex items-center gap-1">
+                            <Chip label="수주" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd' }} />
+                            {order.order_no}
+                        </div>
+                    ) : (spo || sp || plan.stock_production_order_id || plan.stock_production_id) ? (
+                        <div className="flex items-center gap-1">
+                            <Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />
+                            {spo?.order_no || sp?.production_no || sp?.batch_no || `SP-Plan-${plan.id}`}
+                        </div>
+                    ) : '-'}
                 </td>
                 <td className="px-4 py-4 truncate">{plan.order?.partner?.name || plan.stock_production_order?.partner?.name || plan.stock_production?.partner?.name || '사내'}</td>
+
 
                 <td className="px-4 py-4 truncate">
                     {getProductNameStr(plan)}

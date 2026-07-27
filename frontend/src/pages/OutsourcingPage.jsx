@@ -538,14 +538,17 @@ const OutsourcingPage = () => {
                                         <div className="flex items-center gap-1">
                                             {item.plan?.order ? (
                                                 <Chip label="수주" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd', color: '#1976d2' }} />
-                                            ) : item.plan?.stock_production ? (
+                                            ) : (item.plan?.stock_production_order || item.plan?.stock_production || item.plan?.stock_production_order_id || item.plan?.stock_production_id) ? (
                                                 <Chip label="재고" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />
                                             ) : null}
-                                            <span className="font-bold text-blue-400">{item.plan?.order?.order_no || item.plan?.stock_production?.production_no || '-'}</span>
+                                            <span className="font-bold text-blue-400">
+                                                {item.plan?.order?.order_no || item.plan?.stock_production_order?.order_no || item.plan?.stock_production?.production_no || (item.plan ? '재고생산' : '-')}
+                                            </span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-4 truncate">{item.client_name || '-'}</td>
-                                    <td className="px-4 py-4 truncate">{item.product_name_of_plan || '-'}</td>
+                                    <td className="px-4 py-4 truncate">{item.client_name || item.plan?.order?.partner?.name || item.plan?.stock_production_order?.partner?.name || item.plan?.stock_production?.partner?.name || '사내 생산'}</td>
+                                    <td className="px-4 py-4 truncate">{item.product_name_of_plan || item.product?.name || '-'}</td>
+
                                     <td className="px-4 py-4">
                                         <div className="font-bold text-gray-200">{item.process_name || '-'}</div>
                                         <div className="text-xs text-gray-500">{item.product?.name} ({item.product?.specification || '-'})</div>
