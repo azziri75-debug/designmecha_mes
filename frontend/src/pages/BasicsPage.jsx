@@ -1715,7 +1715,6 @@ const BasicsPageContent = () => {
                                     </>
                                 )}
 
-
                                 {modalType === 'edit_staff' && staffTab === 'leave' && (
                                     <div className="space-y-4">
                                         <div className="bg-blue-600/10 border border-blue-500/30 p-4 rounded-xl">
@@ -1723,7 +1722,8 @@ const BasicsPageContent = () => {
                                                 💡 <b>[연차 관리 안내]</b><br />
                                                 - 시스템 발생: 근로기준법(1년 미만 월 1일, 1년 이상 15~25일)에 따라 자동 계산된 일수입니다.<br />
                                                 - 관리자 조정: 과거 잔여 연차 이관이나 포상/차감 시 사용하며 <b>0.1 단위</b>로 입력 가능합니다.<br />
-                                                - 사용 시간: 전자결재(휴가원/외출/조퇴) 승격 시 실시간으로 합산됩니다.
+                                                - 도입전 사용: 시스템 도입 전 사용한 연차를 <b>시간 단위(일수×8)</b>로 입력합니다. (동기화에 의해 초기화되지 않음)<br />
+                                                - 전자결재 사용: 전자결재(휴가원/외출/조퇴) 승인 시 실시간으로 합산됩니다.
                                             </p>
                                         </div>
                                         <div className="overflow-x-auto rounded-xl border border-gray-700 bg-gray-900/50">
@@ -1733,9 +1733,10 @@ const BasicsPageContent = () => {
                                                         <th className="px-4 py-3 border-b border-gray-700">연도</th>
                                                         <th className="px-4 py-3 border-b border-gray-700">시스템 발생(A)</th>
                                                         <th className="px-4 py-3 border-b border-gray-700 text-blue-400">관리자 조정(B)</th>
-                                                        <th className="px-4 py-3 border-b border-gray-700 text-red-400">사용한 시간(H)</th>
-                                                        <th className="px-4 py-3 border-b border-gray-700">사용(일) (C=H/8)</th>
-                                                        <th className="px-4 py-3 border-b border-gray-700 font-bold text-green-400 bg-gray-700/30 text-center">잔여 연차<br />(A+B-C)</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700 text-yellow-400">도입전 사용(H0)<br/><span className="font-normal text-[10px] opacity-70">시간단위(일×8)</span></th>
+                                                        <th className="px-4 py-3 border-b border-gray-700 text-red-400">전자결재 사용(H1)</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700">사용(일) C=(H0+H1)/8</th>
+                                                        <th className="px-4 py-3 border-b border-gray-700 font-bold text-green-400 bg-gray-700/30 text-center">잔여 연차<br/>(A+B-C)</th>
                                                         <th className="px-4 py-3 border-b border-gray-700 text-orange-400">병가(일)</th>
                                                         <th className="px-4 py-3 border-b border-gray-700 text-orange-400">경조사(일)</th>
                                                     </tr>
@@ -1758,14 +1759,26 @@ const BasicsPageContent = () => {
                                                             <td className="px-4 py-3">
                                                                 <input
                                                                     type="number"
+                                                                    step="0.5"
+                                                                    title="시스템 도입 전 사용한 연차 시간 (예: 3일 사용 시 24 입력). 이 값은 전자결재 동기화에 의해 초기화되지 않습니다."
+                                                                    defaultValue={leave.prior_used_hours ?? 0}
+                                                                    onBlur={(e) => handleUpdateLeave(leave.id, 'prior_used_hours', e.target.value)}
+                                                                    disabled={!isSystemAdmin}
+                                                                    className={cn("w-16 bg-yellow-900/20 border border-yellow-500/30 text-yellow-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-yellow-500", !isSystemAdmin && "opacity-50 cursor-not-allowed")}
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <input
+                                                                    type="number"
                                                                     step="0.1"
+                                                                    title="전자결재(휴가원/외출/조퇴) 기반 자동 집계 시간 (읽기 전용 권장)"
                                                                     defaultValue={leave.used_leave_hours}
                                                                     onBlur={(e) => handleUpdateLeave(leave.id, 'used_leave_hours', e.target.value)}
                                                                     disabled={!isSystemAdmin}
                                                                     className={cn("w-16 bg-red-900/20 border border-red-500/30 text-red-400 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-red-500", !isSystemAdmin && "opacity-50 cursor-not-allowed")}
                                                                 />
                                                             </td>
-                                                            <td className="px-4 py-3 text-gray-500">{(leave.used_leave_hours / 8).toFixed(2)}일</td>
+                                                            <td className="px-4 py-3 text-gray-500">{(((leave.prior_used_hours ?? 0) + leave.used_leave_hours) / 8).toFixed(2)}일</td>
                                                             <td className="px-4 py-3 font-bold text-green-400 bg-green-400/5 text-center">{leave.remaining_days}일</td>
                                                             <td className="px-4 py-3">
                                                                 <input

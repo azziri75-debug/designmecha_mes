@@ -110,6 +110,7 @@ class EmployeeAnnualLeaveBase(BaseModel):
     year: int
     base_days: float
     adjustment_days: float
+    prior_used_hours: float = 0.0  # 시스템 도입 전 관리자 수기 입력 사용 시간
     used_leave_hours: float
     sick_leave_days: float
     event_leave_days: float
@@ -127,6 +128,7 @@ class AnnualLeaveHistoryResponse(BaseModel):
 
 class AnnualLeaveUpdate(BaseModel):
     adjustment_days: Optional[float] = None
+    prior_used_hours: Optional[float] = None  # 시스템 도입 전 수기 입력 사용 시간
     used_leave_hours: Optional[float] = None
     sick_leave_days: Optional[float] = None
     event_leave_days: Optional[float] = None

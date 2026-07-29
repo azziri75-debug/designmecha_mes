@@ -338,6 +338,7 @@ async def get_attendance_summary(
 
     # [FIXED] Single Source of Truth:
     # used_leave_hours = ONLY actual approved doc usage (휴가일수*8 + 외출/조퇴 시간)
+    # prior_used_hours = 시스템 도입 전 관리자 수기 입력 사용 시간 (싱크에 의해 덧쓌셔지지 않음)
     # adjustment_days is applied SEPARATELY when computing remaining_days
     # This prevents double-counting in get_annual_leave_history which adds adjustment_days separately.
     leave_record.used_leave_hours = float(total_vacation_days * 8.0 + total_leave_outing_hours)
@@ -348,10 +349,11 @@ async def get_attendance_summary(
     await db.refresh(leave_record)
 
     # [FIXED] total_annual_days = strictly base_days (Company Policy)
-    # [FIXED] remaining = base + adjustment - (used / 8)
+    # [FIXED] remaining = base + adjustment - (prior_used_hours + used_leave_hours) / 8
     total_annual = leave_record.base_days
     adj_days = leave_record.adjustment_days or 0.0
-    remaining = total_annual + adj_days - (leave_record.used_leave_hours / 8.0)
+    prior_h = leave_record.prior_used_hours or 0.0
+    remaining = total_annual + adj_days - ((prior_h + leave_record.used_leave_hours) / 8.0)
 
     return AttendanceSummaryResponse(
         year=year,
@@ -777,13 +779,15 @@ async def get_annual_leave_history(
     # 잔여 연차 계산 포함하여 반환
     resp_leaves = []
     for r in history_records:
-        remaining = r.base_days + r.adjustment_days - (r.used_leave_hours / 8.0)
+        prior_h = r.prior_used_hours or 0.0
+        remaining = r.base_days + r.adjustment_days - ((prior_h + r.used_leave_hours) / 8.0)
         resp_leaves.append(EmployeeAnnualLeaveResponse(
             id=r.id,
             staff_id=r.staff_id,
             year=r.year,
             base_days=r.base_days,
             adjustment_days=r.adjustment_days,
+            prior_used_hours=r.prior_used_hours or 0.0,
             used_leave_hours=r.used_leave_hours,
             sick_leave_days=r.sick_leave_days,
             event_leave_days=r.event_leave_days,
@@ -914,10 +918,12 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
         record.base_days = calculate_base_days(staff.join_date, year)
 
     # [FIXED] used_leave_hours = ONLY actual approval-doc-based usage (no adjustment inside)
+    # prior_used_hours is preserved (싱크가 덧쓌쓌 수 없음 - 관리자가 직접 입력한 도입 전 사용분)
     # adjustment_days is applied separately in all remaining_days calculations
     record.used_leave_hours = float(v_days * 8.0 + o_hours)
     record.sick_leave_days = float(s_days)
     record.event_leave_days = float(e_days)
+    # NOTE: record.prior_used_hours is intentionally NOT modified here (admin-set, preserved)
     db.add(record)
     await db.commit()
 
@@ -971,6 +977,8 @@ async def update_annual_leave(
         
     if data.adjustment_days is not None:
         record.adjustment_days = float(data.adjustment_days)
+    if data.prior_used_hours is not None:
+        record.prior_used_hours = float(data.prior_used_hours)
     if data.used_leave_hours is not None:
         record.used_leave_hours = float(data.used_leave_hours)
     if data.sick_leave_days is not None:
@@ -981,13 +989,15 @@ async def update_annual_leave(
     await db.commit()
     await db.refresh(record)
     
-    remaining = record.base_days + (record.adjustment_days or 0.0) - (record.used_leave_hours / 8.0)
+    prior_h = record.prior_used_hours or 0.0
+    remaining = record.base_days + (record.adjustment_days or 0.0) - ((prior_h + record.used_leave_hours) / 8.0)
     return EmployeeAnnualLeaveResponse(
         id=record.id,
         staff_id=record.staff_id,
         year=record.year,
         base_days=record.base_days,
         adjustment_days=record.adjustment_days,
+        prior_used_hours=record.prior_used_hours or 0.0,
         used_leave_hours=record.used_leave_hours,
         sick_leave_days=record.sick_leave_days,
         event_leave_days=record.event_leave_days,

@@ -1824,6 +1824,22 @@ async def startup_event():
                 except Exception as e:
                     await db.rollback()
                     print(f"Startup: production_plans backfill failed: {e}")
+
+                # [NEW] Add prior_used_hours to employee_annual_leaves
+                try:
+                    if is_sqlite:
+                        eal_cols = await db.execute(text("PRAGMA table_info('employee_annual_leaves')"))
+                        eal_cols_list = [row[1] for row in eal_cols.fetchall()]
+                        if "prior_used_hours" not in eal_cols_list:
+                            await db.execute(text("ALTER TABLE employee_annual_leaves ADD COLUMN prior_used_hours REAL DEFAULT 0.0"))
+                            print("Startup: Added prior_used_hours to employee_annual_leaves (SQLite)")
+                    else:
+                        await db.execute(text("ALTER TABLE employee_annual_leaves ADD COLUMN IF NOT EXISTS prior_used_hours FLOAT DEFAULT 0.0"))
+                        print("Startup: Added prior_used_hours to employee_annual_leaves (Postgres)")
+                    await db.commit()
+                except Exception as e:
+                    await db.rollback()
+                    print(f"Startup: employee_annual_leaves prior_used_hours migration failed (may already exist): {e}")
             except Exception as e:
                 print(f"Startup: MRP auto-patch failed: {e}")
                 await db.rollback()

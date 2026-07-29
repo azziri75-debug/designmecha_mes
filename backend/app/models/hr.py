@@ -28,8 +28,9 @@ class EmployeeAnnualLeave(Base):
     staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False)
     year = Column(Integer, nullable=False)
     base_days = Column(Float, default=0.0)
-    adjustment_days = Column(Float, default=0.0)
-    used_leave_hours = Column(Float, default=0.0)
+    adjustment_days = Column(Float, default=0.0)   # 관리자 조정 (포상+, 차감-, 도입전 사용분은 음수 입력)
+    prior_used_hours = Column(Float, default=0.0)  # [NEW] 시스템 도입 전 수기 입력 사용 시간 (sync에 의해 덮어씌워지지 않음)
+    used_leave_hours = Column(Float, default=0.0)  # 전자결재 기반 실사용 시간 (sync로 자동 갱신)
     sick_leave_days = Column(Float, default=0.0)
     event_leave_days = Column(Float, default=0.0)
     
