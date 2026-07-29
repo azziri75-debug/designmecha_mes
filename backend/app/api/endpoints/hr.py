@@ -218,11 +218,15 @@ async def get_attendance_summary(
                         s_date = date.fromisoformat(str(start_date_str).split('T')[0])
                         e_date = date.fromisoformat(str(end_date_str).split('T')[0]) if end_date_str else s_date
                         
-                        # 타겟 연도에 포함되는지 검사
+                        # 타겟 연도에 포함되는지 검사: 양 끝 모두 해당 연도와 다르면 스킵
                         if s_date.year != year and e_date.year != year:
                             continue
-                            
-                        applied_value = float(_business_days_between(s_date, e_date))
+                        
+                        # 연도 경계: 해당 연도 내 날짜로 클램핑하여 정확한 일수 계산
+                        clamped_s = max(s_date, date(year, 1, 1))
+                        clamped_e = min(e_date, date(year, 12, 31))
+                        applied_value = float(_business_days_between(clamped_s, clamped_e))
+                        
                         s_pure = str(start_date_str).split('T')[0]
                         e_pure = str(end_date_str).split('T')[0] if end_date_str else s_pure
                         if e_pure and e_pure != s_pure:
@@ -865,14 +869,17 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
                 raw_end = content.get("end_date") or content.get("start_date")
                 e_date = date.fromisoformat(str(raw_end).split('T')[0])
                 
-                # 년도 필터 확인
+                # 년도 필터 확인: 양 끝 모두 해당 연도와 다르면 스킵
                 if s_date.year != year and e_date.year != year:
                     continue
                     
                 if "반차" in v_type:
                     val = 0.5
                 else:
-                    val = float(_business_days_between(s_date, e_date))
+                    # 연도 경계: 해당 연도 내 날짜로 클램핑하여 정확한 일수 계산
+                    clamped_s = max(s_date, date(year, 1, 1))
+                    clamped_e = min(e_date, date(year, 12, 31))
+                    val = float(_business_days_between(clamped_s, clamped_e))
             except: val = 1.0
             
             if v_type == "병가": s_days += val

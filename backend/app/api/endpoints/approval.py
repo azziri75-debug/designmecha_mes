@@ -1270,12 +1270,17 @@ async def create_attendance_record(db: AsyncSession, doc: ApprovalDocument):
             except Exception as e:
                 print(f"Error calculating duration: {e}")
             
-            # 🚨 수정: 프론트에서 넘어온 hours가 없거나 NaN일 경우를 철저히 대비
-            raw_hours = content.get("hours", 0)
-            try:
-                hours = float(raw_hours) if raw_hours else 0.0
-            except ValueError:
-                hours = 0.0
+            # [FIX] content.get("hours") is used ONLY as fallback when time-based calculation yields 0
+            # Previously this block overwrote the time-calculation, causing 0h deduction when content["hours"] was absent
+            if hours <= 0.0:
+                raw_hours = content.get("hours", 0)
+                try:
+                    fallback = float(raw_hours) if raw_hours else 0.0
+                    if fallback > 0:
+                        hours = fallback
+                except (ValueError, TypeError):
+                    pass
+
                 
             leave_record.used_leave_hours += hours
             
