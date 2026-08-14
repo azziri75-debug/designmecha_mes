@@ -67,24 +67,28 @@ async def get_settlement_sales(
 ):
     """2. 매출내역: 납품완료 + 거래명세서가 발행된 부분납품 포함"""
 
-    # ── Query 1: DELIVERY_COMPLETED / DELIVERED 수주 ──────────────────────────────
+    # ── Query 1 [수정]: DELIVERY_COMPLETED / DELIVERED 수주
+    # 반드시 DeliveryHistory 기준으로 집계해야 분할납품 시 각 납품일이 정확히 반영됨
+    # (SalesOrder.actual_delivery_date 사용 시 최종납품일로 모든 분할분이 집계되는 버그 발생)
     q1 = select(
         Partner.name.label("partner_name"),
         SalesOrder.order_date,
-        SalesOrder.actual_delivery_date.label("delivery_date"),
+        DeliveryHistory.delivery_date.label("delivery_date"),
         Product.name.label("product_name"),
         Product.specification,
-        SalesOrderItem.quantity,
+        DeliveryHistoryItem.quantity,
         SalesOrderItem.unit_price,
         SalesOrderItem.currency,
-        (SalesOrderItem.quantity * SalesOrderItem.unit_price).label("total_price")
-    ).select_from(SalesOrder)\
-     .join(SalesOrderItem, SalesOrder.id == SalesOrderItem.order_id)\
+        (DeliveryHistoryItem.quantity * SalesOrderItem.unit_price).label("total_price")
+    ).select_from(DeliveryHistory)\
+     .join(DeliveryHistoryItem, DeliveryHistory.id == DeliveryHistoryItem.delivery_id)\
+     .join(SalesOrderItem, DeliveryHistoryItem.order_item_id == SalesOrderItem.id)\
+     .join(SalesOrder, DeliveryHistory.order_id == SalesOrder.id)\
      .join(Partner, SalesOrder.partner_id == Partner.id)\
      .join(Product, SalesOrderItem.product_id == Product.id)\
      .where(
          SalesOrder.status.in_([OrderStatus.DELIVERY_COMPLETED, OrderStatus.DELIVERED]),
-         get_month_filter(SalesOrder.actual_delivery_date, year, month)
+         get_month_filter(DeliveryHistory.delivery_date, year, month)
      )
 
     # ── Query 2: 거래명세서(statement_json)가 발행된 부분납품 수주 ─────────────────
@@ -123,6 +127,7 @@ async def get_settlement_sales(
     res2 = await db.execute(q2)
 
     return [dict(r._mapping) for r in res1] + [dict(r._mapping) for r in res2]
+
 
 @router.get("/purchases")
 async def get_settlement_purchases(
@@ -532,17 +537,21 @@ async def get_chart_summary(
         ), SalesOrder.order_date
     ))
 
-    # 매출 (USD 환산) — 납품완료/완납 수주
+    # 매출 (USD 환산) — 납품완료/완납 수주 [수정]
+    # 분할납품 시 각 납품 건별 납품일 및 수량을 정확히 반영하기 위해 DeliveryHistory 기준 집계
+    dhi_amount_full = DeliveryHistoryItem.quantity * SalesOrderItem.unit_price
     r_sales = await db.execute(pd(
         with_grp(
             select(group_expr.label("g"),
-                   func.sum(krw_expr(so_amount, SalesOrderItem.currency)).label("v"))
-            .select_from(SalesOrderItem)
-            .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
-            .join(Product,    SalesOrderItem.product_id == Product.id)
+                   func.sum(krw_expr(dhi_amount_full, SalesOrderItem.currency)).label("v"))
+            .select_from(DeliveryHistory)
+            .join(DeliveryHistoryItem, DeliveryHistory.id == DeliveryHistoryItem.delivery_id)
+            .join(SalesOrderItem, DeliveryHistoryItem.order_item_id == SalesOrderItem.id)
+            .join(SalesOrder, DeliveryHistory.order_id == SalesOrder.id)
+            .join(Product, SalesOrderItem.product_id == Product.id)
             .where(SalesOrder.status.in_([OrderStatus.DELIVERY_COMPLETED, OrderStatus.DELIVERED]))
             .group_by(group_expr)
-        ), SalesOrder.actual_delivery_date
+        ), DeliveryHistory.delivery_date
     ))
 
     # 매출 추가 집계 — 부분납품 중 거래명세서 발행건 (매출내역 탭과 동일 기준)
