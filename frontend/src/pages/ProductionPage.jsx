@@ -131,6 +131,8 @@ const ProductionPage = () => {
             });
         } catch (error) {
             console.error("Failed to fetch all planned IDs", error);
+            // [수정] 실패 시 null 유지 대신 빈 객체로 fallback → 무한 스피너 방지
+            setAllPlannedIds({ orders: [], stocks: [] });
         }
     };
 
@@ -574,20 +576,20 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
 };
 
 const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePlan, searchQuery, filterPartner }) => {
+    // [수정] plannedIds null 체크를 필터 로직보다 먼저 → null이면 스피너, 빈 배열이면 정상 렌더
+    if (!plannedIds) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress /></Box>;
+
     const planOrderIds = (plannedIds?.orders || []).map(id => Number(id));
     const planStockProdIds = (plannedIds?.stocks || []).map(id => Number(id));
 
     let unplannedOrders = orders.filter(o => !planOrderIds.includes(Number(o.id)) && (o.status === 'PENDING' || o.status === 'CONFIRMED'));
     let unplannedStockProductions = stockProductions.filter(sp => {
         const spId = Number(sp.id);
-        const spOrderId = Number(sp.order_id);
         if (planStockProdIds.includes(spId)) return false;
-        if (spOrderId && planStockProdIds.includes(spOrderId)) return false;
+        // items 중 하나라도 생산계획이 있으면 제외 (item.id = StockProduction.id)
         if (sp.items && sp.items.some(item => planStockProdIds.includes(Number(item.id)))) return false;
         return true;
     });
-
-
 
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -605,7 +607,7 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
         else { unplannedOrders = unplannedOrders.filter(o => o.partner_id === parseInt(filterPartner)); unplannedStockProductions = []; }
     }
 
-    if (!plannedIds) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress /></Box>;
+
 
     return (
         <ResizableTable columns={UNPLANNED_COLS} className="w-full text-left text-sm" theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700" thClassName="px-4 py-3">

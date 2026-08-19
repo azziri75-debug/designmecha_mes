@@ -910,29 +910,27 @@ async def read_production_orders(
         query = query.where(StockProductionOrder.request_date <= end_date)
     if status:
         # 헤더 상태 필터 — 품목 중 하나라도 해당 상태이면 포함
-        # [수정] scalar_subquery() → subquery(): .in_() 연산자는 다중 행 서브쿼리가 필요
-        subq = select(StockProduction.order_id).where(
+        status_subq = select(StockProduction.order_id).where(
             StockProduction.status == status,
             StockProduction.order_id.is_not(None)
-        ).subquery()
-        query = query.where(StockProductionOrder.id.in_(select(subq.c.order_id)))
+        )
+        query = query.where(StockProductionOrder.id.in_(status_subq))
 
     if product_name:
-        subq = select(StockProduction.order_id).join(Product)\
-            .where(Product.name.ilike(f"%{product_name}%"), StockProduction.order_id.is_not(None))\
-            .subquery()
-        query = query.where(StockProductionOrder.id.in_(select(subq.c.order_id)))
+        name_subq = select(StockProduction.order_id).join(Product)\
+            .where(Product.name.ilike(f"%{product_name}%"), StockProduction.order_id.is_not(None))
+        query = query.where(StockProductionOrder.id.in_(name_subq))
 
     if major_group_id:
         from app.models.product import ProductGroup
-        subq = select(StockProduction.order_id)\
+        grp_subq = select(StockProduction.order_id)\
             .join(Product)\
             .join(ProductGroup, Product.group_id == ProductGroup.id)\
             .where(
                 or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id),
                 StockProduction.order_id.is_not(None)
-            ).subquery()
-        query = query.where(StockProductionOrder.id.in_(select(subq.c.order_id)))
+            )
+        query = query.where(StockProductionOrder.id.in_(grp_subq))
 
 
     result = await db.execute(query)
