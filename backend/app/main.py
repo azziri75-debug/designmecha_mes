@@ -173,6 +173,46 @@ async def sse_stream(request: Request):
 async def root():
     return {"status": "ok", "message": "MES ERP Backend is running"}
 
+@app.get("/api/v1/force-fix-unit-price")
+async def force_fix_unit_price():
+    """강제로 production_plan_items 테이블에 unit_price 컬럼을 추가합니다."""
+    from app.api.deps import AsyncSessionLocal
+    from sqlalchemy import text
+    
+    results = []
+    async with AsyncSessionLocal() as db:
+        await db.rollback()
+        try:
+            # 1. 컬럼 추가 (PostgreSQL)
+            await db.execute(text("ALTER TABLE production_plan_items ADD COLUMN IF NOT EXISTS unit_price FLOAT DEFAULT 0.0"))
+            await db.commit()
+            results.append("✅ 컬럼 추가 성공 (또는 이미 존재함)")
+        except Exception as e:
+            await db.rollback()
+            if "already exists" in str(e).lower():
+                results.append("ℹ️ 컬럼이 이미 존재함")
+            else:
+                results.append(f"❌ 컬럼 추가 실패: {str(e)}")
+
+        try:
+            # 2. 데이터 업데이트
+            await db.execute(text('''
+                UPDATE production_plan_items
+                SET unit_price = CASE
+                    WHEN quantity IS NOT NULL AND quantity > 0 AND cost IS NOT NULL AND cost > 0
+                    THEN ROUND(CAST(cost AS NUMERIC) / quantity, 2)
+                    ELSE 0.0
+                END
+                WHERE unit_price IS NULL OR unit_price = 0.0
+            '''))
+            await db.commit()
+            results.append("✅ 데이터 업데이트 성공")
+        except Exception as e:
+            await db.rollback()
+            results.append(f"❌ 데이터 업데이트 실패: {str(e)}")
+            
+    return {"message": "unit_price 컬럼 패치 결과", "details": results}
+
 @app.get("/api/v1/force-fix-db")
 async def force_fix_db():
     """강제로 사원 테이블의 누락된 모든 컬럼을 추가합니다. (최상위 경로)"""
