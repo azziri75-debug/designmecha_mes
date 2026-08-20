@@ -422,6 +422,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     start_date: item.start_date || null,
                     end_date: item.end_date || null,
                     cost: parseFloat(item.cost) || 0,
+                    unit_price: parseFloat(item.unit_cost) || 0,
                     quantity: parseInt(item.quantity) || 0,
                     gross_quantity: item.gross_quantity || (parseInt(item.quantity) + (item.stock_use_quantity || 0)),
                     stock_use_quantity: item.stock_use_quantity || 0,

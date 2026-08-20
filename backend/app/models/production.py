@@ -76,7 +76,8 @@ class ProductionPlanItem(Base):
     equipment_id = Column(Integer, ForeignKey("equipments.id"), nullable=True) # 배정 장비
     
     status = Column(Enum(ProductionStatus), default=ProductionStatus.PLANNED)
-    cost = Column(Float, default=0.0) # 공정 비용
+    cost = Column(Float, default=0.0) # 공정 총비용 (단가 × 수량)
+    unit_price = Column(Float, default=0.0) # 공정 단위 단가 (발주 자동기입용)
     attachment_file = Column(JSON, nullable=True) # 공정별 개별 첨부파일
     note = Column(Text, nullable=True)
 

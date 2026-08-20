@@ -261,17 +261,20 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                     const productName = productObj?.name || item?.product_name_of_plan || '알 수 없는 품목';
                     const spec = productObj?.specification || item?.specification || '';
 
-                    let unitPrice = item?.unit_price || 0;
+                    let unitPrice = item?.unit_price
+                        || (item?.cost && item?.quantity ? Math.round(item.cost / item.quantity) : 0);
+
                     const productFound = products.find(p => String(p?.id) === String(productId));
                     const finalProduct = productObj?.id ? productObj : (productFound || {});
 
-                    if (finalProduct && finalProduct?.standard_processes) {
+                    if (finalProduct && finalProduct?.standard_processes && !unitPrice) {
                         const standardProc = finalProduct?.standard_processes?.find(sp =>
                             sp?.process?.name === item?.process_name ||
+                            sp?.process?.name === item?.note ||
                             sp?.course_type?.includes('OUTSOURCING') ||
                             sp?.process?.course_type?.includes('OUTSOURCING')
                         );
-                        if (standardProc) unitPrice = standardProc?.cost || unitPrice;
+                        if (standardProc?.cost) unitPrice = standardProc.cost;
                     }
 
                     return {
@@ -329,6 +332,34 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
         if (found) setFormData(prev => ({ ...prev, partner_id: found.id }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [partners]);
+
+    // [Fix] products 비동기 로드 후 unit_price가 0인 항목들을 standard_processes에서 재매칭
+    useEffect(() => {
+        if (!isOpen || !products.length || !formData.items.length) return;
+        if (!initialItems?.length) return; // 신규 발주(PRE-FILL 아닌 경우) 제외
+        setFormData(prev => {
+            if (!prev.items || prev.items.length === 0) return prev;
+            let changed = false;
+            const newItems = prev.items.map(item => {
+                if (item.unit_price && Number(item.unit_price) > 0) return item; // 이미 단가 있으면 skip
+                const product = products.find(p => String(p.id) === String(item.product_id));
+                if (!product?.standard_processes) return item;
+                const match = product.standard_processes.find(sp =>
+                    sp.process?.name === item.process_name ||
+                    sp.process?.name === item.note ||
+                    sp.course_type?.includes('OUTSOURCING') ||
+                    sp.process?.course_type?.includes('OUTSOURCING')
+                );
+                if (match?.cost) {
+                    changed = true;
+                    return { ...item, unit_price: match.cost };
+                }
+                return item;
+            });
+            return changed ? { ...prev, items: newItems } : prev;
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, products.length]);
 
     const fetchPartners = async () => {
         try {

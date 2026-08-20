@@ -38,6 +38,7 @@ class ProductionPlanItemBase(BaseModel):
     note: Optional[str] = None
     status: ProductionStatus = ProductionStatus.PLANNED
     cost: Optional[float] = 0.0
+    unit_price: Optional[float] = 0.0  # 공정 단위 단가 (발주 자동기입용)
     attachment_file: Optional[Union[List[Any], str]] = None
 
 class ProductionPlanItemCreate(ProductionPlanItemBase):

@@ -391,7 +391,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         product_name: parsedProductName,
                         specification: parsedSpec,
                         quantity: item.quantity || 1,
-                        unit_price: item.unit_price || (masterProduct?.recent_price ?? 0),
+                        unit_price: item.unit_price
+                            || (item?.cost && item?.quantity ? Math.round(item.cost / item.quantity) : 0)
+                            || (masterProduct?.recent_price ?? 0),
                         material: item.material || masterProduct?.material || '',
                         note: item.note || item.remarks || '',
                         production_plan_item_id: item.type === 'PENDING' ? item.id : (item.production_plan_item_id || null),
@@ -440,9 +442,23 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                     updated.material = product.material;
                     needsUpdate = true;
                 }
-                if ((!item.unit_price || Number(item.unit_price) === 0) && product.recent_price) {
-                    updated.unit_price = product.recent_price;
-                    needsUpdate = true;
+                if (!item.unit_price || Number(item.unit_price) === 0) {
+                    // 1순위: standard_processes PURCHASE 공정 단가
+                    if (product.standard_processes) {
+                        const purchaseProc = product.standard_processes.find(sp =>
+                            sp.course_type?.includes('PURCHASE') ||
+                            sp.process?.course_type?.includes('PURCHASE')
+                        );
+                        if (purchaseProc?.cost) {
+                            updated.unit_price = purchaseProc.cost;
+                            needsUpdate = true;
+                        }
+                    }
+                    // 2순위: recent_price
+                    if ((!updated.unit_price || Number(updated.unit_price) === 0) && product.recent_price) {
+                        updated.unit_price = product.recent_price;
+                        needsUpdate = true;
+                    }
                 }
                 return updated;
             });
@@ -451,6 +467,22 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
         });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, products.length, formData.items.length]);
+
+    // [Fix] partners 비동기 로드 후 partner_id 자동기입 재시도
+    // 메인 effect 실행 시점에 partners가 []이므로, partners가 채워진 후 한 번 더 시도
+    useEffect(() => {
+        if (!isOpen || !partners.length || !initialItems?.length) return;
+        if (formData.partner_id) return; // 이미 설정된 경우 skip
+        const firstItem = initialItems[0];
+        const rawName = (firstItem.partner_name || firstItem.supplier_name || '').trim();
+        if (!rawName) return;
+        const found = partners.find(p =>
+            p.name.trim() === rawName ||
+            p.name.trim().toLowerCase() === rawName.toLowerCase()
+        );
+        if (found) setFormData(prev => ({ ...prev, partner_id: found.id }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [partners]);
 
     const fetchPartners = async () => {
         try {

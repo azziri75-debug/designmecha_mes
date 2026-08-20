@@ -256,6 +256,7 @@ async def sync_plan_item_cost(db: AsyncSession, plan_item: ProductionPlanItem):
         std_unit_cost = result.scalars().first()
         if std_unit_cost is not None:
             plan_item.cost = std_unit_cost * (plan_item.quantity or 1)
+            plan_item.unit_price = std_unit_cost  # 단위 단가도 동기화
             db.add(plan_item)
             await db.flush()
 
@@ -581,7 +582,8 @@ async def create_production_plan(
                     quantity=item_in.quantity,
                     gross_quantity=item_in.gross_quantity or item_in.quantity,
                     stock_use_quantity=item_in.stock_use_quantity or 0,
-                    cost=item_in.cost
+                    cost=item_in.cost,
+                    unit_price=item_in.unit_price or 0
                 )
                 db.add(plan_item)
                 plan_items_created.append(plan_item)
@@ -801,7 +803,8 @@ async def create_production_plan(
                             attachment_file=final_attachment_json,
                             quantity=sp.quantity,
                             status=ProductionStatus.PLANNED,
-                            cost=(getattr(proc, 'cost', 0) or 0) * sp.quantity
+                            cost=(getattr(proc, 'cost', 0) or 0) * sp.quantity,
+                            unit_price=getattr(proc, 'cost', 0) or 0
                         )
                         db.add(plan_item)
 
@@ -823,6 +826,7 @@ async def create_production_plan(
                             start_date=item_in.start_date,
                             end_date=item_in.end_date,
                             cost=item_in.cost,
+                            unit_price=item_in.unit_price or 0,
                             quantity=item_in.quantity,
                             gross_quantity=item_in.gross_quantity,
                             stock_use_quantity=item_in.stock_use_quantity,
@@ -905,7 +909,8 @@ async def create_production_plan(
                                 attachment_file=final_attachment_json,
                                 quantity=item.quantity,
                                 status=ProductionStatus.PLANNED,
-                                cost=(getattr(proc, 'cost', 0) or 0) * item.quantity
+                                cost=(getattr(proc, 'cost', 0) or 0) * item.quantity,
+                                unit_price=getattr(proc, 'cost', 0) or 0
                             )
                             db.add(plan_item)
 
