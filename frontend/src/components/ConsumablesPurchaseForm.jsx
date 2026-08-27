@@ -1,12 +1,127 @@
-import React from 'react';
-import { Box, Typography, Table, TableBody, TableRow, TableCell, TextField, IconButton, Button, Checkbox, FormControlLabel, InputBase } from '@mui/material';
-import { Plus, Trash2 } from 'lucide-react';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { Box, Typography, Table, TableBody, TableRow, TextField, IconButton, Button, Checkbox, FormControlLabel, InputBase, Paper } from '@mui/material';
+import { Plus, Trash2, X } from 'lucide-react';
 import ApprovalGrid from './ApprovalGrid';
 import ResizableTh from './ResizableTh';
+import api from '../lib/api';
 
+// 데스크탑 테이블 셀용 품명 자동완성
+const ProductNameAutocomplete = ({ value, onChange, isReadOnly, consumableProducts }) => {
+    const [inputVal, setInputVal] = useState(value || '');
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => { setInputVal(value || ''); }, [value]);
+
+    const filtered = inputVal.length > 0
+        ? consumableProducts.filter(p =>
+            p.name.toLowerCase().includes(inputVal.toLowerCase()) ||
+            (p.specification || '').toLowerCase().includes(inputVal.toLowerCase())
+        ).slice(0, 8)
+        : [];
+
+    const handleSelect = (p) => {
+        setInputVal(p.name);
+        setOpen(false);
+        onChange(p);
+    };
+
+    if (isReadOnly) return <span style={{ fontSize: '13px' }}>{value}</span>;
+
+    return (
+        <Box sx={{ position: 'relative', width: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <InputBase
+                    multiline
+                    value={inputVal}
+                    onChange={e => {
+                        setInputVal(e.target.value);
+                        onChange({ name: e.target.value });
+                        setOpen(e.target.value.length > 0);
+                    }}
+                    onFocus={() => { if (inputVal.length > 0) setOpen(true); }}
+                    onBlur={() => setTimeout(() => setOpen(false), 200)}
+                    placeholder="검색..."
+                    sx={{ width: '100%', p: 0, '& textarea': { textAlign: 'center', fontSize: '13px', lineHeight: '1.4' } }}
+                />
+                {inputVal && (
+                    <IconButton size="small" onMouseDown={() => { setInputVal(''); setOpen(false); onChange(null); }} sx={{ p: 0.2, flexShrink: 0 }}>
+                        <X size={10} />
+                    </IconButton>
+                )}
+            </Box>
+            {open && filtered.length > 0 && (
+                <Paper elevation={6} sx={{ position: 'absolute', top: '100%', left: 0, minWidth: 220, zIndex: 1500, maxHeight: 200, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, mt: 0.3 }}>
+                    {filtered.map((p, i) => (
+                        <Box key={p.id} onMouseDown={() => handleSelect(p)}
+                            sx={{ px: 1.5, py: 0.8, cursor: 'pointer', borderBottom: i < filtered.length - 1 ? '1px solid #f0f0f0' : 'none', '&:hover': { bgcolor: '#e8f5e9' } }}>
+                            <Typography variant="body2" fontWeight="bold" sx={{ fontSize: '12px', lineHeight: 1.3 }}>{p.name}</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px' }}>
+                                {[p.specification, p.material, p.partner_name].filter(Boolean).join(' · ')}
+                            </Typography>
+                        </Box>
+                    ))}
+                </Paper>
+            )}
+        </Box>
+    );
+};
+
+// 모바일 카드 / TextField용 품명 자동완성
+const ProductNameField = ({ value, onChange, isReadOnly, consumableProducts }) => {
+    const [inputVal, setInputVal] = useState(value || '');
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => { setInputVal(value || ''); }, [value]);
+
+    const filtered = inputVal.length > 0
+        ? consumableProducts.filter(p =>
+            p.name.toLowerCase().includes(inputVal.toLowerCase()) ||
+            (p.specification || '').toLowerCase().includes(inputVal.toLowerCase())
+        ).slice(0, 8)
+        : [];
+
+    const handleSelect = (p) => { setInputVal(p.name); setOpen(false); onChange(p); };
+
+    return (
+        <Box sx={{ position: 'relative' }}>
+            <TextField
+                fullWidth size="small" variant="outlined" value={inputVal}
+                onChange={e => { setInputVal(e.target.value); onChange({ name: e.target.value }); setOpen(e.target.value.length > 0); }}
+                onFocus={() => { if (inputVal.length > 0) setOpen(true); }}
+                onBlur={() => setTimeout(() => setOpen(false), 200)}
+                placeholder="품명 입력 시 등록 품목 검색"
+                inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
+                InputProps={{ endAdornment: inputVal ? (<IconButton size="small" onMouseDown={() => { setInputVal(''); setOpen(false); onChange(null); }} sx={{ p: 0.3 }}><X size={14} /></IconButton>) : null }}
+            />
+            {open && filtered.length > 0 && (
+                <Paper elevation={6} sx={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1500, maxHeight: 220, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, mt: 0.5 }}>
+                    {filtered.map((p, i) => (
+                        <Box key={p.id} onMouseDown={() => handleSelect(p)}
+                            sx={{ px: 1.5, py: 1, cursor: 'pointer', borderBottom: i < filtered.length - 1 ? '1px solid #f0f0f0' : 'none', '&:hover': { bgcolor: '#e8f5e9' }, '&:active': { bgcolor: '#c8e6c9' } }}>
+                            <Typography variant="body2" fontWeight="bold" sx={{ lineHeight: 1.3 }}>{p.name}</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+                                {[p.specification, p.material, p.partner_name].filter(Boolean).join(' · ')}
+                            </Typography>
+                        </Box>
+                    ))}
+                </Paper>
+            )}
+        </Box>
+    );
+};
+
+// 메인 폼 컴포넌트
 const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser, documentData }) => {
     const items = data.items || [{ product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, partner_name: '', remarks: '' }];
-    
+    const [consumableProducts, setConsumableProducts] = useState([]);
+
+    useEffect(() => {
+        if (isReadOnly) return;
+        api.get('/product/products/', { params: { item_type: 'CONSUMABLE', limit: 9999 } })
+            .then(res => setConsumableProducts(res.data || []))
+            .catch(() => {});
+    }, [isReadOnly]);
+
     const handleChange = (newData) => {
         if (isReadOnly || typeof onChange !== 'function') return;
         onChange({ ...data, ...newData });
@@ -18,21 +133,31 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
         handleChange({ items: newItems });
     };
 
-    const addItem = () => {
-        handleChange({ items: [...items, { product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, partner_name: '', remarks: '' }] });
+    const handleProductSelect = (idx, product) => {
+        const newItems = [...items];
+        if (product && product.id) {
+            newItems[idx] = {
+                ...newItems[idx],
+                product_name: product.name || '',
+                manufacturer: product.material || newItems[idx].manufacturer || '',
+                spec: product.specification || newItems[idx].spec || '',
+                unit: product.unit || 'EA',
+                partner_name: product.partner_name || newItems[idx].partner_name || '',
+            };
+        } else {
+            newItems[idx] = { ...newItems[idx], product_name: product?.name || '' };
+        }
+        handleChange({ items: newItems });
     };
 
-    const removeItem = (idx) => {
-        handleChange({ items: items.filter((_, i) => i !== idx) });
-    };
+    const addItem = () => handleChange({ items: [...items, { product_name: '', manufacturer: '', spec: '', unit: 'EA', quantity: 1, partner_name: '', remarks: '' }] });
+    const removeItem = (idx) => handleChange({ items: items.filter((_, i) => i !== idx) });
 
     return (
         <Box className="a4-form-container print-safe-area" sx={{ width: '100%', height: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box sx={{ flex: 1, pt: 4 }}>
-                    <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '5px' }}>
-                        소모품 구매 신청서
-                    </Typography>
+                    <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', letterSpacing: '5px' }}>소모품 구매 신청서</Typography>
                 </Box>
                 <ApprovalGrid documentData={documentData} currentUser={currentUser} docType="CONSUMABLES_PURCHASE" />
             </Box>
@@ -42,37 +167,19 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                     <TableRow>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>신청일자</Box>
                         <td style={{ width: '35%' }}>
-                            <input 
-                                type="date" 
-                                value={data.request_date || new Date().toISOString().split('T')[0]} 
-                                onChange={(e) => handleChange({ request_date: e.target.value })}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none' }}
-                            />
+                            <input type="date" value={data.request_date || new Date().toISOString().split('T')[0]} onChange={(e) => handleChange({ request_date: e.target.value })} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none' }} />
                         </td>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>신청부서</Box>
                         <td>
-                            <input 
-                                type="text" 
-                                value={data.dept || ''} 
-                                onChange={(e) => handleChange({ dept: e.target.value })}
-                                readOnly={isReadOnly}
-                                style={{ border: 'none', width: '100%', outline: 'none' }}
-                            />
+                            <input type="text" value={data.dept || ''} onChange={(e) => handleChange({ dept: e.target.value })} readOnly={isReadOnly} style={{ border: 'none', width: '100%', outline: 'none' }} />
                         </td>
                     </TableRow>
                 </TableBody>
             </Table>
 
-            {/* Items Section - Responsive (Table for Desktop, Cards for Mobile) */}
+            {/* 데스크탑 테이블 */}
             <Box sx={{ display: { xs: 'none', md: 'block' }, width: '100%', overflowX: 'auto' }}>
-                <Table size="small" sx={{ 
-                    width: '100%', 
-                    mb: 1, 
-                    tableLayout: 'fixed', 
-                    borderCollapse: 'collapse', 
-                    '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '11px', textAlign: 'center' } 
-                }}>
+                <Table size="small" sx={{ width: '100%', mb: 1, tableLayout: 'fixed', borderCollapse: 'collapse', '& td, & th': { border: '1px solid #000', p: 0.8, fontSize: '11px', textAlign: 'center' } }}>
                     <thead>
                         <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                             <th style={{ width: '30px' }}>순</th>
@@ -90,149 +197,85 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
                         {items.map((item, idx) => (
                             <TableRow key={idx}>
                                 <td>{idx + 1}</td>
-                                <td><InputBase multiline value={item.product_name} onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& textarea': { textAlign: 'center', fontSize: '13px', lineHeight: '1.4' } }} /></td>
+                                <td style={{ position: 'relative' }}>
+                                    <ProductNameAutocomplete value={item.product_name} onChange={(p) => handleProductSelect(idx, p)} isReadOnly={isReadOnly} consumableProducts={consumableProducts} />
+                                </td>
                                 <td><InputBase multiline value={item.manufacturer || ''} onChange={(e) => handleItemChange(idx, 'manufacturer', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& textarea': { textAlign: 'center', fontSize: '13px', lineHeight: '1.4' } }} /></td>
                                 <td><InputBase multiline value={item.spec || ''} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& textarea': { textAlign: 'center', fontSize: '13px', lineHeight: '1.4' } }} /></td>
                                 <td><InputBase value={item.unit || 'EA'} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& input': { textAlign: 'center', fontSize: '13px' } }} /></td>
                                 <td><InputBase type="number" value={item.quantity} onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& input': { textAlign: 'center', fontSize: '13px' } }} /></td>
                                 <td><InputBase multiline value={item.partner_name || ''} onChange={(e) => handleItemChange(idx, 'partner_name', e.target.value)} readOnly={isReadOnly} placeholder="공급사 이름" sx={{ width: '100%', p: 0, '& textarea': { textAlign: 'center', fontSize: '13px', lineHeight: '1.4' } }} /></td>
                                 <td><InputBase multiline value={item.remarks || ''} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} readOnly={isReadOnly} sx={{ width: '100%', p: 0, '& textarea': { textAlign: 'center', fontSize: '13px', lineHeight: '1.4' } }} /></td>
-                                {!isReadOnly && (
-                                    <td className="idf-no-print">
-                                        <IconButton size="small" color="error" onClick={() => removeItem(idx)}><Trash2 size={14} /></IconButton>
-                                    </td>
-                                )}
+                                {!isReadOnly && (<td className="idf-no-print"><IconButton size="small" color="error" onClick={() => removeItem(idx)}><Trash2 size={14} /></IconButton></td>)}
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </Box>
 
-            {/* Mobile Card List (Visible only on xs) */}
+            {/* 모바일 카드 */}
             <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 2, mb: 2 }}>
                 {items.map((item, idx) => (
                     <Box key={idx} sx={{ p: 2, border: '1px solid #ddd', borderRadius: '8px', position: 'relative', bgcolor: '#f9f9f9' }}>
                         <Typography sx={{ fontSize: '12px', fontWeight: 'bold', mb: 1, color: '#666' }}>항목 {idx + 1}</Typography>
-                        {!isReadOnly && (
-                            <IconButton 
-                                size="small" 
-                                color="error" 
-                                onClick={() => removeItem(idx)}
-                                sx={{ position: 'absolute', top: 8, right: 8 }}
-                            >
-                                <Trash2 size={16} />
-                            </IconButton>
-                        )}
+                        {!isReadOnly && (<IconButton size="small" color="error" onClick={() => removeItem(idx)} sx={{ position: 'absolute', top: 8, right: 8 }}><Trash2 size={16} /></IconButton>)}
                         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                             <Box sx={{ gridColumn: 'span 2' }}>
                                 <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>품명 (용도)</Typography>
-                                <TextField 
-                                    fullWidth size="small" variant="outlined" value={item.product_name} 
-                                    onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)} 
-                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
-                                />
+                                <ProductNameField value={item.product_name} onChange={(p) => handleProductSelect(idx, p)} isReadOnly={isReadOnly} consumableProducts={consumableProducts} />
                             </Box>
                             <Box>
                                 <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>제조사</Typography>
-                                <TextField 
-                                    fullWidth size="small" variant="outlined" value={item.manufacturer || ''} 
-                                    onChange={(e) => handleItemChange(idx, 'manufacturer', e.target.value)} 
-                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
-                                />
+                                <TextField fullWidth size="small" variant="outlined" value={item.manufacturer || ''} onChange={(e) => handleItemChange(idx, 'manufacturer', e.target.value)} inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }} />
                             </Box>
                             <Box>
                                 <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>규격</Typography>
-                                <TextField 
-                                    fullWidth size="small" variant="outlined" value={item.spec || ''} 
-                                    onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} 
-                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
-                                />
+                                <TextField fullWidth size="small" variant="outlined" value={item.spec || ''} onChange={(e) => handleItemChange(idx, 'spec', e.target.value)} inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }} />
                             </Box>
                             <Box>
                                 <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>단위</Typography>
-                                <TextField 
-                                    fullWidth size="small" variant="outlined" value={item.unit || 'EA'} 
-                                    onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} 
-                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
-                                />
+                                <TextField fullWidth size="small" variant="outlined" value={item.unit || 'EA'} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }} />
                             </Box>
                             <Box>
                                 <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>수량</Typography>
-                                <TextField 
-                                    fullWidth size="small" variant="outlined" type="number" value={item.quantity} 
-                                    onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} 
-                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
-                                />
+                                <TextField fullWidth size="small" variant="outlined" type="number" value={item.quantity} onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)} inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }} />
                             </Box>
                             <Box sx={{ gridColumn: 'span 2' }}>
                                 <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>거래처 (공급사)</Typography>
-                                <TextField 
-                                    fullWidth size="small" variant="outlined" value={item.partner_name || ''} 
-                                    onChange={(e) => handleItemChange(idx, 'partner_name', e.target.value)} 
-                                    placeholder="공급사 이름 입력 (발주 연동됨)"
-                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
-                                />
+                                <TextField fullWidth size="small" variant="outlined" value={item.partner_name || ''} onChange={(e) => handleItemChange(idx, 'partner_name', e.target.value)} placeholder="공급사 이름 입력 (발주 연동됨)" inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }} />
                             </Box>
                             <Box sx={{ gridColumn: 'span 2' }}>
                                 <Typography sx={{ fontSize: '11px', color: '#999', mb: 0.5 }}>비고 (청구자)</Typography>
-                                <TextField 
-                                    fullWidth size="small" variant="outlined" value={item.remarks || ''} 
-                                    onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} 
-                                    inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }}
-                                />
+                                <TextField fullWidth size="small" variant="outlined" value={item.remarks || ''} onChange={(e) => handleItemChange(idx, 'remarks', e.target.value)} inputProps={{ readOnly: isReadOnly, style: { fontSize: '14px', padding: '8px' } }} />
                             </Box>
                         </Box>
                     </Box>
                 ))}
             </Box>
-            
-            {!isReadOnly && (
-                <Box className="idf-no-print" sx={{ mb: 2 }}>
-                    <Button size="small" startIcon={<Plus size={14} />} onClick={addItem}>항목 추가</Button>
-                </Box>
-            )}
+
+            {!isReadOnly && (<Box className="idf-no-print" sx={{ mb: 2 }}><Button size="small" startIcon={<Plus size={14} />} onClick={addItem}>항목 추가</Button></Box>)}
 
             <Table size="small" sx={{ width: '100%', mb: 2, '& td': { border: '1px solid #000', p: 1, fontSize: '13px' } }}>
                 <TableBody>
                     <TableRow>
                         <Box component="td" sx={{ width: '15%', bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>특기사항</Box>
                         <td colSpan={3}>
-                            <textarea 
-                                value={data.special_notes || ''} 
-                                onChange={(e) => handleChange({ special_notes: e.target.value })}
-                                readOnly={isReadOnly}
-                                rows={2}
-                                style={{ border: 'none', width: '100%', outline: 'none', resize: 'none', fontFamily: 'inherit' }}
-                            />
+                            <textarea value={data.special_notes || ''} onChange={(e) => handleChange({ special_notes: e.target.value })} readOnly={isReadOnly} rows={2} style={{ border: 'none', width: '100%', outline: 'none', resize: 'none', fontFamily: 'inherit' }} />
                         </td>
                     </TableRow>
                     <TableRow>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>청 구 자</Box>
-                        <td colSpan={3} style={{ textAlign: 'right', paddingRight: '100px' }}>
-                            {documentData?.author?.name || currentUser?.name} (인)
-                        </td>
+                        <td colSpan={3} style={{ textAlign: 'right', paddingRight: '100px' }}>{documentData?.author?.name || currentUser?.name} (인)</td>
                     </TableRow>
                     <TableRow>
                         <Box component="td" sx={{ bgcolor: '#f5f5f5', textAlign: 'center', fontWeight: 'bold' }}>예산확인</Box>
                         <td colSpan={3}>
                            <Box sx={{ display: 'flex', gap: 4 }}>
-                               <FormControlLabel 
-                                   control={<Checkbox size="small" checked={data.budget_type === 'NORMAL'} onChange={() => handleChange({ budget_type: 'NORMAL' })} disabled={isReadOnly} />} 
-                                   label={<Typography sx={{ fontSize: '13px' }}>일반구매</Typography>} 
-                               />
-                               <FormControlLabel 
-                                   control={<Checkbox size="small" checked={data.budget_type === 'RESEARCH'} onChange={() => handleChange({ budget_type: 'RESEARCH' })} disabled={isReadOnly} />} 
-                                   label={<Typography sx={{ fontSize: '13px' }}>연구과제 구매</Typography>} 
-                               />
+                               <FormControlLabel control={<Checkbox size="small" checked={data.budget_type === 'NORMAL'} onChange={() => handleChange({ budget_type: 'NORMAL' })} disabled={isReadOnly} />} label={<Typography sx={{ fontSize: '13px' }}>일반구매</Typography>} />
+                               <FormControlLabel control={<Checkbox size="small" checked={data.budget_type === 'RESEARCH'} onChange={() => handleChange({ budget_type: 'RESEARCH' })} disabled={isReadOnly} />} label={<Typography sx={{ fontSize: '13px' }}>연구과제 구매</Typography>} />
                                <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
                                    <Typography sx={{ fontSize: '13px', mr: 1 }}>과제명/비고:</Typography>
-                                   <input 
-                                       type="text" 
-                                       value={data.budget_note || ''} 
-                                       onChange={(e) => handleChange({ budget_note: e.target.value })}
-                                       readOnly={isReadOnly}
-                                       style={{ border: 'none', borderBottom: '1px solid #ccc', flexGrow: 1, outline: 'none', fontSize: '13px' }}
-                                   />
+                                   <input type="text" value={data.budget_note || ''} onChange={(e) => handleChange({ budget_note: e.target.value })} readOnly={isReadOnly} style={{ border: 'none', borderBottom: '1px solid #ccc', flexGrow: 1, outline: 'none', fontSize: '13px' }} />
                                </Box>
                            </Box>
                         </td>
@@ -241,16 +284,11 @@ const ConsumablesPurchaseForm = ({ data = {}, onChange, isReadOnly, currentUser,
             </Table>
 
             <Box sx={{ flex: 1 }} />
-
-            <Typography align="center" variant="subtitle1" sx={{ mt: 'auto', pt: 6, pb: 2, fontWeight: 'bold' }}>
-                (주)디자인메카
-            </Typography>
+            <Typography align="center" variant="subtitle1" sx={{ mt: 'auto', pt: 6, pb: 2, fontWeight: 'bold' }}>(주)디자인메카</Typography>
             <style>{`
                 @media screen and (max-width: 768px) {
                     .idf-header { flex-direction: column !important; align-items: center !important; gap: 20px; }
-                    .responsive-table, .responsive-table table, .responsive-table tbody, .responsive-table tr, .responsive-table td { 
-                        display: block !important; width: 100% !important; border: none !important; 
-                    }
+                    .responsive-table, .responsive-table table, .responsive-table tbody, .responsive-table tr, .responsive-table td { display: block !important; width: 100% !important; border: none !important; }
                     .responsive-table tr { margin-bottom: 20px; border-bottom: 2px solid #ddd !important; padding-bottom: 10px; }
                     .responsive-table td { padding: 8px 0 !important; }
                     .responsive-table td[component="td"] { background-color: transparent !important; text-align: left !important; color: #666; font-size: 12px; font-weight: bold; }
