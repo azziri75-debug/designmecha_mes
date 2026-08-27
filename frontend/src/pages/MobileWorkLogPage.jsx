@@ -153,6 +153,11 @@ const MobileWorkLogPage = () => {
     const [workEndTime, setWorkEndTime] = useState('17:30'); // 회사 퇴근 시간
     const [attendanceError, setAttendanceError] = useState(null);
 
+    // 소모품 자동완성
+    const [consumableProducts, setConsumableProducts] = useState([]); // 소모품 관리 목록
+    const [consumableSearch, setConsumableSearch] = useState({}); // { [itemIdx]: '검색어' }
+    const [consumableDropdownOpen, setConsumableDropdownOpen] = useState({}); // { [itemIdx]: bool }
+
     // Derived selections
     const selectedPlan = useMemo(() =>
         selectedPlanId ? allPlans.find(p => String(p.id) === selectedPlanId) : null
@@ -282,6 +287,15 @@ const MobileWorkLogPage = () => {
             }
         }).catch(() => {});
     }, []);
+
+    // 소모품 관리 품목 목록 로드 (품명 자동완성용)
+    useEffect(() => {
+        api.get('/product/products/', { params: { item_type: 'CONSUMABLE', limit: 9999 } })
+            .then(res => setConsumableProducts(res.data || []))
+            .catch(() => {});
+    }, []);
+
+
 
     // System Back Button / URL Sync Effect
     useEffect(() => {
@@ -1914,15 +1928,110 @@ const MobileWorkLogPage = () => {
                                                                 </IconButton>
                                                             )}
                                                         </Box>
-                                                        <TextField 
-                                                            label="품명 (용도)" fullWidth size="small" 
-                                                            value={item.product_name || ''} 
-                                                            onChange={e => {
-                                                                const next = [...items];
-                                                                next[idx].product_name = e.target.value;
-                                                                updateItems(next);
-                                                            }} 
-                                                        />
+                                                        {/* 품명 자동완성 입력 */}
+                                                        <Box sx={{ position: 'relative' }}>
+                                                            <TextField
+                                                                label="품명 (용도)"
+                                                                fullWidth
+                                                                size="small"
+                                                                value={consumableSearch[idx] !== undefined ? consumableSearch[idx] : (item.product_name || '')}
+                                                                onChange={e => {
+                                                                    const val = e.target.value;
+                                                                    setConsumableSearch(prev => ({ ...prev, [idx]: val }));
+                                                                    setConsumableDropdownOpen(prev => ({ ...prev, [idx]: val.length > 0 }));
+                                                                    // 직접 입력도 반영
+                                                                    const next = [...items];
+                                                                    next[idx].product_name = val;
+                                                                    updateItems(next);
+                                                                }}
+                                                                onFocus={() => {
+                                                                    const val = consumableSearch[idx] !== undefined ? consumableSearch[idx] : (item.product_name || '');
+                                                                    if (val.length > 0) {
+                                                                        setConsumableDropdownOpen(prev => ({ ...prev, [idx]: true }));
+                                                                    }
+                                                                }}
+                                                                onBlur={() => {
+                                                                    // 약간 딜레이 후 닫기 (클릭 이벤트 먼저 처리)
+                                                                    setTimeout(() => setConsumableDropdownOpen(prev => ({ ...prev, [idx]: false })), 200);
+                                                                }}
+                                                                placeholder="품명 입력 시 등록 품목 검색"
+                                                                InputProps={{
+                                                                    endAdornment: (item.product_name || consumableSearch[idx]) ? (
+                                                                        <InputAdornment position="end">
+                                                                            <IconButton size="small" onClick={() => {
+                                                                                setConsumableSearch(prev => ({ ...prev, [idx]: '' }));
+                                                                                setConsumableDropdownOpen(prev => ({ ...prev, [idx]: false }));
+                                                                                const next = [...items];
+                                                                                next[idx] = { ...next[idx], product_name: '', manufacturer: '', spec: '', unit: 'EA', partner_name: '' };
+                                                                                updateItems(next);
+                                                                            }}>
+                                                                                <CloseIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                        </InputAdornment>
+                                                                    ) : null
+                                                                }}
+                                                            />
+                                                            {/* 자동완성 드롭다운 */}
+                                                            {consumableDropdownOpen[idx] && (() => {
+                                                                const query = (consumableSearch[idx] || item.product_name || '').toLowerCase();
+                                                                const filtered = consumableProducts.filter(p =>
+                                                                    p.name.toLowerCase().includes(query) ||
+                                                                    (p.specification || '').toLowerCase().includes(query)
+                                                                ).slice(0, 8);
+                                                                if (filtered.length === 0) return null;
+                                                                return (
+                                                                    <Paper
+                                                                        elevation={4}
+                                                                        sx={{
+                                                                            position: 'absolute',
+                                                                            top: '100%',
+                                                                            left: 0,
+                                                                            right: 0,
+                                                                            zIndex: 1300,
+                                                                            maxHeight: 220,
+                                                                            overflowY: 'auto',
+                                                                            border: '1px solid #e0e0e0',
+                                                                            borderRadius: 1,
+                                                                            mt: 0.5,
+                                                                        }}
+                                                                    >
+                                                                        {filtered.map((p, pIdx) => (
+                                                                            <Box
+                                                                                key={p.id}
+                                                                                onMouseDown={() => {
+                                                                                    // 품목 선택 시 자동 기입
+                                                                                    const next = [...items];
+                                                                                    next[idx] = {
+                                                                                        ...next[idx],
+                                                                                        product_name: p.name,
+                                                                                        manufacturer: p.material || next[idx].manufacturer || '',
+                                                                                        spec: p.specification || next[idx].spec || '',
+                                                                                        unit: p.unit || 'EA',
+                                                                                        partner_name: p.partner_name || next[idx].partner_name || '',
+                                                                                    };
+                                                                                    updateItems(next);
+                                                                                    setConsumableSearch(prev => ({ ...prev, [idx]: p.name }));
+                                                                                    setConsumableDropdownOpen(prev => ({ ...prev, [idx]: false }));
+                                                                                }}
+                                                                                sx={{
+                                                                                    px: 1.5,
+                                                                                    py: 1,
+                                                                                    cursor: 'pointer',
+                                                                                    borderBottom: pIdx < filtered.length - 1 ? '1px solid #f0f0f0' : 'none',
+                                                                                    '&:hover': { bgcolor: '#e8f5e9' },
+                                                                                    '&:active': { bgcolor: '#c8e6c9' },
+                                                                                }}
+                                                                            >
+                                                                                <Typography variant="body2" fontWeight="bold" sx={{ lineHeight: 1.3 }}>{p.name}</Typography>
+                                                                                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+                                                                                    {[p.specification, p.material, p.partner_name].filter(Boolean).join(' · ')}
+                                                                                </Typography>
+                                                                            </Box>
+                                                                        ))}
+                                                                    </Paper>
+                                                                );
+                                                            })()}
+                                                        </Box>
                                                         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
                                                             <TextField 
                                                                 label="제조사" fullWidth size="small" 
