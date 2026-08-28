@@ -2475,6 +2475,7 @@ async def update_work_log_item(
 class InternalWorkLogCreate(BaseModel):
     work_date: date
     content: str
+    good_quantity: int = 1          # 수량 (기본값 1)
     worker_id: Optional[int] = None  # None이면 현재 로그인 사용자
 
 
@@ -2485,8 +2486,9 @@ async def create_internal_work_log_item(
     current_user: Staff = Depends(deps.get_current_user),
 ) -> Any:
     """
-    내부작업 실적 등록 (생산계획 없이 날짜+내용 입력).
+    내부작업 실적 등록 (생산계획 없이 날짜+내용+수량 입력).
     해당 날짜의 WorkLog가 없으면 자동 생성하고, plan_item_id=None WorkLogItem을 추가한다.
+    ADMIN은 worker_id를 직접 지정할 수 있다.
     """
     worker_id = data.worker_id if (data.worker_id and current_user.user_type == "ADMIN") else current_user.id
 
@@ -2508,7 +2510,7 @@ async def create_internal_work_log_item(
         work_log_id=work_log.id,
         plan_item_id=None,
         worker_id=worker_id,
-        good_quantity=1,
+        good_quantity=max(1, data.good_quantity),
         bad_quantity=0,
         unit_price=0.0,
         note=data.content,

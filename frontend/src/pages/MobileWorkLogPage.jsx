@@ -163,7 +163,10 @@ const MobileWorkLogPage = () => {
     const [internalWorkModalOpen, setInternalWorkModalOpen] = useState(false);
     const [internalWorkDate, setInternalWorkDate] = useState(new Date().toISOString().split('T')[0]);
     const [internalWorkContent, setInternalWorkContent] = useState('');
+    const [internalWorkQty, setInternalWorkQty] = useState(1);
+    const [internalWorkWorker, setInternalWorkWorker] = useState(''); // ADMIN용 작업자 선택
     const [internalWorkSaving, setInternalWorkSaving] = useState(false);
+
 
 
     // Derived selections
@@ -446,9 +449,13 @@ const MobileWorkLogPage = () => {
             await api.post('/production/internal-work-log-items', {
                 work_date: internalWorkDate,
                 content: internalWorkContent.trim(),
+                good_quantity: parseInt(internalWorkQty) || 1,
+                worker_id: user.user_type === 'ADMIN' && internalWorkWorker ? parseInt(internalWorkWorker) : null,
             });
             setInternalWorkModalOpen(false);
             setInternalWorkContent('');
+            setInternalWorkQty(1);
+            setInternalWorkWorker('');
             fetchPerformance();
         } catch (err) {
             alert('저장 실패: ' + (err.response?.data?.detail || err.message));
@@ -1386,16 +1393,32 @@ const MobileWorkLogPage = () => {
                                 </FormControl>
                             )}
 
-                            <Box sx={{ textAlign: 'center', py: 0.5 }}>
+                            <Box sx={{ py: 0.5 }}>
                                 {user.user_type === 'ADMIN' && (
-                                    <>
-                                        <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                                            {selectedWorker === 'ALL' ? '전체' : '선택'} 작업자 실적 합계
-                                        </Typography>
-                                        <Typography variant="h4" fontWeight="bold">
-                                            {totalCost.toLocaleString()}원
-                                        </Typography>
-                                    </>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                                        <Box>
+                                            <Typography variant="caption" sx={{ opacity: 0.8, display: 'block' }}>
+                                                {selectedWorker === 'ALL' ? '전체' : '선택'} 작업자 실적 합계
+                                            </Typography>
+                                            <Typography variant="h4" fontWeight="bold">
+                                                {totalCost.toLocaleString()}원
+                                            </Typography>
+                                        </Box>
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            onClick={() => {
+                                                setInternalWorkDate(new Date().toISOString().split('T')[0]);
+                                                setInternalWorkContent('');
+                                                setInternalWorkQty(1);
+                                                setInternalWorkWorker('');
+                                                setInternalWorkModalOpen(true);
+                                            }}
+                                            sx={{ bgcolor: '#4caf50', '&:hover': { bgcolor: '#388e3c' }, borderRadius: 2, fontSize: '0.75rem', px: 1.5 }}
+                                        >
+                                            + 내부작업
+                                        </Button>
+                                    </Stack>
                                 )}
                                 {user.user_type !== 'ADMIN' && (
                                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 0.5 }}>
@@ -1408,6 +1431,8 @@ const MobileWorkLogPage = () => {
                                             onClick={() => {
                                                 setInternalWorkDate(new Date().toISOString().split('T')[0]);
                                                 setInternalWorkContent('');
+                                                setInternalWorkQty(1);
+                                                setInternalWorkWorker('');
                                                 setInternalWorkModalOpen(true);
                                             }}
                                             sx={{ bgcolor: '#4caf50', '&:hover': { bgcolor: '#388e3c' }, borderRadius: 2, fontSize: '0.75rem', px: 1.5 }}
@@ -2468,6 +2493,23 @@ const MobileWorkLogPage = () => {
                             onChange={e => setInternalWorkDate(e.target.value)}
                             InputLabelProps={{ shrink: true }}
                         />
+                        {/* ADMIN: 작업자 선택 */}
+                        {user.user_type === 'ADMIN' && (
+                            <FormControl size="small" fullWidth>
+                                <InputLabel>작업자 선택</InputLabel>
+                                <Select
+                                    value={internalWorkWorker}
+                                    onChange={e => setInternalWorkWorker(e.target.value)}
+                                    label="작업자 선택"
+                                    displayEmpty
+                                >
+                                    <MenuItem value=""><em>직접 등록 (본인)</em></MenuItem>
+                                    {staffList.map(s => (
+                                        <MenuItem key={s.id} value={s.id}>{s.name} {s.role ? `(${s.role})` : ''}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        )}
                         <TextField
                             label="작업내용"
                             multiline
@@ -2477,6 +2519,16 @@ const MobileWorkLogPage = () => {
                             placeholder="예) 장비 청소, 회의 참석, 자재 정리..."
                             value={internalWorkContent}
                             onChange={e => setInternalWorkContent(e.target.value)}
+                        />
+                        <TextField
+                            label="수량"
+                            type="number"
+                            fullWidth
+                            size="small"
+                            value={internalWorkQty}
+                            onChange={e => setInternalWorkQty(Math.max(1, parseInt(e.target.value) || 1))}
+                            inputProps={{ min: 1 }}
+                            helperText="기본값: 1"
                         />
                     </Stack>
                 </DialogContent>

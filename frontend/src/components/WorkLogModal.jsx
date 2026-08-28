@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
-    TextField, Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, IconButton, Autocomplete
+    TextField, Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, IconButton, Autocomplete, Stack, Chip
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon, Upload as UploadIcon, FilePresent as FileIcon } from '@mui/icons-material';
 import { X } from 'lucide-react';
@@ -24,6 +24,11 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
     const [planSelectorOpen, setPlanSelectorOpen] = useState(false);
     const [availablePlans, setAvailablePlans] = useState([]);
     const [selectedPlanForLog, setSelectedPlanForLog] = useState(null);
+
+    // 내부작업 입력 상태
+    const [internalInputOpen, setInternalInputOpen] = useState(false);
+    const [internalContent, setInternalContent] = useState('');
+    const [internalQty, setInternalQty] = useState(1);
 
     useEffect(() => {
         if (isOpen) {
@@ -100,6 +105,31 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
         setItems(newItems);
     };
 
+    // 내부작업 항목 추가
+    const handleAddInternalItem = () => {
+        if (!internalContent.trim()) {
+            alert('작업내용을 입력해주세요.');
+            return;
+        }
+        const newItem = {
+            cid: Math.random().toString(36).substr(2, 9),
+            plan_item_id: null,         // 내부작업: plan_item_id 없음
+            plan_item: null,
+            worker_id: workerId || '',
+            good_quantity: Math.max(1, parseInt(internalQty) || 1),
+            bad_quantity: 0,
+            unit_price: 0,
+            start_time: '',
+            end_time: '',
+            note: internalContent.trim(),
+            _isInternal: true,          // UI 구분용 플래그
+        };
+        setItems([...items, newItem]);
+        setInternalContent('');
+        setInternalQty(1);
+        setInternalInputOpen(false);
+    };
+
     const handleFileUpload = async (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
@@ -137,8 +167,9 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
             return;
         }
 
-        // 잔량 초과 검증
+        // 잔량 초과 검증 (내부작업 항목은 제외)
         const exceededItems = items.filter(item => {
+            if (!item.plan_item_id && !item.plan_item) return false; // 내부작업 건너뜀
             const remaining = getRemainingQty(item.plan_item, log?.id);
             const entering = (parseInt(item.good_quantity) || 0) + (parseInt(item.bad_quantity) || 0);
             return entering > 0 && entering > remaining;
@@ -297,10 +328,56 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Typography variant="h6">세부 작업(실적) 내역</Typography>
-                    <Button variant="outlined" startIcon={<AddIcon />} onClick={handleOpenPlanSelector} size="small">
-                        생산 공정 선택
-                    </Button>
+                    <Stack direction="row" spacing={1}>
+                        <Button variant="outlined" startIcon={<AddIcon />} onClick={handleOpenPlanSelector} size="small">
+                            생산 공정 선택
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            color="success"
+                            size="small"
+                            startIcon={<AddIcon />}
+                            onClick={() => { setInternalInputOpen(v => !v); setInternalContent(''); setInternalQty(1); }}
+                        >
+                            내부작업 이력
+                        </Button>
+                    </Stack>
                 </Box>
+
+                {/* 내부작업 인라인 입력 폼 */}
+                {internalInputOpen && (
+                    <Box sx={{ mb: 2, p: 2, border: '1px solid #66bb6a', borderRadius: 2, bgcolor: '#f1f8e9' }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1.5, color: '#2e7d32', fontWeight: 'bold' }}>
+                            🔧 내부작업 내용 입력
+                        </Typography>
+                        <Stack direction="row" spacing={1} alignItems="flex-start">
+                            <TextField
+                                label="작업내용"
+                                size="small"
+                                value={internalContent}
+                                onChange={e => setInternalContent(e.target.value)}
+                                placeholder="예) 장비 청소, 회의 참석..."
+                                sx={{ flex: 1 }}
+                                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAddInternalItem()}
+                            />
+                            <TextField
+                                label="수량"
+                                type="number"
+                                size="small"
+                                value={internalQty}
+                                onChange={e => setInternalQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                inputProps={{ min: 1 }}
+                                sx={{ width: 80 }}
+                            />
+                            <Button variant="contained" color="success" size="small" onClick={handleAddInternalItem} sx={{ height: 40 }}>
+                                추가
+                            </Button>
+                            <Button variant="outlined" size="small" onClick={() => setInternalInputOpen(false)} sx={{ height: 40 }}>
+                                닫기
+                            </Button>
+                        </Stack>
+                    </Box>
+                )}
 
                 <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
@@ -320,11 +397,68 @@ const WorkLogModal = ({ isOpen, onClose, log, onSuccess }) => {
                         <TableBody>
                             {items.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
-                                        우측 상단의 '생산 공정 선택' 버튼을 눌러 실적을 등록할 공정을 추가하세요.
+                                    <TableCell colSpan={9} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                        우측 상단의 '생산 공정 선택' 또는 '내부작업 이력' 버튼을 눌러 실적을 추가하세요.
                                     </TableCell>
                                 </TableRow>
                             ) : items.map((item, index) => {
+                                const isInternal = !item.plan_item_id && !item.plan_item;
+
+                                if (isInternal) {
+                                    return (
+                                        <TableRow key={item.cid} sx={{ backgroundColor: '#f1f8e9' }}>
+                                            <TableCell sx={{ fontSize: '0.8rem' }}>
+                                                <Chip label="내부작업" size="small" color="success" variant="outlined" sx={{ fontSize: '0.7rem' }} />
+                                            </TableCell>
+                                            <TableCell sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#2e7d32' }} colSpan={2}>
+                                                🔧 {item.note || '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Select
+                                                    value={item.worker_id || ''}
+                                                    onChange={(e) => handleItemChange(index, 'worker_id', e.target.value)}
+                                                    size="small"
+                                                    displayEmpty
+                                                    fullWidth
+                                                    variant="standard"
+                                                    sx={{ fontSize: '0.8rem' }}
+                                                >
+                                                    <MenuItem value=""><em>작업자</em></MenuItem>
+                                                    {staffList.filter(s => s.is_active).map(s => (
+                                                        <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell>
+                                                <TextField
+                                                    type="number"
+                                                    value={item.good_quantity}
+                                                    onChange={(e) => handleItemChange(index, 'good_quantity', e.target.value)}
+                                                    size="small"
+                                                    variant="standard"
+                                                    inputProps={{ min: 1 }}
+                                                />
+                                            </TableCell>
+                                            <TableCell>-</TableCell>
+                                            <TableCell>-</TableCell>
+                                            <TableCell>
+                                                <TextField
+                                                    value={item.note || ''}
+                                                    onChange={(e) => handleItemChange(index, 'note', e.target.value)}
+                                                    size="small"
+                                                    variant="standard"
+                                                    fullWidth
+                                                />
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <IconButton size="small" color="error" onClick={() => handleRemoveItem(index)}>
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                }
+
                                 const plan = item.plan_item?.plan;
                                 let orderNo = '-';
                                 if (plan?.order?.order_no) {
