@@ -67,6 +67,7 @@ import {
     Timer as TimerIcon,
     WorkHistory as OvertimeIcon,
     AccessTime as ClockIcon,
+    DeleteOutline as DeleteOutlineIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
@@ -157,6 +158,13 @@ const MobileWorkLogPage = () => {
     const [consumableProducts, setConsumableProducts] = useState([]); // 소모품 관리 목록
     const [consumableSearch, setConsumableSearch] = useState({}); // { [itemIdx]: '검색어' }
     const [consumableDropdownOpen, setConsumableDropdownOpen] = useState({}); // { [itemIdx]: bool }
+
+    // 내부작업 실적 추가 모달
+    const [internalWorkModalOpen, setInternalWorkModalOpen] = useState(false);
+    const [internalWorkDate, setInternalWorkDate] = useState(new Date().toISOString().split('T')[0]);
+    const [internalWorkContent, setInternalWorkContent] = useState('');
+    const [internalWorkSaving, setInternalWorkSaving] = useState(false);
+
 
     // Derived selections
     const selectedPlan = useMemo(() =>
@@ -427,7 +435,41 @@ const MobileWorkLogPage = () => {
         }
     };
 
+    // 내부작업 실적 저장
+    const handleSaveInternalWork = async () => {
+        if (!internalWorkContent.trim()) {
+            alert('작업내용을 입력해주세요.');
+            return;
+        }
+        setInternalWorkSaving(true);
+        try {
+            await api.post('/production/internal-work-log-items', {
+                work_date: internalWorkDate,
+                content: internalWorkContent.trim(),
+            });
+            setInternalWorkModalOpen(false);
+            setInternalWorkContent('');
+            fetchPerformance();
+        } catch (err) {
+            alert('저장 실패: ' + (err.response?.data?.detail || err.message));
+        } finally {
+            setInternalWorkSaving(false);
+        }
+    };
+
+    // 내부작업 실적 삭제
+    const handleDeleteWorkLogItem = async (itemId) => {
+        if (!window.confirm('이 실적을 삭제하시겠습니까?')) return;
+        try {
+            await api.delete(`/production/work-log-items/${itemId}`);
+            fetchPerformance();
+        } catch (err) {
+            alert('삭제 실패: ' + (err.response?.data?.detail || err.message));
+        }
+    };
+
     const handlePhotoCapture = (e) => {
+
         const files = Array.from(e.target.files);
         if (photos.length + files.length > 5) {
             alert("사진은 최대 5장까지 가능합니다.");
@@ -1356,9 +1398,23 @@ const MobileWorkLogPage = () => {
                                     </>
                                 )}
                                 {user.user_type !== 'ADMIN' && (
-                                    <Typography variant="h6" fontWeight="bold" sx={{ py: 1 }}>
-                                        작업 실적 현황
-                                    </Typography>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 0.5 }}>
+                                        <Typography variant="h6" fontWeight="bold">
+                                            작업 실적 현황
+                                        </Typography>
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            onClick={() => {
+                                                setInternalWorkDate(new Date().toISOString().split('T')[0]);
+                                                setInternalWorkContent('');
+                                                setInternalWorkModalOpen(true);
+                                            }}
+                                            sx={{ bgcolor: '#4caf50', '&:hover': { bgcolor: '#388e3c' }, borderRadius: 2, fontSize: '0.75rem', px: 1.5 }}
+                                        >
+                                            + 내부작업
+                                        </Button>
+                                    </Stack>
                                 )}
                             </Box>
                         </Paper>
@@ -1487,25 +1543,61 @@ const MobileWorkLogPage = () => {
 
                                                     {expandedLogId === group.id && (
                                                         <Box sx={{ width: '100%', mt: 2, pt: 2, borderTop: '1px solid #eee' }}>
-                                                            {group.items.map(item => (
-                                                                <Box key={item.id} sx={{ mb: 2 }}>
-                                                                    <Typography variant="body2" fontWeight="bold">{item.plan_item?.process_name}</Typography>
-                                                                    <Typography variant="caption" display="block" color="textSecondary">
-                                                                        {item.plan_item?.product?.name}
-                                                                        {item.plan_item?.product?.specification && ` (${item.plan_item.product.specification})`}
-                                                                    </Typography>
-                                                                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                                                                        <Typography variant="caption">
-                                                                            수량: {item.good_quantity} (불량: {item.bad_quantity})
-                                                                        </Typography>
-                                                                        {user.user_type === 'ADMIN' && (
-                                                                            <Typography variant="caption" fontWeight="bold">
-                                                                                {calculateItemCost(item).toLocaleString()}원
-                                                                            </Typography>
-                                                                        )}
-                                                                    </Stack>
-                                                                </Box>
-                                                            ))}
+                                                        {group.items.map(item => {
+                                                                const isInternal = !item.plan_item_id && !item.plan_item;
+                                                                return (
+                                                                    <Box key={item.id} sx={{
+                                                                        mb: 1.5, p: 1,
+                                                                        borderLeft: isInternal ? '3px solid #4caf50' : '3px solid #3b82f6',
+                                                                        borderRadius: '0 4px 4px 0',
+                                                                        bgcolor: isInternal ? '#f1f8e9' : '#f8faff',
+                                                                    }}>
+                                                                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                                                                            <Box sx={{ flex: 1 }}>
+                                                                                {isInternal ? (
+                                                                                    <>
+                                                                                        <Typography variant="body2" fontWeight="bold" sx={{ color: '#2e7d32' }}>
+                                                                                            🔧 내부작업
+                                                                                        </Typography>
+                                                                                        <Typography variant="caption" display="block" color="textSecondary">
+                                                                                            {item.note || '-'}
+                                                                                        </Typography>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <Typography variant="body2" fontWeight="bold">{item.plan_item?.process_name}</Typography>
+                                                                                        <Typography variant="caption" display="block" color="textSecondary">
+                                                                                            {item.plan_item?.product?.name}
+                                                                                            {item.plan_item?.product?.specification && ` (${item.plan_item.product.specification})`}
+                                                                                        </Typography>
+                                                                                        <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+                                                                                            <Typography variant="caption">
+                                                                                                수량: {item.good_quantity} (불량: {item.bad_quantity})
+                                                                                            </Typography>
+                                                                                            {user.user_type === 'ADMIN' && (
+                                                                                                <Typography variant="caption" fontWeight="bold">
+                                                                                                    {calculateItemCost(item).toLocaleString()}원
+                                                                                                </Typography>
+                                                                                            )}
+                                                                                        </Stack>
+                                                                                    </>
+                                                                                )}
+                                                                            </Box>
+                                                                            {isInternal && (
+                                                                                <IconButton
+                                                                                    size="small"
+                                                                                    color="error"
+                                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteWorkLogItem(item.id); }}
+                                                                                    sx={{ ml: 1, p: 0.3 }}
+                                                                                >
+                                                                                    <DeleteOutlineIcon fontSize="small" />
+                                                                                </IconButton>
+                                                                            )}
+                                                                        </Stack>
+                                                                    </Box>
+                                                                );
+                                                            })}
+
                                                         </Box>
                                                     )}
                                                 </ListItemButton>
@@ -2353,6 +2445,61 @@ const MobileWorkLogPage = () => {
                     )}
                 </Box>
             </Dialog >
+
+            {/* 내부작업 실적 추가 모달 */}
+            <Dialog
+                open={internalWorkModalOpen}
+                onClose={() => !internalWorkSaving && setInternalWorkModalOpen(false)}
+                fullWidth
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: 3, mx: 2 } }}
+            >
+                <DialogTitle sx={{ pb: 1, fontWeight: 'bold' }}>
+                    🔧 내부작업 실적 추가
+                </DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField
+                            label="날짜"
+                            type="date"
+                            fullWidth
+                            size="small"
+                            value={internalWorkDate}
+                            onChange={e => setInternalWorkDate(e.target.value)}
+                            InputLabelProps={{ shrink: true }}
+                        />
+                        <TextField
+                            label="작업내용"
+                            multiline
+                            rows={3}
+                            fullWidth
+                            size="small"
+                            placeholder="예) 장비 청소, 회의 참석, 자재 정리..."
+                            value={internalWorkContent}
+                            onChange={e => setInternalWorkContent(e.target.value)}
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+                    <Button
+                        fullWidth
+                        variant="outlined"
+                        onClick={() => setInternalWorkModalOpen(false)}
+                        disabled={internalWorkSaving}
+                    >
+                        취소
+                    </Button>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleSaveInternalWork}
+                        disabled={internalWorkSaving || !internalWorkContent.trim()}
+                        sx={{ bgcolor: '#4caf50', '&:hover': { bgcolor: '#388e3c' } }}
+                    >
+                        {internalWorkSaving ? '저장 중...' : '저장'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box >
     );
 };

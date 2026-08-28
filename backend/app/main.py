@@ -1246,7 +1246,38 @@ async def startup_event():
             except Exception as e:
                 print(f"Startup: WorkLog fix failed: {e}")
                 await db.rollback()
-            
+
+            # --- [NEW] WorkLogItem plan_item_id nullable 마이그레이션 ---
+            try:
+                if is_sqlite:
+                    pass  # SQLite는 ALTER COLUMN 미지원, 신규 DB는 모델 반영됨
+                else:
+                    # 외래키 제약 변경: CASCADE → SET NULL, nullable 허용
+                    await db.execute(text("""
+                        DO $$
+                        BEGIN
+                            -- plan_item_id nullable 허용
+                            ALTER TABLE work_log_items ALTER COLUMN plan_item_id DROP NOT NULL;
+                            -- 기존 CASCADE FK 제약 제거 후 SET NULL로 재추가
+                            IF EXISTS (
+                                SELECT 1 FROM information_schema.table_constraints
+                                WHERE table_name='work_log_items'
+                                AND constraint_name='work_log_items_plan_item_id_fkey'
+                            ) THEN
+                                ALTER TABLE work_log_items DROP CONSTRAINT work_log_items_plan_item_id_fkey;
+                                ALTER TABLE work_log_items ADD CONSTRAINT work_log_items_plan_item_id_fkey
+                                    FOREIGN KEY (plan_item_id) REFERENCES production_plan_items(id) ON DELETE SET NULL;
+                            END IF;
+                        EXCEPTION WHEN OTHERS THEN
+                            NULL; -- 이미 적용된 경우 무시
+                        END $$;
+                    """))
+                await db.commit()
+                print("Startup: WorkLogItem plan_item_id nullable migration done")
+            except Exception as e:
+                print(f"Startup: plan_item_id nullable migration failed: {e}")
+                await db.rollback()
+
             # --- [NEW] Raw SQL Permission Migration (PostgreSQL) ---
             try:
                 await db.execute(text("ALTER TABLE staff ADD COLUMN IF NOT EXISTS is_sysadmin BOOLEAN DEFAULT FALSE;"))

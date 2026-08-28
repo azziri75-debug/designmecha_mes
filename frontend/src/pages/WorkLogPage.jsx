@@ -649,10 +649,14 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
     const [editPrice, setEditPrice] = useState(defaultPrice);
     const [saving, setSaving] = useState(false);
 
+    const isInternal = !item.plan_item_id && !item.plan_item;
+
     const plan = item.plan_item?.plan;
-    let orderNo = '-';
-    if (plan?.order?.order_no) orderNo = plan.order.order_no;
-    else if (plan?.stock_production?.production_no) orderNo = plan.stock_production.production_no;
+    let orderNo = isInternal ? '[내부작업]' : '-';
+    if (!isInternal) {
+        if (plan?.order?.order_no) orderNo = plan.order.order_no;
+        else if (plan?.stock_production?.production_no) orderNo = plan.stock_production.production_no;
+    }
 
     const handleSave = async () => {
         setSaving(true);
@@ -676,21 +680,27 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
         || '-';
 
     return (
-        <tr className="hover:bg-gray-800/40 text-gray-300">
+        <tr className={`hover:bg-gray-800/40 text-gray-300 ${isInternal ? 'bg-green-900/20' : ''}`}>
             <td className="px-3 py-2 text-gray-400 font-medium">{item.work_log?.work_date}</td>
-            <td className="px-3 py-2 text-[0.75rem]">{orderNo}</td>
-            <td className="px-3 py-2 text-[0.75rem]">{perfPartnerName}</td>
+            <td className="px-3 py-2 text-[0.75rem]">
+                {isInternal ? <span className="text-green-400 font-bold">[내부작업]</span> : orderNo}
+            </td>
+            <td className="px-3 py-2 text-[0.75rem]">{isInternal ? '-' : perfPartnerName}</td>
             <td className="px-3 py-2 text-[0.7rem] leading-tight text-right">
-                {plan?.order?.order_date ? (
+                {isInternal ? '-' : (plan?.order?.order_date ? (
                     <div>
                         <div>{plan.order.order_date}</div>
                         <div className="text-blue-400">({plan.order.delivery_date || '-'})</div>
                     </div>
-                ) : (plan?.stock_production ? '재고생산' : '-')}
+                ) : (plan?.stock_production ? '재고생산' : '-'))}
             </td>
-            <td className="px-3 py-2 font-bold text-gray-200">{item.plan_item?.product?.name || '-'}</td>
-            <td className="px-3 py-2 text-gray-400">{item.plan_item?.product?.specification || '-'}</td>
-            <td className="px-3 py-2">{item.plan_item?.process_name || '-'}</td>
+            <td className="px-3 py-2 font-bold text-gray-200">
+                {isInternal ? (
+                    <span className="text-green-300">{item.note || '-'}</span>
+                ) : (item.plan_item?.product?.name || '-')}
+            </td>
+            <td className="px-3 py-2 text-gray-400">{isInternal ? '-' : (item.plan_item?.product?.specification || '-')}</td>
+            <td className="px-3 py-2">{isInternal ? '-' : (item.plan_item?.process_name || '-')}</td>
             <td className="px-3 py-2 text-right">
                 <input
                     type="number"

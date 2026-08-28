@@ -149,7 +149,7 @@ class ProductionPlan(ProductionPlanBase):
 # --- Work Log Schemas ---
 
 class WorkLogItemBase(BaseModel):
-    plan_item_id: int
+    plan_item_id: Optional[int] = None   # None이면 내부작업 실적
     worker_id: Optional[int] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None

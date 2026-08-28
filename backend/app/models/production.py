@@ -148,7 +148,7 @@ class WorkLogItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     work_log_id = Column(Integer, ForeignKey("work_logs.id", ondelete="CASCADE"), nullable=False)
-    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id", ondelete="CASCADE"), nullable=False)
+    plan_item_id = Column(Integer, ForeignKey("production_plan_items.id", ondelete="SET NULL"), nullable=True)  # nullable: 내부작업 실적 지원
     worker_id = Column(Integer, ForeignKey("staff.id"), nullable=True) # 개별 작업자 실적
     
     start_time = Column(DateTime(timezone=True), nullable=True)
@@ -161,5 +161,5 @@ class WorkLogItem(Base):
 
     # Relationships
     work_log = relationship("WorkLog", back_populates="items")
-    plan_item = relationship("ProductionPlanItem", back_populates="work_log_items")
+    plan_item = relationship("ProductionPlanItem", back_populates="work_log_items", foreign_keys=[plan_item_id])
     worker = relationship("Staff", foreign_keys=[worker_id])

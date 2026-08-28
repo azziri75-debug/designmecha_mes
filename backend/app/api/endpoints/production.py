@@ -1,5 +1,6 @@
 from typing import Any, List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import select, cast, String, text, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -2269,16 +2270,16 @@ async def get_worker_performance(
     """
     Get aggregated performance by worker with optional date and worker filtering.
     """
-    from sqlalchemy import func, distinct, case
-    
-    # Cost with fallback: if WorkLogItem.unit_price is 0 or null, try (PlanItem.cost / PlanItem.quantity)
-    # Using CASE to handle potential division by zero
+    from sqlalchemy import func, distinct, case, outerjoin
+
+    # Cost with fallback: if WorkLogItem.unit_price > 0 사용, 생산실적은 계획 비용 fallback
+    # 내부작업(plan_item_id=NULL)은 unit_price × good_quantity
     calc_unit_price = case(
         (WorkLogItem.unit_price > 0, WorkLogItem.unit_price),
         (ProductionPlanItem.quantity > 0, ProductionPlanItem.cost / ProductionPlanItem.quantity),
         else_=0
     )
-    
+
     stmt = (
         select(
             Staff.id.label("worker_id"),
@@ -2288,28 +2289,27 @@ async def get_worker_performance(
         )
         .join(WorkLogItem, Staff.id == WorkLogItem.worker_id)
         .join(WorkLog, WorkLogItem.work_log_id == WorkLog.id)
-        .join(ProductionPlanItem, WorkLogItem.plan_item_id == ProductionPlanItem.id)
+        .outerjoin(ProductionPlanItem, WorkLogItem.plan_item_id == ProductionPlanItem.id)  # 내부작업 포함
         .group_by(Staff.id, Staff.name)
     )
-    
+
     if start_date:
         stmt = stmt.where(WorkLog.work_date >= start_date)
     if end_date:
         stmt = stmt.where(WorkLog.work_date <= end_date)
     if worker_id:
         stmt = stmt.where(Staff.id == worker_id)
-        
+
     if major_group_id:
         from app.models.product import ProductGroup
         from sqlalchemy import or_
-        # Note: ProductionPlanItem and Product are already joined for calc_unit_price/total_cost
         stmt = stmt.join(ProductGroup, Product.group_id == ProductGroup.id)\
                    .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
-        
+
     # 일반 사용자의 경우 본인 데이터만 조회
     if current_user.user_type != "ADMIN":
         stmt = stmt.where(Staff.id == current_user.id)
-        
+
     result = await db.execute(stmt)
     return [dict(row._mapping) for row in result.all()]
 
@@ -2430,21 +2430,22 @@ async def update_work_log_item(
         raise HTTPException(status_code=404, detail="Work Log Item not found")
 
     update_data = item_in.model_dump(exclude_unset=True)
-    
+
     # Identify if quantity or price changed to sync plan item status/cost
     qty_changed = "good_quantity" in update_data and update_data["good_quantity"] != item.good_quantity
-    
+
     old_good_qty = item.good_quantity
-    
+
     for field, value in update_data.items():
         setattr(item, field, value)
 
     await db.commit()
     await db.refresh(item)
-    
-    if qty_changed:
+
+    # plan_item_id가 있는 생산실적만 재고/상태 연동
+    if qty_changed and item.plan_item_id is not None:
         await sync_plan_item_status(db, item.plan_item_id)
-        
+
         # --- Stock Adjustment Hook for DIFF ---
         diff_qty = item.good_quantity - old_good_qty
         if diff_qty != 0:
@@ -2467,3 +2468,100 @@ async def update_work_log_item(
 
     # 단순 성공 응답 반환 (response_model 직렬화 오류 방지)
     return {"ok": True, "id": item.id, "good_quantity": item.good_quantity, "unit_price": item.unit_price}
+
+
+# ─── 내부작업 실적 빠른 등록 ────────────────────────────────────────────────
+
+class InternalWorkLogCreate(BaseModel):
+    work_date: date
+    content: str
+    worker_id: Optional[int] = None  # None이면 현재 로그인 사용자
+
+
+@router.post("/internal-work-log-items")
+async def create_internal_work_log_item(
+    data: InternalWorkLogCreate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+) -> Any:
+    """
+    내부작업 실적 등록 (생산계획 없이 날짜+내용 입력).
+    해당 날짜의 WorkLog가 없으면 자동 생성하고, plan_item_id=None WorkLogItem을 추가한다.
+    """
+    worker_id = data.worker_id if (data.worker_id and current_user.user_type == "ADMIN") else current_user.id
+
+    # 해당 날짜 + 작업자의 WorkLog 조회 또는 생성
+    result = await db.execute(
+        select(WorkLog)
+        .where(WorkLog.work_date == data.work_date)
+        .where(WorkLog.worker_id == worker_id)
+    )
+    work_log = result.scalars().first()
+
+    if not work_log:
+        work_log = WorkLog(work_date=data.work_date, worker_id=worker_id)
+        db.add(work_log)
+        await db.flush()  # ID 확보
+
+    # WorkLogItem 생성 (plan_item_id=None, 내부작업)
+    item = WorkLogItem(
+        work_log_id=work_log.id,
+        plan_item_id=None,
+        worker_id=worker_id,
+        good_quantity=1,
+        bad_quantity=0,
+        unit_price=0.0,
+        note=data.content,
+    )
+    db.add(item)
+    await db.commit()
+    await db.refresh(item)
+
+    return {"ok": True, "id": item.id, "work_log_id": work_log.id}
+
+
+@router.delete("/work-log-items/{item_id}")
+async def delete_work_log_item(
+    item_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+) -> Any:
+    """
+    WorkLogItem 단건 삭제.
+    본인 항목 또는 ADMIN만 삭제 가능. 삭제 후 WorkLog에 items가 없으면 WorkLog도 삭제.
+    """
+    result = await db.execute(
+        select(WorkLogItem)
+        .options(selectinload(WorkLogItem.work_log))
+        .where(WorkLogItem.id == item_id)
+    )
+    item = result.scalars().first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Work Log Item not found")
+
+    # 권한 체크: 본인 또는 ADMIN
+    if current_user.user_type != "ADMIN" and item.worker_id != current_user.id:
+        raise HTTPException(status_code=403, detail="삭제 권한이 없습니다.")
+
+    work_log_id = item.work_log_id
+    plan_item_id = item.plan_item_id
+
+    await db.delete(item)
+    await db.commit()
+
+    # 생산실적이었으면 plan_item 상태 동기화
+    if plan_item_id is not None:
+        await sync_plan_item_status(db, plan_item_id)
+        await db.commit()
+
+    # WorkLog에 남은 items가 없으면 WorkLog도 삭제 (빈 일지 정리)
+    remaining = await db.execute(
+        select(func.count(WorkLogItem.id)).where(WorkLogItem.work_log_id == work_log_id)
+    )
+    if remaining.scalar() == 0:
+        log_obj = await db.get(WorkLog, work_log_id)
+        if log_obj:
+            await db.delete(log_obj)
+            await db.commit()
+
+    return {"ok": True, "id": item_id}
