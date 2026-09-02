@@ -1508,18 +1508,26 @@ const MobileWorkLogPage = () => {
                                                             <Stack spacing={0.8}>
                                                                 {group.items
                                                                     .filter(item => item.worker_id === agg.id)
-                                                                    .map((item, idx) => (
-                                                                        <Box key={idx} sx={{ pl: 1, borderLeft: '2px solid #cbd5e1' }}>
-                                                                            <Typography variant="caption" display="block" sx={{ fontSize: '0.75rem' }}>
-                                                                                {item.plan_item?.process_name}
-                                                                            </Typography>
-                                                                            <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
-                                                                                {item.plan_item?.product?.name}
-                                                                                {item.plan_item?.product?.specification && ` (${item.plan_item.product.specification})`}
-                                                                                • {item.good_quantity}개
-                                                                            </Typography>
-                                                                        </Box>
-                                                                    ))}
+                                                                    .map((item, idx) => {
+                                                                        const isInternal = !item.plan_item_id && !item.plan_item;
+                                                                        return (
+                                                                            <Box key={idx} sx={{ pl: 1, borderLeft: isInternal ? '2px solid #4caf50' : '2px solid #cbd5e1', bgcolor: isInternal ? '#f1f8e9' : 'transparent', borderRadius: '0 2px 2px 0', py: 0.2 }}>
+                                                                                <Typography variant="caption" display="block" sx={{ fontSize: '0.75rem', color: isInternal ? '#2e7d32' : 'inherit', fontWeight: isInternal ? 'bold' : 'normal' }}>
+                                                                                    {isInternal ? '🔧 내부작업' : item.plan_item?.process_name}
+                                                                                </Typography>
+                                                                                <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
+                                                                                    {isInternal ? (item.note || '-') : (
+                                                                                        <>
+                                                                                            {item.plan_item?.product?.name}
+                                                                                            {item.plan_item?.product?.specification && ` (${item.plan_item.product.specification})`}
+                                                                                        </>
+                                                                                    )}
+                                                                                    {' '}• {item.good_quantity}개
+                                                                                </Typography>
+                                                                            </Box>
+                                                                        );
+                                                                    })}
+
                                                             </Stack>
                                                         </Box>
                                                     ))}

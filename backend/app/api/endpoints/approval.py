@@ -558,7 +558,7 @@ async def create_document(
             for lp in lines_to_process:
                 approver_role = lp.get("role", "")
                 approver_rank = get_staff_rank(approver_role)
-                is_auto = (lp["approver_id"] == current_user.id) or (author_rank > approver_rank)
+                is_auto = (lp["approver_id"] == current_user.id) or (author_rank >= approver_rank)
                 
                 step = ApprovalStep(
                     document_id=db_doc.id,
@@ -1646,7 +1646,7 @@ async def update_document(
                 for lp in lines_to_process:
                     approver_role = lp.get("role", "")
                     approver_rank = get_staff_rank(approver_role)
-                    is_auto = (lp["approver_id"] == current_user.id) or (author_rank > approver_rank)
+                    is_auto = (lp["approver_id"] == current_user.id) or (author_rank >= approver_rank)
                     
                     step = ApprovalStep(
                         document_id=doc.id,

@@ -2056,8 +2056,10 @@ async def create_work_log(
         await db.flush()
 
     for item_in in log_in.items:
-        # Fetch plan item to get default price if needed
-        plan_item = await db.get(ProductionPlanItem, item_in.plan_item_id)
+        # 내부작업은 plan_item_id=None → plan_item 조회 및 status sync 스킵
+        plan_item = None
+        if item_in.plan_item_id is not None:
+            plan_item = await db.get(ProductionPlanItem, item_in.plan_item_id)
         u_price = item_in.unit_price
         if not u_price and plan_item:
             u_price = (plan_item.cost or 0) / (plan_item.quantity or 1)
@@ -2075,7 +2077,8 @@ async def create_work_log(
         )
         db.add(log_item)
         await db.flush()
-        await sync_plan_item_status(db, item_in.plan_item_id)
+        if item_in.plan_item_id is not None:
+            await sync_plan_item_status(db, item_in.plan_item_id)
         
         # [NOTE] Stock movement is handled by sync_plan_item_status → on_production_item_completed
         # when the last process reaches completion. Do NOT add per-item stock movement here

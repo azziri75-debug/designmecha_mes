@@ -496,6 +496,26 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                             <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-500">세부 작업 내역이 없습니다.</td></tr>
                                         ) : (
                                             log.items.map(item => {
+                                                const isInternal = !item.plan_item_id && !item.plan_item;
+
+                                                if (isInternal) {
+                                                    return (
+                                                        <tr key={item.id} className="hover:bg-gray-700/40 bg-green-950/30">
+                                                            <td className="px-3 py-2">
+                                                                <span className="text-green-400 font-bold text-[0.7rem] bg-green-900/40 px-1.5 py-0.5 rounded">내부작업</span>
+                                                            </td>
+                                                            <td className="px-3 py-2 text-gray-400">-</td>
+                                                            <td className="px-3 py-2 text-gray-400">-</td>
+                                                            <td className="px-3 py-2 font-bold text-green-300" colSpan={2}>
+                                                                🔧 {item.note || '-'}
+                                                            </td>
+                                                            <td className="px-3 py-2 text-gray-400">-</td>
+                                                            <td className="px-3 py-2 text-right font-bold text-green-400">{item.good_quantity}</td>
+                                                            <td className="px-3 py-2 text-right text-gray-500">-</td>
+                                                        </tr>
+                                                    );
+                                                }
+
                                                 const plan = item.plan_item?.plan;
                                                 let orderNo = '-';
                                                 if (plan?.order?.order_no) {
