@@ -3,13 +3,18 @@
   "name": "DesignMecha MES System",
   "icons": [
     {
-      "src": "vite.svg",
-      "type": "image/svg+xml",
-      "sizes": "192x192 512x512"
+      "src": "logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
     }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#ffffff",
+  "theme_color": "#c0392b",
   "background_color": "#ffffff"
 }
