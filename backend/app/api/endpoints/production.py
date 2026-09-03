@@ -2073,7 +2073,8 @@ async def create_work_log(
             good_quantity=item_in.good_quantity,
             bad_quantity=item_in.bad_quantity,
             unit_price=u_price,
-            note=item_in.note
+            note=item_in.note,
+            attachment_file=item_in.attachment_file
         )
         db.add(log_item)
         await db.flush()
@@ -2185,7 +2186,8 @@ async def update_work_log(
                 good_quantity=item_in.good_quantity,
                 bad_quantity=item_in.bad_quantity,
                 unit_price=item_in.unit_price,
-                note=item_in.note
+                note=item_in.note,
+                attachment_file=item_in.attachment_file
             )
             db.add(new_item)
         

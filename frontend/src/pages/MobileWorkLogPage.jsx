@@ -556,14 +556,15 @@ const MobileWorkLogPage = () => {
                 work_date: workDate,
                 worker_id: user.id,
                 note: note,
-                attachment_file: uploadedPhotos,
+                attachment_file: [],  // WorkLog 헤더는 비움 (공정별로 관리)
                 mode: mode,
                 items: selectedItems.map(item => ({
                     plan_item_id: item.id,
                     worker_id: user.id,
                     good_quantity: parseInt(itemRecords[item.id]?.good || 0),
                     bad_quantity: parseInt(itemRecords[item.id]?.bad || 0),
-                    note: note
+                    note: note,
+                    attachment_file: uploadedPhotos  // 공정별 첨부사진
                 }))
             };
 

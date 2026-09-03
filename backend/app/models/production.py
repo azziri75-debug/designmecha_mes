@@ -158,6 +158,7 @@ class WorkLogItem(Base):
     bad_quantity = Column(Integer, default=0)
     unit_price = Column(Float, default=0.0)
     note = Column(Text, nullable=True)
+    attachment_file = Column(JSON, nullable=True)  # 공정별 작업일지 첨부사진
 
     # Relationships
     work_log = relationship("WorkLog", back_populates="items")

@@ -496,7 +496,8 @@ const WorkLogRow = ({ log, onEdit, onDelete }) => {
                                             log.items.map(item => {
                                                 const isInternal = !item.plan_item_id && !item.plan_item;
                                                 const attachFiles = (() => {
-                                                    const raw = log.attachment_file;
+                                                    // 공정별 첨부(item.attachment_file) 우선, 없으면 WorkLog 헤더(log.attachment_file) fallback
+                                                    const raw = item.attachment_file || log.attachment_file;
                                                     if (!raw) return [];
                                                     if (Array.isArray(raw)) return raw;
                                                     try { return JSON.parse(raw); } catch { return []; }
@@ -728,9 +729,9 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
         || plan?.stock_production?.partner?.name
         || '-';
 
-    // 첨부파일 파싱 (work_log 헤더)
+    // 첨부파일 파싱 — 공정별(item.attachment_file) 우선, 없으면 work_log 헤더 fallback
     const attachFiles = (() => {
-        const raw = item.work_log?.attachment_file;
+        const raw = item.attachment_file || item.work_log?.attachment_file;
         if (!raw) return [];
         if (Array.isArray(raw)) return raw;
         try { return JSON.parse(raw); } catch { return []; }

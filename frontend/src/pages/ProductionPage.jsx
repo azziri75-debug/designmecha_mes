@@ -936,7 +936,8 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
                                         {item.work_log_items?.length > 0 ? (
                                             item.work_log_items.map(log => {
                                                 const logFiles = (() => {
-                                                    const raw = log.work_log?.attachment_file;
+                                                    // 공정별(log.attachment_file) 우선, 없으면 work_log 헤더 fallback
+                                                    const raw = log.attachment_file || log.work_log?.attachment_file;
                                                     if (!raw) return [];
                                                     if (Array.isArray(raw)) return raw;
                                                     try { return JSON.parse(raw); } catch { return []; }

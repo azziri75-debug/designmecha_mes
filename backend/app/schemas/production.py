@@ -157,6 +157,7 @@ class WorkLogItemBase(BaseModel):
     bad_quantity: int = 0
     unit_price: float = 0.0
     note: Optional[str] = None
+    attachment_file: Optional[Union[List[Any], str]] = None  # 공정별 첨부사진
 
 class WorkLogItemCreate(WorkLogItemBase):
     pass
