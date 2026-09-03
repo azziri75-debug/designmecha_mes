@@ -1071,28 +1071,30 @@ const MobileWorkLogPage = () => {
                                                                     });
                                                                     if (files.length === 0) return null;
                                                                     return (
-                                                                        <Box sx={{ mt: 0.8, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}
-                                                                            onClick={e => e.stopPropagation()}
-                                                                        >
+                                                                        <Box sx={{ mt: 0.8, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                                                             {files.map((f, idx) => (
-                                                                                <Chip
+                                                                                <a
                                                                                     key={idx}
-                                                                                    label={f.label}
-                                                                                    size="small"
-                                                                                    variant="outlined"
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        window.open(f.url, '_blank');
-                                                                                    }}
-                                                                                    sx={{
-                                                                                        fontSize: '0.68rem',
-                                                                                        height: 22,
-                                                                                        cursor: 'pointer',
-                                                                                        borderColor: '#3b82f6',
-                                                                                        color: '#3b82f6',
-                                                                                        '&:hover': { bgcolor: '#eff6ff' }
-                                                                                    }}
-                                                                                />
+                                                                                    href={f.url}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    onClick={e => e.stopPropagation()}
+                                                                                    style={{ textDecoration: 'none' }}
+                                                                                >
+                                                                                    <Chip
+                                                                                        label={f.label}
+                                                                                        size="small"
+                                                                                        variant="outlined"
+                                                                                        sx={{
+                                                                                            fontSize: '0.68rem',
+                                                                                            height: 22,
+                                                                                            cursor: 'pointer',
+                                                                                            borderColor: '#3b82f6',
+                                                                                            color: '#3b82f6',
+                                                                                            '&:hover': { bgcolor: '#eff6ff' }
+                                                                                        }}
+                                                                                    />
+                                                                                </a>
                                                                             ))}
                                                                         </Box>
                                                                     );
