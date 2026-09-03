@@ -174,6 +174,7 @@ class WorkLogItemPatch(BaseModel):
 class WorkLogSimple(BaseModel):
     id: int
     work_date: date
+    attachment_file: Optional[Union[List[Any], str]] = None
     model_config = ConfigDict(from_attributes=True)
 
 class WorkLogItemSimple(WorkLogItemBase):

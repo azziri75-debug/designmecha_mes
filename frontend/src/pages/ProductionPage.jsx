@@ -859,6 +859,20 @@ const Row = ({ plan, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, 
 
 const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenProcessFiles }) => {
     const [open, setOpen] = useState(false);
+    const [fileViewerOpen, setFileViewerOpen] = useState(false);
+    const [currentFiles, setCurrentFiles] = useState([]);
+
+    const openLogFiles = (rawFiles) => {
+        let files = rawFiles;
+        if (typeof rawFiles === 'string') {
+            try { files = JSON.parse(rawFiles); } catch { files = []; }
+        }
+        if (Array.isArray(files) && files.length > 0) {
+            setCurrentFiles(files);
+            setFileViewerOpen(true);
+        }
+    };
+
     return (
         <React.Fragment>
             <tr className="hover:bg-gray-800/40 transition-colors select-none text-gray-300 cursor-pointer" onClick={() => setOpen(!open)}>
@@ -909,18 +923,46 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
                             <div className="p-3 mx-4 my-2 border border-gray-700 bg-gray-800 rounded-md">
                                 <h4 className="text-[11px] font-semibold mb-2 text-gray-400">작업 로그</h4>
                                 <table className="w-full text-[10px] text-gray-300 border border-gray-700 rounded-md overflow-hidden bg-gray-900">
+                                    <thead className="bg-gray-800/80 text-gray-400 font-semibold text-[10px] border-b border-gray-700">
+                                        <tr>
+                                            <th className="px-2 py-1 text-left">작업일자</th>
+                                            <th className="px-2 py-1 text-left">작업자</th>
+                                            <th className="px-2 py-1 text-right">양품(EA)</th>
+                                            <th className="px-2 py-1 text-left">비고</th>
+                                            <th className="px-2 py-1 text-center">첨부</th>
+                                        </tr>
+                                    </thead>
                                     <tbody className="divide-y divide-gray-800">
                                         {item.work_log_items?.length > 0 ? (
-                                            item.work_log_items.map(log => 
-                                                <tr key={log.id} className="hover:bg-gray-800/40">
-                                                    <td className="px-2 py-1">{log.work_log?.work_date}</td>
-                                                    <td className="px-2 py-1">{log.worker?.name}</td>
-                                                    <td className="px-2 py-1 text-right">{log.good_quantity} EA</td>
-                                                    <td className="px-2 py-1">{log.note}</td>
-                                                </tr>
-                                            )
+                                            item.work_log_items.map(log => {
+                                                const logFiles = (() => {
+                                                    const raw = log.work_log?.attachment_file;
+                                                    if (!raw) return [];
+                                                    if (Array.isArray(raw)) return raw;
+                                                    try { return JSON.parse(raw); } catch { return []; }
+                                                })();
+                                                return (
+                                                    <tr key={log.id} className="hover:bg-gray-800/40">
+                                                        <td className="px-2 py-1">{log.work_log?.work_date}</td>
+                                                        <td className="px-2 py-1">{log.worker?.name}</td>
+                                                        <td className="px-2 py-1 text-right">{log.good_quantity} EA</td>
+                                                        <td className="px-2 py-1">{log.note}</td>
+                                                        <td className="px-2 py-1 text-center">
+                                                            {logFiles.length > 0 && (
+                                                                <button
+                                                                    onClick={() => openLogFiles(logFiles)}
+                                                                    className="text-blue-400 hover:text-blue-300 underline text-[10px]"
+                                                                    title="첨부파일 보기"
+                                                                >
+                                                                    📎 {logFiles.length}개
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         ) : (
-                                            <tr><td colSpan={4} className="px-2 py-2 text-center text-gray-500">로그가 없습니다.</td></tr>
+                                            <tr><td colSpan={5} className="px-2 py-2 text-center text-gray-500">로그가 없습니다.</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -929,6 +971,13 @@ const ProcessRow = ({ item, defects, typeMap, onShowDefects, onRefresh, onOpenPr
                     </td>
                 </tr>
             )}
+            <FileViewerModal
+                isOpen={fileViewerOpen}
+                onClose={() => setFileViewerOpen(false)}
+                files={currentFiles}
+                title="작업일지 첨부파일"
+                readOnly={true}
+            />
         </React.Fragment>
     );
 };

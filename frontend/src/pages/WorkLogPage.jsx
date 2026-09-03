@@ -384,7 +384,6 @@ const WorkLogPage = () => {
                                         log={log}
                                         onEdit={() => handleEditClick(log)}
                                         onDelete={() => handleDeleteClick(log.id)}
-                                        onViewFiles={() => handleViewFiles(log.attachment_file)}
                                     />
                                 ))
                             )}
@@ -419,20 +418,25 @@ const WorkLogPage = () => {
                     onSuccess={handleSuccess}
                 />
             )}
-
-            <FileViewerModal
-                isOpen={fileViewerOpen}
-                onClose={() => setFileViewerOpen(false)}
-                files={currentFilesToView}
-                title="작업일지 첨부파일"
-                readOnly={true}
-            />
         </div>
     );
 };
 
-const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
+const WorkLogRow = ({ log, onEdit, onDelete }) => {
     const [open, setOpen] = useState(false);
+    const [fileViewerOpen, setFileViewerOpen] = useState(false);
+    const [currentFiles, setCurrentFiles] = useState([]);
+
+    const openFiles = (rawFiles) => {
+        let files = rawFiles;
+        if (typeof rawFiles === 'string') {
+            try { files = JSON.parse(rawFiles); } catch { files = []; }
+        }
+        if (Array.isArray(files) && files.length > 0) {
+            setCurrentFiles(files);
+            setFileViewerOpen(true);
+        }
+    };
 
     return (
         <React.Fragment>
@@ -452,14 +456,7 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                 <td className="px-4 py-4 text-gray-300">{log.worker?.name || '<미지정>'}</td>
                 <td className="px-4 py-4 font-semibold text-blue-400">{log.items?.length || 0}건</td>
                 <td className="px-4 py-4">
-                    <div className="flex items-center gap-2">
-                        <span className="truncate max-w-[300px]" title={log.note}>{log.note || '-'}</span>
-                        {log.attachment_file && safeParseJSON(log.attachment_file, []).length > 0 && (
-                            <IconButton size="small" color="info" onClick={(e) => { e.stopPropagation(); onViewFiles(); }} title="첨부파일 보기">
-                                <AttachFileIcon fontSize="small" />
-                            </IconButton>
-                        )}
-                    </div>
+                    <span className="truncate max-w-[300px]" title={log.note}>{log.note || '-'}</span>
                 </td>
                 <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1 justify-center">
@@ -489,14 +486,22 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                             <th className="px-3 py-2">공정명</th>
                                             <th className="px-3 py-2 text-right">양품</th>
                                             <th className="px-3 py-2 text-right">불량</th>
+                                            <th className="px-3 py-2 text-center">첨부</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-700 text-gray-300">
                                         {(!log.items || log.items.length === 0) ? (
-                                            <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-500">세부 작업 내역이 없습니다.</td></tr>
+                                            <tr><td colSpan={9} className="px-3 py-8 text-center text-gray-500">세부 작업 내역이 없습니다.</td></tr>
                                         ) : (
                                             log.items.map(item => {
                                                 const isInternal = !item.plan_item_id && !item.plan_item;
+                                                const attachFiles = (() => {
+                                                    const raw = log.attachment_file;
+                                                    if (!raw) return [];
+                                                    if (Array.isArray(raw)) return raw;
+                                                    try { return JSON.parse(raw); } catch { return []; }
+                                                })();
+                                                const hasFile = attachFiles.length > 0;
 
                                                 if (isInternal) {
                                                     return (
@@ -512,6 +517,13 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                                             <td className="px-3 py-2 text-gray-400">-</td>
                                                             <td className="px-3 py-2 text-right font-bold text-green-400">{item.good_quantity}</td>
                                                             <td className="px-3 py-2 text-right text-gray-500">-</td>
+                                                            <td className="px-3 py-2 text-center">
+                                                                {hasFile && (
+                                                                    <IconButton size="small" color="info" onClick={() => openFiles(attachFiles)} title="첨부파일 보기">
+                                                                        <AttachFileIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                )}
+                                                            </td>
                                                         </tr>
                                                     );
                                                 }
@@ -544,6 +556,13 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                                                         <td className="px-3 py-2">{item.plan_item?.process_name || '-'}</td>
                                                         <td className="px-3 py-2 text-right font-bold text-green-700">{item.good_quantity}</td>
                                                         <td className="px-3 py-2 text-right font-bold text-red-600">{item.bad_quantity}</td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            {hasFile && (
+                                                                <IconButton size="small" color="info" onClick={() => openFiles(attachFiles)} title="첨부파일 보기">
+                                                                    <AttachFileIcon fontSize="small" />
+                                                                </IconButton>
+                                                            )}
+                                                        </td>
                                                     </tr>
                                                 );
                                             })
@@ -555,6 +574,13 @@ const WorkLogRow = ({ log, onEdit, onDelete, onViewFiles }) => {
                     </td>
                 </tr>
             )}
+            <FileViewerModal
+                isOpen={fileViewerOpen}
+                onClose={() => setFileViewerOpen(false)}
+                files={currentFiles}
+                title="작업일지 첨부파일"
+                readOnly={true}
+            />
         </React.Fragment>
     );
 };
@@ -639,12 +665,13 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
                                             <th className="px-3 py-2 text-right">양품수량</th>
                                             <th className="px-3 py-2 text-right">공정단가</th>
                                             <th className="px-3 py-2 text-right">합계</th>
+                                            <th className="px-3 py-2 text-center">첨부</th>
                                             <th className="px-3 py-2 text-center">저장</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-700 text-gray-300">
                                         {details.length === 0 ? (
-                                            <tr><td colSpan={11} className="px-3 py-8 text-center text-gray-500">조회된 상세 내역이 없습니다.</td></tr>
+                                            <tr><td colSpan={12} className="px-3 py-8 text-center text-gray-500">조회된 상세 내역이 없습니다.</td></tr>
                                         ) : (
                                             details.map(item => (
                                                 <PerformanceDetailRow key={item.id} item={item} onUpdate={() => { fetchDetails(); onUpdate(); }} />
@@ -668,6 +695,8 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
     const defaultPrice = item.unit_price || (item.plan_item?.cost / (item.plan_item?.quantity || 1)) || 0;
     const [editPrice, setEditPrice] = useState(defaultPrice);
     const [saving, setSaving] = useState(false);
+    const [fileViewerOpen, setFileViewerOpen] = useState(false);
+    const [currentFiles, setCurrentFiles] = useState([]);
 
     const isInternal = !item.plan_item_id && !item.plan_item;
 
@@ -699,53 +728,78 @@ const PerformanceDetailRow = ({ item, onUpdate }) => {
         || plan?.stock_production?.partner?.name
         || '-';
 
+    // 첨부파일 파싱 (work_log 헤더)
+    const attachFiles = (() => {
+        const raw = item.work_log?.attachment_file;
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw;
+        try { return JSON.parse(raw); } catch { return []; }
+    })();
+    const hasFile = attachFiles.length > 0;
+
     return (
-        <tr className={`hover:bg-gray-800/40 text-gray-300 ${isInternal ? 'bg-green-900/20' : ''}`}>
-            <td className="px-3 py-2 text-gray-400 font-medium">{item.work_log?.work_date}</td>
-            <td className="px-3 py-2 text-[0.75rem]">
-                {isInternal ? <span className="text-green-400 font-bold">[내부작업]</span> : orderNo}
-            </td>
-            <td className="px-3 py-2 text-[0.75rem]">{isInternal ? '-' : perfPartnerName}</td>
-            <td className="px-3 py-2 text-[0.7rem] leading-tight text-right">
-                {isInternal ? '-' : (plan?.order?.order_date ? (
-                    <div>
-                        <div>{plan.order.order_date}</div>
-                        <div className="text-blue-400">({plan.order.delivery_date || '-'})</div>
-                    </div>
-                ) : (plan?.stock_production ? '재고생산' : '-'))}
-            </td>
-            <td className="px-3 py-2 font-bold text-gray-200">
-                {isInternal ? (
-                    <span className="text-green-300">{item.note || '-'}</span>
-                ) : (item.plan_item?.product?.name || '-')}
-            </td>
-            <td className="px-3 py-2 text-gray-400">{isInternal ? '-' : (item.plan_item?.product?.specification || '-')}</td>
-            <td className="px-3 py-2">{isInternal ? '-' : (item.plan_item?.process_name || '-')}</td>
-            <td className="px-3 py-2 text-right">
-                <input
-                    type="number"
-                    value={editQty}
-                    onChange={(e) => setEditQty(e.target.value)}
-                    className="w-16 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-right text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none"
-                />
-            </td>
-            <td className="px-3 py-2 text-right">
-                <input
-                    type="number"
-                    value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
-                    className="w-20 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-right text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none"
-                />
-            </td>
-            <td className="px-3 py-2 text-right font-bold text-blue-400">
-                {(editQty * editPrice).toLocaleString()}원
-            </td>
-            <td className="px-3 py-2 text-center">
-                <IconButton size="small" color="primary" onClick={handleSave} disabled={saving}>
-                    <SaveIcon fontSize="small" />
-                </IconButton>
-            </td>
-        </tr>
+        <>
+            <tr className={`hover:bg-gray-800/40 text-gray-300 ${isInternal ? 'bg-green-900/20' : ''}`}>
+                <td className="px-3 py-2 text-gray-400 font-medium">{item.work_log?.work_date}</td>
+                <td className="px-3 py-2 text-[0.75rem]">
+                    {isInternal ? <span className="text-green-400 font-bold">[내부작업]</span> : orderNo}
+                </td>
+                <td className="px-3 py-2 text-[0.75rem]">{isInternal ? '-' : perfPartnerName}</td>
+                <td className="px-3 py-2 text-[0.7rem] leading-tight text-right">
+                    {isInternal ? '-' : (plan?.order?.order_date ? (
+                        <div>
+                            <div>{plan.order.order_date}</div>
+                            <div className="text-blue-400">({plan.order.delivery_date || '-'})</div>
+                        </div>
+                    ) : (plan?.stock_production ? '재고생산' : '-'))}
+                </td>
+                <td className="px-3 py-2 font-bold text-gray-200">
+                    {isInternal ? (
+                        <span className="text-green-300">{item.note || '-'}</span>
+                    ) : (item.plan_item?.product?.name || '-')}
+                </td>
+                <td className="px-3 py-2 text-gray-400">{isInternal ? '-' : (item.plan_item?.product?.specification || '-')}</td>
+                <td className="px-3 py-2">{isInternal ? '-' : (item.plan_item?.process_name || '-')}</td>
+                <td className="px-3 py-2 text-right">
+                    <input
+                        type="number"
+                        value={editQty}
+                        onChange={(e) => setEditQty(e.target.value)}
+                        className="w-16 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-right text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                    />
+                </td>
+                <td className="px-3 py-2 text-right">
+                    <input
+                        type="number"
+                        value={editPrice}
+                        onChange={(e) => setEditPrice(e.target.value)}
+                        className="w-20 px-1 py-1 bg-gray-700 border border-gray-600 rounded text-right text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                    />
+                </td>
+                <td className="px-3 py-2 text-right font-bold text-blue-400">
+                    {(editQty * editPrice).toLocaleString()}원
+                </td>
+                <td className="px-3 py-2 text-center">
+                    {hasFile && (
+                        <IconButton size="small" color="info" onClick={() => { setCurrentFiles(attachFiles); setFileViewerOpen(true); }} title="첨부파일 보기">
+                            <AttachFileIcon fontSize="small" />
+                        </IconButton>
+                    )}
+                </td>
+                <td className="px-3 py-2 text-center">
+                    <IconButton size="small" color="primary" onClick={handleSave} disabled={saving}>
+                        <SaveIcon fontSize="small" />
+                    </IconButton>
+                </td>
+            </tr>
+            <FileViewerModal
+                isOpen={fileViewerOpen}
+                onClose={() => setFileViewerOpen(false)}
+                files={currentFiles}
+                title="작업일지 첨부파일"
+                readOnly={true}
+            />
+        </>
     );
 };
 
