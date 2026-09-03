@@ -1050,24 +1050,36 @@ const MobileWorkLogPage = () => {
                                                                 {/* 첨부파일: 도면 + 생산관리시트 */}
                                                                 {(() => {
                                                                     const files = [];
-                                                                    // 1) 생산관리시트 (계획 헤더)
+                                                                    // 1) 생산관리시트 (계획 헤더) — JSON 배열
                                                                     const planFiles = Array.isArray(plan.attachment_file)
                                                                         ? plan.attachment_file
                                                                         : (typeof plan.attachment_file === 'string' && plan.attachment_file)
                                                                             ? (() => { try { return JSON.parse(plan.attachment_file); } catch { return []; } })()
                                                                             : [];
                                                                     planFiles.forEach((f, i) => {
-                                                                        files.push({ label: `📋 ${f.name || `생산관리시트 ${i+1}`}`, url: f.url || f });
+                                                                        const url = typeof f === 'string' ? f : f.url;
+                                                                        if (url) files.push({ label: `📋 ${f.name || `생산관리시트 ${i + 1}`}`, url });
                                                                     });
-                                                                    // 2) 제품별 도면 (중복 제거)
+                                                                    // 2) 제품별 도면 — drawing_file은 JSON 배열 문자열 [{url, name}]
                                                                     const seenUrls = new Set();
                                                                     (plan.items || []).forEach(item => {
                                                                         const df = item.product?.drawing_file;
-                                                                        if (df && !seenUrls.has(df)) {
-                                                                            seenUrls.add(df);
-                                                                            const productName = item.product?.name || '';
-                                                                            files.push({ label: `📐 ${productName} 도면`, url: df });
-                                                                        }
+                                                                        if (!df) return;
+                                                                        const drawingList = (() => {
+                                                                            try {
+                                                                                const parsed = JSON.parse(df);
+                                                                                return Array.isArray(parsed) ? parsed : [parsed];
+                                                                            } catch { return []; }
+                                                                        })();
+                                                                        drawingList.forEach((d, di) => {
+                                                                            const url = typeof d === 'string' ? d : d.url;
+                                                                            const name = typeof d === 'string' ? null : d.name;
+                                                                            if (url && !seenUrls.has(url)) {
+                                                                                seenUrls.add(url);
+                                                                                const label = `📐 ${item.product?.name || ''}${drawingList.length > 1 ? ` 도면${di + 1}` : ' 도면'}`;
+                                                                                files.push({ label, url });
+                                                                            }
+                                                                        });
                                                                     });
                                                                     if (files.length === 0) return null;
                                                                     return (
