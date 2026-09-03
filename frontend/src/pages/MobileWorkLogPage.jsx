@@ -833,6 +833,14 @@ const MobileWorkLogPage = () => {
             productNameStr.toLowerCase().includes(q) ||
             partnerName.toLowerCase().includes(q) ||
             specStr.toLowerCase().includes(q);
+    }).sort((a, b) => {
+        // 수주일 기준 내림차순 (최신 수주가 위)
+        const dateA = a.order?.order_date || a.stock_production?.created_at || '';
+        const dateB = b.order?.order_date || b.stock_production?.created_at || '';
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;  // 수주 없으면 아래로
+        if (!dateB) return -1;
+        return dateB.localeCompare(dateA); // 내림차순
     });
 
     // Performance Aggregation with fallback price

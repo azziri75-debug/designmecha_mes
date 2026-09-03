@@ -237,9 +237,8 @@ const MobileLayout = () => {
                     value={getActiveTab()}
                     onChange={handleTabChange}
                     sx={{
-                        // 탭 5개 기준 72px × 5 = 360px (일반), ADMIN은 432px
-                        // 화면보다 넓으면 Paper의 overflow-x: auto로 스크롤됨
-                        minWidth: isAdmin ? '432px' : '360px',
+                        // 6개 탭 기준 72px × 6 = 432px — 화면보다 넓으면 가로 스크롤
+                        minWidth: '432px',
                         width: '100%',
                         height: 64,
                         '& .MuiBottomNavigationAction-root': {
@@ -282,9 +281,7 @@ const MobileLayout = () => {
                         }
                     />
                     <BottomNavigationAction label="근태현황" icon={<AssignmentIndIcon />} />
-                    {isAdmin && (
-                        <BottomNavigationAction label="재고현황" icon={<InventoryIcon />} />
-                    )}
+                    <BottomNavigationAction label="재고현황" icon={<InventoryIcon />} />
                 </BottomNavigation>
             </Paper>
         </Box>
