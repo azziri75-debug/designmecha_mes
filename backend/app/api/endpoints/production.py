@@ -2660,7 +2660,7 @@ async def get_my_work_orders(
             if matched and matched.attachment_file:
                 std_proc_file = matched.attachment_file  # String 경로
 
-        # 생산계획 공정 첨부파일 (JSON)
+        # 생산계획 공정 첨부파일 (JSON) — 공정별 개별 첨부
         plan_item_files = []
         if item.attachment_file:
             if isinstance(item.attachment_file, list):
@@ -2668,6 +2668,17 @@ async def get_my_work_orders(
             elif isinstance(item.attachment_file, str):
                 try:
                     plan_item_files = json.loads(item.attachment_file)
+                except Exception:
+                    pass
+
+        # 생산관리시트 — 생산계획 헤더 첨부파일 (PDF 등)
+        plan_files = []
+        if plan and plan.attachment_file:
+            if isinstance(plan.attachment_file, list):
+                plan_files = plan.attachment_file
+            elif isinstance(plan.attachment_file, str):
+                try:
+                    plan_files = json.loads(plan.attachment_file)
                 except Exception:
                     pass
 
@@ -2695,9 +2706,10 @@ async def get_my_work_orders(
             "partner_name": partner_name,
             "delivery_date": str(delivery_date) if delivery_date else None,
             "plan_date": str(plan.plan_date) if plan else None,
-            # 첨부파일
-            "std_proc_file": std_proc_file,           # 표준공정 파일 (String 경로)
-            "plan_item_files": plan_item_files,        # 생산계획 공정 파일 (JSON list)
+            # 첨부파일 3가지
+            "std_proc_file": std_proc_file,       # 표준공정 도면/자료 (String 경로)
+            "plan_item_files": plan_item_files,    # 공정별 첨부파일 (JSON list)
+            "plan_files": plan_files,              # 생산관리시트 등 계획 헤더 파일 (JSON list)
         })
 
     return output

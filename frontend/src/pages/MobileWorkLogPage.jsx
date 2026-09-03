@@ -1375,6 +1375,20 @@ const MobileWorkLogPage = () => {
 
                     {/* Tab 1: 작업지시 */}
                     <Box sx={{ width: '20%', p: 2 }}>
+                        {/* 헤더: 새로고침 버튼 */}
+                        <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={fetchMyWorkOrders}
+                                disabled={workOrderLoading}
+                                startIcon={workOrderLoading ? <CircularProgress size={12} /> : null}
+                                sx={{ fontSize: '0.72rem', py: 0.4, px: 1.2 }}
+                            >
+                                {workOrderLoading ? '로딩중' : '🔄 새로고침'}
+                            </Button>
+                        </Stack>
+
                         {workOrderLoading ? (
                             <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress size={28} /></Box>
                         ) : myWorkOrders.length === 0 ? (
@@ -1402,12 +1416,20 @@ const MobileWorkLogPage = () => {
                                     }[wo.status] || wo.status;
 
                                     const allFiles = [];
+                                    // 1) 표준공정 도면/자료
                                     if (wo.std_proc_file) {
-                                        allFiles.push({ name: '공정 도면/자료', url: wo.std_proc_file, isStd: true });
+                                        allFiles.push({ name: '📐 공정 도면/자료', url: wo.std_proc_file });
                                     }
+                                    // 2) 생산관리시트 (계획 헤더 첨부)
+                                    if (Array.isArray(wo.plan_files)) {
+                                        wo.plan_files.forEach((f, idx) => {
+                                            allFiles.push({ name: f.name || `📋 생산관리시트 ${idx + 1}`, url: f.url || f });
+                                        });
+                                    }
+                                    // 3) 공정별 개별 첨부파일
                                     if (Array.isArray(wo.plan_item_files)) {
                                         wo.plan_item_files.forEach((f, idx) => {
-                                            allFiles.push({ name: f.name || `첨부파일 ${idx + 1}`, url: f.url || f, isStd: false });
+                                            allFiles.push({ name: f.name || `📎 첨부파일 ${idx + 1}`, url: f.url || f });
                                         });
                                     }
 

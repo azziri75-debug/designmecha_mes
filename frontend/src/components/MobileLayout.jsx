@@ -230,7 +230,24 @@ const MobileLayout = () => {
                     showLabels
                     value={getActiveTab()}
                     onChange={handleTabChange}
-                    sx={{ height: 64, pb: 2 }} // Added pb for safe areas
+                    sx={{
+                        height: 60,
+                        pb: 1,
+                        '& .MuiBottomNavigationAction-root': {
+                            minWidth: 'unset',
+                            flex: 1,
+                            px: 0.5,
+                            py: 0.5,
+                        },
+                        '& .MuiBottomNavigationAction-label': {
+                            fontSize: '0.58rem !important',
+                            lineHeight: 1.2,
+                            whiteSpace: 'nowrap',
+                        },
+                        '& .MuiSvgIcon-root': {
+                            fontSize: '1.3rem',
+                        },
+                    }}
                 >
                     <BottomNavigationAction label="생산현황" icon={<AssignmentIcon />} />
                     <BottomNavigationAction label="작업지시" icon={<WorkOrderIcon />} />
