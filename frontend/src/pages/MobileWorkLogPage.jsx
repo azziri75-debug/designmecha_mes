@@ -1046,6 +1046,57 @@ const MobileWorkLogPage = () => {
                                                                 <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
                                                                     {plan.items?.length || 0}개 공정
                                                                 </Typography>
+
+                                                                {/* 첨부파일: 도면 + 생산관리시트 */}
+                                                                {(() => {
+                                                                    const files = [];
+                                                                    // 1) 생산관리시트 (계획 헤더)
+                                                                    const planFiles = Array.isArray(plan.attachment_file)
+                                                                        ? plan.attachment_file
+                                                                        : (typeof plan.attachment_file === 'string' && plan.attachment_file)
+                                                                            ? (() => { try { return JSON.parse(plan.attachment_file); } catch { return []; } })()
+                                                                            : [];
+                                                                    planFiles.forEach((f, i) => {
+                                                                        files.push({ label: `📋 ${f.name || `생산관리시트 ${i+1}`}`, url: f.url || f });
+                                                                    });
+                                                                    // 2) 제품별 도면 (중복 제거)
+                                                                    const seenUrls = new Set();
+                                                                    (plan.items || []).forEach(item => {
+                                                                        const df = item.product?.drawing_file;
+                                                                        if (df && !seenUrls.has(df)) {
+                                                                            seenUrls.add(df);
+                                                                            const productName = item.product?.name || '';
+                                                                            files.push({ label: `📐 ${productName} 도면`, url: df });
+                                                                        }
+                                                                    });
+                                                                    if (files.length === 0) return null;
+                                                                    return (
+                                                                        <Box sx={{ mt: 0.8, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}
+                                                                            onClick={e => e.stopPropagation()}
+                                                                        >
+                                                                            {files.map((f, idx) => (
+                                                                                <Chip
+                                                                                    key={idx}
+                                                                                    label={f.label}
+                                                                                    size="small"
+                                                                                    variant="outlined"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        window.open(f.url, '_blank');
+                                                                                    }}
+                                                                                    sx={{
+                                                                                        fontSize: '0.68rem',
+                                                                                        height: 22,
+                                                                                        cursor: 'pointer',
+                                                                                        borderColor: '#3b82f6',
+                                                                                        color: '#3b82f6',
+                                                                                        '&:hover': { bgcolor: '#eff6ff' }
+                                                                                    }}
+                                                                                />
+                                                                            ))}
+                                                                        </Box>
+                                                                    );
+                                                                })()}
                                                             </Box>
                                                             <ChevronRightIcon color="action" />
                                                         </Stack>
