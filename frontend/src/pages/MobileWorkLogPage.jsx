@@ -134,7 +134,7 @@ const MobileWorkLogPage = () => {
     const [bulkBadQty, setBulkBadQty] = useState('0');
     const [note, setNote] = useState('');
     const [workDate, setWorkDate] = useState(new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', ''));
-    const [photos, setPhotos] = useState([]);
+    const [itemPhotos, setItemPhotos] = useState({});  // { [itemId]: File[] }
 
     // Conflict Dialog
     const [conflictOpen, setConflictOpen] = useState(false);
@@ -498,14 +498,24 @@ const MobileWorkLogPage = () => {
         }
     };
 
-    const handlePhotoCapture = (e) => {
-
+    const handlePhotoCapture = (itemId, e) => {
         const files = Array.from(e.target.files);
-        if (photos.length + files.length > 5) {
+        const current = itemPhotos[itemId] || [];
+        if (current.length + files.length > 5) {
             alert("사진은 최대 5장까지 가능합니다.");
             return;
         }
-        setPhotos([...photos, ...files]);
+        setItemPhotos(prev => ({
+            ...prev,
+            [itemId]: [...current, ...files]
+        }));
+    };
+
+    const removePhoto = (itemId, idx) => {
+        setItemPhotos(prev => ({
+            ...prev,
+            [itemId]: (prev[itemId] || []).filter((_, i) => i !== idx)
+        }));
     };
 
     const handleSaveLog = async (mode = "CREATE") => {
@@ -537,26 +547,30 @@ const MobileWorkLogPage = () => {
 
         setLoading(true);
         try {
-            const uploadedPhotos = [];
-            for (const file of photos) {
-                const formData = new FormData();
-                formData.append('file', file);
-
-                // Remove explicit Content-Type to let browser handle boundary
-                const uploadRes = await api.post('/upload', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-                uploadedPhotos.push({
-                    name: uploadRes.data.filename,
-                    url: uploadRes.data.url
-                });
+            // 공정별 사진 업로드
+            const itemUploadedPhotos = {};
+            for (const item of selectedItems) {
+                const files = itemPhotos[item.id] || [];
+                const uploaded = [];
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const uploadRes = await api.post('/upload', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    uploaded.push({
+                        name: uploadRes.data.filename,
+                        url: uploadRes.data.url
+                    });
+                }
+                itemUploadedPhotos[item.id] = uploaded;
             }
 
             const payload = {
                 work_date: workDate,
                 worker_id: user.id,
                 note: note,
-                attachment_file: [],  // WorkLog 헤더는 비움 (공정별로 관리)
+                attachment_file: [],
                 mode: mode,
                 items: selectedItems.map(item => ({
                     plan_item_id: item.id,
@@ -564,7 +578,7 @@ const MobileWorkLogPage = () => {
                     good_quantity: parseInt(itemRecords[item.id]?.good || 0),
                     bad_quantity: parseInt(itemRecords[item.id]?.bad || 0),
                     note: note,
-                    attachment_file: uploadedPhotos  // 공정별 첨부사진
+                    attachment_file: itemUploadedPhotos[item.id] || []
                 }))
             };
 
@@ -578,7 +592,7 @@ const MobileWorkLogPage = () => {
             setBulkBadQty('0');
             setSelectedPlan(null);
             setNote('');
-            setPhotos([]);
+            setItemPhotos({});
             setWorkDate(new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', ''));
             setTab(0);
             setConflictOpen(false);
@@ -1380,6 +1394,50 @@ const MobileWorkLogPage = () => {
                                                         }
                                                         return null;
                                                     })()}
+
+                                                    {/* 공정별 사진 첨부 */}
+                                                    <Box sx={{ mt: 1 }}>
+                                                        <Typography variant="caption" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                            <PhotoCameraIcon sx={{ fontSize: 13 }} />
+                                                            사진 ({(itemPhotos[item.id] || []).length}/5)
+                                                        </Typography>
+                                                        <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 0.5 }}>
+                                                            {(itemPhotos[item.id] || []).map((p, idx) => (
+                                                                <Box key={idx} sx={{ position: 'relative', width: 52, height: 52 }}>
+                                                                    <img
+                                                                        src={URL.createObjectURL(p)}
+                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }}
+                                                                        alt="capture"
+                                                                    />
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        sx={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#fff', boxShadow: 1, p: 0.2 }}
+                                                                        onClick={() => removePhoto(item.id, idx)}
+                                                                    >
+                                                                        <DeleteIcon sx={{ fontSize: 12 }} color="error" />
+                                                                    </IconButton>
+                                                                </Box>
+                                                            ))}
+                                                            {(itemPhotos[item.id] || []).length < 5 && (
+                                                                <Button
+                                                                    variant="outlined"
+                                                                    component="label"
+                                                                    sx={{ width: 52, height: 52, borderStyle: 'dashed', borderRadius: 1.5, minWidth: 0, p: 0 }}
+                                                                    size="small"
+                                                                >
+                                                                    <PhotoCameraIcon sx={{ fontSize: 18 }} />
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        capture="environment"
+                                                                        hidden
+                                                                        multiple
+                                                                        onChange={e => handlePhotoCapture(item.id, e)}
+                                                                    />
+                                                                </Button>
+                                                            )}
+                                                        </Stack>
+                                                    </Box>
                                                 </Paper>
                                             ))}
                                         </Stack>
@@ -1405,38 +1463,6 @@ const MobileWorkLogPage = () => {
                                         onChange={e => setNote(e.target.value)}
                                         fullWidth
                                     />
-
-                                    <Box>
-                                        <Typography variant="subtitle2" gutterBottom fontWeight="bold">현장 사진 ({photos.length}/5)</Typography>
-                                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                                            {photos.map((p, idx) => (
-                                                <Box key={idx} sx={{ position: 'relative', width: 64, height: 64 }}>
-                                                    <img
-                                                        src={URL.createObjectURL(p)}
-                                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
-                                                        alt="capture"
-                                                    />
-                                                    <IconButton
-                                                        size="small"
-                                                        sx={{ position: 'absolute', top: -8, right: -8, backgroundColor: '#fff', boxShadow: 1 }}
-                                                        onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
-                                                    >
-                                                        <DeleteIcon fontSize="inherit" color="error" />
-                                                    </IconButton>
-                                                </Box>
-                                            ))}
-                                            {photos.length < 5 && (
-                                                <Button
-                                                    variant="outlined"
-                                                    component="label"
-                                                    sx={{ width: 64, height: 64, borderStyle: 'dashed', borderRadius: 2 }}
-                                                >
-                                                    <PhotoCameraIcon />
-                                                    <input type="file" accept="image/*" capture="environment" hidden onChange={handlePhotoCapture} multiple />
-                                                </Button>
-                                            )}
-                                        </Stack>
-                                    </Box>
 
                                     <Button
                                         variant="contained"
