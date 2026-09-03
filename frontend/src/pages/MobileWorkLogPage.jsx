@@ -72,6 +72,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
+import { useWorkOrderBadge } from '../contexts/WorkOrderBadgeContext';
 import { useSSE } from '../hooks/useSSE';
 import api from '../lib/api';
 import { safeParseJSON } from '../lib/utils';
@@ -85,6 +86,7 @@ const ATTENDANCE_DOC_META = {
 const MobileWorkLogPage = () => {
     const { user, logout } = useAuth();
     const { waitingCount } = useApprovalBadge();
+    const { refresh: refreshWorkOrderBadge } = useWorkOrderBadge();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -402,6 +404,8 @@ const MobileWorkLogPage = () => {
         try {
             const res = await api.get('/production/my-work-orders');
             setMyWorkOrders(res.data);
+            // 배지 카운트도 동기화
+            refreshWorkOrderBadge();
         } catch (err) {
             console.error('WorkOrder fetch error:', err);
         } finally {

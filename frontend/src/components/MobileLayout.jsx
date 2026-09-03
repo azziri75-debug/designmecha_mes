@@ -30,11 +30,13 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
+import { useWorkOrderBadge } from '../contexts/WorkOrderBadgeContext';
 
 const MobileLayout = () => {
     const { user, logout } = useAuth();
     const isAdmin = user?.user_type === 'ADMIN';
     const { waitingCount } = useApprovalBadge();
+    const { workOrderCount } = useWorkOrderBadge();
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -216,7 +218,7 @@ const MobileLayout = () => {
                 </Fab>
             </Zoom>
 
-            {/* Global Bottom Navigation - Fixed at Bottom */}
+            {/* Global Bottom Navigation - Fixed at Bottom (가로 스크롤) */}
             <Paper sx={{ 
                 position: 'fixed', 
                 bottom: 0, 
@@ -224,33 +226,47 @@ const MobileLayout = () => {
                 right: 0, 
                 flexShrink: 0, 
                 boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
-                zIndex: 1100 
+                zIndex: 1100,
+                overflowX: 'auto',
+                // 스크롤바 숨김 (모바일)
+                '&::-webkit-scrollbar': { display: 'none' },
+                scrollbarWidth: 'none',
             }} elevation={3}>
                 <BottomNavigation
                     showLabels
                     value={getActiveTab()}
                     onChange={handleTabChange}
                     sx={{
-                        height: 60,
-                        pb: 1,
+                        // 탭 5개 기준 72px × 5 = 360px (일반), ADMIN은 432px
+                        // 화면보다 넓으면 Paper의 overflow-x: auto로 스크롤됨
+                        minWidth: isAdmin ? '432px' : '360px',
+                        width: '100%',
+                        height: 64,
                         '& .MuiBottomNavigationAction-root': {
-                            minWidth: 'unset',
-                            flex: 1,
+                            minWidth: 72,
+                            maxWidth: 96,
                             px: 0.5,
-                            py: 0.5,
                         },
                         '& .MuiBottomNavigationAction-label': {
-                            fontSize: '0.58rem !important',
-                            lineHeight: 1.2,
+                            fontSize: '0.7rem !important',
                             whiteSpace: 'nowrap',
-                        },
-                        '& .MuiSvgIcon-root': {
-                            fontSize: '1.3rem',
                         },
                     }}
                 >
                     <BottomNavigationAction label="생산현황" icon={<AssignmentIcon />} />
-                    <BottomNavigationAction label="작업지시" icon={<WorkOrderIcon />} />
+                    <BottomNavigationAction
+                        label="작업지시"
+                        icon={
+                            <Badge
+                                badgeContent={workOrderCount}
+                                color="warning"
+                                max={9}
+                                sx={{ '& .MuiBadge-badge': { fontSize: '9px', height: 16, minWidth: 16 } }}
+                            >
+                                <WorkOrderIcon />
+                            </Badge>
+                        }
+                    />
                     <BottomNavigationAction label="내 실적" icon={<BarChartIcon />} />
                     <BottomNavigationAction
                         label="전자결재"
