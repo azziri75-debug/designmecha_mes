@@ -991,7 +991,7 @@ const MobileWorkLogPage = () => {
                                             const productNameStr = getProductNameStr(plan);
 
                                             return (
-                                                <Card key={plan.id} sx={{ borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }} onClick={(e) => { if (e.target.closest('a')) return; setSelectedPlan(plan); }}>
+                                                <Card key={plan.id} sx={{ borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }} onClick={(e) => { if (e.target.closest('a') || e.target.closest('[data-file-chip]')) return; setSelectedPlan(plan); }}>
                                                     <CardContent sx={{ p: '10px !important' }}>
                                                         <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                             <Box sx={{ flex: 1 }}>
@@ -1085,28 +1085,31 @@ const MobileWorkLogPage = () => {
                                                                     return (
                                                                         <Box sx={{ mt: 0.8, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                                                             {files.map((f, idx) => (
-                                                                                <a
+                                                                                <Chip
                                                                                     key={idx}
-                                                                                    href={f.url}
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    onClick={e => e.stopPropagation()}
-                                                                                    style={{ textDecoration: 'none' }}
-                                                                                >
-                                                                                    <Chip
-                                                                                        label={f.label}
-                                                                                        size="small"
-                                                                                        variant="outlined"
-                                                                                        sx={{
-                                                                                            fontSize: '0.68rem',
-                                                                                            height: 22,
-                                                                                            cursor: 'pointer',
-                                                                                            borderColor: '#3b82f6',
-                                                                                            color: '#3b82f6',
-                                                                                            '&:hover': { bgcolor: '#eff6ff' }
-                                                                                        }}
-                                                                                    />
-                                                                                </a>
+                                                                                    label={f.label}
+                                                                                    size="small"
+                                                                                    variant="outlined"
+                                                                                    data-file-chip="true"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        e.nativeEvent.stopImmediatePropagation();
+                                                                                        const url = f.url;
+                                                                                        if (url) {
+                                                                                            // preview 엔드포인트로 브라우저 인라인 미리보기
+                                                                                            const previewUrl = `/api/v1/preview?path=${encodeURIComponent(url)}`;
+                                                                                            window.open(previewUrl, '_blank');
+                                                                                        }
+                                                                                    }}
+                                                                                    sx={{
+                                                                                        fontSize: '0.68rem',
+                                                                                        height: 22,
+                                                                                        cursor: 'pointer',
+                                                                                        borderColor: '#3b82f6',
+                                                                                        color: '#3b82f6',
+                                                                                        '&:hover': { bgcolor: '#eff6ff' }
+                                                                                    }}
+                                                                                />
                                                                             ))}
                                                                         </Box>
                                                                     );
