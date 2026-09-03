@@ -26,6 +26,7 @@ import {
     MoreVert as MoreVertIcon,
     Inventory2 as InventoryIcon,
     KeyboardArrowUp as KeyboardArrowUpIcon,
+    BuildCircle as WorkOrderIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
@@ -57,17 +58,17 @@ const MobileLayout = () => {
 
     // Sync bottom navigation with current path
     const getActiveTab = () => {
-        if (location.pathname.startsWith('/mobile/attendance')) return 3;
-        if (location.pathname.startsWith('/mobile/inventory')) return 4;
+        if (location.pathname.startsWith('/mobile/attendance')) return 4;
+        if (location.pathname.startsWith('/mobile/inventory')) return 5;
         const tab = searchParams.get('tab');
         if (tab) return parseInt(tab);
         return 0;
     };
 
     const handleTabChange = (event, newValue) => {
-        if (newValue === 3) {
+        if (newValue === 4) {
             navigate('/mobile/attendance');
-        } else if (newValue === 4) {
+        } else if (newValue === 5) {
             navigate('/mobile/inventory');
         } else {
             // Force return to work logs if navigating to work-log related tabs
@@ -151,10 +152,11 @@ const MobileLayout = () => {
                                 const tab = getActiveTab();
                                 switch(tab) {
                                     case 0: return '생산현황';
-                                    case 1: return '내 실적';
-                                    case 2: return '전자결재';
-                                    case 3: return '근태관리';
-                                    case 4: return '재고현황';
+                                    case 1: return '작업지시';
+                                    case 2: return '내 실적';
+                                    case 3: return '전자결재';
+                                    case 4: return '근태관리';
+                                    case 5: return '재고현황';
                                     default: return '현장 작업관리';
                                 }
                             })()}
@@ -231,6 +233,7 @@ const MobileLayout = () => {
                     sx={{ height: 64, pb: 2 }} // Added pb for safe areas
                 >
                     <BottomNavigationAction label="생산현황" icon={<AssignmentIcon />} />
+                    <BottomNavigationAction label="작업지시" icon={<WorkOrderIcon />} />
                     <BottomNavigationAction label="내 실적" icon={<BarChartIcon />} />
                     <BottomNavigationAction
                         label="전자결재"

@@ -68,6 +68,7 @@ import {
     WorkHistory as OvertimeIcon,
     AccessTime as ClockIcon,
     DeleteOutline as DeleteOutlineIcon,
+    BuildCircle as WorkOrderIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
@@ -167,7 +168,12 @@ const MobileWorkLogPage = () => {
     const [internalWorkWorker, setInternalWorkWorker] = useState(''); // ADMIN용 작업자 선택
     const [internalWorkSaving, setInternalWorkSaving] = useState(false);
 
-
+    // 작업지시 탭 state
+    const [myWorkOrders, setMyWorkOrders] = useState([]);
+    const [workOrderLoading, setWorkOrderLoading] = useState(false);
+    const [woFileViewerOpen, setWoFileViewerOpen] = useState(false);
+    const [woFiles, setWoFiles] = useState([]);   // { name, url } 배열
+    const [woFileTitle, setWoFileTitle] = useState('');
 
     // Derived selections
     const selectedPlan = useMemo(() =>
@@ -252,7 +258,7 @@ const MobileWorkLogPage = () => {
 
         if (distance > 70) {
             // Swipe Left -> Move Next
-            if (tab < 3) setTab(tab + 1);
+            if (tab < 4) setTab(tab + 1);
         } else if (distance < -70) {
             // Swipe Right -> Move Prev
             if (tab > 0) setTab(tab - 1);
@@ -356,12 +362,13 @@ const MobileWorkLogPage = () => {
     useEffect(() => {
         if (!user) return;
         if (tab === 0) fetchAllPlans();
-        if (tab === 1) {
+        if (tab === 1) fetchMyWorkOrders();         // 작업지시
+        if (tab === 2) {                            // 내 실적
             fetchPerformance();
             if (user.user_type === 'ADMIN') fetchStaffList();
         }
-        if (tab === 2) fetchApprovalDocs();
-        if (tab === 3) {
+        if (tab === 3) fetchApprovalDocs();         // 전자결재
+        if (tab === 4) {                            // 근태
             if (user.user_type === 'ADMIN') fetchStaffList();
             fetchAttendanceSummary();
         }
@@ -386,9 +393,21 @@ const MobileWorkLogPage = () => {
     // SSE: 결재 이벤트 수신 시 결재 탭이 활성화된 경우 자동 갱신
     useSSE((eventName) => {
         if (eventName === 'approval_updated') {
-            if (tab === 2) fetchApprovalDocs();
+            if (tab === 3) fetchApprovalDocs();   // 전자결재는 이제 tab 3
         }
     });
+
+    const fetchMyWorkOrders = async () => {
+        setWorkOrderLoading(true);
+        try {
+            const res = await api.get('/production/my-work-orders');
+            setMyWorkOrders(res.data);
+        } catch (err) {
+            console.error('WorkOrder fetch error:', err);
+        } finally {
+            setWorkOrderLoading(false);
+        }
+    };
 
     const fetchAllPlans = async () => {
         setLoading(true);
@@ -891,12 +910,12 @@ const MobileWorkLogPage = () => {
             >
                 <Box sx={{
                     display: 'flex',
-                    width: '400%',
-                    transform: `translateX(-${tab * 25}%)`,
+                    width: '500%',
+                    transform: `translateX(-${tab * 20}%)`,
                     transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}>
-                    {/* Tab 1: Production Status */}
-                    <Box sx={{ width: '25%', p: 2 }}>
+                    {/* Tab 0: Production Status */}
+                    <Box sx={{ width: '20%', p: 2 }}>
                         {!selectedPlan && !selectedItem ? (
                             /* Step 1: Browse Production Plans */
                             <Box>
@@ -1354,8 +1373,139 @@ const MobileWorkLogPage = () => {
                         )}
                     </Box>
 
-                    {/* Tab 2: Performance */}
-                    <Box sx={{ width: '25%', p: 2 }}>
+                    {/* Tab 1: 작업지시 */}
+                    <Box sx={{ width: '20%', p: 2 }}>
+                        {workOrderLoading ? (
+                            <Box sx={{ textAlign: 'center', mt: 4 }}><CircularProgress size={28} /></Box>
+                        ) : myWorkOrders.length === 0 ? (
+                            <Box sx={{ textAlign: 'center', mt: 6, color: '#94a3b8' }}>
+                                <WorkOrderIcon sx={{ fontSize: 52, opacity: 0.25, mb: 1 }} />
+                                <Typography variant="body2">배정된 작업지시가 없습니다.</Typography>
+                                <Typography variant="caption" color="textSecondary">
+                                    완료되지 않은 사내 공정이 배정되면 여기에 표시됩니다.
+                                </Typography>
+                            </Box>
+                        ) : (
+                            <Stack spacing={1.5}>
+                                {myWorkOrders.map(wo => {
+                                    const statusColor = {
+                                        PLANNED: '#64748b',
+                                        CONFIRMED: '#2563eb',
+                                        IN_PROGRESS: '#f59e0b',
+                                        PENDING: '#94a3b8',
+                                    }[wo.status] || '#64748b';
+                                    const statusLabel = {
+                                        PLANNED: '계획',
+                                        CONFIRMED: '확정',
+                                        IN_PROGRESS: '진행중',
+                                        PENDING: '대기',
+                                    }[wo.status] || wo.status;
+
+                                    const allFiles = [];
+                                    if (wo.std_proc_file) {
+                                        allFiles.push({ name: '공정 도면/자료', url: wo.std_proc_file, isStd: true });
+                                    }
+                                    if (Array.isArray(wo.plan_item_files)) {
+                                        wo.plan_item_files.forEach((f, idx) => {
+                                            allFiles.push({ name: f.name || `첨부파일 ${idx + 1}`, url: f.url || f, isStd: false });
+                                        });
+                                    }
+
+                                    const isOverdue = wo.end_date && new Date(wo.end_date) < new Date() && wo.status !== 'COMPLETED';
+
+                                    return (
+                                        <Card key={wo.id} sx={{ borderRadius: 2, border: isOverdue ? '1.5px solid #ef4444' : '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                                            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                                {/* 상단: 상태 뱃지 + 참조번호 */}
+                                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.8 }}>
+                                                    <Chip
+                                                        label={statusLabel}
+                                                        size="small"
+                                                        sx={{ bgcolor: statusColor, color: '#fff', fontSize: '0.7rem', height: 20, fontWeight: 'bold' }}
+                                                    />
+                                                    <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.68rem' }}>
+                                                        {wo.ref_no}
+                                                    </Typography>
+                                                </Stack>
+
+                                                {/* 제품명 + 규격 */}
+                                                <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: '0.9rem', mb: 0.3 }}>
+                                                    {wo.product?.name || '-'}
+                                                    {wo.product?.specification && (
+                                                        <Typography component="span" variant="caption" sx={{ ml: 0.5, color: '#64748b' }}>
+                                                            ({wo.product.specification})
+                                                        </Typography>
+                                                    )}
+                                                </Typography>
+
+                                                {/* 공정명 + 순서 */}
+                                                <Typography variant="body2" sx={{ color: '#1e40af', fontWeight: 'bold', fontSize: '0.82rem', mb: 0.3 }}>
+                                                    🔧 {wo.process_name} (순서 {wo.sequence})
+                                                </Typography>
+
+                                                {/* 수량 + 납기 */}
+                                                <Stack direction="row" spacing={1.5} sx={{ mb: 0.5 }}>
+                                                    <Typography variant="caption" color="textSecondary">
+                                                        수량: <strong>{wo.quantity} {wo.product?.unit || 'EA'}</strong>
+                                                    </Typography>
+                                                    {wo.delivery_date && (
+                                                        <Typography variant="caption" sx={{ color: isOverdue ? '#ef4444' : '#475569', fontWeight: isOverdue ? 'bold' : 'normal' }}>
+                                                            납기: {wo.delivery_date} {isOverdue && '⚠️'}
+                                                        </Typography>
+                                                    )}
+                                                </Stack>
+
+                                                {/* 계획일 */}
+                                                {(wo.start_date || wo.end_date) && (
+                                                    <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 0.8 }}>
+                                                        계획: {wo.start_date || '?'} ~ {wo.end_date || '?'}
+                                                    </Typography>
+                                                )}
+
+                                                {/* 첨부파일 */}
+                                                {allFiles.length > 0 && (
+                                                    <Box sx={{ mb: 1 }}>
+                                                        {allFiles.map((f, idx) => (
+                                                            <Chip
+                                                                key={idx}
+                                                                label={`📎 ${f.name}`}
+                                                                size="small"
+                                                                variant="outlined"
+                                                                onClick={() => {
+                                                                    const fileUrl = typeof f.url === 'string' ? f.url : f.url?.url;
+                                                                    if (fileUrl) window.open(fileUrl, '_blank');
+                                                                }}
+                                                                sx={{ mr: 0.5, mb: 0.5, fontSize: '0.7rem', cursor: 'pointer', borderColor: '#3b82f6', color: '#3b82f6' }}
+                                                            />
+                                                        ))}
+                                                    </Box>
+                                                )}
+
+                                                {/* 작업일지 등록 버튼 */}
+                                                <Button
+                                                    variant="contained"
+                                                    size="small"
+                                                    fullWidth
+                                                    onClick={() => {
+                                                        // 생산현황 탭으로 이동 후 해당 plan의 item 선택
+                                                        const planId = wo.plan_id;
+                                                        const itemId = wo.id;
+                                                        setSearchParams({ tab: 0, planId: String(planId), itemId: String(itemId) });
+                                                    }}
+                                                    sx={{ mt: 0.5, bgcolor: '#1e40af', '&:hover': { bgcolor: '#1d4ed8' }, fontSize: '0.78rem', py: 0.5 }}
+                                                >
+                                                    ✅ 작업일지 등록
+                                                </Button>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </Stack>
+                        )}
+                    </Box>
+
+                    {/* Tab 2: Performance (내 실적) */}
+                    <Box sx={{ width: '20%', p: 2 }}>
                         {/* Filters & Summary */}
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 3, backgroundColor: '#1a237e', color: '#fff' }}>
                             <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
@@ -1647,8 +1797,8 @@ const MobileWorkLogPage = () => {
                         )}
                     </Box>
 
-                    {/* Tab 3: Approval */}
-                    <Box sx={{ width: '25%', p: 2, bgcolor: '#f1f5f9' }}>
+                    {/* Tab 3: Approval (전자결재) */}
+                    <Box sx={{ width: '20%', p: 2, bgcolor: '#f1f5f9' }}>
                         <Stack direction="row" spacing={1} sx={{ mb: 2, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { display: 'none' } }}>
                             {[
                                 { id: 'ALL', label: '전체' },
@@ -1758,8 +1908,8 @@ const MobileWorkLogPage = () => {
                         )}
                     </Box>
 
-                    {/* Tab 4: Attendance */}
-                    <Box sx={{ width: '25%', p: 2 }}>
+                    {/* Tab 4: Attendance (근태현황) */}
+                    <Box sx={{ width: '20%', p: 2 }}>
                         <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
                             <Stack direction="row" spacing={1} sx={{ mb: user?.user_type === 'ADMIN' ? 1.5 : 0 }}>
                                 <FormControl size="small" fullWidth>

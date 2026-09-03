@@ -2570,3 +2570,134 @@ async def delete_work_log_item(
             await db.commit()
 
     return {"ok": True, "id": item_id}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 작업지시 탭 API — 현재 로그인 작업자에게 배정된 미완료 사내 공정 목록
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.get("/my-work-orders")
+async def get_my_work_orders(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+) -> Any:
+    """
+    현재 로그인한 작업자에게 배정된 미완료 사내 생산 공정 목록을 반환합니다.
+    - course_type = INTERNAL
+    - worker_id = current_user.id
+    - status NOT IN (COMPLETED, CANCELED)
+    각 항목에 첨부파일(생산계획 + 표준공정)을 포함합니다.
+    """
+    result = await db.execute(
+        select(ProductionPlanItem)
+        .options(
+            selectinload(ProductionPlanItem.product).options(
+                selectinload(Product.standard_processes).selectinload(ProductProcess.process),
+                selectinload(Product.partner),
+            ),
+            selectinload(ProductionPlanItem.plan).options(
+                selectinload(ProductionPlan.order).options(
+                    selectinload(SalesOrder.partner),
+                ),
+                selectinload(ProductionPlan.stock_production).options(
+                    selectinload(StockProduction.partner),
+                ),
+            ),
+            selectinload(ProductionPlanItem.worker),
+            selectinload(ProductionPlanItem.equipment),
+        )
+        .where(
+            ProductionPlanItem.worker_id == current_user.id,
+            ProductionPlanItem.course_type == "INTERNAL",
+            ProductionPlanItem.status.notin_([
+                ProductionStatus.COMPLETED,
+                ProductionStatus.CANCELED,
+            ]),
+        )
+        .order_by(
+            ProductionPlanItem.end_date.asc().nulls_last(),
+            ProductionPlanItem.start_date.asc().nulls_last(),
+            ProductionPlanItem.sequence.asc(),
+        )
+    )
+    items = result.scalars().all()
+
+    output = []
+    for item in items:
+        plan = item.plan
+        order = plan.order if plan else None
+        stock = plan.stock_production if plan else None
+
+        # 수주/재고 번호
+        if order:
+            ref_no = f"[수주] {order.order_no}"
+            partner_name = order.partner.name if order.partner else "-"
+            delivery_date = order.delivery_date
+        elif stock:
+            ref_no = f"[재고] {stock.production_no}"
+            partner_name = stock.partner.name if stock.partner else "사내 생산"
+            delivery_date = None
+        else:
+            ref_no = "-"
+            partner_name = "-"
+            delivery_date = None
+
+        # 표준공정 첨부파일 — sequence 매칭 우선, 없으면 공정명 매칭
+        std_proc_file = None
+        if item.product and item.product.standard_processes:
+            # 1) sequence 일치
+            matched = next(
+                (sp for sp in item.product.standard_processes if sp.sequence == item.sequence),
+                None
+            )
+            # 2) process_name 일치
+            if not matched:
+                matched = next(
+                    (sp for sp in item.product.standard_processes
+                     if sp.process and sp.process.name == item.process_name),
+                    None
+                )
+            if matched and matched.attachment_file:
+                std_proc_file = matched.attachment_file  # String 경로
+
+        # 생산계획 공정 첨부파일 (JSON)
+        plan_item_files = []
+        if item.attachment_file:
+            if isinstance(item.attachment_file, list):
+                plan_item_files = item.attachment_file
+            elif isinstance(item.attachment_file, str):
+                try:
+                    plan_item_files = json.loads(item.attachment_file)
+                except Exception:
+                    pass
+
+        output.append({
+            "id": item.id,
+            "plan_id": item.plan_id,
+            "process_name": item.process_name,
+            "sequence": item.sequence,
+            "course_type": item.course_type,
+            "quantity": item.quantity,
+            "status": item.status,
+            "start_date": item.start_date,
+            "end_date": item.end_date,
+            "work_center": item.work_center,
+            "note": item.note,
+            # 제품
+            "product": {
+                "id": item.product.id if item.product else None,
+                "name": item.product.name if item.product else "-",
+                "specification": item.product.specification if item.product else None,
+                "unit": item.product.unit if item.product else "EA",
+            } if item.product else None,
+            # 수주/재고 정보
+            "ref_no": ref_no,
+            "partner_name": partner_name,
+            "delivery_date": str(delivery_date) if delivery_date else None,
+            "plan_date": str(plan.plan_date) if plan else None,
+            # 첨부파일
+            "std_proc_file": std_proc_file,           # 표준공정 파일 (String 경로)
+            "plan_item_files": plan_item_files,        # 생산계획 공정 파일 (JSON list)
+        })
+
+    return output
