@@ -2700,6 +2700,7 @@ async def get_my_work_orders(
                 "name": item.product.name if item.product else "-",
                 "specification": item.product.specification if item.product else None,
                 "unit": item.product.unit if item.product else "EA",
+                "drawing_file": item.product.drawing_file if item.product else None,
             } if item.product else None,
             # 수주/재고 정보
             "ref_no": ref_no,

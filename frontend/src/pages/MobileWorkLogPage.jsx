@@ -1500,13 +1500,24 @@ const MobileWorkLogPage = () => {
                                     if (wo.std_proc_file) {
                                         allFiles.push({ name: '📐 공정 도면/자료', url: wo.std_proc_file });
                                     }
-                                    // 2) 생산관리시트 (계획 헤더 첨부)
+                                    // 2) 제품 도면 (생산제품관리 등록 도면) — JSON 배열 [{url, name}]
+                                    if (wo.product?.drawing_file) {
+                                        try {
+                                            const drawingList = JSON.parse(wo.product.drawing_file);
+                                            (Array.isArray(drawingList) ? drawingList : [drawingList]).forEach((d, di) => {
+                                                const url = typeof d === 'string' ? d : d.url;
+                                                const name = typeof d === 'string' ? `📐 제품도면 ${di + 1}` : (d.name || `📐 제품도면 ${di + 1}`);
+                                                if (url) allFiles.push({ name: `📐 ${name}`, url });
+                                            });
+                                        } catch { /* 파싱 실패 시 무시 */ }
+                                    }
+                                    // 3) 생산관리시트 (계획 헤더 첨부)
                                     if (Array.isArray(wo.plan_files)) {
                                         wo.plan_files.forEach((f, idx) => {
                                             allFiles.push({ name: f.name || `📋 생산관리시트 ${idx + 1}`, url: f.url || f });
                                         });
                                     }
-                                    // 3) 공정별 개별 첨부파일
+                                    // 4) 공정별 개별 첨부파일
                                     if (Array.isArray(wo.plan_item_files)) {
                                         wo.plan_item_files.forEach((f, idx) => {
                                             allFiles.push({ name: f.name || `📎 첨부파일 ${idx + 1}`, url: f.url || f });
