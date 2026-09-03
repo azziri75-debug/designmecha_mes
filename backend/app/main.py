@@ -1915,6 +1915,22 @@ async def startup_event():
                 print(f"Startup: MRP auto-patch failed: {e}")
                 await db.rollback()
 
+            # work_log_items.attachment_file 컬럼 추가 (공정별 첨부사진)
+            try:
+                if is_sqlite:
+                    wli_cols = await db.execute(text("PRAGMA table_info('work_log_items')"))
+                    wli_cols_list = [row[1] for row in wli_cols.fetchall()]
+                    if "attachment_file" not in wli_cols_list:
+                        await db.execute(text("ALTER TABLE work_log_items ADD COLUMN attachment_file JSON"))
+                        print("Startup: Added attachment_file to work_log_items (SQLite)")
+                else:
+                    await db.execute(text("ALTER TABLE work_log_items ADD COLUMN IF NOT EXISTS attachment_file JSONB"))
+                    print("Startup: Added attachment_file to work_log_items (Postgres)")
+                await db.commit()
+            except Exception as e:
+                await db.rollback()
+                print(f"Startup: work_log_items attachment_file migration failed (may already exist): {e}")
+
 
     except Exception as e:
         print(f"Startup: DB initialization crashed: {e}")
