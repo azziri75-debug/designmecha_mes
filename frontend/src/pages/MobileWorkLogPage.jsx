@@ -991,7 +991,7 @@ const MobileWorkLogPage = () => {
                                             const productNameStr = getProductNameStr(plan);
 
                                             return (
-                                                <Card key={plan.id} sx={{ borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedPlan(plan)}>
+                                                <Card key={plan.id} sx={{ borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }} onClick={(e) => { if (e.target.closest('a')) return; setSelectedPlan(plan); }}>
                                                     <CardContent sx={{ p: '10px !important' }}>
                                                         <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                             <Box sx={{ flex: 1 }}>
