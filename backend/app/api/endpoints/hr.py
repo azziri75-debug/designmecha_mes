@@ -255,7 +255,7 @@ async def get_attendance_summary(
             ))
 
         elif doc.doc_type == "EARLY_LEAVE":
-            leave_type = content.get("type", "조퇴")
+            leave_type = content.get("leave_type") or content.get("type", "조퇴")
             # 🚨 타임존 찌꺼기 방어
             raw_date = content.get("date")
             date_label = str(raw_date).split('T')[0] if raw_date else raw_date
@@ -675,7 +675,7 @@ async def get_monthly_attendance(
                 t_str = content.get("leave_time") or content.get("time")
                 ret_str = content.get("return_time") or content.get("end_time")
                 
-                if (content.get("type") in ("외출", "Outing")) and ret_str:
+                if ((content.get("leave_type") or content.get("type")) in ("외출", "Outing")) and ret_str:
                     m1 = _to_minutes(t_str)
                     m2 = _to_minutes(ret_str)
                     delta = m2 - m1
@@ -904,7 +904,7 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
                         
                 t_str = content.get("leave_time") or content.get("time")
                 ret_str = content.get("return_time") or content.get("end_time")
-                if content.get("type") in ("외출", "Outing") and ret_str:
+                if (content.get("leave_type") or content.get("type")) in ("외출", "Outing") and ret_str:
                     m1 = _to_minutes(t_str)
                     m2 = _to_minutes(ret_str)
                     delta = m2 - m1
