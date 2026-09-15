@@ -678,10 +678,14 @@ async def get_monthly_attendance(
                 if (content.get("type") in ("외출", "Outing")) and ret_str:
                     m1 = _to_minutes(t_str)
                     m2 = _to_minutes(ret_str)
-                    applied_value = round((m2 - m1) / 60.0, 2)
+                    delta = m2 - m1
+                    if delta < 0:
+                        delta += 1440  # 날짜 경계 처리
+                    applied_value = round(delta / 60.0, 2)
                 elif t_str:
                     m1 = _to_minutes(t_str)
-                    applied_value = round((work_end_minutes - m1) / 60.0, 2)
+                    delta = work_end_minutes - m1
+                    applied_value = round(max(0, delta) / 60.0, 2)
             except: continue
 
         elif doc.doc_type == "OVERTIME":
@@ -903,10 +907,14 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
                 if content.get("type") in ("외출", "Outing") and ret_str:
                     m1 = _to_minutes(t_str)
                     m2 = _to_minutes(ret_str)
-                    o_hours += round((m2 - m1) / 60.0, 2)
+                    delta = m2 - m1
+                    if delta < 0:
+                        delta += 1440  # 날짜 경계 처리
+                    o_hours += round(delta / 60.0, 2)
                 elif t_str:
                     m1 = _to_minutes(t_str)
-                    o_hours += round((work_end_minutes - m1) / 60.0, 2)
+                    delta = work_end_minutes - m1
+                    o_hours += round(max(0, delta) / 60.0, 2)
             except: pass
             
     record = await get_or_create_annual_leave(db, staff_id, year)

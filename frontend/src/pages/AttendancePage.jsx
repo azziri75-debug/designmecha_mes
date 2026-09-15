@@ -496,24 +496,27 @@ const AttendancePage = () => {
                                     {summaryData?.documents?.map((doc) => (
                                         <tr key={doc.id} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300">
                                             <td className="px-8 py-4">
-                                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${doc.doc_type === 'VACATION' ? 'bg-indigo-100 text-indigo-600' : doc.doc_type === 'EARLY_LEAVE' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'
-                                                    }`}>
-                                                    {doc.doc_type}
+                                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST' ? 'bg-indigo-100 text-indigo-600' : doc.doc_type === 'EARLY_LEAVE' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST' ? '휴가원' : doc.doc_type === 'EARLY_LEAVE' ? '외출/조퇴' : doc.doc_type === 'OVERTIME' ? '야근/특근' : doc.doc_type}
                                                 </span>
                                             </td>
                                             <td className="px-8 py-4 text-sm font-bold text-slate-700">{doc.title}</td>
                                             <td className="px-8 py-4 text-xs font-bold text-slate-400 tabular-nums">{doc.date}</td>
                                             <td className="px-8 py-4 text-sm font-black text-slate-900 text-center">
-                                                {doc.doc_type === 'VACATION' && (doc.vacation_type === '연차' || doc.vacation_type === '반차') ? doc.applied_value.toFixed(1) : '-'}
+                                                {(doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST') && (doc.vacation_type === '연차' || doc.vacation_type === '반차' || !doc.vacation_type)
+                                                    ? `${doc.applied_value.toFixed(1)}일` : '-'}
                                             </td>
                                             <td className="px-8 py-4 text-sm font-black text-rose-600 text-center">
-                                                {doc.doc_type === 'VACATION' && doc.vacation_type === '병가' ? doc.applied_value.toFixed(1) : '-'}
+                                                {(doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST') && doc.vacation_type === '병가'
+                                                    ? `${doc.applied_value.toFixed(1)}일` : '-'}
                                             </td>
                                             <td className="px-8 py-4 text-sm font-black text-amber-600 text-center">
-                                                {doc.doc_type === 'VACATION' && doc.vacation_type === '경조휴가' ? doc.applied_value.toFixed(1) : '-'}
+                                                {(doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST') && doc.vacation_type === '경조휴가'
+                                                    ? `${doc.applied_value.toFixed(1)}일` : '-'}
                                             </td>
                                             <td className="px-8 py-4 text-sm font-black text-slate-900 text-right">
-                                                {doc.doc_type !== 'VACATION' ? doc.applied_value.toFixed(1) : '-'}
+                                                {doc.doc_type === 'EARLY_LEAVE' || doc.doc_type === 'OVERTIME'
+                                                    ? `${doc.applied_value.toFixed(1)}시간` : '-'}
                                             </td>
                                         </tr>
                                     ))}
