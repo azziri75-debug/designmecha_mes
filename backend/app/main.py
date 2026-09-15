@@ -1931,6 +1931,18 @@ async def startup_event():
                 await db.rollback()
                 print(f"Startup: work_log_items attachment_file migration failed (may already exist): {e}")
 
+            # 공장장 직책 직원의 user_type을 USER로 자동 정규화
+            # (기존에 highRanks 자동 설정으로 ADMIN이 된 경우 수정)
+            try:
+                await db.execute(text(
+                    "UPDATE staff SET user_type = 'USER' WHERE role LIKE '%공장장%' AND user_type = 'ADMIN'"
+                ))
+                await db.commit()
+                print("Startup: Normalized 공장장 user_type to USER")
+            except Exception as e:
+                await db.rollback()
+                print(f"Startup: 공장장 normalization failed: {e}")
+
 
     except Exception as e:
         print(f"Startup: DB initialization crashed: {e}")

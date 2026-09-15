@@ -236,7 +236,7 @@ const BasicsPageContent = () => {
             
             // Phase 2: Role-based Permission Auto-Sync
             if (name === 'role') {
-                const highRanks = ['대표이사', '사장', '부사장', '전무', '상무', '이사', '공장장', '관리자'];
+                const highRanks = ['대표이사', '사장', '부사장', '전무', '상무', '이사', '관리자'];
                 const isHighRank = highRanks.some(rank => value.includes(rank));
                 
                 if (isHighRank) {
