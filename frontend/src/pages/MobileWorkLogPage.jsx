@@ -660,19 +660,22 @@ const MobileWorkLogPage = () => {
                 const startTime = finalDocFormData.leave_time;
                 const endTime = finalDocFormData.return_time;
                 const type = finalDocFormData.leave_type || '조퇴';
-                
+
+                const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+                const netMin = (s, e) => {
+                    if (e < s) e += 1440;
+                    const overlap = Math.max(0, Math.min(e, 780) - Math.max(s, 720));
+                    return Math.max(0, (e - s) - overlap);
+                };
+
                 if (startTime) {
-                    const start = new Date(`2000-01-01T${startTime}`);
                     let calcHours = 0;
+                    const startMin = toMin(startTime);
                     if (type === '외출' && endTime) {
-                        const end = new Date(`2000-01-01T${endTime}`);
-                        let diff = (end - start) / (1000 * 60 * 60);
-                        if (diff < 0) diff += 24;
-                        calcHours = parseFloat(diff.toFixed(1));
+                        calcHours = parseFloat((netMin(startMin, toMin(endTime)) / 60).toFixed(1));
                     } else if (type === '조퇴') {
-                        const workEnd = new Date(`2000-01-01T${workEndTime}`);
-                        let diff = (workEnd - start) / (1000 * 60 * 60);
-                        calcHours = parseFloat(Math.max(0, diff).toFixed(1));
+                        const workEndMin = toMin(workEndTime);
+                        calcHours = parseFloat((netMin(startMin, workEndMin) / 60).toFixed(1));
                     }
                     finalDocFormData.hours = calcHours;
                 }
@@ -2297,22 +2300,33 @@ const MobileWorkLogPage = () => {
                                     const startTime = docFormData.leave_time;
                                     const endTime = docFormData.return_time;
                                     const type = docFormData.leave_type || '조퇴';
+                                    const toMin = (t) => { const [h2, m2] = t.split(':').map(Number); return h2 * 60 + m2; };
+                                    const netMin = (s, e) => {
+                                        if (e < s) e += 1440;
+                                        const overlap = Math.max(0, Math.min(e, 780) - Math.max(s, 720));
+                                        return Math.max(0, (e - s) - overlap);
+                                    };
                                     if (startTime) {
-                                        const start = new Date(`2000-01-01T${startTime}`);
                                         let h = 0;
+                                        let lunchDeducted = false;
+                                        const startMin = toMin(startTime);
                                         if (type === '외출' && endTime) {
-                                            const end = new Date(`2000-01-01T${endTime}`);
-                                            let diff = (end - start) / (1000 * 60 * 60);
-                                            if (diff < 0) diff += 24;
-                                            h = parseFloat(diff.toFixed(1));
+                                            const endMin = toMin(endTime);
+                                            const raw = (endMin < startMin ? endMin + 1440 : endMin) - startMin;
+                                            const net = netMin(startMin, endMin);
+                                            lunchDeducted = net < raw;
+                                            h = parseFloat((net / 60).toFixed(1));
                                         } else if (type === '조퇴') {
-                                            const workEnd = new Date(`2000-01-01T${workEndTime}`);
-                                            let diff = (workEnd - start) / (1000 * 60 * 60);
-                                            h = parseFloat(Math.max(0, diff).toFixed(1));
+                                            const workEndMin = toMin(workEndTime);
+                                            const raw = workEndMin - startMin;
+                                            const net = netMin(startMin, workEndMin);
+                                            lunchDeducted = net < raw;
+                                            h = parseFloat((net / 60).toFixed(1));
                                         }
                                         if (h > 0) return (
                                             <Box sx={{ p: 1, bgcolor: '#f3e5f5', borderRadius: 1, textAlign: 'center' }}>
                                                 <Typography variant="body2" color="secondary" fontWeight="bold">계산된 시간: {h}시간</Typography>
+                                                {lunchDeducted && <Typography variant="caption" color="textSecondary">(점심시간 12:00~13:00 제외)</Typography>}
                                             </Box>
                                         );
                                     }

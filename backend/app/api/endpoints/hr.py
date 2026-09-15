@@ -104,6 +104,15 @@ def _to_minutes(t_str: str) -> int:
     return h * 60 + m
 
 
+def _net_minutes(start_min: int, end_min: int,
+                 lunch_start: int = 720, lunch_end: int = 780) -> int:
+    """start_min ~ end_min 사이의 실근무 분(점심시간 12:00~13:00 제외)"""
+    if end_min < start_min:
+        end_min += 1440  # 날짜 경계
+    overlap = max(0, min(end_min, lunch_end) - max(start_min, lunch_start))
+    return max(0, (end_min - start_min) - overlap)
+
+
 def _time_obj_to_minutes(t: time_type) -> int:
     """time 객체를 분(Minutes)으로 변환"""
     return t.hour * 60 + t.minute
@@ -267,20 +276,15 @@ async def get_attendance_summary(
 
             try:
                 if leave_type in ("외출", "Outing") and return_time_str:
-                    # 외출: return_time - leave_time
+                    # 외출: return_time - leave_time (점심 제외)
                     m_leave = _to_minutes(leave_time_str) if leave_time_str else 0
                     m_return = _to_minutes(return_time_str)
-                    delta = m_return - m_leave
-                    if delta < 0:
-                        delta += 1440  # 날짜 경계 처리
-                    applied_value = round(delta / 60.0, 2)
+                    applied_value = round(_net_minutes(m_leave, m_return) / 60.0, 2)
                 else:
-                    # 조퇴: leave_time ~ work_end_time
+                    # 조퇴: leave_time ~ work_end_time (점심 제외)
                     if leave_time_str:
                         m_leave = _to_minutes(leave_time_str)
-                        delta = work_end_minutes - m_leave
-                        if delta > 0:
-                            applied_value = round(delta / 60.0, 2)
+                        applied_value = round(_net_minutes(m_leave, work_end_minutes) / 60.0, 2)
                             
                 # 년도 필터 확인
                 raw_pure = str(raw_date).split('T')[0] if raw_date else str(now_kst().date())
@@ -678,14 +682,10 @@ async def get_monthly_attendance(
                 if ((content.get("leave_type") or content.get("type")) in ("외출", "Outing")) and ret_str:
                     m1 = _to_minutes(t_str)
                     m2 = _to_minutes(ret_str)
-                    delta = m2 - m1
-                    if delta < 0:
-                        delta += 1440  # 날짜 경계 처리
-                    applied_value = round(delta / 60.0, 2)
+                    applied_value = round(_net_minutes(m1, m2) / 60.0, 2)
                 elif t_str:
                     m1 = _to_minutes(t_str)
-                    delta = work_end_minutes - m1
-                    applied_value = round(max(0, delta) / 60.0, 2)
+                    applied_value = round(_net_minutes(m1, work_end_minutes) / 60.0, 2)
             except: continue
 
         elif doc.doc_type == "OVERTIME":
@@ -907,14 +907,10 @@ async def sync_annual_leave_usage(db: AsyncSession, staff_id: int, year: int):
                 if (content.get("leave_type") or content.get("type")) in ("외출", "Outing") and ret_str:
                     m1 = _to_minutes(t_str)
                     m2 = _to_minutes(ret_str)
-                    delta = m2 - m1
-                    if delta < 0:
-                        delta += 1440  # 날짜 경계 처리
-                    o_hours += round(delta / 60.0, 2)
+                    o_hours += round(_net_minutes(m1, m2) / 60.0, 2)
                 elif t_str:
                     m1 = _to_minutes(t_str)
-                    delta = work_end_minutes - m1
-                    o_hours += round(max(0, delta) / 60.0, 2)
+                    o_hours += round(_net_minutes(m1, work_end_minutes) / 60.0, 2)
             except: pass
             
     record = await get_or_create_annual_leave(db, staff_id, year)
