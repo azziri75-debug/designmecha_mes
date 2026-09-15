@@ -59,4 +59,23 @@ api.interceptors.request.use(
     }
 );
 
+// Response interceptor: 403(외부망 차단) 응답 시 자동 로그아웃
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 403) {
+            const detail = error.response?.data?.detail || '';
+            // 외부망 차단 메시지인 경우만 자동 로그아웃
+            if (detail.includes('네트워크') || detail.includes('차단') || detail.includes('와이파이')) {
+                localStorage.removeItem('mes_user');
+                localStorage.removeItem('user');
+                // 로그인 페이지로 이동 (새로고침으로 React 상태 초기화)
+                alert('사내 네트워크를 벗어나 자동 로그아웃되었습니다.');
+                window.location.href = '/';
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;

@@ -2376,10 +2376,16 @@ async def get_worker_performance_details(
     start_date: Union[date, None] = None,
     end_date: Union[date, None] = None,
     db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
 ) -> Any:
     """
     Get detailed work log items for a specific worker with optional date filtering.
+    ADMIN: any worker_id / USER: only own data
     """
+    # 일반 사용자는 본인 데이터만 조회 가능
+    if current_user.user_type != "ADMIN" and worker_id != current_user.id:
+        raise HTTPException(status_code=403, detail="타인의 실적을 조회할 권한이 없습니다.")
+
     stmt = (
         select(WorkLogItem)
         .join(WorkLog, WorkLogItem.work_log_id == WorkLog.id)
