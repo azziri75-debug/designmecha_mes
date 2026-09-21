@@ -63,7 +63,7 @@ async def get_plans_for_order(
     """
     try:
         plans_res = await db.execute(text("""
-            SELECT pp.id, pp.plan_no, pp.status, pp.actual_completion_date, pp.order_id
+            SELECT pp.id, pp.plan_date, pp.status, pp.actual_completion_date, pp.order_id
             FROM production_plans pp
             WHERE pp.order_id = :order_id
             ORDER BY pp.id
