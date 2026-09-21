@@ -110,7 +110,13 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                         const productId = sourceItem.product_id;
                         const product = productMap[productId] || sourceItem.product;
                         const processes = product?.standard_processes || [];
-                        const grossQty = sourceItem.quantity;
+                        
+                        // 이미 납품 완료된 품목은 생산계획에서 제외
+                        const deliveredQty = sourceItem.delivered_quantity || 0;
+                        const remainQty = (sourceItem.quantity || 0) - deliveredQty;
+                        if (remainQty <= 0) return; // 납품 완료 품목 건너뜀
+                        
+                        const grossQty = remainQty; // 잔여 수량만 계획 대상
                         
                         initialStockUse[productId] = 0;
 
