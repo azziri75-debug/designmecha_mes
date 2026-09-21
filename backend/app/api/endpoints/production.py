@@ -1404,6 +1404,20 @@ async def delete_production_plan(
     from app.models.inventory import Stock, TransactionType
     from app.api.utils.inventory import handle_stock_movement, handle_backflush
 
+    # 🚨 [신규 안전장치] 납품 이력이 있는 수주에 연결된 계획은 삭제 불가
+    # 납품이 이미 진행된 건의 생산계획이 삭제되면 수주/납품 내역과 데이터 불일치 발생
+    if plan.order_id:
+        from app.models.sales import DeliveryHistory
+        delivery_check = await db.execute(
+            select(func.count(DeliveryHistory.id))
+            .where(DeliveryHistory.order_id == plan.order_id)
+        )
+        if delivery_check.scalar() > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="납품 이력이 존재하는 수주의 생산계획은 삭제할 수 없습니다. 납품 내역을 먼저 취소해 주세요."
+            )
+
     # 1-1. 재고 롤백 처리 (삭제 전 실행)
     if plan.status == ProductionStatus.COMPLETED:
         # [FIX] 실제 순생산량(net_qty) 조회 - 재고소진으로만 완료된 경우 backflush가 실행되지 않았으므로 롤백 불필요
