@@ -582,7 +582,10 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
     const planOrderIds = (plannedIds?.orders || []).map(id => Number(id));
     const planStockProdIds = (plannedIds?.stocks || []).map(id => Number(id));
 
-    let unplannedOrders = orders.filter(o => !planOrderIds.includes(Number(o.id)) && (o.status === 'PENDING' || o.status === 'CONFIRMED'));
+    let unplannedOrders = orders.filter(o =>
+        !planOrderIds.includes(Number(o.id)) &&
+        (o.status === 'PENDING' || o.status === 'CONFIRMED' || o.status === 'PARTIALLY_DELIVERED')
+    );
     let unplannedStockProductions = stockProductions.filter(sp => {
         const spId = Number(sp.id);
         if (planStockProdIds.includes(spId)) return false;
