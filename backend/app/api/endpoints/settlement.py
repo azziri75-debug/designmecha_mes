@@ -18,20 +18,23 @@ from app.models.approval import ApprovalDocument, ApprovalStatus, DocumentType
 router = APIRouter()
 
 
-def get_month_filter(model_attr, year: int, month: int):
-    return and_(
-        extract('year', model_attr) == year,
-        extract('month', model_attr) == month
-    )
+def get_month_filter(model_attr, year: int, month: Optional[int]):
+    if month:
+        return and_(
+            extract('year', model_attr) == year,
+            extract('month', model_attr) == month
+        )
+    else:
+        return extract('year', model_attr) == year
 
 @router.get("/orders")
 async def get_settlement_orders(
     year: int = Query(...),
-    month: int = Query(...),
+    month: Optional[int] = Query(None),
     major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """1. 수주내역: 수주목록(확정상태) 기준"""
+    """1. ?�주?�역: ?�주목록(?�정?�태) 기�?"""
     query = select(
         Partner.name.label("partner_name"),
         SalesOrder.order_date,
@@ -61,15 +64,15 @@ async def get_settlement_orders(
 @router.get("/sales")
 async def get_settlement_sales(
     year: int = Query(...),
-    month: int = Query(...),
+    month: Optional[int] = Query(None),
     major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """2. 매출내역: 납품완료 + 거래명세서가 발행된 부분납품 포함"""
+    """2. 매출?�역: ?�품?�료 + 거래명세?��? 발행??부분납???�함"""
 
-    # ── Query 1 [수정]: DELIVERY_COMPLETED / DELIVERED 수주
-    # 반드시 DeliveryHistory 기준으로 집계해야 분할납품 시 각 납품일이 정확히 반영됨
-    # (SalesOrder.actual_delivery_date 사용 시 최종납품일로 모든 분할분이 집계되는 버그 발생)
+    # ?�?� Query 1 [?�정]: DELIVERY_COMPLETED / DELIVERED ?�주
+    # 반드??DeliveryHistory 기�??�로 집계?�야 분할?�품 ??�??�품?�이 ?�확??반영??
+    # (SalesOrder.actual_delivery_date ?�용 ??최종?�품?�로 모든 분할분이 집계?�는 버그 발생)
     q1 = select(
         Partner.name.label("partner_name"),
         SalesOrder.order_date,
@@ -91,10 +94,10 @@ async def get_settlement_sales(
          get_month_filter(DeliveryHistory.delivery_date, year, month)
      )
 
-    # ── Query 2: 거래명세서(statement_json)가 발행된 부분납품 수주 ─────────────────
-    # PARTIALLY_DELIVERED 상태여도 해당월에 statement_json이 있으면 매출 집계 포함
-    # 수량: DeliveryHistoryItem.quantity (실제 납품 수량)
-    # 단가: SalesOrderItem.unit_price (수주 단가)
+    # ?�?� Query 2: 거래명세??statement_json)가 발행??부분납???�주 ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+    # PARTIALLY_DELIVERED ?�태?�도 ?�당?�에 statement_json???�으�?매출 집계 ?�함
+    # ?�량: DeliveryHistoryItem.quantity (?�제 ?�품 ?�량)
+    # ?��?: SalesOrderItem.unit_price (?�주 ?��?)
     q2 = select(
         Partner.name.label("partner_name"),
         SalesOrder.order_date,
@@ -132,15 +135,15 @@ async def get_settlement_sales(
 @router.get("/purchases")
 async def get_settlement_purchases(
     year: int = Query(...),
-    month: int = Query(...),
+    month: Optional[int] = Query(None),
     major_group_id: Optional[int] = Query(None),
-    dept: Optional[str] = Query(None),  # 특수 필터: "소모품" 전달 시 소모품만 조회
+    dept: Optional[str] = Query(None),  # ?�수 ?�터: "?�모?? ?�달 ???�모?�만 조회
     db: AsyncSession = Depends(get_db)
 ):
-    """3. 매입내역: 구매발주서 + 외주발주서 기준 (실제 입고일 기준)"""
+    """3. 매입?�역: 구매발주??+ ?�주발주??기�? (?�제 ?�고??기�?)"""
     data = []
     
-    # Material/Consumable Purchases - 실제 입고일(actual_delivery_date) 기준
+    # Material/Consumable Purchases - ?�제 ?�고??actual_delivery_date) 기�?
     p_query = select(
         PurchaseOrder.purchase_type.label("category"),
         Partner.name.label("partner_name"),
@@ -162,7 +165,7 @@ async def get_settlement_purchases(
          get_month_filter(PurchaseOrder.actual_delivery_date, year, month)
      )
     
-    # Outsourcing Purchases - 실제 납품일(actual_delivery_date) 기준
+    # Outsourcing Purchases - ?�제 ?�품??actual_delivery_date) 기�?
     o_query = select(
         func.cast("OUTSOURCING", String).label("category"),
         Partner.name.label("partner_name"),
@@ -184,25 +187,25 @@ async def get_settlement_purchases(
          get_month_filter(OutsourcingOrder.actual_delivery_date, year, month)
      )
 
-    # 소모품 필터: dept='소모품' 이거나 major_group_id 없이 소모품 전용 조회인 경우
-    is_consumable_filter = (dept == '소모품')
+    # ?�모???�터: dept='?�모?? ?�거??major_group_id ?�이 ?�모???�용 조회??경우
+    is_consumable_filter = (dept == '?�모??)
 
     if is_consumable_filter:
-        # 소모품만 조회: p_query는 purchase_type=CONSUMABLE만, o_query는 제외
+        # ?�모?�만 조회: p_query??purchase_type=CONSUMABLE�? o_query???�외
         p_query = p_query.where(PurchaseOrder.purchase_type == 'CONSUMABLE')
         res_p = await db.execute(p_query)
         data.extend([dict(r._mapping) for r in res_p])
     else:
         if major_group_id:
             subq = select(ProductGroup.id).where(ProductGroup.parent_id == major_group_id)
-            # 소모품(CONSUMABLE) 발주는 product group 대신 별도 분류이므로 제품그룹 필터에서 제외
+            # ?�모??CONSUMABLE) 발주??product group ?�??별도 분류?��?�??�품그룹 ?�터?�서 ?�외
             p_query = p_query.where(
                 PurchaseOrder.purchase_type != 'CONSUMABLE',
                 and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id))
             )
             o_query = o_query.where(and_(Product.group_id.in_(subq) | (Product.group_id == major_group_id)))
         else:
-            # 전체 조회: 소모품 PurchaseOrder는 product group 무관하게 포함
+            # ?�체 조회: ?�모??PurchaseOrder??product group 무�??�게 ?�함
             pass
 
         res_p = await db.execute(p_query)
@@ -210,13 +213,13 @@ async def get_settlement_purchases(
         data.extend([dict(r._mapping) for r in res_p])
         data.extend([dict(r._mapping) for r in res_o])
 
-    # --- 내부기안 대금지급 건 추가 집계 ---
+    # --- ?��?기안 ?�금�?�?�?추�? 집계 ---
     import re as _re
     from datetime import date as _date
 
-    # major_group_id가 선택된 경우 해당 그룹의 이름을 조회하여 기안부서 필터로 사용
+    # major_group_id가 ?�택??경우 ?�당 그룹???�름??조회?�여 기안부???�터�??�용
     dept_filter_name: Optional[str] = None
-    if dept and dept != '소모품':
+    if dept and dept != '?�모??:
         dept_filter_name = dept
     elif major_group_id:
         grp_res = await db.execute(
@@ -226,7 +229,7 @@ async def get_settlement_purchases(
         if grp_row:
             dept_filter_name = grp_row[0]
 
-    # 소모품 필터가 아닐 때만 대금지급기안 집계
+    # ?�모???�터가 ?�닐 ?�만 ?�금�?급기??집계
     if not is_consumable_filter:
         payment_query = select(ApprovalDocument).where(
             ApprovalDocument.doc_type == DocumentType.INTERNAL_DRAFT,
@@ -243,13 +246,13 @@ async def get_settlement_purchases(
         if content.get('draft_type') != 'PAYMENT':
             continue
 
-        # [FIX] 사업부 필터: 기안부서(dept)가 선택된 그룹명과 일치하는 건만 포함
+        # [FIX] ?�업부 ?�터: 기안부??dept)가 ?�택??그룹명과 ?�치?�는 건만 ?�함
         if dept_filter_name:
             doc_dept = (content.get('dept') or '').strip()
             if doc_dept != dept_filter_name:
                 continue
 
-        # 기안일자 파싱 (항목별 거래명세서 날짜 없으면 폴백)
+        # 기안?�자 ?�싱 (??���?거래명세???�짜 ?�으�??�백)
         request_date_str = content.get('request_date')
         try:
             fallback_date = _date.fromisoformat(request_date_str) if request_date_str else None
@@ -258,7 +261,7 @@ async def get_settlement_purchases(
         if not fallback_date and doc.created_at:
             fallback_date = doc.created_at.date()
 
-        # 거래처명: content.partner_for_title 우선 사용, 없으면 title에서 파싱
+        # 거래처명: content.partner_for_title ?�선 ?�용, ?�으�?title?�서 ?�싱
         partner_name = content.get('partner_for_title', '').strip()
         if not partner_name:
             import re as _re
@@ -273,7 +276,7 @@ async def get_settlement_purchases(
             quantity = float(item.get('quantity', 0) or 0)
             if amount == 0 and quantity == 0:
                 continue
-            # 항목별 거래명세서 날짜 우선, 없으면 기안일자 폴백
+            # ??���?거래명세???�짜 ?�선, ?�으�?기안?�자 ?�백
             trade_date_str = item.get('trade_date', '')
             try:
                 item_date = _date.fromisoformat(trade_date_str) if trade_date_str else None
@@ -282,7 +285,7 @@ async def get_settlement_purchases(
             effective_date = item_date or fallback_date
             if not effective_date:
                 continue
-            if effective_date.year != year or effective_date.month != month:
+            if effective_date.year != year or (month and effective_date.month != month):
                 continue
             data.append({
                 'category': 'PAYMENT',
@@ -303,19 +306,19 @@ async def get_settlement_purchases(
 @router.get("/production")
 async def get_settlement_production(
     year: int = Query(...),
-    month: int = Query(...),
+    month: Optional[int] = Query(None),
     major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """4. 생산내역: 생산관리(생산완료) 기준 - 실제 완료일(actual_completion_date) 기준
-       - 완료일 없는 경우 updated_at(최근수정일)을 폴백으로 사용
-       - 수주생산: SalesOrder → Partner(고객사), SalesOrder.order_date(수주일)
-       - 재고생산: StockProduction → Partner(고객사), StockProduction.request_date(요청일)
+    """4. ?�산?�역: ?�산관�??�산?�료) 기�? - ?�제 ?�료??actual_completion_date) 기�?
+       - ?�료???�는 경우 updated_at(최근?�정?????�백?�로 ?�용
+       - ?�주?�산: SalesOrder ??Partner(고객??, SalesOrder.order_date(?�주??
+       - ?�고?�산: StockProduction ??Partner(고객??, StockProduction.request_date(?�청??
     """
-    # StockProduction 전용 Partner alias
+    # StockProduction ?�용 Partner alias
     StockPartner = Partner.__table__.alias("stock_partner")
 
-    # 생산완료일 폴백: actual_completion_date 없으면 updated_at의 날짜 부분 사용
+    # ?�산?�료???�백: actual_completion_date ?�으�?updated_at???�짜 부�??�용
     effective_end_col = func.coalesce(
         ProductionPlan.actual_completion_date,
         func.date(ProductionPlan.updated_at)
@@ -330,7 +333,7 @@ async def get_settlement_production(
         Product.name.label("product_name"),
         Product.specification,
         func.max(ProductionPlanItem.quantity).label("quantity"),
-        # 수주합계금액: 수주품목의 수량 × 단가 (재고생산은 NULL)
+        # ?�주?�계금액: ?�주?�목???�량 × ?��? (?�고?�산?� NULL)
         func.max(SalesOrderItem.quantity * SalesOrderItem.unit_price).label("order_amount"),
         func.sum(ProductionPlanItem.cost).label("process_cost")
     ).select_from(ProductionPlan)\
@@ -375,13 +378,13 @@ async def get_production_plan_processes(
     product_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """생산계획 공정별 공정비용 상세 조회 (더블클릭 팝업용)
-    - product_id 전달 시 해당 품목의 공정만 조회 (다품목 수주 지원)
-    - completed_quantity는 DB 컬럼이 아니므로 WorkLogItem.good_quantity 합계로 계산.
+    """?�산계획 공정�?공정비용 ?�세 조회 (?�블?�릭 ?�업??
+    - product_id ?�달 ???�당 ?�목??공정�?조회 (?�품�??�주 지??
+    - completed_quantity??DB 컬럼???�니므�?WorkLogItem.good_quantity ?�계�?계산.
     """
     from app.models.production import WorkLogItem
 
-    # 공정별 작업실적 합계 서브쿼리
+    # 공정�??�업?�적 ?�계 ?�브쿼리
     completed_subq = (
         select(
             WorkLogItem.plan_item_id,
@@ -405,7 +408,7 @@ async def get_production_plan_processes(
         .order_by(ProductionPlanItem.sequence)
     )
 
-    # 품목 필터: 다품목 수주에서 해당 품목 공정만 조회
+    # ?�목 ?�터: ?�품�??�주?�서 ?�당 ?�목 공정�?조회
     if product_id is not None:
         stmt = stmt.where(ProductionPlanItem.product_id == product_id)
 
@@ -414,7 +417,7 @@ async def get_production_plan_processes(
     rows = []
     for r in result:
         row = dict(r._mapping)
-        # PURCHASE/OUTSOURCING 완료 공정은 수량 = 완료수량으로 처리
+        # PURCHASE/OUTSOURCING ?�료 공정?� ?�량 = ?�료?�량?�로 처리
         if row.get("course_type") in ("PURCHASE", "OUTSOURCING") and str(row.get("status")) in ("COMPLETED", "ProductionStatus.COMPLETED"):
             row["completed_quantity"] = row["quantity"]
         rows.append(row)
@@ -423,11 +426,11 @@ async def get_production_plan_processes(
 @router.get("/defects")
 async def get_settlement_defects(
     year: int = Query(...),
-    month: int = Query(...),
+    month: Optional[int] = Query(None),
     major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """5. 불량발생내역: 품질관리 기준"""
+    """5. 불량발생?�역: ?�질관�?기�?"""
     query = select(
         QualityDefect.defect_date,
         ProductionPlanItem.process_name,
@@ -456,11 +459,11 @@ async def get_settlement_defects(
 @router.get("/complaints")
 async def get_settlement_complaints(
     year: int = Query(...),
-    month: int = Query(...),
+    month: Optional[int] = Query(None),
     major_group_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """6. 고객불만접수내역"""
+    """6. 고객불만?�수?�역"""
     query = select(
         CustomerComplaint.receipt_date,
         Partner.name.label("partner_name"),
@@ -485,21 +488,21 @@ async def get_settlement_complaints(
     return [dict(r._mapping) for r in result]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 차트 요약: 사업부별 집계 + 거래처 순위
-# ─────────────────────────────────────────────────────────────────────────────
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+# 차트 ?�약: ?�업부�?집계 + 거래�??�위
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
 @router.get("/chart-summary")
 async def get_chart_summary(
     year: Optional[int] = Query(None),
     month: Optional[int] = Query(None),
-    exchange_rate: float = Query(default=1350.0, description="USD→KRW 환율"),
+    exchange_rate: float = Query(default=1350.0, description="USD?�KRW ?�율"),
     db: AsyncSession = Depends(get_db)
 ):
-    """사업부별 수주/매출/매입/생산/불량/고객불만 집계 + 매출처·매입처 Top10 (USD→KRW 환산 포함)"""
+    """?�업부�??�주/매출/매입/?�산/불량/고객불만 집계 + 매출처·매?�처 Top10 (USD?�KRW ?�산 ?�함)"""
 
     MinorGrp = ProductGroup.__table__.alias("minor_grp")
     MajorGrp = ProductGroup.__table__.alias("major_grp")
-    group_expr = func.coalesce(MajorGrp.c.name, MinorGrp.c.name, "미분류")
+    group_expr = func.coalesce(MajorGrp.c.name, MinorGrp.c.name, "미분�?)
 
     def pd(q, col):
         if year:  q = q.where(extract('year',  col) == year)
@@ -513,17 +516,17 @@ async def get_chart_summary(
         )
 
     def row2(res):
-        return [{"name": r[0] or "미분류", "value": float(r[1] or 0)}
+        return [{"name": r[0] or "미분�?, "value": float(r[1] or 0)}
                 for r in res.fetchall()]
 
-    # USD→KRW 환산 CASE 표현식 생성 헬퍼
+    # USD?�KRW ?�산 CASE ?�현???�성 ?�퍼
     def krw_expr(amount_expr, currency_col):
         return case(
             (currency_col == 'USD', amount_expr * exchange_rate),
             else_=amount_expr
         )
 
-    # 수주 (USD 환산)
+    # ?�주 (USD ?�산)
     so_amount = SalesOrderItem.quantity * SalesOrderItem.unit_price
     r_orders = await db.execute(pd(
         with_grp(
@@ -537,8 +540,8 @@ async def get_chart_summary(
         ), SalesOrder.order_date
     ))
 
-    # 매출 (USD 환산) — 납품완료/완납 수주 [수정]
-    # 분할납품 시 각 납품 건별 납품일 및 수량을 정확히 반영하기 위해 DeliveryHistory 기준 집계
+    # 매출 (USD ?�산) ???�품?�료/?�납 ?�주 [?�정]
+    # 분할?�품 ??�??�품 건별 ?�품??�??�량???�확??반영?�기 ?�해 DeliveryHistory 기�? 집계
     dhi_amount_full = DeliveryHistoryItem.quantity * SalesOrderItem.unit_price
     r_sales = await db.execute(pd(
         with_grp(
@@ -554,7 +557,7 @@ async def get_chart_summary(
         ), DeliveryHistory.delivery_date
     ))
 
-    # 매출 추가 집계 — 부분납품 중 거래명세서 발행건 (매출내역 탭과 동일 기준)
+    # 매출 추�? 집계 ??부분납??�?거래명세??발행�?(매출?�역 ??�� ?�일 기�?)
     dhi_amount = DeliveryHistoryItem.quantity * SalesOrderItem.unit_price
     r_sales_partial = await db.execute(pd(
         with_grp(
@@ -573,17 +576,17 @@ async def get_chart_summary(
         ), DeliveryHistory.delivery_date
     ))
 
-    # 두 매출 소스 합산
+    # ??매출 ?�스 ?�산
     sales_map: dict = {}
     for r in r_sales.fetchall():
-        key = r[0] or "미분류"
+        key = r[0] or "미분�?
         sales_map[key] = sales_map.get(key, 0.0) + float(r[1] or 0)
     for r in r_sales_partial.fetchall():
-        key = r[0] or "미분류"
+        key = r[0] or "미분�?
         sales_map[key] = sales_map.get(key, 0.0) + float(r[1] or 0)
     sales_data = [{"name": k, "value": v} for k, v in sorted(sales_map.items(), key=lambda x: -x[1])]
 
-    # 매입 = 구매발주(자재/MRP, 소모품 제외) + 외주발주 (USD 환산)
+    # 매입 = 구매발주(?�재/MRP, ?�모???�외) + ?�주발주 (USD ?�산)
     po_amount = PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price
     r_pur_buy = await db.execute(pd(
         with_grp(
@@ -594,12 +597,12 @@ async def get_chart_summary(
             .join(Product,       PurchaseOrderItem.product_id == Product.id)
             .where(
                 PurchaseOrder.status == PurchaseStatus.COMPLETED,
-                PurchaseOrder.purchase_type != 'CONSUMABLE'  # 소모품은 별도 버킷으로 분리
+                PurchaseOrder.purchase_type != 'CONSUMABLE'  # ?�모?��? 별도 버킷?�로 분리
             )
             .group_by(group_expr)
         ), PurchaseOrder.actual_delivery_date
     ))
-    # 소모품 PurchaseOrder 별도 집계 → "소모품" 버킷
+    # ?�모??PurchaseOrder 별도 집계 ??"?�모?? 버킷
     r_pur_cons = await db.execute(pd(
         select(func.sum(krw_expr(po_amount, PurchaseOrderItem.currency)).label("v"))
         .select_from(PurchaseOrderItem)
@@ -616,7 +619,7 @@ async def get_chart_summary(
     r_pur_out = await db.execute(pd(
         with_grp(
             select(group_expr.label("g"),
-                   func.sum(oo_amount).label("v"))   # 외주는 currency 컬럼 없음 → KRW 그대로
+                   func.sum(oo_amount).label("v"))   # ?�주??currency 컬럼 ?�음 ??KRW 그�?�?
             .select_from(OutsourcingOrderItem)
             .join(OutsourcingOrder, OutsourcingOrderItem.outsourcing_order_id == OutsourcingOrder.id)
             .outerjoin(Product, OutsourcingOrderItem.product_id == Product.id)
@@ -624,19 +627,19 @@ async def get_chart_summary(
             .group_by(group_expr)
         ), OutsourcingOrder.actual_delivery_date
     ))
-    # 두 소스 합산 (비소모품)
+    # ???�스 ?�산 (비소모품)
     pur_map: dict = {}
     for r in r_pur_buy.fetchall():
-        grp_key = r[0] or "미분류"
+        grp_key = r[0] or "미분�?
         pur_map[grp_key] = pur_map.get(grp_key, 0.0) + float(r[1] or 0)
     for r in r_pur_out.fetchall():
-        grp_key = r[0] or "미분류"
+        grp_key = r[0] or "미분�?
         pur_map[grp_key] = pur_map.get(grp_key, 0.0) + float(r[1] or 0)
-    # 소모품 발주 합계를 "소모품" 버킷에 추가
+    # ?�모??발주 ?�계�?"?�모?? 버킷??추�?
     if cons_po_total > 0:
-        pur_map["소모품"] = pur_map.get("소모품", 0.0) + cons_po_total
+        pur_map["?�모??] = pur_map.get("?�모??, 0.0) + cons_po_total
 
-    # 내부기안 대금지급 건 수집 (chart-summary용)
+    # ?��?기안 ?�금�?�?�??�집 (chart-summary??
     import re as _re_chart
     from datetime import date as _date_chart
     _pay_q = select(ApprovalDocument).where(
@@ -660,13 +663,13 @@ async def get_chart_summary(
         _pname = (_cnt.get('partner_for_title') or '').strip()
         if not _pname:
             _m = _re_chart.match(r'^\[(.+?)\]-', _doc.title or '')
-            _pname = _m.group(1).strip() if _m else (_doc.title or '미분류')
+            _pname = _m.group(1).strip() if _m else (_doc.title or '미분�?)
         _cur = _cnt.get('currency', 'KRW')
         for _item in (_cnt.get('items') or []):
             _amt = float(_item.get('amount', 0) or 0)
             if _amt == 0:
                 continue
-            # 항목별 거래명세서 날짜 우선, 없으면 기안일자 폴백
+            # ??���?거래명세???�짜 ?�선, ?�으�?기안?�자 ?�백
             _td_str = _item.get('trade_date', '')
             try:
                 _item_date = _date_chart.fromisoformat(_td_str) if _td_str else None
@@ -680,14 +683,14 @@ async def get_chart_summary(
             if month and _eff_date.month != month:
                 continue
             _amt_krw = _amt * exchange_rate if _cur == 'USD' else _amt
-            _dept = (_cnt.get('dept') or '').strip() or '기타(대금지급)'
-            _payment_rows.append((_dept, _pname or '미분류', _amt_krw))
+            _dept = (_cnt.get('dept') or '').strip() or '기�?(?�금�?�?'
+            _payment_rows.append((_dept, _pname or '미분�?, _amt_krw))
 
-    # 대금지급 합계를 기안부서(미입력시 "기타") 그룹으로 추가
+    # ?�금�?�??�계�?기안부??미입?�시 "기�?") 그룹?�로 추�?
     for _dept, _pname, _amt_krw in _payment_rows:
         pur_map[_dept] = pur_map.get(_dept, 0.0) + _amt_krw
 
-    # 소모품 구매신청서(CONSUMABLES_PURCHASE) 완료 결재 문서 → "소모품" 버킷
+    # ?�모??구매?�청??CONSUMABLES_PURCHASE) ?�료 결재 문서 ??"?�모?? 버킷
     from datetime import date as _date_cons
     _cons_q = select(ApprovalDocument).where(
         ApprovalDocument.doc_type == DocumentType.CONSUMABLES_PURCHASE,
@@ -710,15 +713,15 @@ async def get_chart_summary(
             continue
         if month and _c_fallback.month != month:
             continue
-        # ConsumablesPurchaseForm에는 unit_price가 없으므로 금액 집계는 0 (건수 파악용)
-        # pur_map의 소모품 버킷에 항목 수만 표시 (금액 없음 → 건수 * 1원 임시 처리 않고 그냥 누적)
-        # 실제 발주가 생성되면 cons_po_total에 포함되므로 중복 방지를 위해 여기서는 포함 안 함
-        pass  # 소모품 구매신청서는 금액 데이터가 없어 chart 집계에서는 PO 기준으로만 반영
+        # ConsumablesPurchaseForm?�는 unit_price가 ?�으므�?금액 집계??0 (건수 ?�악??
+        # pur_map???�모??버킷????�� ?�만 ?�시 (금액 ?�음 ??건수 * 1???�시 처리 ?�고 그냥 ?�적)
+        # ?�제 발주가 ?�성?�면 cons_po_total???�함?��?�?중복 방�?�??�해 ?�기?�는 ?�함 ????
+        pass  # ?�모??구매?�청?�는 금액 ?�이?��? ?�어 chart 집계?�서??PO 기�??�로�?반영
 
     purchases_data = [{"name": k, "value": v} for k, v in sorted(pur_map.items(), key=lambda x: -x[1])]
 
 
-    # 생산 (완료일 폴백)
+    # ?�산 (?�료???�백)
     eff = func.coalesce(
         ProductionPlan.actual_completion_date,
         func.date(ProductionPlan.updated_at)
@@ -759,7 +762,7 @@ async def get_chart_summary(
         CustomerComplaint.receipt_date
     ))
 
-    # 매출처 순위 Top10 (USD 환산)
+    # 매출�??�위 Top10 (USD ?�산)
     so_amount_rank = SalesOrderItem.quantity * SalesOrderItem.unit_price
     sal_sum = func.sum(krw_expr(so_amount_rank, SalesOrderItem.currency))
     r_sales_rank = await db.execute(pd(
@@ -774,7 +777,7 @@ async def get_chart_summary(
         SalesOrder.actual_delivery_date
     ))
 
-    # 매입처 순위 Top10 = 구매발주 + 외주발주 합산 (USD 환산)
+    # 매입�??�위 Top10 = 구매발주 + ?�주발주 ?�산 (USD ?�산)
     po_amount_rank = PurchaseOrderItem.quantity * PurchaseOrderItem.unit_price
     pur_sum_b = func.sum(krw_expr(po_amount_rank, PurchaseOrderItem.currency))
     r_pur_rank_buy = await db.execute(pd(
@@ -800,10 +803,10 @@ async def get_chart_summary(
     ))
     pur_rank_map: dict = {}
     for r in r_pur_rank_buy.fetchall():
-        pur_rank_map[r[0] or "미분류"] = pur_rank_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
+        pur_rank_map[r[0] or "미분�?] = pur_rank_map.get(r[0] or "미분�?, 0.0) + float(r[1] or 0)
     for r in r_pur_rank_out.fetchall():
-        pur_rank_map[r[0] or "미분류"] = pur_rank_map.get(r[0] or "미분류", 0.0) + float(r[1] or 0)
-    # 대금지급 건 거래처별 순위 합산 (pur_rank_map은 거래처명 기준)
+        pur_rank_map[r[0] or "미분�?] = pur_rank_map.get(r[0] or "미분�?, 0.0) + float(r[1] or 0)
+    # ?�금�?�?�?거래처별 ?�위 ?�산 (pur_rank_map?� 거래처명 기�?)
     for _dept, _pname, _amt_krw in _payment_rows:
         pur_rank_map[_pname] = pur_rank_map.get(_pname, 0.0) + _amt_krw
     purchase_ranking = [{"name": k, "value": v}
@@ -815,7 +818,7 @@ async def get_chart_summary(
         "sales":            sales_data,
         "purchases":        purchases_data,
         "production":       row2(r_prod),
-        "defects":          [{"name": r[0] or "미분류", "value": float(r[1] or 0), "count": int(r[2] or 0)}
+        "defects":          [{"name": r[0] or "미분�?, "value": float(r[1] or 0), "count": int(r[2] or 0)}
                              for r in r_defects.fetchall()],
         "complaints":       row2(r_complaints),
         "sales_ranking":    row2(r_sales_rank),
@@ -823,13 +826,13 @@ async def get_chart_summary(
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 품목별 연간 실적 (Annual Performance by Item)
-# ─────────────────────────────────────────────────────────────────────────────
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+# ?�목�??�간 ?�적 (Annual Performance by Item)
+# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
 
 @router.get("/available-years")
 async def get_available_years(db: AsyncSession = Depends(get_db)):
-    """납품 실적이 존재하는 모든 연도 조회"""
+    """?�품 ?�적??존재?�는 모든 ?�도 조회"""
     from app.models.sales import DeliveryHistory
     query = select(extract('year', DeliveryHistory.delivery_date).label("year"))\
            .distinct()\
@@ -844,7 +847,7 @@ async def get_annual_performance(
     exchange_rate: float = Query(default=1350.0),
     db: AsyncSession = Depends(get_db)
 ):
-    """품목별 연간 실적: 고객사별 -> 제품별 -> 월별(1~12) 집계"""
+    """?�목�??�간 ?�적: 고객?�별 -> ?�품�?-> ?�별(1~12) 집계"""
     from app.models.sales import DeliveryHistory, DeliveryHistoryItem, SalesOrderItem, SalesOrder
     
     # CASE expression for currency conversion

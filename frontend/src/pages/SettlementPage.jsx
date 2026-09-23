@@ -19,7 +19,7 @@ import SettlementChartTab from '../components/SettlementChartTab';
 const SettlementPage = () => {
     const today = new Date();
     const [year, setYear] = useState(today.getFullYear());
-    const [month, setMonth] = useState(today.getMonth() + 1);
+    const [month, setMonth] = useState(today.getMonth() + 1); // null = 전체월
     const [majorGroupId, setMajorGroupId] = useState("");
     const [activeTab, setActiveTab] = useState("orders");
     const [loading, setLoading] = useState(false);
@@ -106,7 +106,8 @@ const SettlementPage = () => {
                 setAnnualData(res.data || { data: [], overall_total_qty: 0, overall_total_amount: 0 });
                 setData([]); // Clear standard data
             } else {
-                const params = { year, month };
+                const params = { year };
+                if (month) params.month = month; // null이면 미전송 = 전체월
                 if (activeTab === 'purchases' && majorGroupId === '소모품') {
                     // 소모품 필터: dept 파라미터로 전달
                     params.dept = '소모품';
@@ -453,11 +454,13 @@ const SettlementPage = () => {
                 <div className={`space-y-1.5 transition-opacity ${activeTab === 'annual' ? 'opacity-30 pointer-events-none' : ''}`}>
                     <label className="text-xs text-gray-500 font-medium">조회 월</label>
                     <select 
-                        value={month} onChange={(e) => setMonth(parseInt(e.target.value))}
+                        value={month ?? ''}
+                        onChange={(e) => setMonth(e.target.value === '' ? null : parseInt(e.target.value))}
                         disabled={activeTab === 'annual'}
                         className="bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-24 appearance-none disabled:bg-gray-800"
                     >
-                        {activeTab === 'annual' ? <option value="">전체</option> : months.map(m => <option key={m} value={m}>{m}월</option>)}
+                        <option value="">전체</option>
+                        {months.map(m => <option key={m} value={m}>{m}월</option>)}
                     </select>
                 </div>
 
