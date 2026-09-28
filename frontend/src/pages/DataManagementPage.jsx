@@ -295,10 +295,12 @@ const ExportTab = () => {
 // 가져오기 탭 (기존 기능, 향후 개선 예정)
 // ────────────────────────────────────────────────────────────────────────────
 const IMPORT_TABLES = [
-    { id: 'partners',   label: '거래처',   desc: 'Customer_table 대응' },
-    { id: 'products',   label: '생산제품', desc: 'Product_table 대응' },
-    { id: 'staff',      label: '직원',     desc: 'Person_table 대응' },
-    { id: 'equipments', label: '설비',     desc: '설비 마스터' },
+    { id: 'partners',   label: '거래처',      desc: '업체명, 구분, 사업자번호 등' },
+    { id: 'products',   label: '생산제품',    desc: '품명, 규격, 단가 등 (Export 파일 그대로 업로드 가능)' },
+    { id: 'parts',      label: '부품/소모품', desc: '유형, 품명, 규격, 단가 등 (Export 파일 그대로 업로드 가능)' },
+    { id: 'staff',      label: '직원',        desc: '성명, 직책, 주업무 등' },
+    { id: 'equipments', label: '설비',        desc: '장비명, 코드, 사양, 위치' },
+    { id: 'orders',     label: '수주 이력',   desc: '수주일자, 거래처, 제품, 수량, 단가 등' },
 ];
 
 const ImportTab = () => {

@@ -23,13 +23,28 @@ router = APIRouter()
 TABLE_CONFIG = {
     "products": {
         "model": Product,
-        "columns": ["품명", "규격", "재질", "단위", "거래처명", "비고"],
+        "columns": ["품명", "규격", "재질", "단위", "거래처명", "최근단가", "비고"],
         "mapping": {
             "품명": "name",
             "규격": "specification",
             "재질": "material",
             "단위": "unit",
-            "거래처명": "partner_name", # Virtual field for mapping
+            "거래처명": "partner_name",  # Virtual field for mapping
+            "최근단가": "recent_price",   # 단가 직접 반영
+            "비고": "note"
+        }
+    },
+    "parts": {  # 부품/소모품 업로드 (Export 왕복용)
+        "model": Product,
+        "columns": ["유형", "품명", "규격", "재질", "단위", "거래처명", "최근단가", "비고"],
+        "mapping": {
+            "유형": "item_type_str",   # Virtual: 부품→PART, 소모품→CONSUMABLE
+            "품명": "name",
+            "규격": "specification",
+            "재질": "material",
+            "단위": "unit",
+            "거래처명": "partner_name",
+            "최근단가": "recent_price",
             "비고": "note"
         }
     },
@@ -373,12 +388,12 @@ async def confirm_products(
     db: AsyncSession = Depends(deps.get_db)
 ):
     try:
+        from app.models.inventory import Stock
         # 1. Create New Partners first
-        new_partner_map = {} # name -> id
+        new_partner_map = {}
         for item in items:
             if item.mapping_type == "NEW" and item.new_partner_name:
                 if item.new_partner_name not in new_partner_map:
-                    # Check if exists first to avoid duplicates in one batch
                     res = await db.execute(select(Partner).where(Partner.name == item.new_partner_name))
                     existing = res.scalar_one_or_none()
                     if existing:
@@ -388,7 +403,7 @@ async def confirm_products(
                         db.add(new_p)
                         await db.flush()
                         new_partner_map[item.new_partner_name] = new_p.id
-        
+
         # 2. Create Products
         for item in items:
             p_id = None
@@ -396,16 +411,28 @@ async def confirm_products(
                 p_id = item.partner_id
             elif item.mapping_type == "NEW":
                 p_id = new_partner_map.get(item.new_partner_name)
-            
+
             product_data = item.data.copy()
-            product_data.pop("partner_name", None) # Remove virtual field
-            
-            product = Product(
-                **product_data,
-                partner_id=p_id
-            )
+            product_data.pop("partner_name", None)   # Virtual 필드 제거
+            product_data.pop("item_type_str", None)  # Virtual 필드 제거
+
+            # 최근단가 타입 변환 (문자열 → float)
+            if "recent_price" in product_data and product_data["recent_price"] not in (None, ""):
+                try:
+                    product_data["recent_price"] = float(str(product_data["recent_price"]).replace(",", ""))
+                except (ValueError, TypeError):
+                    product_data.pop("recent_price", None)
+            else:
+                product_data.pop("recent_price", None)
+
+            product = Product(**product_data, partner_id=p_id)
             db.add(product)
-            
+            await db.flush()
+
+            # 재고 자동 생성 (0으로 초기화)
+            new_stock = Stock(product_id=product.id, current_quantity=0, location="기본창고")
+            db.add(new_stock)
+
         await db.commit()
         return {"message": f"총 {len(items)}개의 제품이 성공적으로 등록되었습니다."}
     except Exception as e:
@@ -422,67 +449,98 @@ async def upload_excel(
 ):
     if table_name not in TABLE_CONFIG:
         raise HTTPException(status_code=404, detail="지원하지 않는 테이블입니다.")
-    
+
     config = TABLE_CONFIG[table_name]
     model = config["model"]
     mapping = config["mapping"]
-    
+
     try:
         contents = await file.read()
-        df = pd.read_excel(io.BytesIO(contents))
+        if file.filename and file.filename.lower().endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(contents), encoding="utf-8-sig")
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"엑셀 파일을 읽는 중 오류가 발생했습니다: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"파일을 읽는 중 오류가 발생했습니다: {str(e)}")
 
     errors = []
     try:
+        from app.models.inventory import Stock
         for index, row in df.iterrows():
             row_num = index + 2
             data = {}
             try:
                 for excel_col, model_attr in mapping.items():
                     val = row.get(excel_col)
-                    
+
                     # Robust NaN handling
                     if pd.isna(val) or (isinstance(val, float) and np.isnan(val)):
                         val = None
                     elif isinstance(val, str):
                         val = val.strip()
-                        if val == "" or val.lower() == "nan": val = None
-                    
-                    # Special parsing for Partners 구분
+                        if val == "" or val.lower() == "nan":
+                            val = None
+
+                    # 거래처 구분 파싱 (매출처/매입처/외주처)
                     if table_name == "partners" and "구분" in excel_col:
                         if val:
                             mapping_dict = {"매출처": "CUSTOMER", "매입처": "SUPPLIER", "외주처": "SUBCONTRACTOR"}
-                            val = [mapping_dict.get(v.strip(), v.strip()) for v in str(val).split(',')]
+                            val = [mapping_dict.get(v.strip(), v.strip()) for v in str(val).split(",")]
                         else:
                             val = ["CUSTOMER"]
-                    
-                    data[model_attr] = val
-                
-                # Special logic for equipments: auto-code and type casting
-                if table_name == "equipments":
-                    # Cast spec/location to string safely
-                    for field in ["spec", "location"]:
-                        if data.get(field) is not None:
-                            data[field] = str(data[field])
-                        else:
-                            data[field] = ""
-                            
-                    # Auto-generate code if missing
-                    if not data.get("code"):
-                        from datetime import date
-                        today = date.today().strftime("%Y%m%d")
-                        # We use a simple counter for this batch. For a more robust solution, 
-                        # we'd check the DB, but since we are in a loop, let's keep it simple or fetch max.
-                        # Actually, let's just use a timestamp + random or a counter passed from outside.
-                        # For now, let's query the DB for the count of today's EQ codes to avoid collisions.
-                        from sqlalchemy import func
-                        eq_query = select(func.count(Equipment.id)).where(Equipment.code.like(f"EQ-{today}-%"))
-                        eq_res = await db.execute(eq_query)
-                        eq_count = eq_res.scalar() or 0
-                        data["code"] = f"EQ-{today}-{eq_count + index + 1:03d}"
 
-                db.add(model(**data))
+                    # 최근단가 float 변환
+                    if model_attr == "recent_price" and val is not None:
+                        try:
+                            val = float(str(val).replace(",", ""))
+                        except (ValueError, TypeError):
+                            val = None
+
+                    data[model_attr] = val
+
+                # 가상 필드 분리
+                partner_name = data.pop("partner_name", None)
+                item_type_str = data.pop("item_type_str", None)
+
+                # 거래처명 → partner_id 매핑
+                partner_id = None
+                if partner_name:
+                    res = await db.execute(select(Partner).where(Partner.name == partner_name))
+                    pobj = res.scalar_one_or_none()
+                    if pobj:
+                        partner_id = pobj.id
+
+                # 부품/소모품 유형 처리
+                if table_name == "parts":
+                    type_map2 = {"부품": "PART", "소모품": "CONSUMABLE"}
+                    data["item_type"] = type_map2.get(str(item_type_str or "부품"), "PART")
+
+                # 설비 코드 자동 생성
+                if table_name == "equipments":
+                    for field in ["spec", "location"]:
+                        data[field] = str(data[field]) if data.get(field) is not None else ""
+                    if not data.get("code"):
+                        from datetime import date as _date
+                        from sqlalchemy import func
+                        today_str = _date.today().strftime("%Y%m%d")
+                        eq_res = await db.execute(
+                            select(func.count(Equipment.id)).where(Equipment.code.like(f"EQ-{today_str}-%"))
+                        )
+                        eq_count = eq_res.scalar() or 0
+                        data["code"] = f"EQ-{today_str}-{eq_count + index + 1:03d}"
+
+                if partner_id is not None:
+                    data["partner_id"] = partner_id
+
+                new_obj = model(**data)
+                db.add(new_obj)
+
+                # 제품/부품 업로드 시 재고 자동 생성
+                if table_name in ("products", "parts"):
+                    await db.flush()
+                    new_stock = Stock(product_id=new_obj.id, current_quantity=0, location="기본창고")
+                    db.add(new_stock)
+
             except Exception as e:
                 errors.append(f"{row_num}행: {str(e)}")
                 continue
@@ -490,9 +548,10 @@ async def upload_excel(
         if errors:
             await db.rollback()
             return JSONResponse(status_code=400, content={"message": "오류로 인해 취소됨", "errors": errors})
-        
+
         await db.commit()
-        return {"message": "업로드 성공"}
+        return {"message": f"총 {len(df)}건 업로드 성공"}
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
