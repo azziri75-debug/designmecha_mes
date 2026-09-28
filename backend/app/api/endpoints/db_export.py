@@ -571,4 +571,382 @@ async def export_all(
         ["장비명", "장비코드", "사양", "설치위치"],
         eq_rows, [20, 16, 20, 16])
 
+    # 9. 외주발주
+    from app.models.purchasing import OutsourcingOrder, OutsourcingOrderItem
+    r6 = await db.execute(select(OutsourcingOrder).options(
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product),
+        joinedload(OutsourcingOrder.partner)
+    ).order_by(OutsourcingOrder.order_date.desc()))
+    os_status_map = {"PENDING":"대기","ORDERED":"발주완료","COMPLETED":"완료","CANCELED":"취소",
+                     "QUOTATION":"견적의뢰중","QUOTATION_COMPLETE":"견적완료"}
+    os_rows = []
+    for o in r6.unique().scalars().all():
+        pname = o.partner.name if o.partner else ""
+        sv = o.status.value if hasattr(o.status,"value") else str(o.status)
+        for item in (o.items or []):
+            prod = item.product
+            os_rows.append([o.order_no or "", _d(o.order_date), pname,
+                            prod.name if prod else "", prod.specification if prod else "",
+                            item.quantity or 0, _n(item.unit_price),
+                            _n((item.quantity or 0)*(item.unit_price or 0)),
+                            _d(o.delivery_date), _d(o.actual_delivery_date),
+                            os_status_map.get(sv, sv), o.note or ""])
+    _apply_sheet(wb.create_sheet("외주발주"),
+        ["발주번호","발주일자","외주처","품목명","규격","수량","단가","금액","납기일","입고일","상태","비고"],
+        os_rows, [18,12,20,28,16,8,12,14,12,12,10,20])
+
+    # 10. 납품이력
+    from app.models.sales import DeliveryHistory, DeliveryHistoryItem, SalesOrderItem
+    r7 = await db.execute(select(DeliveryHistory).options(
+        selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product),
+        selectinload(DeliveryHistory.order).joinedload(SalesOrder.partner)
+    ).order_by(DeliveryHistory.delivery_date.desc()))
+    dh_rows = []
+    for dh in r7.unique().scalars().all():
+        order = dh.order
+        pname = order.partner.name if (order and order.partner) else ""
+        order_no = order.order_no if order else ""
+        for item in (dh.items or []):
+            oi = item.order_item
+            prod = oi.product if oi else None
+            dh_rows.append([dh.delivery_no or "", _d(dh.delivery_date), pname, order_no,
+                            prod.name if prod else "", prod.specification if prod else "",
+                            item.quantity or 0,
+                            _n((item.quantity or 0)*(oi.unit_price if oi else 0)),
+                            dh.note or ""])
+    _apply_sheet(wb.create_sheet("납품이력"),
+        ["납품번호","납품일자","거래처","수주번호","제품명","규격","수량","금액","비고"],
+        dh_rows, [18,12,20,18,28,16,8,14,22])
+
+    # 11. 작업일지
+    from app.models.production import WorkLog, WorkLogItem
+    r8 = await db.execute(select(WorkLog).options(
+        selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
+        joinedload(WorkLog.worker)
+    ).order_by(WorkLog.work_date.desc()))
+    wl_rows = []
+    for wl in r8.unique().scalars().all():
+        writer = wl.worker.name if wl.worker else ""
+        if wl.items:
+            for it in wl.items:
+                w = it.worker.name if it.worker else writer
+                start = it.start_time.strftime("%H:%M") if it.start_time else ""
+                end   = it.end_time.strftime("%H:%M") if it.end_time else ""
+                wl_rows.append([_d(wl.work_date), writer, w, start, end,
+                                it.good_quantity or 0, it.bad_quantity or 0,
+                                _n(it.unit_price), it.note or ""])
+        else:
+            wl_rows.append([_d(wl.work_date), writer, "", "", "", 0, 0, "", wl.note or ""])
+    _apply_sheet(wb.create_sheet("작업일지"),
+        ["작업일자","작성자","작업자","시작시간","종료시간","양품수량","불량수량","단가","비고"],
+        wl_rows, [12,12,12,10,10,10,10,12,28])
+
+    # 12. 재고생산이력
+    r9 = await db.execute(select(StockProduction).options(
+        joinedload(StockProduction.product),
+        joinedload(StockProduction.partner)
+    ).order_by(StockProduction.request_date.desc()))
+    sp_status = {"PENDING":"대기","IN_PROGRESS":"생산중","COMPLETED":"완료","CANCELLED":"취소"}
+    sp_rows = []
+    for sp in r9.unique().scalars().all():
+        sv = sp.status.value if hasattr(sp.status,"value") else str(sp.status)
+        sp_rows.append([sp.production_no or "", _d(sp.request_date), _d(sp.target_date),
+                        sp.product.name if sp.product else "",
+                        sp.product.specification if sp.product else "",
+                        sp.quantity or 0, sp_status.get(sv, sv), sp.note or ""])
+    _apply_sheet(wb.create_sheet("재고생산이력"),
+        ["생산번호","요청일","목표일","제품명","규격","수량","상태","비고"],
+        sp_rows, [18,12,12,28,16,8,10,22])
+
+    # 13. 재고 수불 이력
+    from app.models.inventory import StockTransaction
+    r10 = await db.execute(select(StockTransaction).options(
+        selectinload(StockTransaction.stock).selectinload(Stock.product)
+    ).order_by(StockTransaction.created_at.desc()))
+    tt_map = {"IN":"입고","OUT":"출고","ADJUSTMENT":"조정"}
+    tx_rows = []
+    for tx in r10.scalars().all():
+        stock = tx.stock
+        prod = stock.product if stock else None
+        tv = tx.transaction_type.value if hasattr(tx.transaction_type,"value") else str(tx.transaction_type)
+        tx_rows.append([prod.name if prod else "", prod.specification if prod else "",
+                        tt_map.get(tv, tv), tx.quantity or 0,
+                        tx.reference or "",
+                        tx.created_at.strftime("%Y-%m-%d %H:%M") if tx.created_at else ""])
+    _apply_sheet(wb.create_sheet("재고수불이력"),
+        ["제품명","규격","구분","수량","참조번호","일시"],
+        tx_rows, [28,16,8,8,18,18])
+
+    # 14. 측정기
+    from app.models.basics import MeasuringInstrument
+    r11 = await db.execute(select(MeasuringInstrument).where(MeasuringInstrument.is_active == True))
+    mi_rows = [[m.name or "", m.code or "", m.spec or "", m.serial_number or "",
+                m.calibration_cycle_months or 12, _d(m.next_calibration_date)]
+               for m in r11.scalars().all()]
+    _apply_sheet(wb.create_sheet("측정기"),
+        ["측정기명","코드","규격","일련번호","교정주기(개월)","차기교정일"],
+        mi_rows, [20,14,16,16,14,14])
+
     return _stream_xlsx(wb, f"MES_전체백업_{_today()}.xlsx")
+
+
+# ── 개별 엔드포인트 (추가분) ──────────────────────────────────────────────────
+
+@router.get("/export/outsourcing-orders")
+async def export_outsourcing_orders(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    fmt: str = Query("xlsx"),
+    db: AsyncSession = Depends(get_db)
+):
+    """외주발주 이력 — Export 전용"""
+    from app.models.purchasing import OutsourcingOrder, OutsourcingOrderItem
+    from sqlalchemy import and_
+
+    q = select(OutsourcingOrder).options(
+        selectinload(OutsourcingOrder.items).selectinload(OutsourcingOrderItem.product),
+        joinedload(OutsourcingOrder.partner)
+    )
+    conds = []
+    if start_date: conds.append(OutsourcingOrder.order_date >= start_date)
+    if end_date:   conds.append(OutsourcingOrder.order_date <= end_date)
+    if conds: q = q.where(and_(*conds))
+    q = q.order_by(OutsourcingOrder.order_date.desc())
+
+    result = await db.execute(q)
+    orders = result.unique().scalars().all()
+
+    st_map = {"PENDING":"대기","ORDERED":"발주완료","COMPLETED":"완료","CANCELED":"취소",
+              "QUOTATION":"견적의뢰중","QUOTATION_COMPLETE":"견적완료"}
+    headers = ["발주번호","발주일자","외주처","품목명","규격","수량","단가","금액","납기일","입고일","상태","비고"]
+    col_widths = [18,12,20,28,16,8,12,14,12,12,10,20]
+
+    rows = []
+    for o in orders:
+        pname = o.partner.name if o.partner else ""
+        sv = o.status.value if hasattr(o.status,"value") else str(o.status)
+        for item in (o.items or []):
+            prod = item.product
+            rows.append([o.order_no or "", _d(o.order_date), pname,
+                         prod.name if prod else "", prod.specification if prod else "",
+                         item.quantity or 0, _n(item.unit_price),
+                         _n((item.quantity or 0)*(item.unit_price or 0)),
+                         _d(o.delivery_date), _d(o.actual_delivery_date),
+                         st_map.get(sv, sv), o.note or ""])
+
+    fname = f"외주발주_{_today()}"
+    if fmt == "csv":
+        return _stream_csv(pd.DataFrame(rows, columns=headers), fname + ".csv")
+    wb = openpyxl.Workbook(); wb.remove(wb.active)
+    _apply_sheet(wb.create_sheet("외주발주"), headers, rows, col_widths)
+    return _stream_xlsx(wb, fname + ".xlsx")
+
+
+@router.get("/export/delivery-history")
+async def export_delivery_history(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    fmt: str = Query("xlsx"),
+    db: AsyncSession = Depends(get_db)
+):
+    """납품 이력 — Export 전용"""
+    from app.models.sales import DeliveryHistory, DeliveryHistoryItem, SalesOrderItem, SalesOrder
+    from sqlalchemy import and_
+
+    q = select(DeliveryHistory).options(
+        selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product),
+        selectinload(DeliveryHistory.order).joinedload(SalesOrder.partner)
+    )
+    conds = []
+    if start_date: conds.append(DeliveryHistory.delivery_date >= start_date)
+    if end_date:   conds.append(DeliveryHistory.delivery_date <= end_date)
+    if conds: q = q.where(and_(*conds))
+    q = q.order_by(DeliveryHistory.delivery_date.desc())
+
+    result = await db.execute(q)
+    deliveries = result.unique().scalars().all()
+
+    headers = ["납품번호","납품일자","거래처","수주번호","제품명","규격","수량","금액","비고"]
+    col_widths = [18,12,20,18,28,16,8,14,22]
+
+    rows = []
+    for dh in deliveries:
+        order = dh.order
+        pname = order.partner.name if (order and order.partner) else ""
+        order_no = order.order_no if order else ""
+        for item in (dh.items or []):
+            oi = item.order_item
+            prod = oi.product if oi else None
+            rows.append([dh.delivery_no or "", _d(dh.delivery_date), pname, order_no,
+                         prod.name if prod else "",
+                         prod.specification if prod else "",
+                         item.quantity or 0,
+                         _n((item.quantity or 0)*(oi.unit_price if oi else 0)),
+                         dh.note or ""])
+
+    fname = f"납품이력_{_today()}"
+    if fmt == "csv":
+        return _stream_csv(pd.DataFrame(rows, columns=headers), fname + ".csv")
+    wb = openpyxl.Workbook(); wb.remove(wb.active)
+    _apply_sheet(wb.create_sheet("납품이력"), headers, rows, col_widths)
+    return _stream_xlsx(wb, fname + ".xlsx")
+
+
+@router.get("/export/work-logs")
+async def export_work_logs(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    fmt: str = Query("xlsx"),
+    db: AsyncSession = Depends(get_db)
+):
+    """작업일지 — Export 전용"""
+    from app.models.production import WorkLog, WorkLogItem
+    from sqlalchemy import and_
+
+    q = select(WorkLog).options(
+        selectinload(WorkLog.items).selectinload(WorkLogItem.worker),
+        joinedload(WorkLog.worker)
+    )
+    conds = []
+    if start_date: conds.append(WorkLog.work_date >= start_date)
+    if end_date:   conds.append(WorkLog.work_date <= end_date)
+    if conds: q = q.where(and_(*conds))
+    q = q.order_by(WorkLog.work_date.desc())
+
+    result = await db.execute(q)
+    logs = result.unique().scalars().all()
+
+    headers = ["작업일자","작성자","작업자","시작시간","종료시간","양품수량","불량수량","단가","비고"]
+    col_widths = [12,12,12,10,10,10,10,12,28]
+
+    rows = []
+    for wl in logs:
+        writer = wl.worker.name if wl.worker else ""
+        if wl.items:
+            for it in wl.items:
+                w = it.worker.name if it.worker else writer
+                start = it.start_time.strftime("%H:%M") if it.start_time else ""
+                end   = it.end_time.strftime("%H:%M") if it.end_time else ""
+                rows.append([_d(wl.work_date), writer, w, start, end,
+                             it.good_quantity or 0, it.bad_quantity or 0,
+                             _n(it.unit_price), it.note or ""])
+        else:
+            rows.append([_d(wl.work_date), writer, "","","", 0, 0, "", wl.note or ""])
+
+    fname = f"작업일지_{_today()}"
+    if fmt == "csv":
+        return _stream_csv(pd.DataFrame(rows, columns=headers), fname + ".csv")
+    wb = openpyxl.Workbook(); wb.remove(wb.active)
+    _apply_sheet(wb.create_sheet("작업일지"), headers, rows, col_widths)
+    return _stream_xlsx(wb, fname + ".xlsx")
+
+
+@router.get("/export/stock-productions")
+async def export_stock_productions(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    fmt: str = Query("xlsx"),
+    db: AsyncSession = Depends(get_db)
+):
+    """재고생산 이력 — Export 전용"""
+    from app.models.inventory import StockProduction
+    from sqlalchemy import and_
+
+    q = select(StockProduction).options(
+        joinedload(StockProduction.product),
+        joinedload(StockProduction.partner)
+    )
+    conds = []
+    if start_date: conds.append(StockProduction.request_date >= start_date)
+    if end_date:   conds.append(StockProduction.request_date <= end_date)
+    if conds: q = q.where(and_(*conds))
+    q = q.order_by(StockProduction.request_date.desc())
+
+    result = await db.execute(q)
+    productions = result.unique().scalars().all()
+
+    st_map = {"PENDING":"대기","IN_PROGRESS":"생산중","COMPLETED":"완료","CANCELLED":"취소"}
+    headers = ["생산번호","요청일","목표일","제품명","규격","수량","상태","비고"]
+    col_widths = [18,12,12,28,16,8,10,22]
+
+    rows = []
+    for sp in productions:
+        sv = sp.status.value if hasattr(sp.status,"value") else str(sp.status)
+        rows.append([sp.production_no or "", _d(sp.request_date), _d(sp.target_date),
+                     sp.product.name if sp.product else "",
+                     sp.product.specification if sp.product else "",
+                     sp.quantity or 0, st_map.get(sv, sv), sp.note or ""])
+
+    fname = f"재고생산이력_{_today()}"
+    if fmt == "csv":
+        return _stream_csv(pd.DataFrame(rows, columns=headers), fname + ".csv")
+    wb = openpyxl.Workbook(); wb.remove(wb.active)
+    _apply_sheet(wb.create_sheet("재고생산이력"), headers, rows, col_widths)
+    return _stream_xlsx(wb, fname + ".xlsx")
+
+
+@router.get("/export/stock-transactions")
+async def export_stock_transactions(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    fmt: str = Query("xlsx"),
+    db: AsyncSession = Depends(get_db)
+):
+    """재고 수불 이력 — Export 전용"""
+    from app.models.inventory import StockTransaction, Stock
+    from sqlalchemy import and_
+
+    q = select(StockTransaction).options(
+        selectinload(StockTransaction.stock).selectinload(Stock.product)
+    )
+    conds = []
+    if start_date: conds.append(StockTransaction.created_at >= start_date)
+    if end_date:   conds.append(StockTransaction.created_at <= end_date)
+    if conds: q = q.where(and_(*conds))
+    q = q.order_by(StockTransaction.created_at.desc())
+
+    result = await db.execute(q)
+    txs = result.scalars().all()
+
+    tt_map = {"IN":"입고","OUT":"출고","ADJUSTMENT":"조정"}
+    headers = ["제품명","규격","구분","수량","참조번호","일시"]
+    col_widths = [28,16,8,8,18,18]
+
+    rows = []
+    for tx in txs:
+        stock = tx.stock
+        prod = stock.product if stock else None
+        tv = tx.transaction_type.value if hasattr(tx.transaction_type,"value") else str(tx.transaction_type)
+        rows.append([prod.name if prod else "", prod.specification if prod else "",
+                     tt_map.get(tv, tv), tx.quantity or 0, tx.reference or "",
+                     tx.created_at.strftime("%Y-%m-%d %H:%M") if tx.created_at else ""])
+
+    fname = f"재고수불이력_{_today()}"
+    if fmt == "csv":
+        return _stream_csv(pd.DataFrame(rows, columns=headers), fname + ".csv")
+    wb = openpyxl.Workbook(); wb.remove(wb.active)
+    _apply_sheet(wb.create_sheet("재고수불이력"), headers, rows, col_widths)
+    return _stream_xlsx(wb, fname + ".xlsx")
+
+
+@router.get("/export/measuring-instruments")
+async def export_measuring_instruments(fmt: str = Query("xlsx"), db: AsyncSession = Depends(get_db)):
+    """측정기 목록 — Export 전용"""
+    from app.models.basics import MeasuringInstrument
+
+    result = await db.execute(select(MeasuringInstrument).where(MeasuringInstrument.is_active == True))
+    instruments = result.scalars().all()
+
+    headers = ["측정기명","코드","규격","일련번호","교정주기(개월)","차기교정일"]
+    col_widths = [20,14,16,16,14,14]
+
+    rows = [[m.name or "", m.code or "", m.spec or "", m.serial_number or "",
+             m.calibration_cycle_months or 12, _d(m.next_calibration_date)]
+            for m in instruments]
+
+    fname = f"측정기_{_today()}"
+    if fmt == "csv":
+        return _stream_csv(pd.DataFrame(rows, columns=headers), fname + ".csv")
+    wb = openpyxl.Workbook(); wb.remove(wb.active)
+    _apply_sheet(wb.create_sheet("측정기"), headers, rows, col_widths)
+    return _stream_xlsx(wb, fname + ".xlsx")
