@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt, Copy, Printer } from 'lucide-react';
+import { Plus, Search, Package, MoreHorizontal, X, Upload, FileText, Filter, Settings, Trash2, Edit2, Save, History, Bolt, Copy, Printer, FileSpreadsheet } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
 import { Box, Typography, Button, Checkbox, Dialog, DialogTitle, DialogContent } from '@mui/material';
@@ -1109,16 +1109,37 @@ const ProductsPage = ({ type }) => {
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-500 whitespace-normal break-all" title={product.note}>{product.note || '-'}</td>
                                                 <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                                    {type === 'PRODUCED' && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setPrintProductId(product.id);
+                                                            const url = `/product/products/${product.id}/export-excel`;
+                                                            api.get(url, { responseType: 'blob' }).then(res => {
+                                                                const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                                                                const link = document.createElement('a');
+                                                                link.href = URL.createObjectURL(blob);
+                                                                const cd = res.headers['content-disposition'] || '';
+                                                                const match = cd.match(/filename\*=UTF-8''(.+)/i);
+                                                                link.download = match ? decodeURIComponent(match[1]) : `제품분석_${product.name}.xlsx`;
+                                                                link.click();
+                                                            }).catch(() => alert('엑셀 다운로드 실패'));
                                                         }}
-                                                        className="text-gray-400 hover:text-blue-500"
-                                                        title="공정도 인쇄"
+                                                        className="text-gray-400 hover:text-green-400"
+                                                        title="엑셀 내보내기 (공정/BOM/마진분석)"
                                                     >
-                                                        <Printer className="w-4 h-4" />
+                                                        <FileSpreadsheet className="w-4 h-4" />
                                                     </button>
+                                                )}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setPrintProductId(product.id);
+                                                    }}
+                                                    className="text-gray-400 hover:text-blue-500"
+                                                    title="공정도 인쇄"
+                                                >
+                                                    <Printer className="w-4 h-4" />
+                                                </button>
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
