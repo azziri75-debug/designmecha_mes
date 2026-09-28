@@ -1,431 +1,493 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-    Download,
-    Upload,
-    Database,
-    AlertCircle,
-    CheckCircle2,
-    Loader2,
-    FileSpreadsheet,
-    Info,
-    X,
-    ChevronRight,
-    Search,
-    UserPlus,
-    Check
+    Download, Upload, Database, FileSpreadsheet, FileText,
+    AlertCircle, CheckCircle2, Loader2, ChevronDown, Calendar,
+    Package, Users, ShoppingCart, ClipboardList, Boxes, Wrench, BarChart3
 } from 'lucide-react';
 import api from '../lib/api';
-import Card from '../components/Card';
 import { cn } from '../lib/utils';
-import ResizableTable from '../components/ResizableTable';
 
-// API_URL 제거 (api 인스턴스의 baseURL 사용)
-
-const DB_TABLES = [
-    { id: 'orders', name: '수주 정보 (Orders)', icon: Database, isInteractive: true },
-    { id: 'products', name: '제품 정보 (Products)', icon: Database, isInteractive: true },
-    { id: 'partners', name: '거래처 정보 (Clients)', icon: Database },
-    { id: 'staff', name: '직원 정보 (Staff)', icon: Database },
-    { id: 'equipments', name: '설비 정보 (Equipments)', icon: Database },
+// ────────────────────────────────────────────────────────────────────────────
+// 내보내기 대상 설정
+// ────────────────────────────────────────────────────────────────────────────
+const EXPORT_TARGETS = [
+    {
+        id: 'all',
+        label: '전체 백업',
+        desc: '모든 테이블을 시트별로 묶어 Excel 1파일로 저장',
+        icon: Database,
+        color: 'text-purple-400',
+        border: 'border-purple-500/50',
+        bg: 'bg-purple-500/10',
+        hasDateFilter: true,
+        endpoint: '/db-manager/export/all',
+        filename: (d) => `MES_전체백업_${d}.xlsx`,
+    },
+    {
+        id: 'partners',
+        label: '거래처 목록',
+        desc: '업체명, 구분, 사업자번호, 담당자 등 (Access: Customer_table)',
+        icon: Users,
+        color: 'text-blue-400',
+        border: 'border-blue-500/40',
+        bg: 'bg-blue-500/5',
+        hasDateFilter: false,
+        endpoint: '/db-manager/export/partners',
+        filename: (d) => `거래처_${d}`,
+    },
+    {
+        id: 'products',
+        label: '생산제품 목록',
+        desc: '품명, 규격, 공정수, 단가 등 (Access: Product_table)',
+        icon: Package,
+        color: 'text-emerald-400',
+        border: 'border-emerald-500/40',
+        bg: 'bg-emerald-500/5',
+        hasDateFilter: false,
+        endpoint: '/db-manager/export/products',
+        extraParam: 'item_type=PRODUCED',
+        filename: (d) => `생산제품_${d}`,
+    },
+    {
+        id: 'parts',
+        label: '부품/소모품 목록',
+        desc: '부품, 소모품 품목 정보',
+        icon: Wrench,
+        color: 'text-orange-400',
+        border: 'border-orange-500/40',
+        bg: 'bg-orange-500/5',
+        hasDateFilter: false,
+        endpoint: '/db-manager/export/products',
+        extraParam: 'item_type=PART,CONSUMABLE',
+        filename: (d) => `부품소모품_${d}`,
+    },
+    {
+        id: 'sales-orders',
+        label: '수주 이력',
+        desc: '수주번호, 거래처, 제품, 수량, 금액, 진행상태 (Access: Order_table)',
+        icon: ShoppingCart,
+        color: 'text-sky-400',
+        border: 'border-sky-500/40',
+        bg: 'bg-sky-500/5',
+        hasDateFilter: true,
+        endpoint: '/db-manager/export/sales-orders',
+        filename: (d) => `수주이력_${d}`,
+    },
+    {
+        id: 'estimates',
+        label: '견적 이력',
+        desc: '견적일자, 거래처, 제품, 단가, 유효기간',
+        icon: ClipboardList,
+        color: 'text-indigo-400',
+        border: 'border-indigo-500/40',
+        bg: 'bg-indigo-500/5',
+        hasDateFilter: true,
+        endpoint: '/db-manager/export/estimates',
+        filename: (d) => `견적이력_${d}`,
+    },
+    {
+        id: 'purchase-orders',
+        label: '구매발주 이력',
+        desc: '발주번호, 거래처, 품목, 입고 현황',
+        icon: BarChart3,
+        color: 'text-yellow-400',
+        border: 'border-yellow-500/40',
+        bg: 'bg-yellow-500/5',
+        hasDateFilter: true,
+        endpoint: '/db-manager/export/purchase-orders',
+        filename: (d) => `구매발주_${d}`,
+    },
+    {
+        id: 'inventory',
+        label: '재고 현황',
+        desc: '제품별 현재고, 생산중수량, 재고금액 (Access: Stock_table)',
+        icon: Boxes,
+        color: 'text-teal-400',
+        border: 'border-teal-500/40',
+        bg: 'bg-teal-500/5',
+        hasDateFilter: false,
+        endpoint: '/db-manager/export/inventory',
+        filename: (d) => `재고현황_${d}`,
+    },
+    {
+        id: 'staff',
+        label: '직원 목록',
+        desc: '성명, 직책, 부서, 전화 (Access: Person_table)',
+        icon: Users,
+        color: 'text-pink-400',
+        border: 'border-pink-500/40',
+        bg: 'bg-pink-500/5',
+        hasDateFilter: false,
+        endpoint: '/db-manager/export/staff',
+        filename: (d) => `직원목록_${d}`,
+    },
 ];
 
-// --- Mapping Modal Component ---
-const MappingModal = ({ isOpen, onClose, verifyData, type, onConfirm }) => {
-    const [mappings, setMappings] = useState([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+// ────────────────────────────────────────────────────────────────────────────
+// 내보내기 탭
+// ────────────────────────────────────────────────────────────────────────────
+const ExportTab = () => {
+    const [selected, setSelected] = useState(EXPORT_TARGETS[0]);
+    const [fmt, setFmt] = useState('xlsx');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState(null);
 
-    useEffect(() => {
-        if (isOpen && verifyData) {
-            const initial = verifyData.rows.map(row => {
-                if (type === 'products') {
-                    const exactMatch = row.matches.find(m => m.match_type === 'EXACT');
-                    return {
-                        ...row,
-                        mapping_type: exactMatch ? 'EXISTING' : (row.matches.length > 0 ? 'EXISTING' : 'NEW'),
-                        partner_id: exactMatch ? exactMatch.id : (row.matches[0]?.id || null),
-                        new_partner_name: row.data.partner_name || ''
-                    };
-                } else {
-                    // orders
-                    const exactPartner = row.partner_matches.find(m => m.match_type === 'EXACT');
-                    const exactProduct = row.product_matches.find(m => m.match_type === 'EXACT');
-                    return {
-                        ...row,
-                        partner_mapping_type: exactPartner ? 'EXISTING' : (row.partner_matches.length > 0 ? 'EXISTING' : 'NEW'),
-                        partner_id: exactPartner ? exactPartner.id : (row.partner_matches[0]?.id || null),
-                        new_partner_name: row.data.partner_name || '',
-                        product_mapping_type: 'EXISTING',
-                        product_id: exactProduct ? exactProduct.id : (row.product_matches[0]?.id || null)
-                    };
-                }
-            });
-            setMappings(initial);
-        }
-    }, [isOpen, verifyData, type]);
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
-    if (!isOpen || mappings.length === 0) return null;
-
-    const handleMappingChange = (index, updates) => {
-        const newMappings = [...mappings];
-        newMappings[index] = { ...newMappings[index], ...updates };
-        setMappings(newMappings);
-    };
-
-    const handleFinalSubmit = async () => {
-        setIsSubmitting(true);
+    const handleDownload = async () => {
+        setLoading(true);
+        setResult(null);
         try {
-            const response = await api.post(`/db-manager/confirm/${type}`, payload);
-            onConfirm(response.data.message);
-            onClose();
-        } catch (error) {
-            alert('최종 등록 중 오류가 발생했습니다: ' + (error.response?.data?.detail || error.message));
+            let url = selected.endpoint + '?fmt=' + fmt;
+            if (selected.extraParam) url += '&' + selected.extraParam;
+            if (selected.hasDateFilter && startDate) url += '&start_date=' + startDate;
+            if (selected.hasDateFilter && endDate)   url += '&end_date=' + endDate;
+
+            const res = await api.get(url, { responseType: 'blob' });
+            const blob = new Blob([res.data]);
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            const base = selected.filename(today);
+            link.download = fmt === 'xlsx' ? (base.endsWith('.xlsx') ? base : base + '.xlsx')
+                                           : (base.endsWith('.csv')  ? base : base + '.csv');
+            link.click();
+            setResult({ success: true, message: `'${link.download}' 다운로드 완료` });
+        } catch (e) {
+            setResult({ success: false, message: '다운로드 실패: ' + (e.response?.data?.detail || e.message) });
         } finally {
-            setIsSubmitting(false);
+            setLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-                <div className="p-6 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
-                    <div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-blue-500" />
-                            데이터 검증 및 매핑 ({type === 'products' ? '제품' : '수주'})
-                        </h2>
-                        <p className="text-sm text-gray-400 mt-1">업로드 전 DB 정보와 매핑하여 데이터 정합성을 확인하세요.</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 왼쪽: 대상 선택 */}
+            <div className="lg:col-span-1 space-y-2">
+                <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider font-semibold">내보낼 데이터 선택</p>
+                {EXPORT_TARGETS.map((t) => (
+                    <button
+                        key={t.id}
+                        onClick={() => { setSelected(t); setResult(null); }}
+                        className={cn(
+                            'w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all',
+                            selected.id === t.id
+                                ? `${t.bg} ${t.border} border shadow-lg`
+                                : 'bg-gray-800/40 border-gray-700/60 hover:border-gray-600 hover:bg-gray-800/70'
+                        )}
+                    >
+                        <t.icon className={cn('w-4 h-4 shrink-0', selected.id === t.id ? t.color : 'text-gray-500')} />
+                        <span className={cn('font-medium text-sm', selected.id === t.id ? 'text-white' : 'text-gray-400')}>
+                            {t.label}
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            {/* 오른쪽: 설정 + 다운로드 */}
+            <div className="lg:col-span-2 space-y-4">
+                {/* 선택된 대상 정보 */}
+                <div className={cn('rounded-xl p-5 border', selected.bg, selected.border)}>
+                    <div className="flex items-center gap-3 mb-2">
+                        <selected.icon className={cn('w-5 h-5', selected.color)} />
+                        <h3 className="font-bold text-white text-lg">{selected.label}</h3>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
-                        <X className="w-5 h-5 text-gray-500" />
-                    </button>
+                    <p className="text-sm text-gray-400">{selected.desc}</p>
                 </div>
 
-                <div className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                    {(() => {
-                        const columns = [
-                            { key: 'row_index', label: '행', width: 60, noResize: true },
-                            { key: 'name', label: type === 'products' ? '제품명' : '제품/규격', width: 250 },
-                            { key: 'partner', label: '거래처 매핑', width: 350 },
-                        ];
-                        if (type === 'orders') {
-                            columns.push({ key: 'product', label: '제품 매핑', width: 300 });
-                        }
+                {/* 날짜 필터 */}
+                {selected.hasDateFilter && (
+                    <div className="bg-gray-800/50 rounded-xl border border-gray-700/60 p-4 space-y-3">
+                        <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
+                            <Calendar className="w-4 h-4" />
+                            <span>기간 필터 <span className="text-gray-600">(선택사항 — 비우면 전체 기간)</span></span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="flex-1 bg-gray-900 border border-gray-700 text-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                            />
+                            <span className="text-gray-600">~</span>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="flex-1 bg-gray-900 border border-gray-700 text-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                            />
+                        </div>
+                    </div>
+                )}
 
-                        return (
-                            <ResizableTable
-                                columns={columns}
-                                className="text-xs text-left"
-                                theadClassName="sticky top-0 bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700 z-10"
-                                thClassName="px-4 py-3"
+                {/* 파일 형식 */}
+                <div className="bg-gray-800/50 rounded-xl border border-gray-700/60 p-4">
+                    <p className="text-sm text-gray-400 font-medium mb-3">파일 형식</p>
+                    <div className="flex gap-3">
+                        {[
+                            { id: 'xlsx', label: 'Excel (.xlsx)', icon: FileSpreadsheet, desc: '서식 포함 — 추천' },
+                            { id: 'csv',  label: 'CSV (.csv)',    icon: FileText,        desc: '범용, 다른 시스템 연동' },
+                        ].map((f) => (
+                            <button
+                                key={f.id}
+                                onClick={() => setFmt(f.id)}
+                                className={cn(
+                                    'flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all',
+                                    fmt === f.id
+                                        ? 'bg-blue-600/10 border-blue-500 text-blue-400'
+                                        : 'bg-gray-900/50 border-gray-700 text-gray-500 hover:border-gray-600'
+                                )}
                             >
-                                <tbody className="divide-y divide-gray-800/50">
-                                    {mappings.map((m, idx) => (
-                                        <tr key={idx} className="group hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300">
-                                            <td className="py-4 text-gray-500">{m.row_index}</td>
-                                            <td className="py-4">
-                                                <div className="font-medium text-white">
-                                                    {type === 'products' ? m.data.name : `${m.data.product_name} / ${m.data.specification || '-'}`}
-                                                </div>
-                                                <div className="text-[10px] text-gray-500 mt-0.5">
-                                                    {type === 'orders' && `수량: ${m.data.quantity} / 단가: ${m.data.unit_price}`}
-                                                </div>
-                                            </td>
-
-                                            {/* Partner Mapping Column */}
-                                            <td className="py-4 pr-4">
-                                                <div className="flex flex-col gap-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-gray-400 text-[10px] shrink-0 w-16">엑셀: {m.data.partner_name || '-'}</span>
-                                                        {m.partner_status === 'EXACT' || m.status === 'EXACT' ? (
-                                                            <Check className="w-3 h-3 text-green-500" />
-                                                        ) : (
-                                                            <AlertCircle className="w-3 h-3 text-yellow-500" />
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <select
-                                                            className="bg-gray-800 border border-gray-700 text-gray-200 text-[11px] rounded px-2 py-1 flex-1 outline-none focus:border-blue-500"
-                                                            value={(type === 'products' ? m.mapping_type : m.partner_mapping_type) === 'NEW' ? 'NEW' : (m.partner_id || '')}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                const updates = type === 'products'
-                                                                    ? { mapping_type: val === 'NEW' ? 'NEW' : 'EXISTING', partner_id: val === 'NEW' ? null : parseInt(val) }
-                                                                    : { partner_mapping_type: val === 'NEW' ? 'NEW' : 'EXISTING', partner_id: val === 'NEW' ? null : parseInt(val) };
-                                                                handleMappingChange(idx, updates);
-                                                            }}
-                                                        >
-                                                            <option value="NEW">✨ 신규 거래처 등록</option>
-                                                            <optgroup label="추천 검색 결과">
-                                                                {(m.partner_matches || m.matches || []).map(p => (
-                                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                                ))}
-                                                            </optgroup>
-                                                        </select>
-                                                        {(type === 'products' ? m.mapping_type : m.partner_mapping_type) === 'NEW' && (
-                                                            <input
-                                                                type="text"
-                                                                className="bg-gray-800 border border-gray-700 text-blue-400 text-[11px] rounded px-2 py-1 w-24 outline-none focus:border-blue-500"
-                                                                value={m.new_partner_name}
-                                                                onChange={(e) => handleMappingChange(idx, { new_partner_name: e.target.value })}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            {/* Product Mapping Column (Orders Only) */}
-                                            {type === 'orders' && (
-                                                <td className="py-4">
-                                                    <div className="flex flex-col gap-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-gray-400 text-[10px] shrink-0 w-16">매칭 상태:</span>
-                                                            {m.product_status === 'EXACT' ? (
-                                                                <span className="text-green-500 font-bold">EXACT</span>
-                                                            ) : (
-                                                                <span className="text-red-400 font-bold">선택 필요</span>
-                                                            )}
-                                                        </div>
-                                                        <select
-                                                            className="bg-gray-800 border border-gray-700 text-gray-200 text-[11px] rounded px-2 py-1 w-full outline-none focus:border-blue-500"
-                                                            value={m.product_id || ''}
-                                                            onChange={(e) => handleMappingChange(idx, { product_id: parseInt(e.target.value) })}
-                                                        >
-                                                            <option value="">-- 제품 선택 --</option>
-                                                            {m.product_matches.map(p => (
-                                                                <option key={p.id} value={p.id}>
-                                                                    {p.name} ({p.specification || '규격없음'}) {p.partner_id === m.partner_id ? '✅' : ''}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </ResizableTable>
-                        );
-                    })()}
+                                <f.icon className="w-5 h-5" />
+                                <span className="font-semibold text-xs">{f.label}</span>
+                                <span className="text-[10px] opacity-70">{f.desc}</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                <div className="p-6 border-t border-gray-800 flex justify-end gap-3 bg-gray-900/50">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors font-medium"
-                    >
-                        취소
-                    </button>
-                    <button
-                        onClick={handleFinalSubmit}
-                        disabled={isSubmitting}
-                        className="px-8 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all font-bold shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        최종 등록 완료
-                    </button>
+                {/* 다운로드 버튼 */}
+                <button
+                    onClick={handleDownload}
+                    disabled={loading}
+                    className={cn(
+                        'w-full flex items-center justify-center gap-3 py-4 rounded-xl font-bold text-base transition-all',
+                        loading
+                            ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20'
+                    )}
+                >
+                    {loading ? (
+                        <><Loader2 className="w-5 h-5 animate-spin" /><span>다운로드 중...</span></>
+                    ) : (
+                        <><Download className="w-5 h-5" /><span>{selected.label} 다운로드</span></>
+                    )}
+                </button>
+
+                {/* 결과 */}
+                {result && (
+                    <div className={cn(
+                        'rounded-xl p-4 border flex items-center gap-3',
+                        result.success ? 'bg-green-500/10 border-green-500/40' : 'bg-red-500/10 border-red-500/40'
+                    )}>
+                        {result.success
+                            ? <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+                            : <AlertCircle  className="w-5 h-5 text-red-400   shrink-0" />}
+                        <span className={cn('text-sm', result.success ? 'text-green-300' : 'text-red-300')}>
+                            {result.message}
+                        </span>
+                    </div>
+                )}
+
+                {/* Access 안내 */}
+                <div className="bg-gray-900/40 rounded-xl border border-gray-700/40 p-4 text-xs text-gray-500 leading-relaxed">
+                    <p className="font-semibold text-gray-400 mb-1">💡 Access DB 사용자 안내</p>
+                    <p>기존 Access DB를 업로드하려면: Access → 해당 테이블 선택 → <span className="text-gray-300">외부 데이터 → Excel로 내보내기</span></p>
+                    <p className="mt-1">내보낸 .xlsx 파일을 <span className="text-gray-300">[데이터 가져오기]</span> 탭에서 업로드하면 MES DB로 이관됩니다.</p>
                 </div>
             </div>
         </div>
     );
 };
 
-// --- Main Page Component ---
-const DataManagementPage = () => {
-    const [selectedTable, setSelectedTable] = useState(DB_TABLES[0].id);
+// ────────────────────────────────────────────────────────────────────────────
+// 가져오기 탭 (기존 기능, 향후 개선 예정)
+// ────────────────────────────────────────────────────────────────────────────
+const IMPORT_TABLES = [
+    { id: 'partners',   label: '거래처',   desc: 'Customer_table 대응' },
+    { id: 'products',   label: '생산제품', desc: 'Product_table 대응' },
+    { id: 'staff',      label: '직원',     desc: 'Person_table 대응' },
+    { id: 'equipments', label: '설비',     desc: '설비 마스터' },
+];
+
+const ImportTab = () => {
+    const [selected, setSelected] = useState(IMPORT_TABLES[0]);
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
-    const [verifyData, setVerifyData] = useState(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const handleDownloadTemplate = async () => {
+    const handleTemplateDownload = async () => {
         try {
-            const response = await api.get(`/db-manager/template/${selectedTable}`, {
-                responseType: 'blob'
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const res = await api.get(`/db-manager/template/${selected.id}`, { responseType: 'blob' });
             const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `template_${selectedTable}.xlsx`);
-            document.body.appendChild(link);
+            link.href = URL.createObjectURL(new Blob([res.data]));
+            link.download = `양식_${selected.label}.xlsx`;
             link.click();
-            link.remove();
-        } catch (error) {
-            alert('양식 다운로드 중 오류가 발생했습니다.');
-        }
+        } catch { alert('양식 다운로드 실패'); }
     };
 
-    const handleFileChange = (e) => {
-        if (e.target.files[0]) {
-            setFile(e.target.files[0]);
-            setResult(null);
-        }
-    };
-
-    const handleProcess = async () => {
-        if (!file) {
-            alert('파일을 선택해주세요.');
-            return;
-        }
-
-        const currentConfig = DB_TABLES.find(t => t.id === selectedTable);
+    const handleUpload = async () => {
+        if (!file) { alert('파일을 선택해주세요.'); return; }
+        setLoading(true); setResult(null);
         const formData = new FormData();
         formData.append('file', file);
-
-        if (currentConfig.isInteractive) {
-            setLoading(true);
-            setResult(null);
-            try {
-                const response = await api.post(`/db-manager/verify/${selectedTable}/`, formData);
-                setVerifyData(response.data);
-                setIsModalOpen(true);
-            } catch (error) {
-                alert('데이터 검증 중 오류가 발생했습니다: ' + (error.response?.data?.detail || error.message));
-            } finally {
-                setLoading(false);
-            }
-        } else {
-            setLoading(true);
-            setResult(null);
-            try {
-                const response = await api.post(`/db-manager/upload/${selectedTable}/`, formData);
-                setResult({
-                    success: true,
-                    message: response.data.message
-                });
-                setFile(null);
-            } catch (error) {
-                const errorData = error.response?.data;
-                setResult({
-                    success: false,
-                    message: errorData?.message || '업로드 중 오류가 발생했습니다.',
-                    errors: errorData?.errors || []
-                });
-            } finally {
-                setLoading(false);
-            }
-        }
+        try {
+            const res = await api.post(`/db-manager/upload/${selected.id}/`, formData);
+            setResult({ success: true, message: res.data.message });
+            setFile(null);
+        } catch (e) {
+            const d = e.response?.data;
+            setResult({ success: false, message: d?.message || '업로드 실패', errors: d?.errors || [] });
+        } finally { setLoading(false); }
     };
 
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="md:col-span-1 border-gray-800 bg-gray-900/50">
-                    <div className="p-6 space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-400">데이터 대상 선택</label>
-                            <div className="grid grid-cols-1 gap-2">
-                                {DB_TABLES.map((table) => (
-                                    <button
-                                        key={table.id}
-                                        onClick={() => {
-                                            setSelectedTable(table.id);
-                                            setResult(null);
-                                            setFile(null);
-                                        }}
-                                        className={cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg border transition-all text-left",
-                                            selectedTable === table.id
-                                                ? "bg-blue-600/10 border-blue-500 text-blue-400 shadow-lg shadow-blue-500/10"
-                                                : "bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600 hover:bg-gray-800"
-                                        )}
-                                    >
-                                        <table.icon className="w-5 h-5" />
-                                        <span className="font-medium">{table.name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 왼쪽: 대상 선택 + 양식 */}
+            <div className="lg:col-span-1 space-y-3">
+                <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider font-semibold">업로드 대상 선택</p>
+                {IMPORT_TABLES.map((t) => (
+                    <button
+                        key={t.id}
+                        onClick={() => { setSelected(t); setResult(null); setFile(null); }}
+                        className={cn(
+                            'w-full flex flex-col gap-0.5 px-4 py-3 rounded-xl border text-left transition-all',
+                            selected.id === t.id
+                                ? 'bg-blue-600/10 border-blue-500 shadow-lg'
+                                : 'bg-gray-800/40 border-gray-700/60 hover:border-gray-600'
+                        )}
+                    >
+                        <span className={cn('font-medium text-sm', selected.id === t.id ? 'text-blue-300' : 'text-gray-400')}>
+                            {t.label}
+                        </span>
+                        <span className="text-[11px] text-gray-600">{t.desc}</span>
+                    </button>
+                ))}
 
-                        <div className="pt-4 border-t border-gray-800">
-                            <button
-                                onClick={handleDownloadTemplate}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700"
-                            >
-                                <Download className="w-4 h-4" />
-                                <span>엑셀 양식 다운로드</span>
-                            </button>
-                            <p className="mt-3 text-xs text-gray-500 leading-relaxed italic">
-                                * 선택한 대상에 맞는 업로드용 빈 양식을 다운로드합니다.
-                            </p>
-                        </div>
-                    </div>
-                </Card>
+                <div className="pt-3 border-t border-gray-800">
+                    <button
+                        onClick={handleTemplateDownload}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl border border-gray-700 text-sm transition-colors"
+                    >
+                        <Download className="w-4 h-4" />
+                        엑셀 양식 다운로드
+                    </button>
+                    <p className="mt-2 text-[11px] text-gray-600 leading-relaxed">
+                        * 양식에 맞게 데이터를 입력 후 업로드하세요.
+                    </p>
+                </div>
+            </div>
 
-                <Card className="md:col-span-2 border-gray-800 bg-gray-900/50">
-                    <div className="p-6 space-y-6">
-                        <div className="flex items-center gap-2 text-blue-400">
-                            <Upload className="w-5 h-5" />
-                            <h3 className="font-semibold text-lg">엑셀 업로드 및 처리</h3>
-                        </div>
+            {/* 오른쪽: 업로드 */}
+            <div className="lg:col-span-2 space-y-4">
+                <div className="bg-gray-900/40 rounded-xl border border-yellow-500/30 p-4 text-xs text-yellow-400/80 leading-relaxed">
+                    <p className="font-semibold mb-1">⚠️ 업로드 전 주의사항</p>
+                    <p>• 거래처 먼저, 그 다음 제품 순서로 업로드 권장</p>
+                    <p>• Access DB → <span className="text-yellow-300">Excel로 내보내기</span> 후 양식에 맞게 정리 후 업로드</p>
+                    <p>• 중복 데이터는 새로 추가되므로, 가져오기 전 현재 데이터를 먼저 확인하세요.</p>
+                </div>
 
-                        <div className={cn(
-                            "border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center transition-all",
-                            file ? "border-blue-500 bg-blue-500/5" : "border-gray-700 bg-gray-800/30 hover:border-gray-600"
-                        )}>
-                            <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} className="hidden" id="excel-upload" />
-                            <label htmlFor="excel-upload" className="cursor-pointer flex flex-col items-center">
-                                <FileSpreadsheet className={cn("w-16 h-16 mb-4", file ? "text-blue-500" : "text-gray-600")} />
-                                <span className="text-gray-300 font-medium text-center">
-                                    {file ? file.name : '클릭하거나 파일을 드래그하여 업로드'}
-                                </span>
-                                <span className="text-gray-500 text-sm mt-1">Excel (.xlsx, .xls)</span>
-                            </label>
-                        </div>
+                <div
+                    className={cn(
+                        'border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all',
+                        file ? 'border-blue-500 bg-blue-500/5' : 'border-gray-700 bg-gray-800/20 hover:border-gray-600'
+                    )}
+                    onClick={() => document.getElementById('import-file-input').click()}
+                >
+                    <input
+                        id="import-file-input"
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        className="hidden"
+                        onChange={(e) => { if (e.target.files[0]) { setFile(e.target.files[0]); setResult(null); } }}
+                    />
+                    <FileSpreadsheet className={cn('w-12 h-12 mb-3', file ? 'text-blue-400' : 'text-gray-600')} />
+                    <p className={cn('font-medium text-sm text-center', file ? 'text-blue-300' : 'text-gray-400')}>
+                        {file ? file.name : '클릭하여 파일 선택'}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">Excel (.xlsx, .xls) / CSV (.csv)</p>
+                </div>
 
-                        <div className="flex justify-end pt-4 border-t border-gray-800">
-                            <button
-                                onClick={handleProcess}
-                                disabled={!file || loading}
-                                className={cn(
-                                    "px-8 py-3 rounded-lg font-bold flex items-center gap-2 transition-all",
-                                    !file || loading ? "bg-gray-800 text-gray-600 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/25"
-                                )}
-                            >
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        <span>데이터 분석 중...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <ChevronRight className="w-5 h-5" />
-                                        <span>{DB_TABLES.find(t => t.id === selectedTable).isInteractive ? '검증 단계 진행' : '즉시 반영하기'}</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                <button
+                    onClick={handleUpload}
+                    disabled={!file || loading}
+                    className={cn(
+                        'w-full flex items-center justify-center gap-3 py-4 rounded-xl font-bold text-base transition-all',
+                        !file || loading
+                            ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20'
+                    )}
+                >
+                    {loading ? (
+                        <><Loader2 className="w-5 h-5 animate-spin" /><span>업로드 중...</span></>
+                    ) : (
+                        <><Upload className="w-5 h-5" /><span>{selected.label} 업로드</span></>
+                    )}
+                </button>
 
-                        {result && (
-                            <div className={cn("rounded-xl p-6 border animate-in fade-in slide-in-from-top-4", result.success ? "bg-green-500/10 border-green-500/50" : "bg-red-500/10 border-red-500/50")}>
-                                <div className="flex items-start gap-4">
-                                    {result.success ? <CheckCircle2 className="w-6 h-6 text-green-500" /> : <AlertCircle className="w-6 h-6 text-red-500" />}
-                                    <div>
-                                        <h4 className={cn("font-bold text-lg", result.success ? "text-green-400" : "text-red-400")}>{result.success ? '완료' : '오류'}</h4>
-                                        <p className="text-gray-300">{result.message}</p>
-                                        {!result.success && result.errors?.length > 0 && (
-                                            <div className="mt-4 bg-black/40 rounded-lg p-4 max-h-40 overflow-auto">
-                                                {result.errors.map((err, i) => <div key={i} className="text-sm text-gray-400 py-1">• {err}</div>)}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                {result && (
+                    <div className={cn(
+                        'rounded-xl p-4 border',
+                        result.success ? 'bg-green-500/10 border-green-500/40' : 'bg-red-500/10 border-red-500/40'
+                    )}>
+                        <div className="flex items-center gap-3 mb-1">
+                            {result.success
+                                ? <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+                                : <AlertCircle  className="w-5 h-5 text-red-400   shrink-0" />}
+                            <span className={cn('font-medium', result.success ? 'text-green-300' : 'text-red-300')}>
+                                {result.message}
+                            </span>
+                        </div>
+                        {result.errors?.length > 0 && (
+                            <div className="mt-2 bg-black/30 rounded-lg p-3 max-h-36 overflow-auto text-xs text-gray-400 space-y-1">
+                                {result.errors.map((e, i) => <div key={i}>• {e}</div>)}
                             </div>
                         )}
                     </div>
-                </Card>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// 메인 페이지
+// ────────────────────────────────────────────────────────────────────────────
+const DataManagementPage = () => {
+    const [activeTab, setActiveTab] = useState('export');
+
+    const tabs = [
+        { id: 'export', label: '📤 데이터 내보내기', desc: '현재 MES DB → Excel/CSV 다운로드' },
+        { id: 'import', label: '📥 데이터 가져오기', desc: '구 시스템 자료 → MES DB 업로드' },
+    ];
+
+    return (
+        <div className="space-y-6">
+            {/* 헤더 */}
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
+                    <Database className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                    <h2 className="text-lg font-bold text-white">DB 관리</h2>
+                    <p className="text-xs text-gray-500">데이터 가져오기 / 내보내기 (Access DB ↔ MES)</p>
+                </div>
             </div>
 
-            <MappingModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                verifyData={verifyData}
-                type={selectedTable}
-                onConfirm={(msg) => {
-                    setResult({ success: true, message: msg });
-                    setFile(null);
-                }}
-            />
+            {/* 탭 */}
+            <div className="flex gap-2 p-1 bg-gray-900/60 rounded-xl border border-gray-800">
+                {tabs.map((t) => (
+                    <button
+                        key={t.id}
+                        onClick={() => setActiveTab(t.id)}
+                        className={cn(
+                            'flex-1 flex flex-col items-center py-3 px-4 rounded-lg transition-all',
+                            activeTab === t.id
+                                ? 'bg-gray-800 shadow text-white'
+                                : 'text-gray-500 hover:text-gray-400'
+                        )}
+                    >
+                        <span className="font-semibold text-sm">{t.label}</span>
+                        <span className="text-[11px] opacity-70 mt-0.5">{t.desc}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* 탭 콘텐츠 */}
+            <div className="bg-gray-900/40 rounded-2xl border border-gray-800 p-6">
+                {activeTab === 'export' ? <ExportTab /> : <ImportTab />}
+            </div>
         </div>
     );
 };
