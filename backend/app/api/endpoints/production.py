@@ -1398,6 +1398,7 @@ async def delete_production_plan(
     if not plan:
         raise HTTPException(status_code=404, detail="Production Plan not found")
 
+    from sqlalchemy import func
     from sqlalchemy.orm import joinedload
     from app.models.quality import QualityDefect
     from app.models.production import WorkOrder, ProductionStatus
@@ -1538,7 +1539,6 @@ async def delete_production_plan(
     await db.flush()
 
     # Delete empty Order headers (headers with no items left)
-    from sqlalchemy import func
     for po_id in affected_po_ids:
         rem_res = await db.execute(select(func.count(PurchaseOrderItem.id)).where(PurchaseOrderItem.purchase_order_id == po_id))
         if rem_res.scalar() == 0:
