@@ -197,6 +197,7 @@ class DeliveryHistoryBase(BaseModel):
     supplier_info: Optional[dict] = None
     is_export: Optional[bool] = False
     invoice_no: Optional[str] = None
+    override_partner_id: Optional[int] = None  # 납품처 오버라이드 (수주 거래처와 다를 때)
 
 class DeliveryHistoryCreate(DeliveryHistoryBase):
     items: List[DeliveryHistoryItemCreate]
@@ -211,12 +212,15 @@ class DeliveryHistoryUpdate(BaseModel):
     statement_json: Optional[dict] = None
     supplier_info: Optional[dict] = None
     invoice_no: Optional[str] = None
+    override_partner_id: Optional[int] = None  # 납품처 오버라이드 수정 가능
     items: Optional[List[DeliveryHistoryItemCreate]] = None
 
 class DeliveryHistory(DeliveryHistoryBase):
     id: int
     items: List[DeliveryHistoryItem] = []
     delivery_amount: float = 0.0
+    override_partner_name: Optional[str] = None  # 응답 시 납품처 이름 포함
+
     class Config:
         from_attributes = True
 

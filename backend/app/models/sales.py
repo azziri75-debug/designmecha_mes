@@ -110,6 +110,7 @@ class DeliveryHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=False)
+    override_partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)  # 수주 거래처와 다른 업체로 납품 시
     delivery_date = Column(Date, default=now_kst)
     delivery_no = Column(String, unique=True, index=True)
     note = Column(Text, nullable=True)
@@ -121,6 +122,7 @@ class DeliveryHistory(Base):
     created_at = Column(DateTime, default=now_kst)
 
     order = relationship("SalesOrder", back_populates="delivery_histories")
+    override_partner = relationship("Partner", foreign_keys=[override_partner_id])  # 납품처 오버라이드
     items = relationship("DeliveryHistoryItem", back_populates="delivery_history", cascade="all, delete-orphan")
 
     @property

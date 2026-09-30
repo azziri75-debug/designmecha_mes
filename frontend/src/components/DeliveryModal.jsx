@@ -89,13 +89,15 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
         note: '',
         items: [],
         attachment_files: [],
-        is_export: false
+        is_export: false,
+        override_partner_id: null,   // 납품처 오버라이드
     });
 
     const [showStatement, setShowStatement] = useState(false);
     const [showInvoice, setShowInvoice] = useState(false);
     const [lastDelivery, setLastDelivery] = useState(null);
     const [nextInvoiceNo, setNextInvoiceNo] = useState('');
+    const [partners, setPartners] = useState([]);  // 거래처 목록
 
     // 생산계획 없음 다이얼로그 상태
     const [noPlanDialog, setNoPlanDialog] = useState(false);
@@ -112,10 +114,20 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                     current_delivered_quantity: 0
                 })),
                 attachment_files: [],
-                is_export: false
+                is_export: false,
+                override_partner_id: null,
             });
         }
     }, [order]);
+
+    // 거래처 목록 로드 (납품처 변경용)
+    useEffect(() => {
+        if (isOpen && partners.length === 0) {
+            api.get('/basics/partners').then(r => {
+                setPartners(r.data || []);
+            }).catch(() => {});
+        }
+    }, [isOpen]);
 
     // Fetch next invoice number when export mode is toggled on
     useEffect(() => {
@@ -180,6 +192,7 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
             attachment_files: formData.attachment_files,
             is_export: formData.is_export,
             invoice_no: formData.is_export ? nextInvoiceNo : null,
+            override_partner_id: formData.override_partner_id || null,  // 납품처 오버라이드
             items: validItems.map(item => ({
                 order_item_id: item.id,
                 quantity: item.current_delivered_quantity
@@ -234,6 +247,11 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                     delivery_date: lastDelivery.delivery_date,
                     delivery_id: lastDelivery.id,
                     statement_json: lastDelivery.statement_json,
+                    // 납품처 오버라이드: 선택된 업체명을 거래명세서에 반영
+                    override_partner_name: lastDelivery.override_partner_name ||
+                        (lastDelivery.override_partner_id
+                            ? partners.find(p => p.id === lastDelivery.override_partner_id)?.name
+                            : null),
                     items: lastDelivery.items.map(di => ({
                         ...di.order_item,
                         quantity: di.quantity
@@ -335,6 +353,33 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
                                         onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
                                     />
                                 </div>
+
+                                {/* 납품처 변경 */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">
+                                        납품처
+                                        <span className="ml-1 text-gray-600">(수주 거래처와 다를 때만 변경)</span>
+                                    </label>
+                                    <select
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg text-white p-2.5 focus:ring-2 focus:ring-blue-500"
+                                        value={formData.override_partner_id || ''}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            override_partner_id: e.target.value ? parseInt(e.target.value) : null
+                                        })}
+                                    >
+                                        <option value="">수주 거래처 사용 ({order?.partner_name || '원래 업체'})</option>
+                                        {partners.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                    {formData.override_partner_id && (
+                                        <p className="mt-1 text-xs text-amber-400 flex items-center gap-1">
+                                            ⚠️ 거래명세서가 선택한 업체명으로 발행됩니다.
+                                        </p>
+                                    )}
+                                </div>
+
                                 <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-1">비고 (메모)</label>
                                     <textarea

@@ -1107,6 +1107,7 @@ async def create_delivery(
         supplier_info=delivery_in.supplier_info,
         is_export=delivery_in.is_export or False,
         invoice_no=delivery_in.invoice_no,
+        override_partner_id=delivery_in.override_partner_id,  # 납품처 오버라이드
     )
     db.add(db_delivery)
     await db.flush()
@@ -1513,6 +1514,12 @@ async def update_delivery_history(
         history.statement_json = delivery_update.statement_json
     if delivery_update.supplier_info is not None:
         history.supplier_info = delivery_update.supplier_info
+    if delivery_update.invoice_no is not None:
+        history.invoice_no = delivery_update.invoice_no
+    if delivery_update.override_partner_id is not None:
+        history.override_partner_id = delivery_update.override_partner_id
+    elif "override_partner_id" in delivery_update.model_fields_set and delivery_update.override_partner_id is None:
+        history.override_partner_id = None  # 명시적으로 None 전달 시 원복
 
     # 2) 품목 수량 수정 및 수주 데이터 동기화
     if delivery_update.items is not None:

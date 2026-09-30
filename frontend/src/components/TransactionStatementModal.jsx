@@ -384,7 +384,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     paddingBottom: '2px',
                                     lineHeight: '1.2'
                                 }}>
-                                    {data.partner?.name || ''}
+                                    {data.override_partner_name || data.partner?.name || ''}
                                 </div>
                                 <div style={{ width: '100%', height: '2.5px', backgroundColor: C, marginTop: '-1px' }} className="tsm-no-bg-override" />
                             </div>
