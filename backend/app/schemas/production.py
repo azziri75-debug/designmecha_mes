@@ -143,9 +143,6 @@ class ProductionPlan(ProductionPlanBase):
 
 
 
-    model_config = ConfigDict(from_attributes=True)
-
-
 # --- Work Log Schemas ---
 
 class WorkLogItemBase(BaseModel):

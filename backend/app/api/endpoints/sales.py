@@ -1204,10 +1204,11 @@ async def get_delivery_histories(
     db: AsyncSession = Depends(deps.get_db)
 ):
     query = select(DeliveryHistory).options(
-        selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product)
+        selectinload(DeliveryHistory.items).selectinload(DeliveryHistoryItem.order_item).selectinload(SalesOrderItem.product),
+        joinedload(DeliveryHistory.override_partner)
     ).where(DeliveryHistory.order_id == order_id).order_by(desc(DeliveryHistory.delivery_date))
     res = await db.execute(query)
-    return res.scalars().all()
+    return res.unique().scalars().all()
 
 @router.put("/orders/{order_id}/delivery/{delivery_id}", response_model=schemas.DeliveryHistory)
 async def update_order_delivery(

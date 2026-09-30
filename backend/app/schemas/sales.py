@@ -221,6 +221,14 @@ class DeliveryHistory(DeliveryHistoryBase):
     delivery_amount: float = 0.0
     override_partner_name: Optional[str] = None  # 응답 시 납품처 이름 포함
 
+    @classmethod
+    def model_validate(cls, obj, *args, **kwargs):
+        instance = super().model_validate(obj, *args, **kwargs)
+        # override_partner relationship에서 이름 추출
+        if hasattr(obj, 'override_partner') and obj.override_partner:
+            instance.override_partner_name = obj.override_partner.name
+        return instance
+
     class Config:
         from_attributes = True
 
