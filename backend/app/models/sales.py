@@ -126,6 +126,14 @@ class DeliveryHistory(Base):
     items = relationship("DeliveryHistoryItem", back_populates="delivery_history", cascade="all, delete-orphan")
 
     @property
+    def override_partner_name(self) -> str | None:
+        """납품처 오버라이드 이름 — 이미 로드된 경우에만 반환 (lazy load 방지)"""
+        partner = self.__dict__.get('override_partner')
+        if partner is not None:
+            return partner.name
+        return None
+
+    @property
     def delivery_amount(self) -> float:
         return sum(item.delivery_amount for item in self.items)
 

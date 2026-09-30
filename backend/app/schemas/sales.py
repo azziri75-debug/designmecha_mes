@@ -219,15 +219,7 @@ class DeliveryHistory(DeliveryHistoryBase):
     id: int
     items: List[DeliveryHistoryItem] = []
     delivery_amount: float = 0.0
-    override_partner_name: Optional[str] = None  # 응답 시 납품처 이름 포함
-
-    @classmethod
-    def model_validate(cls, obj, *args, **kwargs):
-        instance = super().model_validate(obj, *args, **kwargs)
-        # override_partner relationship에서 이름 추출
-        if hasattr(obj, 'override_partner') and obj.override_partner:
-            instance.override_partner_name = obj.override_partner.name
-        return instance
+    override_partner_name: Optional[str] = None  # 모델 property에서 자동 읽힘
 
     class Config:
         from_attributes = True
@@ -248,16 +240,8 @@ class DeliveryHistoryForStatus(BaseModel):
     is_export: Optional[bool] = False
     invoice_no: Optional[str] = None
     delivery_amount: float = 0.0
-    override_partner_name: Optional[str] = None  # 납품처 오버라이드 이름
-    # items: shallow (no product join required for list view)
+    override_partner_name: Optional[str] = None  # 모델 property에서 자동 읽힘
     items: List[DeliveryHistoryItem] = []
-
-    @classmethod
-    def model_validate(cls, obj, *args, **kwargs):
-        instance = super().model_validate(obj, *args, **kwargs)
-        if hasattr(obj, 'override_partner') and obj.override_partner:
-            instance.override_partner_name = obj.override_partner.name
-        return instance
 
     class Config:
         from_attributes = True
