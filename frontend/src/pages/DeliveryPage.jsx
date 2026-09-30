@@ -588,6 +588,8 @@ const DeliveryPage = () => {
                                                                                                     delivery_date: dh.delivery_date,
                                                                                                     order_no: ord.order_no,
                                                                                                     partner: ord.partner,
+                                                                                                    // 납품처 변경된 경우 해당 업체명 우선 사용
+                                                                                                    override_partner_name: dh.override_partner_name || null,
                                                                                                     note: dh.note || '',
                                                                                                     remarks: dh.note || '',
                                                                                                     items: (dh.items || []).map(it => ({

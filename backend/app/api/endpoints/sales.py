@@ -1383,12 +1383,13 @@ async def read_delivery_status(
         selectinload(SalesOrder.partner),
         # items -> product (required by SalesOrderItem schema)
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product),
-        # delivery_histories -> items -> order_item -> product
-        selectinload(SalesOrder.delivery_histories).selectinload(
-            DeliveryHistory.items
-        ).selectinload(
-            DeliveryHistoryItem.order_item
-        ).selectinload(SalesOrderItem.product),
+        # delivery_histories -> items -> order_item -> product + override_partner
+        selectinload(SalesOrder.delivery_histories).options(
+            selectinload(DeliveryHistory.items).selectinload(
+                DeliveryHistoryItem.order_item
+            ).selectinload(SalesOrderItem.product),
+            joinedload(DeliveryHistory.override_partner),
+        ),
     )
 
     # 1. Date Type Filtering

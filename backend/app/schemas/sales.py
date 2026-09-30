@@ -248,8 +248,16 @@ class DeliveryHistoryForStatus(BaseModel):
     is_export: Optional[bool] = False
     invoice_no: Optional[str] = None
     delivery_amount: float = 0.0
+    override_partner_name: Optional[str] = None  # 납품처 오버라이드 이름
     # items: shallow (no product join required for list view)
     items: List[DeliveryHistoryItem] = []
+
+    @classmethod
+    def model_validate(cls, obj, *args, **kwargs):
+        instance = super().model_validate(obj, *args, **kwargs)
+        if hasattr(obj, 'override_partner') and obj.override_partner:
+            instance.override_partner_name = obj.override_partner.name
+        return instance
 
     class Config:
         from_attributes = True
