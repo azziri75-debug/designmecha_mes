@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import api from '../lib/api';
 import { 
     FileText, 
@@ -8,13 +8,243 @@ import {
     Search,
     ChevronRight,
     Filter,
-    ArrowUpDown
+    ArrowUpDown,
+    TrendingDown,
+    TrendingUp,
+    RefreshCw,
+    ChevronDown,
+    ChevronUp,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import ResizableTable from '../components/ResizableTable';
 import { formatCurrency } from '../utils/currency';
 import SettlementChartTab from '../components/SettlementChartTab';
+
+/* ══════════════════════════════════════════════════════════════════════
+   원가분석 탭 컴포넌트
+   ══════════════════════════════════════════════════════════════════════ */
+const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [sortKey, setSortKey] = useState('cost_rate');
+    const [sortDir, setSortDir] = useState('desc');
+    const [filterText, setFilterText] = useState('');
+
+    const fetch = useCallback(async () => {
+        setLoading(true);
+        try {
+            const params = {};
+            if (majorGroupId && majorGroupId !== '소모품') params.major_group_id = majorGroupId;
+            const res = await api.get('/settlement/cost-analysis', { params });
+            setData(res.data || []);
+        } catch (e) {
+            console.error(e);
+            setData([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [majorGroupId]);
+
+    useEffect(() => { fetch(); }, [fetch]);
+
+    const handleSort = (key) => {
+        if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        else { setSortKey(key); setSortDir('desc'); }
+    };
+
+    const sorted = useMemo(() => {
+        let rows = data.filter(r =>
+            !filterText ||
+            r.product_name?.includes(filterText) ||
+            r.partner_name?.includes(filterText) ||
+            r.specification?.includes(filterText)
+        );
+        rows = [...rows].sort((a, b) => {
+            const av = a[sortKey] ?? (sortDir === 'asc' ? Infinity : -Infinity);
+            const bv = b[sortKey] ?? (sortDir === 'asc' ? Infinity : -Infinity);
+            return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+        });
+        return rows;
+    }, [data, sortKey, sortDir, filterText]);
+
+    // 요약 통계
+    const stats = useMemo(() => {
+        const withRate = sorted.filter(r => r.cost_rate !== null);
+        if (!withRate.length) return null;
+        const avg = withRate.reduce((s, r) => s + r.cost_rate, 0) / withRate.length;
+        const high = withRate.filter(r => r.cost_rate >= 100).length;
+        const warn = withRate.filter(r => r.cost_rate >= 80 && r.cost_rate < 100).length;
+        const good = withRate.filter(r => r.cost_rate < 80).length;
+        return { avg, high, warn, good, total: withRate.length };
+    }, [sorted]);
+
+    const Th = ({ label, col, align = 'left' }) => (
+        <th
+            className={`px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white border-b border-gray-700 text-${align} whitespace-nowrap`}
+            onClick={() => handleSort(col)}
+        >
+            {label}
+            {sortKey === col && (
+                <span className="ml-1 text-blue-400">{sortDir === 'asc' ? '↑' : '↓'}</span>
+            )}
+        </th>
+    );
+
+    const handleDownload = () => {
+        const rows = sorted.map((r, i) => ({
+            'No': i + 1,
+            '거래처': r.partner_name || '',
+            '품명': r.product_name,
+            '규격': r.specification || '',
+            '생산수량': r.quantity,
+            '수주단가(원)': r.latest_unit_price,
+            '단위원가(원)': r.cost_per_unit,
+            '공정비용합계': r.total_process_cost ? Math.round(r.total_process_cost) : 0,
+            '원가율(%)': r.cost_rate,
+            '최근완료일': r.latest_completion_date,
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '원가분석');
+        XLSX.writeFile(wb, `원가분석_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* 요약 카드 */}
+            {stats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                        <p className="text-xs text-gray-500 mb-1">분석 품목 수</p>
+                        <p className="text-2xl font-bold text-white">{stats.total}<span className="text-sm font-normal text-gray-500 ml-1">개</span></p>
+                    </div>
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                        <p className="text-xs text-gray-500 mb-1">평균 원가율</p>
+                        <p className={`text-2xl font-bold ${stats.avg >= 100 ? 'text-red-400' : stats.avg >= 80 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {stats.avg.toFixed(1)}<span className="text-sm font-normal ml-1">%</span>
+                        </p>
+                    </div>
+                    <div className="bg-red-900/20 border border-red-900/40 rounded-xl p-4">
+                        <p className="text-xs text-red-400 mb-1">🔴 원가율 100% 이상 (위험)</p>
+                        <p className="text-2xl font-bold text-red-400">{stats.high}<span className="text-sm font-normal ml-1">개</span></p>
+                    </div>
+                    <div className="bg-amber-900/20 border border-amber-900/40 rounded-xl p-4">
+                        <p className="text-xs text-amber-400 mb-1">🟡 원가율 80~99% (주의)</p>
+                        <p className="text-2xl font-bold text-amber-400">{stats.warn}<span className="text-sm font-normal ml-1">개</span></p>
+                    </div>
+                </div>
+            )}
+
+            {/* 검색 + 다운로드 */}
+            <div className="flex gap-2 items-center">
+                <div className="relative flex-1 max-w-xs">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <input
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="품명 / 거래처 / 규격 검색..."
+                        value={filterText}
+                        onChange={e => setFilterText(e.target.value)}
+                    />
+                </div>
+                <button
+                    onClick={fetch}
+                    disabled={loading}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
+                >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    새로고침
+                </button>
+                <button
+                    onClick={handleDownload}
+                    disabled={!sorted.length}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-700/30 border border-emerald-700/50 rounded-lg text-sm text-emerald-400 hover:bg-emerald-700/50 transition-colors"
+                >
+                    <Download className="w-4 h-4" />
+                    엑셀
+                </button>
+            </div>
+
+            {/* 테이블 */}
+            <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                        <thead className="bg-gray-800/80">
+                            <tr>
+                                <th className="px-3 py-2 text-xs font-semibold text-gray-400 border-b border-gray-700 text-center w-10">No</th>
+                                <Th label="거래처" col="partner_name" />
+                                <Th label="품명" col="product_name" />
+                                <Th label="규격" col="specification" />
+                                <Th label="수량" col="quantity" align="right" />
+                                <Th label="수주단가(원)" col="latest_unit_price" align="right" />
+                                <Th label="단위원가(원)" col="cost_per_unit" align="right" />
+                                <Th label="공정비용합계" col="total_process_cost" align="right" />
+                                <Th label="원가율(%)" col="cost_rate" align="right" />
+                                <Th label="최근완료일" col="latest_completion_date" />
+                                <th className="px-3 py-2 text-xs font-semibold text-gray-400 border-b border-gray-700 text-center">공정상세</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-gray-300 divide-y divide-gray-800">
+                            {loading ? (
+                                <tr><td colSpan={11} className="px-4 py-20 text-center text-gray-500 animate-pulse">데이터를 불러오는 중...</td></tr>
+                            ) : sorted.length === 0 ? (
+                                <tr><td colSpan={11} className="px-4 py-20 text-center text-gray-600">
+                                    공정비용이 입력된 생산완료 품목이 없습니다.
+                                </td></tr>
+                            ) : sorted.map((row, i) => {
+                                const rate = row.cost_rate;
+                                const rateColor = rate === null ? 'text-gray-500'
+                                    : rate >= 100 ? 'text-red-400 font-bold'
+                                    : rate >= 80  ? 'text-amber-400 font-semibold'
+                                    : 'text-emerald-400';
+                                const rowBg = rate >= 100 ? 'bg-red-900/10 hover:bg-red-900/20'
+                                    : rate >= 80  ? 'bg-amber-900/10 hover:bg-amber-900/20'
+                                    : 'hover:bg-gray-800/50';
+                                return (
+                                    <tr key={`${row.product_id}-${i}`} className={`transition-colors ${rowBg}`}>
+                                        <td className="px-3 py-2 text-center text-gray-600 text-xs">{i + 1}</td>
+                                        <td className="px-3 py-2 text-xs text-gray-400">{row.partner_name || '-'}</td>
+                                        <td className="px-3 py-2 font-medium text-white">{row.product_name}</td>
+                                        <td className="px-3 py-2 text-xs text-gray-400">{row.specification || '-'}</td>
+                                        <td className="px-3 py-2 text-right font-mono text-sm">{(row.quantity || 0).toLocaleString()}</td>
+                                        <td className="px-3 py-2 text-right font-mono text-sm text-blue-300">
+                                            {row.latest_unit_price ? row.latest_unit_price.toLocaleString() : <span className="text-gray-600">-</span>}
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-mono text-sm text-purple-300">
+                                            {row.cost_per_unit ? row.cost_per_unit.toLocaleString() : '-'}
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-mono text-sm text-gray-300">
+                                            {row.total_process_cost ? Math.round(row.total_process_cost).toLocaleString() : '-'}
+                                        </td>
+                                        <td className={`px-3 py-2 text-right ${rateColor}`}>
+                                            {rate !== null ? `${rate.toFixed(1)}%` : '-'}
+                                        </td>
+                                        <td className="px-3 py-2 text-xs text-gray-500">{row.latest_completion_date || '-'}</td>
+                                        <td className="px-3 py-2 text-center">
+                                            <button
+                                                onClick={() => onDrillDown({ plan_id: row.plan_id, product_id: row.product_id, product_name: row.product_name })}
+                                                className="text-xs px-2 py-1 bg-blue-900/30 text-blue-400 border border-blue-900/50 rounded hover:bg-blue-900/50 transition-colors"
+                                            >
+                                                공정보기
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* 범례 */}
+            <div className="flex gap-4 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-900/40 border border-red-700/50 inline-block"/> 원가율 100% 이상 — 판매단가 미만 (손실 위험)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-900/40 border border-amber-700/50 inline-block"/> 원가율 80~99% — 마진 10~20% (주의)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-gray-800 border border-gray-700 inline-block"/> 원가율 80% 미만 — 마진 20% 이상 (양호)</span>
+            </div>
+        </div>
+    );
+};
 
 const SettlementPage = () => {
     const today = new Date();
@@ -35,14 +265,15 @@ const SettlementPage = () => {
     const [annualData, setAnnualData] = useState({ data: [], overall_total_qty: 0, overall_total_amount: 0 });
 
     const tabs = [
-        { id: "orders",     label: "수주내역" },
-        { id: "sales",      label: "매출내역" },
-        { id: "purchases",  label: "매입내역" },
-        { id: "production", label: "생산내역" },
-        { id: "defects",    label: "불량내역" },
-        { id: "complaints", label: "고객불만" },
-        { id: "annual",     label: "품목별 연간실적" },
-        { id: "chart",      label: "📊 차트 분석" },
+        { id: "orders",        label: "수주내역" },
+        { id: "sales",         label: "매출내역" },
+        { id: "purchases",     label: "매입내역" },
+        { id: "production",    label: "생산내역" },
+        { id: "defects",       label: "불량내역" },
+        { id: "complaints",    label: "고객불만" },
+        { id: "annual",        label: "품목별 연간실적" },
+        { id: "cost-analysis", label: "💰 원가분석" },
+        { id: "chart",         label: "📊 차트 분석" },
     ];
 
     useEffect(() => {
@@ -93,7 +324,7 @@ const SettlementPage = () => {
         if (activeTab !== 'purchases' && majorGroupId === '소모품') {
             setMajorGroupId('');
         }
-        if (activeTab !== 'chart') fetchData();
+        if (activeTab !== 'chart' && activeTab !== 'cost-analysis') fetchData();
     }, [year, month, majorGroupId, activeTab, exchangeRate, basis]);
 
     const fetchData = async () => {
@@ -242,6 +473,27 @@ const SettlementPage = () => {
                     { key: "content", label: "내용", width: 300 },
                     { key: "status", label: "상태", width: 100 },
                     { key: "action_note", label: "조치내역", width: 250 },
+                ];
+            case "cost-analysis":
+                return [
+                    noCol,
+                    { key: "partner_name",          label: "거래처",       width: 130 },
+                    { key: "product_name",           label: "품명",         width: 200 },
+                    { key: "specification",          label: "규격",         width: 130 },
+                    { key: "quantity",               label: "생산수량",     align: "right", width: 80 },
+                    { key: "latest_unit_price",      label: "수주단가(원)",  align: "right", width: 120,
+                        renderCell: (val) => <span className="font-mono">{val ? val.toLocaleString() : '-'}</span> },
+                    { key: "cost_per_unit",          label: "단위원가(원)",  align: "right", width: 120,
+                        renderCell: (val) => <span className="font-mono">{val ? val.toLocaleString() : '-'}</span> },
+                    { key: "total_process_cost",     label: "공정비용합계",  align: "right", width: 130,
+                        renderCell: (val) => <span className="font-mono">{val ? Math.round(val).toLocaleString() : '-'}</span> },
+                    { key: "cost_rate",              label: "원가율(%)",    align: "right", width: 100,
+                        renderCell: (val) => {
+                            if (val === null || val === undefined) return <span className="text-gray-500">-</span>;
+                            const color = val >= 100 ? 'text-red-400' : val >= 80 ? 'text-amber-400' : 'text-emerald-400';
+                            return <span className={`font-bold ${color}`}>{val.toFixed(1)}%</span>;
+                        }},
+                    { key: "latest_completion_date", label: "최근완료일",   width: 110 },
                 ];
             default: return [];
         }
@@ -588,6 +840,12 @@ const SettlementPage = () => {
             {/* Table or Chart */}
             {activeTab === 'chart' ? (
                 <SettlementChartTab year={year} month={month} exchangeRate={exchangeRate} />
+            ) : activeTab === 'cost-analysis' ? (
+                <CostAnalysisTab
+                    majorGroupId={majorGroupId}
+                    groups={groups}
+                    onDrillDown={fetchProdDetail}
+                />
             ) : activeTab === 'annual' ? (
                 <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-xl overflow-hidden min-h-[500px]">
                     <div className="overflow-x-auto">

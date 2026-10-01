@@ -830,6 +830,151 @@ async def get_chart_summary(
 # 품목별 연간 실적 (Annual Performance by Item)
 # ─────────────────────────────────────────────────────────────────────────────
 
+@router.get("/cost-analysis")
+async def get_cost_analysis(
+    major_group_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    원가분석: 생산완료된 수주 품목 중 공정비용이 1개 이상 입력된 품목을 대상으로
+    품목별 최근 단가 대비 공정비용 및 원가율 산출.
+
+    반환 컬럼:
+      product_id, product_name, specification,
+      latest_unit_price     : 최근 수주 단가 (최근 완료건 기준)
+      total_process_cost    : 해당 품목 공정비용 합계 (1회 생산 기준)
+      quantity              : 생산 수량
+      cost_per_unit         : 단위당 공정비용 (total_process_cost / quantity)
+      cost_rate             : 원가율 % = cost_per_unit / latest_unit_price × 100
+      latest_completion_date: 가장 최근 생산완료일
+      plan_id               : 해당 최근 생산계획 id (공정 드릴다운용)
+      partner_name          : 거래처
+    """
+    # ── 최근 생산완료 건별 공정비용 집계 (품목 + 생산계획 단위) ──────────────
+    effective_end_col = func.coalesce(
+        ProductionPlan.actual_completion_date,
+        func.date(ProductionPlan.updated_at)
+    )
+
+    # 품목별 최근 완료일 서브쿼리
+    latest_sq = (
+        select(
+            ProductionPlanItem.product_id,
+            func.max(effective_end_col).label("latest_date")
+        )
+        .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+        .where(
+            ProductionPlan.status == ProductionStatus.COMPLETED,
+            ProductionPlanItem.cost > 0          # 공정비용이 입력된 것만
+        )
+        .group_by(ProductionPlanItem.product_id)
+        .subquery()
+    )
+
+    # 최근 생산계획 id 서브쿼리 (품목별 최근 완료일의 plan_id 중 최소값)
+    plan_sq = (
+        select(
+            ProductionPlanItem.product_id,
+            func.min(ProductionPlan.id).label("plan_id")
+        )
+        .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+        .join(
+            latest_sq,
+            and_(
+                ProductionPlanItem.product_id == latest_sq.c.product_id,
+                effective_end_col == latest_sq.c.latest_date
+            )
+        )
+        .where(
+            ProductionPlan.status == ProductionStatus.COMPLETED,
+            ProductionPlanItem.cost > 0
+        )
+        .group_by(ProductionPlanItem.product_id)
+        .subquery()
+    )
+
+    # 최근 수주 단가: 완료된 수주에서 해당 품목의 가장 최근 단가
+    price_sq = (
+        select(
+            SalesOrderItem.product_id,
+            func.max(SalesOrderItem.unit_price).label("unit_price"),   # 최근 단가 근사
+        )
+        .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
+        .where(
+            SalesOrder.status.in_([
+                OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED,
+                OrderStatus.PRODUCTION_COMPLETED
+            ])
+        )
+        .group_by(SalesOrderItem.product_id)
+        .subquery()
+    )
+
+    # 메인 집계: 최근 완료 생산계획 기준 품목별 공정비용 합계
+    stmt = (
+        select(
+            Product.id.label("product_id"),
+            Product.name.label("product_name"),
+            Product.specification.label("specification"),
+            func.coalesce(price_sq.c.unit_price, 0).label("latest_unit_price"),
+            func.sum(ProductionPlanItem.cost).label("total_process_cost"),
+            func.max(ProductionPlanItem.quantity).label("quantity"),
+            latest_sq.c.latest_date.label("latest_completion_date"),
+            plan_sq.c.plan_id.label("plan_id"),
+            func.coalesce(Partner.name, "").label("partner_name"),
+        )
+        .select_from(ProductionPlanItem)
+        .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+        .join(
+            latest_sq,
+            and_(
+                ProductionPlanItem.product_id == latest_sq.c.product_id,
+                effective_end_col == latest_sq.c.latest_date
+            )
+        )
+        .join(plan_sq, ProductionPlanItem.product_id == plan_sq.c.product_id)
+        .join(Product, ProductionPlanItem.product_id == Product.id)
+        .outerjoin(price_sq, Product.id == price_sq.c.product_id)
+        .outerjoin(SalesOrder, ProductionPlan.order_id == SalesOrder.id)
+        .outerjoin(Partner, SalesOrder.partner_id == Partner.id)
+        .where(
+            ProductionPlan.status == ProductionStatus.COMPLETED,
+            ProductionPlanItem.cost > 0,
+            ProductionPlan.id == plan_sq.c.plan_id   # 최근 계획만
+        )
+        .group_by(
+            Product.id,
+            Product.name,
+            Product.specification,
+            price_sq.c.unit_price,
+            latest_sq.c.latest_date,
+            plan_sq.c.plan_id,
+            Partner.name,
+        )
+        .order_by(latest_sq.c.latest_date.desc(), Product.name)
+    )
+
+    if major_group_id:
+        sub_grp = select(ProductGroup.id).where(ProductGroup.parent_id == major_group_id)
+        stmt = stmt.where(
+            (Product.group_id == major_group_id) | Product.group_id.in_(sub_grp)
+        )
+
+    result = await db.execute(stmt)
+    rows = []
+    for r in result:
+        row = dict(r._mapping)
+        qty = row.get("quantity") or 1
+        total_cost = float(row.get("total_process_cost") or 0)
+        unit_price = float(row.get("latest_unit_price") or 0)
+        cost_per_unit = total_cost / qty if qty else 0
+        cost_rate = (cost_per_unit / unit_price * 100) if unit_price > 0 else None
+        row["cost_per_unit"] = round(cost_per_unit, 0)
+        row["cost_rate"] = round(cost_rate, 1) if cost_rate is not None else None
+        rows.append(row)
+    return rows
+
+
 @router.get("/available-years")
 async def get_available_years(db: AsyncSession = Depends(get_db)):
     """납품 실적이 존재하는 모든 연도 조회"""
