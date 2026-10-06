@@ -11,7 +11,9 @@ import {
     ExclamationTriangleIcon,
     ClockIcon
 } from '@heroicons/react/24/outline';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
 import ResizableTable from '../components/ResizableTable';
 
 const ATTENDANCE_COLS = [
@@ -223,6 +225,190 @@ const AttendancePage = () => {
         }
     };
 
+    // 개인별 월간 출근기록 및 근태(외출/조퇴/휴가 등) 엑셀 출력
+    const handleExportExcel = () => {
+        if (!selectedStaff) {
+            alert('사원을 먼저 선택해 주세요.');
+            return;
+        }
+
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth() + 1;
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        const todayStr = format(new Date(), 'yyyyMMdd');
+
+        // 통계 집계용 변수
+        let weekdayCount = 0;
+        let weekendCount = 0;
+        let presentCount = 0;
+        let lateCount = 0;
+        let earlyLeaveCount = 0;
+        let totalWorkMinutes = 0;
+
+        const tableRows = [];
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateObj = new Date(year, month - 1, day);
+            const dayOfWeekIdx = dateObj.getDay();
+            const dayOfWeekName = dayNames[dayOfWeekIdx];
+            const isWeekend = dayOfWeekIdx === 0 || dayOfWeekIdx === 6;
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+            if (isWeekend) weekendCount++;
+            else weekdayCount++;
+
+            const record = attendanceData[day];
+            const approvals = approvalData[day] || [];
+
+            // 1) 출퇴근 시간 포맷
+            let inTimeStr = '-';
+            let outTimeStr = '-';
+            let workHoursStr = '-';
+
+            if (record?.clock_in_time) {
+                const inD = new Date(record.clock_in_time);
+                inTimeStr = inD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            }
+            if (record?.clock_out_time) {
+                const outD = new Date(record.clock_out_time);
+                outTimeStr = outD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            }
+
+            // 근무시간 계산 (출퇴근 모두 기록된 경우)
+            if (record?.clock_in_time && record?.clock_out_time) {
+                const inD = new Date(record.clock_in_time);
+                const outD = new Date(record.clock_out_time);
+                let diffM = Math.max(0, Math.round((outD.getTime() - inD.getTime()) / 60000));
+                
+                // 4시간 초과 근무 시 법정 휴게시간(점심시간 등) 60분 공제
+                if (diffM >= 240) {
+                    diffM = Math.max(0, diffM - 60);
+                }
+                totalWorkMinutes += diffM;
+                const h = Math.floor(diffM / 60);
+                const m = diffM % 60;
+                workHoursStr = `${h}시간 ${m}분 (${(diffM / 60).toFixed(1)}h)`;
+            }
+
+            // 2) 근태 상태 문자열
+            let statusStr = '-';
+            if (record) {
+                presentCount++;
+                if (record.attendance_status === 'LATE') {
+                    statusStr = '지각';
+                    lateCount++;
+                } else if (record.attendance_status === 'EARLY_LEAVE') {
+                    statusStr = '조퇴';
+                    earlyLeaveCount++;
+                } else if (record.attendance_status === 'ABSENT') {
+                    statusStr = '결근';
+                } else {
+                    statusStr = '정상';
+                }
+            } else if (isWeekend) {
+                statusStr = '주말/휴일';
+            } else if (approvals.some(ap => ap.doc_type === 'VACATION' || ap.doc_type === 'LEAVE_REQUEST')) {
+                statusStr = '휴가';
+            } else {
+                statusStr = '미체크';
+            }
+
+            // 3) 결재 내역 (휴가/외출/조퇴/특근) 문자열 조합
+            let approvalSummaryList = [];
+            let approvalDetailList = [];
+
+            approvals.forEach(ap => {
+                let valStr = ap.applied_value ? `${ap.applied_value}${ap.applied_unit || ''}` : '';
+                
+                if (ap.doc_type === 'VACATION' || ap.doc_type === 'LEAVE_REQUEST') {
+                    approvalSummaryList.push(`휴가[${valStr || '1일'}]`);
+                } else if (ap.doc_type === 'EARLY_LEAVE') {
+                    const isOuting = ap.title?.includes('외출');
+                    approvalSummaryList.push(`${isOuting ? '외출' : '조퇴'}[${valStr || '시간'}]`);
+                } else if (ap.doc_type === 'OVERTIME') {
+                    approvalSummaryList.push(`특근[${valStr || '시간'}]`);
+                } else {
+                    approvalSummaryList.push(`${ap.title || ap.doc_type}[${valStr}]`);
+                }
+
+                if (ap.title) {
+                    approvalDetailList.push(`${ap.title} (${ap.status || '승인완료'})`);
+                }
+            });
+
+            const approvalText = approvalSummaryList.length > 0 ? approvalSummaryList.join(', ') : '-';
+            const detailText = approvalDetailList.length > 0 ? approvalDetailList.join(' / ') : (record?.content || '-');
+
+            tableRows.push([
+                dateStr,
+                dayOfWeekName,
+                isWeekend ? '주말' : '평일',
+                inTimeStr,
+                outTimeStr,
+                workHoursStr,
+                statusStr,
+                approvalText,
+                detailText
+            ]);
+        }
+
+        // 총 근무시간 시간/분
+        const totalWorkH = Math.floor(totalWorkMinutes / 60);
+        const totalWorkM = totalWorkMinutes % 60;
+
+        // AOA (Array of Arrays) 구성
+        const aoa = [
+            [`[${year}년 ${month}월] ${selectedStaff.name} 님의 근태 및 출근 기록부`],
+            [],
+            ['■ 사원 기본 정보'],
+            ['성명', selectedStaff.name, '사원번호', selectedStaff.staff_no || '-', '부서', selectedStaff.department || '-', '직책', selectedStaff.role || '-'],
+            ['조회연월', `${year}년 ${month}월`, '조회기간', `${year}-${String(month).padStart(2,'0')}-01 ~ ${year}-${String(month).padStart(2,'0')}-${daysInMonth}`, '출력일시', format(new Date(), 'yyyy-MM-dd HH:mm')],
+            [],
+            ['■ 월간 근태 요약 통계'],
+            [
+                '총 일수', `${daysInMonth}일`,
+                '평일(근무일수)', `${weekdayCount}일`,
+                '실출근일수', `${presentCount}일`,
+                '지각', `${lateCount}회`,
+                '조퇴', `${earlyLeaveCount}회`
+            ],
+            [
+                '총 근무시간', `${totalWorkH}시간 ${totalWorkM}분 (${(totalWorkMinutes / 60).toFixed(1)}h)`,
+                '총 연차', `${summaryData?.total_annual_days?.toFixed(1) || 0}일`,
+                '사용 연차', `${summaryData?.total_vacation_days?.toFixed(1) || 0}일`,
+                '잔여 연차', `${summaryData?.remaining_annual_days?.toFixed(1) || 0}일`,
+                '외출/조퇴', `${summaryData?.total_leave_outing_hours?.toFixed(1) || 0}시간`,
+                '특근', `${summaryData?.total_overtime_hours?.toFixed(1) || 0}시간`
+            ],
+            [],
+            ['■ 일자별 출근 및 근태 상세 내역'],
+            ['일자', '요일', '구분', '출근시간', '퇴근시간', '근무시간', '근태상태', '결재내역 (휴가/외출/조퇴/특근)', '상세 사유 및 비고'],
+            ...tableRows
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+        // 열 너비 지정
+        ws['!cols'] = [
+            { wch: 14 }, // 일자
+            { wch: 6 },  // 요일
+            { wch: 8 },  // 구분
+            { wch: 12 }, // 출근시간
+            { wch: 12 }, // 퇴근시간
+            { wch: 20 }, // 근무시간
+            { wch: 12 }, // 근태상태
+            { wch: 28 }, // 결재내역
+            { wch: 38 }, // 상세 사유 및 비고
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `${year}년 ${month}월`);
+
+        const fileName = `[${selectedStaff.name}]_${year}년${month}월_근태출근기록_${todayStr}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    };
+
     // Calendar generation logic
     const renderCalendar = () => {
         const year = currentMonth.getFullYear();
@@ -393,6 +579,16 @@ const AttendancePage = () => {
                                 ⚡ 근태/연차 강제 동기화
                             </button>
                         )}
+                        {/* 개인별 월간 출근기록 엑셀 출력 버튼 */}
+                        <button
+                            onClick={handleExportExcel}
+                            disabled={!selectedStaff || loading}
+                            className="text-[10px] font-black tracking-tight bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl shadow-lg shadow-emerald-900/30 flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            title={`${selectedStaff ? selectedStaff.name : '선택 사원'}의 ${currentMonth.getFullYear()}년 ${currentMonth.getMonth() + 1}월 출근 및 근태 기록을 엑셀로 다운로드합니다`}
+                        >
+                            <Download className="w-4 h-4" />
+                            📥 출근기록 엑셀
+                        </button>
                         <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl shadow-inner">
                             <button
                                 onClick={() => changeMonth(-1)}
