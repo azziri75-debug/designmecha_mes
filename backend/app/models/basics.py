@@ -20,6 +20,7 @@ class Partner(Base):
     representative = Column(String, nullable=True) # 대표자
     address = Column(String, nullable=True)
     phone = Column(String, nullable=True)
+    fax = Column(String, nullable=True)
     email = Column(String, nullable=True)
     description = Column(String, nullable=True) # 비고
     attachment_file = Column(JSON, nullable=True) # List of {name, url} objects

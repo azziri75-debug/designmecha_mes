@@ -50,7 +50,7 @@ TABLE_CONFIG = {
     },
     "partners": {
         "model": Partner,
-        "columns": ["업체명", "구분 (매출처/매입처/외주처)", "사업자번호", "대표자", "주소", "전화번호", "이메일", "비고"],
+        "columns": ["업체명", "구분 (매출처/매입처/외주처)", "사업자번호", "대표자", "주소", "전화번호", "팩스번호", "이메일", "비고"],
         "mapping": {
             "업체명": "name",
             "구분 (매출처/매입처/외주처)": "partner_type",
@@ -58,6 +58,7 @@ TABLE_CONFIG = {
             "대표자": "representative",
             "주소": "address",
             "전화번호": "phone",
+            "팩스번호": "fax",
             "이메일": "email",
             "비고": "description"
         }

@@ -227,8 +227,8 @@ const BasicsPageContent = () => {
 
         if (name === 'registration_number') {
             finalValue = autoHyphen(value, 'bizNum').slice(0, 12); // Limit length
-        } else if (name === 'phone' || name === 'mobile') {
-            finalValue = autoHyphen(value, 'phone').slice(0, 13); // Limit length
+        } else if (name === 'phone' || name === 'mobile' || name === 'fax') {
+            finalValue = autoHyphen(value, 'phone').slice(0, 14); // Limit length
         }
 
         setFormData(prev => {
@@ -993,11 +993,12 @@ const BasicsPageContent = () => {
                                 <tr>
                                     {activeTab === 'partners' ? (
                                         <>
-                                            <ResizableTh className="px-6 py-3 w-[20%]">거래처명</ResizableTh>
-                                            <ResizableTh className="px-6 py-3 w-[15%]">유형</ResizableTh>
-                                            <ResizableTh className="px-6 py-3 w-[15%]">대표자</ResizableTh>
-                                            <ResizableTh className="px-6 py-3 w-[15%]">전화번호</ResizableTh>
-                                            <ResizableTh className="px-6 py-3 w-[20%]">이메일</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[18%]">거래처명</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[12%]">유형</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[11%]">대표자</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[13%]">전화번호</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[13%]">팩스번호</ResizableTh>
+                                            <ResizableTh className="px-6 py-3 w-[18%]">이메일</ResizableTh>
                                             <ResizableTh className="px-6 py-3 text-center w-[80px]">첨부</ResizableTh>
                                         </>
                                     ) : activeTab === 'staff' ? (
@@ -1036,7 +1037,7 @@ const BasicsPageContent = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-700">
                                 {loading ? (
-                                    <tr><td colSpan="6" className="text-center py-8">Loading...</td></tr>
+                                    <tr><td colSpan="8" className="text-center py-8">Loading...</td></tr>
                                 ) : activeTab === 'partners' ? (
                                     filteredPartners.length > 0 ? filteredPartners.map((partner) => (
                                         <React.Fragment key={partner.id}>
@@ -1065,9 +1066,10 @@ const BasicsPageContent = () => {
                                                         ))}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">{partner.representative}</td>
-                                                <td className="px-6 py-4">{partner.phone}</td>
-                                                <td className="px-6 py-4">{partner.email}</td>
+                                                <td className="px-6 py-4">{partner.representative || '-'}</td>
+                                                <td className="px-6 py-4">{partner.phone || '-'}</td>
+                                                <td className="px-6 py-4 text-gray-400">{partner.fax || '-'}</td>
+                                                <td className="px-6 py-4">{partner.email || '-'}</td>
                                                 <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                                                     {(() => {
                                                         let fileList = [];
@@ -1120,63 +1122,73 @@ const BasicsPageContent = () => {
                                             {/* Expanded Contact Information */}
                                             {expandedPartnerId === partner.id && (
                                                 <tr className="bg-gray-800/50 animate-fade-in-down">
-                                                    <td colSpan="6" className="p-4 pl-16">
-                                                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
-                                                            <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
-                                                                <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-                                                                    <User className="w-4 h-4 text-gray-500" />
-                                                                    담당자 목록
-                                                                </h4>
-                                                                <button
-                                                                    onClick={() => openAddContactModal(partner)}
-                                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-500/10 transition-colors"
-                                                                >
-                                                                    <UserPlus className="w-3 h-3" />
-                                                                    담당자 추가
-                                                                </button>
+                                                    <td colSpan="8" className="p-4 pl-16">
+                                                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 space-y-4">
+                                                            {/* Partner Extra Details */}
+                                                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 p-3 bg-gray-800/60 rounded-lg text-xs text-gray-400 border border-gray-700/50">
+                                                                <div><span className="text-gray-500 font-medium mr-1.5">사업자번호:</span><span className="text-gray-200 font-mono">{partner.registration_number || '-'}</span></div>
+                                                                <div><span className="text-gray-500 font-medium mr-1.5">팩스번호:</span><span className="text-gray-200 font-mono">{partner.fax || '-'}</span></div>
+                                                                <div><span className="text-gray-500 font-medium mr-1.5">주소:</span><span className="text-gray-200">{partner.address || '-'}</span></div>
+                                                                {partner.description && <div><span className="text-gray-500 font-medium mr-1.5">비고:</span><span className="text-gray-200">{partner.description}</span></div>}
                                                             </div>
-                                                            {partner.contacts && partner.contacts.length > 0 ? (
-                                                                <div className="overflow-x-auto">
-                                                                    <table className="w-full text-left text-sm text-gray-300">
-                                                                        <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
-                                                                            <tr>
-                                                                                <th className="px-4 py-2">이름</th>
-                                                                                <th className="px-4 py-2">부서/직책</th>
-                                                                                <th className="px-4 py-2">전화번호</th>
-                                                                                <th className="px-4 py-2">휴대전화</th>
-                                                                                <th className="px-4 py-2">이메일</th>
-                                                                                <th className="px-4 py-2 text-right w-20">관리</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody className="divide-y divide-gray-700">
-                                                                            {partner.contacts.map((contact, idx) => (
-                                                                                <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 group/contact">
-                                                                                    <td className="px-4 py-2 text-white font-medium">{contact.name}</td>
-                                                                                    <td className="px-4 py-2">{contact.position}</td>
-                                                                                    <td className="px-4 py-2">{contact.phone}</td>
-                                                                                    <td className="px-4 py-2">{contact.mobile || '-'}</td>
-                                                                                    <td className="px-4 py-2">{contact.email}</td>
-                                                                                    <td className="px-4 py-2 text-right">
-                                                                                        <div className="flex justify-end gap-2 opacity-50 group-hover/contact:opacity-100 transition-opacity">
-                                                                                            <button onClick={() => openEditContactModal(partner, contact)} className="text-gray-400 hover:text-blue-400"><Pencil className="w-3 h-3" /></button>
-                                                                                            <button onClick={() => handleDeleteContact(contact.id)} className="text-gray-400 hover:text-red-400"><Trash className="w-3 h-3" /></button>
-                                                                                        </div>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            ))}
-                                                                        </tbody>
-                                                                    </table>
+
+                                                            <div>
+                                                                <div className="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
+                                                                    <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                                                                        <User className="w-4 h-4 text-gray-500" />
+                                                                        담당자 목록
+                                                                    </h4>
+                                                                    <button
+                                                                        onClick={() => openAddContactModal(partner)}
+                                                                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-500/10 transition-colors"
+                                                                    >
+                                                                        <UserPlus className="w-3 h-3" />
+                                                                        담당자 추가
+                                                                    </button>
                                                                 </div>
-                                                            ) : (
-                                                                <div className="text-sm text-gray-500 py-2">등록된 담당자가 없습니다.</div>
-                                                            )}
+                                                                {partner.contacts && partner.contacts.length > 0 ? (
+                                                                    <div className="overflow-x-auto">
+                                                                        <table className="w-full text-left text-sm text-gray-300">
+                                                                            <thead className="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700">
+                                                                                <tr>
+                                                                                    <th className="px-4 py-2">이름</th>
+                                                                                    <th className="px-4 py-2">부서/직책</th>
+                                                                                    <th className="px-4 py-2">전화번호</th>
+                                                                                    <th className="px-4 py-2">휴대전화</th>
+                                                                                    <th className="px-4 py-2">이메일</th>
+                                                                                    <th className="px-4 py-2 text-right w-20">관리</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody className="divide-y divide-gray-700">
+                                                                                {partner.contacts.map((contact, idx) => (
+                                                                                    <tr key={idx} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 group/contact">
+                                                                                        <td className="px-4 py-2 text-white font-medium">{contact.name}</td>
+                                                                                        <td className="px-4 py-2">{contact.position}</td>
+                                                                                        <td className="px-4 py-2">{contact.phone}</td>
+                                                                                        <td className="px-4 py-2">{contact.mobile || '-'}</td>
+                                                                                        <td className="px-4 py-2">{contact.email}</td>
+                                                                                        <td className="px-4 py-2 text-right">
+                                                                                            <div className="flex justify-end gap-2 opacity-50 group-hover/contact:opacity-100 transition-opacity">
+                                                                                                <button onClick={() => openEditContactModal(partner, contact)} className="text-gray-400 hover:text-blue-400"><Pencil className="w-3 h-3" /></button>
+                                                                                                <button onClick={() => handleDeleteContact(contact.id)} className="text-gray-400 hover:text-red-400"><Trash className="w-3 h-3" /></button>
+                                                                                            </div>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="text-sm text-gray-500 py-2">등록된 담당자가 없습니다.</div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </tr>
                                             )}
                                         </React.Fragment>
                                     )) : (
-                                        <tr><td colSpan="6" className="text-center py-8">데이터가 없습니다.</td></tr>
+                                        <tr><td colSpan="8" className="text-center py-8">데이터가 없습니다.</td></tr>
                                     )
                                 ) : activeTab === 'staff' ? (
                                     filteredStaff.length > 0 ? filteredStaff.map((member) => (
@@ -1540,6 +1552,10 @@ const BasicsPageContent = () => {
                                                 <label className="text-sm font-medium text-gray-300">대표자 <span className="text-red-500">*</span></label>
                                                 <input name="representative" value={formData.representative || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" required />
                                             </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">주소</label>
+                                                <input name="address" value={formData.address || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-600" placeholder="사업장 주소" />
+                                            </div>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-300">유형 (중복 선택 가능)</label>
@@ -1558,13 +1574,23 @@ const BasicsPageContent = () => {
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-300">전화번호</label>
-                                            <input name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="02-0000-0000" maxLength="13" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">전화번호</label>
+                                                <input name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-600" placeholder="02-0000-0000" maxLength="14" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-gray-300">팩스번호</label>
+                                                <input name="fax" value={formData.fax || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-600" placeholder="02-0000-0000" maxLength="14" />
+                                            </div>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-300">이메일</label>
-                                            <input name="email" type="email" value={formData.email || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="contact@company.com" />
+                                            <input name="email" type="email" value={formData.email || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-600" placeholder="contact@company.com" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300">비고</label>
+                                            <input name="description" value={formData.description || ''} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-600" placeholder="특이사항 입력" />
                                         </div>
 
                                         {/* File Attachments */}

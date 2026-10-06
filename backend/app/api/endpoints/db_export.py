@@ -105,8 +105,8 @@ async def export_partners(fmt: str = Query("xlsx"), db: AsyncSession = Depends(g
     result = await db.execute(select(Partner))
     partners = result.scalars().all()
 
-    headers = ["업체명", "구분 (매출처/매입처/외주처)", "사업자번호", "대표자", "주소", "전화번호", "이메일", "비고"]
-    col_widths = [24, 20, 16, 12, 30, 14, 24, 20]
+    headers = ["업체명", "구분 (매출처/매입처/외주처)", "사업자번호", "대표자", "주소", "전화번호", "팩스번호", "이메일", "비고"]
+    col_widths = [24, 20, 16, 12, 30, 14, 14, 24, 20]
 
     type_map = {"CUSTOMER": "매출처", "SUPPLIER": "매입처", "SUBCONTRACTOR": "외주처"}
     rows = []
@@ -114,7 +114,7 @@ async def export_partners(fmt: str = Query("xlsx"), db: AsyncSession = Depends(g
         types = ",".join(type_map.get(t, t) for t in (p.partner_type or []))
         rows.append([p.name or "", types, p.registration_number or "",
                      p.representative or "", p.address or "", p.phone or "",
-                     p.email or "", p.description or ""])
+                     p.fax or "", p.email or "", p.description or ""])
 
     fname = f"거래처_{_today()}"
     if fmt == "csv":
@@ -450,12 +450,12 @@ async def export_all(
         [p.name or "",
          ",".join(type_map.get(t, t) for t in (p.partner_type or [])),
          p.registration_number or "", p.representative or "",
-         p.address or "", p.phone or "", p.email or "", p.description or ""]
+         p.address or "", p.phone or "", p.fax or "", p.email or "", p.description or ""]
         for p in r.scalars().all()
     ]
     _apply_sheet(wb.create_sheet("거래처"),
-        ["업체명", "구분 (매출처/매입처/외주처)", "사업자번호", "대표자", "주소", "전화번호", "이메일", "비고"],
-        p_rows, [24, 20, 16, 12, 30, 14, 24, 20])
+        ["업체명", "구분 (매출처/매입처/외주처)", "사업자번호", "대표자", "주소", "전화번호", "팩스번호", "이메일", "비고"],
+        p_rows, [24, 20, 16, 12, 30, 14, 14, 24, 20])
 
     # 2. 생산제품
     r = await db.execute(select(Product).options(joinedload(Product.partner))

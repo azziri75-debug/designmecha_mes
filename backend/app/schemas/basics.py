@@ -56,6 +56,7 @@ class PartnerBase(BaseModel):
     representative: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
+    fax: Optional[str] = None
     email: Optional[str] = None
     attachment_file: Optional[List[dict]] = None # List of {name, url}
     description: Optional[str] = None # 비고
@@ -77,6 +78,7 @@ class PartnerSimple(BaseModel):
     id: int
     name: str
     partner_type: List[str]
+    fax: Optional[str] = None
     
     class Config:
         from_attributes = True
