@@ -419,7 +419,7 @@ async def read_production_plans(
                 selectinload(WorkLogItem.worker)
             )
         )
-
+        .order_by(SalesOrder.order_no.desc().nullslast(), ProductionPlan.id.desc())
         .offset(skip)
         .limit(limit)
     )

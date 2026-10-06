@@ -361,8 +361,32 @@ const ProductionPage = () => {
         return true;
     };
 
-    const inProgressPlans = plans.filter(p => p.status !== 'COMPLETED' && p.status !== 'CANCELED' && filterData(p));
-    const completedPlans = plans.filter(p => p.status === 'COMPLETED' && filterData(p));
+    const getPlanOrderNo = (p) => {
+        return (
+            p.order?.order_no ||
+            p.stock_production_order?.order_no ||
+            p.stock_production?.order?.order_no ||
+            p.stock_production?.production_no ||
+            p.stock_production?.batch_no ||
+            ''
+        );
+    };
+
+    const sortByOrderNoDesc = (a, b) => {
+        const noA = getPlanOrderNo(a);
+        const noB = getPlanOrderNo(b);
+        const cmp = noB.localeCompare(noA, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+        return (b.id || 0) - (a.id || 0);
+    };
+
+    const inProgressPlans = plans
+        .filter(p => p.status !== 'COMPLETED' && p.status !== 'CANCELED' && filterData(p))
+        .sort(sortByOrderNoDesc);
+
+    const completedPlans = plans
+        .filter(p => p.status === 'COMPLETED' && filterData(p))
+        .sort(sortByOrderNoDesc);
 
     return (
         <div className="space-y-6">
@@ -612,15 +636,29 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
 
 
 
+    const getStockOrderNo = (sp) => sp.order_no || sp.production_no || `SP-${sp.id}`;
+
+    const combinedList = [
+        ...unplannedOrders.map(o => ({ type: 'order', data: o, orderNo: o.order_no || '' })),
+        ...unplannedStockProductions.map(sp => ({ type: 'stock', data: sp, orderNo: getStockOrderNo(sp) }))
+    ].sort((a, b) => {
+        const cmp = b.orderNo.localeCompare(a.orderNo, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+        return (b.data.id || 0) - (a.data.id || 0);
+    });
+
     return (
         <ResizableTable columns={UNPLANNED_COLS} className="w-full text-left text-sm" theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700" thClassName="px-4 py-3">
-            {unplannedOrders.length === 0 && unplannedStockProductions.length === 0 ? (
+            {combinedList.length === 0 ? (
                 <tr><td colSpan={UNPLANNED_COLS.length} className="px-4 py-8 text-center text-gray-500">데이터가 없습니다.</td></tr>
             ) : (
-                <>
-                    {unplannedOrders.map(order => <UnplannedOrderRow key={`order-${order.id}`} order={order} onCreatePlan={onCreatePlan} />)}
-                    {unplannedStockProductions.map(sp => <UnplannedStockProductionRow key={`sp-${sp.id}`} stockProduction={sp} onCreatePlan={onCreatePlan} />)}
-                </>
+                combinedList.map(item =>
+                    item.type === 'order' ? (
+                        <UnplannedOrderRow key={`order-${item.data.id}`} order={item.data} onCreatePlan={onCreatePlan} />
+                    ) : (
+                        <UnplannedStockProductionRow key={`sp-${item.data.id}`} stockProduction={item.data} onCreatePlan={onCreatePlan} />
+                    )
+                )
             )}
         </ResizableTable>
     );
@@ -715,14 +753,23 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
 const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onRefresh, readonly }) => {
 
     const [managedCols, setManagedCols] = useState(PLAN_COLS);
+
+    const sortedPlans = [...plans].sort((a, b) => {
+        const noA = a.order?.order_no || a.stock_production_order?.order_no || a.stock_production?.order?.order_no || a.stock_production?.production_no || a.stock_production?.batch_no || '';
+        const noB = b.order?.order_no || b.stock_production_order?.order_no || b.stock_production?.order?.order_no || b.stock_production?.production_no || b.stock_production?.batch_no || '';
+        const cmp = noB.localeCompare(noA, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+        return (b.id || 0) - (a.id || 0);
+    });
+
     return (
         <ResizableTable columns={managedCols} className="w-full text-left text-sm" theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700" thClassName="px-4 py-3" onResizeEnd={({ leftKey, newLeft, rightKey, newRight }) => {
             setManagedCols(prev => prev.map(col => { if (col.key === leftKey) return { ...col, width: newLeft }; if (col.key === rightKey) return { ...col, width: newRight }; return col; }));
         }}>
-            {plans.length === 0 ? (
+            {sortedPlans.length === 0 ? (
                 <tr><td colSpan={PLAN_COLS.length} className="px-4 py-12 text-center text-gray-500">데이터가 없습니다.</td></tr>
             ) : (
-                plans.map(plan => (
+                sortedPlans.map(plan => (
                     <Row key={plan.id} plan={plan} defects={defects?.filter(d => d.plan_id === plan.id)} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} onConfirm={onConfirm} onPrint={onPrint} onOpenFiles={onOpenFiles} onOpenProcessFiles={onOpenProcessFiles} onShowDefects={onShowDefects} onRefresh={onRefresh} readonly={readonly} />
                 ))
             )}
