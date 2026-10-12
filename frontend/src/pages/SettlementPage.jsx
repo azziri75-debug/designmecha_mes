@@ -24,7 +24,7 @@ import SettlementChartTab from '../components/SettlementChartTab';
 /* ══════════════════════════════════════════════════════════════════════
    원가분석 탭 컴포넌트
    ══════════════════════════════════════════════════════════════════════ */
-const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
+const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown, exchangeRate = 1350 }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [sortKey, setSortKey] = useState('cost_rate');
@@ -36,6 +36,7 @@ const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
         try {
             const params = {};
             if (majorGroupId && majorGroupId !== '소모품') params.major_group_id = majorGroupId;
+            if (exchangeRate) params.exchange_rate = exchangeRate;
             const res = await api.get('/settlement/cost-analysis', { params });
             setData(res.data || []);
         } catch (e) {
@@ -44,7 +45,7 @@ const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
         } finally {
             setLoading(false);
         }
-    }, [majorGroupId]);
+    }, [majorGroupId, exchangeRate]);
 
     useEffect(() => { fetch(); }, [fetch]);
 
@@ -61,12 +62,20 @@ const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
             r.specification?.includes(filterText)
         );
         rows = [...rows].sort((a, b) => {
-            const av = a[sortKey] ?? (sortDir === 'asc' ? Infinity : -Infinity);
-            const bv = b[sortKey] ?? (sortDir === 'asc' ? Infinity : -Infinity);
+            let av = a[sortKey];
+            let bv = b[sortKey];
+            if (sortKey === 'latest_unit_price') {
+                av = a.latest_unit_price_krw ?? a.latest_unit_price;
+                bv = b.latest_unit_price_krw ?? b.latest_unit_price;
+            }
+            av = av ?? (sortDir === 'asc' ? Infinity : -Infinity);
+            bv = bv ?? (sortDir === 'asc' ? Infinity : -Infinity);
             return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
         });
         return rows;
     }, [data, sortKey, sortDir, filterText]);
+
+    const hasUsdItems = useMemo(() => data.some(r => r.currency === 'USD'), [data]);
 
     // 요약 통계
     const stats = useMemo(() => {
@@ -97,12 +106,16 @@ const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
             '거래처': r.partner_name || '',
             '품명': r.product_name,
             '규격': r.specification || '',
+            '통화': r.currency || 'KRW',
             '생산수량': r.quantity,
-            '수주단가(원)': r.latest_unit_price,
-            '단위원가(원)': r.cost_per_unit,
-            '공정비용합계': r.total_process_cost ? Math.round(r.total_process_cost) : 0,
-            '원가율(%)': r.cost_rate,
-            '최근완료일': r.latest_completion_date,
+            '수주단가(원통화)': r.currency === 'USD' ? `$${r.latest_unit_price}` : (r.latest_unit_price || 0),
+            '수주단가(원화환산)': r.latest_unit_price_krw || r.latest_unit_price || 0,
+            '단위원가(원)': r.cost_per_unit || 0,
+            '단위원가(USD)': r.currency === 'USD' ? (r.cost_per_unit_usd || 0) : '',
+            '공정비용합계(원)': r.total_process_cost ? Math.round(r.total_process_cost) : 0,
+            '원가율(%)': r.cost_rate !== null ? `${r.cost_rate}%` : '',
+            '적용환율': r.currency === 'USD' ? (r.exchange_rate || exchangeRate) : '',
+            '최근완료일': r.latest_completion_date || '',
         }));
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
@@ -133,6 +146,16 @@ const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
                         <p className="text-xs text-amber-400 mb-1">🟡 원가율 80~99% (주의)</p>
                         <p className="text-2xl font-bold text-amber-400">{stats.warn}<span className="text-sm font-normal ml-1">개</span></p>
                     </div>
+                </div>
+            )}
+
+            {/* 수출품 환율 안내 배너 */}
+            {hasUsdItems && (
+                <div className="flex items-center gap-2 text-xs text-yellow-300 bg-yellow-950/40 border border-yellow-800/60 px-3.5 py-2.5 rounded-xl">
+                    <span className="font-semibold">🌐 수출품(USD) 환율 반영 안내:</span>
+                    <span className="text-gray-300">
+                        수출품은 기준환율(<strong>1 USD = {Number(exchangeRate || 1350).toLocaleString()}원</strong>)을 적용하여 원화로 환산한 수주단가를 기준으로 원가율을 정확하게 계산합니다. (상단 기준환율 변경 시 실시간 반영)
+                    </span>
                 </div>
             )}
 
@@ -176,8 +199,8 @@ const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
                                 <Th label="품명" col="product_name" />
                                 <Th label="규격" col="specification" />
                                 <Th label="수량" col="quantity" align="right" />
-                                <Th label="수주단가(원)" col="latest_unit_price" align="right" />
-                                <Th label="단위원가(원)" col="cost_per_unit" align="right" />
+                                <Th label="수주단가" col="latest_unit_price" align="right" />
+                                <Th label="단위원가" col="cost_per_unit" align="right" />
                                 <Th label="공정비용합계" col="total_process_cost" align="right" />
                                 <Th label="원가율(%)" col="cost_rate" align="right" />
                                 <Th label="최근완료일" col="latest_completion_date" />
@@ -200,6 +223,7 @@ const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
                                 const rowBg = rate >= 100 ? 'bg-red-900/10 hover:bg-red-900/20'
                                     : rate >= 80  ? 'bg-amber-900/10 hover:bg-amber-900/20'
                                     : 'hover:bg-gray-800/50';
+                                const isUsd = row.currency === 'USD';
                                 return (
                                     <tr key={`${row.product_id}-${i}`} className={`transition-colors ${rowBg}`}>
                                         <td className="px-3 py-2 text-center text-gray-600 text-xs">{i + 1}</td>
@@ -207,14 +231,42 @@ const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
                                         <td className="px-3 py-2 font-medium text-white">{row.product_name}</td>
                                         <td className="px-3 py-2 text-xs text-gray-400">{row.specification || '-'}</td>
                                         <td className="px-3 py-2 text-right font-mono text-sm">{(row.quantity || 0).toLocaleString()}</td>
-                                        <td className="px-3 py-2 text-right font-mono text-sm text-blue-300">
-                                            {row.latest_unit_price ? row.latest_unit_price.toLocaleString() : <span className="text-gray-600">-</span>}
+                                        <td className="px-3 py-2 text-right font-mono text-sm">
+                                            {isUsd ? (
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-emerald-400 font-semibold">
+                                                        $ {row.latest_unit_price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                    <span className="text-[11px] text-gray-400 font-sans">
+                                                        (₩{Math.round(row.latest_unit_price_krw || 0).toLocaleString()})
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-blue-300">
+                                                    {row.latest_unit_price ? `₩ ${row.latest_unit_price.toLocaleString()}` : <span className="text-gray-600">-</span>}
+                                                </span>
+                                            )}
                                         </td>
-                                        <td className="px-3 py-2 text-right font-mono text-sm text-purple-300">
-                                            {row.cost_per_unit ? row.cost_per_unit.toLocaleString() : '-'}
+                                        <td className="px-3 py-2 text-right font-mono text-sm">
+                                            {isUsd ? (
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-purple-300 font-semibold">
+                                                        ₩ {row.cost_per_unit ? row.cost_per_unit.toLocaleString() : '-'}
+                                                    </span>
+                                                    {row.cost_per_unit_usd > 0 && (
+                                                        <span className="text-[11px] text-gray-400 font-sans">
+                                                            ($ {row.cost_per_unit_usd.toFixed(2)})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-purple-300">
+                                                    {row.cost_per_unit ? `₩ ${row.cost_per_unit.toLocaleString()}` : '-'}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-3 py-2 text-right font-mono text-sm text-gray-300">
-                                            {row.total_process_cost ? Math.round(row.total_process_cost).toLocaleString() : '-'}
+                                            {row.total_process_cost ? `₩ ${Math.round(row.total_process_cost).toLocaleString()}` : '-'}
                                         </td>
                                         <td className={`px-3 py-2 text-right ${rateColor}`}>
                                             {rate !== null ? `${rate.toFixed(1)}%` : '-'}
@@ -237,7 +289,7 @@ const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown }) => {
             </div>
 
             {/* 범례 */}
-            <div className="flex gap-4 text-xs text-gray-500">
+            <div className="flex flex-wrap gap-4 text-xs text-gray-500">
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-900/40 border border-red-700/50 inline-block"/> 원가율 100% 이상 — 판매단가 미만 (손실 위험)</span>
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-900/40 border border-amber-700/50 inline-block"/> 원가율 80~99% — 마진 10~20% (주의)</span>
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-gray-800 border border-gray-700 inline-block"/> 원가율 80% 미만 — 마진 20% 이상 (양호)</span>
@@ -749,9 +801,9 @@ const SettlementPage = () => {
 
                 <button 
                     onClick={handleDownloadExcel}
-                    disabled={activeTab === 'chart'}
+                    disabled={activeTab === 'chart' || activeTab === 'cost-analysis'}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-lg h-[38px] ${
-                        activeTab === 'chart' 
+                        activeTab === 'chart' || activeTab === 'cost-analysis'
                         ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
                         : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
                     }`}
@@ -845,6 +897,7 @@ const SettlementPage = () => {
                     majorGroupId={majorGroupId}
                     groups={groups}
                     onDrillDown={fetchProdDetail}
+                    exchangeRate={exchangeRate}
                 />
             ) : activeTab === 'annual' ? (
                 <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-xl overflow-hidden min-h-[500px]">

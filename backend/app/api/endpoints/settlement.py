@@ -833,19 +833,24 @@ async def get_chart_summary(
 @router.get("/cost-analysis")
 async def get_cost_analysis(
     major_group_id: Optional[int] = Query(None),
+    exchange_rate: float = Query(default=1350.0),
     db: AsyncSession = Depends(get_db)
 ):
     """
     원가분석: 생산완료된 수주 품목 중 공정비용이 1개 이상 입력된 품목을 대상으로
-    품목별 최근 단가 대비 공정비용 및 원가율 산출.
+    품목별 최근 단가 대비 공정비용 및 원가율 산출 (수출품 통화 USD 및 환율 반영).
 
     반환 컬럼:
       product_id, product_name, specification,
-      latest_unit_price     : 최근 수주 단가 (최근 완료건 기준)
-      total_process_cost    : 해당 품목 공정비용 합계 (1회 생산 기준)
+      currency              : 통화 (KRW / USD)
+      latest_unit_price     : 최근 수주 단가 (원통화 기준: USD는 달러, KRW는 원)
+      latest_unit_price_krw : 원화 환산 수주단가 (USD인 경우 exchange_rate 적용)
+      total_process_cost    : 해당 품목 공정비용 합계 (원화, 1회 생산 기준)
       quantity              : 생산 수량
-      cost_per_unit         : 단위당 공정비용 (total_process_cost / quantity)
-      cost_rate             : 원가율 % = cost_per_unit / latest_unit_price × 100
+      cost_per_unit         : 단위당 공정비용 (원화, total_process_cost / quantity)
+      cost_per_unit_usd     : 단위당 공정비용 (달러 환산, cost_per_unit / exchange_rate)
+      cost_rate             : 원가율 % = cost_per_unit / latest_unit_price_krw × 100
+      exchange_rate         : 적용 환율
       latest_completion_date: 가장 최근 생산완료일
       plan_id               : 해당 최근 생산계획 id (공정 드릴다운용)
       partner_name          : 거래처
@@ -871,11 +876,11 @@ async def get_cost_analysis(
         .subquery()
     )
 
-    # 최근 생산계획 id 서브쿼리 (품목별 최근 완료일의 plan_id 중 최소값)
+    # 최근 생산계획 id 서브쿼리 (품목별 최근 완료일의 plan_id 중 최대값)
     plan_sq = (
         select(
             ProductionPlanItem.product_id,
-            func.min(ProductionPlan.id).label("plan_id")
+            func.max(ProductionPlan.id).label("plan_id")
         )
         .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
         .join(
@@ -893,22 +898,48 @@ async def get_cost_analysis(
         .subquery()
     )
 
-    # 최근 수주 단가: 완료된 수주에서 해당 품목의 가장 최근 단가
-    price_sq = (
+    # 1. 생산계획에 직접 연결된 수주의 해당 품목 단가/통화
+    plan_so_sq = (
         select(
+            SalesOrderItem.order_id,
             SalesOrderItem.product_id,
-            func.max(SalesOrderItem.unit_price).label("unit_price"),   # 최근 단가 근사
+            func.max(SalesOrderItem.unit_price).label("unit_price"),
+            func.max(SalesOrderItem.currency).label("currency"),
         )
-        .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
-        .where(
-            SalesOrder.status.in_([
-                OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED,
-                OrderStatus.PRODUCTION_COMPLETED
-            ])
-        )
-        .group_by(SalesOrderItem.product_id)
+        .group_by(SalesOrderItem.order_id, SalesOrderItem.product_id)
         .subquery()
     )
+
+    # 2. 품목별 가장 최근 수주 단가/통화 (폴백용: 주문일자 최신순)
+    so_ranked = (
+        select(
+            SalesOrderItem.product_id,
+            SalesOrderItem.unit_price,
+            SalesOrderItem.currency,
+            func.row_number().over(
+                partition_by=SalesOrderItem.product_id,
+                order_by=[
+                    func.coalesce(SalesOrder.delivery_date, SalesOrder.order_date).desc(),
+                    SalesOrderItem.id.desc()
+                ]
+            ).label("rn")
+        )
+        .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
+        .where(SalesOrder.status != OrderStatus.CANCELLED)
+        .subquery()
+    )
+    fallback_so_sq = (
+        select(
+            so_ranked.c.product_id,
+            so_ranked.c.unit_price,
+            so_ranked.c.currency
+        )
+        .where(so_ranked.c.rn == 1)
+        .subquery()
+    )
+
+    unit_price_col = func.coalesce(plan_so_sq.c.unit_price, fallback_so_sq.c.unit_price, 0)
+    currency_col = func.coalesce(plan_so_sq.c.currency, fallback_so_sq.c.currency, 'KRW')
 
     # 메인 집계: 최근 완료 생산계획 기준 품목별 공정비용 합계
     stmt = (
@@ -916,7 +947,8 @@ async def get_cost_analysis(
             Product.id.label("product_id"),
             Product.name.label("product_name"),
             Product.specification.label("specification"),
-            func.coalesce(price_sq.c.unit_price, 0).label("latest_unit_price"),
+            unit_price_col.label("latest_unit_price"),
+            currency_col.label("currency"),
             func.sum(ProductionPlanItem.cost).label("total_process_cost"),
             func.max(ProductionPlanItem.quantity).label("quantity"),
             latest_sq.c.latest_date.label("latest_completion_date"),
@@ -934,7 +966,14 @@ async def get_cost_analysis(
         )
         .join(plan_sq, ProductionPlanItem.product_id == plan_sq.c.product_id)
         .join(Product, ProductionPlanItem.product_id == Product.id)
-        .outerjoin(price_sq, Product.id == price_sq.c.product_id)
+        .outerjoin(
+            plan_so_sq,
+            and_(
+                ProductionPlan.order_id == plan_so_sq.c.order_id,
+                Product.id == plan_so_sq.c.product_id
+            )
+        )
+        .outerjoin(fallback_so_sq, Product.id == fallback_so_sq.c.product_id)
         .outerjoin(SalesOrder, ProductionPlan.order_id == SalesOrder.id)
         .outerjoin(Partner, SalesOrder.partner_id == Partner.id)
         .where(
@@ -946,7 +985,10 @@ async def get_cost_analysis(
             Product.id,
             Product.name,
             Product.specification,
-            price_sq.c.unit_price,
+            plan_so_sq.c.unit_price,
+            plan_so_sq.c.currency,
+            fallback_so_sq.c.unit_price,
+            fallback_so_sq.c.currency,
             latest_sq.c.latest_date,
             plan_sq.c.plan_id,
             Partner.name,
@@ -966,10 +1008,24 @@ async def get_cost_analysis(
         row = dict(r._mapping)
         qty = row.get("quantity") or 1
         total_cost = float(row.get("total_process_cost") or 0)
-        unit_price = float(row.get("latest_unit_price") or 0)
+        raw_unit_price = float(row.get("latest_unit_price") or 0)
+        currency = str(row.get("currency") or "KRW").strip().upper()
+
+        # 통화 환산 (USD인 경우 기준환율 적용)
+        if currency == "USD":
+            unit_price_krw = raw_unit_price * exchange_rate
+        else:
+            unit_price_krw = raw_unit_price
+
         cost_per_unit = total_cost / qty if qty else 0
-        cost_rate = (cost_per_unit / unit_price * 100) if unit_price > 0 else None
+        cost_rate = (cost_per_unit / unit_price_krw * 100) if unit_price_krw > 0 else None
+
+        row["currency"] = currency
+        row["exchange_rate"] = exchange_rate
+        row["latest_unit_price"] = round(raw_unit_price, 2) if currency == "USD" else round(raw_unit_price, 0)
+        row["latest_unit_price_krw"] = round(unit_price_krw, 0)
         row["cost_per_unit"] = round(cost_per_unit, 0)
+        row["cost_per_unit_usd"] = round(cost_per_unit / exchange_rate, 2) if exchange_rate > 0 else 0
         row["cost_rate"] = round(cost_rate, 1) if cost_rate is not None else None
         rows.append(row)
     return rows
