@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import select, cast, String, text, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, noload
 from sqlalchemy.exc import MultipleResultsFound
 
 from app.api import deps
@@ -384,7 +384,11 @@ async def read_production_plans(
         .options(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.product).options(
                 selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-                selectinload(Product.bom_items).selectinload(BOM.child_product)
+                selectinload(Product.bom_items).selectinload(BOM.child_product).options(
+                    noload(Product.standard_processes),
+                    noload(Product.bom_items),
+                    noload(Product.price_history)
+                )
             ),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.equipment),
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.worker),
@@ -392,7 +396,11 @@ async def read_production_plans(
             selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlan.order).options(
                 selectinload(SalesOrder.partner),
-                selectinload(SalesOrder.items).selectinload(SalesOrderItem.product)
+                selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).options(
+                    noload(Product.standard_processes),
+                    noload(Product.bom_items),
+                    noload(Product.price_history)
+                )
             ),
             selectinload(ProductionPlan.stock_production).options(
                 selectinload(StockProduction.product),

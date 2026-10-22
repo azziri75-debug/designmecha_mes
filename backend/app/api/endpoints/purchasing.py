@@ -1,7 +1,7 @@
 from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, desc, func, or_, cast, String
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload, joinedload, noload
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, date
 
@@ -57,7 +57,12 @@ async def get_unordered_requirements(
      .outerjoin(po_subq, Product.id == po_subq.c.product_id)\
      .outerjoin(stock_subq, Product.id == stock_subq.c.product_id)\
      .where(MaterialRequirement.status == status)\
-     .group_by(Product.id, po_subq.c.open_qty, stock_subq.c.live_stock)
+     .group_by(Product.id, po_subq.c.open_qty, stock_subq.c.live_stock)\
+     .options(
+         noload(Product.standard_processes),
+         noload(Product.bom_items),
+         noload(Product.price_history)
+     )
 
     if major_group_id and str(major_group_id).isdigit():
         major_group_id_int = int(major_group_id)
@@ -81,13 +86,23 @@ async def get_unordered_requirements(
     result = await db.execute(query)
     rows = result.all()
 
+    # Batch-fetch related sales order numbers for all products in one query
+    product_ids = [r[0].id for r in rows]
+    so_map = {}
+    if product_ids:
+        so_stmt = (
+            select(MaterialRequirement.product_id, SalesOrder.order_no)
+            .join(SalesOrder, MaterialRequirement.order_id == SalesOrder.id)
+            .where(MaterialRequirement.product_id.in_(product_ids), MaterialRequirement.status == status)
+            .distinct()
+        )
+        for pid, order_no in (await db.execute(so_stmt)).all():
+            if order_no:
+                so_map.setdefault(pid, []).append(order_no)
+
     final_results = []
     for product, total_required, min_mr_id, latest_created, open_qty, live_stock in rows:
-        # 연관된 수주 번호 수집 (병합)
-        so_stmt = select(SalesOrder.order_no).join(MaterialRequirement, MaterialRequirement.order_id == SalesOrder.id)\
-                    .where(MaterialRequirement.product_id == product.id, MaterialRequirement.status == status).distinct()
-        so_res = await db.execute(so_stmt)
-        so_numbers = [r for r in so_res.scalars().all() if r]
+        so_numbers = so_map.get(product.id, [])
         
         # 합산된 데이터 구성
         res = schemas.MaterialRequirementResponse(
@@ -139,14 +154,17 @@ async def get_consumable_waits(
     result = await db.execute(query)
     waits = result.scalars().all()
     
+    author_ids = {w.approval_document.author_id for w in waits if w.approval_document and w.approval_document.author_id}
+    author_map = {}
+    if author_ids:
+        staff_res = await db.execute(select(Staff.id, Staff.name).where(Staff.id.in_(author_ids)))
+        author_map = {sid: sname for sid, sname in staff_res.all()}
+
     for wait in waits:
         if wait.approval_document:
             wait.approval_title = wait.approval_document.title
-            # Retrieve Author
-            staff_res = await db.execute(select(Staff).where(Staff.id == wait.approval_document.author_id))
-            staff = staff_res.scalar_one_or_none()
-            if staff:
-                wait.author_name = staff.name
+            if wait.approval_document.author_id in author_map:
+                wait.author_name = author_map[wait.approval_document.author_id]
                 
     return waits
 

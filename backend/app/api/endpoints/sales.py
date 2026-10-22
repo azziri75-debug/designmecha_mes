@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc, or_
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload, joinedload, noload
 from sqlalchemy import delete, update
 from app.api import deps
 from app.core.timezone import now_kst
@@ -128,8 +128,11 @@ async def read_estimates(
     Retrieve estimates with advanced filtering.
     """
     query = select(Estimate).options(
-        selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-        selectinload(Estimate.items).selectinload(EstimateItem.product).selectinload(Product.bom_items).selectinload(BOM.child_product),
+        selectinload(Estimate.items).selectinload(EstimateItem.product).options(
+            noload(Product.standard_processes),
+            noload(Product.bom_items),
+            noload(Product.price_history)
+        ),
         selectinload(Estimate.partner)
     )
 
@@ -563,7 +566,11 @@ async def read_orders(
     """
     query = select(SalesOrder).options(
         selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.bom_items).selectinload(BOM.child_product),
+        selectinload(SalesOrder.items).selectinload(SalesOrderItem.product).selectinload(Product.bom_items).selectinload(BOM.child_product).options(
+            noload(Product.standard_processes),
+            noload(Product.bom_items),
+            noload(Product.price_history)
+        ),
         selectinload(SalesOrder.partner),
         selectinload(SalesOrder.delivery_histories).selectinload(DeliveryHistory.items)
     )

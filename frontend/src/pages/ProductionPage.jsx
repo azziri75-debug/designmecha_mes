@@ -180,12 +180,9 @@ const ProductionPage = () => {
     };
 
     useEffect(() => {
-        fetchOrders();
-        fetchStockProductions();
         fetchPartners();
         fetchDefects();
         fetchGroups();
-        fetchAllPlannedIds();
     }, []);
 
     useEffect(() => {

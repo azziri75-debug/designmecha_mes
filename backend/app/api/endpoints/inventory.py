@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, insert, func, desc, or_, exists
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, noload
 from typing import List, Optional
 from datetime import date
 
@@ -124,7 +124,11 @@ async def read_stocks(
         sp_wait_subq.label("sp_wait"),
         sp_active_subq.label("sp_active"),
         has_bom_subq.label("has_bom")
-    ).outerjoin(Stock, Stock.product_id == Product.id)
+    ).outerjoin(Stock, Stock.product_id == Product.id).options(
+        noload(Product.standard_processes),
+        noload(Product.bom_items),
+        noload(Product.price_history)
+    )
 
     # Apply Filters to the Unified Query
     if item_type:

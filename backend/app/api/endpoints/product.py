@@ -1,8 +1,8 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import delete, or_
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload, joinedload, noload
 from typing import List, Optional, Any
 
 from app.api.deps import get_db
@@ -207,7 +207,11 @@ async def read_products(
     """
     query = select(Product).options(
         selectinload(Product.standard_processes).selectinload(ProductProcess.process),
-        selectinload(Product.bom_items).selectinload(BOM.child_product),
+        selectinload(Product.bom_items).selectinload(BOM.child_product).options(
+            noload(Product.standard_processes),
+            noload(Product.bom_items),
+            noload(Product.price_history)
+        ),
         selectinload(Product.partner)
     )
     
@@ -234,18 +238,71 @@ async def read_products(
     
     result = await db.execute(query.offset(skip).limit(limit))
     products = result.unique().scalars().all()
-    
-    # Enrich with latest_price
+    if not products:
+        return []
+
+    # Bulk-fetch latest_price to avoid N+1 sequential queries per product
+    purchase_types = {"PART", "CONSUMABLE", "RAW_MATERIAL"}
+    purchase_product_ids = [p.id for p in products if p.item_type in purchase_types]
+    sales_product_ids = [p.id for p in products if p.item_type not in purchase_types]
+
+    po_latest_map = {}
+    if purchase_product_ids:
+        po_stmt = (
+            select(PurchaseOrderItem.product_id, PurchaseOrder.order_date, PurchaseOrderItem.unit_price)
+            .join(PurchaseOrder)
+            .where(PurchaseOrderItem.product_id.in_(purchase_product_ids))
+            .order_by(PurchaseOrder.order_date.desc(), PurchaseOrderItem.id.desc())
+        )
+        for pid, o_date, u_price in (await db.execute(po_stmt)).all():
+            if pid not in po_latest_map:
+                po_latest_map[pid] = (str(o_date), u_price or 0.0)
+
+    est_latest_map = {}
+    so_latest_map = {}
+    if sales_product_ids:
+        est_stmt = (
+            select(EstimateItem.product_id, Estimate.estimate_date, EstimateItem.unit_price)
+            .join(Estimate)
+            .where(EstimateItem.product_id.in_(sales_product_ids))
+            .order_by(Estimate.estimate_date.desc(), EstimateItem.id.desc())
+        )
+        for pid, e_date, u_price in (await db.execute(est_stmt)).all():
+            if pid not in est_latest_map:
+                est_latest_map[pid] = (str(e_date), u_price or 0.0)
+
+        so_stmt = (
+            select(SalesOrderItem.product_id, SalesOrder.order_date, SalesOrderItem.unit_price)
+            .join(SalesOrder)
+            .where(SalesOrderItem.product_id.in_(sales_product_ids))
+            .order_by(SalesOrder.order_date.desc(), SalesOrderItem.id.desc())
+        )
+        for pid, o_date, u_price in (await db.execute(so_stmt)).all():
+            if pid not in so_latest_map:
+                so_latest_map[pid] = (str(o_date), u_price or 0.0)
+
     enriched_products = []
     for p in products:
-        # [Fix] 품목 유형에 따라 적절한 단가 이력 함수 호출
-        if p.item_type in ["PART", "CONSUMABLE", "RAW_MATERIAL"]:
-            p_history = await get_product_purchase_history(p.id, db)
+        candidates = []
+        if p.item_type in purchase_types:
+            if p.id in po_latest_map:
+                candidates.append(po_latest_map[p.id])
+            if p.price_history:
+                m = p.price_history[0]
+                m_date = m.date.strftime("%Y-%m-%d") if m.date else "-"
+                candidates.append((m_date, m.price or 0.0))
         else:
-            p_history = await get_product_price_history(p.id, db)
-            
-        latest_price = p_history[0].unit_price if p_history else 0.0
-        p.latest_price = latest_price
+            if p.id in est_latest_map:
+                candidates.append(est_latest_map[p.id])
+            if p.id in so_latest_map:
+                candidates.append(so_latest_map[p.id])
+
+        if candidates:
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            p.latest_price = candidates[0][1]
+        else:
+            p.latest_price = 0.0
+
         p.partner_name = p.partner.name if p.partner else None
         enriched_products.append(p)
         

@@ -118,19 +118,26 @@ const ProductsPage = ({ type }) => {
 
     useEffect(() => {
         if (activeTab === 'products') {
-            fetchProducts();
             fetchPartners();
             fetchGroups();
             fetchProcesses(); // Needed for routing modal names
-            fetchAllParts(); // For BOM combobox
         } else {
             fetchProcesses();
             fetchGroups();
         }
+    }, [activeTab, type]);
+
+    useEffect(() => {
+        if (activeTab === 'products') {
+            fetchProducts();
+        }
     }, [activeTab, selectedPartnerId, selectedMajorGroupId, type]);
 
-    // [Fix] Sync price history for expanded row
+    // [Fix] Sync price history and lazy-load BOM parts for expanded row / modal
     useEffect(() => {
+        if (detailSubTab === 'bom' && allParts.length === 0) {
+            fetchAllParts();
+        }
         if (expandedProductId && detailSubTab === 'priceHistory') {
             const p = products.find(prod => prod.id === expandedProductId);
             if (p) fetchPriceHistory(p);
