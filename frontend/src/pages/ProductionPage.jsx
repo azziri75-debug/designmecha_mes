@@ -55,6 +55,9 @@ const ProductionPage = () => {
     const [stockProductions, setStockProductions] = useState([]);
     const [plans, setPlans] = useState([]);
     const [allPlannedIds, setAllPlannedIds] = useState(null);
+    const [loadingOrders, setLoadingOrders] = useState(true);
+    const [loadingStocks, setLoadingStocks] = useState(true);
+    const [loadingPlans, setLoadingPlans] = useState(true);
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -93,6 +96,7 @@ const ProductionPage = () => {
     const [itemToView, setItemToView] = useState(null);
 
     const fetchOrders = async () => {
+        setLoadingOrders(true);
         try {
             const params = {};
             if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
@@ -100,10 +104,13 @@ const ProductionPage = () => {
             setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch orders", error);
+        } finally {
+            setLoadingOrders(false);
         }
     };
 
     const fetchPlans = async () => {
+        setLoadingPlans(true);
         try {
             const params = {};
             if (startDate) params.start_date = startDate;
@@ -119,6 +126,8 @@ const ProductionPage = () => {
             fetchAllPlannedIds();
         } catch (error) {
             console.error("Failed to fetch plans", error);
+        } finally {
+            setLoadingPlans(false);
         }
     };
 
@@ -141,6 +150,7 @@ const ProductionPage = () => {
 
 
     const fetchStockProductions = async () => {
+        setLoadingStocks(true);
         try {
             const params = { status: 'PENDING' };
             if (selectedMajorGroupId) params.major_group_id = selectedMajorGroupId;
@@ -148,6 +158,8 @@ const ProductionPage = () => {
             setStockProductions(response.data);
         } catch (error) {
             console.error("Failed to fetch stock productions", error);
+        } finally {
+            setLoadingStocks(false);
         }
     };
 
@@ -485,6 +497,7 @@ const ProductionPage = () => {
                             orders={orders}
                             stockProductions={stockProductions}
                             plannedIds={allPlannedIds}
+                            loading={loadingOrders || loadingStocks || !allPlannedIds}
                             onCreatePlan={handleCreateClick}
                             searchQuery={searchQuery}
                             filterPartner={filterPartner}
@@ -494,6 +507,7 @@ const ProductionPage = () => {
                         <ProductionPlansTable
                             plans={inProgressPlans}
                             defects={defects}
+                            loading={loadingPlans}
                             onEdit={handleEditClick}
                             onDelete={handleDeletePlan}
                             onComplete={handleCompletePlan}
@@ -522,6 +536,7 @@ const ProductionPage = () => {
                         <ProductionPlansTable
                             plans={completedPlans}
                             defects={defects}
+                            loading={loadingPlans}
                             onEdit={handleEditClick}
                             onDelete={handleDeletePlan}
                             onPrint={handlePrintClick}
@@ -596,10 +611,7 @@ const DefectInfoModal = ({ isOpen, onClose, defects }) => {
     );
 };
 
-const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePlan, searchQuery, filterPartner }) => {
-    // [수정] plannedIds null 체크를 필터 로직보다 먼저 → null이면 스피너, 빈 배열이면 정상 렌더
-    if (!plannedIds) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress /></Box>;
-
+const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, loading, onCreatePlan, searchQuery, filterPartner }) => {
     const planOrderIds = (plannedIds?.orders || []).map(id => Number(id));
     const planStockProdIds = (plannedIds?.stocks || []).map(id => Number(id));
 
@@ -646,7 +658,9 @@ const UnplannedOrdersTable = ({ orders, stockProductions, plannedIds, onCreatePl
 
     return (
         <ResizableTable columns={UNPLANNED_COLS} className="w-full text-left text-sm" theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700" thClassName="px-4 py-3">
-            {combinedList.length === 0 ? (
+            {loading ? (
+                <tr><td colSpan={UNPLANNED_COLS.length} className="px-4 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+            ) : combinedList.length === 0 ? (
                 <tr><td colSpan={UNPLANNED_COLS.length} className="px-4 py-8 text-center text-gray-500">데이터가 없습니다.</td></tr>
             ) : (
                 combinedList.map(item =>
@@ -747,7 +761,7 @@ const UnplannedStockProductionRow = ({ stockProduction, onCreatePlan }) => {
     );
 };
 
-const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onRefresh, readonly }) => {
+const ProductionPlansTable = ({ plans, defects, loading, onEdit, onDelete, onComplete, onConfirm, onPrint, onOpenFiles, onOpenProcessFiles, onShowDefects, onRefresh, readonly }) => {
 
     const [managedCols, setManagedCols] = useState(PLAN_COLS);
 
@@ -763,7 +777,9 @@ const ProductionPlansTable = ({ plans, defects, onEdit, onDelete, onComplete, on
         <ResizableTable columns={managedCols} className="w-full text-left text-sm" theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700" thClassName="px-4 py-3" onResizeEnd={({ leftKey, newLeft, rightKey, newRight }) => {
             setManagedCols(prev => prev.map(col => { if (col.key === leftKey) return { ...col, width: newLeft }; if (col.key === rightKey) return { ...col, width: newRight }; return col; }));
         }}>
-            {sortedPlans.length === 0 ? (
+            {loading ? (
+                <tr><td colSpan={PLAN_COLS.length} className="px-4 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+            ) : sortedPlans.length === 0 ? (
                 <tr><td colSpan={PLAN_COLS.length} className="px-4 py-12 text-center text-gray-500">데이터가 없습니다.</td></tr>
             ) : (
                 sortedPlans.map(plan => (

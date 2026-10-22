@@ -95,6 +95,7 @@ const OutsourcingPage = () => {
     const [partners, setPartners] = useState([]);
     const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
     const [groups, setGroups] = useState([]);
+    const [loading, setLoading] = useState(true);
 
 
     useEffect(() => {
@@ -132,6 +133,7 @@ const OutsourcingPage = () => {
     };
 
     const fetchOrders = async () => {
+        setLoading(true);
         try {
             const params = {
                 product_name: searchQuery || undefined,
@@ -145,10 +147,13 @@ const OutsourcingPage = () => {
             setOrders(response.data.filter(o => o.status !== 'COMPLETED' && o.status !== 'QUOTATION_COMPLETE'));
         } catch (error) {
             console.error("Failed to fetch outsourcing orders", error);
+        } finally {
+            setLoading(false);
         }
     };
 
     const fetchCompletedOrders = async () => {
+        setLoading(true);
         try {
             const params = {
                 status: 'COMPLETED',
@@ -163,6 +168,8 @@ const OutsourcingPage = () => {
             setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch completed outsourcing orders", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -258,6 +265,7 @@ const OutsourcingPage = () => {
         }
     };
     const fetchPendingItems = async () => {
+        setLoading(true);
         try {
             const params = {
                 major_group_id: selectedMajorGroupId || undefined
@@ -267,6 +275,8 @@ const OutsourcingPage = () => {
             setSelectedPendingItems([]);
         } catch (error) {
             console.error("Failed to fetch pending items", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -522,7 +532,9 @@ const OutsourcingPage = () => {
                         theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
-                        {pendingItems?.length === 0 ? (
+                        {loading ? (
+                            <tr><td colSpan={PENDING_COLS.length} className="px-4 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+                        ) : pendingItems?.length === 0 ? (
                             <tr><td colSpan={PENDING_COLS.length} className="px-4 py-12 text-center text-gray-500">발주 대기 중인 품목이 없습니다.</td></tr>
                         ) : (
                             pendingItems.map((item) => (
@@ -592,7 +604,9 @@ const OutsourcingPage = () => {
                         theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
-                        {orders.length === 0 ? (
+                        {loading ? (
+                            <tr><td colSpan={ORDER_COLS.length} className="px-4 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+                        ) : orders.length === 0 ? (
                             <tr><td colSpan={ORDER_COLS.length} className="px-4 py-12 text-center text-gray-500">{tabValue === 1 ? "진행 중인 외주 발주 내역이 없습니다." : "완료된 외주 발주 내역이 없습니다."}</td></tr>
                         ) : (
                             orders.map((order) => (

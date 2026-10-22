@@ -21,7 +21,7 @@ const COMPLAINT_COLS = [
 
 const CustomerComplaintPage = () => {
     const [complaints, setComplaints] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
     const [groups, setGroups] = useState([]);

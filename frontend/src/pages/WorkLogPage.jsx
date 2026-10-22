@@ -67,17 +67,22 @@ const WorkLogPage = () => {
 
     const [tabValue, setTabValue] = useState(0);
     const [performanceData, setPerformanceData] = useState([]);
+    const [loadingLogs, setLoadingLogs] = useState(true);
+    const [loadingPerf, setLoadingPerf] = useState(true);
 
     // Table Resize States
 
 
 
     const fetchWorkLogs = async () => {
+        setLoadingLogs(true);
         try {
             const response = await api.get('/production/work-logs');
             setWorkLogs(response.data);
         } catch (error) {
             console.error("Failed to fetch work logs", error);
+        } finally {
+            setLoadingLogs(false);
         }
     };
 
@@ -91,6 +96,7 @@ const WorkLogPage = () => {
     };
 
     const fetchPerformanceData = async () => {
+        setLoadingPerf(true);
         try {
             const params = new URLSearchParams();
             if (startDate) params.append('start_date', startDate);
@@ -101,6 +107,8 @@ const WorkLogPage = () => {
             setPerformanceData(response.data);
         } catch (error) {
             console.error("Failed to fetch performance data", error);
+        } finally {
+            setLoadingPerf(false);
         }
     };
 
@@ -375,7 +383,9 @@ const WorkLogPage = () => {
                             theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                             thClassName="px-4 py-3"
                         >
-                            {filteredLogs.length === 0 ? (
+                            {loadingLogs ? (
+                                <tr><td colSpan={LOG_COLS.length} className="px-4 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+                            ) : filteredLogs.length === 0 ? (
                                 <tr><td colSpan={LOG_COLS.length} className="px-4 py-12 text-center text-gray-500">등록된 (또는 검색된) 작업일지가 없습니다.</td></tr>
                             ) : (
                                 filteredLogs.map(log => (
@@ -401,6 +411,7 @@ const WorkLogPage = () => {
                             </div>
                             <PerformanceManagementList
                                 data={performanceData}
+                                loading={loadingPerf}
                                 onUpdate={() => { fetchPerformanceData(); fetchWorkLogs(); }}
                                 startDate={startDate}
                                 endDate={endDate}
@@ -586,7 +597,7 @@ const WorkLogRow = ({ log, onEdit, onDelete }) => {
     );
 };
 
-const PerformanceManagementList = ({ data, onUpdate, startDate, endDate }) => {
+const PerformanceManagementList = ({ data, loading, onUpdate, startDate, endDate }) => {
     return (
         <ResizableTable
             columns={PERF_COLS}
@@ -594,7 +605,9 @@ const PerformanceManagementList = ({ data, onUpdate, startDate, endDate }) => {
             theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
             thClassName="px-4 py-3"
         >
-            {data.length === 0 ? (
+            {loading ? (
+                <tr><td colSpan={PERF_COLS.length} className="px-4 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+            ) : data.length === 0 ? (
                 <tr><td colSpan={PERF_COLS.length} className="px-4 py-12 text-center text-gray-500">표시할 실적 데이터가 없습니다.</td></tr>
             ) : (
                 data.map(row => (
@@ -608,8 +621,10 @@ const PerformanceManagementList = ({ data, onUpdate, startDate, endDate }) => {
 const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
     const [open, setOpen] = useState(false);
     const [details, setDetails] = useState([]);
+    const [loadingDetails, setLoadingDetails] = useState(false);
 
     const fetchDetails = async () => {
+        setLoadingDetails(true);
         try {
             const params = new URLSearchParams();
             if (startDate) params.append('start_date', startDate);
@@ -619,6 +634,8 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
             setDetails(res.data);
         } catch (error) {
             console.error("Failed to fetch performance details", error);
+        } finally {
+            setLoadingDetails(false);
         }
     };
 
@@ -671,7 +688,9 @@ const PerformanceRow = ({ row, onUpdate, startDate, endDate }) => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-700 text-gray-300">
-                                        {details.length === 0 ? (
+                                        {loadingDetails ? (
+                                            <tr><td colSpan={12} className="px-3 py-8 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+                                        ) : details.length === 0 ? (
                                             <tr><td colSpan={12} className="px-3 py-8 text-center text-gray-500">조회된 상세 내역이 없습니다.</td></tr>
                                         ) : (
                                             details.map(item => (

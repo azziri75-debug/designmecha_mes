@@ -139,6 +139,7 @@ const PurchasePage = ({ type }) => {
     const [partners, setPartners] = useState([]);
     const [selectedMajorGroupId, setSelectedMajorGroupId] = useState('');
     const [groups, setGroups] = useState([]);
+    const [loading, setLoading] = useState(true);
 
 
     useEffect(() => {
@@ -161,6 +162,7 @@ const PurchasePage = ({ type }) => {
 
 
     const fetchMrpItems = async () => {
+        setLoading(true);
         try {
             const params = { major_group_id: selectedMajorGroupId || undefined };
             const response = await api.get('/purchasing/mrp/unordered-requirements', { params });
@@ -172,6 +174,8 @@ const PurchasePage = ({ type }) => {
             setSelectedMrpItems([]);
         } catch (error) {
             console.error("Failed to fetch MRP items", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -194,6 +198,7 @@ const PurchasePage = ({ type }) => {
     };
 
     const fetchOrders = async () => {
+        setLoading(true);
         try {
             const params = { 
                 purchase_type: type,
@@ -208,10 +213,13 @@ const PurchasePage = ({ type }) => {
             setOrders(response.data.filter(o => o.status !== 'COMPLETED'));
         } catch (error) {
             console.error("Failed to fetch purchase orders", error);
+        } finally {
+            setLoading(false);
         }
     };
 
     const fetchCompletedOrders = async () => {
+        setLoading(true);
         try {
             const params = { 
                 status: 'COMPLETED', 
@@ -227,6 +235,8 @@ const PurchasePage = ({ type }) => {
             setOrders(response.data);
         } catch (error) {
             console.error("Failed to fetch completed orders", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -321,6 +331,7 @@ const PurchasePage = ({ type }) => {
         }
     };
     const fetchPendingItems = async () => {
+        setLoading(true);
         try {
             const params = { major_group_id: selectedMajorGroupId || undefined };
             if (type === 'CONSUMABLE') {
@@ -333,6 +344,8 @@ const PurchasePage = ({ type }) => {
             setSelectedPendingItems([]); // Reset selection on refresh
         } catch (error) {
             console.error("Failed to fetch pending items", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -702,7 +715,9 @@ const PurchasePage = ({ type }) => {
                         theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
-                        {pendingItems.length === 0 ? (
+                        {loading ? (
+                            <tr><td colSpan={(type === 'CONSUMABLE' ? PENDING_CONSUMABLE_COLS : PENDING_COLS).length} className="px-4 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+                        ) : pendingItems.length === 0 ? (
                             <tr><td colSpan={(type === 'CONSUMABLE' ? PENDING_CONSUMABLE_COLS : PENDING_COLS).length} className="px-4 py-12 text-center text-gray-500">발주 대기 중인 품목이 없습니다.</td></tr>
                         ) : (
                             pendingItems.map((item) => (
@@ -823,7 +838,9 @@ const PurchasePage = ({ type }) => {
                         theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
-                        {mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0)).length === 0 ? (
+                        {loading ? (
+                            <tr><td colSpan={MRP_COLS.length} className="px-4 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+                        ) : mrpItems.filter(item => !hideZeroShortage || (item.shortage_quantity > 0)).length === 0 ? (
                             <tr><td colSpan={MRP_COLS.length} className="px-4 py-12 text-center text-gray-500">{mrpItems.length === 0 ? "수주 기반으로 계산된 추가 발주 필요 품목이 없습니다." : "조건에 맞는 소요량 내역이 없습니다."}</td></tr>
                         ) : (
                             mrpItems
@@ -880,7 +897,9 @@ const PurchasePage = ({ type }) => {
                         theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                         thClassName="px-4 py-3"
                     >
-                        {orders.length === 0 ? (
+                        {loading ? (
+                            <tr><td colSpan={ORDER_COLS.length} className="px-4 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+                        ) : orders.length === 0 ? (
                             <tr><td colSpan={ORDER_COLS.length} className="px-4 py-12 text-center text-gray-500">{(type === 'CONSUMABLE' ? tabValue === 1 : tabValue === 2) ? "진행 중인 발주 내역이 없습니다." : "완료된 발주 내역이 없습니다."}</td></tr>
                         ) : (
                             orders.map((order) => (

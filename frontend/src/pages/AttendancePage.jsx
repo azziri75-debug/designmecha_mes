@@ -35,7 +35,8 @@ const AttendancePage = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [activeTab, setActiveTab] = useState('calendar'); // calendar, history
     const [summaryData, setSummaryData] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [summaryLoading, setSummaryLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingRecord, setEditingRecord] = useState(null);
@@ -56,9 +57,14 @@ const AttendancePage = () => {
                 setStaffList(res.data);
                 if (res.data.length > 0 && !selectedStaff) {
                     setSelectedStaff(res.data[0]);
+                } else if (res.data.length === 0) {
+                    setLoading(false);
+                    setSummaryLoading(false);
                 }
             } catch (err) {
                 console.error('Failed to fetch staff:', err);
+                setLoading(false);
+                setSummaryLoading(false);
             }
         };
         fetchStaff();
@@ -128,6 +134,7 @@ const AttendancePage = () => {
 
     const fetchSummary = useCallback(async () => {
         if (!selectedStaff) return;
+        setSummaryLoading(true);
         try {
             const year = currentMonth.getFullYear();
             const res = await api.get('/hr/attendance/summary', {
@@ -136,6 +143,8 @@ const AttendancePage = () => {
             setSummaryData(res.data);
         } catch (err) {
             console.error('Failed to fetch summary:', err);
+        } finally {
+            setSummaryLoading(false);
         }
     }, [selectedStaff, currentMonth]);
 
@@ -689,39 +698,46 @@ const AttendancePage = () => {
                                     thClassName="px-8 py-4 text-[10px]"
                                     tbodyClassName="divide-y divide-gray-800"
                                 >
-                                    {summaryData?.documents?.map((doc) => (
-                                        <tr key={doc.id} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300">
-                                            <td className="px-8 py-4">
-                                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST' ? 'bg-indigo-100 text-indigo-600' : doc.doc_type === 'EARLY_LEAVE' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
-                                                    {doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST' ? '휴가원' : doc.doc_type === 'EARLY_LEAVE' ? '외출/조퇴' : doc.doc_type === 'OVERTIME' ? '야근/특근' : doc.doc_type}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-4 text-sm font-bold text-slate-700">{doc.title}</td>
-                                            <td className="px-8 py-4 text-xs font-bold text-slate-400 tabular-nums">{doc.date}</td>
-                                            <td className="px-8 py-4 text-sm font-black text-slate-900 text-center">
-                                                {(doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST') && (doc.vacation_type === '연차' || doc.vacation_type === '반차' || !doc.vacation_type)
-                                                    ? `${doc.applied_value.toFixed(1)}일` : '-'}
-                                            </td>
-                                            <td className="px-8 py-4 text-sm font-black text-rose-600 text-center">
-                                                {(doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST') && doc.vacation_type === '병가'
-                                                    ? `${doc.applied_value.toFixed(1)}일` : '-'}
-                                            </td>
-                                            <td className="px-8 py-4 text-sm font-black text-amber-600 text-center">
-                                                {(doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST') && doc.vacation_type === '경조휴가'
-                                                    ? `${doc.applied_value.toFixed(1)}일` : '-'}
-                                            </td>
-                                            <td className="px-8 py-4 text-sm font-black text-slate-900 text-right">
-                                                {doc.doc_type === 'EARLY_LEAVE' || doc.doc_type === 'OVERTIME'
-                                                    ? `${doc.applied_value.toFixed(1)}시간` : '-'}
+                                    {summaryLoading ? (
+                                        <tr>
+                                            <td colSpan="7" className="px-8 py-12 text-center text-slate-400 font-bold animate-pulse">
+                                                데이터 로딩 중...
                                             </td>
                                         </tr>
-                                    ))}
-                                    {(!summaryData?.documents || summaryData.documents.length === 0) && (
+                                    ) : (!summaryData?.documents || summaryData.documents.length === 0) ? (
                                         <tr>
                                             <td colSpan="7" className="px-8 py-12 text-center text-slate-400 font-bold italic">
                                                 기록이 없습니다.
                                             </td>
                                         </tr>
+                                    ) : (
+                                        summaryData.documents.map((doc) => (
+                                            <tr key={doc.id} className="hover:bg-gray-800/40 transition-colors border-b border-gray-800 text-gray-300">
+                                                <td className="px-8 py-4">
+                                                    <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST' ? 'bg-indigo-100 text-indigo-600' : doc.doc_type === 'EARLY_LEAVE' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
+                                                        {doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST' ? '휴가원' : doc.doc_type === 'EARLY_LEAVE' ? '외출/조퇴' : doc.doc_type === 'OVERTIME' ? '야근/특근' : doc.doc_type}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-4 text-sm font-bold text-slate-700">{doc.title}</td>
+                                                <td className="px-8 py-4 text-xs font-bold text-slate-400 tabular-nums">{doc.date}</td>
+                                                <td className="px-8 py-4 text-sm font-black text-slate-900 text-center">
+                                                    {(doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST') && (doc.vacation_type === '연차' || doc.vacation_type === '반차' || !doc.vacation_type)
+                                                        ? `${doc.applied_value.toFixed(1)}일` : '-'}
+                                                </td>
+                                                <td className="px-8 py-4 text-sm font-black text-rose-600 text-center">
+                                                    {(doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST') && doc.vacation_type === '병가'
+                                                        ? `${doc.applied_value.toFixed(1)}일` : '-'}
+                                                </td>
+                                                <td className="px-8 py-4 text-sm font-black text-amber-600 text-center">
+                                                    {(doc.doc_type === 'VACATION' || doc.doc_type === 'LEAVE_REQUEST') && doc.vacation_type === '경조휴가'
+                                                        ? `${doc.applied_value.toFixed(1)}일` : '-'}
+                                                </td>
+                                                <td className="px-8 py-4 text-sm font-black text-slate-900 text-right">
+                                                    {doc.doc_type === 'EARLY_LEAVE' || doc.doc_type === 'OVERTIME'
+                                                        ? `${doc.applied_value.toFixed(1)}시간` : '-'}
+                                                </td>
+                                            </tr>
+                                        ))
                                     )}
                                 </ResizableTable>
                             </div>

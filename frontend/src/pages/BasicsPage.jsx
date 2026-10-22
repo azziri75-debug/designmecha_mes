@@ -1037,7 +1037,7 @@ const BasicsPageContent = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-700">
                                 {loading ? (
-                                    <tr><td colSpan="8" className="text-center py-8">Loading...</td></tr>
+                                    <tr><td colSpan="8" className="text-center py-8 text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
                                 ) : activeTab === 'partners' ? (
                                     filteredPartners.length > 0 ? filteredPartners.map((partner) => (
                                         <React.Fragment key={partner.id}>

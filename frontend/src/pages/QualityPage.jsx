@@ -30,7 +30,7 @@ const QUALITY_COLS_RESOLVED = [
 const QualityPage = () => {
     const [activeTab, setActiveTab] = useState('occurred'); // occurred, resolved
     const [defects, setDefects] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     // Modals
     const [showRegModal, setShowRegModal] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);

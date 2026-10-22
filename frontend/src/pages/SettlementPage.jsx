@@ -26,7 +26,7 @@ import SettlementChartTab from '../components/SettlementChartTab';
    ══════════════════════════════════════════════════════════════════════ */
 const CostAnalysisTab = ({ majorGroupId, groups, onDrillDown, exchangeRate = 1350 }) => {
     const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [sortKey, setSortKey] = useState('cost_rate');
     const [sortDir, setSortDir] = useState('desc');
     const [filterText, setFilterText] = useState('');
@@ -304,7 +304,7 @@ const SettlementPage = () => {
     const [month, setMonth] = useState(today.getMonth() + 1); // null = 전체월
     const [majorGroupId, setMajorGroupId] = useState("");
     const [activeTab, setActiveTab] = useState("orders");
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [data, setData] = useState([]);
     const [prodDetail, setProdDetail] = useState(null); // 생산내역 공정별 상세모달
     const [prodDetailLoading, setProdDetailLoading] = useState(false);

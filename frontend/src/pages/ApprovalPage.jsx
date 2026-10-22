@@ -61,7 +61,7 @@ const ApprovalPage = () => {
     const [activeTab, setActiveTab] = useState('documents'); // documents, settings
     const [documents, setDocuments] = useState([]);
     const [staff, setStaff] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const { user: currentUser } = useAuth();
     const { waitingCount, refresh: refreshBadge } = useApprovalBadge();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -420,7 +420,11 @@ const ApprovalPage = () => {
                                     theadClassName="bg-gray-800/80 text-gray-400 font-semibold text-xs uppercase tracking-wider border-b border-gray-700"
                                     thClassName="px-6 py-3"
                                 >
-                                    {documents.map((doc) => (
+                                    {loading ? (
+                                        <tr><td colSpan={APPROVAL_COLS.length} className="px-6 py-12 text-center text-gray-400 animate-pulse">데이터 로딩 중...</td></tr>
+                                    ) : documents.length === 0 ? (
+                                        <tr><td colSpan={APPROVAL_COLS.length} className="px-6 py-12 text-center text-gray-500">표시할 문서가 없습니다.</td></tr>
+                                    ) : documents.map((doc) => (
                                         <tr key={doc.id} className="hover:bg-gray-800/40 transition-colors group cursor-pointer divide-x divide-gray-700/30 border-b border-gray-700 text-gray-300" onClick={() => (doc.doc_type === 'INTERNAL_DRAFT' ? navigate(`/approval/draft?id=${doc.id}`) : openDocDetail(doc))}>
                                             <td className="px-6 py-4 text-sm text-gray-400 truncate">{format(new Date(doc.created_at), 'yyyy-MM-dd')}</td>
                                             <td className="px-6 py-4 text-sm font-medium text-white truncate">{doc.author?.name} ({doc.author?.role})</td>
