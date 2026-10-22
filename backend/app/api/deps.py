@@ -5,7 +5,17 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.models.basics import Staff
 
-engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, echo=True)
+_db_uri = settings.SQLALCHEMY_DATABASE_URI
+_engine_kwargs = {"echo": False}
+if not _db_uri.startswith("sqlite"):
+    _engine_kwargs.update({
+        "pool_size": 20,
+        "max_overflow": 20,
+        "pool_pre_ping": True,
+        "pool_recycle": 1800,
+    })
+
+engine = create_async_engine(_db_uri, **_engine_kwargs)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 # --- [AUTO-MIGRATION HELPER] ---

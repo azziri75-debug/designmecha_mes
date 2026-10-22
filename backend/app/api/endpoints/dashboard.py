@@ -7,6 +7,8 @@ from typing import Dict, Any
 
 from app.api.deps import get_db
 from app.models.sales import SalesOrder, OrderStatus
+from app.models.basics import Partner, Staff
+from app.models.product import Product
 from app.core.timezone import now_kst
 
 router = APIRouter()
@@ -32,7 +34,6 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)) -> Dict[str, A
     month_order_amount = month_order_res.scalar() or 0.0
     
     # 3. Total Sales Amount (Delivered/Completed)
-    # Status should be DELIVERY_COMPLETED (new) or DELIVERED (legacy)
     sales_query = select(func.sum(SalesOrder.total_amount)).where(
         SalesOrder.status.in_([OrderStatus.DELIVERY_COMPLETED, OrderStatus.DELIVERED])
     )
@@ -40,19 +41,24 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)) -> Dict[str, A
     total_sales_amount = total_sales_res.scalar() or 0.0
     
     # 4. Monthly Sales Amount
-    # We use order_date or transaction_date? Usually SALES is counted when delivered.
-    # But for a simple dashboard monthly comparison, order_date of delivered items or actual_delivery_date.
-    # Let's use order_date for consistency with existing logic unless specified.
     month_sales_query = select(func.sum(SalesOrder.total_amount)).where(
         SalesOrder.status.in_([OrderStatus.DELIVERY_COMPLETED, OrderStatus.DELIVERED]),
         SalesOrder.order_date >= this_month_start.date()
     )
     month_sales_res = await db.execute(month_sales_query)
     month_sales_amount = month_sales_res.scalar() or 0.0
+
+    # 5. Master Data Counts (경량 COUNT 집계)
+    partner_count = (await db.execute(select(func.count(Partner.id)))).scalar() or 0
+    product_count = (await db.execute(select(func.count(Product.id)))).scalar() or 0
+    active_staff_count = (await db.execute(select(func.count(Staff.id)).where(Staff.is_active == True))).scalar() or 0
     
     return {
         "total_order_amount": total_order_amount,
         "month_order_amount": month_order_amount,
         "total_sales_amount": total_sales_amount,
-        "month_sales_amount": month_sales_amount
+        "month_sales_amount": month_sales_amount,
+        "partner_count": partner_count,
+        "product_count": product_count,
+        "active_staff_count": active_staff_count,
     }

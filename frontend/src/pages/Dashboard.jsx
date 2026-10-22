@@ -142,7 +142,10 @@ const Dashboard = () => {
         total_order_amount: 0,
         month_order_amount: 0,
         total_sales_amount: 0,
-        month_sales_amount: 0
+        month_sales_amount: 0,
+        partner_count: 0,
+        product_count: 0,
+        active_staff_count: 0
     });
 
     // Grouping States
@@ -158,46 +161,57 @@ const Dashboard = () => {
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
-            const results = await Promise.allSettled([
-                api.get('/sales/orders/'),
-                api.get('/production/plans/'),
-                api.get('/purchasing/purchase/orders/'),
-                api.get('/purchasing/outsourcing/orders/'),
-                api.get('/purchasing/purchase/pending-items/'),
-                api.get('/purchasing/outsourcing/pending-items/'),
-                api.get('/basics/partners/'),
-                api.get('/product/products'),
-                api.get('/basics/staff/'),
-                api.get('/inventory/productions'),
-                api.get('/quality/defects/'),
-                api.get('/product/groups/'),
+            // 1단계: 핵심 지표 및 주요 현황 우선 로드 후 즉시 화면 표시
+            const coreResults = await Promise.allSettled([
+                api.get('/dashboard/stats'),
                 api.get('/approval/stats'),
-                api.get('/dashboard/stats')
+                api.get('/product/groups/'),
+                api.get('/sales/orders/'),
+                api.get('/production/plans/')
             ]);
 
-            const [ordRes, planRes, poRes, ooRes, ppRes, opRes, partRes, prodRes, staffRes, spRes, defRes, gRes, appRes, dshRes] = results;
-
+            const [dshRes, appRes, gRes, ordRes, planRes] = coreResults;
+            if (dshRes.status === 'fulfilled') setDashboardStats(dshRes.value.data);
+            if (appRes.status === 'fulfilled') setApprovalStats(appRes.value.data);
+            if (gRes.status === 'fulfilled') setGroups(gRes.value.data || []);
             if (ordRes.status === 'fulfilled') setOrders(ordRes.value.data);
             if (planRes.status === 'fulfilled') setPlans(planRes.value.data);
-            if (poRes.status === 'fulfilled') setPurchaseOrders(poRes.value.data);
-            if (ooRes.status === 'fulfilled') setOutsourcingOrders(ooRes.value.data);
+        } catch (e) {
+            console.error(e);
+        }
+        // 핵심 데이터 수신 즉시 로딩 해제 (화면 즉시 렌더링)
+        setLoading(false);
+
+        // 2단계: 부가 지표 데이터 백그라운드 비동기 로드 (화면 블로킹 없음)
+        Promise.allSettled([
+            api.get('/purchasing/purchase/pending-items/'),
+            api.get('/purchasing/outsourcing/pending-items/'),
+            api.get('/purchasing/purchase/orders/'),
+            api.get('/purchasing/outsourcing/orders/'),
+            api.get('/inventory/productions'),
+            api.get('/quality/defects/')
+        ]).then(([ppRes, opRes, poRes, ooRes, spRes, defRes]) => {
             if (ppRes.status === 'fulfilled') setPendingPurchase(ppRes.value.data);
             if (opRes.status === 'fulfilled') setPendingOutsourcing(opRes.value.data);
-            if (partRes.status === 'fulfilled') setPartners(partRes.value.data);
-            if (prodRes.status === 'fulfilled') setProducts(prodRes.value.data);
-            if (staffRes.status === 'fulfilled') setStaff(staffRes.value.data);
+            if (poRes.status === 'fulfilled') setPurchaseOrders(poRes.value.data);
+            if (ooRes.status === 'fulfilled') setOutsourcingOrders(ooRes.value.data);
             if (spRes.status === 'fulfilled') setStockProductions(spRes.value.data);
             if (defRes.status === 'fulfilled') setDefects(defRes.value.data);
-            if (gRes && gRes.status === 'fulfilled') setGroups(gRes.value.data || []);
-            if (appRes && appRes.status === 'fulfilled') setApprovalStats(appRes.value.data);
-            if (dshRes && dshRes.status === 'fulfilled') setDashboardStats(dshRes.value.data);
-        } catch (e) { console.error(e); }
-        setLoading(false);
+        }).catch(() => {});
     }, []);
 
     useEffect(() => {
         fetchAll();
     }, [fetchAll]);
+
+    // 대그룹/소그룹 필터 선택 시에만 품목 목록을 온디맨드 로드 (초기 대시보드 진입 부하 제거)
+    useEffect(() => {
+        if ((selectedMajorGroup || selectedMinorGroup) && products.length === 0) {
+            api.get('/product/products').then(res => {
+                if (res.data) setProducts(res.data);
+            }).catch(() => {});
+        }
+    }, [selectedMajorGroup, selectedMinorGroup, products.length]);
 
     // SSE: 결재 이벤트 수신 시 대시보드 통계 즐시 갱신
     useSSE((eventName) => {
@@ -334,9 +348,9 @@ const Dashboard = () => {
             pendingOutsourcingCount: fPendingOutsourcing.length,
             purchaseOrderCount: fPurchaseOrders.length,
             outsourcingOrderCount: fOutsourcingOrders.length,
-            partnerCount: partners.length,
-            productCount: products.length,
-            staffCount: staff.filter(s => s.is_active).length,
+            partnerCount: dashboardStats.partner_count ?? partners.length,
+            productCount: (selectedMajorGroup || selectedMinorGroup) ? filteredProducts.length : (dashboardStats.product_count ?? products.length),
+            staffCount: dashboardStats.active_staff_count ?? staff.filter(s => s.is_active).length,
             orderStatusData,
             planStatusData,
             monthlyRevenue,
@@ -356,7 +370,7 @@ const Dashboard = () => {
             })(),
             recentDefects: [...fDefects].sort((a, b) => (b.defect_date || '').localeCompare(a.defect_date || '')).slice(0, 5)
         };
-    }, [orders, plans, purchaseOrders, outsourcingOrders, pendingPurchase, pendingOutsourcing, partners, products, staff, stockProductions, defects, groups, selectedMajorGroup, selectedMinorGroup]);
+    }, [orders, plans, purchaseOrders, outsourcingOrders, pendingPurchase, pendingOutsourcing, partners, products, staff, stockProductions, defects, groups, dashboardStats, selectedMajorGroup, selectedMinorGroup]);
 
     if (loading) {
         return (
@@ -405,7 +419,7 @@ const Dashboard = () => {
                     </select>
 
                     <button
-                        onClick={() => window.location.reload()}
+                        onClick={fetchAll}
                         className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-lg border border-gray-700 transition-colors"
                     >
                         ↻ 새로고침
