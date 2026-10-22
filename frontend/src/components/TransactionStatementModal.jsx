@@ -264,11 +264,11 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
 
     // ── 계산 ──────────────────────────────────
     const totalSupply = items.reduce((s, i) => s + (i.quantity || 0) * (i.unit_price || 0), 0);
-    const totalTax = Math.floor(totalSupply * 0.1);
+    const totalTax = items.reduce((s, i) => s + Math.floor((i.quantity || 0) * (i.unit_price || 0) * 0.1), 0);
     const totalAmount = totalSupply + totalTax;
     const balance = (footerInfo.prev_balance + totalAmount) - footerInfo.paid_amount;
 
-    const ROWS = 13;
+    const ROWS = 12;
     const filledRows = items.length;
     const emptyCount = Math.max(0, ROWS - filledRows);
 
@@ -534,20 +534,71 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                             ))}
                         </tbody>
                     </table>
-                    {/* 이하여백 - flex:1로 렬더링 영역을 동적으로 채움 */}
+                    {/* 이하여백 - flex:1로 렌더링 영역을 동적으로 채움 */}
                     {items.length >= ROWS && (
-                        <div style={{ border: `1.5px solid ${C}`, borderTop: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, height: '24px' }}>
+                        <div style={{ borderLeft: `1.5px solid ${C}`, borderRight: `1.5px solid ${C}`, borderTop: 'none', borderBottom: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, height: '24px' }}>
                             <span style={{ color: '#bbb', fontSize: '11.5px' }}>= 이하여백 =</span>
                         </div>
                     )}
                     {items.length < ROWS && (
-                        <div style={{ flex: 1, border: `1.5px solid ${C}`, borderTop: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '24px' }}>
+                        <div style={{ flex: 1, borderLeft: `1.5px solid ${C}`, borderRight: `1.5px solid ${C}`, borderTop: 'none', borderBottom: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '24px' }}>
                             <span style={{ color: '#bbb', fontSize: '11.5px' }}>= 이하여백 =</span>
                         </div>
                     )}
+                    {/* 품목테이블 최하단 공급가액/세액 합계 행 */}
+                    <table style={{ ...tblStyle(C), tableLayout: 'fixed', width: '100%', flexShrink: 0 }}>
+                        <colgroup>
+                            <col style={{ width: colWidths.date }} />
+                            <col style={{ width: colWidths.name }} />
+                            <col style={{ width: colWidths.spec }} />
+                            <col style={{ width: colWidths.qty }} />
+                            <col style={{ width: colWidths.price }} />
+                            <col style={{ width: colWidths.supply }} />
+                            <col style={{ width: colWidths.tax }} />
+                        </colgroup>
+                        <tbody>
+                            <tr style={{ backgroundColor: 'rgba(0,0,0,0.03)', height: '24px' }}>
+                                <td
+                                    colSpan={5}
+                                    style={{
+                                        ...td(C),
+                                        width: colWidths.date + colWidths.name + colWidths.spec + colWidths.qty + colWidths.price,
+                                        textAlign: 'center',
+                                        fontWeight: '900',
+                                        fontSize: '11.5px',
+                                        letterSpacing: '4px'
+                                    }}
+                                >
+                                    합계
+                                </td>
+                                <td
+                                    style={{
+                                        ...td(C),
+                                        width: colWidths.supply,
+                                        textAlign: 'right',
+                                        fontWeight: '900',
+                                        fontSize: '12px'
+                                    }}
+                                >
+                                    {formatNumber(totalSupply)}
+                                </td>
+                                <td
+                                    style={{
+                                        ...td(C),
+                                        width: colWidths.tax,
+                                        textAlign: 'right',
+                                        fontWeight: '900',
+                                        fontSize: '12px'
+                                    }}
+                                >
+                                    {formatNumber(totalTax)}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
                 {/* 비고 - 상승하는 items table 밖, 항상 하단 고정 */}
-                <div style={{ border: `1.5px solid ${C}`, padding: '4px 8px', height: '60px', flexShrink: 0 }}>
+                <div style={{ border: `1.5px solid ${C}`, borderTop: 'none', padding: '4px 8px', height: '60px', flexShrink: 0 }}>
                     <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: C }}>비고:</div>
                     <textarea value={remarks} onChange={(e) => onRemarksChange(e.target.value)} placeholder="비고 사항을 입력하세요..." style={{ width: '100%', height: '35px', border: 'none', resize: 'none', background: 'transparent', fontSize: '11px', color: C, outline: 'none', padding: '0', fontFamily: 'inherit' }} className="tsm-remarks-textarea" />
                 </div>
