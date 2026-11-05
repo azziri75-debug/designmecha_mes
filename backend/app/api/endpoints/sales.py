@@ -1139,20 +1139,37 @@ async def create_delivery(
         # Update delivered_quantity
         order_item.delivered_quantity += item_in.quantity
         
-        # Update Inventory (Deduct stock)
-        from app.api.utils.inventory import handle_stock_movement
-        from app.models.inventory import TransactionType
-        await handle_stock_movement(
-            db=db,
-            product_id=order_item.product_id,
-            quantity=-item_in.quantity,
-            transaction_type=TransactionType.OUT,
-            reference=delivery_no
-        )
+        # Update Inventory (Deduct stock only when deduct_stock is True)
+        if delivery_in.deduct_stock is not False:
+            from app.api.utils.inventory import handle_stock_movement
+            from app.models.inventory import TransactionType
+            await handle_stock_movement(
+                db=db,
+                product_id=order_item.product_id,
+                quantity=-item_in.quantity,
+                transaction_type=TransactionType.OUT,
+                reference=delivery_no
+            )
         
         # Check if this item is fulfilled
         if order_item.delivered_quantity < order_item.quantity:
             all_completed = False
+
+    # 납품 시점에 사용자가 재고 차감 여부(deduct_stock)를 명시적으로 결정했으므로,
+    # 아직 미완료인 생산계획이 자동 완료(complete_production_for_order)될 때 완제품 재고가 임의로 추가 입고되지 않도록 stock_deducted 플래그를 선처리합니다.
+    if delivery_in.no_plan_source != "PRODUCE":
+        uncompleted_plans_res = await db.execute(
+            select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(
+                ProductionPlan.order_id == order_id,
+                ProductionPlan.status != ProductionStatus.COMPLETED
+            )
+        )
+        for u_plan in uncompleted_plans_res.scalars().all():
+            for u_item in (u_plan.items or []):
+                if not u_item.stock_deducted:
+                    u_item.stock_deducted = True
+                    db.add(u_item)
+
 
     # 모든 in-memory 변경사항을 DB에 flush (delivered_quantity 포함)
     await db.flush()

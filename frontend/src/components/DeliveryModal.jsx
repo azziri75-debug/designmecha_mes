@@ -7,60 +7,55 @@ import TransactionStatementModal from './TransactionStatementModal';
 import CommercialInvoiceModal from './CommercialInvoiceModal';
 
 /* ─────────────────────────────────────────────────────────────────
-   생산계획 없음 선택 다이얼로그
+   납품 완료 시 재고 소진 여부 선택 다이얼로그
    ───────────────────────────────────────────────────────────────── */
 const NoPlanSourceDialog = ({ onSelect, onCancel }) => (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-        <div className="bg-gray-800 rounded-2xl border border-amber-500/40 shadow-2xl w-full max-w-lg">
+        <div className="bg-gray-800 rounded-2xl border border-blue-500/40 shadow-2xl w-full max-w-lg">
             {/* Header */}
             <div className="p-5 border-b border-gray-700 flex items-center gap-3">
-                <div className="p-2 bg-amber-500/20 rounded-lg">
-                    <AlertTriangle className="w-6 h-6 text-amber-400" />
+                <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <Package className="w-6 h-6 text-blue-400" />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-white">생산 계획 없음 알림</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">이 수주건에 연결된 생산 계획이 없습니다.</p>
+                    <h3 className="text-lg font-bold text-white">납품 재고 소진 여부 선택</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">이번 납품 수량을 현재고에서 차감(소진)할지 선택해 주세요.</p>
                 </div>
             </div>
 
             {/* Body */}
             <div className="p-5 space-y-3">
-                <p className="text-sm text-gray-300 mb-4">
-                    납품 처리 방식을 선택해 주세요.
-                </p>
-
-                {/* Option 1 – 재고 소진 */}
+                {/* Option 1 – 재고에서 소진 */}
                 <button
-                    onClick={() => onSelect('STOCK')}
+                    type="button"
+                    onClick={() => onSelect(true)}
                     className="w-full flex items-start gap-4 p-4 rounded-xl border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 transition-colors text-left group"
                 >
                     <div className="p-2 bg-blue-500/20 rounded-lg mt-0.5 group-hover:bg-blue-500/30 transition-colors">
                         <Package className="w-5 h-5 text-blue-400" />
                     </div>
                     <div>
-                        <p className="font-bold text-white text-sm">재고 소진 납품</p>
+                        <p className="font-bold text-white text-sm">재고에서 소진 (현재고 차감)</p>
                         <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                            기존 보유 재고에서 납품 수량을 차감합니다.<br />
-                            생산 기록은 생성되지 않으며, 현재고가 감소합니다.
+                            창고 보유 재고(또는 생산완료 입고된 재고)에서 납품 수량만큼 차감합니다.
                         </p>
                     </div>
                 </button>
 
-                {/* Option 2 – 생산 완료 납품 */}
+                {/* Option 2 – 재고 소진 안 함 */}
                 <button
-                    onClick={() => onSelect('PRODUCE')}
+                    type="button"
+                    onClick={() => onSelect(false)}
                     className="w-full flex items-start gap-4 p-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-left group"
                 >
                     <div className="p-2 bg-emerald-500/20 rounded-lg mt-0.5 group-hover:bg-emerald-500/30 transition-colors">
                         <Factory className="w-5 h-5 text-emerald-400" />
                     </div>
                     <div>
-                        <p className="font-bold text-white text-sm">생산 완료 납품</p>
+                        <p className="font-bold text-white text-sm">재고 소진 안 함 (재연마·UNSM·임가공 등)</p>
                         <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                            생산계획 없이 생산이 완료된 건입니다.<br />
-                            생산 계획이 자동으로 생성·완료 처리되며,<br />
-                            <span className="text-emerald-400 font-semibold">기존 재고는 차감되지 않습니다.</span>
-                            (생산 입고 + 납품 출고 상쇄)
+                            업체 입고 후 가공 납품(재연마, UNSM 처리 등)이거나 별도 재고 차감이 불필요한 건입니다.<br />
+                            <span className="text-emerald-400 font-semibold">현재고 수량이 차감되지 않습니다. (마이너스 재고 방지)</span>
                         </p>
                     </div>
                 </button>
@@ -69,6 +64,7 @@ const NoPlanSourceDialog = ({ onSelect, onCancel }) => (
             {/* Footer */}
             <div className="p-4 border-t border-gray-700 flex justify-end">
                 <button
+                    type="button"
                     onClick={onCancel}
                     className="px-5 py-2 text-sm text-gray-400 hover:text-white transition-colors"
                 >
@@ -78,6 +74,7 @@ const NoPlanSourceDialog = ({ onSelect, onCancel }) => (
         </div>
     </div>
 );
+
 
 /* ─────────────────────────────────────────────────────────────────
    메인 납품 모달
@@ -199,32 +196,24 @@ const DeliveryModal = ({ isOpen, onClose, onSuccess, order }) => {
             }))
         };
 
-        // 생산 계획 존재 여부 확인
-        try {
-            const planRes = await api.get(`/production/plans`, { params: { order_id: order.id } });
-            const plans = planRes.data?.items || planRes.data || [];
-            if (!plans || plans.length === 0) {
-                // 생산계획 없음 → 다이얼로그 표시
-                setPendingPayload(basePayload);
-                setNoPlanDialog(true);
-                return;
-            }
-        } catch (err) {
-            // API 오류 시 그냥 진행 (생산계획 확인 실패는 비치명적)
-            console.warn('Production plan check failed, proceeding normally:', err);
-        }
-
-        await submitDelivery(basePayload);
+        // 납품 시 재고에서 소진시킬지 말지 선택 다이얼로그 표시
+        setPendingPayload(basePayload);
+        setNoPlanDialog(true);
     };
 
-    /* ── 생산계획 없음 다이얼로그 선택 처리 ── */
-    const handleNoPlanSelect = async (source) => {
+    /* ── 재고 소진 여부 선택 다이얼로그 처리 ── */
+    const handleNoPlanSelect = async (deductStock) => {
         setNoPlanDialog(false);
         if (!pendingPayload) return;
-        const payload = { ...pendingPayload, no_plan_source: source };
+        const payload = {
+            ...pendingPayload,
+            deduct_stock: Boolean(deductStock),
+            no_plan_source: deductStock ? 'STOCK' : 'NO_DEDUCT',
+        };
         setPendingPayload(null);
         await submitDelivery(payload);
     };
+
 
     const handleNoPlanCancel = () => {
         setNoPlanDialog(false);

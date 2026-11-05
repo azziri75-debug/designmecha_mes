@@ -838,23 +838,31 @@ async def recalculate_inventory(
         if pid in stock_map:
             stock_map[pid]["producing"] = (so_w or 0) + (so_a or 0) + (sp_w or 0) + (sp_a or 0)
 
-    # 7. Stock 테이블 반영
+    # 7. Stock 테이블 반영 (마이너스 재고는 0으로 자동 보정)
     existing_stocks_res = await db.execute(select(Stock))
     existing_stocks = {s.product_id: s for s in existing_stocks_res.scalars().all()}
 
     updated_count = 0
+    neg_fixed_count = 0
     for pid, vals in stock_map.items():
         stock = existing_stocks.get(pid)
         if not stock:
+            init_curr = max(0, vals["current"]) if mode != "wip_only" else 0
             stock = Stock(
                 product_id=pid,
-                current_quantity=vals["current"] if mode != "wip_only" else 0,
+                current_quantity=init_curr,
                 in_production_quantity=vals["producing"]
             )
             db.add(stock)
         else:
             if mode != "wip_only":
-                stock.current_quantity = vals["current"]
+                if vals["current"] < 0:
+                    neg_fixed_count += 1
+                stock.current_quantity = max(0, vals["current"])
+            else:
+                if (stock.current_quantity or 0) < 0:
+                    stock.current_quantity = 0
+                    neg_fixed_count += 1
             stock.in_production_quantity = vals["producing"]
             db.add(stock)
         updated_count += 1
@@ -868,7 +876,9 @@ async def recalculate_inventory(
             _json.dumps({"type": "recalculated", "mode": mode})
         )
 
-    return {"status": "success", "message": f"{updated_count}개 품목의 재고 및 생산중 수량이 정합성 동기화되었습니다."}
+    neg_msg = f" (마이너스 재고 {neg_fixed_count}건 → 0으로 자동 초기화)" if neg_fixed_count > 0 else ""
+    return {"status": "success", "message": f"{updated_count}개 품목의 재고 및 생산중 수량이 정합성 동기화되었습니다.{neg_msg}"}
+
 
 
 @router.get("/bom-stock/{product_id}")

@@ -282,7 +282,7 @@ const InventoryPage = () => {
     };
 
     const handleSyncInventory = async () => {
-        if (!window.confirm("생산 완료된 재고생산 상태 및 생산중(WIP) 수량의 정합성을 동기화하시겠습니까?\n(현재고 수동조정 값은 그대로 유지됩니다.)")) return;
+        if (!window.confirm("재고 및 생산중(WIP) 정합성을 동기화하시겠습니까?\n\n- 완료된 재고생산 상태 및 생산중 수량 오차 정리\n- 마이너스(-)로 되어 있는 현재고는 0으로 자동 변경\n- 양수(+) 현재고 수동조정 값은 그대로 유지")) return;
         try {
             const res = await api.post('/inventory/recalculate?mode=wip_only');
             alert(res.data?.message || "정합성 동기화가 완료되었습니다.");
@@ -292,6 +292,7 @@ const InventoryPage = () => {
             alert("동기화 실패: " + (err.response?.data?.detail || err.message));
         }
     };
+
 
 
     // ===== 엑셀 다운로드 =====
