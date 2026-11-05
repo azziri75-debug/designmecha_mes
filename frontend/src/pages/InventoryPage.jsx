@@ -281,6 +281,19 @@ const InventoryPage = () => {
         setShowStockEditModal(true);
     };
 
+    const handleSyncInventory = async () => {
+        if (!window.confirm("생산 완료된 재고생산 상태 및 생산중(WIP) 수량의 정합성을 동기화하시겠습니까?\n(현재고 수동조정 값은 그대로 유지됩니다.)")) return;
+        try {
+            const res = await api.post('/inventory/recalculate?mode=wip_only');
+            alert(res.data?.message || "정합성 동기화가 완료되었습니다.");
+            fetchData();
+        } catch (err) {
+            console.error("Sync failed", err);
+            alert("동기화 실패: " + (err.response?.data?.detail || err.message));
+        }
+    };
+
+
     // ===== 엑셀 다운로드 =====
     const handleExcelDownload = () => {
         const headers = ['\uc0ac\uc5c5\ubd80', '\uad6c\ubd84', '\ud488\ubaa9\uba85', '\uaddc\uaca9', '\uace0\uac1d\uc0ac/\uacf5\uae09\uc0ac', '\ud604\uc7ac\uace0', '\uc0dd\uc0b0\uc911\uc7ac\uace0', '\ube44\uace0'];
@@ -406,12 +419,23 @@ const InventoryPage = () => {
                     <Button
                         variant="outline"
                         size="sm"
+                        onClick={handleSyncInventory}
+                        className="border-amber-600/70 text-amber-400 hover:bg-amber-600 hover:text-white transition-colors"
+                        title="완료된 생산계획의 재고생산 상태 및 생산중 수량 오차를 즉시 정리합니다"
+                    >
+                        <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                        정합성 동기화
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
                         onClick={handleExcelDownload}
                         className="border-emerald-600 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-colors"
                     >
                         <ArrowUpRight className="w-4 h-4 mr-1.5 rotate-90" />
                         엑셀 다운로드
                     </Button>
+
                     <Button
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                         size="sm"
@@ -648,7 +672,13 @@ const InventoryPage = () => {
                                                     <div className="text-lg font-bold text-white">
                                                         {stock.current_quantity.toLocaleString()}
                                                     </div>
-                                                    <div className="text-[10px] text-gray-500">물리적 실재고</div>
+                                                    {(stock.reserved_quantity || 0) > 0 ? (
+                                                        <div className="text-[10px] text-amber-400 font-medium">
+                                                            가용: {(stock.available_quantity ?? Math.max(0, stock.current_quantity - stock.reserved_quantity)).toLocaleString()} (예약: {stock.reserved_quantity})
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-[10px] text-gray-500">물리적 실재고</div>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     {stock.producing_total > 0 ? (
@@ -660,11 +690,23 @@ const InventoryPage = () => {
                                                                 <span className="w-1 h-1 rounded-full bg-blue-500"></span>
                                                                 수주: {stock.producing_so || 0} / 재고: {stock.producing_sp || 0}
                                                             </div>
+                                                            {(stock.producing_sp || 0) > 0 && (
+                                                                <div className="text-[10px] text-indigo-400 font-medium">
+                                                                    {(() => {
+                                                                        const availSp = stock.available_sp_quantity ?? stock.producing_sp;
+                                                                        const claimedSp = Math.max(0, (stock.producing_sp || 0) - availSp);
+                                                                        return claimedSp > 0
+                                                                            ? `수주선점: ${claimedSp} / 선점가능: ${availSp}`
+                                                                            : `선점가능 재고생산: ${availSp}`;
+                                                                    })()}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <div className="text-gray-600 font-medium">-</div>
                                                     )}
                                                 </td>
+
                                                 <td className="px-6 py-4 text-gray-500 text-xs">
                                                     {stock.updated_at ? new Date(stock.updated_at).toLocaleDateString() : '-'}
                                                 </td>

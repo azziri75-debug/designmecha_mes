@@ -1088,7 +1088,9 @@ async def create_delivery(
                 sequence=seq_idx,
                 course_type="INTERNAL",
                 status=ProductionStatus.COMPLETED,
+                stock_deducted=True,
             )
+
             db.add(auto_item)
             # 완제품 재고 입고 기록 (Production IN → 이후 납품 OUT과 상쇄)
             await handle_stock_movement(

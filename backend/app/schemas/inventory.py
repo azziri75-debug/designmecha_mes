@@ -25,6 +25,10 @@ class StockResponse(StockBase):
     producing_total: Optional[int] = 0
     producing_so: Optional[int] = 0
     producing_sp: Optional[int] = 0
+    reserved_quantity: Optional[int] = 0
+    available_quantity: Optional[int] = 0
+    available_sp_quantity: Optional[int] = 0
+    total_allocatable: Optional[int] = 0
     has_bom: Optional[bool] = False
     model_config = ConfigDict(from_attributes=True)
 

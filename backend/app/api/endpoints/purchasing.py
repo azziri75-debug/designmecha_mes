@@ -745,18 +745,34 @@ async def complete_purchase_order(
     order.status = PurchaseStatus.COMPLETED
     order.actual_delivery_date = actual_date
     
+    from app.models.production import ProductionPlanItem, ProductionStatus
+    from app.api.utils.status_cascade import on_production_item_completed
+    from app.api.endpoints.production import check_and_complete_production_plan
+
+    completed_plan_ids = set()
     for item in order.items:
         qty = item.quantity - item.received_quantity
         if qty > 0:
             item.received_quantity += qty
-            
-            if item.product_id:
-                # [Fix] 발주 완료 시 제품 마스터의 최근 단가 필드 자동 갱신
-                product = await db.get(Product, item.product_id)
-                if product:
-                    product.recent_price = item.unit_price
-                    db.add(product)
 
+        if item.product_id:
+            # [Fix] 발주 완료 시 제품 마스터의 최근 단가 필드 자동 갱신
+            product = await db.get(Product, item.product_id)
+            if product:
+                product.recent_price = item.unit_price
+                db.add(product)
+
+        if item.production_plan_item_id:
+            plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
+            if plan_item:
+                if plan_item.status != ProductionStatus.COMPLETED:
+                    plan_item.status = ProductionStatus.COMPLETED
+                    db.add(plan_item)
+                    await on_production_item_completed(db, plan_item, reference=f"PO: {order.order_no}", completion_date=actual_date)
+                completed_plan_ids.add(plan_item.plan_id)
+        elif qty > 0 and item.product_id:
+            product = await db.get(Product, item.product_id)
+            if not product or product.item_type != 'CONSUMABLE':
                 await handle_stock_movement(
                     db=db,
                     product_id=item.product_id,
@@ -770,8 +786,15 @@ async def complete_purchase_order(
             cw = cw_res.scalars().first()
             if cw:
                 cw.status = "COMPLETED"
+        if getattr(item, 'material_requirement_id', None):
+            mr = await db.get(MaterialRequirement, item.material_requirement_id)
+            if mr:
+                mr.status = "COMPLETED"
+                db.add(mr)
 
     await db.commit()
+    for pid in completed_plan_ids:
+        await check_and_complete_production_plan(db, pid)
     return {"message": "발주 완료 및 정상 입고 처리되었습니다.", "order_no": order.order_no}
 
 @router.post("/outsourcing/orders/{order_id}/complete")
@@ -786,6 +809,8 @@ async def complete_outsourcing_order(
     from app.models.inventory import TransactionType
     from app.api.utils.inventory import handle_stock_movement
     from app.models.production import ProductionPlanItem, ProductionStatus
+    from app.api.utils.status_cascade import on_production_item_completed
+    from app.api.endpoints.production import check_and_complete_production_plan
 
     query = select(OutsourcingOrder).options(selectinload(OutsourcingOrder.items)).where(OutsourcingOrder.id == order_id)
     res = await db.execute(query)
@@ -811,16 +836,21 @@ async def complete_outsourcing_order(
     order.status = OutsourcingStatus.COMPLETED
     order.actual_delivery_date = actual_date
     
+    completed_plan_ids = set()
     for item in order.items:
-        # 1. Update related production plan item if exists
+        item.status = OutsourcingStatus.COMPLETED
+        db.add(item)
+        # 1. Update related production plan item if exists (완제품 입고는 마지막 공정일 때만 on_production_item_completed에서 수행)
         if item.production_plan_item_id:
             plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
-            if plan_item and plan_item.status != ProductionStatus.COMPLETED:
-                plan_item.status = ProductionStatus.COMPLETED
-                db.add(plan_item)
-        
-        # 2. Stock movement (IN)
-        if item.product_id:
+            if plan_item:
+                if plan_item.status != ProductionStatus.COMPLETED:
+                    plan_item.status = ProductionStatus.COMPLETED
+                    db.add(plan_item)
+                    await on_production_item_completed(db, plan_item, reference=f"OS: {order.order_no}", completion_date=actual_date)
+                completed_plan_ids.add(plan_item.plan_id)
+        elif item.product_id:
+            # 생산계획 공정과 무관한 단독 외주 발주인 경우에만 직접 입고 처리
             await handle_stock_movement(
                 db=db,
                 product_id=item.product_id,
@@ -830,7 +860,10 @@ async def complete_outsourcing_order(
             )
 
     await db.commit()
+    for pid in completed_plan_ids:
+        await check_and_complete_production_plan(db, pid)
     return {"message": "외주 완료 및 정상 입고 처리되었습니다.", "order_no": order.order_no}
+
 
 @router.post("/outsourcing/orders/{order_id}/quotation-complete")
 async def quotation_complete_outsourcing_order(
@@ -1108,41 +1141,43 @@ async def update_purchase_order(
                     plan_item.status = ProductionStatus.IN_PROGRESS
                     db.add(plan_item)
 
+    completed_po_plan_ids = set()
     if db_order.status == PurchaseStatus.COMPLETED:
         from app.models.production import ProductionPlanItem, ProductionStatus
+        from app.api.utils.status_cascade import on_production_item_completed
+        from app.api.endpoints.production import check_and_complete_production_plan
         if old_status != PurchaseStatus.COMPLETED:
             db_order.actual_delivery_date = now_kst().date()
         for item in db_order.items:
+            item.received_quantity = item.quantity
+            product = await db.get(Product, item.product_id) if item.product_id else None
+            if product:
+                product.recent_price = item.unit_price
+                db.add(product)
+
             if item.production_plan_item_id:
                 plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
-                if plan_item and plan_item.status != ProductionStatus.COMPLETED:
-                    plan_item.status = ProductionStatus.COMPLETED
-                    db.add(plan_item)
-        
-        # --- Stock Movement Hook ---
-        if old_status != PurchaseStatus.COMPLETED:
-            for item in db_order.items:
-                item.received_quantity = item.quantity # Set received quantity automatically
-                
-                # Fetch product to check item_type
-                product = await db.get(Product, item.product_id)
-                if product:
-                    # Only handle stock movement for non-consumable items
-                    if product.item_type != 'CONSUMABLE':
-                        await handle_stock_movement(
-                            db=db,
-                            product_id=item.product_id,
-                            quantity=item.quantity,
-                            transaction_type=TransactionType.IN,
-                            reference=db_order.order_no
-                        )
-                    
-                    # Update recent price for all items (including consumables)
-                    product.recent_price = item.unit_price
-                    db.add(product)
+                if plan_item:
+                    if plan_item.status != ProductionStatus.COMPLETED:
+                        plan_item.status = ProductionStatus.COMPLETED
+                        db.add(plan_item)
+                        await on_production_item_completed(db, plan_item, reference=db_order.order_no, completion_date=db_order.actual_delivery_date)
+                    completed_po_plan_ids.add(plan_item.plan_id)
+            elif old_status != PurchaseStatus.COMPLETED and product and product.item_type != 'CONSUMABLE':
+                await handle_stock_movement(
+                    db=db,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    transaction_type=TransactionType.IN,
+                    reference=db_order.order_no
+                )
 
     await db.commit()
+    for pid in completed_po_plan_ids:
+        from app.api.endpoints.production import check_and_complete_production_plan
+        await check_and_complete_production_plan(db, pid)
     await db.refresh(db_order)
+
     
     # Re-fetch with full eager loading for related_sales_order_info/related_customer_names
     from app.models.production import ProductionPlanItem, ProductionPlan
@@ -1452,20 +1487,25 @@ async def update_outsourcing_order(
                     plan_item.status = ProductionStatus.IN_PROGRESS
                     db.add(plan_item)
 
+    completed_os_plan_ids = set()
     if db_order.status == OutsourcingStatus.COMPLETED:
         from app.models.production import ProductionPlanItem, ProductionStatus
+        from app.api.utils.status_cascade import on_production_item_completed
+        from app.api.endpoints.production import check_and_complete_production_plan
         if old_status != OutsourcingStatus.COMPLETED:
             db_order.actual_delivery_date = now_kst().date()
         for item in db_order.items:
+            item.status = OutsourcingStatus.COMPLETED
+            db.add(item)
             if item.production_plan_item_id:
                 plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
-                if plan_item and plan_item.status != ProductionStatus.COMPLETED:
-                    plan_item.status = ProductionStatus.COMPLETED
-                    db.add(plan_item)
-        
-        # --- Stock Movement Hook ---
-        if old_status != OutsourcingStatus.COMPLETED:
-            for item in db_order.items:
+                if plan_item:
+                    if plan_item.status != ProductionStatus.COMPLETED:
+                        plan_item.status = ProductionStatus.COMPLETED
+                        db.add(plan_item)
+                        await on_production_item_completed(db, plan_item, reference=db_order.order_no, completion_date=db_order.actual_delivery_date)
+                    completed_os_plan_ids.add(plan_item.plan_id)
+            elif old_status != OutsourcingStatus.COMPLETED and item.product_id:
                 await handle_stock_movement(
                     db=db,
                     product_id=item.product_id,
@@ -1475,7 +1515,11 @@ async def update_outsourcing_order(
                 )
 
     await db.commit()
+    for pid in completed_os_plan_ids:
+        from app.api.endpoints.production import check_and_complete_production_plan
+        await check_and_complete_production_plan(db, pid)
     await db.refresh(db_order)
+
     
     # Re-fetch with full eager loading
     from app.models.production import ProductionPlanItem, ProductionPlan

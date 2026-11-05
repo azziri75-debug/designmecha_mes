@@ -25,7 +25,200 @@ import asyncio
 
 router = APIRouter()
 
-# --- Stock Endpoints ---
+# --- Stock Endpoints & Unified WIP/Reservation Helpers ---
+
+def _build_wip_and_reservation_subqueries(target_product_col):
+    """
+    품목(Product.id 또는 특정 product_id 값) 기준으로
+    1) 수주 대기(so_wait): 미계획 수주의 잔여 미납 수량
+    2) 수주 생산중(so_active): 진행중인 수주 생산계획의 품목별 순생산량(max quantity per plan_id, product_id)
+    3) 재고생산 대기(sp_wait): 미계획 재고생산 요청 수량 (단건 + StockProductionOrder 다건 통합)
+    4) 재고생산 진행중(sp_active): 진행중인 재고생산 계획의 품목별 생산량 (단건 + StockProductionOrder 다건 통합)
+    5) 수주 예약/선점 수량(reserved_qty): 미납 수주 생산계획에 설정된 stock_use_quantity 합계
+    를 반환합니다.
+    """
+    from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
+    from app.models.production import ProductionPlan, ProductionPlanItem
+
+    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
+    finished_plan_statuses = ['COMPLETED', 'CANCELED']
+    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
+
+    # 1. SO Wait: 취소되지 않은 생산계획이 아직 수립되지 않은 수주 품목의 미납 잔량 합계
+    planned_order_products_subq = (
+        select(ProductionPlanItem.product_id)
+        .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+        .where(
+            ProductionPlan.order_id == SalesOrder.id,
+            ProductionPlan.status != 'CANCELED'
+        )
+    )
+
+    so_wait_subq = (
+        select(
+            func.coalesce(
+                func.sum(
+                    func.greatest(0, SalesOrderItem.quantity - func.coalesce(SalesOrderItem.delivered_quantity, 0))
+                ),
+                0
+            )
+        )
+        .join(SalesOrder, SalesOrderItem.order_id == SalesOrder.id)
+        .where(
+            SalesOrderItem.product_id == target_product_col,
+            SalesOrder.status.in_([OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PARTIALLY_DELIVERED]),
+            ~SalesOrderItem.product_id.in_(planned_order_products_subq)
+        )
+        .scalar_subquery()
+    )
+
+    # 공통: 진행중인 생산계획의 (plan_id, product_id)별 순생산 목표수량 (다공정 중복 합산 방지)
+    active_plan_product_qty = (
+        select(
+            ProductionPlanItem.plan_id,
+            ProductionPlanItem.product_id,
+            ProductionPlan.order_id,
+            ProductionPlan.stock_production_id,
+            ProductionPlan.stock_production_order_id,
+            func.max(ProductionPlanItem.quantity).label('qty')
+        )
+        .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+        .outerjoin(SalesOrder, ProductionPlan.order_id == SalesOrder.id)
+        .where(
+            ProductionPlan.status.not_in(finished_plan_statuses),
+            ProductionPlanItem.status.not_in(finished_plan_statuses),
+            or_(
+                ProductionPlan.order_id.is_(None),
+                SalesOrder.status.not_in(finished_so_statuses)
+            )
+        )
+        .group_by(
+            ProductionPlanItem.plan_id,
+            ProductionPlanItem.product_id,
+            ProductionPlan.order_id,
+            ProductionPlan.stock_production_id,
+            ProductionPlan.stock_production_order_id
+        )
+        .subquery()
+    )
+
+    # 2. SO Active: 진행중인 수주 생산계획 수량
+    so_active_subq = (
+        select(func.coalesce(func.sum(active_plan_product_qty.c.qty), 0))
+        .where(
+            active_plan_product_qty.c.product_id == target_product_col,
+            active_plan_product_qty.c.order_id.is_not(None)
+        )
+        .scalar_subquery()
+    )
+
+    # 3. SP Wait: 취소되지 않은 생산계획(단건 stock_production_id 또는 다건 stock_production_order_id)이 아직 없는 재고생산 요청 수량
+    planned_sp_exists = (
+        select(ProductionPlanItem.id)
+        .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+        .where(
+            ProductionPlan.status != 'CANCELED',
+            ProductionPlanItem.product_id == StockProduction.product_id,
+            or_(
+                ProductionPlan.stock_production_id == StockProduction.id,
+                (StockProduction.order_id.is_not(None)) & (ProductionPlan.stock_production_order_id == StockProduction.order_id)
+            )
+        )
+        .exists()
+    )
+
+    sp_wait_subq = (
+        select(func.coalesce(func.sum(StockProduction.quantity), 0))
+        .where(
+            StockProduction.product_id == target_product_col,
+            StockProduction.status.not_in(finished_sp_statuses),
+            ~planned_sp_exists
+        )
+        .scalar_subquery()
+    )
+
+    # 4. SP Active: 진행중인 재고생산 계획 수량 (단건 + 다건 주문 모두 포함)
+    sp_active_subq = (
+        select(func.coalesce(func.sum(active_plan_product_qty.c.qty), 0))
+        .where(
+            active_plan_product_qty.c.product_id == target_product_col,
+            or_(
+                active_plan_product_qty.c.stock_production_id.is_not(None),
+                active_plan_product_qty.c.stock_production_order_id.is_not(None)
+            )
+        )
+        .scalar_subquery()
+    )
+
+    # 5. Reserved Quantity: 미납 수주의 생산계획에서 잡아둔 재고/재고생산 선점 수량(stock_use_quantity)
+    reserved_plan_product_qty = (
+        select(
+            ProductionPlanItem.plan_id,
+            ProductionPlanItem.product_id,
+            func.least(
+                func.max(func.coalesce(ProductionPlanItem.stock_use_quantity, 0)),
+                func.coalesce(
+                    func.max(SalesOrderItem.quantity - func.coalesce(SalesOrderItem.delivered_quantity, 0)),
+                    func.max(func.coalesce(ProductionPlanItem.stock_use_quantity, 0))
+                )
+            ).label("res_qty")
+        )
+        .join(ProductionPlan, ProductionPlanItem.plan_id == ProductionPlan.id)
+        .join(SalesOrder, ProductionPlan.order_id == SalesOrder.id)
+        .outerjoin(
+            SalesOrderItem,
+            (SalesOrderItem.order_id == SalesOrder.id) & (SalesOrderItem.product_id == ProductionPlanItem.product_id)
+        )
+        .where(
+            ProductionPlan.status != 'CANCELED',
+            SalesOrder.status.not_in(finished_so_statuses),
+            func.coalesce(ProductionPlanItem.stock_use_quantity, 0) > 0
+        )
+        .group_by(ProductionPlanItem.plan_id, ProductionPlanItem.product_id)
+        .subquery()
+    )
+
+    reserved_subq = (
+        select(func.coalesce(func.sum(func.greatest(0, reserved_plan_product_qty.c.res_qty)), 0))
+        .where(reserved_plan_product_qty.c.product_id == target_product_col)
+        .scalar_subquery()
+    )
+
+    return so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq, reserved_subq
+
+
+def _format_stock_dict(product, stock_obj, so_wait, so_active, sp_wait, sp_active, reserved_val, has_bom=False):
+    current_qty = stock_obj.current_quantity if stock_obj else 0
+    producing_so = (so_wait or 0) + (so_active or 0)
+    producing_sp = (sp_wait or 0) + (sp_active or 0)
+    producing_total = producing_so + producing_sp
+    reserved_qty = max(0, reserved_val or 0)
+
+    # 가용 현재고 = max(0, 현재고 - 수주예약수량)
+    avail_qty = max(0, current_qty - reserved_qty)
+    # 현재고로 충당되지 않는 예약분은 제작중인 재고생산(producing_sp)을 선점한 수량으로 계산
+    reserved_from_sp = max(0, reserved_qty - max(0, current_qty))
+    avail_sp_qty = max(0, producing_sp - reserved_from_sp)
+    total_allocatable = avail_qty + avail_sp_qty
+
+    return {
+        "id": stock_obj.id if stock_obj else 0,
+        "product_id": product.id if product else (stock_obj.product_id if stock_obj else 0),
+        "current_quantity": current_qty,
+        "in_production_quantity": producing_total,
+        "location": stock_obj.location if stock_obj else None,
+        "updated_at": stock_obj.updated_at if stock_obj else None,
+        "product": product,
+        "producing_total": producing_total,
+        "producing_so": producing_so,
+        "producing_sp": producing_sp,
+        "reserved_quantity": reserved_qty,
+        "available_quantity": avail_qty,
+        "available_sp_quantity": avail_sp_qty,
+        "total_allocatable": total_allocatable,
+        "has_bom": bool(has_bom),
+    }
+
 
 @router.get("/stocks", response_model=List[StockResponse])
 async def read_stocks(
@@ -33,89 +226,14 @@ async def read_stocks(
     partner_id: Optional[int] = None,
     product_name: Optional[str] = None,
     major_group_id: Optional[int] = None,
+    product_ids: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    from app.models.production import ProductionPlan, ProductionPlanItem
-    from app.models.inventory import StockProduction
-    
-    # Correct initialization will happen below to avoid variable shadowing and filter loss.
-    pass
-
-    # Refactored: Efficient single query with subqueries to avoid N+1 and MissingGreenlet
-    # Refactored: Master WIP Calculation Strategy (Non-overlapping)
-    # Part 1: Confirmed Orders that don't have a plan yet
-    # Part 2: Pending Stock Productions that don't have a plan yet
-    # Part 3: All active Production Plans (sum unique plan quantities via sequence=1)
-    
-    # Refactored: Ultimate 4-Part WIP Calculation Strategy (Non-overlapping)
-    # Part 1: SO Wait (Confirmed SO with NO plan)
-    # Part 2: SO Active (Plans linked to SO)
-    # Part 3: SP Wait (Pending SP with NO plan)
-    # Part 4: SP Active (Plans linked to SP)
-    
-    from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
-    from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
-
-    # Define statuses that represent 'Finished/Inactive' states to exclude from WIP
-    # Using both spellings 'CANCELLED' and 'CANCELED' just in case, based on Enum inconsistencies
-    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
-    finished_plan_statuses = ['COMPLETED', 'CANCELED'] # ProductionStatus uses one L
-    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
-
-    active_order_products_subq = select(ProductionPlanItem.product_id)\
-        .join(ProductionPlan)\
-        .where(ProductionPlan.order_id == SalesOrder.id)
-
-    # 1. SO Wait (Confirmed or Pending SO where THIS SPECIFIC PRODUCT is NOT yet planned for this order)
-    so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
-        .join(SalesOrder)\
-        .where(SalesOrderItem.product_id == Product.id)\
-        .where(SalesOrder.status.in_([OrderStatus.PENDING, OrderStatus.CONFIRMED]))\
-        .where(~SalesOrderItem.product_id.in_(active_order_products_subq))\
-        .scalar_subquery()
-
-    # We need to sum ProductionPlanItem.quantity. BUT a single product in a plan might have MULTIPLE processes (rows), 
-    # and they all have the same target quantity. To avoid double/triple counting, 
-    # we take the max quantity per (plan_id, product_id) first, then sum those maxes.
-    active_plan_product_qty = select(
-        ProductionPlanItem.plan_id,
-        ProductionPlanItem.product_id,
-        ProductionPlan.order_id,
-        ProductionPlan.stock_production_id,
-        func.max(ProductionPlanItem.quantity).label('qty')
-    )\
-    .join(ProductionPlan)\
-    .where(ProductionPlanItem.status.not_in(finished_plan_statuses))\
-    .group_by(ProductionPlanItem.plan_id, ProductionPlanItem.product_id, ProductionPlan.order_id, ProductionPlan.stock_production_id)\
-    .subquery()
-
-    # 2. SO Active (Sum unique quantites for active plans tied to SO)
-    so_active_subq = select(func.coalesce(func.sum(active_plan_product_qty.c.qty), 0))\
-        .where(active_plan_product_qty.c.product_id == Product.id)\
-        .where(active_plan_product_qty.c.order_id.is_not(None))\
-        .scalar_subquery()
-
-    active_sp_products_subq = select(ProductionPlanItem.product_id)\
-        .join(ProductionPlan)\
-        .where(ProductionPlan.stock_production_id == StockProduction.id)
-
-    # 3. SP Wait
-    sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
-        .where(StockProduction.product_id == Product.id)\
-        .where(StockProduction.status.not_in(finished_sp_statuses))\
-        .where(~StockProduction.product_id.in_(active_sp_products_subq))\
-        .scalar_subquery()
-
-    # 4. SP Active (Sum unique quantites for active plans tied to SP)
-    sp_active_subq = select(func.coalesce(func.sum(active_plan_product_qty.c.qty), 0))\
-        .where(active_plan_product_qty.c.product_id == Product.id)\
-        .where(active_plan_product_qty.c.stock_production_id.is_not(None))\
-        .scalar_subquery()
-
+    so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq, reserved_subq = (
+        _build_wip_and_reservation_subqueries(Product.id)
+    )
     has_bom_subq = exists().where(BOM.parent_product_id == Product.id)
 
-    from sqlalchemy import or_
-    # Final query: Start from Product to include items with NO stock record yet (9 items vs 6 items bug fix)
     query = select(
         Product,
         Stock,
@@ -123,14 +241,21 @@ async def read_stocks(
         so_active_subq.label("so_active"),
         sp_wait_subq.label("sp_wait"),
         sp_active_subq.label("sp_active"),
-        has_bom_subq.label("has_bom")
+        has_bom_subq.label("has_bom"),
+        reserved_subq.label("reserved_qty")
     ).outerjoin(Stock, Stock.product_id == Product.id).options(
         noload(Product.standard_processes),
         noload(Product.bom_items),
         noload(Product.price_history)
     )
 
-    # Apply Filters to the Unified Query
+    if product_ids:
+        try:
+            id_list = [int(pid.strip()) for pid in product_ids.split(",") if pid.strip().isdigit()]
+            if id_list:
+                query = query.where(Product.id.in_(id_list))
+        except Exception:
+            pass
     if item_type:
         query = query.where(Product.item_type == item_type)
     if partner_id:
@@ -148,7 +273,6 @@ async def read_stocks(
                      .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         query = query.where(Product.id.in_(subquery))
 
-    # Bug 2 Fix: Exclude CONSUMABLE items but handle NULL item_type safely
     query = query.where(or_(Product.item_type != 'CONSUMABLE', Product.item_type.is_(None)))
 
     result = await db.execute(query)
@@ -156,123 +280,64 @@ async def read_stocks(
 
     final_stocks = []
     for row in rows:
-        product = row[0]
-        stock_obj = row[1]
-        
-        # Calculate computed fields
-        producing_so = row[2] + row[3] # Wait SO + Active SO Plans
-        producing_sp = row[4] + row[5] # Wait SP + Active SP Plans
-        producing_total = producing_so + producing_sp
-        
-        # Build dictionary to match StockResponse schema
-        stock_data = {
-            "id": stock_obj.id if stock_obj else 0,
-            "product_id": product.id,
-            "current_quantity": stock_obj.current_quantity if stock_obj else 0,
-            "in_production_quantity": producing_total,
-            "location": stock_obj.location if stock_obj else None,
-            "updated_at": stock_obj.updated_at if stock_obj else None,
-            "product": product, # Product object serializes to ProductSimple correctly
-            "producing_total": producing_total,
-            "producing_so": producing_so,
-            "producing_sp": producing_sp,
-            "has_bom": row[6] # Reference the Seventh element (Product, Stock, 4 WIP subqs, has_bom)
-        }
+        stock_data = _format_stock_dict(
+            product=row[0],
+            stock_obj=row[1],
+            so_wait=row[2],
+            so_active=row[3],
+            sp_wait=row[4],
+            sp_active=row[5],
+            has_bom=row[6],
+            reserved_val=row[7],
+        )
         final_stocks.append(stock_data)
         
     return final_stocks
 
+
 @router.get("/stocks/{product_id}", response_model=StockResponse)
 async def read_stock_by_product(product_id: int, db: AsyncSession = Depends(get_db)):
-    from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
-    from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
-
-    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
-    finished_plan_statuses = ['COMPLETED', 'CANCELED']
-    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
-
-    # 1. SO Wait
-    so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
-        .join(SalesOrder)\
-        .outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
-        .where(SalesOrderItem.product_id == product_id)\
-        .where(SalesOrder.status.not_in(finished_so_statuses))\
-        .where(ProductionPlan.id.is_(None))\
-        .scalar_subquery()
-
-    # 2. SO Active
-    so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
-        .join(ProductionPlan)\
-        .where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))\
-        .where(ProductionPlanItem.sequence == 1)\
-        .where(ProductionPlan.order_id.is_not(None))\
-        .scalar_subquery()
-
-    # 3. SP Wait
-    sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
-        .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
-        .where(StockProduction.product_id == product_id)\
-        .where(StockProduction.status.not_in(finished_sp_statuses))\
-        .where(ProductionPlan.id.is_(None))\
-        .scalar_subquery()
-
-    # 4. SP Active
-    sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
-        .join(ProductionPlan)\
-        .where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses))\
-        .where(ProductionPlanItem.sequence == 1)\
-        .where(ProductionPlan.stock_production_id.is_not(None))\
-        .scalar_subquery()
+    so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq, reserved_subq = (
+        _build_wip_and_reservation_subqueries(Product.id)
+    )
+    has_bom_subq = exists().where(BOM.parent_product_id == Product.id)
 
     query = select(
+        Product,
         Stock,
         so_wait_subq,
         so_active_subq,
         sp_wait_subq,
-        sp_active_subq
-    ).where(Stock.product_id == product_id).options(
-        selectinload(Stock.product)
+        sp_active_subq,
+        has_bom_subq,
+        reserved_subq
+    ).outerjoin(Stock, Stock.product_id == Product.id).where(Product.id == product_id).options(
+        noload(Product.standard_processes),
+        noload(Product.bom_items),
+        noload(Product.price_history)
     )
     
     result = await db.execute(query)
     row = result.first()
     
     if not row:
-        return {
-            "id": 0,
-            "product_id": product_id,
-            "current_quantity": 0,
-            "in_production_quantity": 0,
-            "producing_total": 0,
-            "producing_so": 0,
-            "producing_sp": 0,
-            "product": await db.get(Product, product_id)
-        }
+        return _format_stock_dict(await db.get(Product, product_id), None, 0, 0, 0, 0, 0, False)
     
-    stock_obj = row[0]
-    producing_so = (row[1] or 0) + (row[2] or 0)
-    producing_sp = (row[3] or 0) + (row[4] or 0)
-    producing_total = producing_so + producing_sp
-    
-    return {
-        "id": stock_obj.id,
-        "product_id": stock_obj.product_id,
-        "current_quantity": stock_obj.current_quantity,
-        "in_production_quantity": producing_total,
-        "location": stock_obj.location,
-        "updated_at": stock_obj.updated_at,
-        "product": stock_obj.product,
-        "producing_total": producing_total,
-        "producing_so": producing_so,
-        "producing_sp": producing_sp
-    }
+    return _format_stock_dict(
+        product=row[0],
+        stock_obj=row[1],
+        so_wait=row[2],
+        so_active=row[3],
+        sp_wait=row[4],
+        sp_active=row[5],
+        has_bom=row[6],
+        reserved_val=row[7],
+    )
+
 
 @router.post("/stocks/init", response_model=StockResponse)
 async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = Depends(get_db)):
     """수동 재고 초기화 API"""
-    # 품목 타입 확인 (소모품 차단)
     product = await db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="품목을 찾을 수 없습니다.")
@@ -286,36 +351,10 @@ async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = 
     if stock:
         raise HTTPException(status_code=400, detail="이미 해당 품목의 재고 레코드가 존재합니다.")
         
-    # [CRITICAL] Recalculate WIP perfectly for the initial record and SYNC TO DB COLUMN
-    from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
-    from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
-    
-    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
-    finished_plan_statuses = ['COMPLETED', 'CANCELED']
-    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
-
-    so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
-        .join(SalesOrder).outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
-        .where(SalesOrderItem.product_id == product_id).where(SalesOrder.status.not_in(finished_so_statuses))\
-        .where(ProductionPlan.id.is_(None)).scalar_subquery()
-
-    so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
-        .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
-        .where(ProductionPlan.order_id.is_not(None)).scalar_subquery()
-
-    sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
-        .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
-        .where(StockProduction.product_id == product_id).where(StockProduction.status.not_in(finished_sp_statuses))\
-        .where(ProductionPlan.id.is_(None)).scalar_subquery()
-
-    sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
-        .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
-        .where(ProductionPlan.stock_production_id.is_not(None)).scalar_subquery()
-
-    # Get the calculated totals
-    calc_res = await db.execute(select(so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq))
+    so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq, reserved_subq = (
+        _build_wip_and_reservation_subqueries(product_id)
+    )
+    calc_res = await db.execute(select(so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq, reserved_subq))
     row = calc_res.first()
     producing_so = (row[0] or 0) + (row[1] or 0)
     producing_sp = (row[2] or 0) + (row[3] or 0)
@@ -324,34 +363,31 @@ async def init_stock(stock_in: StockUpdate, product_id: int, db: AsyncSession = 
     stock = Stock(
         product_id=product_id,
         current_quantity=stock_in.current_quantity or 0,
-        in_production_quantity=producing_total, # SAVE IT TO DB
+        in_production_quantity=producing_total,
         location=stock_in.location
     )
     db.add(stock)
     await db.commit()
     await db.refresh(stock)
     
-    # Reload with product for Response
     q = select(Stock).where(Stock.id == stock.id).options(selectinload(Stock.product))
     res = await db.execute(q)
     stock_obj = res.scalar_one()
     
-    return {
-        "id": stock_obj.id,
-        "product_id": stock_obj.product_id,
-        "current_quantity": stock_obj.current_quantity,
-        "in_production_quantity": producing_total,
-        "location": stock_obj.location,
-        "updated_at": stock_obj.updated_at,
-        "product": stock_obj.product,
-        "producing_total": producing_total,
-        "producing_so": producing_so,
-        "producing_sp": producing_sp
-    }
+    return _format_stock_dict(
+        product=stock_obj.product,
+        stock_obj=stock_obj,
+        so_wait=row[0],
+        so_active=row[1],
+        sp_wait=row[2],
+        sp_active=row[3],
+        reserved_val=row[4],
+        has_bom=False
+    )
+
 
 @router.put("/stocks/{product_id}", response_model=StockResponse)
 async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession = Depends(get_db)):
-    # 품목 타입 확인 (소모품 차단)
     product = await db.get(Product, product_id)
     if product and product.item_type == 'CONSUMABLE':
         raise HTTPException(status_code=400, detail="소모품은 재고를 관리하지 않습니다.")
@@ -360,7 +396,6 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
     result = await db.execute(query)
     stock = result.scalar_one_or_none()
     
-    # [IMPORTANT] Prevent manual overwrite of in_production_quantity
     payload = stock_in.model_dump(exclude_unset=True)
     if "in_production_quantity" in payload:
         del payload["in_production_quantity"]
@@ -375,52 +410,23 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
     await db.commit()
     await db.refresh(stock)
     
-    # [CRITICAL] Recalculate WIP perfectly for the response and SYNC TO DB COLUMN
-    from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus
-    from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
-    
-    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
-    finished_plan_statuses = ['COMPLETED', 'CANCELED']
-    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
-
-    so_wait_subq = select(func.coalesce(func.sum(SalesOrderItem.quantity), 0))\
-        .join(SalesOrder).outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
-        .where(SalesOrderItem.product_id == product_id).where(SalesOrder.status.not_in(finished_so_statuses))\
-        .where(ProductionPlan.id.is_(None)).scalar_subquery()
-
-    so_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
-        .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
-        .where(ProductionPlan.order_id.is_not(None)).scalar_subquery()
-
-    sp_wait_subq = select(func.coalesce(func.sum(StockProduction.quantity), 0))\
-        .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
-        .where(StockProduction.product_id == product_id).where(StockProduction.status.not_in(finished_sp_statuses))\
-        .where(ProductionPlan.id.is_(None)).scalar_subquery()
-
-    sp_active_subq = select(func.coalesce(func.sum(ProductionPlanItem.quantity), 0))\
-        .join(ProductionPlan).where(ProductionPlanItem.product_id == product_id)\
-        .where(ProductionPlanItem.status.not_in(finished_plan_statuses)).where(ProductionPlanItem.sequence == 1)\
-        .where(ProductionPlan.stock_production_id.is_not(None)).scalar_subquery()
-
-    # Get the calculated totals
-    calc_res = await db.execute(select(so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq))
+    so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq, reserved_subq = (
+        _build_wip_and_reservation_subqueries(product_id)
+    )
+    calc_res = await db.execute(select(so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq, reserved_subq))
     row = calc_res.first()
     producing_so = (row[0] or 0) + (row[1] or 0)
     producing_sp = (row[2] or 0) + (row[3] or 0)
     producing_total = producing_so + producing_sp
 
-    # Sync to DB column
     stock.in_production_quantity = producing_total
     await db.commit()
     await db.refresh(stock)
     
-    # Reload with product for Response
     q = select(Stock).where(Stock.id == stock.id).options(selectinload(Stock.product))
     res = await db.execute(q)
     stock_obj = res.scalar_one()
     
-    # SSE 브로드캐스트: 재고 수정 후 재고관리 화면 즈시 갱신
     if sse_broadcaster:
         import json as _json
         await sse_broadcaster.broadcast(
@@ -428,26 +434,17 @@ async def update_stock(product_id: int, stock_in: StockUpdate, db: AsyncSession 
             _json.dumps({"type": "stock_updated", "product_id": product_id})
         )
 
-    return {
-        "id": stock_obj.id,
-        "product_id": stock_obj.product_id,
-        "current_quantity": stock_obj.current_quantity,
-        "in_production_quantity": producing_total,
-        "location": stock_obj.location,
-        "updated_at": stock_obj.updated_at,
-        "product": stock_obj.product,
-        "producing_total": producing_total,
-        "producing_so": producing_so,
-        "producing_sp": producing_sp
-    }
+    return _format_stock_dict(
+        product=stock_obj.product,
+        stock_obj=stock_obj,
+        so_wait=row[0],
+        so_active=row[1],
+        sp_wait=row[2],
+        sp_active=row[3],
+        reserved_val=row[4],
+        has_bom=False
+    )
 
-    # SSE 브로드캐스트: 재고 수정 후 재고관리 화면 즈시 갱신
-    if sse_broadcaster:
-        import json as _json
-        await sse_broadcaster.broadcast(
-            "inventory_updated",
-            _json.dumps({"type": "stock_updated", "product_id": product_id})
-        )
 
 @router.delete("/stocks/{product_id}")
 async def delete_stock(product_id: int, db: AsyncSession = Depends(get_db)):
@@ -687,123 +684,192 @@ async def delete_stock_production(prod_id: int, db: AsyncSession = Depends(get_d
     await db.commit()
     return {"status": "success"}
 @router.post("/recalculate")
-async def recalculate_inventory(db: AsyncSession = Depends(get_db)):
+async def recalculate_inventory(
+    mode: Optional[str] = "all",
+    db: AsyncSession = Depends(get_db)
+):
     """
-    모든 품목의 재고를 생산 실적, 납품 이력, BOM 소요량을 기반으로 전수 재계산합니다.
+    모든 품목의 재고 및 생산중(WIP) 정합성을 전수 재계산하고 누락된 상태값을 복구합니다.
+    - mode="all": 생산완료(품목별 최종공정 1회), 부품 구매입고, BOM 백플러시, 납품출고를 기반으로 현재고(current_quantity)와 생산중(in_production_quantity) 모두 재계산
+    - mode="wip_only": 현재고(수동조정 포함)는 유지하고, 재고생산 상태 동기화 및 생산중(in_production_quantity) 수량만 정합성 복구
     """
     from app.models.production import ProductionStatus, ProductionPlan, ProductionPlanItem
     from app.models.sales import SalesOrder, SalesOrderItem, OrderStatus, DeliveryHistoryItem
-    from app.models.inventory import Stock, StockProduction
+    from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, OutsourcingOrder, OutsourcingOrderItem, OutsourcingStatus
+    from app.models.inventory import Stock, StockProduction, StockProductionStatus
     from app.models.product import BOM, Product
-    from sqlalchemy import func
 
-    # 1. 모든 재고 데이터를 0으로 초기화 (소모품 제외)
-    await db.execute(update(Stock).values(current_quantity=0, in_production_quantity=0))
-    await db.flush()
-
-    # 2. 모든 제품 리스트 가져오기
-    from sqlalchemy import or_
-    products_res = await db.execute(select(Product.id).where(or_(Product.item_type != 'CONSUMABLE', Product.item_type.is_(None))))
-    product_ids = [p.id for p in products_res.scalars().all()]
-    
-    # 임시 저장소
+    # 1. 모든 비소모품 품목 ID 조회
+    products_res = await db.execute(
+        select(Product.id).where(or_(Product.item_type != 'CONSUMABLE', Product.item_type.is_(None)))
+    )
+    product_ids = list(products_res.scalars().all())
     stock_map = {pid: {"current": 0, "producing": 0} for pid in product_ids}
 
-    # 3. 모든 제품별 수량 합산 loop (Ultimate 4-Part strategy for WIP)
-    # [A] current_quantity (Production completion & BOM deduction) AND Active Plan WIP
+    # 2. 모든 생산계획 조회 및 StockProduction 상태 / stock_deducted 플래그 정합성 복구
     plans_query = select(ProductionPlan).options(
-        selectinload(ProductionPlan.items), 
-        selectinload(ProductionPlan.order).selectinload(SalesOrder.items), 
-        selectinload(ProductionPlan.stock_production)
+        selectinload(ProductionPlan.items),
+        selectinload(ProductionPlan.stock_production),
     )
     plans = (await db.execute(plans_query)).scalars().all()
-    
-    active_statuses = ['PENDING', 'PLANNED', 'CONFIRMED', 'IN_PROGRESS']
-    
+
+    # BOM 전체 캐싱 (반복 쿼리 방지)
+    bom_all_res = await db.execute(select(BOM))
+    bom_by_parent = {}
+    for b in bom_all_res.scalars().all():
+        bom_by_parent.setdefault(b.parent_product_id, []).append(b)
+
     for plan in plans:
-        qty = 0
-        product_id = None
-        if plan.stock_production:
-            qty = plan.stock_production.quantity
-            product_id = plan.stock_production.product_id
-        elif plan.order and plan.order.items:
-            qty = plan.order.items[0].quantity
-            product_id = plan.order.items[0].product_id
-            
-        if not product_id: continue
+        if plan.status == ProductionStatus.CANCELED:
+            continue
 
-        # Current Stock Accumulation
-        if plan.status == ProductionStatus.COMPLETED:
-            if product_id in stock_map:
-                stock_map[product_id]["current"] += qty
-            # BOM Deduction
-            bom_query = select(BOM).where(BOM.parent_product_id == product_id)
-            bom_res = await db.execute(bom_query)
-            for bom in bom_res.scalars().all():
-                if bom.child_product_id in stock_map:
-                    stock_map[bom.child_product_id]["current"] -= int(bom.required_quantity * qty)
-        # Producing WIP Accumulation (Active Plan parts)
-        finished_plan_statuses = ['COMPLETED', 'CANCELED']
-        if plan.status not in finished_plan_statuses:
-            if product_id in stock_map:
-                stock_map[product_id]["producing"] += qty
+        # 품목(product_id)별 마지막 공정(max sequence) 추출
+        last_items_by_prod = {}
+        all_items_by_prod = {}
+        for pi in (plan.items or []):
+            pid = pi.product_id
+            all_items_by_prod.setdefault(pid, []).append(pi)
+            if pid not in last_items_by_prod or (pi.sequence or 0) > (last_items_by_prod[pid].sequence or 0):
+                last_items_by_prod[pid] = pi
 
-    # [B] Producing WIP calculations (Wait SO/Wait SP - NO Plan)
-    # Part 1: SO Wait
-    finished_so_statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERY_COMPLETED, OrderStatus.CANCELLED]
-    so_wait_query = select(SalesOrderItem.product_id, func.sum(SalesOrderItem.quantity))\
-        .join(SalesOrder)\
-        .outerjoin(ProductionPlan, ProductionPlan.order_id == SalesOrder.id)\
-        .where(SalesOrder.status.not_in(finished_so_statuses))\
-        .where(ProductionPlan.id.is_(None))\
-        .group_by(SalesOrderItem.product_id)
-    so_wait_res = await db.execute(so_wait_query)
-    for pid, qty in so_wait_res.all():
+        for pid, last_item in last_items_by_prod.items():
+            prod_items = all_items_by_prod.get(pid, [])
+            is_prod_completed = (
+                plan.status == ProductionStatus.COMPLETED
+                or last_item.status == ProductionStatus.COMPLETED
+                or (prod_items and all(i.status == ProductionStatus.COMPLETED for i in prod_items))
+            )
+            if is_prod_completed:
+                if not last_item.stock_deducted:
+                    last_item.stock_deducted = True
+                    db.add(last_item)
+
+                net_qty = last_item.quantity or 0
+                if net_qty > 0 and pid in stock_map:
+                    stock_map[pid]["current"] += net_qty
+                    for bom in bom_by_parent.get(pid, []):
+                        if bom.child_product_id in stock_map:
+                            stock_map[bom.child_product_id]["current"] -= int(bom.required_quantity * net_qty)
+
+                # 연결된 재고생산(단건 및 다건 주문) 상태를 COMPLETED로 동기화
+                if plan.stock_production and plan.stock_production.product_id == pid:
+                    if plan.stock_production.status != StockProductionStatus.COMPLETED:
+                        plan.stock_production.status = StockProductionStatus.COMPLETED
+                        db.add(plan.stock_production)
+                if plan.stock_production_order_id:
+                    sp_stmt = select(StockProduction).where(
+                        StockProduction.order_id == plan.stock_production_order_id,
+                        StockProduction.product_id == pid
+                    )
+                    for sp_item in (await db.execute(sp_stmt)).scalars().all():
+                        if sp_item.status != StockProductionStatus.COMPLETED:
+                            sp_item.status = StockProductionStatus.COMPLETED
+                            db.add(sp_item)
+            else:
+                # 미완료 생산계획에 연결된 재고생산이 PENDING이면 IN_PROGRESS로 동기화
+                if plan.stock_production and plan.stock_production.product_id == pid:
+                    if plan.stock_production.status == StockProductionStatus.PENDING:
+                        plan.stock_production.status = StockProductionStatus.IN_PROGRESS
+                        db.add(plan.stock_production)
+                if plan.stock_production_order_id:
+                    sp_stmt = select(StockProduction).where(
+                        StockProduction.order_id == plan.stock_production_order_id,
+                        StockProduction.product_id == pid
+                    )
+                    for sp_item in (await db.execute(sp_stmt)).scalars().all():
+                        if sp_item.status == StockProductionStatus.PENDING:
+                            sp_item.status = StockProductionStatus.IN_PROGRESS
+                            db.add(sp_item)
+
+    if mode != "wip_only":
+        # 3. 부품/원자재 구매발주 입고분 합산 (생산계획 공정 자체 발주분 제외)
+        po_items_res = await db.execute(
+            select(PurchaseOrderItem)
+            .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+            .where(
+                PurchaseOrder.status == PurchaseStatus.COMPLETED,
+                PurchaseOrderItem.production_plan_item_id.is_(None)
+            )
+        )
+        for poi in po_items_res.scalars().all():
+            if poi.product_id in stock_map:
+                rec_qty = poi.received_quantity if (poi.received_quantity is not None and poi.received_quantity > 0) else (poi.quantity or 0)
+                stock_map[poi.product_id]["current"] += rec_qty
+
+        # 4. 단독 외주발주 입고분 합산 (생산계획 공정 외주분 제외)
+        os_items_res = await db.execute(
+            select(OutsourcingOrderItem)
+            .join(OutsourcingOrder, OutsourcingOrderItem.outsourcing_order_id == OutsourcingOrder.id)
+            .where(
+                OutsourcingOrder.status == OutsourcingStatus.COMPLETED,
+                OutsourcingOrderItem.production_plan_item_id.is_(None)
+            )
+        )
+        for osi in os_items_res.scalars().all():
+            if osi.product_id in stock_map:
+                stock_map[osi.product_id]["current"] += (osi.quantity or 0)
+
+        # 5. 납품 완료 출고분 차감
+        del_query = select(DeliveryHistoryItem).options(selectinload(DeliveryHistoryItem.order_item))
+        del_res = await db.execute(del_query)
+        for delivery in del_res.scalars().all():
+            if delivery.order_item and delivery.order_item.product_id in stock_map:
+                stock_map[delivery.order_item.product_id]["current"] -= (delivery.quantity or 0)
+
+    await db.flush()
+
+    # 6. 통합 4-Part WIP 서브쿼리로 모든 품목의 정확한 생산중(producing_total) 계산
+    so_wait_subq, so_active_subq, sp_wait_subq, sp_active_subq, _ = (
+        _build_wip_and_reservation_subqueries(Product.id)
+    )
+    wip_rows = (
+        await db.execute(
+            select(
+                Product.id,
+                so_wait_subq,
+                so_active_subq,
+                sp_wait_subq,
+                sp_active_subq
+            ).where(Product.id.in_(product_ids))
+        )
+    ).all()
+
+    for pid, so_w, so_a, sp_w, sp_a in wip_rows:
         if pid in stock_map:
-            stock_map[pid]["producing"] += qty
+            stock_map[pid]["producing"] = (so_w or 0) + (so_a or 0) + (sp_w or 0) + (sp_a or 0)
 
-    # Part 2: SP Wait
-    finished_sp_statuses = [StockProductionStatus.COMPLETED, StockProductionStatus.CANCELLED]
-    sp_wait_query = select(StockProduction.product_id, func.sum(StockProduction.quantity))\
-        .outerjoin(ProductionPlan, ProductionPlan.stock_production_id == StockProduction.id)\
-        .where(StockProduction.status.not_in(finished_sp_statuses))\
-        .where(ProductionPlan.id.is_(None))\
-        .group_by(StockProduction.product_id)
-    sp_wait_res = await db.execute(sp_wait_query)
-    for pid, qty in sp_wait_res.all():
-        if pid in stock_map:
-            stock_map[pid]["producing"] += qty
+    # 7. Stock 테이블 반영
+    existing_stocks_res = await db.execute(select(Stock))
+    existing_stocks = {s.product_id: s for s in existing_stocks_res.scalars().all()}
 
-    # [C] Delivery Histories (subtract from current)
-    del_query = select(DeliveryHistoryItem).options(selectinload(DeliveryHistoryItem.order_item))
-    del_res = await db.execute(del_query)
-    for delivery in del_res.scalars().all():
-        if delivery.order_item and delivery.order_item.product_id in stock_map:
-            stock_map[delivery.order_item.product_id]["current"] -= delivery.quantity
-
-    # 4. Final Sync to DB
     updated_count = 0
     for pid, vals in stock_map.items():
-        s_query = select(Stock).where(Stock.product_id == pid)
-        s_res = await db.execute(s_query)
-        stock = s_res.scalar_one_or_none()
-        
+        stock = existing_stocks.get(pid)
         if not stock:
-            # Create NEW stock record
             stock = Stock(
                 product_id=pid,
-                current_quantity=vals["current"],
+                current_quantity=vals["current"] if mode != "wip_only" else 0,
                 in_production_quantity=vals["producing"]
             )
             db.add(stock)
         else:
-            # Update EXISTING stock record
-            stock.current_quantity = vals["current"]
+            if mode != "wip_only":
+                stock.current_quantity = vals["current"]
             stock.in_production_quantity = vals["producing"]
+            db.add(stock)
         updated_count += 1
 
     await db.commit()
-    return {"status": "success", "message": f"{updated_count} products recalculated and synchronized."}
+
+    if sse_broadcaster:
+        import json as _json
+        await sse_broadcaster.broadcast(
+            "inventory_updated",
+            _json.dumps({"type": "recalculated", "mode": mode})
+        )
+
+    return {"status": "success", "message": f"{updated_count}개 품목의 재고 및 생산중 수량이 정합성 동기화되었습니다."}
+
 
 @router.get("/bom-stock/{product_id}")
 async def read_bom_stock(product_id: int, db: AsyncSession = Depends(get_db)):

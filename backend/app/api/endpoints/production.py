@@ -187,51 +187,54 @@ async def _handle_production_completion_effects(db: AsyncSession, plan: Producti
                 oo.delivery_date = now_kst().date()
                 db.add(oo)
 
-    # 4. Aggregate Net Production Quantities from Plan Items
-    # [FIX] Use max() to handle potential inconsistency across processes of the same product
-    net_quantities = {} # {product_id: net_qty}
+    # 4. 품목별 마지막 공정 확인 후 미처리된 완제품 입고/백플러시만 처리 (중복 입고 원천 차단)
+    # on_production_item_completed에서 이미 처리된 품목(stock_deducted=True)은 건너뜁니다.
+    last_items_by_product = {}
     for item in plan.items:
-        current_max = net_quantities.get(item.product_id, 0)
-        net_quantities[item.product_id] = max(current_max, item.quantity or 0)
+        pid = item.product_id
+        if pid not in last_items_by_product or (item.sequence or 0) > (last_items_by_product[pid].sequence or 0):
+            last_items_by_product[pid] = item
 
-    # 5. Stock Movement & Backflush Hook
-    if plan.stock_production:
-        sp = plan.stock_production
-        prod_qty = net_quantities.get(sp.product_id, sp.quantity)
-        
-        await handle_stock_movement(
-            db=db, product_id=sp.product_id, quantity=prod_qty,
-            transaction_type=TransactionType.IN, reference=sp.production_no
+    ref_code = (
+        plan.order.order_no if plan.order else (
+            plan.stock_production.production_no if plan.stock_production else f"Plan#{plan.id}"
         )
-        await handle_backflush(
-            db=db, parent_product_id=sp.product_id, produced_quantity=prod_qty, reference=sp.production_no
-        )
+    )
 
-        stock_query = select(Stock).where(Stock.product_id == sp.product_id)
-        s_res = await db.execute(stock_query)
-        stock = s_res.scalars().first()
-        if stock and stock.in_production_quantity >= prod_qty:
-            stock.in_production_quantity -= prod_qty
-        
-        sp.status = StockProductionStatus.COMPLETED
-        db.add(sp)
-        
-    elif plan.order:
-        for pid, qty in net_quantities.items():
+    for pid, last_item in last_items_by_product.items():
+        prod_qty = max(0, last_item.quantity or 0)
+        if prod_qty > 0 and not last_item.stock_deducted:
+            last_item.stock_deducted = True
+            db.add(last_item)
+
             await handle_stock_movement(
-                db=db, product_id=pid, quantity=qty,
-                transaction_type=TransactionType.IN, reference=plan.order.order_no
+                db=db, product_id=pid, quantity=prod_qty,
+                transaction_type=TransactionType.IN, reference=ref_code
             )
             await handle_backflush(
-                db=db, parent_product_id=pid, produced_quantity=qty, reference=plan.order.order_no
+                db=db, parent_product_id=pid, produced_quantity=prod_qty, reference=ref_code
             )
 
             stock_query = select(Stock).where(Stock.product_id == pid)
             s_res = await db.execute(stock_query)
             stock = s_res.scalars().first()
-            if stock and stock.in_production_quantity >= qty:
-                stock.in_production_quantity -= qty
-        
+            if stock:
+                stock.in_production_quantity = max(0, (stock.in_production_quantity or 0) - prod_qty)
+                db.add(stock)
+
+    # 5. 상위 수주 및 재고생산(단건 + 묶음 주문) 상태 동기화
+    if plan.stock_production:
+        plan.stock_production.status = StockProductionStatus.COMPLETED
+        db.add(plan.stock_production)
+
+    if plan.stock_production_order_id:
+        sp_stmt = select(StockProduction).where(StockProduction.order_id == plan.stock_production_order_id)
+        for sp_item in (await db.execute(sp_stmt)).scalars().all():
+            if sp_item.status != StockProductionStatus.COMPLETED:
+                sp_item.status = StockProductionStatus.COMPLETED
+                db.add(sp_item)
+
+    if plan.order:
         if plan.order.status not in [OrderStatus.DELIVERY_COMPLETED, OrderStatus.PARTIALLY_DELIVERED, "DELIVERED"]:
             plan.order.status = OrderStatus.PRODUCTION_COMPLETED
             db.add(plan.order)
@@ -566,6 +569,19 @@ async def create_production_plan(
         )
         db.add(plan)
         await db.flush()
+
+        # 재고생산(StockProduction)에 대한 생산계획 수립 시 상태를 IN_PROGRESS로 전환
+        if target_stock_prod_id:
+            sp_obj = await db.get(StockProduction, target_stock_prod_id)
+            if sp_obj and sp_obj.status == StockProductionStatus.PENDING:
+                sp_obj.status = StockProductionStatus.IN_PROGRESS
+                db.add(sp_obj)
+        if plan_in.stock_production_order_id:
+            sp_stmt = select(StockProduction).where(StockProduction.order_id == plan_in.stock_production_order_id)
+            for sp_item in (await db.execute(sp_stmt)).scalars().all():
+                if sp_item.status == StockProductionStatus.PENDING:
+                    sp_item.status = StockProductionStatus.IN_PROGRESS
+                    db.add(sp_item)
 
         
         # 4. Generate Items
@@ -1428,39 +1444,38 @@ async def delete_production_plan(
             )
 
     # 1-1. 재고 롤백 처리 (삭제 전 실행)
-    if plan.status == ProductionStatus.COMPLETED:
-        # [FIX] 실제 순생산량(net_qty) 조회 - 재고소진으로만 완료된 경우 backflush가 실행되지 않았으므로 롤백 불필요
-        pi_result = await db.execute(
-            select(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
-        )
-        plan_items_for_rollback = pi_result.scalars().all()
-        
-        # 순생산량 계산: 각 product별 max quantity (공정 수에 무관하게 실제 생산된 수량)
-        net_prod_qtys = {}
+    pi_result = await db.execute(
+        select(ProductionPlanItem).where(ProductionPlanItem.plan_id == plan_id)
+    )
+    plan_items_for_rollback = pi_result.scalars().all()
+    
+    if plan_items_for_rollback:
+        # 품목별 마지막 공정(max sequence) 아이템 추출
+        last_items_by_prod = {}
         for pi in plan_items_for_rollback:
             pid = pi.product_id
-            net_prod_qtys[pid] = max(net_prod_qtys.get(pid, 0), pi.quantity or 0)
+            if pid not in last_items_by_prod or (pi.sequence or 0) > (last_items_by_prod[pid].sequence or 0):
+                last_items_by_prod[pid] = pi
 
-        if plan.stock_production:
-            sp = plan.stock_production
-            net_qty = net_prod_qtys.get(sp.product_id, 0)
-            
-            # 완제품 입고분 롤백 (실제 생산이 있었을 때만)
-            if net_qty > 0:
-                await handle_stock_movement(db, sp.product_id, -net_qty, TransactionType.OUT, f"Delete Rollback ({sp.production_no})")
-                await handle_backflush(db, sp.product_id, -net_qty, f"Delete Rollback ({sp.production_no})")
-                print(f"[Delete Rollback] stock_production {sp.production_no}: net_qty={net_qty} rolled back.")
+        ref_no = (
+            plan.order.order_no if plan.order else (
+                plan.stock_production.production_no if plan.stock_production else f"PLAN-{plan.id}"
+            )
+        )
+        for pid, last_item in last_items_by_prod.items():
+            # stock_deducted 플래그가 True이거나, 레거시 데이터로서 계획 전체가 COMPLETED인 경우 롤백 수행
+            should_rollback = bool(last_item.stock_deducted) or (
+                plan.status == ProductionStatus.COMPLETED and last_item.status == ProductionStatus.COMPLETED
+            )
+            net_qty = last_item.quantity or 0
+            if should_rollback and net_qty > 0:
+                await handle_stock_movement(db, pid, -net_qty, TransactionType.OUT, f"Delete Rollback ({ref_no})")
+                await handle_backflush(db, pid, -net_qty, f"Delete Rollback ({ref_no})")
+                last_item.stock_deducted = False
+                print(f"[Delete Rollback] {ref_no} product={pid}: net_qty={net_qty} rolled back.")
             else:
-                print(f"[Delete Rollback] stock_production {sp.production_no}: net_qty=0 (stock-depletion only), skipping backflush rollback.")
-        elif plan.order:
-            for order_item in plan.order.items:
-                net_qty = net_prod_qtys.get(order_item.product_id, 0)
-                if net_qty > 0:
-                    await handle_stock_movement(db, order_item.product_id, -net_qty, TransactionType.OUT, f"Delete Rollback ({plan.order.order_no})")
-                    await handle_backflush(db, order_item.product_id, -net_qty, f"Delete Rollback ({plan.order.order_no})")
-                    print(f"[Delete Rollback] order {plan.order.order_no}: net_qty={net_qty} rolled back.")
-                else:
-                    print(f"[Delete Rollback] order {plan.order.order_no}: net_qty=0, skipping backflush rollback.")
+                print(f"[Delete Rollback] {ref_no} product={pid}: net_qty={net_qty}, should_rollback={should_rollback}, skipping.")
+
 
     elif plan.status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
         # 생산 중 수량 차감
@@ -1577,7 +1592,7 @@ async def delete_production_plan(
         for wo in wo_res.scalars().all():
             await db.delete(wo)
 
-    # Update linked sales order status (rollback to CONFIRMED)
+    # Update linked sales order status (rollback to CONFIRMED) or stock production status (rollback to PENDING)
     # 보호: 이미 납품완료된 수주는 되돌리지 않음
     if plan.order:
         if plan.order.status not in [
@@ -1586,6 +1601,14 @@ async def delete_production_plan(
         ]:
             plan.order.status = OrderStatus.CONFIRMED
             db.add(plan.order)
+    if plan.stock_production:
+        plan.stock_production.status = StockProductionStatus.PENDING
+        db.add(plan.stock_production)
+    if plan.stock_production_order_id:
+        sp_stmt = select(StockProduction).where(StockProduction.order_id == plan.stock_production_order_id)
+        for sp_item in (await db.execute(sp_stmt)).scalars().all():
+            sp_item.status = StockProductionStatus.PENDING
+            db.add(sp_item)
 
     # Finally, delete the plan itself
     await db.delete(plan)
@@ -1713,65 +1736,67 @@ async def update_production_plan_status(
                 
         # Rollback Logic (COMPLETED -> NOT COMPLETED)
         elif old_status == ProductionStatus.COMPLETED and status != ProductionStatus.COMPLETED:
-            # 1. Rollback Stocks
-            if plan.stock_production:
-                sp = plan.stock_production
-                # 1-1. 완제품 입고 취소 (차감)
-                await handle_stock_movement(
-                    db=db,
-                    product_id=sp.product_id,
-                    quantity=-sp.quantity,
-                    transaction_type=TransactionType.OUT,
-                    reference=f"Rollback ({sp.production_no})"
+            # 1. 품목별 마지막 공정의 stock_deducted 기준으로 정확히 실생산량(net_qty)만 롤백
+            last_items_by_product = {}
+            for item in plan.items:
+                pid = item.product_id
+                if pid not in last_items_by_product or (item.sequence or 0) > (last_items_by_product[pid].sequence or 0):
+                    last_items_by_product[pid] = item
+
+            ref_code = (
+                plan.order.order_no if plan.order else (
+                    plan.stock_production.production_no if plan.stock_production else f"Plan#{plan.id}"
                 )
-                # 1-2. 하위 부품 Backflush 취소 (원복)
-                await handle_backflush(
-                    db=db,
-                    parent_product_id=sp.product_id,
-                    produced_quantity=-sp.quantity,
-                    reference=f"Rollback ({sp.production_no})"
-                )
-                # 1-3. 생산 중 수량 복원 (진행 중인 상태로 가는 경우에만 다시 생산 중으로 잡음)
-                if status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
-                    stock_query = select(Stock).where(Stock.product_id == sp.product_id)
-                    s_res = await db.execute(stock_query)
-                    stock = s_res.scalars().first()
-                    if stock:
-                        stock.in_production_quantity += sp.quantity
-                
-                # Sync StockProduction status
-                if status == ProductionStatus.IN_PROGRESS:
-                    sp.status = StockProductionStatus.IN_PROGRESS
-                elif status == ProductionStatus.CANCELLED:
-                    sp.status = StockProductionStatus.CANCELLED
-                db.add(sp)
-                
-            elif plan.order:
-                for item in plan.order.items:
+            )
+
+            for pid, last_item in last_items_by_product.items():
+                prod_qty = max(0, last_item.quantity or 0)
+                if prod_qty > 0 and last_item.stock_deducted:
+                    last_item.stock_deducted = False
+                    db.add(last_item)
+
                     # 1-1. 완제품 입고 취소 (차감)
                     await handle_stock_movement(
                         db=db,
-                        product_id=item.product_id,
-                        quantity=-item.quantity,
+                        product_id=pid,
+                        quantity=-prod_qty,
                         transaction_type=TransactionType.OUT,
-                        reference=f"Rollback ({plan.order.order_no})"
+                        reference=f"Rollback ({ref_code})"
                     )
                     # 1-2. 하위 부품 Backflush 취소 (원복)
                     await handle_backflush(
                         db=db,
-                        parent_product_id=item.product_id,
-                        produced_quantity=-item.quantity,
-                        reference=f"Rollback ({plan.order.order_no})"
+                        parent_product_id=pid,
+                        produced_quantity=-prod_qty,
+                        reference=f"Rollback ({ref_code})"
                     )
                     # 1-3. 생산 중 수량 복원
                     if status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
-                        stock_query = select(Stock).where(Stock.product_id == item.product_id)
+                        stock_query = select(Stock).where(Stock.product_id == pid)
                         s_res = await db.execute(stock_query)
                         stock = s_res.scalars().first()
                         if stock:
-                            stock.in_production_quantity += item.quantity
-                
-                # Sync Sales Order status
+                            stock.in_production_quantity = (stock.in_production_quantity or 0) + prod_qty
+                            db.add(stock)
+
+            if plan.stock_production:
+                sp = plan.stock_production
+                if status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
+                    sp.status = StockProductionStatus.IN_PROGRESS
+                elif status == ProductionStatus.CANCELED:
+                    sp.status = StockProductionStatus.CANCELLED
+                db.add(sp)
+
+            if plan.stock_production_order_id:
+                sp_stmt = select(StockProduction).where(StockProduction.order_id == plan.stock_production_order_id)
+                for sp_item in (await db.execute(sp_stmt)).scalars().all():
+                    if status in [ProductionStatus.IN_PROGRESS, ProductionStatus.CONFIRMED]:
+                        sp_item.status = StockProductionStatus.IN_PROGRESS
+                    elif status == ProductionStatus.CANCELED:
+                        sp_item.status = StockProductionStatus.CANCELLED
+                    db.add(sp_item)
+
+            if plan.order:
                 # 보호: 이미 납품완료된 수주는 되돌리지 않음
                 if plan.order.status not in [
                     OrderStatus.DELIVERY_COMPLETED,
@@ -1785,8 +1810,6 @@ async def update_production_plan_status(
             affected_oo_ids = set()
             for item in plan.items:
                 for po_item in item.purchase_items:
-                    # Revert received quantity? 
-                    # (User said "대기 상태로 변경", which usually means received_quantity = 0 or status = PENDING)
                     po_item.received_quantity = 0
                     db.add(po_item)
                     affected_po_ids.add(po_item.purchase_order_id)
@@ -1821,9 +1844,15 @@ async def update_production_plan_status(
                 ]:
                     plan.order.status = OrderStatus.CONFIRMED
                     db.add(plan.order)
-            elif plan.stock_production:
+            if plan.stock_production:
                 plan.stock_production.status = StockProductionStatus.IN_PROGRESS
                 db.add(plan.stock_production)
+            if plan.stock_production_order_id:
+                sp_stmt = select(StockProduction).where(StockProduction.order_id == plan.stock_production_order_id)
+                for sp_item in (await db.execute(sp_stmt)).scalars().all():
+                    if sp_item.status != StockProductionStatus.COMPLETED:
+                        sp_item.status = StockProductionStatus.IN_PROGRESS
+                        db.add(sp_item)
             
         await db.commit()
         
@@ -2475,29 +2504,11 @@ async def update_work_log_item(
     await db.commit()
     await db.refresh(item)
 
-    # plan_item_id가 있는 생산실적만 재고/상태 연동
+    # plan_item_id가 있는 생산실적만 재고/상태 연동 (sync_plan_item_status에서 완료/롤백 전이 시 재고 처리 일원화)
     if qty_changed and item.plan_item_id is not None:
         await sync_plan_item_status(db, item.plan_item_id)
-
-        # --- Stock Adjustment Hook for DIFF ---
-        diff_qty = item.good_quantity - old_good_qty
-        if diff_qty != 0:
-            plan_item = await db.get(ProductionPlanItem, item.plan_item_id)
-            if plan_item:
-                await handle_stock_movement(
-                    db=db,
-                    product_id=plan_item.product_id,
-                    quantity=diff_qty,
-                    transaction_type=TransactionType.ADJUSTMENT,
-                    reference=f"WorkLogItem Update (Item {item.id})"
-                )
-                await handle_backflush(
-                    db=db,
-                    parent_product_id=plan_item.product_id,
-                    produced_quantity=diff_qty,
-                    reference=f"WorkLogItem Update (Item {item.id})"
-                )
         await db.commit()
+
 
     # 단순 성공 응답 반환 (response_model 직렬화 오류 방지)
     return {"ok": True, "id": item.id, "good_quantity": item.good_quantity, "unit_price": item.unit_price}

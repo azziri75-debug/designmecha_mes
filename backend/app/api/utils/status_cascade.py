@@ -301,48 +301,89 @@ async def on_production_item_completed(
     # --- 1-C. [NEW] 헤더 상태 업데이트 및 완료일 기록 ---
     # 상세 공정 완료 시 헤더가 모두 완료되었는지 확인
     plan = await db.get(ProductionPlan, item.plan_id)
-    if plan and plan.status != ProductionStatus.COMPLETED:
-        pending_stmt = select(func.count(ProductionPlanItem.id)).where(
+    if plan:
+        # 해당 품목(product_id)의 모든 공정이 완료되었는지 확인하여 재고생산(StockProduction) 상태 동기화
+        prod_pending_stmt = select(func.count(ProductionPlanItem.id)).where(
             ProductionPlanItem.plan_id == plan.id,
+            ProductionPlanItem.product_id == item.product_id,
             ProductionPlanItem.status != ProductionStatus.COMPLETED
         )
-        p_res = await db.execute(pending_stmt)
-        if p_res.scalar() == 0:
-            plan.status = ProductionStatus.COMPLETED
-            plan.actual_completion_date = completion_date or now_kst().date()
-            db.add(plan)
-            
-            # [FIX] 미발주 소요량(MRP) 중 충분한 재고로 인해 발주되지 않은 잉여 데이터들을 함께 완료(COMPLETED) 처리
-            from app.models.purchasing import MaterialRequirement
-            mr_stmt = select(MaterialRequirement).where(
-                MaterialRequirement.plan_id == plan.id,
-                MaterialRequirement.status != "COMPLETED"
-            )
-            mr_res = await db.execute(mr_stmt)
-            for pending_mr in mr_res.scalars().all():
-                pending_mr.status = "COMPLETED"
-                db.add(pending_mr)
+        prod_pending_cnt = (await db.execute(prod_pending_stmt)).scalar() or 0
+        if prod_pending_cnt == 0:
+            from app.models.inventory import StockProduction, StockProductionStatus
+            if plan.stock_production_id:
+                sp = await db.get(StockProduction, plan.stock_production_id)
+                if sp and sp.product_id == item.product_id and sp.status != StockProductionStatus.COMPLETED:
+                    sp.status = StockProductionStatus.COMPLETED
+                    db.add(sp)
+            if plan.stock_production_order_id:
+                sp_stmt = select(StockProduction).where(
+                    StockProduction.order_id == plan.stock_production_order_id,
+                    StockProduction.product_id == item.product_id
+                )
+                for sp_item in (await db.execute(sp_stmt)).scalars().all():
+                    if sp_item.status != StockProductionStatus.COMPLETED:
+                        sp_item.status = StockProductionStatus.COMPLETED
+                        db.add(sp_item)
 
-    # --- 2. 마지막 공정일 경우 완제품 입고 및 BOM 차감 적용 (외주/사내 공통) ---
-    max_seq_stmt = select(func.max(ProductionPlanItem.sequence)).where(ProductionPlanItem.plan_id == item.plan_id)
+        if plan.status != ProductionStatus.COMPLETED:
+            pending_stmt = select(func.count(ProductionPlanItem.id)).where(
+                ProductionPlanItem.plan_id == plan.id,
+                ProductionPlanItem.status != ProductionStatus.COMPLETED
+            )
+            p_res = await db.execute(pending_stmt)
+            if p_res.scalar() == 0:
+                plan.status = ProductionStatus.COMPLETED
+                plan.actual_completion_date = completion_date or now_kst().date()
+                db.add(plan)
+
+                # 수주 상태도 PRODUCTION_COMPLETED로 동기화 (납품 전인 경우)
+                if plan.order_id:
+                    from app.models.sales import SalesOrder, OrderStatus
+                    so_obj = await db.get(SalesOrder, plan.order_id)
+                    if so_obj and so_obj.status not in [OrderStatus.DELIVERY_COMPLETED, OrderStatus.PARTIALLY_DELIVERED, OrderStatus.DELIVERED]:
+                        so_obj.status = OrderStatus.PRODUCTION_COMPLETED
+                        db.add(so_obj)
+                
+                # [FIX] 미발주 소요량(MRP) 중 충분한 재고로 인해 발주되지 않은 잉여 데이터들을 함께 완료(COMPLETED) 처리
+                from app.models.purchasing import MaterialRequirement
+                mr_stmt = select(MaterialRequirement).where(
+                    MaterialRequirement.plan_id == plan.id,
+                    MaterialRequirement.status != "COMPLETED"
+                )
+                mr_res = await db.execute(mr_stmt)
+                for pending_mr in mr_res.scalars().all():
+                    pending_mr.status = "COMPLETED"
+                    db.add(pending_mr)
+
+    # --- 2. 해당 품목(product_id)의 마지막 공정일 경우 완제품 입고 및 BOM 차감 적용 (중복 방지 stock_deducted 플래그 활용) ---
+    max_seq_stmt = select(func.max(ProductionPlanItem.sequence)).where(
+        ProductionPlanItem.plan_id == item.plan_id,
+        ProductionPlanItem.product_id == item.product_id
+    )
     max_seq_res = await db.execute(max_seq_stmt)
     max_seq = max_seq_res.scalar()
     is_last = (item.sequence == max_seq)
 
-    if is_last:
+    if is_last and not item.stock_deducted:
+        item.stock_deducted = True
+        db.add(item)
+
         # A. 완제품 입고 (+)
         if auto_delivery:
-            # [FIX] 납품 완료에 의한 자동 처리인 경우:
-            # 납품 시점에 이미 sales.py에서 OUT(-qty) 처리됨.
-            # 따라서 여기서는 생산 완료 기록용으로 IN(+qty)만 남김.
-            # (IN from production) + (OUT from delivery, already done) = net 0 → 정상.
-            # 이전 코드의 IN + 추가 OUT 방식은 이중 차감을 유발했음.
             await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Auto-Production ({reference})")
         else:
             await handle_stock_movement(db, item.product_id, item.quantity, TransactionType.IN, f"Production Done ({reference or item.id})")
         
-        # B. BOM 하위 부품 자동 차감 (-) - 생산 계획이 없을 때만 실행
-        # auto_delivery의 경우도 BOM 차감은 정상 처리 (생산이 실제 이루어진 것으로 간주)
+        # B. 생산중 수량(in_production_quantity) 차감 동기화
+        from app.models.inventory import Stock
+        stock_res = await db.execute(select(Stock).where(Stock.product_id == item.product_id))
+        stock_obj = stock_res.scalars().first()
+        if stock_obj:
+            stock_obj.in_production_quantity = max(0, (stock_obj.in_production_quantity or 0) - (item.quantity or 0))
+            db.add(stock_obj)
+
+        # C. BOM 하위 부품 자동 차감 (-)
         await handle_backflush(db, item.product_id, item.quantity, reference=f"Production #{item.plan_id}")
 
     await db.flush()
@@ -358,21 +399,35 @@ async def revert_production_item_completed(
     재고 변동 및 관련 상태를 되돌리는 함수.
     """
     from app.models.purchasing import PurchaseOrderItem, OutsourcingOrderItem
-    from app.models.inventory import TransactionType
+    from app.models.inventory import TransactionType, Stock, StockProduction, StockProductionStatus
     from app.api.utils.inventory import handle_stock_movement
 
     if (item.quantity or 0) <= 0:
         return
 
-    # 1. 마지막 공정일 경우: 완제품 재고 차감 및 부품 재고 복구
-    max_seq_stmt = select(func.max(ProductionPlanItem.sequence)).where(ProductionPlanItem.plan_id == item.plan_id)
+    # 1. 해당 품목(product_id)의 마지막 공정일 경우: 완제품 재고 차감 및 부품 재고 복구
+    max_seq_stmt = select(func.max(ProductionPlanItem.sequence)).where(
+        ProductionPlanItem.plan_id == item.plan_id,
+        ProductionPlanItem.product_id == item.product_id
+    )
     max_seq_res = await db.execute(max_seq_stmt)
     max_seq = max_seq_res.scalar()
     is_last = (item.sequence == max_seq)
 
-    if is_last:
+    if is_last and item.stock_deducted:
+        item.stock_deducted = False
+        db.add(item)
+
         # 완제품 회수 (-)
         await handle_stock_movement(db, item.product_id, -item.quantity, TransactionType.ADJUSTMENT, f"Revert Production Done ({reference or item.id})")
+        
+        # 생산중 수량 복원 (+)
+        stock_res = await db.execute(select(Stock).where(Stock.product_id == item.product_id))
+        stock_obj = stock_res.scalars().first()
+        if stock_obj:
+            stock_obj.in_production_quantity = (stock_obj.in_production_quantity or 0) + (item.quantity or 0)
+            db.add(stock_obj)
+
         # BOM 하위 부품 회수 (+) - handle_backflush의 반대 동작 (기본 부품만 일괄 반환)
         from app.models.product import BOM
         bom_query = select(BOM).where(BOM.parent_product_id == item.product_id)
@@ -396,8 +451,24 @@ async def revert_production_item_completed(
             await handle_stock_movement(db, os_item.product_id, -os_item.quantity, TransactionType.ADJUSTMENT, f"Revert Auto-OS-Receipt ({reference or 'Production'})")
             await handle_stock_movement(db, os_item.product_id, os_item.quantity, TransactionType.IN, f"Revert Auto-OS-Consumption ({reference or 'Production'})")
 
-    # 3. 헤더 상태 롤백
+    # 3. 헤더 및 재고생산 상태 롤백
     plan = await db.get(ProductionPlan, item.plan_id)
+    if plan:
+        if plan.stock_production_id:
+            sp = await db.get(StockProduction, plan.stock_production_id)
+            if sp and sp.product_id == item.product_id and sp.status == StockProductionStatus.COMPLETED:
+                sp.status = StockProductionStatus.IN_PROGRESS
+                db.add(sp)
+        if plan.stock_production_order_id:
+            sp_stmt = select(StockProduction).where(
+                StockProduction.order_id == plan.stock_production_order_id,
+                StockProduction.product_id == item.product_id,
+                StockProduction.status == StockProductionStatus.COMPLETED
+            )
+            for sp_item in (await db.execute(sp_stmt)).scalars().all():
+                sp_item.status = StockProductionStatus.IN_PROGRESS
+                db.add(sp_item)
+
     if plan and plan.status == ProductionStatus.COMPLETED:
         plan.status = ProductionStatus.IN_PROGRESS
         plan.actual_completion_date = None
@@ -408,7 +479,6 @@ async def revert_production_item_completed(
         if plan.order_id:
             order = await db.get(SalesOrder, plan.order_id)
             if order and order.status == OrderStatus.PRODUCTION_COMPLETED:
-                # [FIX] order.items 직접 접근 시 MissingGreenletError 발생 → 별도 쿼리 사용
                 from sqlalchemy import func as _func
                 delivered_sum_stmt = select(_func.sum(SalesOrderItem.delivered_quantity)).where(
                     SalesOrderItem.order_id == plan.order_id

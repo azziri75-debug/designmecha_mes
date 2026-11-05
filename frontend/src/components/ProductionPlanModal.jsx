@@ -17,8 +17,41 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
     const [staffList, setStaffList] = useState([]);
     const [equipments, setEquipments] = useState([]);
     const [productStocks, setProductStocks] = useState({}); // { product_id: current_stock }
+    const [productStockDetails, setProductStockDetails] = useState({}); // { product_id: { current, otherReserved, availCurrent, producingSp, availSp, maxAllocatable } }
     const [stockUseQtys, setStockUseQtys] = useState({}); // { product_id: use_qty }
     const [masterProcesses, setMasterProcesses] = useState([]); // Master process list
+
+    const isSalesOrderPlan = Boolean(order || plan?.order_id || plan?.order);
+
+    const buildStockMaps = (stockList, ownReservedMap = {}, isSO = true) => {
+        const stockMap = {};
+        const detailMap = {};
+        (stockList || []).forEach(s => {
+            const pid = s.product_id;
+            const ownRes = ownReservedMap[pid] || 0;
+            const totalRes = s.reserved_quantity || 0;
+            const otherReserved = Math.max(0, totalRes - ownRes);
+            const physicalCurrent = s.current_quantity || 0;
+            const producingSp = s.producing_sp || 0;
+            const availCurrent = Math.max(0, physicalCurrent - otherReserved);
+            const reservedFromSpByOthers = Math.max(0, otherReserved - Math.max(0, physicalCurrent));
+            const availSp = isSO ? Math.max(0, producingSp - reservedFromSpByOthers) : 0;
+            const maxAllocatable = availCurrent + availSp;
+
+            stockMap[pid] = maxAllocatable;
+            detailMap[pid] = {
+                current: physicalCurrent,
+                otherReserved,
+                availCurrent,
+                producingSp,
+                availSp,
+                maxAllocatable
+            };
+        });
+        setProductStocks(stockMap);
+        setProductStockDetails(detailMap);
+    };
+
 
     // Drag and Drop Refs
     const dragItem = useRef(null);
@@ -57,9 +90,7 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                 const productIds = [...new Set(plan.items.map(i => i.product_id))];
                 api.get('/inventory/stocks', { params: { product_ids: productIds.join(',') } })
                     .then(res => {
-                        const stockMap = {};
-                        res.data.forEach(s => { stockMap[s.product_id] = s.current_quantity; });
-                        setProductStocks(stockMap);
+                        buildStockMaps(res.data, initialStockUse, Boolean(plan?.order_id || plan?.order));
                     }).catch(() => { });
             } else if (order || stockProduction) {
                 // Create Mode
@@ -96,12 +127,11 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     // Fetch stocks
                     try {
                         const res = await api.get('/inventory/stocks', { params: { product_ids: productIds.join(',') } });
-                        const stockMap = {};
-                        res.data.forEach(s => { stockMap[s.product_id] = s.current_quantity; });
-                        setProductStocks(stockMap);
+                        buildStockMaps(res.data, {}, Boolean(order));
                     } catch (err) {
                         console.error("Failed to fetch stocks", err);
                     }
+
 
                     const defaultItems = [];
                     const initialStockUse = {};
@@ -528,69 +558,133 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                             </Box>
 
                             {/* Net Requirement Calculator */}
-                            <Box sx={{ p: 1.5, mb: 2, bgcolor: '#f1f5f9', borderRadius: 1, border: '1px solid #e2e8f0', display: 'flex', gap: 3, alignItems: 'center' }}>
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary" display="block">수주량 (Order)</Typography>
-                                    <Typography variant="body1" sx={{ color: '#64748b' }}>
-                                        {(() => {
-                                            const sourceQty = order?.items?.find(i => i.product_id === parseInt(productId))?.quantity ||
-                                                              plan?.order?.items?.find(i => i.product_id === parseInt(productId))?.quantity ||
-                                                              stockProduction?.quantity ||
-                                                              plan?.stock_production?.quantity || 0;
-                                            return (sourceQty || 0).toLocaleString();
-                                        })()}
-                                    </Typography>
-                                </Box>
-                                <Typography variant="h6" color="textSecondary">|</Typography>
-                                <Box sx={{ minWidth: 100 }}>
-                                    <Typography variant="caption" color="textSecondary" display="block">생산목표 (Gross)</Typography>
-                                    <TextField
-                                        size="small"
-                                        type="number"
-                                        value={group.items[0]?.gross_quantity || 0}
-                                        onChange={(e) => handleGrossQtyChange(productId, e.target.value)}
-                                        inputProps={{ min: 0 }}
-                                        variant="outlined"
-                                        disabled={isCompleted}
-                                        sx={{ bgcolor: isCompleted ? '#f8fafc' : 'white', '& .MuiInputBase-input': { fontWeight: 'bold' } }}
-                                    />
-                                </Box>
-                                <Typography variant="h6" color="textSecondary">-</Typography>
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary" display="block">현재고(Stock)</Typography>
-                                    <Typography variant="body1" color="primary" fontWeight="bold">{(productStocks[productId] || 0).toLocaleString()}</Typography>
-                                </Box>
-                                <Typography variant="h6" color="textSecondary">→</Typography>
-                                <Box sx={{ minWidth: 120 }}>
-                                    <Typography variant="caption" color="textSecondary" display="block">재고 소진량(Stock Use)</Typography>
-                                    <TextField
-                                        size="small"
-                                        type="number"
-                                        value={stockUseQtys[productId] || 0}
-                                        onChange={(e) => handleStockUseChange(productId, e.target.value)}
-                                        inputProps={{ min: 0, max: Math.min(productStocks[productId] || 0, group.items[0]?.gross_quantity || group.items[0]?.quantity || 0) }}
-                                        variant="outlined"
-                                        disabled={isCompleted}
-                                        sx={{ bgcolor: isCompleted ? '#f8fafc' : 'white' }}
-                                    />
-                                </Box>
-                                <Typography variant="h6" color="textSecondary">=</Typography>
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary" display="block">실 생산 수량(Net Qty)</Typography>
-                                    <Typography variant="h5" color="secondary" fontWeight="bold">{(group.items[0]?.quantity || 0).toLocaleString()}</Typography>
-                                </Box>
-                                <Box sx={{ ml: 'auto' }}>
-                                    {group.items[0]?.quantity === 0 ? (
-                                        <Typography variant="caption" sx={{ color: '#059669', bgcolor: '#ecfdf5', px: 1, py: 0.5, borderRadius: 1, border: '1px solid #10b981' }}>
-                                            ⚠️ 재고로 전량 대체 (자동 주문 생략)
-                                        </Typography>
-                                    ) : (
-                                        <Typography variant="caption" color="textSecondary">
-                                            * 부족분에 대해서만 자동 발주가 실행됩니다.
-                                        </Typography>
-                                    )}
-                                </Box>
-                            </Box>
+                            {(() => {
+                                const sDetail = productStockDetails[productId] || {
+                                    current: 0,
+                                    otherReserved: 0,
+                                    availCurrent: productStocks[productId] || 0,
+                                    producingSp: 0,
+                                    availSp: 0,
+                                    maxAllocatable: productStocks[productId] || 0,
+                                };
+                                const grossVal = group.items[0]?.gross_quantity || group.items[0]?.quantity || 0;
+                                const stockUseVal = stockUseQtys[productId] || 0;
+                                const maxUse = Math.min(sDetail.maxAllocatable || 0, grossVal);
+                                const usedFromCurrent = Math.min(stockUseVal, sDetail.availCurrent || 0);
+                                const usedFromSp = Math.max(0, stockUseVal - usedFromCurrent);
+
+                                return (
+                                    <Box sx={{ p: 1.5, mb: 2, bgcolor: '#f1f5f9', borderRadius: 1, border: '1px solid #e2e8f0', display: 'flex', flexWrap: 'wrap', gap: 2.5, alignItems: 'center' }}>
+                                        <Box>
+                                            <Typography variant="caption" color="textSecondary" display="block">수주/요청량 (Order)</Typography>
+                                            <Typography variant="body1" sx={{ color: '#64748b', fontWeight: 'bold' }}>
+                                                {(() => {
+                                                    const sourceQty = order?.items?.find(i => i.product_id === parseInt(productId))?.quantity ||
+                                                                      plan?.order?.items?.find(i => i.product_id === parseInt(productId))?.quantity ||
+                                                                      stockProduction?.items?.find(i => i.product_id === parseInt(productId))?.quantity ||
+                                                                      stockProduction?.quantity ||
+                                                                      plan?.stock_production?.quantity || 0;
+                                                    return (sourceQty || 0).toLocaleString();
+                                                })()}
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="h6" color="textSecondary">|</Typography>
+                                        <Box sx={{ minWidth: 95 }}>
+                                            <Typography variant="caption" color="textSecondary" display="block">생산목표 (Gross)</Typography>
+                                            <TextField
+                                                size="small"
+                                                type="number"
+                                                value={group.items[0]?.gross_quantity || 0}
+                                                onChange={(e) => handleGrossQtyChange(productId, e.target.value)}
+                                                inputProps={{ min: 0 }}
+                                                variant="outlined"
+                                                disabled={isCompleted}
+                                                sx={{ width: 95, bgcolor: isCompleted ? '#f8fafc' : 'white', '& .MuiInputBase-input': { fontWeight: 'bold' } }}
+                                            />
+                                        </Box>
+                                        <Typography variant="h6" color="textSecondary">-</Typography>
+                                        <Box>
+                                            <Typography variant="caption" color="textSecondary" display="block">가용 현재고</Typography>
+                                            <Typography variant="body1" color="primary" fontWeight="bold">
+                                                {(sDetail.availCurrent || 0).toLocaleString()}
+                                            </Typography>
+                                            {(sDetail.otherReserved > 0 || sDetail.current !== sDetail.availCurrent) && (
+                                                <Typography variant="caption" sx={{ color: '#64748b', display: 'block', fontSize: '0.68rem' }}>
+                                                    (실재고 {sDetail.current} / 타수주예약 {sDetail.otherReserved})
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                        {isSalesOrderPlan && (
+                                            <>
+                                                <Typography variant="h6" color="textSecondary">+</Typography>
+                                                <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: sDetail.availSp > 0 ? '#eef2ff' : 'transparent', border: sDetail.availSp > 0 ? '1px dashed #6366f1' : 'none' }}>
+                                                    <Typography variant="caption" sx={{ color: sDetail.availSp > 0 ? '#4f46e5' : 'text.secondary', fontWeight: sDetail.availSp > 0 ? 'bold' : 'normal' }} display="block">
+                                                        제작중 재고생산(선점가능)
+                                                    </Typography>
+                                                    <Typography variant="body1" sx={{ color: sDetail.availSp > 0 ? '#4f46e5' : '#94a3b8', fontWeight: 'bold' }}>
+                                                        {(sDetail.availSp || 0).toLocaleString()}
+                                                    </Typography>
+                                                    {sDetail.producingSp > sDetail.availSp && (
+                                                        <Typography variant="caption" sx={{ color: '#6366f1', display: 'block', fontSize: '0.68rem' }}>
+                                                            (총 재고생산중 {sDetail.producingSp})
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                            </>
+                                        )}
+                                        <Typography variant="h6" color="textSecondary">→</Typography>
+                                        <Box sx={{ minWidth: 140 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.3 }}>
+                                                <Typography variant="caption" color="textSecondary">
+                                                    {isSalesOrderPlan ? '재고/제작중 선점량' : '재고 소진량'}
+                                                </Typography>
+                                                {!isCompleted && maxUse > 0 && stockUseVal !== maxUse && (
+                                                    <Button
+                                                        size="small"
+                                                        variant="text"
+                                                        onClick={() => handleStockUseChange(productId, maxUse)}
+                                                        sx={{ p: 0, minWidth: 'auto', fontSize: '0.68rem', color: '#4f46e5', fontWeight: 'bold' }}
+                                                    >
+                                                        최대선점({maxUse})
+                                                    </Button>
+                                                )}
+                                            </Box>
+                                            <TextField
+                                                size="small"
+                                                type="number"
+                                                value={stockUseVal}
+                                                onChange={(e) => handleStockUseChange(productId, e.target.value)}
+                                                inputProps={{ min: 0, max: maxUse }}
+                                                variant="outlined"
+                                                disabled={isCompleted}
+                                                sx={{ width: 130, bgcolor: isCompleted ? '#f8fafc' : 'white' }}
+                                            />
+                                        </Box>
+                                        <Typography variant="h6" color="textSecondary">=</Typography>
+                                        <Box>
+                                            <Typography variant="caption" color="textSecondary" display="block">실 생산 수량(Net Qty)</Typography>
+                                            <Typography variant="h5" color="secondary" fontWeight="bold">{(group.items[0]?.quantity || 0).toLocaleString()}</Typography>
+                                        </Box>
+                                        <Box sx={{ ml: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+                                            {usedFromSp > 0 && (
+                                                <Typography variant="caption" sx={{ color: '#4338ca', bgcolor: '#e0e7ff', px: 1, py: 0.3, borderRadius: 1, border: '1px solid #818cf8', fontWeight: 'bold' }}>
+                                                    📌 현재고 {usedFromCurrent}개 + 제작중 재고생산 {usedFromSp}개 선점 반영
+                                                </Typography>
+                                            )}
+                                            {group.items[0]?.quantity === 0 ? (
+                                                <Typography variant="caption" sx={{ color: '#059669', bgcolor: '#ecfdf5', px: 1, py: 0.5, borderRadius: 1, border: '1px solid #10b981' }}>
+                                                    ⚠️ 재고/선점분으로 전량 대체 (신규 생산 생략)
+                                                </Typography>
+                                            ) : (
+                                                <Typography variant="caption" color="textSecondary">
+                                                    * 부족분({(group.items[0]?.quantity || 0).toLocaleString()})에 대해서만 생산/발주가 진행됩니다.
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    </Box>
+                                );
+                            })()}
+
 
                             <TableContainer>
                                 <Table size="small">
