@@ -562,6 +562,8 @@ const PurchasePage = ({ type }) => {
             else if (tabValue === 2) fetchOrders();
             else fetchCompletedOrders();
         }
+        setSelectedPendingItems([]);
+        setSelectedMrpItems([]);
         setModalOpen(false);
         setConsumableModalOpen(false);
     };
@@ -743,7 +745,14 @@ const PurchasePage = ({ type }) => {
                                                     <span className="text-blue-400 font-medium">{item.requested_partner_name}</span>
                                                 ) : <span className="text-gray-500">-</span>}
                                             </td>
-                                            <td className="px-4 py-4">{item.quantity} {item.product?.unit || 'EA'}</td>
+                                            <td className="px-4 py-4">
+                                                <div className="font-bold text-white">{item.quantity} {item.product?.unit || 'EA'}</div>
+                                                {item.ordered_quantity > 0 && (
+                                                    <div className="text-[11px] text-amber-400">
+                                                        (총 {item.original_quantity} 중 기발주 {item.ordered_quantity})
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-4 truncate max-w-[160px]" title={item.remarks}>{item.remarks || '-'}</td>
                                             <td className="px-4 py-4 whitespace-nowrap">{item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
                                             <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
@@ -785,7 +794,14 @@ const PurchasePage = ({ type }) => {
                                             <td className="px-4 py-4 whitespace-nowrap">{item.process_name || '-'}</td>
                                             <td className="px-4 py-4 font-bold">{item.product?.name || '-'}</td>
                                             <td className="px-4 py-4 truncate">{item.product?.specification || '-'}</td>
-                                            <td className="px-4 py-4">{item.quantity || 0}</td>
+                                            <td className="px-4 py-4">
+                                                <div className="font-bold text-white">{item.quantity || 0}</div>
+                                                {item.ordered_quantity > 0 && (
+                                                    <div className="text-[11px] text-amber-400">
+                                                        (총 {item.original_quantity} 중 기발주 {item.ordered_quantity})
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-4">{item.product?.unit || 'EA'}</td>
                                             <td className="px-4 py-4 whitespace-nowrap">{item.plan?.plan_date || '-'}</td>
                                             <td className="px-4 py-4 truncate">{item.partner_name || '-'}</td>

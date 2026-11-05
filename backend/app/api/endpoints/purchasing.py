@@ -20,6 +20,208 @@ from app.api.utils.inventory import handle_stock_movement
 
 router = APIRouter()
 
+
+async def _sync_material_requirement_status(db: AsyncSession, req_id: Optional[int]):
+    if not req_id:
+        return
+    req = await db.get(MaterialRequirement, req_id)
+    if not req:
+        return
+    product_id = req.product_id
+
+    completed_plan_subq = select(ProductionPlan.id).where(
+        cast(ProductionPlan.status, String).in_([ProductionStatus.COMPLETED.value, ProductionStatus.CANCELED.value])
+    )
+    active_mr_stmt = select(MaterialRequirement).where(
+        MaterialRequirement.product_id == product_id,
+        MaterialRequirement.status.in_(['PENDING', 'ORDERED']),
+        or_(
+            MaterialRequirement.plan_id.is_(None),
+            MaterialRequirement.plan_id.notin_(completed_plan_subq)
+        )
+    )
+    active_mrs = (await db.execute(active_mr_stmt)).scalars().all()
+    if not active_mrs:
+        active_mrs = [req]
+
+    mr_ids = [m.id for m in active_mrs]
+    total_required = sum(int(m.required_quantity or 0) for m in active_mrs)
+
+    stmt = (
+        select(PurchaseOrderItem, PurchaseOrder.status)
+        .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+        .where(
+            PurchaseOrderItem.material_requirement_id.in_(mr_ids),
+            PurchaseOrder.status != PurchaseStatus.CANCELED
+        )
+    )
+    rows = (await db.execute(stmt)).all()
+    linked_ordered = sum(int(pi.quantity or 0) for pi, _ in rows)
+    linked_completed = sum(
+        int(pi.quantity or 0)
+        for pi, st in rows
+        if st == PurchaseStatus.COMPLETED or str(st) == 'COMPLETED'
+    )
+
+    stock_val = (await db.execute(
+        select(func.sum(Stock.current_quantity)).where(Stock.product_id == product_id)
+    )).scalar() or 0
+    open_po_val = (await db.execute(
+        select(func.sum(PurchaseOrderItem.quantity - PurchaseOrderItem.received_quantity))
+        .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+        .where(
+            PurchaseOrderItem.product_id == product_id,
+            PurchaseOrder.status.in_([PurchaseStatus.PENDING, PurchaseStatus.ORDERED, PurchaseStatus.PARTIAL])
+        )
+    )).scalar() or 0
+
+    covered_qty = max(int(stock_val) + int(open_po_val), int(linked_ordered))
+    remaining_shortage = max(0, total_required - covered_qty)
+
+    for m in active_mrs:
+        if remaining_shortage <= 0 and total_required > 0:
+            if linked_ordered > 0 and linked_completed >= linked_ordered:
+                m.status = 'COMPLETED'
+            else:
+                m.status = 'ORDERED'
+        else:
+            m.status = 'PENDING'
+        db.add(m)
+
+
+async def _sync_consumable_wait_status(db: AsyncSession, wait_id: Optional[int]):
+    if not wait_id:
+        return
+    wait_req = await db.get(ConsumablePurchaseWait, wait_id)
+    if not wait_req:
+        return
+    stmt = (
+        select(PurchaseOrderItem, PurchaseOrder.status)
+        .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+        .where(
+            PurchaseOrderItem.consumable_purchase_wait_id == wait_id,
+            PurchaseOrder.status != PurchaseStatus.CANCELED
+        )
+    )
+    rows = (await db.execute(stmt)).all()
+    total_ordered = sum(int(pi.quantity or 0) for pi, _ in rows)
+    completed_qty = sum(
+        int(pi.quantity or 0)
+        for pi, st in rows
+        if st == PurchaseStatus.COMPLETED or str(st) == 'COMPLETED'
+    )
+    target_qty = int(wait_req.quantity or 0)
+    if target_qty > 0 and completed_qty >= target_qty:
+        wait_req.status = 'COMPLETED'
+    elif target_qty > 0 and total_ordered >= target_qty:
+        wait_req.status = 'ORDERED'
+    else:
+        wait_req.status = 'PENDING'
+    db.add(wait_req)
+
+
+async def _sync_plan_item_from_purchases(db: AsyncSession, plan_item_id: Optional[int]):
+    """
+    Syncs ProductionPlanItem.cost and status across all split PurchaseOrderItems.
+    Returns (is_fully_completed, total_completed_qty).
+    """
+    if not plan_item_id:
+        return False, 0
+    plan_item = await db.get(ProductionPlanItem, plan_item_id)
+    if not plan_item:
+        return False, 0
+    stmt = (
+        select(PurchaseOrderItem, PurchaseOrder.status)
+        .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+        .where(
+            PurchaseOrderItem.production_plan_item_id == plan_item_id,
+            PurchaseOrder.status != PurchaseStatus.CANCELED
+        )
+    )
+    rows = (await db.execute(stmt)).all()
+    if not rows:
+        plan_item.cost = 0.0
+        if plan_item.status != ProductionStatus.COMPLETED:
+            plan_item.status = ProductionStatus.PLANNED
+        db.add(plan_item)
+        return False, 0
+
+    plan_item.cost = sum(float(pi.unit_price or 0) * int(pi.quantity or 0) for pi, _ in rows)
+    completed_qty = sum(
+        int(pi.quantity or 0)
+        for pi, st in rows
+        if st == PurchaseStatus.COMPLETED or str(st) == 'COMPLETED'
+    )
+    all_completed = all(
+        st == PurchaseStatus.COMPLETED or str(st) == 'COMPLETED'
+        for _, st in rows
+    )
+    any_progressed = any(
+        st in (PurchaseStatus.ORDERED, PurchaseStatus.PARTIAL, PurchaseStatus.COMPLETED)
+        or str(st) in ('ORDERED', 'PARTIAL', 'COMPLETED')
+        for _, st in rows
+    )
+    target_qty = int(plan_item.quantity or 0)
+    is_fully_completed = (target_qty > 0 and completed_qty >= target_qty and all_completed)
+
+    if not is_fully_completed:
+        if any_progressed and plan_item.status == ProductionStatus.PLANNED:
+            plan_item.status = ProductionStatus.IN_PROGRESS
+    db.add(plan_item)
+    return is_fully_completed, completed_qty
+
+
+async def _sync_plan_item_from_outsourcing(db: AsyncSession, plan_item_id: Optional[int]):
+    """
+    Syncs ProductionPlanItem.cost and status across all split OutsourcingOrderItems.
+    Returns (is_fully_completed, total_completed_qty).
+    """
+    if not plan_item_id:
+        return False, 0
+    plan_item = await db.get(ProductionPlanItem, plan_item_id)
+    if not plan_item:
+        return False, 0
+    stmt = (
+        select(OutsourcingOrderItem, OutsourcingOrder.status)
+        .join(OutsourcingOrder, OutsourcingOrderItem.outsourcing_order_id == OutsourcingOrder.id)
+        .where(
+            OutsourcingOrderItem.production_plan_item_id == plan_item_id,
+            OutsourcingOrder.status != OutsourcingStatus.CANCELED
+        )
+    )
+    rows = (await db.execute(stmt)).all()
+    if not rows:
+        plan_item.cost = 0.0
+        if plan_item.status != ProductionStatus.COMPLETED:
+            plan_item.status = ProductionStatus.PLANNED
+        db.add(plan_item)
+        return False, 0
+
+    plan_item.cost = sum(float(oi.unit_price or 0) * int(oi.quantity or 0) for oi, _ in rows)
+    completed_qty = sum(
+        int(oi.quantity or 0)
+        for oi, st in rows
+        if st == OutsourcingStatus.COMPLETED or str(st) == 'COMPLETED'
+    )
+    all_completed = all(
+        st in (OutsourcingStatus.COMPLETED, OutsourcingStatus.QUOTATION, OutsourcingStatus.QUOTATION_COMPLETE)
+        or str(st) in ('COMPLETED', 'QUOTATION', 'QUOTATION_COMPLETE')
+        for _, st in rows
+    )
+    any_progressed = any(
+        st in (OutsourcingStatus.ORDERED, OutsourcingStatus.COMPLETED)
+        or str(st) in ('ORDERED', 'COMPLETED')
+        for _, st in rows
+    )
+    target_qty = int(plan_item.quantity or 0)
+    is_fully_completed = (target_qty > 0 and completed_qty >= target_qty and all_completed)
+
+    if not is_fully_completed:
+        if any_progressed and plan_item.status == ProductionStatus.PLANNED:
+            plan_item.status = ProductionStatus.IN_PROGRESS
+    db.add(plan_item)
+    return is_fully_completed, completed_qty
+
 # --- MRP (Material Requirements Planning) ---
 
 @router.get("/mrp/unordered-requirements", response_model=List[schemas.MaterialRequirementResponse])
@@ -100,18 +302,41 @@ async def get_unordered_requirements(
             if order_no:
                 so_map.setdefault(pid, []).append(order_no)
 
+    linked_po_map = {}
+    if product_ids:
+        linked_stmt = (
+            select(
+                MaterialRequirement.product_id,
+                func.sum(PurchaseOrderItem.quantity)
+            )
+            .join(PurchaseOrderItem, PurchaseOrderItem.material_requirement_id == MaterialRequirement.id)
+            .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+            .where(
+                MaterialRequirement.product_id.in_(product_ids),
+                MaterialRequirement.status == status,
+                PurchaseOrder.status != PurchaseStatus.CANCELED
+            )
+            .group_by(MaterialRequirement.product_id)
+        )
+        for pid, l_qty in (await db.execute(linked_stmt)).all():
+            linked_po_map[pid] = int(l_qty or 0)
+
     final_results = []
     for product, total_required, min_mr_id, latest_created, open_qty, live_stock in rows:
         so_numbers = so_map.get(product.id, [])
-        
+        linked_qty = linked_po_map.get(product.id, 0)
+        effective_open_qty = max(int(open_qty or 0), linked_qty)
+        covered = max(int(live_stock or 0) + int(open_qty or 0), linked_qty)
+        shortage = max(0, int(total_required or 0) - covered)
+
         # 합산된 데이터 구성
         res = schemas.MaterialRequirementResponse(
             id=min_mr_id, # 대표 ID 하나 사용
             product_id=product.id,
             required_quantity=int(total_required or 0),
             current_stock=int(live_stock or 0), # 실시간 재고 반영
-            open_purchase_qty=int(open_qty or 0), # 실시간 발주 잔량 반영
-            shortage_quantity=max(0, int(total_required or 0) - int(live_stock or 0) - int(open_qty or 0)), # 실질 부족분 계산
+            open_purchase_qty=effective_open_qty, # 실시간 발주 잔량 반영
+            shortage_quantity=shortage, # 실질 부족분 계산
             created_at=latest_created,
             product_name=product.name,
             specification=product.specification,
@@ -160,13 +385,47 @@ async def get_consumable_waits(
         staff_res = await db.execute(select(Staff.id, Staff.name).where(Staff.id.in_(author_ids)))
         author_map = {sid: sname for sid, sname in staff_res.all()}
 
+    wait_ids = [w.id for w in waits]
+    ordered_map = {}
+    if wait_ids:
+        po_stmt = (
+            select(
+                PurchaseOrderItem.consumable_purchase_wait_id,
+                func.sum(PurchaseOrderItem.quantity)
+            )
+            .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+            .where(
+                PurchaseOrderItem.consumable_purchase_wait_id.in_(wait_ids),
+                PurchaseOrder.status != PurchaseStatus.CANCELED
+            )
+            .group_by(PurchaseOrderItem.consumable_purchase_wait_id)
+        )
+        for wid, q_sum in (await db.execute(po_stmt)).all():
+            ordered_map[wid] = int(q_sum or 0)
+
+    filtered_waits = []
     for wait in waits:
         if wait.approval_document:
             wait.approval_title = wait.approval_document.title
             if wait.approval_document.author_id in author_map:
                 wait.author_name = author_map[wait.approval_document.author_id]
-                
-    return waits
+        orig_qty = int(wait.quantity or 0)
+        ordered_qty = ordered_map.get(wait.id, 0)
+        if status == "PENDING":
+            remaining_qty = orig_qty - ordered_qty
+            if remaining_qty <= 0:
+                continue
+            _ = wait.product
+            db.expunge(wait)
+            wait.original_quantity = orig_qty
+            wait.ordered_quantity = ordered_qty
+            wait.quantity = remaining_qty
+        else:
+            wait.original_quantity = orig_qty
+            wait.ordered_quantity = ordered_qty
+        filtered_waits.append(wait)
+
+    return filtered_waits
 
 @router.get("/purchase/consumables/match", response_model=List[schemas.Product])
 async def match_consumables(
@@ -217,9 +476,9 @@ async def register_consumable_order(
         await db.flush()
         product_id = new_product.id
         
-    # Update wait item
+    # Update wait item product mapping
     wait_item.product_id = product_id
-    wait_item.status = "ORDERED"
+    db.add(wait_item)
     
     # 3. Create Purchase Order
     from datetime import date
@@ -247,16 +506,19 @@ async def register_consumable_order(
     db.add(new_po)
     await db.flush()
     
-    # 4. Create Purchase Order Item
+    # 4. Create Purchase Order Item (support split quantity)
+    order_qty = int(req.quantity) if (req.quantity and int(req.quantity) > 0) else int(wait_item.quantity or 0)
     po_item = PurchaseOrderItem(
         purchase_order_id=new_po.id,
         product_id=product_id,
-        quantity=wait_item.quantity,
+        quantity=order_qty,
         unit_price=req.unit_price,
         manufacturer=req.manufacturer or wait_item.requested_manufacturer,
         consumable_purchase_wait_id=wait_item.id
     )
     db.add(po_item)
+    await db.flush()
+    await _sync_consumable_wait_status(db, wait_item.id)
 
     await db.commit()
     return {"message": "발주가 성공적으로 등록되었습니다.", "id": new_po.id, "order_no": order_no}
@@ -459,19 +721,14 @@ async def read_pending_purchase_items(
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.items).selectinload(StockProduction.product),
-            selectinload(ProductionPlanItem.purchase_items),
-            selectinload(ProductionPlanItem.outsourcing_items),
+            selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlanItem.work_log_items)
         )\
         .where(or_(
             ProductionPlanItem.course_type.ilike('%PURCHASE%'),
             ProductionPlanItem.course_type.like('%구매%')
         ))\
-        .where(
-            ~ProductionPlanItem.purchase_items.any(
-                PurchaseOrderItem.purchase_order.has(PurchaseOrder.status != PurchaseStatus.CANCELED)
-            )
-        )\
         .where(ProductionPlanItem.status != ProductionStatus.COMPLETED)\
         .where(ProductionPlanItem.quantity > 0)\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)\
@@ -487,8 +744,18 @@ async def read_pending_purchase_items(
     result = await db.execute(query)
     items = result.scalars().all()
     
-    # [NEW] Populate metadata for UI
+    pending_items = []
     for i in items:
+        orig_qty = int(i.quantity or 0)
+        ordered_qty = sum(
+            int(pi.quantity or 0)
+            for pi in (i.purchase_items or [])
+            if pi.purchase_order and pi.purchase_order.status != PurchaseStatus.CANCELED and str(pi.purchase_order.status) != "CANCELED"
+        )
+        remaining_qty = orig_qty - ordered_qty
+        if remaining_qty <= 0:
+            continue
+
         if i.plan:
             if i.plan.order:
                 i.client_name = i.plan.order.partner.name if i.plan.order.partner else "-"
@@ -504,9 +771,17 @@ async def read_pending_purchase_items(
             i.client_name = "-"
             i.product_name_of_plan = i.product.name if i.product else "-"
 
+        # Detach from session before mutating quantity so DB is never overwritten with remaining_qty
+        db.expunge(i)
+        i.original_quantity = orig_qty
+        i.ordered_quantity = ordered_qty
+        if ordered_qty > 0:
+            i.cost = 0.0
+        i.quantity = remaining_qty
+        pending_items.append(i)
 
-    print(f"[DEBUG] Pending Purchase Items: Found {len(items)} items.")
-    return items
+    print(f"[DEBUG] Pending Purchase Items: Found {len(pending_items)} items.")
+    return pending_items
 
 
 @router.get("/outsourcing/pending-items", response_model=List[prod_schemas.ProductionPlanItem])
@@ -533,19 +808,14 @@ async def read_pending_outsourcing_items(
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production).selectinload(StockProduction.partner),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.partner),
             selectinload(ProductionPlanItem.plan).selectinload(ProductionPlan.stock_production_order).selectinload(StockProductionOrder.items).selectinload(StockProduction.product),
-            selectinload(ProductionPlanItem.purchase_items),
-            selectinload(ProductionPlanItem.outsourcing_items),
+            selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
             selectinload(ProductionPlanItem.work_log_items)
         )\
         .where(or_(
             ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
             ProductionPlanItem.course_type.like('%외주%')
         ))\
-        .where(
-            ~ProductionPlanItem.outsourcing_items.any(
-                OutsourcingOrderItem.outsourcing_order.has(OutsourcingOrder.status != OutsourcingStatus.CANCELED)
-            )
-        )\
         .where(ProductionPlanItem.status != ProductionStatus.COMPLETED)\
         .where(ProductionPlanItem.quantity > 0)\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)\
@@ -561,8 +831,18 @@ async def read_pending_outsourcing_items(
     result = await db.execute(query)
     items = result.scalars().all()
 
-    # [NEW] Populate metadata for UI
+    pending_items = []
     for i in items:
+        orig_qty = int(i.quantity or 0)
+        ordered_qty = sum(
+            int(oi.quantity or 0)
+            for oi in (i.outsourcing_items or [])
+            if oi.outsourcing_order and oi.outsourcing_order.status != OutsourcingStatus.CANCELED and str(oi.outsourcing_order.status) != "CANCELED"
+        )
+        remaining_qty = orig_qty - ordered_qty
+        if remaining_qty <= 0:
+            continue
+
         if i.plan:
             if i.plan.order:
                 i.client_name = i.plan.order.partner.name if i.plan.order.partner else "-"
@@ -578,9 +858,17 @@ async def read_pending_outsourcing_items(
             i.client_name = "-"
             i.product_name_of_plan = i.product.name if i.product else "-"
 
+        # Detach from session before mutating quantity so DB is never overwritten with remaining_qty
+        db.expunge(i)
+        i.original_quantity = orig_qty
+        i.ordered_quantity = ordered_qty
+        if ordered_qty > 0:
+            i.cost = 0.0
+        i.quantity = remaining_qty
+        pending_items.append(i)
 
-    print(f"[DEBUG] Pending Outsourcing Items: Found {len(items)} items.")
-    return items
+    print(f"[DEBUG] Pending Outsourcing Items: Found {len(pending_items)} items.")
+    return pending_items
 
 
 # --- Purchase Orders ---
@@ -654,27 +942,12 @@ async def create_purchase_order(
         await db.flush()
         
         for item in order_in.items:
-            # Update MaterialRequirement status if linked
             if item.material_requirement_id:
-                req = await db.get(MaterialRequirement, item.material_requirement_id)
-                if req:
-                    req.status = "ORDERED"
-                    db.add(req)
-                    
-            # Update ConsumablePurchaseWait status if linked
+                await _sync_material_requirement_status(db, item.material_requirement_id)
             if item.consumable_purchase_wait_id:
-                wait_req = await db.get(ConsumablePurchaseWait, item.consumable_purchase_wait_id)
-                if wait_req:
-                    wait_req.status = "ORDERED"
-                    db.add(wait_req)
-            
-            # Update ProductionPlanItem status if linked
+                await _sync_consumable_wait_status(db, item.consumable_purchase_wait_id)
             if item.production_plan_item_id:
-                from app.models.production import ProductionStatus, ProductionPlanItem
-                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
-                if plan_item:
-                    plan_item.cost = item.unit_price * item.quantity
-                    db.add(plan_item)
+                await _sync_plan_item_from_purchases(db, item.production_plan_item_id)
 
         await db.commit()
         await db.refresh(db_order)
@@ -765,11 +1038,14 @@ async def complete_purchase_order(
         if item.production_plan_item_id:
             plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
             if plan_item:
-                if plan_item.status != ProductionStatus.COMPLETED:
-                    plan_item.status = ProductionStatus.COMPLETED
-                    db.add(plan_item)
-                    await on_production_item_completed(db, plan_item, reference=f"PO: {order.order_no}", completion_date=actual_date)
-                completed_plan_ids.add(plan_item.plan_id)
+                await db.flush()
+                is_fully_done, _ = await _sync_plan_item_from_purchases(db, item.production_plan_item_id)
+                if is_fully_done:
+                    if plan_item.status != ProductionStatus.COMPLETED:
+                        plan_item.status = ProductionStatus.COMPLETED
+                        db.add(plan_item)
+                        await on_production_item_completed(db, plan_item, reference=f"PO: {order.order_no}", completion_date=actual_date)
+                    completed_plan_ids.add(plan_item.plan_id)
         elif qty > 0 and item.product_id:
             product = await db.get(Product, item.product_id)
             if not product or product.item_type != 'CONSUMABLE':
@@ -782,15 +1058,11 @@ async def complete_purchase_order(
                 )
         
         if getattr(item, 'consumable_purchase_wait_id', None):
-            cw_res = await db.execute(select(ConsumablePurchaseWait).where(ConsumablePurchaseWait.id == item.consumable_purchase_wait_id))
-            cw = cw_res.scalars().first()
-            if cw:
-                cw.status = "COMPLETED"
+            await db.flush()
+            await _sync_consumable_wait_status(db, item.consumable_purchase_wait_id)
         if getattr(item, 'material_requirement_id', None):
-            mr = await db.get(MaterialRequirement, item.material_requirement_id)
-            if mr:
-                mr.status = "COMPLETED"
-                db.add(mr)
+            await db.flush()
+            await _sync_material_requirement_status(db, item.material_requirement_id)
 
     await db.commit()
     for pid in completed_plan_ids:
@@ -844,11 +1116,14 @@ async def complete_outsourcing_order(
         if item.production_plan_item_id:
             plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
             if plan_item:
-                if plan_item.status != ProductionStatus.COMPLETED:
-                    plan_item.status = ProductionStatus.COMPLETED
-                    db.add(plan_item)
-                    await on_production_item_completed(db, plan_item, reference=f"OS: {order.order_no}", completion_date=actual_date)
-                completed_plan_ids.add(plan_item.plan_id)
+                await db.flush()
+                is_fully_done, _ = await _sync_plan_item_from_outsourcing(db, item.production_plan_item_id)
+                if is_fully_done:
+                    if plan_item.status != ProductionStatus.COMPLETED:
+                        plan_item.status = ProductionStatus.COMPLETED
+                        db.add(plan_item)
+                        await on_production_item_completed(db, plan_item, reference=f"OS: {order.order_no}", completion_date=actual_date)
+                    completed_plan_ids.add(plan_item.plan_id)
         elif item.product_id:
             # 생산계획 공정과 무관한 단독 외주 발주인 경우에만 직접 입고 처리
             await handle_stock_movement(
@@ -1117,19 +1392,31 @@ async def update_purchase_order(
                  )
                  db.add(db_item)
          
+         affected_plan_ids = {item.production_plan_item_id for item in current_items.values() if item.production_plan_item_id}
+         affected_mr_ids = {item.material_requirement_id for item in current_items.values() if getattr(item, 'material_requirement_id', None)}
+         affected_cw_ids = {item.consumable_purchase_wait_id for item in current_items.values() if getattr(item, 'consumable_purchase_wait_id', None)}
+
          # Delete missing
          for item_id, item in current_items.items():
              if item_id not in incoming_ids:
                  await db.delete(item)
 
-         # Sync cost to Plan Items
-         from app.models.production import ProductionPlanItem
+         await db.flush()
+
          for item_in in order_in.items:
              if item_in.production_plan_item_id:
-                 plan_item = await db.get(ProductionPlanItem, item_in.production_plan_item_id)
-                 if plan_item:
-                     plan_item.cost = item_in.unit_price * item_in.quantity
-                     db.add(plan_item)
+                 affected_plan_ids.add(item_in.production_plan_item_id)
+             if getattr(item_in, 'material_requirement_id', None):
+                 affected_mr_ids.add(item_in.material_requirement_id)
+             if getattr(item_in, 'consumable_purchase_wait_id', None):
+                 affected_cw_ids.add(item_in.consumable_purchase_wait_id)
+
+         for pid in affected_plan_ids:
+             await _sync_plan_item_from_purchases(db, pid)
+         for mrid in affected_mr_ids:
+             await _sync_material_requirement_status(db, mrid)
+         for cwid in affected_cw_ids:
+             await _sync_consumable_wait_status(db, cwid)
 
     # --- Process Sync Logic ---
     if db_order.status == PurchaseStatus.ORDERED:
@@ -1158,11 +1445,14 @@ async def update_purchase_order(
             if item.production_plan_item_id:
                 plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
                 if plan_item:
-                    if plan_item.status != ProductionStatus.COMPLETED:
-                        plan_item.status = ProductionStatus.COMPLETED
-                        db.add(plan_item)
-                        await on_production_item_completed(db, plan_item, reference=db_order.order_no, completion_date=db_order.actual_delivery_date)
-                    completed_po_plan_ids.add(plan_item.plan_id)
+                    await db.flush()
+                    is_fully_done, _ = await _sync_plan_item_from_purchases(db, item.production_plan_item_id)
+                    if is_fully_done:
+                        if plan_item.status != ProductionStatus.COMPLETED:
+                            plan_item.status = ProductionStatus.COMPLETED
+                            db.add(plan_item)
+                            await on_production_item_completed(db, plan_item, reference=db_order.order_no, completion_date=db_order.actual_delivery_date)
+                        completed_po_plan_ids.add(plan_item.plan_id)
             elif old_status != PurchaseStatus.COMPLETED and product and product.item_type != 'CONSUMABLE':
                 await handle_stock_movement(
                     db=db,
@@ -1215,29 +1505,20 @@ async def delete_purchase_order(
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
         
-    # Revert ProductionPlanItem status if linked
-    if db_order.items:
-        from app.models.production import ProductionPlanItem, ProductionStatus
-        for item in db_order.items:
-            if item.production_plan_item_id:
-                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
-                if plan_item:
-                    plan_item.status = ProductionStatus.PLANNED
-                    db.add(plan_item)
-            if getattr(item, 'material_requirement_id', None):
-                from app.models.purchasing import MaterialRequirement
-                mrp_req = await db.get(MaterialRequirement, item.material_requirement_id)
-                if mrp_req:
-                    mrp_req.status = "PENDING"
-                    db.add(mrp_req)
-            if getattr(item, 'consumable_purchase_wait_id', None):
-                from app.models.purchasing import ConsumablePurchaseWait
-                wait_req = await db.get(ConsumablePurchaseWait, item.consumable_purchase_wait_id)
-                if wait_req:
-                    wait_req.status = "PENDING"
-                    db.add(wait_req)
-        
+    affected_plan_ids = {item.production_plan_item_id for item in (db_order.items or []) if item.production_plan_item_id}
+    affected_mr_ids = {item.material_requirement_id for item in (db_order.items or []) if getattr(item, 'material_requirement_id', None)}
+    affected_cw_ids = {item.consumable_purchase_wait_id for item in (db_order.items or []) if getattr(item, 'consumable_purchase_wait_id', None)}
+
     await db.delete(db_order)
+    await db.flush()
+
+    for pid in affected_plan_ids:
+        await _sync_plan_item_from_purchases(db, pid)
+    for mrid in affected_mr_ids:
+        await _sync_material_requirement_status(db, mrid)
+    for cwid in affected_cw_ids:
+        await _sync_consumable_wait_status(db, cwid)
+
     await db.commit()
     return None
 
@@ -1291,18 +1572,16 @@ async def create_outsourcing_order(
             product_id=item.product_id,
             quantity=item.quantity,
             unit_price=item.unit_price,
-            note=item.note
+            note=item.note,
+            pricing_type=getattr(item, 'pricing_type', None) or 'UNIT',
+            total_weight=getattr(item, 'total_weight', None)
         )
         db.add(db_item)
-        
-        # Update ProductionPlanItem status if linked
+
+    await db.flush()
+    for item in order_in.items:
         if item.production_plan_item_id:
-            from app.models.production import ProductionStatus, ProductionPlanItem
-            plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
-            if plan_item:
-                # Do not set status here
-                plan_item.cost = item.unit_price * item.quantity
-                db.add(plan_item)
+            await _sync_plan_item_from_outsourcing(db, item.production_plan_item_id)
     
     await db.commit()
     await db.refresh(db_order)
@@ -1463,19 +1742,21 @@ async def update_outsourcing_order(
                  )
                  db.add(db_item)
          
+         affected_plan_ids = {item.production_plan_item_id for item in current_items.values() if item.production_plan_item_id}
+
          # Delete missing
          for item_id, item in current_items.items():
              if item_id not in incoming_ids:
                  await db.delete(item)
 
-         # Sync cost to Plan Items
-         from app.models.production import ProductionPlanItem
+         await db.flush()
+
          for item_in in order_in.items:
              if item_in.production_plan_item_id:
-                 plan_item = await db.get(ProductionPlanItem, item_in.production_plan_item_id)
-                 if plan_item:
-                     plan_item.cost = item_in.unit_price * item_in.quantity
-                     db.add(plan_item)
+                 affected_plan_ids.add(item_in.production_plan_item_id)
+
+         for pid in affected_plan_ids:
+             await _sync_plan_item_from_outsourcing(db, pid)
 
     # --- Process Sync Logic ---
     if db_order.status == OutsourcingStatus.ORDERED:
@@ -1500,11 +1781,14 @@ async def update_outsourcing_order(
             if item.production_plan_item_id:
                 plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
                 if plan_item:
-                    if plan_item.status != ProductionStatus.COMPLETED:
-                        plan_item.status = ProductionStatus.COMPLETED
-                        db.add(plan_item)
-                        await on_production_item_completed(db, plan_item, reference=db_order.order_no, completion_date=db_order.actual_delivery_date)
-                    completed_os_plan_ids.add(plan_item.plan_id)
+                    await db.flush()
+                    is_fully_done, _ = await _sync_plan_item_from_outsourcing(db, item.production_plan_item_id)
+                    if is_fully_done:
+                        if plan_item.status != ProductionStatus.COMPLETED:
+                            plan_item.status = ProductionStatus.COMPLETED
+                            db.add(plan_item)
+                            await on_production_item_completed(db, plan_item, reference=db_order.order_no, completion_date=db_order.actual_delivery_date)
+                        completed_os_plan_ids.add(plan_item.plan_id)
             elif old_status != OutsourcingStatus.COMPLETED and item.product_id:
                 await handle_stock_movement(
                     db=db,
@@ -1550,17 +1834,14 @@ async def delete_outsourcing_order(
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
         
-    # Revert ProductionPlanItem status if linked
-    if db_order.items:
-        from app.models.production import ProductionPlanItem, ProductionStatus
-        for item in db_order.items:
-            if item.production_plan_item_id:
-                plan_item = await db.get(ProductionPlanItem, item.production_plan_item_id)
-                if plan_item:
-                    plan_item.status = ProductionStatus.PLANNED
-                    db.add(plan_item)
+    affected_plan_ids = {item.production_plan_item_id for item in (db_order.items or []) if item.production_plan_item_id}
 
     await db.delete(db_order)
+    await db.flush()
+
+    for pid in affected_plan_ids:
+        await _sync_plan_item_from_outsourcing(db, pid)
+
     await db.commit()
     return None
 @router.delete("/mrp/requirements/{requirement_id}")

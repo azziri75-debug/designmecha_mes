@@ -282,6 +282,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                         product_id: productId || '',
                         product_name: productName,
                         quantity: item?.quantity || 1,
+                        pending_remaining_qty: item?.quantity || null,
                         unit_price: unitPrice,
                         note: item?.note || item?.process_name || '',
                         production_plan_item_id: item?.id || null,
@@ -799,9 +800,14 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     fullWidth
                                                     value={item.pricing_type === 'WEIGHT' ? item.total_weight || '' : item.quantity || ''} 
                                                     onChange={(e) => handleItemChange(index, item.pricing_type === 'WEIGHT' ? 'total_weight' : 'quantity', e.target.value)} 
-                                                    inputProps={{ style: { textAlign: 'center' } }}
+                                                    inputProps={{ min: 1, style: { textAlign: 'center' } }}
                                                     placeholder={item.pricing_type === 'WEIGHT' ? 'kg 입력' : '수량 입력'}
                                                 />
+                                                {!order && item.pending_remaining_qty > 0 && item.pricing_type !== 'WEIGHT' && (
+                                                    <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: 'text.secondary', fontSize: '0.68rem', mt: 0.3 }}>
+                                                        미발주 잔량: {item.pending_remaining_qty} (분할가능)
+                                                    </Typography>
+                                                )}
                                             </TableCell>
                                             <TableCell sx={{ width: 150 }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -832,7 +838,7 @@ const OutsourcingOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems
                                                     size="small" 
                                                     color="error" 
                                                     onClick={() => handleRemoveItem(index)}
-                                                    disabled={!!item.production_plan_item_id}
+                                                    disabled={formData.items.length <= 1 && !!item.production_plan_item_id}
                                                 >
                                                     <Trash size={16} />
                                                 </IconButton>

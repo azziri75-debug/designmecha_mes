@@ -400,6 +400,7 @@ const OutsourcingPage = () => {
         if (tabValue === 0) fetchPendingItems();
         else if (tabValue === 1) fetchOrders();
         else fetchCompletedOrders();
+        setSelectedPendingItems([]);
         setModalOpen(false);
     };
 
@@ -578,7 +579,14 @@ const OutsourcingPage = () => {
                                         <div className="text-xs text-gray-500">{item.product?.name} ({item.product?.specification || '-'})</div>
                                     </td>
                                     <td className="px-4 py-4 truncate">{item.partner_name || '-'}</td>
-                                    <td className="px-4 py-4 font-bold">{item.quantity}</td>
+                                    <td className="px-4 py-4 font-bold">
+                                        <div>{item.quantity}</div>
+                                        {item.ordered_quantity > 0 && (
+                                            <div className="text-[11px] text-amber-400 font-normal">
+                                                (총 {item.original_quantity} 중 기발주 {item.ordered_quantity})
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-4 text-gray-600">{item.product?.unit}</td>
                                     <td className="px-4 py-4 whitespace-nowrap">{item.start_date || item.plan?.plan_date || '-'}</td>
                                     <td className="px-4 py-4 truncate text-gray-500 max-w-[150px]" title={item.note}>{item.note}</td>

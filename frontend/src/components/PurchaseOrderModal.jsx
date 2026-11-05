@@ -391,6 +391,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                         product_name: parsedProductName,
                         specification: parsedSpec,
                         quantity: item.quantity || 1,
+                        pending_remaining_qty: item.quantity || null,
                         unit_price: item.unit_price
                             || (item?.cost && item?.quantity ? Math.round(item.cost / item.quantity) : 0)
                             || (masterProduct?.recent_price ?? 0),
@@ -991,6 +992,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                                                     inputProps={{ min: 1, style: { textAlign: 'center' } }}
                                                 />
+                                                {!order && item.pending_remaining_qty > 0 && (
+                                                    <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: 'text.secondary', fontSize: '0.68rem', mt: 0.3 }}>
+                                                        미발주 잔량: {item.pending_remaining_qty} (분할가능)
+                                                    </Typography>
+                                                )}
                                             </TableCell>
                                             <TableCell sx={{ width: 130 }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -1019,7 +1025,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSuccess, order, initialItems, p
                                                     size="small" 
                                                     color="error" 
                                                     onClick={() => handleRemoveItem(index)}
-                                                    disabled={!!item.production_plan_item_id || !!item.material_requirement_id || !!item.consumable_purchase_wait_id}
+                                                    disabled={formData.items.length <= 1 && (!!item.production_plan_item_id || !!item.material_requirement_id || !!item.consumable_purchase_wait_id)}
                                                 >
                                                     <DeleteIcon fontSize="small" />
                                                 </IconButton>

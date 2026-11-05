@@ -89,6 +89,7 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
     const [newUnit, setNewUnit] = useState('EA');
 
     // 발주 조건
+    const [orderQuantity, setOrderQuantity] = useState('');
     const [unitPrice, setUnitPrice] = useState('');
     const [manufacturer, setManufacturer] = useState('');
     const [note, setNote] = useState('');
@@ -116,6 +117,7 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
                 setNewName(initialName);
                 setNewSpec(initialSpec);
                 setNewUnit(waitItem.product?.unit || 'EA');
+                setOrderQuantity(String(waitItem.quantity || 1));
                 setPartnerSearchQuery(waitItem.requested_partner_name || '');
                 setManufacturer(waitItem.requested_manufacturer || '');
                 if (initialName) {
@@ -261,9 +263,16 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
 
         setLoading(true);
         try {
+            const parsedQty = parseInt(orderQuantity, 10);
+            if (!parsedQty || parsedQty <= 0) {
+                alert('발주 수량을 1 이상 입력해주세요.');
+                setLoading(false);
+                return;
+            }
             const payload = {
                 wait_id: waitItem.id,
                 partner_id: parseInt(selectedPartnerId, 10),
+                quantity: parsedQty,
                 unit_price: parseFloat(unitPrice) || 0,
                 manufacturer: manufacturer || undefined,
                 note: note
@@ -556,6 +565,18 @@ const ConsumableOrderModal = ({ open, onClose, onSuccess, waitItem }) => {
                 <Paper sx={{ p: 2, bgcolor: '#fff', border: '1px solid #e0e0e0' }} elevation={0}>
                     <Typography variant="subtitle2" color="primary" sx={{ mb: 2 }}>발주 조건</Typography>
                     <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                size="small"
+                                label="발주 수량 (분할 발주 가능)"
+                                value={orderQuantity}
+                                onChange={(e) => setOrderQuantity(e.target.value)}
+                                inputProps={{ min: 1 }}
+                                helperText={`현재 미발주 잔량: ${waitItem.quantity} ${waitItem.product?.unit || 'EA'}`}
+                            />
+                        </Grid>
                         <Grid item xs={6}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                 <TextField

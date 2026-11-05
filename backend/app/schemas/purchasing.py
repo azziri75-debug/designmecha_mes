@@ -43,6 +43,7 @@ class PurchaseOrderItemUpdate(BaseModel):
 class PurchaseOrderItem(PurchaseOrderItemBase):
     id: int
     purchase_order_id: int
+    quantity: Optional[int] = None
     received_quantity: Optional[int] = 0
     production_plan_item_id: Optional[int] = None
     material_requirement_id: Optional[int] = None
@@ -127,6 +128,7 @@ class OutsourcingOrderItemUpdate(BaseModel):
 class OutsourcingOrderItem(OutsourcingOrderItemBase):
     id: int
     outsourcing_order_id: int
+    quantity: Optional[int] = None
     status: Optional[OutsourcingStatus] = None
     pricing_type: PricingType = PricingType.UNIT
     total_weight: Optional[float] = None
@@ -186,6 +188,7 @@ class PurchaseOrderSimple(BaseModel):
 class PurchaseOrderItemSimple(BaseModel):
     id: int
     purchase_order_id: int
+    quantity: Optional[int] = None
     status: Optional[str] = None 
     purchase_order: Optional[PurchaseOrderSimple] = None
 
@@ -203,6 +206,7 @@ class OutsourcingOrderSimple(BaseModel):
 class OutsourcingOrderItemSimple(BaseModel):
     id: int
     outsourcing_order_id: int
+    quantity: Optional[int] = None
     status: Optional[str] = None
     outsourcing_order: Optional[OutsourcingOrderSimple] = None
 
@@ -265,6 +269,8 @@ class ConsumablePurchaseWaitResponse(ConsumablePurchaseWaitBase):
     product: Optional[Product] = None
     author_name: Optional[str] = None # For UI (legacy)
     approval_title: Optional[str] = None # For UI
+    original_quantity: Optional[int] = None
+    ordered_quantity: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -276,6 +282,7 @@ class ConsumableOrderRequest(BaseModel):
     new_product_name: Optional[str] = None
     new_product_spec: Optional[str] = None
     new_product_unit: Optional[str] = "EA"
+    quantity: Optional[int] = None
     unit_price: float = 0
     manufacturer: Optional[str] = None  # 제조사
     note: Optional[str] = None

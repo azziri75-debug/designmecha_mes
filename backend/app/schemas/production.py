@@ -102,6 +102,8 @@ class ProductionPlanItemSimple(ProductionPlanItemBase):
     # [NEW] Fields for list display
     client_name: Optional[str] = None
     product_name_of_plan: Optional[str] = None
+    original_quantity: Optional[int] = None
+    ordered_quantity: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
