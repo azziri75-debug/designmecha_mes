@@ -1046,7 +1046,7 @@ async def create_delivery(
     #   결과: 기존 재고는 변동 없음 (새로 생산하여 납품한 것으로 기록)
     # ─────────────────────────────────────────────────────────────
     if delivery_in.no_plan_source == "PRODUCE":
-        from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
+        # ProductionPlan, ProductionPlanItem, ProductionStatus imported at top level
         from app.api.utils.inventory import handle_stock_movement, handle_backflush
         from app.models.inventory import TransactionType
 
@@ -1136,13 +1136,15 @@ async def create_delivery(
         )
         db.add(db_item)
         
+        prev_delivered = order_item.delivered_quantity or 0
         # Update delivered_quantity
-        order_item.delivered_quantity += item_in.quantity
+        order_item.delivered_quantity = prev_delivered + item_in.quantity
         
-        # Update Inventory (Deduct stock only when deduct_stock is True)
+        from app.api.utils.inventory import handle_stock_movement
+        from app.models.inventory import TransactionType
+
         if delivery_in.deduct_stock is not False:
-            from app.api.utils.inventory import handle_stock_movement
-            from app.models.inventory import TransactionType
+            # 1) "재고에서 소진" 선택 시: 납품 수량 전액을 현재고에서 차감
             await handle_stock_movement(
                 db=db,
                 product_id=order_item.product_id,
@@ -1150,6 +1152,36 @@ async def create_delivery(
                 transaction_type=TransactionType.OUT,
                 reference=delivery_no
             )
+        else:
+            # 2) "재고 소진 안 함" 선택 시 (재연마·UNSM·임가공 등):
+            # 만약 이 수주의 생산계획이 먼저 완료되어 이미 +수량이 재고로 입고(stock_deducted=True)되었다면,
+            # 입고된 수량 한도 내에서 상쇄 출고(-수량)하여 재고가 계속 쌓이는 현상을 방지합니다.
+            # 아직 생산완료 입고가 안 된 상태라면 차감하지 않고 아래에서 stock_deducted=True로 마킹하여
+            # 이후 자동 완료 시에도 +입고가 일어나지 않게(순변동 0) 처리합니다.
+            already_stocked_qty = 0
+            order_plans_res = await db.execute(
+                select(ProductionPlan).options(selectinload(ProductionPlan.items)).where(
+                    ProductionPlan.order_id == order_id,
+                    ProductionPlan.status != ProductionStatus.CANCELED
+                )
+            )
+            for o_plan in order_plans_res.scalars().all():
+                p_items = [pi for pi in (o_plan.items or []) if pi.product_id == order_item.product_id]
+                if p_items:
+                    last_p_item = max(p_items, key=lambda x: x.sequence)
+                    if last_p_item.stock_deducted:
+                        already_stocked_qty += (last_p_item.quantity or 0)
+
+            remaining_to_offset = max(0, already_stocked_qty - prev_delivered)
+            offset_qty = min(item_in.quantity, remaining_to_offset)
+            if offset_qty > 0:
+                await handle_stock_movement(
+                    db=db,
+                    product_id=order_item.product_id,
+                    quantity=-offset_qty,
+                    transaction_type=TransactionType.OUT,
+                    reference=f"{delivery_no} (생산입고분 상쇄)"
+                )
         
         # Check if this item is fulfilled
         if order_item.delivered_quantity < order_item.quantity:

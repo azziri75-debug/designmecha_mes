@@ -54,8 +54,8 @@ const NoPlanSourceDialog = ({ onSelect, onCancel }) => (
                     <div>
                         <p className="font-bold text-white text-sm">재고 소진 안 함 (재연마·UNSM·임가공 등)</p>
                         <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                            업체 입고 후 가공 납품(재연마, UNSM 처리 등)이거나 별도 재고 차감이 불필요한 건입니다.<br />
-                            <span className="text-emerald-400 font-semibold">현재고 수량이 차감되지 않습니다. (마이너스 재고 방지)</span>
+                            업체 입고 후 가공 납품(재연마, UNSM 처리 등)이거나 별도 보유재고 차감이 불필요한 건입니다.<br />
+                            <span className="text-emerald-400 font-semibold">생산완료로 이미 입고(+수량)된 건은 입고분만 자동 상쇄하고, 미입고 건은 차감하지 않아 최종 재고 변동을 0으로 유지합니다.</span>
                         </p>
                     </div>
                 </button>
