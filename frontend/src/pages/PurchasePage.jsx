@@ -37,6 +37,7 @@ const PENDING_COLS = [
     { key: 'date', label: '계획일자', width: 100 },
     { key: 'partner', label: '구매처(계획)', width: 120 },
     { key: 'remarks', label: '비고', width: 150 },
+    { key: 'actions', label: '관리', width: 70, noResize: true },
 ];
 
 const PENDING_CONSUMABLE_COLS = [
@@ -602,6 +603,40 @@ const PurchasePage = ({ type }) => {
         }
     };
 
+    const handleDeletePendingItem = async (itemId) => {
+        if (type === 'CONSUMABLE') {
+            return handleDeleteConsumableWait(itemId);
+        }
+        if (!window.confirm("이 발주 대기 항목을 목록에서 삭제(완료 처리)하시겠습니까?\n(해당 생산계획의 모든 공정이 완료된 경우 생산완료 상태로 함께 복원됩니다.)")) return;
+        try {
+            await api.delete(`/purchasing/pending-items/${itemId}`);
+            setSelectedPendingItems(prev => prev.filter(id => id !== itemId));
+            fetchPendingItems();
+        } catch (error) {
+            console.error("Failed to delete pending item", error);
+            alert("삭제 실패: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const handleDeleteSelectedPending = async () => {
+        if (selectedPendingItems.length === 0) return;
+        if (!window.confirm(`선택한 ${selectedPendingItems.length}개의 발주 대기 항목을 목록에서 삭제하시겠습니까?`)) return;
+        try {
+            if (type === 'CONSUMABLE') {
+                for (const id of selectedPendingItems) {
+                    await api.delete(`/purchasing/purchase/consumable-waits/${id}`);
+                }
+            } else {
+                await api.post('/purchasing/pending-items/bulk-delete', { item_ids: selectedPendingItems });
+            }
+            setSelectedPendingItems([]);
+            fetchPendingItems();
+        } catch (error) {
+            console.error("Failed to bulk delete pending items", error);
+            alert("일괄 삭제 실패: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
     const handleOpenSource = (item) => {
         if (item.plan?.order) {
             setSelectedSourceOrder(item.plan.order);
@@ -701,15 +736,47 @@ const PurchasePage = ({ type }) => {
                 <div className="overflow-x-auto p-3">
                     {tabValue === 0 && (
                 <>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                        <Button
-                            variant="contained"
-                            startIcon={<AddIcon />}
-                            onClick={handleCreateFromPending}
-                            disabled={selectedPendingItems.length === 0}
-                        >
-                            선택 품목 발주 등록
-                        </Button>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => {
+                                    if (selectedPendingItems.length === pendingItems.length && pendingItems.length > 0) {
+                                        setSelectedPendingItems([]);
+                                    } else {
+                                        setSelectedPendingItems(pendingItems.map(item => item.id));
+                                    }
+                                }}
+                                disabled={!pendingItems || pendingItems.length === 0}
+                            >
+                                {selectedPendingItems.length === pendingItems?.length && pendingItems?.length > 0 ? '전체 해제' : '전체 선택'}
+                            </Button>
+                            {selectedPendingItems.length > 0 && (
+                                <span className="text-xs text-blue-400 font-medium">
+                                    {selectedPendingItems.length}개 선택됨
+                                </span>
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                                onClick={handleDeleteSelectedPending}
+                                disabled={selectedPendingItems.length === 0}
+                            >
+                                선택 품목 삭제
+                            </Button>
+                            <Button
+                                variant="contained"
+                                startIcon={<AddIcon />}
+                                onClick={handleCreateFromPending}
+                                disabled={selectedPendingItems.length === 0}
+                            >
+                                선택 품목 발주 등록
+                            </Button>
+                        </Box>
                     </Box>
                     <ResizableTable
                         columns={type === 'CONSUMABLE' ? PENDING_CONSUMABLE_COLS : PENDING_COLS}
@@ -806,6 +873,13 @@ const PurchasePage = ({ type }) => {
                                             <td className="px-4 py-4 whitespace-nowrap">{item.plan?.plan_date || '-'}</td>
                                             <td className="px-4 py-4 truncate">{item.partner_name || '-'}</td>
                                             <td className="px-4 py-4 truncate max-w-[150px]" title={item.note}>{item.note}</td>
+                                            <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                                <Tooltip title="발주 대기 목록에서 삭제 (완료 복원)">
+                                                    <IconButton size="small" color="error" onClick={() => handleDeletePendingItem(item.id)}>
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </td>
                                         </>
                                     )}
                                 </tr>

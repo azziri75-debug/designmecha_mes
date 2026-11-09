@@ -1,7 +1,7 @@
 from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, or_, func
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload, noload
 from sqlalchemy import delete, update
@@ -614,22 +614,50 @@ async def read_orders(
     
     result = await db.execute(query)
     orders = result.scalars().all()
-    cleaned_delivery_dates = False
+    changed_delivery_dates = False
+
+    # Restore missing actual_delivery_date on DELIVERED / DELIVERY_COMPLETED orders,
+    # and clear stale actual_delivery_date on PENDING / CONFIRMED orders with no deliveries.
+    missing_date_order_ids = [
+        o.id for o in orders
+        if o.actual_delivery_date is None
+        and getattr(o.status, 'value', str(o.status)) in ("DELIVERED", "DELIVERY_COMPLETED")
+    ]
+    plan_comp_map = {}
+    if missing_date_order_ids:
+        plan_rows = (await db.execute(
+            select(ProductionPlan.order_id, func.max(ProductionPlan.actual_completion_date))
+            .where(ProductionPlan.order_id.in_(missing_date_order_ids))
+            .group_by(ProductionPlan.order_id)
+        )).all()
+        for oid, max_cdate in plan_rows:
+            if max_cdate:
+                plan_comp_map[oid] = max_cdate
+
     for order in orders:
-        if order.actual_delivery_date is not None and (
-            not order.delivery_histories
-            or str(order.status) not in (
-                "DELIVERED", "DELIVERY_COMPLETED",
-                OrderStatus.DELIVERED.value, OrderStatus.DELIVERY_COMPLETED.value
-            )
-        ):
+        st_val = getattr(order.status, 'value', str(order.status))
+        if st_val in ("DELIVERED", "DELIVERY_COMPLETED"):
+            if order.actual_delivery_date is None:
+                dh_dates = [dh.delivery_date for dh in (order.delivery_histories or []) if dh.delivery_date]
+                restored_date = (
+                    (max(dh_dates) if dh_dates else None)
+                    or plan_comp_map.get(order.id)
+                    or order.transaction_date
+                    or order.delivery_date
+                )
+                if restored_date:
+                    order.actual_delivery_date = restored_date
+                    db.add(order)
+                    changed_delivery_dates = True
+        elif st_val in ("PENDING", "CONFIRMED") and not order.delivery_histories and order.actual_delivery_date is not None:
             order.actual_delivery_date = None
             db.add(order)
-            cleaned_delivery_dates = True
+            changed_delivery_dates = True
+
         for item in order.items:
             if item.product:
                 item.specification = item.product.specification
-    if cleaned_delivery_dates:
+    if changed_delivery_dates:
         await db.commit()
     return orders
 
@@ -659,12 +687,10 @@ async def update_order(
     if order_in.note is not None: db_order.note = order_in.note
     if order_in.status is not None:
         db_order.status = order_in.status
-        if str(order_in.status) not in (
-            "DELIVERED", "DELIVERY_COMPLETED",
-            OrderStatus.DELIVERED.value, OrderStatus.DELIVERY_COMPLETED.value
-        ) and order_in.actual_delivery_date is None:
+        new_st_val = getattr(order_in.status, 'value', str(order_in.status))
+        if new_st_val not in ("DELIVERED", "DELIVERY_COMPLETED") and order_in.actual_delivery_date is None:
             db_order.actual_delivery_date = None
-        if str(order_in.status) in ("CONFIRMED", "PENDING", OrderStatus.CONFIRMED.value, OrderStatus.PENDING.value):
+        if new_st_val in ("CONFIRMED", "PENDING"):
             c_plans = (await db.execute(
                 select(ProductionPlan).where(
                     ProductionPlan.order_id == order_id,
