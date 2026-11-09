@@ -351,6 +351,9 @@ async def read_production_plans(
     """
     Retrieve production plans with advanced filtering.
     """
+    from app.api.endpoints.purchasing import _auto_heal_pending_plan_items
+    await _auto_heal_pending_plan_items(db)
+
     stmt = select(ProductionPlan).outerjoin(SalesOrder).outerjoin(StockProduction).outerjoin(StockProductionOrder)
     
     if worker_id:
@@ -1027,10 +1030,19 @@ async def update_production_plan(
     # 2. Update Header & Items
     update_data = plan_in.model_dump(exclude_unset=True)
     
-    # [보강] 이미 COMPLETED인 경우 '계획 확정' 등으로 인한 상태 역행 방지
+    # [보강] 이미 COMPLETED인 경우 모든 하위 공정이 완료 상태일 때만 상태 역행 방지 (미완료 공정이 있으면 진행중 전환 허용)
+    incoming_items_list = plan_in.items if plan_in.items is not None else plan.items
+    all_items_completed = bool(incoming_items_list) and all(
+        getattr(i, "status", None) == ProductionStatus.COMPLETED or str(getattr(i, "status", "")) == "COMPLETED"
+        for i in incoming_items_list
+    )
     if plan.status == ProductionStatus.COMPLETED and update_data.get("status") == ProductionStatus.CONFIRMED:
-        update_data["status"] = ProductionStatus.COMPLETED
-        print(f"Update: Prevented status reversion from COMPLETED to CONFIRMED for Plan #{plan_id}")
+        if all_items_completed:
+            update_data["status"] = ProductionStatus.COMPLETED
+            print(f"Update: Prevented status reversion from COMPLETED to CONFIRMED for Plan #{plan_id}")
+        else:
+            update_data["status"] = ProductionStatus.IN_PROGRESS
+            plan.actual_completion_date = None
 
     items_data = update_data.pop("items", None)
     
@@ -1909,6 +1921,7 @@ async def update_production_plan_item(
     if not item:
         raise HTTPException(status_code=404, detail="Plan Item not found")
 
+    old_status = item.status
     update_data = item_in.model_dump(exclude_unset=True)
     
     # [FIX] 재고소진량 변경 감지: 적용 전 plan_id와 재계산 필요 여부 기록
@@ -1945,24 +1958,15 @@ async def update_production_plan_item(
             import logging
             logging.getLogger(__name__).warning(f"[update_plan_item] MRP recalculation failed: {e}")
     
-    # --- Auto-Complete Check ---
-    if "status" in update_data and update_data["status"] == ProductionStatus.COMPLETED:
-        await check_and_complete_production_plan(db, item.plan_id)
-
-        # Link completed external processes to their respective orders
-        if item.course_type == "PURCHASE":
-            for pi in item.purchase_items:
-                if pi.purchase_order and pi.purchase_order.status != PurchaseStatus.COMPLETED:
-                    pi.purchase_order.status = PurchaseStatus.COMPLETED
-                    pi.purchase_order.actual_delivery_date = now_kst().date()
-                    db.add(pi.purchase_order)
+    # --- Status Transition Side Effects (Complete / Revert) ---
+    if "status" in update_data:
+        if old_status == ProductionStatus.COMPLETED and item.status != ProductionStatus.COMPLETED:
+            from app.api.utils.status_cascade import revert_production_item_completed
+            await revert_production_item_completed(db, item, reference=f"Manual Revert (PI#{item.id})")
             await db.commit()
-        elif item.course_type == "OUTSOURCING":
-            for oi in item.outsourcing_items:
-                if oi.outsourcing_order and oi.outsourcing_order.status != OutsourcingStatus.COMPLETED:
-                    oi.outsourcing_order.status = OutsourcingStatus.COMPLETED
-                    oi.outsourcing_order.actual_delivery_date = now_kst().date()
-                    db.add(oi.outsourcing_order)
+        elif old_status != ProductionStatus.COMPLETED and item.status == ProductionStatus.COMPLETED:
+            await on_production_item_completed(db, item, reference=f"Manual Complete (PI#{item.id})")
+            await check_and_complete_production_plan(db, item.plan_id)
             await db.commit()
     
     # Reload for full schema

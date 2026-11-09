@@ -141,9 +141,16 @@ async def _sync_plan_item_from_purchases(db: AsyncSession, plan_item_id: Optiona
     rows = (await db.execute(stmt)).all()
     if not rows:
         plan_item.cost = 0.0
-        if plan_item.status != ProductionStatus.COMPLETED:
-            plan_item.status = ProductionStatus.PLANNED
+        if plan_item.status == ProductionStatus.COMPLETED:
+            from app.api.utils.status_cascade import revert_production_item_completed
+            await revert_production_item_completed(db, plan_item, reference="PO Deleted")
+        plan_item.status = ProductionStatus.PLANNED
         db.add(plan_item)
+        plan = await db.get(ProductionPlan, plan_item.plan_id)
+        if plan and plan.status == ProductionStatus.COMPLETED:
+            plan.status = ProductionStatus.IN_PROGRESS
+            plan.actual_completion_date = None
+            db.add(plan)
         return False, 0
 
     plan_item.cost = sum(float(pi.unit_price or 0) * int(pi.quantity or 0) for pi, _ in rows)
@@ -165,8 +172,17 @@ async def _sync_plan_item_from_purchases(db: AsyncSession, plan_item_id: Optiona
     is_fully_completed = (target_qty > 0 and completed_qty >= target_qty and all_completed)
 
     if not is_fully_completed:
-        if any_progressed and plan_item.status == ProductionStatus.PLANNED:
+        if plan_item.status == ProductionStatus.COMPLETED:
+            from app.api.utils.status_cascade import revert_production_item_completed
+            await revert_production_item_completed(db, plan_item, reference="PO Updated/Deleted")
+            plan_item.status = ProductionStatus.IN_PROGRESS if any_progressed else ProductionStatus.PLANNED
+        elif any_progressed and plan_item.status == ProductionStatus.PLANNED:
             plan_item.status = ProductionStatus.IN_PROGRESS
+        plan = await db.get(ProductionPlan, plan_item.plan_id)
+        if plan and plan.status == ProductionStatus.COMPLETED:
+            plan.status = ProductionStatus.IN_PROGRESS
+            plan.actual_completion_date = None
+            db.add(plan)
     db.add(plan_item)
     return is_fully_completed, completed_qty
 
@@ -192,9 +208,16 @@ async def _sync_plan_item_from_outsourcing(db: AsyncSession, plan_item_id: Optio
     rows = (await db.execute(stmt)).all()
     if not rows:
         plan_item.cost = 0.0
-        if plan_item.status != ProductionStatus.COMPLETED:
-            plan_item.status = ProductionStatus.PLANNED
+        if plan_item.status == ProductionStatus.COMPLETED:
+            from app.api.utils.status_cascade import revert_production_item_completed
+            await revert_production_item_completed(db, plan_item, reference="OO Deleted")
+        plan_item.status = ProductionStatus.PLANNED
         db.add(plan_item)
+        plan = await db.get(ProductionPlan, plan_item.plan_id)
+        if plan and plan.status == ProductionStatus.COMPLETED:
+            plan.status = ProductionStatus.IN_PROGRESS
+            plan.actual_completion_date = None
+            db.add(plan)
         return False, 0
 
     plan_item.cost = sum(float(oi.unit_price or 0) * int(oi.quantity or 0) for oi, _ in rows)
@@ -217,10 +240,171 @@ async def _sync_plan_item_from_outsourcing(db: AsyncSession, plan_item_id: Optio
     is_fully_completed = (target_qty > 0 and completed_qty >= target_qty and all_completed)
 
     if not is_fully_completed:
-        if any_progressed and plan_item.status == ProductionStatus.PLANNED:
+        if plan_item.status == ProductionStatus.COMPLETED:
+            from app.api.utils.status_cascade import revert_production_item_completed
+            await revert_production_item_completed(db, plan_item, reference="OO Updated/Deleted")
+            plan_item.status = ProductionStatus.IN_PROGRESS if any_progressed else ProductionStatus.PLANNED
+        elif any_progressed and plan_item.status == ProductionStatus.PLANNED:
             plan_item.status = ProductionStatus.IN_PROGRESS
+        plan = await db.get(ProductionPlan, plan_item.plan_id)
+        if plan and plan.status == ProductionStatus.COMPLETED:
+            plan.status = ProductionStatus.IN_PROGRESS
+            plan.actual_completion_date = None
+            db.add(plan)
     db.add(plan_item)
     return is_fully_completed, completed_qty
+
+
+async def _auto_heal_pending_plan_items(db: AsyncSession):
+    """
+    하위 세부공정(ProductionPlanItem)이 미완료이거나 수주가 확정(CONFIRMED/PENDING)으로 복원되었는데
+    상위 ProductionPlan.status가 COMPLETED로 잘못 남아 있는 경우,
+    또는 외주/자재 발주가 삭제되었는데 공정 상태만 COMPLETED로 고립된 경우를 자동 보정합니다.
+    """
+    from app.models.sales import OrderStatus
+    healed = False
+
+    # 1) 하위 공정이 미완료(PLANNED/IN_PROGRESS)이거나 수주가 CONFIRMED/PENDING인데 계획 헤더만 COMPLETED인 건 보정
+    mismatch_plans_stmt = (
+        select(ProductionPlan)
+        .options(selectinload(ProductionPlan.items), selectinload(ProductionPlan.order))
+        .where(cast(ProductionPlan.status, String) == ProductionStatus.COMPLETED.value)
+    )
+    completed_plans = (await db.execute(mismatch_plans_stmt)).scalars().all()
+    for c_plan in completed_plans:
+        has_incomplete_item = any(
+            it.status != ProductionStatus.COMPLETED and str(it.status) != "COMPLETED"
+            for it in (c_plan.items or [])
+        )
+        order_reverted = (
+            c_plan.order is not None
+            and str(c_plan.order.status) in ("PENDING", "CONFIRMED", OrderStatus.PENDING.value, OrderStatus.CONFIRMED.value)
+        )
+        if has_incomplete_item or order_reverted:
+            c_plan.status = ProductionStatus.IN_PROGRESS
+            c_plan.actual_completion_date = None
+            db.add(c_plan)
+            healed = True
+
+    if healed:
+        await db.flush()
+
+    # 2) 진행중인 생산계획(status != COMPLETED/CANCELED) 내의 외주/구매 공정 중,
+    #    연결된 발주 내역이 삭제되어 잔여 완료 수량이 부족한데 공정 상태만 COMPLETED로 남아있는 건 보정
+    orphan_items_stmt = (
+        select(ProductionPlanItem)
+        .join(ProductionPlanItem.plan)
+        .options(
+            selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+            selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+        )
+        .where(
+            or_(
+                ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
+                ProductionPlanItem.course_type.like('%외주%'),
+                ProductionPlanItem.course_type.ilike('%PURCHASE%'),
+                ProductionPlanItem.course_type.like('%구매%'),
+            ),
+            cast(ProductionPlanItem.status, String) == ProductionStatus.COMPLETED.value,
+            cast(ProductionPlan.status, String) != ProductionStatus.COMPLETED.value,
+            cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value,
+        )
+    )
+    orphan_items = (await db.execute(orphan_items_stmt)).scalars().all()
+    for o_item in orphan_items:
+        ctype = (o_item.course_type or "").upper()
+        target_q = int(o_item.quantity or 0)
+        if "OUTSOURCING" in ctype or "외주" in ctype:
+            active_ois = [
+                oi for oi in (o_item.outsourcing_items or [])
+                if oi.outsourcing_order and str(oi.outsourcing_order.status) != "CANCELED"
+            ]
+            done_q = sum(
+                int(oi.quantity or 0) for oi in active_ois
+                if str(oi.outsourcing_order.status) in ("COMPLETED", "QUOTATION_COMPLETE", "OutsourcingStatus.COMPLETED")
+            )
+            if target_q > 0 and done_q < target_q:
+                o_item.status = ProductionStatus.IN_PROGRESS if active_ois else ProductionStatus.PLANNED
+                if not active_ois:
+                    o_item.cost = 0.0
+                db.add(o_item)
+                healed = True
+        elif "PURCHASE" in ctype or "구매" in ctype:
+            active_pis = [
+                pi for pi in (o_item.purchase_items or [])
+                if pi.purchase_order and str(pi.purchase_order.status) != "CANCELED"
+            ]
+            done_q = sum(
+                int(pi.quantity or 0) for pi in active_pis
+                if str(pi.purchase_order.status) in ("COMPLETED", "PurchaseStatus.COMPLETED")
+            )
+            if target_q > 0 and done_q < target_q:
+                o_item.status = ProductionStatus.IN_PROGRESS if active_pis else ProductionStatus.PLANNED
+                if not active_pis:
+                    o_item.cost = 0.0
+                db.add(o_item)
+                healed = True
+
+    # 3) 미완료(PLANNED/IN_PROGRESS) 공정에 남아있는 자동생성 완료발주(AOS-/APO-) 잔재 자동 정리
+    stale_aos_stmt = (
+        select(OutsourcingOrderItem)
+        .join(OutsourcingOrder, OutsourcingOrderItem.outsourcing_order_id == OutsourcingOrder.id)
+        .join(ProductionPlanItem, OutsourcingOrderItem.production_plan_item_id == ProductionPlanItem.id)
+        .where(
+            OutsourcingOrder.order_no.like("AOS-%"),
+            cast(ProductionPlanItem.status, String) != ProductionStatus.COMPLETED.value,
+        )
+    )
+    stale_aos_items = (await db.execute(stale_aos_stmt)).scalars().all()
+    stale_oo_ids = set()
+    for s_oi in stale_aos_items:
+        stale_oo_ids.add(s_oi.outsourcing_order_id)
+        await db.delete(s_oi)
+        healed = True
+    if stale_oo_ids:
+        await db.flush()
+        for oo_id in stale_oo_ids:
+            rem_c = (await db.execute(
+                select(func.count(OutsourcingOrderItem.id)).where(OutsourcingOrderItem.outsourcing_order_id == oo_id)
+            )).scalar() or 0
+            if rem_c == 0:
+                oo_obj = await db.get(OutsourcingOrder, oo_id)
+                if oo_obj:
+                    await db.delete(oo_obj)
+
+    stale_apo_stmt = (
+        select(PurchaseOrderItem)
+        .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+        .join(ProductionPlanItem, PurchaseOrderItem.production_plan_item_id == ProductionPlanItem.id)
+        .where(
+            PurchaseOrder.order_no.like("APO-%"),
+            cast(ProductionPlanItem.status, String) != ProductionStatus.COMPLETED.value,
+        )
+    )
+    stale_apo_items = (await db.execute(stale_apo_stmt)).scalars().all()
+    stale_po_ids = set()
+    for s_pi in stale_apo_items:
+        stale_po_ids.add(s_pi.purchase_order_id)
+        if s_pi.material_requirement_id:
+            mr_obj = await db.get(MaterialRequirement, s_pi.material_requirement_id)
+            if mr_obj and mr_obj.status == "COMPLETED":
+                mr_obj.status = "PENDING"
+                db.add(mr_obj)
+        await db.delete(s_pi)
+        healed = True
+    if stale_po_ids:
+        await db.flush()
+        for po_id in stale_po_ids:
+            rem_c = (await db.execute(
+                select(func.count(PurchaseOrderItem.id)).where(PurchaseOrderItem.purchase_order_id == po_id)
+            )).scalar() or 0
+            if rem_c == 0:
+                po_obj = await db.get(PurchaseOrder, po_id)
+                if po_obj:
+                    await db.delete(po_obj)
+
+    if healed:
+        await db.commit()
 
 # --- MRP (Material Requirements Planning) ---
 
@@ -707,7 +891,7 @@ async def read_pending_purchase_items(
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem
     from app.models.inventory import StockProduction, StockProductionOrder
 
-
+    await _auto_heal_pending_plan_items(db)
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .options(
@@ -795,6 +979,8 @@ async def read_pending_outsourcing_items(
     # Local import restored
     from app.models.production import ProductionPlan, ProductionStatus, ProductionPlanItem
     from app.models.inventory import StockProduction, StockProductionOrder
+
+    await _auto_heal_pending_plan_items(db)
 
     query = select(ProductionPlanItem).join(ProductionPlanItem.plan)\
         .options(

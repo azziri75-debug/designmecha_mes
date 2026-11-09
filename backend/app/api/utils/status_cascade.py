@@ -436,20 +436,70 @@ async def revert_production_item_completed(
             required_qty = int(b_item.required_quantity * item.quantity)
             await handle_stock_movement(db, b_item.child_product_id, required_qty, TransactionType.IN, f"Revert Backflush ({reference or item.plan_id})")
 
-    # 2. 발주/외주 공정일 경우: 자동차감되었던 소비량 원복 및 입고량 취소
+    # 2. 발주/외주 공정일 경우: 자동차감되었던 소비량 원복, 자동생성(APO/AOS) 삭제 및 완료상태 복원
+    from app.models.purchasing import (
+        PurchaseOrder, PurchaseStatus, OutsourcingOrder, OutsourcingStatus,
+        MaterialRequirement, ConsumablePurchaseWait
+    )
     # 자재 발주 (PURCHASE)
     if "PURCHASE" in (item.course_type or "").upper() or "구매" in (item.course_type or ""):
         po_items_stmt = select(PurchaseOrderItem).where(PurchaseOrderItem.production_plan_item_id == item.id)
         for po_item in (await db.execute(po_items_stmt)).scalars().all():
             await handle_stock_movement(db, po_item.product_id, -po_item.quantity, TransactionType.ADJUSTMENT, f"Revert Auto-Receipt ({reference or 'Production'})")
             await handle_stock_movement(db, po_item.product_id, po_item.quantity, TransactionType.IN, f"Revert Auto-Consumption ({reference or 'Production'})")
-    
+            po = await db.get(PurchaseOrder, po_item.purchase_order_id)
+            if po_item.material_requirement_id:
+                mr = await db.get(MaterialRequirement, po_item.material_requirement_id)
+                if mr and mr.status == "COMPLETED":
+                    mr.status = "PENDING" if (po and (po.order_no or "").startswith("APO-")) else "ORDERED"
+                    db.add(mr)
+            if po_item.consumable_purchase_wait_id:
+                cw = await db.get(ConsumablePurchaseWait, po_item.consumable_purchase_wait_id)
+                if cw and cw.status == "COMPLETED":
+                    cw.status = "PENDING" if (po and (po.order_no or "").startswith("APO-")) else "ORDERED"
+                    db.add(cw)
+            if po:
+                if (po.order_no or "").startswith("APO-"):
+                    await db.delete(po_item)
+                    await db.flush()
+                    rem_cnt = (await db.execute(
+                        select(func.count(PurchaseOrderItem.id)).where(PurchaseOrderItem.purchase_order_id == po.id)
+                    )).scalar() or 0
+                    if rem_cnt == 0:
+                        await db.delete(po)
+                    item.cost = 0.0
+                    db.add(item)
+                elif po.status == PurchaseStatus.COMPLETED:
+                    po_item.received_quantity = 0
+                    po.status = PurchaseStatus.ORDERED if po.partner_id else PurchaseStatus.PENDING
+                    po.actual_delivery_date = None
+                    db.add(po_item)
+                    db.add(po)
+
     # 외주 발주 (OUTSOURCING)
     if "OUTSOURCING" in (item.course_type or "").upper() or "외주" in (item.course_type or ""):
         os_items_stmt = select(OutsourcingOrderItem).where(OutsourcingOrderItem.production_plan_item_id == item.id)
         for os_item in (await db.execute(os_items_stmt)).scalars().all():
             await handle_stock_movement(db, os_item.product_id, -os_item.quantity, TransactionType.ADJUSTMENT, f"Revert Auto-OS-Receipt ({reference or 'Production'})")
             await handle_stock_movement(db, os_item.product_id, os_item.quantity, TransactionType.IN, f"Revert Auto-OS-Consumption ({reference or 'Production'})")
+            os_order = await db.get(OutsourcingOrder, os_item.outsourcing_order_id)
+            if os_order:
+                if (os_order.order_no or "").startswith("AOS-"):
+                    await db.delete(os_item)
+                    await db.flush()
+                    rem_cnt = (await db.execute(
+                        select(func.count(OutsourcingOrderItem.id)).where(OutsourcingOrderItem.outsourcing_order_id == os_order.id)
+                    )).scalar() or 0
+                    if rem_cnt == 0:
+                        await db.delete(os_order)
+                    item.cost = 0.0
+                    db.add(item)
+                elif os_order.status == OutsourcingStatus.COMPLETED:
+                    os_item.status = OutsourcingStatus.PENDING
+                    os_order.status = OutsourcingStatus.ORDERED if os_order.partner_id else OutsourcingStatus.PENDING
+                    os_order.actual_delivery_date = None
+                    db.add(os_item)
+                    db.add(os_order)
 
     # 3. 헤더 및 재고생산 상태 롤백
     plan = await db.get(ProductionPlan, item.plan_id)

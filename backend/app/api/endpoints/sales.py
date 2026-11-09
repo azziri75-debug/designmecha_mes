@@ -644,7 +644,19 @@ async def update_order(
     if order_in.transaction_date is not None: db_order.transaction_date = order_in.transaction_date
     if order_in.total_amount is not None: db_order.total_amount = order_in.total_amount
     if order_in.note is not None: db_order.note = order_in.note
-    if order_in.status is not None: db_order.status = order_in.status
+    if order_in.status is not None:
+        db_order.status = order_in.status
+        if str(order_in.status) in ("CONFIRMED", "PENDING", OrderStatus.CONFIRMED.value, OrderStatus.PENDING.value):
+            c_plans = (await db.execute(
+                select(ProductionPlan).where(
+                    ProductionPlan.order_id == order_id,
+                    ProductionPlan.status == ProductionStatus.COMPLETED
+                )
+            )).scalars().all()
+            for cp in c_plans:
+                cp.status = ProductionStatus.IN_PROGRESS
+                cp.actual_completion_date = None
+                db.add(cp)
     if order_in.attachment_file is not None: db_order.attachment_file = order_in.attachment_file
     
     # Update Items
@@ -774,6 +786,17 @@ async def patch_order_status(
         raise HTTPException(status_code=404, detail="Order not found")
 
     db_order.status = new_status
+    if str(new_status) in ("CONFIRMED", "PENDING"):
+        c_plans = (await db.execute(
+            select(ProductionPlan).where(
+                ProductionPlan.order_id == order_id,
+                ProductionPlan.status == ProductionStatus.COMPLETED
+            )
+        )).scalars().all()
+        for cp in c_plans:
+            cp.status = ProductionStatus.IN_PROGRESS
+            cp.actual_completion_date = None
+            db.add(cp)
     await db.commit()
     return {"id": order_id, "status": new_status}
 
@@ -1722,8 +1745,58 @@ async def delete_delivery_history(
         has_deliveries = remaining_histories.scalars().first() is not None
 
         if not has_deliveries:
-            # 전체 납품 이력이 삭제되면 '생산 완료'로 변경 (사용자 요청 반영)
-            order.status = OrderStatus.PRODUCTION_COMPLETED
+            # 전체 납품 이력이 삭제될 때: 납품 완료로 인해 강제 완료되었던 미진행 공정/발주(AOS/APO 등)는 다시 진행중/계획으로 복원
+            from app.api.utils.status_cascade import revert_production_item_completed
+            order_plans = (await db.execute(
+                select(ProductionPlan)
+                .options(
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.work_log_items),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.purchase_items).selectinload(PurchaseOrderItem.purchase_order),
+                    selectinload(ProductionPlan.items).selectinload(ProductionPlanItem.outsourcing_items).selectinload(OutsourcingOrderItem.outsourcing_order),
+                )
+                .where(
+                    ProductionPlan.order_id == order_id,
+                    ProductionPlan.status != ProductionStatus.CANCELED
+                )
+            )).scalars().all()
+
+            any_plan_in_progress = False
+            for o_plan in order_plans:
+                for p_item in (o_plan.items or []):
+                    if p_item.status != ProductionStatus.COMPLETED:
+                        any_plan_in_progress = True
+                        continue
+                    ctype = (p_item.course_type or "").upper()
+                    should_revert_item = False
+                    if "OUTSOURCING" in ctype or "외주" in ctype:
+                        active_ois = [oi for oi in (p_item.outsourcing_items or []) if oi.outsourcing_order and str(oi.outsourcing_order.status) != "CANCELED"]
+                        if not active_ois or any((oi.outsourcing_order.order_no or "").startswith("AOS-") or "SO#" in (oi.outsourcing_order.note or "") for oi in active_ois):
+                            should_revert_item = True
+                    elif "PURCHASE" in ctype or "구매" in ctype:
+                        active_pis = [pi for pi in (p_item.purchase_items or []) if pi.purchase_order and str(pi.purchase_order.status) != "CANCELED"]
+                        if not active_pis or any((pi.purchase_order.order_no or "").startswith("APO-") or "SO#" in (pi.purchase_order.note or "") for pi in active_pis):
+                            should_revert_item = True
+                    else:
+                        good_sum = sum(int(wl.good_quantity or 0) for wl in (p_item.work_log_items or []))
+                        if good_sum < int(p_item.quantity or 0):
+                            should_revert_item = True
+
+                    if should_revert_item:
+                        await revert_production_item_completed(db, p_item, reference=f"Delete DH ({history.delivery_no})")
+                        p_item.status = ProductionStatus.PLANNED
+                        db.add(p_item)
+                        any_plan_in_progress = True
+
+                if any_plan_in_progress and o_plan.status == ProductionStatus.COMPLETED:
+                    o_plan.status = ProductionStatus.IN_PROGRESS
+                    o_plan.actual_completion_date = None
+                    db.add(o_plan)
+
+            if any_plan_in_progress or not order_plans:
+                order.status = OrderStatus.CONFIRMED
+                order.actual_delivery_date = None
+            else:
+                order.status = OrderStatus.PRODUCTION_COMPLETED
         else:
             total_qty = sum(it.quantity for it in order.items)
             delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
