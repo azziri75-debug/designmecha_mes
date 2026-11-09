@@ -336,7 +336,7 @@ async def read_planned_ids(
 
 async def read_production_plans(
     skip: int = 0,
-    limit: int = 1000,
+    limit: int = 5000,
     worker_id: Optional[int] = None,
     status: Optional[str] = None,
     start_date: Optional[date] = None,
@@ -376,8 +376,21 @@ async def read_production_plans(
     if customer_id:
         stmt = stmt.where(SalesOrder.partner_id == customer_id)
     if product_name:
-        subquery = select(ProductionPlanItem.plan_id).join(Product).where(Product.name.ilike(f"%{product_name}%"))
-        stmt = stmt.where(ProductionPlan.id.in_(subquery))
+        item_subq = select(ProductionPlanItem.plan_id).join(Product).where(
+            or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
+        )
+        so_item_subq = select(SalesOrderItem.order_id).join(Product).where(
+            or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
+        )
+        partner_subq = select(Partner.id).where(Partner.name.ilike(f"%{product_name}%"))
+        stmt = stmt.where(or_(
+            ProductionPlan.id.in_(item_subq),
+            ProductionPlan.order_id.in_(so_item_subq),
+            SalesOrder.order_no.ilike(f"%{product_name}%"),
+            SalesOrder.partner_id.in_(partner_subq),
+            StockProduction.production_no.ilike(f"%{product_name}%"),
+            StockProductionOrder.order_no.ilike(f"%{product_name}%"),
+        ))
     if major_group_id:
         subquery = select(ProductionPlanItem.plan_id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
                    .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))

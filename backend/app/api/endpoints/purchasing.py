@@ -257,14 +257,50 @@ async def _sync_plan_item_from_outsourcing(db: AsyncSession, plan_item_id: Optio
 
 async def _auto_heal_pending_plan_items(db: AsyncSession):
     """
-    하위 세부공정(ProductionPlanItem)이 미완료이거나 수주가 확정(CONFIRMED/PENDING)으로 복원되었는데
-    상위 ProductionPlan.status가 COMPLETED로 잘못 남아 있는 경우,
-    그리고 미완료 공정에 남아 있는 자동생성 발주(AOS-/APO-) 잔재를 정리합니다.
+    1) 이미 납품완료(DELIVERY_COMPLETED/DELIVERED)된 수주의 생산계획/세부공정이
+       이전 보정 로직에 의해 미완료(IN_PROGRESS/PLANNED)로 풀린 경우 완료(COMPLETED)로 복원합니다.
+    2) 수주가 확정(CONFIRMED/PENDING)으로 복원되었고 하위 세부공정이 미완료인데
+       상위 ProductionPlan.status가 COMPLETED로 잘못 남아 있는 경우 IN_PROGRESS로 보정합니다.
+    3) 미완료 공정에 남아 있는 자동생성 발주(AOS-/APO-) 잔재를 정리합니다.
     """
     from app.models.sales import OrderStatus
     healed = False
 
-    # 1) 하위 공정이 미완료(PLANNED/IN_PROGRESS)이거나 수주가 CONFIRMED/PENDING인데 계획 헤더만 COMPLETED인 건 보정
+    # 1) 이미 납품완료(DELIVERY_COMPLETED/DELIVERED)된 수주의 생산계획 및 하위 공정은 모두 COMPLETED로 복원
+    delivered_plans_stmt = (
+        select(ProductionPlan)
+        .join(SalesOrder, ProductionPlan.order_id == SalesOrder.id)
+        .options(selectinload(ProductionPlan.items), selectinload(ProductionPlan.order))
+        .where(
+            cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value,
+            cast(SalesOrder.status, String).in_([
+                OrderStatus.DELIVERY_COMPLETED.value,
+                OrderStatus.DELIVERED.value,
+                "DELIVERY_COMPLETED",
+                "DELIVERED",
+            ]),
+        )
+    )
+    delivered_plans = (await db.execute(delivered_plans_stmt)).scalars().all()
+    for d_plan in delivered_plans:
+        if d_plan.status != ProductionStatus.COMPLETED and getattr(d_plan.status, 'value', str(d_plan.status)) != "COMPLETED":
+            d_plan.status = ProductionStatus.COMPLETED
+            if not d_plan.actual_completion_date:
+                d_plan.actual_completion_date = (
+                    (d_plan.order.actual_delivery_date if d_plan.order else None)
+                    or (d_plan.order.delivery_date if d_plan.order else None)
+                    or d_plan.plan_date
+                    or now_kst().date()
+                )
+            db.add(d_plan)
+            healed = True
+        for it in (d_plan.items or []):
+            if it.status != ProductionStatus.COMPLETED and getattr(it.status, 'value', str(it.status)) != "COMPLETED":
+                it.status = ProductionStatus.COMPLETED
+                db.add(it)
+                healed = True
+
+    # 2) 수주가 CONFIRMED/PENDING으로 복원되었고 하위 공정이 미완료인데 계획 헤더만 COMPLETED인 건 보정
     mismatch_plans_stmt = (
         select(ProductionPlan)
         .options(selectinload(ProductionPlan.items), selectinload(ProductionPlan.order))
@@ -281,7 +317,7 @@ async def _auto_heal_pending_plan_items(db: AsyncSession):
             and getattr(c_plan.order.status, 'value', str(c_plan.order.status)) in ("PENDING", "CONFIRMED")
             and has_incomplete_item
         )
-        if has_incomplete_item or order_reverted:
+        if order_reverted:
             c_plan.status = ProductionStatus.IN_PROGRESS
             c_plan.actual_completion_date = None
             db.add(c_plan)
@@ -864,7 +900,12 @@ async def read_pending_purchase_items(
             ProductionPlanItem.course_type.ilike('%PURCHASE%'),
             ProductionPlanItem.course_type.like('%구매%')
         ))\
-        .where(ProductionPlanItem.status != ProductionStatus.COMPLETED)\
+        .where(cast(ProductionPlanItem.status, String).notin_([
+            ProductionStatus.COMPLETED.value,
+            ProductionStatus.CANCELED.value,
+            "COMPLETED",
+            "CANCELED",
+        ]))\
         .where(ProductionPlanItem.quantity > 0)\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.COMPLETED.value)
@@ -957,7 +998,12 @@ async def read_pending_outsourcing_items(
             ProductionPlanItem.course_type.ilike('%OUTSOURCING%'),
             ProductionPlanItem.course_type.like('%외주%')
         ))\
-        .where(ProductionPlanItem.status != ProductionStatus.COMPLETED)\
+        .where(cast(ProductionPlanItem.status, String).notin_([
+            ProductionStatus.COMPLETED.value,
+            ProductionStatus.CANCELED.value,
+            "COMPLETED",
+            "CANCELED",
+        ]))\
         .where(ProductionPlanItem.quantity > 0)\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.CANCELED.value)\
         .where(cast(ProductionPlan.status, String) != ProductionStatus.COMPLETED.value)
@@ -1009,98 +1055,6 @@ async def read_pending_outsourcing_items(
 
     print(f"[DEBUG] Pending Outsourcing Items: Found {len(pending_items)} items.")
     return pending_items
-
-
-async def _dismiss_pending_plan_items_internal(db: AsyncSession, item_ids: List[int]) -> int:
-    """
-    미발주 목록(구매/외주 대기)에서 관리자가 선택한 공정 항목들을 미발주 대상에서 제외(완료 복원)하고,
-    상위 생산계획의 모든 공정이 완료 상태가 되면 생산계획 및 수주 상태도 완료로 동기화합니다.
-    """
-    from app.models.inventory import StockProductionStatus
-    if not item_ids:
-        return 0
-
-    stmt = select(ProductionPlanItem).where(ProductionPlanItem.id.in_(item_ids))
-    items = (await db.execute(stmt)).scalars().all()
-    affected_plan_ids = set()
-    count = 0
-    for item in items:
-        item.status = ProductionStatus.COMPLETED
-        db.add(item)
-        if item.plan_id:
-            affected_plan_ids.add(item.plan_id)
-        count += 1
-
-    await db.flush()
-
-    for pid in affected_plan_ids:
-        plan_res = await db.execute(
-            select(ProductionPlan)
-            .options(
-                selectinload(ProductionPlan.items),
-                selectinload(ProductionPlan.order).selectinload(SalesOrder.items),
-                selectinload(ProductionPlan.stock_production),
-            )
-            .where(ProductionPlan.id == pid)
-        )
-        plan = plan_res.scalars().first()
-        if not plan:
-            continue
-        all_done = bool(plan.items) and all(
-            it.status == ProductionStatus.COMPLETED or getattr(it.status, 'value', str(it.status)) == "COMPLETED"
-            for it in plan.items
-        )
-        if all_done:
-            plan.status = ProductionStatus.COMPLETED
-            if not plan.actual_completion_date:
-                plan.actual_completion_date = plan.updated_at.date() if plan.updated_at else now_kst().date()
-            db.add(plan)
-
-            if plan.order:
-                ord_status_val = getattr(plan.order.status, 'value', str(plan.order.status))
-                if ord_status_val in ("CONFIRMED", "PENDING"):
-                    total_q = sum(int(si.quantity or 0) for si in (plan.order.items or []))
-                    deliv_q = sum(int(si.delivered_quantity or 0) for si in (plan.order.items or []))
-                    if total_q > 0 and deliv_q >= total_q:
-                        plan.order.status = OrderStatus.DELIVERY_COMPLETED
-                    elif deliv_q > 0:
-                        plan.order.status = OrderStatus.PARTIALLY_DELIVERED
-                    else:
-                        plan.order.status = OrderStatus.PRODUCTION_COMPLETED
-                    db.add(plan.order)
-
-            if plan.stock_production and plan.stock_production.status != StockProductionStatus.COMPLETED:
-                plan.stock_production.status = StockProductionStatus.COMPLETED
-                db.add(plan.stock_production)
-
-    await db.commit()
-    return count
-
-
-@router.delete("/pending-items/{item_id}")
-async def delete_pending_plan_item(
-    item_id: int,
-    db: AsyncSession = Depends(deps.get_db),
-):
-    """미발주 대기 항목(구매/외주) 단건 삭제(미발주 목록에서 제외 및 완료 복원)"""
-    count = await _dismiss_pending_plan_items_internal(db, [item_id])
-    if count == 0:
-        raise HTTPException(status_code=404, detail="미발주 대기 항목을 찾을 수 없습니다.")
-    return {"message": "미발주 목록에서 삭제되었습니다.", "deleted": count}
-
-
-@router.post("/pending-items/bulk-delete")
-async def bulk_delete_pending_plan_items(
-    body: dict,
-    db: AsyncSession = Depends(deps.get_db),
-):
-    """미발주 대기 항목(구매/외주) 다건 일괄 삭제(미발주 목록에서 제외 및 완료 복원)"""
-    raw_ids = body.get("item_ids") or []
-    item_ids = [int(x) for x in raw_ids if str(x).isdigit()]
-    if not item_ids:
-        raise HTTPException(status_code=400, detail="삭제할 항목을 선택해 주세요.")
-    count = await _dismiss_pending_plan_items_internal(db, item_ids)
-    return {"message": f"{count}건의 미발주 항목이 삭제되었습니다.", "deleted": count}
 
 
 # --- Purchase Orders ---
@@ -1424,7 +1378,7 @@ async def trigger_fix_consumable_types(
 @router.get("/purchase/orders", response_model=List[schemas.PurchaseOrder])
 async def read_purchase_orders(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 5000,
     status: Optional[str] = None,
     purchase_type: Optional[str] = None,
     partner_id: Optional[int] = None,
@@ -1844,7 +1798,7 @@ async def create_outsourcing_order(
 @router.get("/outsourcing/orders", response_model=List[schemas.OutsourcingOrder])
 async def read_outsourcing_orders(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 5000,
     status: Optional[str] = None,
     partner_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -2172,20 +2126,43 @@ async def _dismiss_pending_plan_items_internal(db: AsyncSession, item_ids: List[
         if not plan or not plan.items:
             continue
 
+        all_purch_out_done = all(
+            (it.status == ProductionStatus.COMPLETED or getattr(it.status, "value", str(it.status)) == "COMPLETED")
+            for it in plan.items
+            if any(k in (it.course_type or "").upper() for k in ("PURCHASE", "OUTSOURCING"))
+            or any(k in (it.course_type or "") for k in ("구매", "외주"))
+        )
+        has_in_progress_internal = any(
+            getattr(it.status, "value", str(it.status)) == "IN_PROGRESS"
+            for it in plan.items
+        )
+        ord_status = getattr(plan.order.status, "value", str(plan.order.status)) if plan.order else ""
+        order_already_completed = ord_status in ("DELIVERED", "DELIVERY_COMPLETED", "PRODUCTION_COMPLETED")
+
         all_done = all(
             it.status == ProductionStatus.COMPLETED
             or getattr(it.status, "value", str(it.status)) == "COMPLETED"
             for it in plan.items
         )
+        if not all_done and all_purch_out_done and (order_already_completed or not has_in_progress_internal):
+            for it in plan.items:
+                if it.status != ProductionStatus.COMPLETED and getattr(it.status, "value", str(it.status)) != "COMPLETED":
+                    it.status = ProductionStatus.COMPLETED
+                    db.add(it)
+            all_done = True
+
         if all_done:
             if plan.status != ProductionStatus.COMPLETED:
                 plan.status = ProductionStatus.COMPLETED
                 if not plan.actual_completion_date:
-                    plan.actual_completion_date = plan.plan_date or now_kst().date()
+                    plan.actual_completion_date = (
+                        (plan.order.actual_delivery_date if plan.order else None)
+                        or plan.plan_date
+                        or now_kst().date()
+                    )
                 db.add(plan)
 
             if plan.order:
-                ord_status = getattr(plan.order.status, "value", str(plan.order.status))
                 if ord_status not in ("DELIVERED", "DELIVERY_COMPLETED", "PARTIALLY_DELIVERED", "PRODUCTION_COMPLETED"):
                     plan.order.status = OrderStatus.PRODUCTION_COMPLETED
                     db.add(plan.order)
@@ -2196,6 +2173,7 @@ async def _dismiss_pending_plan_items_internal(db: AsyncSession, item_ids: List[
                     plan.stock_production.status = StockProductionStatus.COMPLETED
                     db.add(plan.stock_production)
 
+    await db.commit()
     return dismissed_count
 
 

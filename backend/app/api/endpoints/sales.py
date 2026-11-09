@@ -116,7 +116,7 @@ async def create_estimate(
 @router.get("/estimates/", response_model=List[schemas.Estimate])
 async def read_estimates(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 5000,
     partner_id: Optional[int] = None,
     major_group_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -139,24 +139,28 @@ async def read_estimates(
     if partner_id:
         query = query.where(Estimate.partner_id == partner_id)
     
-    if major_group_id or product_name:
-        subquery = select(EstimateItem.estimate_id).join(Product)
-        if major_group_id:
-            from app.models.product import ProductGroup
-            subquery = subquery.join(ProductGroup, Product.group_id == ProductGroup.id)\
-                               .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
-        if product_name:
-            subquery = subquery.where(
-                or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
-            )
+    if major_group_id:
+        from app.models.product import ProductGroup
+        subquery = select(EstimateItem.estimate_id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                           .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         query = query.where(Estimate.id.in_(subquery))
+
+    if product_name:
+        prod_subq = select(EstimateItem.estimate_id).join(Product).where(
+            or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
+        )
+        partner_subq = select(Partner.id).where(Partner.name.ilike(f"%{product_name}%"))
+        query = query.where(or_(
+            Estimate.id.in_(prod_subq),
+            Estimate.partner_id.in_(partner_subq),
+        ))
 
     if start_date:
         query = query.where(Estimate.estimate_date >= start_date)
     if end_date:
         query = query.where(Estimate.estimate_date <= end_date)
 
-    query = query.order_by(desc(Estimate.estimate_date)).offset(skip).limit(limit or 2000)
+    query = query.order_by(desc(Estimate.estimate_date)).offset(skip).limit(limit or 5000)
 
     result = await db.execute(query)
     estimates = result.scalars().all()
@@ -551,7 +555,7 @@ async def create_order(
 @router.get("/orders/", response_model=List[schemas.SalesOrder])
 async def read_orders(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 5000,
     partner_id: Optional[int] = None,
     major_group_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -578,17 +582,22 @@ async def read_orders(
     if partner_id:
         query = query.where(SalesOrder.partner_id == partner_id)
     
-    if major_group_id or product_name:
-        subquery = select(SalesOrderItem.order_id).join(Product)
-        if major_group_id:
-            from app.models.product import ProductGroup
-            subquery = subquery.join(ProductGroup, Product.group_id == ProductGroup.id)\
-                               .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
-        if product_name:
-            subquery = subquery.where(
-                or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
-            )
+    if major_group_id:
+        from app.models.product import ProductGroup
+        subquery = select(SalesOrderItem.order_id).join(Product).join(ProductGroup, Product.group_id == ProductGroup.id)\
+                           .where(or_(ProductGroup.id == major_group_id, ProductGroup.parent_id == major_group_id))
         query = query.where(SalesOrder.id.in_(subquery))
+
+    if product_name:
+        prod_subq = select(SalesOrderItem.order_id).join(Product).where(
+            or_(Product.name.ilike(f"%{product_name}%"), Product.specification.ilike(f"%{product_name}%"))
+        )
+        partner_subq = select(Partner.id).where(Partner.name.ilike(f"%{product_name}%"))
+        query = query.where(or_(
+            SalesOrder.id.in_(prod_subq),
+            SalesOrder.order_no.ilike(f"%{product_name}%"),
+            SalesOrder.partner_id.in_(partner_subq),
+        ))
 
     if status:
         if status == OrderStatus.DELIVERED or status == "DELIVERED":
@@ -608,9 +617,9 @@ async def read_orders(
             query = query.where(SalesOrder.order_date <= end_date)
 
     if date_type == "delivery":
-        query = query.order_by(desc(SalesOrder.delivery_date)).offset(skip).limit(limit or 2000)
+        query = query.order_by(desc(SalesOrder.delivery_date)).offset(skip).limit(limit or 5000)
     else:
-        query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit or 2000)
+        query = query.order_by(desc(SalesOrder.order_date)).offset(skip).limit(limit or 5000)
     
     result = await db.execute(query)
     orders = result.scalars().all()
