@@ -614,10 +614,23 @@ async def read_orders(
     
     result = await db.execute(query)
     orders = result.scalars().all()
+    cleaned_delivery_dates = False
     for order in orders:
+        if order.actual_delivery_date is not None and (
+            not order.delivery_histories
+            or str(order.status) not in (
+                "DELIVERED", "DELIVERY_COMPLETED",
+                OrderStatus.DELIVERED.value, OrderStatus.DELIVERY_COMPLETED.value
+            )
+        ):
+            order.actual_delivery_date = None
+            db.add(order)
+            cleaned_delivery_dates = True
         for item in order.items:
             if item.product:
                 item.specification = item.product.specification
+    if cleaned_delivery_dates:
+        await db.commit()
     return orders
 
 @router.put("/orders/{order_id}", response_model=schemas.SalesOrder)
@@ -646,6 +659,11 @@ async def update_order(
     if order_in.note is not None: db_order.note = order_in.note
     if order_in.status is not None:
         db_order.status = order_in.status
+        if str(order_in.status) not in (
+            "DELIVERED", "DELIVERY_COMPLETED",
+            OrderStatus.DELIVERED.value, OrderStatus.DELIVERY_COMPLETED.value
+        ) and order_in.actual_delivery_date is None:
+            db_order.actual_delivery_date = None
         if str(order_in.status) in ("CONFIRMED", "PENDING", OrderStatus.CONFIRMED.value, OrderStatus.PENDING.value):
             c_plans = (await db.execute(
                 select(ProductionPlan).where(
@@ -786,6 +804,8 @@ async def patch_order_status(
         raise HTTPException(status_code=404, detail="Order not found")
 
     db_order.status = new_status
+    if str(new_status) not in ("DELIVERED", "DELIVERY_COMPLETED"):
+        db_order.actual_delivery_date = None
     if str(new_status) in ("CONFIRMED", "PENDING"):
         c_plans = (await db.execute(
             select(ProductionPlan).where(
@@ -1792,11 +1812,12 @@ async def delete_delivery_history(
                     o_plan.actual_completion_date = None
                     db.add(o_plan)
 
+            order.actual_delivery_date = None
             if any_plan_in_progress or not order_plans:
                 order.status = OrderStatus.CONFIRMED
-                order.actual_delivery_date = None
             else:
                 order.status = OrderStatus.PRODUCTION_COMPLETED
+            db.add(order)
         else:
             total_qty = sum(it.quantity for it in order.items)
             delivered_qty = sum(it.delivered_quantity or 0 for it in order.items)
@@ -1804,8 +1825,11 @@ async def delete_delivery_history(
                 order.status = OrderStatus.DELIVERY_COMPLETED
             elif delivered_qty > 0:
                 order.status = OrderStatus.PARTIALLY_DELIVERED
+                order.actual_delivery_date = None
             else:
                 order.status = OrderStatus.PRODUCTION_COMPLETED
+                order.actual_delivery_date = None
+            db.add(order)
 
     await db.commit()
     return {"status": "ok", "message": f"DeliveryHistory {history_id} deleted and quantities reverted"}

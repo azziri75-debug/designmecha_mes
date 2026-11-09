@@ -460,6 +460,8 @@ async def revert_production_item_completed(
                     db.add(cw)
             if po:
                 if (po.order_no or "").startswith("APO-"):
+                    po_item.production_plan_item = None
+                    po_item.production_plan_item_id = None
                     await db.delete(po_item)
                     await db.flush()
                     rem_cnt = (await db.execute(
@@ -485,6 +487,8 @@ async def revert_production_item_completed(
             os_order = await db.get(OutsourcingOrder, os_item.outsourcing_order_id)
             if os_order:
                 if (os_order.order_no or "").startswith("AOS-"):
+                    os_item.production_plan_item = None
+                    os_item.production_plan_item_id = None
                     await db.delete(os_item)
                     await db.flush()
                     rem_cnt = (await db.execute(
