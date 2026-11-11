@@ -1363,7 +1363,20 @@ async def update_order_delivery(
         raise HTTPException(status_code=404, detail="Delivery history not found")
 
     if delivery_update.statement_json is not None:
-        db_delivery.statement_json = delivery_update.statement_json
+        existing_stmt = db_delivery.statement_json or {}
+        if isinstance(existing_stmt, str):
+            import json as _json
+            try:
+                existing_stmt = _json.loads(existing_stmt)
+            except Exception:
+                existing_stmt = {}
+        if isinstance(existing_stmt, dict) and isinstance(delivery_update.statement_json, dict):
+            merged_stmt = {**existing_stmt, **delivery_update.statement_json}
+        else:
+            merged_stmt = delivery_update.statement_json
+        db_delivery.statement_json = merged_stmt
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(db_delivery, "statement_json")
     if delivery_update.supplier_info is not None:
         db_delivery.supplier_info = delivery_update.supplier_info
     if delivery_update.invoice_no is not None:
@@ -1612,7 +1625,9 @@ async def attach_statement_to_delivery_history(
             existing = {}
     existing["pdf_url"] = file_url
     existing["attached_at"] = now_kst().isoformat()
-    history.statement_json = existing
+    history.statement_json = dict(existing)
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(history, "statement_json")
 
     await db.commit()
     await db.refresh(history)
@@ -1649,7 +1664,20 @@ async def update_delivery_history(
     if delivery_update.delivery_date is not None:
         history.delivery_date = delivery_update.delivery_date
     if delivery_update.statement_json is not None:
-        history.statement_json = delivery_update.statement_json
+        existing_stmt = history.statement_json or {}
+        if isinstance(existing_stmt, str):
+            import json as _json
+            try:
+                existing_stmt = _json.loads(existing_stmt)
+            except Exception:
+                existing_stmt = {}
+        if isinstance(existing_stmt, dict) and isinstance(delivery_update.statement_json, dict):
+            merged_stmt = {**existing_stmt, **delivery_update.statement_json}
+        else:
+            merged_stmt = delivery_update.statement_json
+        history.statement_json = merged_stmt
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(history, "statement_json")
     if delivery_update.supplier_info is not None:
         history.supplier_info = delivery_update.supplier_info
     if delivery_update.invoice_no is not None:

@@ -3,7 +3,7 @@ import {
     Modal, Box, Button, IconButton,
     CircularProgress, Alert, Checkbox, FormControlLabel
 } from '@mui/material';
-import { X, Printer, FileDown, CheckCircle2 } from 'lucide-react';
+import { X, Printer, FileDown, CheckCircle2, Plus, FileText, Trash2, RotateCcw } from 'lucide-react';
 import { formatNumber, toKoreanCurrency, getImageUrl } from '../lib/utils';
 import html2canvas from 'html2canvas';
 import { printAsImage, generateA4PDF } from '../lib/printUtils';
@@ -71,22 +71,146 @@ const td = (c, extra = {}) => ({
 const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     if (!data) return null;
 
-    // ── Data State ────────────────────────────────
-    const [items, setItems] = useState([]);
-    
-    // Initialize items from snapshot or props — normalize to flat structure
-    useEffect(() => {
-        if (!open) return;
-        const rawItems = data.statement_json?.items || data.items || [];
-        const normalized = rawItems.map(item => ({
-            date:          item.date || data.delivery_date || new Date().toISOString().split('T')[0],
+    const normalizeItemsList = useCallback((rawList, fallbackDate) => {
+        return (rawList || []).map(item => ({
+            date:          item.date || fallbackDate || new Date().toISOString().split('T')[0],
             product_name:  item.product?.name || item.product_name || item.item_name || '',
             specification: item.specification || item.product?.specification || '',
             quantity:      item.quantity  ?? 0,
             unit_price:    item.unit_price ?? 0,
         }));
-        setItems(normalized);
-    }, [open, data]);
+    }, []);
+
+    const getDefaultBaseNo = useCallback(() => {
+        if (data.delivery_no) {
+            return data.delivery_no.replace(/^[A-Z]+-/, '');
+        }
+        const today = (data.delivery_date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+        return `${today}-001`;
+    }, [data.delivery_no, data.delivery_date]);
+
+    // ── Data State (Original + Administrative Extra Statements) ────────────────
+    const [activeTabId, setActiveTabId] = useState('original'); // 'original' | 'ext_...'
+    const [originalDoc, setOriginalDoc] = useState({
+        items: [],
+        prev_balance: 0,
+        paid_amount: 0,
+        receiver_name: '',
+        remarks: '',
+    });
+    const [extraStatements, setExtraStatements] = useState([]);
+
+    // Active form fields for whichever tab is currently selected
+    const [items, setItems] = useState([]);
+    const [remarks, setRemarks] = useState(data.remarks || data.note || '');
+    const [footerInfo, setFooterInfo] = useState({
+        prev_balance: data.prev_balance || 0,
+        paid_amount: data.paid_amount || 0,
+        receiver_name: data.receiver_name || '',
+    });
+
+    // Header overrides for administrative statements
+    const [docTitle, setDocTitle] = useState('');
+    const [docDate, setDocDate] = useState('');
+    const [docNo, setDocNo] = useState('');
+    const [docPartnerName, setDocPartnerName] = useState('');
+
+    // Initialize items & extra statements when modal opens
+    useEffect(() => {
+        if (!open) return;
+        const stmtJson = data.statement_json || {};
+        const rawOrigItems = stmtJson.items || data.items || data.original_delivery_items || [];
+        const normalizedOrig = normalizeItemsList(rawOrigItems, data.delivery_date);
+        const origObj = {
+            items: normalizedOrig,
+            prev_balance: stmtJson.prev_balance ?? data.prev_balance ?? 0,
+            paid_amount: stmtJson.paid_amount ?? data.paid_amount ?? 0,
+            receiver_name: stmtJson.receiver_name ?? data.receiver_name ?? '',
+            remarks: stmtJson.remarks ?? data.remarks ?? data.note ?? '',
+        };
+        setOriginalDoc(origObj);
+
+        const rawExtras = stmtJson.extra_statements || data.extra_statements || [];
+        const loadedExtras = rawExtras.map((ext, idx) => ({
+            id: ext.id || `ext_${idx + 1}`,
+            title: ext.title || `행정용 명세서 #${idx + 1}`,
+            delivery_date: ext.delivery_date || data.delivery_date || new Date().toISOString().split('T')[0],
+            delivery_no: ext.delivery_no || `${getDefaultBaseNo()}-A${idx + 1}`,
+            partner_name: ext.partner_name ?? (data.override_partner_name || data.partner?.name || ''),
+            items: normalizeItemsList(ext.items || [], ext.delivery_date || data.delivery_date),
+            prev_balance: ext.prev_balance ?? 0,
+            paid_amount: ext.paid_amount ?? 0,
+            receiver_name: ext.receiver_name ?? '',
+            remarks: ext.remarks ?? '',
+            created_at: ext.created_at || new Date().toISOString(),
+        }));
+
+        if (data.initialTabId === '__new_extra__') {
+            const nextIdx = loadedExtras.length + 1;
+            const newExt = {
+                id: `ext_${Date.now()}`,
+                title: `행정용 명세서 #${nextIdx}`,
+                delivery_date: data.delivery_date || new Date().toISOString().split('T')[0],
+                delivery_no: `${getDefaultBaseNo()}-A${nextIdx}`,
+                partner_name: data.override_partner_name || data.partner?.name || '',
+                items: JSON.parse(JSON.stringify(normalizedOrig)),
+                prev_balance: origObj.prev_balance || 0,
+                paid_amount: origObj.paid_amount || 0,
+                receiver_name: origObj.receiver_name || '',
+                remarks: origObj.remarks || '',
+                created_at: new Date().toISOString(),
+            };
+            const updatedExtras = [...loadedExtras, newExt];
+            setExtraStatements(updatedExtras);
+            setActiveTabId(newExt.id);
+            setItems(newExt.items);
+            setRemarks(newExt.remarks);
+            setFooterInfo({
+                prev_balance: newExt.prev_balance,
+                paid_amount: newExt.paid_amount,
+                receiver_name: newExt.receiver_name,
+            });
+            setDocTitle(newExt.title);
+            setDocDate(newExt.delivery_date);
+            setDocNo(newExt.delivery_no);
+            setDocPartnerName(newExt.partner_name);
+            return;
+        }
+
+        setExtraStatements(loadedExtras);
+
+        const targetExt = data.initialTabId && data.initialTabId !== 'original'
+            ? loadedExtras.find(e => e.id === data.initialTabId)
+            : null;
+
+        if (targetExt) {
+            setActiveTabId(targetExt.id);
+            setItems(targetExt.items);
+            setRemarks(targetExt.remarks);
+            setFooterInfo({
+                prev_balance: targetExt.prev_balance,
+                paid_amount: targetExt.paid_amount,
+                receiver_name: targetExt.receiver_name,
+            });
+            setDocTitle(targetExt.title);
+            setDocDate(targetExt.delivery_date);
+            setDocNo(targetExt.delivery_no);
+            setDocPartnerName(targetExt.partner_name);
+        } else {
+            setActiveTabId('original');
+            setItems(origObj.items);
+            setRemarks(origObj.remarks);
+            setFooterInfo({
+                prev_balance: origObj.prev_balance,
+                paid_amount: origObj.paid_amount,
+                receiver_name: origObj.receiver_name,
+            });
+            setDocTitle('원본 거래명세서');
+            setDocDate(data.delivery_date || '');
+            setDocNo(getDefaultBaseNo());
+            setDocPartnerName(data.override_partner_name || data.partner?.name || '');
+        }
+    }, [open, data, normalizeItemsList, getDefaultBaseNo]);
 
     const [supplierInfo, setSupplierInfo] = useState(data.supplier_info || {
         biz_no: '312-81-38446',
@@ -96,11 +220,6 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         biz_type: '제조업',
         biz_item: '나이프,베어링',
     });
-    const [footerInfo, setFooterInfo] = useState({
-        prev_balance: data.prev_balance || 0,
-        paid_amount: data.paid_amount || 0,
-        receiver_name: data.receiver_name || '',
-    });
     const [showRecipient, setShowRecipient] = useState(true);
     const [showSupplier, setShowSupplier] = useState(true);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -108,6 +227,181 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const [companyStampUrl, setCompanyStampUrl] = useState(null); // DB 직인 이미지 URL
     const [isSaving, setIsSaving] = useState(false);
     const printRef = useRef();
+
+    // ── 현재 탭 편집 내용을 originalDoc / extraStatements에 동기화하는 헬퍼 ──
+    const buildUpdatedDocs = useCallback(() => {
+        let nextOriginal = { ...originalDoc };
+        let nextExtras = extraStatements.map(ext => ({ ...ext }));
+
+        if (activeTabId === 'original') {
+            nextOriginal = {
+                ...nextOriginal,
+                items: JSON.parse(JSON.stringify(items)),
+                prev_balance: footerInfo.prev_balance || 0,
+                paid_amount: footerInfo.paid_amount || 0,
+                receiver_name: footerInfo.receiver_name || '',
+                remarks: remarks || '',
+            };
+        } else {
+            nextExtras = nextExtras.map(ext => {
+                if (ext.id !== activeTabId) return ext;
+                return {
+                    ...ext,
+                    title: (docTitle || '').trim() || ext.title || '행정용 명세서',
+                    delivery_date: docDate || data.delivery_date || '',
+                    delivery_no: docNo || ext.delivery_no || '',
+                    partner_name: docPartnerName ?? '',
+                    items: JSON.parse(JSON.stringify(items)),
+                    prev_balance: footerInfo.prev_balance || 0,
+                    paid_amount: footerInfo.paid_amount || 0,
+                    receiver_name: footerInfo.receiver_name || '',
+                    remarks: remarks || '',
+                };
+            });
+        }
+        return { nextOriginal, nextExtras };
+    }, [activeTabId, originalDoc, extraStatements, items, footerInfo, remarks, docTitle, docDate, docNo, docPartnerName, data.delivery_date]);
+
+    // ── 탭 전환 ──
+    const handleSelectTab = (targetTabId) => {
+        if (targetTabId === activeTabId) return;
+        const { nextOriginal, nextExtras } = buildUpdatedDocs();
+        setOriginalDoc(nextOriginal);
+        setExtraStatements(nextExtras);
+
+        if (targetTabId === 'original') {
+            setActiveTabId('original');
+            setItems(nextOriginal.items);
+            setRemarks(nextOriginal.remarks);
+            setFooterInfo({
+                prev_balance: nextOriginal.prev_balance,
+                paid_amount: nextOriginal.paid_amount,
+                receiver_name: nextOriginal.receiver_name,
+            });
+            setDocTitle('원본 거래명세서');
+            setDocDate(data.delivery_date || '');
+            setDocNo(getDefaultBaseNo());
+            setDocPartnerName(data.override_partner_name || data.partner?.name || '');
+        } else {
+            const targetExt = nextExtras.find(e => e.id === targetTabId);
+            if (!targetExt) return;
+            setActiveTabId(targetExt.id);
+            setItems(targetExt.items);
+            setRemarks(targetExt.remarks);
+            setFooterInfo({
+                prev_balance: targetExt.prev_balance,
+                paid_amount: targetExt.paid_amount,
+                receiver_name: targetExt.receiver_name,
+            });
+            setDocTitle(targetExt.title);
+            setDocDate(targetExt.delivery_date);
+            setDocNo(targetExt.delivery_no);
+            setDocPartnerName(targetExt.partner_name);
+        }
+    };
+
+    // ── 행정처리용 추가 거래명세서 생성 ──
+    const handleAddExtraStatement = () => {
+        const { nextOriginal, nextExtras } = buildUpdatedDocs();
+        setOriginalDoc(nextOriginal);
+
+        const nextIdx = nextExtras.length + 1;
+        const baseItems = JSON.parse(JSON.stringify(items.length > 0 ? items : nextOriginal.items));
+        const newExt = {
+            id: `ext_${Date.now()}`,
+            title: `행정용 명세서 #${nextIdx}`,
+            delivery_date: data.delivery_date || new Date().toISOString().split('T')[0],
+            delivery_no: `${getDefaultBaseNo()}-A${nextIdx}`,
+            partner_name: data.override_partner_name || data.partner?.name || '',
+            items: baseItems,
+            prev_balance: footerInfo.prev_balance || 0,
+            paid_amount: footerInfo.paid_amount || 0,
+            receiver_name: footerInfo.receiver_name || '',
+            remarks: remarks || '',
+            created_at: new Date().toISOString(),
+        };
+
+        const updatedExtras = [...nextExtras, newExt];
+        setExtraStatements(updatedExtras);
+        setActiveTabId(newExt.id);
+        setItems(newExt.items);
+        setRemarks(newExt.remarks);
+        setFooterInfo({
+            prev_balance: newExt.prev_balance,
+            paid_amount: newExt.paid_amount,
+            receiver_name: newExt.receiver_name,
+        });
+        setDocTitle(newExt.title);
+        setDocDate(newExt.delivery_date);
+        setDocNo(newExt.delivery_no);
+        setDocPartnerName(newExt.partner_name);
+    };
+
+    // ── 행정처리용 추가 거래명세서 삭제 ──
+    const handleDeleteExtraStatement = async (extId, e) => {
+        if (e) e.stopPropagation();
+        const target = extraStatements.find(x => x.id === extId);
+        const label = target?.title || '행정용 명세서';
+        if (!window.confirm(`'${label}' 문서를 삭제하시겠습니까?\n(원본 거래명세서는 그대로 유지됩니다.)`)) return;
+
+        const { nextOriginal, nextExtras } = buildUpdatedDocs();
+        const filteredExtras = nextExtras.filter(x => x.id !== extId);
+        setOriginalDoc(nextOriginal);
+        setExtraStatements(filteredExtras);
+
+        if (activeTabId === extId) {
+            setActiveTabId('original');
+            setItems(nextOriginal.items);
+            setRemarks(nextOriginal.remarks);
+            setFooterInfo({
+                prev_balance: nextOriginal.prev_balance,
+                paid_amount: nextOriginal.paid_amount,
+                receiver_name: nextOriginal.receiver_name,
+            });
+            setDocTitle('원본 거래명세서');
+            setDocDate(data.delivery_date || '');
+            setDocNo(getDefaultBaseNo());
+            setDocPartnerName(data.override_partner_name || data.partner?.name || '');
+        }
+
+        // 서버에도 즉시 반영
+        if (data.delivery_id || data.id) {
+            try {
+                const historyId = data.delivery_id || data.id;
+                const orderId = data.order_id || data.id;
+                const origSupply = (nextOriginal.items || []).reduce((s, i) => s + (i.quantity || 0) * (i.unit_price || 0), 0);
+                const origTax = (nextOriginal.items || []).reduce((s, i) => s + Math.floor((i.quantity || 0) * (i.unit_price || 0) * 0.1), 0);
+                const extrasWithTotals = filteredExtras.map(ext => {
+                    const s = (ext.items || []).reduce((acc, i) => acc + (i.quantity || 0) * (i.unit_price || 0), 0);
+                    const t = (ext.items || []).reduce((acc, i) => acc + Math.floor((i.quantity || 0) * (i.unit_price || 0) * 0.1), 0);
+                    return { ...ext, totalSupply: s, totalTax: t, totalAmount: s + t };
+                });
+                await api.put(`/sales/orders/${orderId}/delivery/${historyId}`, {
+                    statement_json: {
+                        ...(data.statement_json || {}),
+                        items: nextOriginal.items,
+                        totalSupply: origSupply,
+                        totalTax: origTax,
+                        totalAmount: origSupply + origTax,
+                        prev_balance: nextOriginal.prev_balance,
+                        paid_amount: nextOriginal.paid_amount,
+                        receiver_name: nextOriginal.receiver_name,
+                        remarks: nextOriginal.remarks,
+                        extra_statements: extrasWithTotals,
+                    }
+                });
+                if (onSuccess) onSuccess();
+            } catch (err) {
+                console.error('Failed to persist extra statement deletion:', err);
+            }
+        }
+    };
+
+    // ── 행정용 명세서에 원본 품목 다시 불러오기 ──
+    const handleResetFromOriginal = () => {
+        if (!window.confirm('현재 행정용 명세서의 품목 내역을 원본 거래명세서 품목으로 초기화하시겠습니까?')) return;
+        setItems(JSON.parse(JSON.stringify(originalDoc.items)));
+    };
 
     // ── Resizable Columns State & Logic ─────────────────────── (localStorage 유지)
     const [colWidths, setColWidths] = useState(() => {
@@ -208,8 +502,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
  
     // ── 품목 조작 ──────────────────────────────
     const addItem = () => {
+        const defaultDate = (activeTabId === 'original' ? data.delivery_date : docDate) || new Date().toISOString().split('T')[0];
         setItems(prev => [...prev, {
-            date: new Date().toISOString().split('T')[0],
+            date: defaultDate,
             product_name: '새 항목',
             specification: '',
             quantity: 1,
@@ -234,24 +529,46 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
         setIsSaving(true);
         try {
             const historyId = data.delivery_id || data.id;
-            const orderId = data.order_id || data.id; // data contains order if opened from page
-            
+            const orderId = data.order_id || data.id;
+
+            const { nextOriginal, nextExtras } = buildUpdatedDocs();
+            setOriginalDoc(nextOriginal);
+            setExtraStatements(nextExtras);
+
+            const origSupply = (nextOriginal.items || []).reduce((s, i) => s + (i.quantity || 0) * (i.unit_price || 0), 0);
+            const origTax = (nextOriginal.items || []).reduce((s, i) => s + Math.floor((i.quantity || 0) * (i.unit_price || 0) * 0.1), 0);
+            const origAmount = origSupply + origTax;
+
+            const extrasWithTotals = nextExtras.map(ext => {
+                const s = (ext.items || []).reduce((acc, i) => acc + (i.quantity || 0) * (i.unit_price || 0), 0);
+                const t = (ext.items || []).reduce((acc, i) => acc + Math.floor((i.quantity || 0) * (i.unit_price || 0) * 0.1), 0);
+                return {
+                    ...ext,
+                    totalSupply: s,
+                    totalTax: t,
+                    totalAmount: s + t,
+                };
+            });
+
             const payload = {
                 statement_json: {
-                    items,
-                    totalSupply,
-                    totalTax,
-                    totalAmount,
-                    prev_balance: footerInfo.prev_balance,
-                    paid_amount: footerInfo.paid_amount,
-                    receiver_name: footerInfo.receiver_name,
-                    remarks
+                    ...(data.statement_json || {}),
+                    items: nextOriginal.items,
+                    totalSupply: origSupply,
+                    totalTax: origTax,
+                    totalAmount: origAmount,
+                    prev_balance: nextOriginal.prev_balance,
+                    paid_amount: nextOriginal.paid_amount,
+                    receiver_name: nextOriginal.receiver_name,
+                    remarks: nextOriginal.remarks,
+                    extra_statements: extrasWithTotals,
                 }
             };
  
-            // Delivery ID is usually part of the data or passed separately
             await api.put(`/sales/orders/${orderId}/delivery/${historyId}`, payload);
-            alert("거래명세서 정보가 저장되었습니다.");
+            alert(activeTabId === 'original'
+                ? "원본 거래명세서 정보가 저장되었습니다."
+                : `행정처리용 거래명세서(${docTitle || '추가 명세서'})가 저장되었습니다.\n※ 결산자료 및 재고에는 반영되지 않습니다.`);
             if (onSuccess) onSuccess();
         } catch (err) {
             console.error("Save failed:", err);
@@ -269,21 +586,24 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
     const balance = (footerInfo.prev_balance + totalAmount) - footerInfo.paid_amount;
 
     const ROWS = 12;
-    const filledRows = items.length;
-    const emptyCount = Math.max(0, ROWS - filledRows);
 
-    const [remarks, setRemarks] = useState(data.remarks || data.note || '');
+    const effectiveDocNo = activeTabId === 'original' ? getDefaultBaseNo() : (docNo || getDefaultBaseNo());
+    const effectiveDocDate = activeTabId === 'original' ? (data.delivery_date || '') : (docDate || data.delivery_date || '');
+    const effectivePartnerName = activeTabId === 'original'
+        ? (data.override_partner_name || data.partner?.name || '')
+        : (docPartnerName !== undefined ? docPartnerName : (data.override_partner_name || data.partner?.name || ''));
 
     // ── PDF 다운로드 ────────────────────────────
     const handleDownloadPDF = async () => {
         if (!printRef.current) return;
         setIsGeneratingPdf(true);
         try {
-            const partnerName = data.partner?.name || '고객사';
+            const partnerName = effectivePartnerName || '고객사';
             const firstItemName = items[0]?.product?.name || items[0]?.product_name || items[0]?.item_name || '품명';
             const extraCount = items.length > 1 ? ` 외 ${items.length - 1}건` : '';
-            const deliveryDate = data.delivery_date || '날짜';
-            const fileName = `거래명세서-${partnerName}-${firstItemName}${extraCount}-${deliveryDate}.pdf`;
+            const deliveryDate = effectiveDocDate || '날짜';
+            const suffix = activeTabId === 'original' ? '' : `-${docTitle || '행정용'}`;
+            const fileName = `거래명세서-${partnerName}-${firstItemName}${extraCount}-${deliveryDate}${suffix}.pdf`;
             await generateA4PDF(printRef.current, {
                 fileName,
                 orientation: 'landscape',
@@ -354,21 +674,15 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', height: '22px', borderBottom: `1.5px solid ${C}` }}>
                             <div style={{ width: '40px', borderRight: `1.5px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', fontStyle: 'italic', color: C }}>No.</div>
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '13px', fontWeight: 'bold', color: C }}>{
-                                (() => {
-                                    if (data.delivery_no) {
-                                        // "DH-YYYYMMDD-001" → "YYYYMMDD-001"
-                                        return data.delivery_no.replace(/^[A-Z]+-/, '');
-                                    }
-                                    // 없으면 오늘 날짜로 자동 생성
-                                    const today = (data.delivery_date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
-                                    return `${today}-001`;
-                                })()
-                            }</div>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '13px', fontWeight: 'bold', color: C }}>
+                                {effectiveDocNo}
+                            </div>
                         </div>
                         <div style={{ display: 'flex', height: '22px', borderBottom: `1.5px solid ${C}` }}>
                             <div style={{ width: '40px', borderRight: `1.5px solid ${C}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', color: C }}>일자</div>
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '12px', color: C }}>{data.delivery_date || ''}</div>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '8px', fontSize: '12px', color: C }}>
+                                {effectiveDocDate}
+                            </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0 6px' }}>
                             <span style={{ fontSize: '16px', fontWeight: '900', borderBottom: `3px double ${C}`, color: C, lineHeight: 1.1, whiteSpace: 'nowrap', wordBreak: 'keep-all' }}>{"거\u00A0\u00A0\u00A0래\u00A0\u00A0\u00A0명\u00A0\u00A0\u00A0세\u00A0\u00A0\u00A0표"}</span>
@@ -384,7 +698,7 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     paddingBottom: '2px',
                                     lineHeight: '1.2'
                                 }}>
-                                    {data.override_partner_name || data.partner?.name || ''}
+                                    {effectivePartnerName}
                                 </div>
                                 <div style={{ width: '100%', height: '2.5px', backgroundColor: C, marginTop: '-1px' }} className="tsm-no-bg-override" />
                             </div>
@@ -474,10 +788,10 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                                     <td style={{ ...td(C), textAlign: 'center', fontSize: '11px', verticalAlign: 'middle' }}>
                                         <textarea 
                                             rows={1}
-                                            value={(item.date || data.delivery_date || '').replace(/^(\d{4})-/, '')} 
+                                            value={(item.date || effectiveDocDate || '').replace(/^(\d{4})-/, '')} 
                                             onChange={e => {
                                                 // 사용자는 MM-DD 형식으로 입력, 저장은 YYYY-MM-DD 형식 유지
-                                                const origDate = item.date || data.delivery_date || '';
+                                                const origDate = item.date || effectiveDocDate || '';
                                                 const year = origDate.match(/^\d{4}/) 
                                                     ? origDate.slice(0, 4) 
                                                     : new Date().getFullYear().toString();
@@ -655,11 +969,173 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
 
     return (
         <Modal open={open} onClose={onClose} sx={{ '& .MuiBackdrop-root': { bgcolor: 'rgba(0,0,0,0.9)' } }} slotProps={{ backdrop: { className: 'tsm-no-print' } }}>
-            <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '96vw', maxWidth: '1200px', maxHeight: '98vh', display: 'flex', flexDirection: 'column', bgcolor: '#ffffff', boxShadow: 24, borderRadius: 2, overflow: 'hidden' }}>
+            <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '96vw', maxWidth: '1220px', maxHeight: '98vh', display: 'flex', flexDirection: 'column', bgcolor: '#ffffff', boxShadow: 24, borderRadius: 2, overflow: 'hidden' }}>
+                {/* 상단 헤더 */}
                 <Box className="tsm-no-print" sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, borderBottom: '1px solid #e2e8f0', bgcolor: '#f8fafc' }}>
-                    <span style={{ color: '#1e293b', fontWeight: 800, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}><Printer size={16} /> 거래명세서 출력 및 관리</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ color: '#1e293b', fontWeight: 800, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Printer size={16} /> 거래명세서 출력 및 관리
+                        </span>
+                        {activeTabId !== 'original' && (
+                            <span style={{ backgroundColor: '#f3e8ff', color: '#7e22ce', border: '1px solid #d8b4fe', borderRadius: '999px', padding: '2px 10px', fontSize: '11px', fontWeight: 800 }}>
+                                🔒 행정처리용 추가 명세서 (결산·매출·재고 미반영)
+                            </span>
+                        )}
+                    </div>
                     <IconButton onClick={onClose} sx={{ color: '#64748b' }}><X size={20} /></IconButton>
                 </Box>
+
+                {/* 원본 / 행정처리용 추가 명세서 탭 바 */}
+                <Box className="tsm-no-print" sx={{ px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', bgcolor: '#f1f5f9', flexShrink: 0 }}>
+                    <button
+                        type="button"
+                        onClick={() => handleSelectTab('original')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            border: activeTabId === 'original' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                            backgroundColor: activeTabId === 'original' ? '#eff6ff' : '#ffffff',
+                            color: activeTabId === 'original' ? '#1d4ed8' : '#475569',
+                            boxShadow: activeTabId === 'original' ? '0 1px 3px rgba(37,99,235,0.2)' : 'none',
+                        }}
+                    >
+                        <FileText size={14} /> 원본 거래명세서
+                    </button>
+
+                    {extraStatements.map((ext, idx) => {
+                        const isSelected = activeTabId === ext.id;
+                        const labelText = isSelected ? (docTitle || ext.title || `행정용 #${idx + 1}`) : (ext.title || `행정용 #${idx + 1}`);
+                        return (
+                            <div
+                                key={ext.id}
+                                onClick={() => handleSelectTab(ext.id)}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '5px 10px 5px 12px',
+                                    borderRadius: '8px',
+                                    fontSize: '12px',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    border: isSelected ? '2px solid #7c3aed' : '1px solid #cbd5e1',
+                                    backgroundColor: isSelected ? '#f5f3ff' : '#ffffff',
+                                    color: isSelected ? '#6d28d9' : '#475569',
+                                    boxShadow: isSelected ? '0 1px 3px rgba(124,58,237,0.2)' : 'none',
+                                }}
+                            >
+                                <span>📑 {labelText}</span>
+                                <span
+                                    onClick={(e) => handleDeleteExtraStatement(ext.id, e)}
+                                    title="이 행정용 명세서 삭제"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '18px',
+                                        height: '18px',
+                                        borderRadius: '4px',
+                                        color: '#ef4444',
+                                        marginLeft: '2px',
+                                    }}
+                                >
+                                    <Trash2 size={12} />
+                                </span>
+                            </div>
+                        );
+                    })}
+
+                    <button
+                        type="button"
+                        onClick={handleAddExtraStatement}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            border: '1px dashed #7c3aed',
+                            backgroundColor: '#faf5ff',
+                            color: '#7c3aed',
+                            marginLeft: '4px',
+                        }}
+                    >
+                        <Plus size={14} /> 행정처리용 명세서 추가 (결산 미반영)
+                    </button>
+                </Box>
+
+                {/* 행정처리용 추가 명세서 활성 시 상단 메타 편집 바 */}
+                {activeTabId !== 'original' && (
+                    <Box className="tsm-no-print" sx={{ px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', borderBottom: '1px solid #e9d5ff', bgcolor: '#faf5ff', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <label style={{ fontSize: '11px', fontWeight: 800, color: '#6b21a8' }}>구분 별칭(메모):</label>
+                            <input
+                                type="text"
+                                value={docTitle}
+                                onChange={(e) => setDocTitle(e.target.value)}
+                                placeholder="예: 거래처 요청 품명변경분"
+                                style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '6px', border: '1px solid #c084fc', backgroundColor: '#fff', color: '#1e293b', fontWeight: 700, width: '180px' }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <label style={{ fontSize: '11px', fontWeight: 800, color: '#6b21a8' }}>발행일자:</label>
+                            <input
+                                type="date"
+                                value={docDate}
+                                onChange={(e) => setDocDate(e.target.value)}
+                                style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#1e293b', fontWeight: 700 }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <label style={{ fontSize: '11px', fontWeight: 800, color: '#6b21a8' }}>문서번호(No.):</label>
+                            <input
+                                type="text"
+                                value={docNo}
+                                onChange={(e) => setDocNo(e.target.value)}
+                                style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#1e293b', fontWeight: 700, width: '135px' }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <label style={{ fontSize: '11px', fontWeight: 800, color: '#6b21a8' }}>공급받는자(귀하):</label>
+                            <input
+                                type="text"
+                                value={docPartnerName}
+                                onChange={(e) => setDocPartnerName(e.target.value)}
+                                style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#1e293b', fontWeight: 700, width: '160px' }}
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleResetFromOriginal}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: '#ffffff',
+                                color: '#475569',
+                                marginLeft: 'auto',
+                            }}
+                        >
+                            <RotateCcw size={12} /> 원본 품목 다시 불러오기
+                        </button>
+                    </Box>
+                )}
+
                 <Box ref={wrapRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3, bgcolor: '#ffffff !important', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     {pdfStatus === 'success' && <Alert severity="success" icon={<CheckCircle2 />} sx={{ mb: 2, borderRadius: 2, width: '100%' }}>✅ PDF 파일이 성공적으로 생성되었습니다.</Alert>}
                     {pdfStatus === 'error' && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, width: '100%' }}>PDF 생성에 실패했습니다. 다시 시도해 주세요.</Alert>}
@@ -701,7 +1177,9 @@ const TransactionStatementModal = ({ open, onClose, data, onSuccess }) => {
                 </Box>
                 <Box className="tsm-no-print" sx={{ px: 2, py: 1.5, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', gap: 2, bgcolor: '#f8fafc', flexShrink: 0 }}>
                     <Button variant="contained" size="large" onClick={addItem} sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' }, fontWeight: 'bold', px: 3, borderRadius: 2 }}>항목 추가</Button>
-                    <Button variant="contained" size="large" startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <CheckCircle2 />} onClick={handleSaveStatement} disabled={isSaving} sx={{ bgcolor: '#4f46e5', fontWeight: 'bold', px: 3, borderRadius: 2 }}>저장</Button>
+                    <Button variant="contained" size="large" startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <CheckCircle2 />} onClick={handleSaveStatement} disabled={isSaving} sx={{ bgcolor: activeTabId === 'original' ? '#4f46e5' : '#7c3aed', fontWeight: 'bold', px: 3, borderRadius: 2 }}>
+                        {activeTabId === 'original' ? '원본 명세서 저장' : '행정용 명세서 저장'}
+                    </Button>
                     <Button variant="contained" size="large" startIcon={isGeneratingPdf ? <CircularProgress size={16} color="inherit" /> : <FileDown />} onClick={handleDownloadPDF} disabled={isGeneratingPdf} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 3, borderRadius: 2 }}>PDF 다운로드</Button>
                     <Button variant="contained" size="large" startIcon={<Printer />} onClick={handlePrint} sx={{ bgcolor: '#2563eb', fontWeight: 'bold', px: 3, borderRadius: 2 }}>인쇄</Button>
                     <Button variant="outlined" size="large" onClick={onClose} sx={{ borderColor: '#cbd5e1', color: '#64748b', fontWeight: 'bold', px: 3, borderRadius: 2 }}>닫기</Button>

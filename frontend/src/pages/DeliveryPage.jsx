@@ -216,6 +216,34 @@ const DeliveryPage = () => {
         setExpandedOrder(expandedOrder === orderId ? null : orderId);
     };
 
+    const openStatementModal = (ord, dh, initialTabId = 'original') => {
+        const origItems = (dh.items || []).map(it => ({
+            date: dh.delivery_date,
+            item_name: it.order_item?.product?.name || '',
+            product: it.order_item?.product || {},
+            quantity: it.quantity,
+            unit_price: it.order_item?.unit_price || 0,
+        }));
+        setStatementData({
+            id: dh.id,
+            delivery_id: dh.id,
+            order_id: ord.id,
+            delivery_no: dh.delivery_no,
+            delivery_date: dh.delivery_date,
+            order_no: ord.order_no,
+            partner: ord.partner,
+            override_partner_name: dh.override_partner_name || null,
+            note: dh.note || '',
+            remarks: dh.note || '',
+            original_delivery_items: origItems,
+            items: origItems,
+            ...(dh.statement_json || {}),
+            statement_json: dh.statement_json || {},
+            initialTabId,
+        });
+        setShowStatementModal(true);
+    };
+
     const handleDeleteDelivery = async (dhId) => {
         if (!window.confirm('이 납품 이력을 삭제하시겠습니까?\n\n삭제하면 수주의 납품 수량이 원래대로 복원됩니다.')) return;
         try {
@@ -543,90 +571,109 @@ const DeliveryPage = () => {
                                                                     <Truck className="w-4 h-4" /> 납품 이력 (Delivery History)
                                                                 </h4>
                                                                 {ord.delivery_histories?.length > 0 ? (
-                                                                    <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-800">
-                                                                        {ord.delivery_histories.map((dh) => (
-                                                                            <div key={dh.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3 flex justify-between items-center group">
-                                                                                <div className="w-full">
-                                                                                    <div className="flex justify-between items-center mb-2">
-                                                                                        <div>
-                                                                                            <div className="text-xs font-bold text-gray-300">{dh.delivery_date}</div>
-                                                                                            <div className="text-[10px] text-gray-500 font-mono italic">{dh.delivery_no}</div>
+                                                                    <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-800">
+                                                                        {ord.delivery_histories.map((dh) => {
+                                                                            const extraStmts = dh.statement_json?.extra_statements || [];
+                                                                            return (
+                                                                            <div key={dh.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3 flex flex-col gap-2 group">
+                                                                                <div className="flex justify-between items-start gap-3">
+                                                                                    <div className="w-full">
+                                                                                        <div className="flex justify-between items-center mb-2">
+                                                                                            <div>
+                                                                                                <div className="text-xs font-bold text-gray-300">{dh.delivery_date}</div>
+                                                                                                <div className="text-[10px] text-gray-500 font-mono italic">{dh.delivery_no}</div>
+                                                                                            </div>
+                                                                                            <div className="text-right">
+                                                                                                <div className="text-[10px] text-gray-400">총 납품액</div>
+                                                                                                <div className="text-sm font-black text-blue-400">{formatCurrency(dh.delivery_amount || 0, dh.items?.[0]?.order_item?.currency || 'KRW')}</div>
+                                                                                            </div>
                                                                                         </div>
-                                                                                        <div className="text-right">
-                                                                                            <div className="text-[10px] text-gray-400">총 납품액</div>
-                                                                                            <div className="text-sm font-black text-blue-400">{formatCurrency(dh.delivery_amount || 0, dh.items?.[0]?.order_item?.currency || 'KRW')}</div>
+                                                                                        {/* Minimal Items List */}
+                                                                                        <div className="bg-black/20 rounded border border-gray-800/50 p-2 text-[10px] text-gray-400">
+                                                                                            {dh.items?.map(it => (
+                                                                                                <div key={it.id} className="flex justify-between py-0.5">
+                                                                                                    <span className="truncate flex-1">{it.order_item?.product?.name}</span>
+                                                                                                    <span className="w-12 text-right">{it.quantity?.toLocaleString()}개</span>
+                                                                                                    <span className="w-20 text-right font-bold text-gray-300">{formatCurrency(it.delivery_amount || 0, it.order_item?.currency || 'KRW')}</span>
+                                                                                                </div>
+                                                                                            ))}
                                                                                         </div>
                                                                                     </div>
-                                                                                    {/* Minimal Items List */}
-                                                                                    <div className="bg-black/20 rounded border border-gray-800/50 p-2 text-[10px] text-gray-400">
-                                                                                        {dh.items?.map(it => (
-                                                                                            <div key={it.id} className="flex justify-between py-0.5">
-                                                                                                <span className="truncate flex-1">{it.order_item?.product?.name}</span>
-                                                                                                <span className="w-12 text-right">{it.quantity?.toLocaleString()}개</span>
-                                                                                                <span className="w-20 text-right font-bold text-gray-300">{formatCurrency(it.delivery_amount || 0, it.order_item?.currency || 'KRW')}</span>
-                                                                                            </div>
+                                                                                    <div className="flex flex-col gap-1.5 shrink-0">
+                                                                                        <div className="flex gap-1.5">
+                                                                                            <button
+                                                                                                className="text-[10px] bg-blue-900/30 text-blue-400 border border-blue-900/50 px-2 py-1 rounded hover:bg-blue-900/50 flex items-center gap-1 whitespace-nowrap"
+                                                                                                onClick={() => {
+                                                                                                    if (dh.is_export) {
+                                                                                                        setCiModalOrder(ord);
+                                                                                                        setCiModalDeliveryId(dh.id);
+                                                                                                        setCiModalInvoiceNo(dh.invoice_no || '');
+                                                                                                        setCiModalDeliveryDate(dh.delivery_date || '');
+                                                                                                        setShowCiModal(true);
+                                                                                                    } else {
+                                                                                                        openStatementModal(ord, dh, 'original');
+                                                                                                    }
+                                                                                                }}
+                                                                                            >
+                                                                                                <FileText className="w-3 h-3" /> {dh.is_export ? 'Invoice/PL' : '원본 명세서'}
+                                                                                            </button>
+                                                                                            {!dh.is_export && (
+                                                                                                <button
+                                                                                                    title="기존 명세서는 유지하고 결산·재고에 산정되지 않는 행정처리용 명세서를 추가합니다"
+                                                                                                    className="text-[10px] bg-purple-900/30 text-purple-300 border border-purple-700/50 px-2 py-1 rounded hover:bg-purple-900/50 flex items-center gap-1 whitespace-nowrap"
+                                                                                                    onClick={() => openStatementModal(ord, dh, '__new_extra__')}
+                                                                                                >
+                                                                                                    <Plus className="w-3 h-3" /> 행정용 추가
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="flex gap-1.5 justify-end">
+                                                                                            <button
+                                                                                                className="text-[10px] bg-yellow-900/30 text-yellow-400 border border-yellow-900/50 px-2 py-1 rounded hover:bg-yellow-900/50 flex items-center gap-1 whitespace-nowrap"
+                                                                                                onClick={() => setEditHistoryModal({
+                                                                                                    id: dh.id,
+                                                                                                    delivery_date: dh.delivery_date || '',
+                                                                                                    note: dh.note || '',
+                                                                                                    items: dh.items.map(it => ({ ...it })) // clone items for editing
+                                                                                                })}
+                                                                                            >
+                                                                                                ✏️ 수정
+                                                                                            </button>
+                                                                                            <button
+                                                                                                className="text-[10px] bg-red-900/30 text-red-400 border border-red-900/50 px-2 py-1 rounded hover:bg-red-900/50 flex items-center gap-1 whitespace-nowrap"
+                                                                                                onClick={() => handleDeleteDelivery(dh.id)}
+                                                                                            >
+                                                                                                🗑 삭제
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {/* 저장된 행정처리용 추가 명세서 목록 (결산 미반영) */}
+                                                                                {extraStmts.length > 0 && (
+                                                                                    <div className="pt-1.5 border-t border-gray-800/80 flex items-center flex-wrap gap-1.5">
+                                                                                        <span className="text-[10px] font-bold text-purple-400 mr-1">
+                                                                                            📑 행정처리용 명세서 (결산 미반영):
+                                                                                        </span>
+                                                                                        {extraStmts.map((ext, idx) => (
+                                                                                            <button
+                                                                                                key={ext.id || idx}
+                                                                                                onClick={() => openStatementModal(ord, dh, ext.id)}
+                                                                                                className="text-[10px] bg-purple-950/60 hover:bg-purple-900/70 text-purple-200 border border-purple-700/60 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
+                                                                                            >
+                                                                                                <span>{ext.title || `행정용 #${idx + 1}`}</span>
+                                                                                                {ext.totalSupply !== undefined && (
+                                                                                                    <span className="text-purple-400 font-mono">
+                                                                                                        (공급가 ₩{Number(ext.totalSupply || 0).toLocaleString()})
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </button>
                                                                                         ))}
                                                                                     </div>
-                                                                                </div>
-                                                                                <div className="flex gap-2">
-                                                                                    <button
-                                                                                        className="text-[10px] bg-blue-900/30 text-blue-400 border border-blue-900/50 px-2 py-1 rounded hover:bg-blue-900/50 flex items-center gap-1"
-                                                                                        onClick={() => {
-                                                                                            if (dh.is_export) {
-                                                                                                // 수출: Commercial Invoice / Packing List
-                                                                                                setCiModalOrder(ord);
-                                                                                                setCiModalDeliveryId(dh.id);
-                                                                                                setCiModalInvoiceNo(dh.invoice_no || '');
-                                                                                                setCiModalDeliveryDate(dh.delivery_date || '');
-                                                                                                setShowCiModal(true);
-                                                                                            } else {
-                                                                                                setStatementData({
-                                                                                                    id: dh.id,
-                                                                                                    delivery_id: dh.id,
-                                                                                                    order_id: ord.id,
-                                                                                                    delivery_no: dh.delivery_no,
-                                                                                                    delivery_date: dh.delivery_date,
-                                                                                                    order_no: ord.order_no,
-                                                                                                    partner: ord.partner,
-                                                                                                    // 납품처 변경된 경우 해당 업체명 우선 사용
-                                                                                                    override_partner_name: dh.override_partner_name || null,
-                                                                                                    note: dh.note || '',
-                                                                                                    remarks: dh.note || '',
-                                                                                                    items: (dh.items || []).map(it => ({
-                                                                                                        date: dh.delivery_date,
-                                                                                                        item_name: it.order_item?.product?.name || '',
-                                                                                                        product: it.order_item?.product || {},
-                                                                                                        quantity: it.quantity,
-                                                                                                        unit_price: it.order_item?.unit_price || 0,
-                                                                                                    })),
-                                                                                                    ...(dh.statement_json || {}),
-                                                                                                });
-                                                                                                setShowStatementModal(true);
-                                                                                            }
-                                                                                        }}
-                                                                                    >
-                                                                                        <FileText className="w-3 h-3" /> {dh.is_export ? 'Invoice/PL' : '명세서'}
-                                                                                    </button>
-                                                                                    <button
-                                                                                        className="text-[10px] bg-yellow-900/30 text-yellow-400 border border-yellow-900/50 px-2 py-1 rounded hover:bg-yellow-900/50 flex items-center gap-1"
-                                                                                        onClick={() => setEditHistoryModal({
-                                                                                            id: dh.id,
-                                                                                            delivery_date: dh.delivery_date || '',
-                                                                                            note: dh.note || '',
-                                                                                            items: dh.items.map(it => ({ ...it })) // clone items for editing
-                                                                                        })}
-                                                                                    >
-                                                                                        ✏️ 수정
-                                                                                    </button>
-                                                                                    <button
-                                                                                        className="text-[10px] bg-red-900/30 text-red-400 border border-red-900/50 px-2 py-1 rounded hover:bg-red-900/50 flex items-center gap-1"
-                                                                                        onClick={() => handleDeleteDelivery(dh.id)}
-                                                                                    >
-                                                                                        🗑 삭제
-                                                                                    </button>
-                                                                                </div>
+                                                                                )}
                                                                             </div>
-                                                                        ))}
+                                                                            );
+                                                                        })}
                                                                     </div>
                                                                 ) : (
                                                                     <div className="text-center py-8 text-gray-600 text-xs italic">
@@ -683,9 +730,6 @@ const DeliveryPage = () => {
                     data={statementData}
                     onSuccess={() => {
                         fetchOrders();
-                        alert('✅ 명세서가 첨부되었습니다.');
-                        setShowStatementModal(false);
-                        setStatementData(null);
                     }}
                 />
             )}

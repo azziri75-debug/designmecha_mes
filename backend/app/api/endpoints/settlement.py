@@ -129,7 +129,18 @@ async def get_settlement_sales(
     res1 = await db.execute(q1)
     res2 = await db.execute(q2)
 
-    return [dict(r._mapping) for r in res1] + [dict(r._mapping) for r in res2]
+    q2 = q2.add_columns(DeliveryHistory.statement_json.label("_stmt_json"))
+    res2 = await db.execute(q2)
+
+    partial_rows = []
+    for r in res2:
+        row_dict = dict(r._mapping)
+        stmt_j = row_dict.pop("_stmt_json", None)
+        if isinstance(stmt_j, dict) and set(stmt_j.keys()) == {"extra_statements"}:
+            continue
+        partial_rows.append(row_dict)
+
+    return [dict(r._mapping) for r in res1] + partial_rows
 
 
 @router.get("/purchases")
