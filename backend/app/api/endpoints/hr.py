@@ -1222,17 +1222,25 @@ async def set_duty_members(
 
 @router.get("/duties/schedules")
 async def list_duty_schedules(
-    year: int = Query(...),
-    month: int = Query(...),
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    start_date_str: Optional[str] = Query(None, alias="start_date"),
+    end_date_str: Optional[str] = Query(None, alias="end_date"),
     staff_id: Optional[int] = Query(None),
     config_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user),
 ):
-    import calendar
-    _, last_day = calendar.monthrange(year, month)
-    start_date = date(year, month, 1)
-    end_date = date(year, month, last_day)
+    if start_date_str and end_date_str:
+        start_date = date.fromisoformat(start_date_str[:10])
+        end_date = date.fromisoformat(end_date_str[:10])
+    elif year is not None and month is not None:
+        import calendar
+        _, last_day = calendar.monthrange(year, month)
+        start_date = date(year, month, 1)
+        end_date = date(year, month, last_day)
+    else:
+        raise HTTPException(status_code=400, detail="year/month 또는 start_date/end_date가 필요합니다.")
 
     stmt = (
         select(CommonDutySchedule)
@@ -1271,21 +1279,31 @@ async def generate_monthly_duties(
     db: AsyncSession = Depends(deps.get_db),
     current_user: Staff = Depends(deps.get_current_user),
 ):
-    """해당 월 공용관리 당번 자동 순환 배정 (공휴일 제외, 휴가자 다음 순번 이월)"""
+    """지정 기간(start_date ~ end_date 또는 year/month) 공용관리 당번 자동 순환 배정 (공휴일 제외, 휴가자 다음 순번 이월)"""
     if current_user.user_type != "ADMIN":
         raise HTTPException(status_code=403, detail="관리자만 자동 배정할 수 있습니다.")
 
-    year = int(payload.get("year"))
-    month = int(payload.get("month"))
     target_config_id = payload.get("config_id")
-
-    import calendar
     from sqlalchemy import delete as sa_delete
-    _, last_day = calendar.monthrange(year, month)
-    start_date = date(year, month, 1)
-    end_date = date(year, month, last_day)
 
-    kr_hol = holidays.KR(years=year)
+    if payload.get("start_date") and payload.get("end_date"):
+        start_date = date.fromisoformat(str(payload["start_date"])[:10])
+        end_date = date.fromisoformat(str(payload["end_date"])[:10])
+        if end_date < start_date:
+            raise HTTPException(status_code=400, detail="종료일은 시작일보다 빠를 수 없습니다.")
+        if (end_date - start_date).days > 731:
+            raise HTTPException(status_code=400, detail="한 번에 최대 2년(731일)까지 배정할 수 있습니다.")
+    elif payload.get("year") and payload.get("month"):
+        import calendar
+        year = int(payload.get("year"))
+        month = int(payload.get("month"))
+        _, last_day = calendar.monthrange(year, month)
+        start_date = date(year, month, 1)
+        end_date = date(year, month, last_day)
+    else:
+        raise HTTPException(status_code=400, detail="배정 기간(start_date, end_date)을 지정하세요.")
+
+    kr_hol = holidays.KR(years=list(range(start_date.year, end_date.year + 1)))
 
     # 해당 월 휴가자 맵: { date: set(staff_id) }
     leave_map: dict[date, set[int]] = {}
@@ -1379,41 +1397,36 @@ async def generate_monthly_duties(
             idx = (member_ids.index(prev_sched.staff_id) + 1) % len(member_ids)
 
         allowed_weekdays = set(cfg.weekdays or [0, 1, 2, 3, 4])
-        for day_num in range(1, last_day + 1):
-            d = date(year, month, day_num)
-            if d in done_dates:
-                continue
-            if d.weekday() not in allowed_weekdays:
-                continue
-            if d in kr_hol:
-                continue
+        d = start_date
+        while d <= end_date:
+            if d not in done_dates and d.weekday() in allowed_weekdays and d not in kr_hol:
+                on_leave = leave_map.get(d, set())
+                chosen_idx = None
+                skipped_names = []
+                for offset in range(len(member_ids)):
+                    cand_idx = (idx + offset) % len(member_ids)
+                    if member_ids[cand_idx] not in on_leave:
+                        chosen_idx = cand_idx
+                        break
+                    skipped_names.append(str(member_ids[cand_idx]))
 
-            on_leave = leave_map.get(d, set())
-            chosen_idx = None
-            skipped_names = []
-            for offset in range(len(member_ids)):
-                cand_idx = (idx + offset) % len(member_ids)
-                if member_ids[cand_idx] not in on_leave:
-                    chosen_idx = cand_idx
-                    break
-                skipped_names.append(str(member_ids[cand_idx]))
+                note_text = None
+                if chosen_idx is None:
+                    chosen_idx = idx
+                    note_text = "전원 휴가로 기본 순번 배정"
+                elif skipped_names:
+                    note_text = "휴가자 순번 이월"
 
-            note_text = None
-            if chosen_idx is None:
-                chosen_idx = idx
-                note_text = "전원 휴가로 기본 순번 배정"
-            elif skipped_names:
-                note_text = "휴가자 순번 이월"
-
-            db.add(CommonDutySchedule(
-                config_id=cfg.id,
-                duty_date=d,
-                staff_id=member_ids[chosen_idx],
-                status="ASSIGNED",
-                note=note_text,
-            ))
-            created_count += 1
-            idx = (chosen_idx + 1) % len(member_ids)
+                db.add(CommonDutySchedule(
+                    config_id=cfg.id,
+                    duty_date=d,
+                    staff_id=member_ids[chosen_idx],
+                    status="ASSIGNED",
+                    note=note_text,
+                ))
+                created_count += 1
+                idx = (chosen_idx + 1) % len(member_ids)
+            d += timedelta(days=1)
 
     await db.commit()
     return {"status": "ok", "created_count": created_count}

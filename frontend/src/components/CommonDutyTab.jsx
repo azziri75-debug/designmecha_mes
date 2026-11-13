@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../lib/api';
 import {
-    Plus, Trash2, ArrowUp, ArrowDown, Calendar, Sparkles, Save, CheckCircle2, Clock, RefreshCw
+    Plus, Trash2, ArrowUp, ArrowDown, Calendar, Sparkles, Save, CheckCircle2, Clock, RefreshCw, Users, X, Search
 } from 'lucide-react';
 
 const WEEKDAYS = [
@@ -32,10 +32,20 @@ const CommonDutyTab = () => {
     const [loading, setLoading] = useState(false);
     const [generating, setGenerating] = useState(false);
 
-    // 월 선택
+    // 월 선택 (당번표 조회용)
     const now = new Date();
     const [year, setYear] = useState(now.getFullYear());
     const [month, setMonth] = useState(now.getMonth() + 1);
+
+    // 기간 배정용 시작일 ~ 종료일
+    const toIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const [assignStart, setAssignStart] = useState(() => toIso(now));
+    const [assignEnd, setAssignEnd] = useState(() => toIso(new Date(now.getFullYear(), now.getMonth() + 3, 0)));
+
+    // 직원 다중 선택 모달 상태
+    const [showStaffModal, setShowStaffModal] = useState(false);
+    const [modalSelectedIds, setModalSelectedIds] = useState([]);
+    const [staffSearch, setStaffSearch] = useState('');
 
     // 신규/수정 항목 폼
     const [showNewForm, setShowNewForm] = useState(false);
@@ -49,7 +59,6 @@ const CommonDutyTab = () => {
     // 선택된 항목 편집 상태
     const [editConfig, setEditConfig] = useState(null);
     const [memberIds, setMemberIds] = useState([]);
-    const [addStaffId, setAddStaffId] = useState('');
 
     const fetchInitial = useCallback(async () => {
         setLoading(true);
@@ -149,12 +158,18 @@ const CommonDutyTab = () => {
         }
     };
 
-    const handleGenerateMonth = async () => {
+    const handleGeneratePeriod = async () => {
         if (!selectedConfig) return;
         if (memberIds.length === 0) {
-            return alert('먼저 대상 직원을 1명 이상 추가하고 [설정 저장]을 눌러주세요.');
+            return alert('먼저 [직원 선택] 버튼으로 대상 직원을 1명 이상 선택해 주세요.');
         }
-        if (!window.confirm(`${year}년 ${month}월 '${selectedConfig.name}' 당번을 자동 배정하시겠습니까?\n(기존 미완료 배정은 새로 생성되며, 공휴일 제외 및 휴가자는 다음 순번으로 자동 이월됩니다.)`)) {
+        if (!assignStart || !assignEnd) {
+            return alert('배정 시작일과 종료일을 모두 지정해 주세요.');
+        }
+        if (assignEnd < assignStart) {
+            return alert('종료일은 시작일보다 빠를 수 없습니다.');
+        }
+        if (!window.confirm(`${assignStart} ~ ${assignEnd} 기간의 '${selectedConfig.name}' 당번을 자동 배정하시겠습니까?\n(기존 미완료 배정은 새로 생성되며, 한국 공휴일 제외 및 휴가자는 다음 순번으로 자동 이월됩니다.)`)) {
             return;
         }
         setGenerating(true);
@@ -163,11 +178,17 @@ const CommonDutyTab = () => {
             await api.put(`/hr/duties/configs/${selectedConfig.id}`, editConfig);
             await api.put(`/hr/duties/configs/${selectedConfig.id}/members`, { staff_ids: memberIds });
             const res = await api.post('/hr/duties/generate', {
-                year,
-                month,
+                start_date: assignStart,
+                end_date: assignEnd,
                 config_id: selectedConfig.id,
             });
-            alert(`${res.data?.created_count || 0}건의 당번 일정이 자동 배정되었습니다.`);
+            alert(`${res.data?.created_count || 0}건의 당번 일정이 배정되었습니다.`);
+            // 조회 월을 시작일 기준으로 맞춰 바로 확인
+            const [sY, sM] = assignStart.split('-').map(Number);
+            if (sY && sM) {
+                setYear(sY);
+                setMonth(sM);
+            }
             await fetchInitial();
             await fetchSchedules();
         } catch (err) {
@@ -175,6 +196,39 @@ const CommonDutyTab = () => {
         } finally {
             setGenerating(false);
         }
+    };
+
+    const setQuickPeriod = (monthsCount) => {
+        const base = new Date();
+        const start = toIso(base);
+        let end;
+        if (monthsCount === 'year_end') {
+            end = `${base.getFullYear()}-12-31`;
+        } else {
+            end = toIso(new Date(base.getFullYear(), base.getMonth() + monthsCount, 0));
+        }
+        setAssignStart(start);
+        setAssignEnd(end);
+    };
+
+    const openStaffSelectModal = () => {
+        setModalSelectedIds([...memberIds]);
+        setStaffSearch('');
+        setShowStaffModal(true);
+    };
+
+    const toggleModalStaff = (sid) => {
+        setModalSelectedIds(prev =>
+            prev.includes(sid) ? prev.filter(id => id !== sid) : [...prev, sid]
+        );
+    };
+
+    const applyModalStaffSelection = () => {
+        // 기존 순번 유지 + 새로 선택된 직원은 뒤에 추가 + 해제된 직원은 제거
+        const kept = memberIds.filter(id => modalSelectedIds.includes(id));
+        const added = modalSelectedIds.filter(id => !memberIds.includes(id));
+        setMemberIds([...kept, ...added]);
+        setShowStaffModal(false);
     };
 
     const handleUpdateScheduleStaff = async (scheduleId, newStaffId) => {
@@ -219,14 +273,6 @@ const CommonDutyTab = () => {
         const copy = [...memberIds];
         [copy[index], copy[target]] = [copy[target], copy[index]];
         setMemberIds(copy);
-    };
-
-    const handleAddMember = () => {
-        if (!addStaffId) return;
-        const sid = Number(addStaffId);
-        if (memberIds.includes(sid)) return alert('이미 대상 목록에 포함된 직원입니다.');
-        setMemberIds([...memberIds, sid]);
-        setAddStaffId('');
     };
 
     const prevMonth = () => {
@@ -451,29 +497,13 @@ const CommonDutyTab = () => {
                                     <label className="text-xs font-semibold text-gray-300">
                                         순환 대상 직원 및 순서 ({memberIds.length}명) — 휴가자가 있으면 다음 순번으로 자동 이월됩니다.
                                     </label>
-                                    <div className="flex items-center gap-2">
-                                        <select
-                                            value={addStaffId}
-                                            onChange={e => setAddStaffId(e.target.value)}
-                                            className="px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-white"
-                                        >
-                                            <option value="">직원 선택...</option>
-                                            {staffList
-                                                .filter(s => !memberIds.includes(s.id))
-                                                .map(s => (
-                                                    <option key={s.id} value={s.id}>
-                                                        {s.name} ({s.role || s.department || '직원'})
-                                                    </option>
-                                                ))}
-                                        </select>
-                                        <button
-                                            type="button"
-                                            onClick={handleAddMember}
-                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded"
-                                        >
-                                            + 추가
-                                        </button>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={openStaffSelectModal}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg"
+                                    >
+                                        <Users className="w-3.5 h-3.5" /> 대상 직원 선택 ({memberIds.length}명)
+                                    </button>
                                 </div>
 
                                 <div className="bg-gray-900/70 border border-gray-700 rounded-lg divide-y divide-gray-800">
@@ -526,9 +556,46 @@ const CommonDutyTab = () => {
                             </div>
                         </div>
 
-                        {/* 월간 배정 생성 및 당번표 */}
+                        {/* 기간 지정 자동 배정 및 당번표 */}
                         <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 space-y-4">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="p-3.5 bg-gray-900/80 border border-gray-700 rounded-lg space-y-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-xs font-bold text-gray-200">기간 지정 일괄 자동 배정</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        <button type="button" onClick={() => setQuickPeriod(1)} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-[11px] text-gray-300">이번 달</button>
+                                        <button type="button" onClick={() => setQuickPeriod(3)} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-[11px] text-gray-300">3개월</button>
+                                        <button type="button" onClick={() => setQuickPeriod(6)} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-[11px] text-gray-300">6개월</button>
+                                        <button type="button" onClick={() => setQuickPeriod('year_end')} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-[11px] text-gray-300">올해 말까지</button>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            value={assignStart}
+                                            onChange={e => setAssignStart(e.target.value)}
+                                            className="px-2.5 py-1.5 bg-gray-800 border border-gray-700 rounded text-xs text-white"
+                                        />
+                                        <span className="text-gray-400 text-xs">~</span>
+                                        <input
+                                            type="date"
+                                            value={assignEnd}
+                                            onChange={e => setAssignEnd(e.target.value)}
+                                            className="px-2.5 py-1.5 bg-gray-800 border border-gray-700 rounded text-xs text-white"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handleGeneratePeriod}
+                                        disabled={generating}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg"
+                                    >
+                                        <Sparkles className="w-4 h-4" />
+                                        {generating ? '배정 중...' : '지정 기간 자동 배정 생성'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                                 <div className="flex items-center gap-3">
                                     <Calendar className="w-5 h-5 text-emerald-400" />
                                     <div className="flex items-center gap-2">
@@ -538,23 +605,13 @@ const CommonDutyTab = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={fetchSchedules}
-                                        className="p-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 hover:text-white"
-                                        title="새로고침"
-                                    >
-                                        <RefreshCw className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={handleGenerateMonth}
-                                        disabled={generating}
-                                        className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg"
-                                    >
-                                        <Sparkles className="w-4 h-4" />
-                                        {generating ? '배정 중...' : `${year}년 ${month}월 자동 배정 생성`}
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={fetchSchedules}
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-xs text-gray-300 hover:text-white"
+                                    title="새로고침"
+                                >
+                                    <RefreshCw className="w-3.5 h-3.5" /> 새로고침
+                                </button>
                             </div>
 
                             {Object.keys(holidaysMap).length > 0 && (
@@ -639,6 +696,109 @@ const CommonDutyTab = () => {
                     </div>
                 )}
             </div>
+
+            {/* 대상 직원 일괄 선택 모달 */}
+            {showStaffModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh]">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+                            <div>
+                                <h4 className="text-base font-bold text-white">대상 직원 선택</h4>
+                                <p className="text-xs text-gray-400">체크한 직원들이 순환 당번 대상자로 등록됩니다.</p>
+                            </div>
+                            <button onClick={() => setShowStaffModal(false)} className="text-gray-400 hover:text-white p-1">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-4 border-b border-gray-700 space-y-3">
+                            <div className="relative">
+                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    type="text"
+                                    value={staffSearch}
+                                    onChange={e => setStaffSearch(e.target.value)}
+                                    placeholder="이름, 부서, 직책 검색..."
+                                    className="w-full pl-9 pr-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-xs text-white"
+                                />
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-300 font-medium">선택됨: <strong className="text-blue-400">{modalSelectedIds.length}명</strong></span>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setModalSelectedIds(staffList.map(s => s.id))}
+                                        className="px-2.5 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded"
+                                    >
+                                        전체 선택
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setModalSelectedIds([])}
+                                        className="px-2.5 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded"
+                                    >
+                                        전체 해제
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                            {staffList
+                                .filter(s => {
+                                    const q = staffSearch.trim().toLowerCase();
+                                    if (!q) return true;
+                                    return (s.name || '').toLowerCase().includes(q)
+                                        || (s.role || '').toLowerCase().includes(q)
+                                        || (s.department || '').toLowerCase().includes(q);
+                                })
+                                .map(st => {
+                                    const checked = modalSelectedIds.includes(st.id);
+                                    return (
+                                        <label
+                                            key={st.id}
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer border transition-colors ${
+                                                checked
+                                                    ? 'bg-blue-900/30 border-blue-500/60 text-white'
+                                                    : 'bg-gray-900/40 border-gray-800 text-gray-300 hover:bg-gray-900'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() => toggleModalStaff(st.id)}
+                                                    className="w-4 h-4 rounded accent-blue-600"
+                                                />
+                                                <span className="text-sm font-medium">{st.name}</span>
+                                            </div>
+                                            <span className="text-xs text-gray-400">
+                                                {[st.department, st.role].filter(Boolean).join(' · ') || '직원'}
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                        </div>
+
+                        <div className="flex justify-end gap-2 px-5 py-3.5 border-t border-gray-700">
+                            <button
+                                type="button"
+                                onClick={() => setShowStaffModal(false)}
+                                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-semibold rounded-lg"
+                            >
+                                취소
+                            </button>
+                            <button
+                                type="button"
+                                onClick={applyModalStaffSelection}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg"
+                            >
+                                선택 적용 ({modalSelectedIds.length}명)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
