@@ -124,6 +124,31 @@ async def get_team_schedule(
             except Exception:
                 pass
 
+    # 공용관리 당번 일정 포함
+    from app.models.basics import CommonDutySchedule
+    import calendar as _calendar
+    _, _last_day = _calendar.monthrange(year, month)
+    _start_d = _date(year, month, 1)
+    _end_d = _date(year, month, _last_day)
+    duty_res = await db.execute(
+        select(CommonDutySchedule)
+        .options(selectinload(CommonDutySchedule.config), selectinload(CommonDutySchedule.staff))
+        .where(
+            CommonDutySchedule.duty_date >= _start_d,
+            CommonDutySchedule.duty_date <= _end_d,
+            CommonDutySchedule.status != "SKIPPED",
+        )
+    )
+    for ds in duty_res.scalars().all():
+        events.append({
+            "date": ds.duty_date.isoformat(),
+            "name": ds.staff.name if ds.staff else "?",
+            "type": ds.config.name if ds.config else "공용관리",
+            "category": "DUTY",
+            "color": ds.config.color if ds.config else "#10b981",
+            "status": ds.status,
+        })
+
     return events
 
 @router.get("/stats", response_model=ApprovalStats)

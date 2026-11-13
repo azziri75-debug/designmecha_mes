@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import Optional
+from sqlalchemy.orm import selectinload
+from typing import Optional, List
 from datetime import date, datetime, timedelta, time as time_type, timezone
+import holidays
 
 from app.api import deps
 from app.core.timezone import now_kst, KST
 from app.models.approval import ApprovalDocument, ApprovalStatus
-from app.models import Staff, Company, EmployeeTimeRecord, AttendanceStatus
+from app.models import Staff, Company, EmployeeTimeRecord, AttendanceStatus, CommonDutyConfig, CommonDutyMember, CommonDutySchedule
 from app.utils.push import send_push_notification
 import asyncio
 from app.schemas.hr import (
@@ -718,13 +720,41 @@ async def get_monthly_attendance(
                 status=doc.status
             ))
 
+    # 해당 월 공용관리 당번 조회
+    duty_res = await db.execute(
+        select(CommonDutySchedule)
+        .options(selectinload(CommonDutySchedule.config), selectinload(CommonDutySchedule.staff))
+        .where(
+            CommonDutySchedule.staff_id == staff_id,
+            CommonDutySchedule.duty_date >= start_date,
+            CommonDutySchedule.duty_date <= end_date,
+        )
+        .order_by(CommonDutySchedule.duty_date.asc())
+    )
+    duties_list = [
+        {
+            "id": d.id,
+            "config_id": d.config_id,
+            "duty_name": d.config.name if d.config else "공용관리",
+            "color": d.config.color if d.config else "#10b981",
+            "duty_date": d.duty_date.isoformat(),
+            "staff_id": d.staff_id,
+            "staff_name": d.staff.name if d.staff else "",
+            "status": d.status,
+            "note": d.note,
+        }
+        for d in duty_res.scalars().all()
+    ]
+
     return AttendanceMonthlyResponse(
         staff_id=staff_id,
         staff_name=target_staff.name,
         year=year,
         month=month,
         records=records,
-        approval_items=approval_items
+        approval_items=approval_items,
+        duties=duties_list,
+        holidays=_get_kr_holidays_dict(year, month),
     )
 
 
@@ -1023,3 +1053,412 @@ async def trigger_sync_annual_leave(
     target_year = year or _date.today().year
     await sync_annual_leave_usage(db, staff_id, target_year)
     return {"status": "ok", "staff_id": staff_id, "year": target_year, "message": "연차 데이터가 재동기화되었습니다."}
+
+
+# =====================================================================
+# 한국 공휴일 및 회사 공용관리(당번) 관리 API
+# =====================================================================
+
+_kr_holidays_cache = {}
+
+
+def _get_kr_holidays_dict(year: int, month: int) -> dict:
+    """해당 연/월의 한국 법정공휴일(대체공휴일 포함) { 'YYYY-MM-DD': '공휴일명' } 반환"""
+    if year not in _kr_holidays_cache:
+        _kr_holidays_cache[year] = holidays.KR(years=year)
+    kr = _kr_holidays_cache[year]
+    result = {}
+    for dt, name in sorted(kr.items()):
+        if dt.year == year and dt.month == month:
+            result[dt.isoformat()] = name
+    return result
+
+
+@router.get("/holidays")
+async def get_korean_holidays(
+    year: int = Query(...),
+    month: Optional[int] = Query(None),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """한국 공휴일 조회 (month 미지정 시 해당 연도 전체)"""
+    if month is not None:
+        return _get_kr_holidays_dict(year, month)
+    if year not in _kr_holidays_cache:
+        _kr_holidays_cache[year] = holidays.KR(years=year)
+    return {dt.isoformat(): name for dt, name in sorted(_kr_holidays_cache[year].items()) if dt.year == year}
+
+
+@router.get("/duties/configs")
+async def list_duty_configs(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """공용관리 항목 및 대상 직원(순번) 목록 조회"""
+    res = await db.execute(
+        select(CommonDutyConfig)
+        .options(selectinload(CommonDutyConfig.members).selectinload(CommonDutyMember.staff))
+        .order_by(CommonDutyConfig.id.asc())
+    )
+    configs = res.scalars().all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "weekdays": c.weekdays or [0, 1, 2, 3, 4],
+            "notify_time": c.notify_time or "08:30",
+            "color": c.color or "#10b981",
+            "is_active": c.is_active,
+            "members": [
+                {
+                    "id": m.id,
+                    "staff_id": m.staff_id,
+                    "staff_name": m.staff.name if m.staff else "",
+                    "staff_role": m.staff.role if m.staff else "",
+                    "sequence": m.sequence,
+                }
+                for m in sorted(c.members, key=lambda x: x.sequence)
+            ],
+        }
+        for c in configs
+    ]
+
+
+@router.post("/duties/configs")
+async def create_duty_config(
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="관리자만 설정할 수 있습니다.")
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="항목명을 입력하세요.")
+
+    cfg = CommonDutyConfig(
+        name=name,
+        weekdays=payload.get("weekdays", [0, 1, 2, 3, 4]),
+        notify_time=payload.get("notify_time") or "08:30",
+        color=payload.get("color") or "#10b981",
+        is_active=payload.get("is_active", True),
+    )
+    db.add(cfg)
+    await db.commit()
+    await db.refresh(cfg)
+    return {"id": cfg.id, "name": cfg.name, "weekdays": cfg.weekdays, "notify_time": cfg.notify_time, "color": cfg.color, "is_active": cfg.is_active, "members": []}
+
+
+@router.put("/duties/configs/{config_id}")
+async def update_duty_config(
+    config_id: int,
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="관리자만 수정할 수 있습니다.")
+    res = await db.execute(select(CommonDutyConfig).where(CommonDutyConfig.id == config_id))
+    cfg = res.scalar_one_or_none()
+    if not cfg:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다.")
+
+    if "name" in payload and (payload["name"] or "").strip():
+        cfg.name = payload["name"].strip()
+    if "weekdays" in payload:
+        cfg.weekdays = payload["weekdays"]
+    if "notify_time" in payload:
+        cfg.notify_time = payload["notify_time"] or "08:30"
+    if "color" in payload:
+        cfg.color = payload["color"] or "#10b981"
+    if "is_active" in payload:
+        cfg.is_active = bool(payload["is_active"])
+
+    await db.commit()
+    return {"status": "ok"}
+
+
+@router.delete("/duties/configs/{config_id}")
+async def delete_duty_config(
+    config_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="관리자만 삭제할 수 있습니다.")
+    res = await db.execute(select(CommonDutyConfig).where(CommonDutyConfig.id == config_id))
+    cfg = res.scalar_one_or_none()
+    if not cfg:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다.")
+    await db.delete(cfg)
+    await db.commit()
+    return {"status": "ok"}
+
+
+@router.put("/duties/configs/{config_id}/members")
+async def set_duty_members(
+    config_id: int,
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """대상 직원 및 순번 일괄 저장"""
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="관리자만 설정할 수 있습니다.")
+    res = await db.execute(select(CommonDutyConfig).where(CommonDutyConfig.id == config_id))
+    cfg = res.scalar_one_or_none()
+    if not cfg:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다.")
+
+    from sqlalchemy import delete as sa_delete
+    await db.execute(sa_delete(CommonDutyMember).where(CommonDutyMember.config_id == config_id))
+
+    staff_ids = payload.get("staff_ids") or []
+    for idx, sid in enumerate(staff_ids, start=1):
+        db.add(CommonDutyMember(config_id=config_id, staff_id=int(sid), sequence=idx))
+
+    await db.commit()
+    return {"status": "ok", "count": len(staff_ids)}
+
+
+@router.get("/duties/schedules")
+async def list_duty_schedules(
+    year: int = Query(...),
+    month: int = Query(...),
+    staff_id: Optional[int] = Query(None),
+    config_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    import calendar
+    _, last_day = calendar.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, last_day)
+
+    stmt = (
+        select(CommonDutySchedule)
+        .options(selectinload(CommonDutySchedule.config), selectinload(CommonDutySchedule.staff))
+        .where(
+            CommonDutySchedule.duty_date >= start_date,
+            CommonDutySchedule.duty_date <= end_date,
+        )
+        .order_by(CommonDutySchedule.duty_date.asc(), CommonDutySchedule.config_id.asc())
+    )
+    if staff_id is not None:
+        stmt = stmt.where(CommonDutySchedule.staff_id == staff_id)
+    if config_id is not None:
+        stmt = stmt.where(CommonDutySchedule.config_id == config_id)
+
+    res = await db.execute(stmt)
+    return [
+        {
+            "id": s.id,
+            "config_id": s.config_id,
+            "duty_name": s.config.name if s.config else "공용관리",
+            "color": s.config.color if s.config else "#10b981",
+            "duty_date": s.duty_date.isoformat(),
+            "staff_id": s.staff_id,
+            "staff_name": s.staff.name if s.staff else "",
+            "status": s.status,
+            "note": s.note,
+        }
+        for s in res.scalars().all()
+    ]
+
+
+@router.post("/duties/generate")
+async def generate_monthly_duties(
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """해당 월 공용관리 당번 자동 순환 배정 (공휴일 제외, 휴가자 다음 순번 이월)"""
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="관리자만 자동 배정할 수 있습니다.")
+
+    year = int(payload.get("year"))
+    month = int(payload.get("month"))
+    target_config_id = payload.get("config_id")
+
+    import calendar
+    from sqlalchemy import delete as sa_delete
+    _, last_day = calendar.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, last_day)
+
+    kr_hol = holidays.KR(years=year)
+
+    # 해당 월 휴가자 맵: { date: set(staff_id) }
+    leave_map: dict[date, set[int]] = {}
+    leave_rec_res = await db.execute(
+        select(EmployeeTimeRecord).where(
+            EmployeeTimeRecord.record_date >= start_date,
+            EmployeeTimeRecord.record_date <= end_date,
+            EmployeeTimeRecord.category.in_(["ANNUAL", "HALF_DAY", "SICK", "EVENT_LEAVE"]),
+            EmployeeTimeRecord.status == "APPROVED",
+        )
+    )
+    for rec in leave_rec_res.scalars().all():
+        leave_map.setdefault(rec.record_date, set()).add(rec.staff_id)
+
+    # 결재 완료된 휴가원도 교차 확인
+    doc_res = await db.execute(
+        select(ApprovalDocument).where(
+            ApprovalDocument.deleted_at.is_(None),
+            ApprovalDocument.status == ApprovalStatus.COMPLETED,
+            ApprovalDocument.doc_type.in_(["LEAVE_REQUEST", "VACATION"]),
+        )
+    )
+    for doc in doc_res.scalars().all():
+        c = doc.content or {}
+        s_str = (c.get("start_date") or "")[:10]
+        e_str = (c.get("end_date") or s_str)[:10]
+        if not s_str:
+            continue
+        try:
+            cur_d = date.fromisoformat(s_str)
+            end_d = date.fromisoformat(e_str)
+            while cur_d <= end_d:
+                if start_date <= cur_d <= end_date:
+                    leave_map.setdefault(cur_d, set()).add(doc.author_id)
+                cur_d += timedelta(days=1)
+        except Exception:
+            pass
+
+    cfg_stmt = (
+        select(CommonDutyConfig)
+        .options(selectinload(CommonDutyConfig.members))
+        .where(CommonDutyConfig.is_active == True)  # noqa: E712
+    )
+    if target_config_id:
+        cfg_stmt = cfg_stmt.where(CommonDutyConfig.id == int(target_config_id))
+
+    cfg_res = await db.execute(cfg_stmt)
+    configs = cfg_res.scalars().all()
+
+    created_count = 0
+    for cfg in configs:
+        members = sorted(cfg.members, key=lambda m: m.sequence)
+        if not members:
+            continue
+
+        # 기존 미완료(status != 'DONE') 배정 삭제 후 재생성
+        await db.execute(
+            sa_delete(CommonDutySchedule).where(
+                CommonDutySchedule.config_id == cfg.id,
+                CommonDutySchedule.duty_date >= start_date,
+                CommonDutySchedule.duty_date <= end_date,
+                CommonDutySchedule.status != "DONE",
+            )
+        )
+
+        # 이미 DONE인 날짜는 건드리지 않음
+        done_res = await db.execute(
+            select(CommonDutySchedule.duty_date).where(
+                CommonDutySchedule.config_id == cfg.id,
+                CommonDutySchedule.duty_date >= start_date,
+                CommonDutySchedule.duty_date <= end_date,
+                CommonDutySchedule.status == "DONE",
+            )
+        )
+        done_dates = {row[0] for row in done_res.fetchall()}
+
+        # 이전 달 마지막 배정 순번 조회
+        prev_res = await db.execute(
+            select(CommonDutySchedule)
+            .where(
+                CommonDutySchedule.config_id == cfg.id,
+                CommonDutySchedule.duty_date < start_date,
+            )
+            .order_by(CommonDutySchedule.duty_date.desc())
+            .limit(1)
+        )
+        prev_sched = prev_res.scalar_one_or_none()
+        member_ids = [m.staff_id for m in members]
+        idx = 0
+        if prev_sched and prev_sched.staff_id in member_ids:
+            idx = (member_ids.index(prev_sched.staff_id) + 1) % len(member_ids)
+
+        allowed_weekdays = set(cfg.weekdays or [0, 1, 2, 3, 4])
+        for day_num in range(1, last_day + 1):
+            d = date(year, month, day_num)
+            if d in done_dates:
+                continue
+            if d.weekday() not in allowed_weekdays:
+                continue
+            if d in kr_hol:
+                continue
+
+            on_leave = leave_map.get(d, set())
+            chosen_idx = None
+            skipped_names = []
+            for offset in range(len(member_ids)):
+                cand_idx = (idx + offset) % len(member_ids)
+                if member_ids[cand_idx] not in on_leave:
+                    chosen_idx = cand_idx
+                    break
+                skipped_names.append(str(member_ids[cand_idx]))
+
+            note_text = None
+            if chosen_idx is None:
+                chosen_idx = idx
+                note_text = "전원 휴가로 기본 순번 배정"
+            elif skipped_names:
+                note_text = "휴가자 순번 이월"
+
+            db.add(CommonDutySchedule(
+                config_id=cfg.id,
+                duty_date=d,
+                staff_id=member_ids[chosen_idx],
+                status="ASSIGNED",
+                note=note_text,
+            ))
+            created_count += 1
+            idx = (chosen_idx + 1) % len(member_ids)
+
+    await db.commit()
+    return {"status": "ok", "created_count": created_count}
+
+
+@router.patch("/duties/schedules/{schedule_id}")
+async def update_duty_schedule(
+    schedule_id: int,
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """당번 담당자 변경(대타) 또는 완료 상태 변경"""
+    res = await db.execute(select(CommonDutySchedule).where(CommonDutySchedule.id == schedule_id))
+    sched = res.scalar_one_or_none()
+    if not sched:
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다.")
+
+    if "staff_id" in payload and payload["staff_id"] is not None:
+        if current_user.user_type != "ADMIN":
+            raise HTTPException(status_code=403, detail="담당자 변경은 관리자만 가능합니다.")
+        sched.staff_id = int(payload["staff_id"])
+    if "status" in payload and payload["status"] in ("ASSIGNED", "DONE", "SKIPPED"):
+        if current_user.user_type != "ADMIN" and current_user.id != sched.staff_id:
+            raise HTTPException(status_code=403, detail="권한이 없습니다.")
+        sched.status = payload["status"]
+    if "note" in payload:
+        sched.note = payload["note"]
+
+    await db.commit()
+    return {"status": "ok"}
+
+
+@router.delete("/duties/schedules/{schedule_id}")
+async def delete_duty_schedule(
+    schedule_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="관리자만 삭제할 수 있습니다.")
+    res = await db.execute(select(CommonDutySchedule).where(CommonDutySchedule.id == schedule_id))
+    sched = res.scalar_one_or_none()
+    if not sched:
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다.")
+    await db.delete(sched)
+    await db.commit()
+    return {"status": "ok"}

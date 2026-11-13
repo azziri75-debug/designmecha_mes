@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import date, datetime
 
 
@@ -95,6 +95,8 @@ class AttendanceMonthlyResponse(BaseModel):
     month: int
     records: List[EmployeeTimeRecordResponse]
     approval_items: List[AttendanceDocItem] = []
+    duties: List[Dict[str, Any]] = []
+    holidays: Dict[str, str] = {}
 
 
 class EmployeeTimeRecordUpdate(BaseModel):

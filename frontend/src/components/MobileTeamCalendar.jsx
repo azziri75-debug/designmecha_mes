@@ -15,7 +15,13 @@ const TYPE_STYLE = {
   '특근':  { bg: '#ede9fe', text: '#6d28d9', dot: '#8b5cf6' },
 };
 const defaultStyle = { bg: '#f1f5f9', text: '#475569', dot: '#94a3b8' };
-const getStyle = (type) => TYPE_STYLE[type] || defaultStyle;
+const getStyle = (type, ev) => {
+  if (ev?.category === 'DUTY') {
+    const c = ev.color || '#10b981';
+    return { bg: `${c}20`, text: c, dot: c };
+  }
+  return TYPE_STYLE[type] || defaultStyle;
+};
 
 /* ─── 헬퍼 ──────────────────────────────────────────────────── */
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -40,6 +46,7 @@ const MobileTeamCalendar = () => {
   const [year,  setYear]  = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [events, setEvents] = useState([]);   // [{date, name, type, category}]
+  const [holidaysMap, setHolidaysMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
 
@@ -47,8 +54,12 @@ const MobileTeamCalendar = () => {
   const fetchEvents = useCallback(async (y, m) => {
     setLoading(true);
     try {
-      const res = await api.get('/approval/team-schedule', { params: { year: y, month: m } });
-      setEvents(res.data || []);
+      const [evRes, holRes] = await Promise.all([
+        api.get('/approval/team-schedule', { params: { year: y, month: m } }),
+        api.get('/hr/holidays', { params: { year: y, month: m } }).catch(() => ({ data: {} })),
+      ]);
+      setEvents(evRes.data || []);
+      setHolidaysMap(holRes.data || {});
     } catch (e) {
       console.error('Team schedule fetch error:', e);
     } finally {
@@ -154,7 +165,8 @@ const MobileTeamCalendar = () => {
               const isToday  = dateStr === todayStr;
               const isSelected = dateStr === selectedDate;
               const dayEvents = eventMap[dateStr] || [];
-              const hasEvents = dayEvents.length > 0;
+              const holidayName = holidaysMap[dateStr];
+              const hasEvents = dayEvents.length > 0 || !!holidayName;
 
               return (
                 <div
@@ -165,7 +177,7 @@ const MobileTeamCalendar = () => {
                     borderRadius: 8,
                     padding: '4px 2px',
                     cursor: hasEvents ? 'pointer' : 'default',
-                    background: isSelected ? '#1e293b' : isToday ? '#eff6ff' : '#fff',
+                    background: isSelected ? '#1e293b' : isToday ? '#eff6ff' : holidayName ? '#fef2f2' : '#fff',
                     border: isSelected ? '2px solid #3b82f6'
                           : isToday    ? '2px solid #bfdbfe'
                           : '1px solid #f1f5f9',
@@ -177,16 +189,23 @@ const MobileTeamCalendar = () => {
                     textAlign: 'center', fontSize: 12, fontWeight: isToday ? 800 : 500,
                     color: isSelected ? '#fff'
                          : isToday   ? '#1d4ed8'
-                         : dayOfWeek === 0 ? '#ef4444'
+                         : (holidayName || dayOfWeek === 0) ? '#ef4444'
                          : dayOfWeek === 6 ? '#3b82f6'
                          : '#1e293b',
-                    marginBottom: 2,
+                    marginBottom: 1,
                   }}>{dayNum}</div>
+                  {holidayName && (
+                    <div style={{
+                      fontSize: 8, color: isSelected ? '#fca5a5' : '#dc2626',
+                      fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap',
+                      overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 1,
+                    }}>{holidayName}</div>
+                  )}
 
                   {/* 이벤트 도트 목록 (최대 3개 + 더보기) */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 1px' }}>
                     {dayEvents.slice(0, 2).map((ev, i) => {
-                      const st = getStyle(ev.type);
+                      const st = getStyle(ev.type, ev);
                       return (
                         <div key={i} style={{
                           background: isSelected ? 'rgba(255,255,255,0.15)' : st.bg,
@@ -220,7 +239,7 @@ const MobileTeamCalendar = () => {
       </div>
 
       {/* ── 선택 날짜 상세 패널 ─────────────────────────────── */}
-      {selectedDate && selectedEvents.length > 0 && (
+      {selectedDate && (selectedEvents.length > 0 || holidaysMap[selectedDate]) && (
         <div style={{ margin: '14px 10px 0', borderRadius: 14, overflow: 'hidden',
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
           <div style={{
@@ -233,6 +252,9 @@ const MobileTeamCalendar = () => {
                 const d = new Date(selectedDate + 'T00:00:00');
                 return `${d.getMonth()+1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`;
               })()}
+              {holidaysMap[selectedDate] && (
+                <span style={{ marginLeft: 8, fontSize: 11, color: '#fca5a5' }}>({holidaysMap[selectedDate]})</span>
+              )}
             </span>
             <span style={{
               background: 'rgba(255,255,255,0.15)', borderRadius: 20,
@@ -242,7 +264,7 @@ const MobileTeamCalendar = () => {
 
           <div style={{ background: '#fff' }}>
             {selectedEvents.map((ev, i) => {
-              const st = getStyle(ev.type);
+              const st = getStyle(ev.type, ev);
               return (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
@@ -258,6 +280,7 @@ const MobileTeamCalendar = () => {
                     {ev.category === 'LEAVE' && (ev.type === '병가' ? '🏥' : '🏖️')}
                     {ev.category === 'EARLY_LEAVE' && (ev.type === '외출' ? '🚶' : '🏃')}
                     {ev.category === 'OVERTIME' && (ev.type === '특근' ? '⭐' : '🌙')}
+                    {ev.category === 'DUTY' && '🧹'}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
@@ -279,7 +302,7 @@ const MobileTeamCalendar = () => {
         </div>
       )}
 
-      {selectedDate && selectedEvents.length === 0 && (
+      {selectedDate && selectedEvents.length === 0 && !holidaysMap[selectedDate] && (
         <div style={{ margin: '14px 10px 0', background: '#fff', borderRadius: 14,
           padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: 13,
           border: '1px solid #f1f5f9' }}>

@@ -1,4 +1,4 @@
-from .basics import Partner, Contact, Company, Staff, EmployeeTimeRecord, AttendanceStatus
+from .basics import Partner, Contact, Company, Staff, EmployeeTimeRecord, AttendanceStatus, CommonDutyConfig, CommonDutyMember, CommonDutySchedule
 from .hr import AttendanceLog, AttendanceLogType
 from .product import Product, Process, ProductProcess, Inventory, BOM
 from .sales import Estimate, EstimateItem, SalesOrder, SalesOrderItem

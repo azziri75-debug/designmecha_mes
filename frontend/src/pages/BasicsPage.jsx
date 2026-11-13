@@ -8,6 +8,7 @@ import FileViewerModal from '../components/FileViewerModal';
 import Card from '../components/Card';
 import ResizableTh from '../components/ResizableTh';
 import DepartmentTab from '../components/DepartmentTab';
+import CommonDutyTab from '../components/CommonDutyTab';
 
 // Helper Components
 class ErrorBoundary extends React.Component {
@@ -676,6 +677,17 @@ const BasicsPageContent = () => {
                     >
                         조직도
                     </button>
+                    <button
+                        onClick={() => setActiveTab('common_duties')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                            activeTab === 'common_duties'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                        )}
+                    >
+                        공용관리 당번
+                    </button>
                 </div>
                 {(!isSystemAdmin && (activeTab === 'company' || activeTab === 'staff')) ? (
                     <button
@@ -687,7 +699,7 @@ const BasicsPageContent = () => {
                         <Plus className="w-4 h-4" />
                         <span>권한 없음</span>
                     </button>
-                ) : (activeTab === 'departments' || activeTab === 'company') ? null : (
+                ) : (activeTab === 'departments' || activeTab === 'company' || activeTab === 'common_duties') ? null : (
                     <button
                         type="button"
                         onClick={openCreateModal}
@@ -702,6 +714,8 @@ const BasicsPageContent = () => {
                 <Card>
                     <DepartmentTab />
                 </Card>
+            ) : activeTab === 'common_duties' ? (
+                <CommonDutyTab />
             ) : (
             <>
 

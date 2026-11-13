@@ -71,6 +71,8 @@ const AttendancePage = () => {
     }, []);
 
     const [approvalData, setApprovalData] = useState({});
+    const [dutyData, setDutyData] = useState({});
+    const [holidaysMap, setHolidaysMap] = useState({});
 
     // Fetch attendance for the selected staff and month
     const fetchAttendance = useCallback(async () => {
@@ -119,6 +121,18 @@ const AttendancePage = () => {
                 }
             });
             setApprovalData(mappedApprovals);
+
+            // Map common duties by day
+            const mappedDuties = {};
+            (res.data.duties || []).forEach(duty => {
+                const d = parseInt((duty.duty_date?.toString().split('-')?.[2]) || '0');
+                if (d) {
+                    if (!mappedDuties[d]) mappedDuties[d] = [];
+                    mappedDuties[d].push(duty);
+                }
+            });
+            setDutyData(mappedDuties);
+            setHolidaysMap(res.data.holidays || {});
 
         } catch (err) {
             console.error('Failed to fetch attendance:', err);
@@ -435,21 +449,42 @@ const AttendancePage = () => {
         for (let day = 1; day <= daysInMonth; day++) {
             const record = attendanceData[day];
             const approvals = approvalData[day] || [];
+            const duties = dutyData[day] || [];
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const holidayName = holidaysMap[dateKey];
+            const dayOfWeek = new Date(year, month, day).getDay();
+            const isSunday = dayOfWeek === 0;
+            const isSaturday = dayOfWeek === 6;
             const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
             const isAnomaly = record?.attendance_status === 'LATE' || record?.attendance_status === 'EARLY_LEAVE';
+
+            const dayColorClass = isToday
+                ? 'text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full'
+                : (holidayName || isSunday)
+                    ? 'text-red-500'
+                    : isSaturday
+                        ? 'text-blue-500'
+                        : 'text-slate-500';
 
             days.push(
                 <div
                     key={day}
                     onClick={() => user?.user_type === 'ADMIN' && record && handleOpenEdit(record)}
-                    className={`h-32 border-b border-r border-slate-100 p-2 transition-colors hover:bg-slate-50 relative overflow-y-auto custom-scrollbar ${isToday ? 'bg-blue-50/30' : ''} ${user?.user_type === 'ADMIN' ? 'cursor-pointer' : ''}`}
+                    className={`h-32 border-b border-r border-slate-100 p-2 transition-colors hover:bg-slate-50 relative overflow-y-auto custom-scrollbar ${isToday ? 'bg-blue-50/30' : holidayName ? 'bg-red-50/20' : ''} ${user?.user_type === 'ADMIN' ? 'cursor-pointer' : ''}`}
                 >
-                    <div className="flex justify-between items-start mb-1">
-                        <span className={`text-sm font-bold ${isToday ? 'text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full' : 'text-slate-500'}`}>
-                            {day}
-                        </span>
+                    <div className="flex justify-between items-start mb-1 gap-1">
+                        <div className="flex items-center gap-1 min-w-0">
+                            <span className={`text-sm font-bold shrink-0 ${dayColorClass}`}>
+                                {day}
+                            </span>
+                            {holidayName && (
+                                <span className="text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 px-1 py-0.5 rounded truncate" title={holidayName}>
+                                    {holidayName}
+                                </span>
+                            )}
+                        </div>
                         {isAnomaly && (
-                            <span className="flex items-center text-[9px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full">
+                            <span className="flex items-center text-[9px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full shrink-0">
                                 <ExclamationTriangleIcon className="w-2.5 h-2.5 mr-0.5" />
                                 {record.attendance_status === 'LATE' ? '지각' : '조퇴'}
                             </span>
@@ -472,7 +507,7 @@ const AttendancePage = () => {
                     <div className="space-y-1">
                         {approvals.map((ap, idx) => {
                             let config = { bg: 'bg-slate-100', text: 'text-slate-600', label: ap.title };
-                            if (ap.doc_type === 'VACATION') {
+                            if (ap.doc_type === 'VACATION' || ap.doc_type === 'LEAVE_REQUEST') {
                                 config = { bg: 'bg-blue-100', text: 'text-blue-700', label: '휴가' };
                             } else if (ap.doc_type === 'OVERTIME') {
                                 config = { bg: 'bg-red-100', text: 'text-red-700', label: '특근' };
@@ -487,9 +522,37 @@ const AttendancePage = () => {
                                 </div>
                             );
                         })}
+
+                        {/* 공용관리 당번 뱃지 */}
+                        {duties.map((duty) => (
+                            <div
+                                key={`duty-${duty.id}`}
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (user?.user_type !== 'ADMIN' && user?.id !== duty.staff_id) return;
+                                    const nextStatus = duty.status === 'DONE' ? 'ASSIGNED' : 'DONE';
+                                    try {
+                                        await api.patch(`/hr/duties/schedules/${duty.id}`, { status: nextStatus });
+                                        fetchAttendance();
+                                    } catch (err) {
+                                        console.error(err);
+                                    }
+                                }}
+                                title={`공용관리 당번: ${duty.duty_name}${duty.status === 'DONE' ? ' (완료)' : ' (클릭 시 완료 전환)'}`}
+                                className="text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center justify-between shadow-sm cursor-pointer"
+                                style={{
+                                    backgroundColor: `${duty.color || '#10b981'}18`,
+                                    color: duty.color || '#059669',
+                                    borderColor: `${duty.color || '#10b981'}55`,
+                                }}
+                            >
+                                <span className="truncate">🧹 {duty.duty_name}</span>
+                                {duty.status === 'DONE' && <span className="ml-1 text-[8px] font-black">✓</span>}
+                            </div>
+                        ))}
                     </div>
 
-                    {!record && approvals.length === 0 && (
+                    {!record && approvals.length === 0 && duties.length === 0 && !holidayName && (
                         <div className="mt-2 text-[10px] text-slate-300 italic text-center opacity-50">
                             -
                         </div>

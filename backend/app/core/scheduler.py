@@ -1,11 +1,12 @@
 import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy import func
 import holidays
 from datetime import datetime
 from app.api.deps import AsyncSessionLocal
-from app.models.basics import Company, Staff, EmployeeTimeRecord
+from app.models.basics import Company, Staff, EmployeeTimeRecord, CommonDutyConfig, CommonDutySchedule
 from app.models.approval import ApprovalDocument, ApprovalStep
 from app.utils.push import send_push_notification
 from app.core.timezone import now_kst
@@ -140,11 +141,72 @@ async def check_attendance_and_notify():
                     url="/attendance"
                 ))
 
+async def check_common_duties_and_notify():
+    """
+    매 분마다 실행되어 오늘(평일·비공휴일) 배정된 공용관리 당번의 notify_time(기본 08:30)이 되면
+    해당 직원에게 웹 푸시 알림을 발송하고 notified_at을 기록.
+    """
+    now = now_kst()
+    if now.weekday() > 4:
+        return
+    if now.date() in kr_holidays:
+        return
+
+    current_time_str = now.strftime("%H:%M")
+    today_date = now.date()
+
+    async with AsyncSessionLocal() as db:
+        res = await db.execute(
+            select(CommonDutySchedule)
+            .join(CommonDutyConfig, CommonDutyConfig.id == CommonDutySchedule.config_id)
+            .options(selectinload(CommonDutySchedule.config), selectinload(CommonDutySchedule.staff))
+            .where(
+                CommonDutySchedule.duty_date == today_date,
+                CommonDutySchedule.status == "ASSIGNED",
+                CommonDutySchedule.notified_at.is_(None),
+                CommonDutyConfig.is_active == True,  # noqa: E712
+            )
+        )
+        schedules = res.scalars().all()
+        if not schedules:
+            return
+
+        sent_any = False
+        for sched in schedules:
+            cfg = sched.config
+            staff = sched.staff
+            if not cfg or not staff or not staff.is_active:
+                continue
+            target_time = (cfg.notify_time or "08:30").strip()
+            if current_time_str != target_time:
+                continue
+
+            title = "[오늘의 공용관리 당번]"
+            body = f"{staff.name}님, 오늘은 '{cfg.name}' 담당일입니다."
+            print(f"📢 [DUTY NOTIFY] {staff.name} ({staff.id}) -> {cfg.name} at {current_time_str}")
+            try:
+                await send_push_notification(
+                    user_id=staff.id,
+                    title=title,
+                    body=body,
+                    url="/attendance",
+                )
+                sched.notified_at = now
+                sent_any = True
+            except Exception as e:
+                print(f"[ERROR] Duty push failed for staff {staff.id}: {e}")
+
+        if sent_any:
+            await db.commit()
+
+
 def start_scheduler():
     if not scheduler.running:
         # 매 1분마다 실행 (0초에 실행)
         scheduler.add_job(check_attendance_and_notify, 'cron', minute='*')
+        # 공용관리 당번 아침 공지: 매 1분마다 체크 (항목별 notify_time, 기본 08:30 일치 시 발송)
+        scheduler.add_job(check_common_duties_and_notify, 'cron', minute='*')
         # 미결재 알림: 매 정각(0분) 마다 실행
         scheduler.add_job(check_pending_approvals_and_notify, 'cron', minute='0')
         scheduler.start()
-        print("Backend: Scheduler started (Attendance Check & Approval Reminder).")
+        print("Backend: Scheduler started (Attendance Check, Duty Notify & Approval Reminder).")

@@ -247,3 +247,50 @@ class MeasurementHistory(Base):
     instrument = relationship("MeasuringInstrument", back_populates="history")
 
 
+class CommonDutyConfig(Base):
+    """회사 공용관리(당번) 항목 설정 (분리수거배출, 공장화장실청소, 사무실화장실청소 등)"""
+    __tablename__ = "common_duty_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    weekdays = Column(JSON, default=[0, 1, 2, 3, 4])  # 0=월 ~ 6=일
+    notify_time = Column(String(10), default="08:30")  # HH:MM
+    color = Column(String(20), default="#10b981")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=now_kst)
+
+    members = relationship("CommonDutyMember", back_populates="config", cascade="all, delete-orphan", order_by="CommonDutyMember.sequence")
+    schedules = relationship("CommonDutySchedule", back_populates="config", cascade="all, delete-orphan")
+
+
+class CommonDutyMember(Base):
+    """공용관리 항목별 대상 직원 및 순환 순서"""
+    __tablename__ = "common_duty_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    config_id = Column(Integer, ForeignKey("common_duty_configs.id", ondelete="CASCADE"), nullable=False, index=True)
+    staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False)
+    sequence = Column(Integer, nullable=False, default=1)
+
+    config = relationship("CommonDutyConfig", back_populates="members")
+    staff = relationship("Staff")
+
+
+class CommonDutySchedule(Base):
+    """일자별 공용관리 당번 배정 결과"""
+    __tablename__ = "common_duty_schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    config_id = Column(Integer, ForeignKey("common_duty_configs.id", ondelete="CASCADE"), nullable=False, index=True)
+    duty_date = Column(Date, nullable=False, index=True)
+    staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(String(20), default="ASSIGNED")  # ASSIGNED, DONE, SKIPPED
+    note = Column(Text, nullable=True)
+    notified_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=now_kst)
+
+    config = relationship("CommonDutyConfig", back_populates="schedules")
+    staff = relationship("Staff")
+
+
+
