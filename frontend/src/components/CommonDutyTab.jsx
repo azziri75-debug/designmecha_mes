@@ -41,6 +41,7 @@ const CommonDutyTab = () => {
     const toIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const [assignStart, setAssignStart] = useState(() => toIso(now));
     const [assignEnd, setAssignEnd] = useState(() => toIso(new Date(now.getFullYear(), now.getMonth() + 3, 0)));
+    const [holidayShift, setHolidayShift] = useState('NEXT'); // NEXT: 휴일 다음날, PREV: 휴일 전날, SKIP: 건너뜀
 
     // 직원 다중 선택 모달 상태
     const [showStaffModal, setShowStaffModal] = useState(false);
@@ -169,7 +170,8 @@ const CommonDutyTab = () => {
         if (assignEnd < assignStart) {
             return alert('종료일은 시작일보다 빠를 수 없습니다.');
         }
-        if (!window.confirm(`${assignStart} ~ ${assignEnd} 기간의 '${selectedConfig.name}' 당번을 자동 배정하시겠습니까?\n(기존 미완료 배정은 새로 생성되며, 한국 공휴일 제외 및 휴가자는 다음 순번으로 자동 이월됩니다.)`)) {
+        const shiftLabel = holidayShift === 'PREV' ? '휴일 전날(영업일)' : holidayShift === 'NEXT' ? '휴일 다음날(영업일)' : '건너뜀';
+        if (!window.confirm(`${assignStart} ~ ${assignEnd} 기간의 '${selectedConfig.name}' 당번을 자동 배정하시겠습니까?\n(공휴일 처리: ${shiftLabel} / 휴가자는 다음 순번으로 자동 이월됩니다.)`)) {
             return;
         }
         setGenerating(true);
@@ -181,6 +183,7 @@ const CommonDutyTab = () => {
                 start_date: assignStart,
                 end_date: assignEnd,
                 config_id: selectedConfig.id,
+                holiday_shift: holidayShift,
             });
             alert(`${res.data?.created_count || 0}건의 당번 일정이 배정되었습니다.`);
             // 조회 월을 시작일 기준으로 맞춰 바로 확인
@@ -240,6 +243,19 @@ const CommonDutyTab = () => {
             await fetchSchedules();
         } catch (err) {
             alert(err.response?.data?.detail || '변경 실패');
+        }
+    };
+
+    const handleUpdateScheduleDate = async (scheduleId, newDate) => {
+        if (!newDate) return;
+        try {
+            await api.patch(`/hr/duties/schedules/${scheduleId}`, {
+                duty_date: newDate,
+                note: '날짜 수동 변경',
+            });
+            await fetchSchedules();
+        } catch (err) {
+            alert(err.response?.data?.detail || '날짜 변경 실패');
         }
     };
 
@@ -569,7 +585,7 @@ const CommonDutyTab = () => {
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <input
                                             type="date"
                                             value={assignStart}
@@ -583,6 +599,16 @@ const CommonDutyTab = () => {
                                             onChange={e => setAssignEnd(e.target.value)}
                                             className="px-2.5 py-1.5 bg-gray-800 border border-gray-700 rounded text-xs text-white"
                                         />
+                                        <select
+                                            value={holidayShift}
+                                            onChange={e => setHolidayShift(e.target.value)}
+                                            className="px-2.5 py-1.5 bg-gray-800 border border-gray-700 rounded text-xs text-white"
+                                            title="공휴일 겹침 시 배정 방식"
+                                        >
+                                            <option value="NEXT">공휴일 시 다음날(영업일) 배정</option>
+                                            <option value="PREV">공휴일 시 전날(영업일) 배정</option>
+                                            <option value="SKIP">공휴일 시 건너뛰기</option>
+                                        </select>
                                     </div>
                                     <button
                                         onClick={handleGeneratePeriod}
@@ -629,7 +655,7 @@ const CommonDutyTab = () => {
                                 <table className="w-full text-left text-xs">
                                     <thead className="bg-gray-900 text-gray-400">
                                         <tr>
-                                            <th className="px-3 py-2.5">날짜</th>
+                                            <th className="px-3 py-2.5">날짜 (수정 가능)</th>
                                             <th className="px-3 py-2.5">요일</th>
                                             <th className="px-3 py-2.5">담당자 (대타 변경 가능)</th>
                                             <th className="px-3 py-2.5">상태</th>
@@ -647,7 +673,14 @@ const CommonDutyTab = () => {
                                         ) : (
                                             schedules.map(sch => (
                                                 <tr key={sch.id} className="hover:bg-gray-700/30">
-                                                    <td className="px-3 py-2 text-white font-medium">{sch.duty_date}</td>
+                                                    <td className="px-3 py-2">
+                                                        <input
+                                                            type="date"
+                                                            value={sch.duty_date}
+                                                            onChange={e => handleUpdateScheduleDate(sch.id, e.target.value)}
+                                                            className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-white font-medium"
+                                                        />
+                                                    </td>
                                                     <td className="px-3 py-2 text-gray-300">{getDayLabel(sch.duty_date)}</td>
                                                     <td className="px-3 py-2">
                                                         <select

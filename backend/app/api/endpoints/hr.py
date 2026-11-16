@@ -1303,14 +1303,17 @@ async def generate_monthly_duties(
     else:
         raise HTTPException(status_code=400, detail="배정 기간(start_date, end_date)을 지정하세요.")
 
-    kr_hol = holidays.KR(years=list(range(start_date.year, end_date.year + 1)))
+    kr_hol = holidays.KR(years=list(range(start_date.year - 1, end_date.year + 2)))
+    holiday_shift = str(payload.get("holiday_shift") or "NEXT").upper()  # PREV, NEXT, SKIP
 
-    # 해당 월 휴가자 맵: { date: set(staff_id) }
+    # 휴일 대체 배정(±14일)까지 고려해 휴가자 맵 여유 있게 조회
+    leave_search_start = start_date - timedelta(days=14)
+    leave_search_end = end_date + timedelta(days=14)
     leave_map: dict[date, set[int]] = {}
     leave_rec_res = await db.execute(
         select(EmployeeTimeRecord).where(
-            EmployeeTimeRecord.record_date >= start_date,
-            EmployeeTimeRecord.record_date <= end_date,
+            EmployeeTimeRecord.record_date >= leave_search_start,
+            EmployeeTimeRecord.record_date <= leave_search_end,
             EmployeeTimeRecord.category.in_(["ANNUAL", "HALF_DAY", "SICK", "EVENT_LEAVE"]),
             EmployeeTimeRecord.status == "APPROVED",
         )
@@ -1336,7 +1339,7 @@ async def generate_monthly_duties(
             cur_d = date.fromisoformat(s_str)
             end_d = date.fromisoformat(e_str)
             while cur_d <= end_d:
-                if start_date <= cur_d <= end_date:
+                if leave_search_start <= cur_d <= leave_search_end:
                     leave_map.setdefault(cur_d, set()).add(doc.author_id)
                 cur_d += timedelta(days=1)
         except Exception:
@@ -1397,35 +1400,72 @@ async def generate_monthly_duties(
             idx = (member_ids.index(prev_sched.staff_id) + 1) % len(member_ids)
 
         allowed_weekdays = set(cfg.weekdays or [0, 1, 2, 3, 4])
+        assigned_dates = set(done_dates)
         d = start_date
         while d <= end_date:
-            if d not in done_dates and d.weekday() in allowed_weekdays and d not in kr_hol:
-                on_leave = leave_map.get(d, set())
-                chosen_idx = None
-                skipped_names = []
-                for offset in range(len(member_ids)):
-                    cand_idx = (idx + offset) % len(member_ids)
-                    if member_ids[cand_idx] not in on_leave:
-                        chosen_idx = cand_idx
-                        break
-                    skipped_names.append(str(member_ids[cand_idx]))
+            if d.weekday() not in allowed_weekdays:
+                d += timedelta(days=1)
+                continue
 
-                note_text = None
-                if chosen_idx is None:
-                    chosen_idx = idx
-                    note_text = "전원 휴가로 기본 순번 배정"
-                elif skipped_names:
-                    note_text = "휴가자 순번 이월"
+            target_date = d
+            holiday_note = None
 
-                db.add(CommonDutySchedule(
-                    config_id=cfg.id,
-                    duty_date=d,
-                    staff_id=member_ids[chosen_idx],
-                    status="ASSIGNED",
-                    note=note_text,
-                ))
-                created_count += 1
-                idx = (chosen_idx + 1) % len(member_ids)
+            if d in kr_hol:
+                if holiday_shift == "SKIP":
+                    d += timedelta(days=1)
+                    continue
+                step_dir = -1 if holiday_shift == "PREV" else 1
+                found_alt = None
+                for k in range(1, 15):
+                    cand = d + timedelta(days=step_dir * k)
+                    if cand.weekday() >= 5 or cand in kr_hol:
+                        continue
+                    if cand in assigned_dates:
+                        continue
+                    # 원래 당번 요일이 아닌 빈 영업일을 우선 선택 (이미 그 주에 또 배정되는 요일과 겹치지 않게)
+                    if cand.weekday() in allowed_weekdays:
+                        continue
+                    found_alt = cand
+                    break
+                if not found_alt:
+                    d += timedelta(days=1)
+                    continue
+                target_date = found_alt
+                holiday_note = f"공휴일({kr_hol.get(d)}) 대체"
+
+            if target_date in assigned_dates:
+                d += timedelta(days=1)
+                continue
+
+            on_leave = leave_map.get(target_date, set())
+            chosen_idx = None
+            skipped_names = []
+            for offset in range(len(member_ids)):
+                cand_idx = (idx + offset) % len(member_ids)
+                if member_ids[cand_idx] not in on_leave:
+                    chosen_idx = cand_idx
+                    break
+                skipped_names.append(str(member_ids[cand_idx]))
+
+            notes = []
+            if holiday_note:
+                notes.append(holiday_note)
+            if chosen_idx is None:
+                chosen_idx = idx
+                notes.append("전원 휴가로 기본 순번 배정")
+            elif skipped_names:
+                notes.append("휴가자 순번 이월")
+
+            assigned_dates.add(target_date)
+            db.add(CommonDutySchedule(
+                config_id=cfg.id,
+                duty_date=target_date,
+                staff_id=member_ids[chosen_idx],
+                status="ASSIGNED",
+                note=", ".join(notes) if notes else None,
+            ))
+            created_count += 1
+            idx = (chosen_idx + 1) % len(member_ids)
             d += timedelta(days=1)
 
     await db.commit()
@@ -1445,6 +1485,11 @@ async def update_duty_schedule(
     if not sched:
         raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다.")
 
+    if "duty_date" in payload and payload["duty_date"]:
+        if current_user.user_type != "ADMIN":
+            raise HTTPException(status_code=403, detail="날짜 변경은 관리자만 가능합니다.")
+        sched.duty_date = date.fromisoformat(str(payload["duty_date"])[:10])
+        sched.notified_at = None
     if "staff_id" in payload and payload["staff_id"] is not None:
         if current_user.user_type != "ADMIN":
             raise HTTPException(status_code=403, detail="담당자 변경은 관리자만 가능합니다.")
