@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../lib/api';
 import {
-    Plus, Trash2, ArrowUp, ArrowDown, Calendar, Sparkles, Save, CheckCircle2, Clock, RefreshCw, Users, X, Search
+    Plus, Trash2, ArrowUp, ArrowDown, Calendar, Sparkles, Save, CheckCircle2, Clock, RefreshCw, Users, X, Search, Printer
 } from 'lucide-react';
 
 const WEEKDAYS = [
@@ -47,6 +47,14 @@ const CommonDutyTab = () => {
     const [showStaffModal, setShowStaffModal] = useState(false);
     const [modalSelectedIds, setModalSelectedIds] = useState([]);
     const [staffSearch, setStaffSearch] = useState('');
+
+    // 월간 달력 인쇄 모달 상태
+    const [showPrintModal, setShowPrintModal] = useState(false);
+    const [printStartMonth, setPrintStartMonth] = useState(() => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    const [printEndMonth, setPrintEndMonth] = useState(() => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    const [printConfigIds, setPrintConfigIds] = useState([]);
+    const [printOrientation, setPrintOrientation] = useState('landscape');
+    const [printing, setPrinting] = useState(false);
 
     // 신규/수정 항목 폼
     const [showNewForm, setShowNewForm] = useState(false);
@@ -232,6 +240,344 @@ const CommonDutyTab = () => {
         const added = modalSelectedIds.filter(id => !memberIds.includes(id));
         setMemberIds([...kept, ...added]);
         setShowStaffModal(false);
+    };
+
+    const openPrintModal = () => {
+        const curYm = `${year}-${String(month).padStart(2, '0')}`;
+        setPrintStartMonth(curYm);
+        setPrintEndMonth(curYm);
+        setPrintConfigIds(configs.map(c => c.id));
+        setShowPrintModal(true);
+    };
+
+    const setPrintQuickMonth = (mode) => {
+        const base = new Date();
+        const ym = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (mode === 'this') {
+            const v = ym(base);
+            setPrintStartMonth(v);
+            setPrintEndMonth(v);
+        } else if (mode === 'next') {
+            const nxt = new Date(base.getFullYear(), base.getMonth() + 1, 1);
+            const v = ym(nxt);
+            setPrintStartMonth(v);
+            setPrintEndMonth(v);
+        } else if (mode === '3m') {
+            const end = new Date(base.getFullYear(), base.getMonth() + 2, 1);
+            setPrintStartMonth(ym(base));
+            setPrintEndMonth(ym(end));
+        }
+    };
+
+    const togglePrintConfig = (cid) => {
+        setPrintConfigIds(prev => prev.includes(cid) ? prev.filter(id => id !== cid) : [...prev, cid]);
+    };
+
+    const escapeHtml = (str) => String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+    const handlePrintCalendar = async () => {
+        if (!printStartMonth || !printEndMonth) {
+            return alert('인쇄할 기간(시작 월 ~ 종료 월)을 선택해 주세요.');
+        }
+        if (printEndMonth < printStartMonth) {
+            return alert('종료 월은 시작 월보다 빠를 수 없습니다.');
+        }
+        if (printConfigIds.length === 0) {
+            return alert('출력할 공용관리 항목을 1개 이상 선택해 주세요.');
+        }
+
+        const [sY, sM] = printStartMonth.split('-').map(Number);
+        const [eY, eM] = printEndMonth.split('-').map(Number);
+        const monthsList = [];
+        let cy = sY, cm = sM;
+        while (cy < eY || (cy === eY && cm <= eM)) {
+            monthsList.push({ year: cy, month: cm });
+            cm += 1;
+            if (cm > 12) { cm = 1; cy += 1; }
+            if (monthsList.length > 24) {
+                return alert('한 번에 최대 24개월까지만 인쇄할 수 있습니다.');
+            }
+        }
+
+        const lastDayOfEnd = new Date(eY, eM, 0).getDate();
+        const startStr = `${sY}-${String(sM).padStart(2, '0')}-01`;
+        const endStr = `${eY}-${String(eM).padStart(2, '0')}-${String(lastDayOfEnd).padStart(2, '0')}`;
+
+        setPrinting(true);
+        try {
+            const yearsNeeded = Array.from(new Set(monthsList.map(m => m.year)));
+            const [schRes, ...holResList] = await Promise.all([
+                api.get('/hr/duties/schedules', { params: { start_date: startStr, end_date: endStr } }),
+                ...yearsNeeded.map(y => api.get('/hr/holidays', { params: { year: y } }).catch(() => ({ data: {} }))),
+            ]);
+
+            const mergedHolidays = {};
+            holResList.forEach(r => Object.assign(mergedHolidays, r.data || {}));
+
+            const selectedSet = new Set(printConfigIds);
+            const filteredSchedules = (schRes.data || []).filter(s => selectedSet.has(s.config_id));
+            const scheduleByDate = {};
+            filteredSchedules.forEach(s => {
+                if (!scheduleByDate[s.duty_date]) scheduleByDate[s.duty_date] = [];
+                scheduleByDate[s.duty_date].push(s);
+            });
+
+            const selectedConfigs = configs.filter(c => selectedSet.has(c.id));
+            const legendHtml = selectedConfigs.map(c => `
+                <span class="legend-item">
+                    <span class="legend-dot" style="background:${escapeHtml(c.color || '#10b981')}"></span>
+                    ${escapeHtml(c.name)}
+                </span>
+            `).join('');
+
+            const nowText = new Date().toLocaleString('ko-KR');
+            const isLandscape = printOrientation === 'landscape';
+
+            const pagesHtml = monthsList.map(({ year: y, month: m }, pageIdx) => {
+                const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
+                const lastDate = new Date(y, m, 0).getDate();
+                const cells = [];
+                for (let i = 0; i < firstDow; i++) cells.push(null);
+                for (let d = 1; d <= lastDate; d++) cells.push(d);
+                while (cells.length % 7 !== 0) cells.push(null);
+
+                const rowsHtml = [];
+                for (let r = 0; r < cells.length; r += 7) {
+                    const tds = cells.slice(r, r + 7).map((dayNum, colIdx) => {
+                        if (!dayNum) return '<td class="empty"></td>';
+                        const dateKey = `${y}-${String(m).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                        const holName = mergedHolidays[dateKey];
+                        const isSun = colIdx === 0;
+                        const isSat = colIdx === 6;
+                        const dayItems = scheduleByDate[dateKey] || [];
+
+                        const dayClass = (holName || isSun) ? 'sun' : isSat ? 'sat' : '';
+                        const itemsHtml = dayItems.map(item => {
+                            const color = escapeHtml(item.color || '#10b981');
+                            const doneMark = item.status === 'DONE' ? ' ✓' : '';
+                            return `
+                                <div class="duty-badge" style="border-left: 3px solid ${color}; background: ${color}18;">
+                                    <span class="duty-title" style="color:${color}">${escapeHtml(item.duty_name)}</span>
+                                    <span class="duty-staff">${escapeHtml(item.staff_name)}${doneMark}</span>
+                                </div>
+                            `;
+                        }).join('');
+
+                        return `
+                            <td class="${holName ? 'holiday-cell' : ''}">
+                                <div class="cell-head">
+                                    <span class="day-num ${dayClass}">${dayNum}</span>
+                                    ${holName ? `<span class="hol-name">${escapeHtml(holName)}</span>` : ''}
+                                </div>
+                                <div class="duty-list">${itemsHtml}</div>
+                            </td>
+                        `;
+                    }).join('');
+                    rowsHtml.push(`<tr>${tds}</tr>`);
+                }
+
+                return `
+                    <div class="page ${pageIdx < monthsList.length - 1 ? 'page-break' : ''}">
+                        <div class="doc-header">
+                            <div>
+                                <h1>${y}년 ${m}월 공용관리 당번표</h1>
+                            </div>
+                            <div class="legend">${legendHtml}</div>
+                        </div>
+                        <table class="cal-table">
+                            <thead>
+                                <tr>
+                                    <th class="sun">일</th>
+                                    <th>월</th>
+                                    <th>화</th>
+                                    <th>수</th>
+                                    <th>목</th>
+                                    <th>금</th>
+                                    <th class="sat">토</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml.join('')}
+                            </tbody>
+                        </table>
+                        <div class="doc-footer">
+                            <span>출력일시: ${escapeHtml(nowText)}</span>
+                            <span>${pageIdx + 1} / ${monthsList.length}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>공용관리 당번표 (${printStartMonth} ~ ${printEndMonth})</title>
+<style>
+    @page {
+        size: A4 ${printOrientation};
+        margin: 10mm;
+    }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        color: #111827;
+        background: #fff;
+    }
+    .page {
+        width: 100%;
+        padding: 4px;
+    }
+    .page-break {
+        page-break-after: always;
+    }
+    .doc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        border-bottom: 2px solid #1e293b;
+        padding-bottom: 6px;
+        margin-bottom: 8px;
+    }
+    .doc-header h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .legend-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .cal-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .cal-table th {
+        border: 1px solid #cbd5e1;
+        background: #f1f5f9;
+        padding: 5px 4px;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: center;
+    }
+    .cal-table th.sun { color: #dc2626; }
+    .cal-table th.sat { color: #2563eb; }
+    .cal-table td {
+        border: 1px solid #cbd5e1;
+        vertical-align: top;
+        padding: 4px;
+        height: ${isLandscape ? '92px' : '125px'};
+    }
+    .cal-table td.empty {
+        background: #f8fafc;
+    }
+    .cal-table td.holiday-cell {
+        background: #fef2f2;
+    }
+    .cell-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        margin-bottom: 3px;
+    }
+    .day-num {
+        font-size: 12px;
+        font-weight: 700;
+        color: #334155;
+    }
+    .day-num.sun { color: #dc2626; }
+    .day-num.sat { color: #2563eb; }
+    .hol-name {
+        font-size: 9px;
+        font-weight: 700;
+        color: #dc2626;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .duty-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .duty-badge {
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 10px;
+        line-height: 1.25;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 4px;
+    }
+    .duty-title {
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .duty-staff {
+        font-weight: 800;
+        color: #0f172a;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .doc-footer {
+        margin-top: 6px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: #64748b;
+    }
+</style>
+</head>
+<body>
+${pagesHtml}
+</body>
+</html>`;
+
+            const win = window.open('', '_blank', 'width=1150,height=820');
+            if (!win) {
+                alert('팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도해 주세요.');
+                return;
+            }
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+            setShowPrintModal(false);
+            setTimeout(() => {
+                win.focus();
+                win.print();
+            }, 300);
+        } catch (err) {
+            console.error(err);
+            alert('인쇄 데이터를 불러오는 중 오류가 발생했습니다.');
+        } finally {
+            setPrinting(false);
+        }
     };
 
     const handleUpdateScheduleStaff = async (scheduleId, newStaffId) => {
@@ -631,13 +977,22 @@ const CommonDutyTab = () => {
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={fetchSchedules}
-                                    className="flex items-center gap-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-xs text-gray-300 hover:text-white"
-                                    title="새로고침"
-                                >
-                                    <RefreshCw className="w-3.5 h-3.5" /> 새로고침
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={openPrintModal}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg"
+                                    >
+                                        <Printer className="w-3.5 h-3.5" /> 달력 인쇄
+                                    </button>
+                                    <button
+                                        onClick={fetchSchedules}
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-xs text-gray-300 hover:text-white"
+                                        title="새로고침"
+                                    >
+                                        <RefreshCw className="w-3.5 h-3.5" /> 새로고침
+                                    </button>
+                                </div>
                             </div>
 
                             {Object.keys(holidaysMap).length > 0 && (
@@ -827,6 +1182,154 @@ const CommonDutyTab = () => {
                                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg"
                             >
                                 선택 적용 ({modalSelectedIds.length}명)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 월간 달력 인쇄 옵션 모달 */}
+            {showPrintModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+                            <div className="flex items-center gap-2">
+                                <Printer className="w-5 h-5 text-emerald-400" />
+                                <div>
+                                    <h4 className="text-base font-bold text-white">공용관리 당번표 달력 인쇄</h4>
+                                    <p className="text-xs text-gray-400">출력할 기간과 항목을 선택하세요.</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowPrintModal(false)} className="text-gray-400 hover:text-white p-1">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-5 overflow-y-auto">
+                            {/* 기간 선택 */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-semibold text-gray-300">출력 기간 (월 단위)</label>
+                                    <div className="flex gap-1">
+                                        <button type="button" onClick={() => setPrintQuickMonth('this')} className="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 text-[11px] text-gray-200 rounded">이번 달</button>
+                                        <button type="button" onClick={() => setPrintQuickMonth('next')} className="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 text-[11px] text-gray-200 rounded">다음 달</button>
+                                        <button type="button" onClick={() => setPrintQuickMonth('3m')} className="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 text-[11px] text-gray-200 rounded">3개월</button>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="month"
+                                        value={printStartMonth}
+                                        onChange={e => setPrintStartMonth(e.target.value)}
+                                        className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-xs text-white"
+                                    />
+                                    <span className="text-gray-400 text-xs">~</span>
+                                    <input
+                                        type="month"
+                                        value={printEndMonth}
+                                        onChange={e => setPrintEndMonth(e.target.value)}
+                                        className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-xs text-white"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* 항목 선택 */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-semibold text-gray-300">출력 항목 선택 ({printConfigIds.length}/{configs.length})</label>
+                                    <div className="flex gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPrintConfigIds(configs.map(c => c.id))}
+                                            className="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 text-[11px] text-gray-200 rounded"
+                                        >
+                                            전체 선택
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPrintConfigIds([])}
+                                            className="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 text-[11px] text-gray-200 rounded"
+                                        >
+                                            전체 해제
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5 max-h-48 overflow-y-auto bg-gray-900/60 border border-gray-700 rounded-lg p-2.5">
+                                    {configs.length === 0 ? (
+                                        <div className="text-xs text-gray-500 text-center py-4">등록된 항목이 없습니다.</div>
+                                    ) : (
+                                        configs.map(cfg => {
+                                            const checked = printConfigIds.includes(cfg.id);
+                                            return (
+                                                <label
+                                                    key={cfg.id}
+                                                    className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer border ${
+                                                        checked ? 'bg-emerald-900/20 border-emerald-600/50 text-white' : 'bg-gray-800/40 border-gray-800 text-gray-400'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={() => togglePrintConfig(cfg.id)}
+                                                            className="w-4 h-4 rounded accent-emerald-500"
+                                                        />
+                                                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cfg.color || '#10b981' }} />
+                                                        <span className="text-xs font-semibold">{cfg.name}</span>
+                                                    </div>
+                                                </label>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 용지 방향 */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-gray-300">용지 방향</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPrintOrientation('landscape')}
+                                        className={`py-2 rounded-lg text-xs font-semibold border ${
+                                            printOrientation === 'landscape'
+                                                ? 'bg-blue-600 border-blue-500 text-white'
+                                                : 'bg-gray-900 border-gray-700 text-gray-400'
+                                        }`}
+                                    >
+                                        A4 가로 (권장)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPrintOrientation('portrait')}
+                                        className={`py-2 rounded-lg text-xs font-semibold border ${
+                                            printOrientation === 'portrait'
+                                                ? 'bg-blue-600 border-blue-500 text-white'
+                                                : 'bg-gray-900 border-gray-700 text-gray-400'
+                                        }`}
+                                    >
+                                        A4 세로
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 px-5 py-3.5 border-t border-gray-700">
+                            <button
+                                type="button"
+                                onClick={() => setShowPrintModal(false)}
+                                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-semibold rounded-lg"
+                            >
+                                취소
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handlePrintCalendar}
+                                disabled={printing}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg"
+                            >
+                                <Printer className="w-4 h-4" />
+                                {printing ? '준비 중...' : '인쇄하기'}
                             </button>
                         </div>
                     </div>
