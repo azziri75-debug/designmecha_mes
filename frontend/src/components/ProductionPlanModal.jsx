@@ -8,6 +8,86 @@ import {
 import { Delete as DeleteIcon, Add as AddIcon, DragIndicator } from '@mui/icons-material';
 import api from '../lib/api';
 
+const PLAN_COL_STORAGE_KEY = 'mes_plan_modal_col_widths_v1';
+const DEFAULT_PLAN_COL_WIDTHS = {
+    drag: 40,
+    sequence: 65,
+    process_name: 170,
+    course_type: 110,
+    assignee: 160,
+    equipment: 145,
+    work_content: 190,
+    start_date: 135,
+    end_date: 135,
+    cost: 135,
+    quantity: 90,
+    actions: 65,
+};
+
+const PlanResizableHeaderCell = ({ colKey, width, minWidth = 45, onResize, align, children }) => {
+    const [resizing, setResizing] = useState(false);
+
+    const handleMouseDown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setResizing(true);
+        const startX = e.clientX;
+        const startW = width;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
+        const onMouseMove = (moveEvent) => {
+            const nextW = Math.max(minWidth, Math.round(startW + (moveEvent.clientX - startX)));
+            onResize(colKey, nextW);
+        };
+        const onMouseUp = () => {
+            setResizing(false);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
+    return (
+        <TableCell
+            align={align}
+            sx={{
+                width: `${width}px`,
+                minWidth: `${width}px`,
+                maxWidth: `${width}px`,
+                position: 'relative',
+                userSelect: 'none',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                pr: 1.5,
+                fontWeight: 700,
+                boxSizing: 'border-box',
+            }}
+        >
+            {children}
+            <Box
+                onMouseDown={handleMouseDown}
+                title="드래그하여 칸 너비 조절"
+                sx={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '6px',
+                    cursor: 'col-resize',
+                    zIndex: 10,
+                    backgroundColor: resizing ? '#1976d2' : 'transparent',
+                    '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.35)' },
+                }}
+            />
+        </TableCell>
+    );
+};
+
 const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProduction, plan, tabIndex }) => {
     const isCompleted = plan?.status === 'COMPLETED';
     const [items, setItems] = useState([]);
@@ -20,6 +100,37 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
     const [productStockDetails, setProductStockDetails] = useState({}); // { product_id: { current, otherReserved, availCurrent, producingSp, availSp, maxAllocatable } }
     const [stockUseQtys, setStockUseQtys] = useState({}); // { product_id: use_qty }
     const [masterProcesses, setMasterProcesses] = useState([]); // Master process list
+    const [colWidths, setColWidths] = useState(() => {
+        try {
+            const saved = localStorage.getItem(PLAN_COL_STORAGE_KEY);
+            return saved ? { ...DEFAULT_PLAN_COL_WIDTHS, ...JSON.parse(saved) } : DEFAULT_PLAN_COL_WIDTHS;
+        } catch {
+            return DEFAULT_PLAN_COL_WIDTHS;
+        }
+    });
+
+    const handleColResize = (key, nextWidth) => {
+        setColWidths(prev => {
+            const updated = { ...prev, [key]: nextWidth };
+            try {
+                localStorage.setItem(PLAN_COL_STORAGE_KEY, JSON.stringify(updated));
+            } catch {
+                // ignore storage errors
+            }
+            return updated;
+        });
+    };
+
+    const resetColWidths = () => {
+        setColWidths(DEFAULT_PLAN_COL_WIDTHS);
+        try {
+            localStorage.removeItem(PLAN_COL_STORAGE_KEY);
+        } catch {
+            // ignore
+        }
+    };
+
+    const totalTableWidth = Object.values(colWidths).reduce((sum, w) => sum + (Number(w) || 0), 0);
 
     const isSalesOrderPlan = Boolean(order || plan?.order_id || plan?.order);
 
@@ -529,7 +640,17 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                     />
                 </Box>
 
-                <Typography variant="h6" gutterBottom>공정 구성 (Process Composition)</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="h6">공정 구성 (Process Composition)</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="caption" color="text.secondary">
+                            표 제목 오른쪽 경계선을 드래그해 칸 너비를 조절할 수 있습니다.
+                        </Typography>
+                        <Button size="small" variant="text" onClick={resetColWidths}>
+                            칸 너비 초기화
+                        </Button>
+                    </Box>
+                </Box>
 
                 <Box sx={{ maxHeight: 600, overflowY: 'auto' }}>
                     {Object.entries(groupedItems).map(([productId, group]) => (
@@ -686,22 +807,36 @@ const ProductionPlanModal = ({ isOpen, onClose, onSuccess, order, stockProductio
                             })()}
 
 
-                            <TableContainer>
-                                <Table size="small">
+                            <TableContainer sx={{ overflowX: 'auto' }}>
+                                <Table size="small" sx={{ tableLayout: 'fixed', width: `${totalTableWidth}px`, minWidth: '100%' }}>
+                                    <colgroup>
+                                        <col style={{ width: `${colWidths.drag}px` }} />
+                                        <col style={{ width: `${colWidths.sequence}px` }} />
+                                        <col style={{ width: `${colWidths.process_name}px` }} />
+                                        <col style={{ width: `${colWidths.course_type}px` }} />
+                                        <col style={{ width: `${colWidths.assignee}px` }} />
+                                        <col style={{ width: `${colWidths.equipment}px` }} />
+                                        <col style={{ width: `${colWidths.work_content}px` }} />
+                                        <col style={{ width: `${colWidths.start_date}px` }} />
+                                        <col style={{ width: `${colWidths.end_date}px` }} />
+                                        <col style={{ width: `${colWidths.cost}px` }} />
+                                        <col style={{ width: `${colWidths.quantity}px` }} />
+                                        <col style={{ width: `${colWidths.actions}px` }} />
+                                    </colgroup>
                                     <TableHead>
                                         <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                                            <TableCell width="3%" align="center"></TableCell> {/* Drag Handle Column */}
-                                            <TableCell width="6%">순서</TableCell>
-                                            <TableCell width="11%">공정명</TableCell>
-                                            <TableCell width="8%">구분</TableCell>
-                                            <TableCell width="10%">외주/구매/작업자</TableCell>
-                                            <TableCell width="10%">배정 장비</TableCell>
-                                            <TableCell width="11%">작업내용</TableCell>
-                                            <TableCell width="9%">시작일</TableCell>
-                                            <TableCell width="9%">종료일</TableCell>
-                                            <TableCell width="9%">공정비용</TableCell>
-                                            <TableCell width="8%">수량</TableCell>
-                                            <TableCell width="6%">관리</TableCell>
+                                            <PlanResizableHeaderCell colKey="drag" width={colWidths.drag} minWidth={32} onResize={handleColResize} align="center" />
+                                            <PlanResizableHeaderCell colKey="sequence" width={colWidths.sequence} minWidth={50} onResize={handleColResize}>순서</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="process_name" width={colWidths.process_name} minWidth={90} onResize={handleColResize}>공정명</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="course_type" width={colWidths.course_type} minWidth={80} onResize={handleColResize}>구분</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="assignee" width={colWidths.assignee} minWidth={90} onResize={handleColResize}>외주/구매/작업자</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="equipment" width={colWidths.equipment} minWidth={90} onResize={handleColResize}>배정 장비</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="work_content" width={colWidths.work_content} minWidth={100} onResize={handleColResize}>작업내용</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="start_date" width={colWidths.start_date} minWidth={105} onResize={handleColResize}>시작일</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="end_date" width={colWidths.end_date} minWidth={105} onResize={handleColResize}>종료일</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="cost" width={colWidths.cost} minWidth={90} onResize={handleColResize}>공정비용</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="quantity" width={colWidths.quantity} minWidth={65} onResize={handleColResize}>수량</PlanResizableHeaderCell>
+                                            <PlanResizableHeaderCell colKey="actions" width={colWidths.actions} minWidth={50} onResize={handleColResize}>관리</PlanResizableHeaderCell>
 
                                         </TableRow>
                                     </TableHead>
