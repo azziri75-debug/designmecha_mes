@@ -14,7 +14,7 @@ from app.models.sales import (
 from app.schemas import sales as schemas
 from app.models.product import Product, ProductProcess, BOM
 from app.models.basics import Partner
-from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder, ProductionStatus
+from app.models.production import ProductionPlan, ProductionPlanItem, WorkOrder, WorkLogItem, ProductionStatus
 from app.models.quality import InspectionResult, QualityDefect
 from app.models.purchasing import PurchaseOrder, PurchaseStatus, PurchaseOrderItem, OutsourcingOrder, OutsourcingStatus, OutsourcingOrderItem, MaterialRequirement
 from app.api.utils.status_cascade import complete_production_for_order
@@ -714,7 +714,6 @@ async def update_order(
     
     # Update Items
     if order_in.items is not None:
-        from app.models.production import ProductionPlan, ProductionPlanItem, WorkLogItem, ProductionStatus
         from sqlalchemy import func
         
         existing_items = {item.id: item for item in db_order.items}
@@ -1946,7 +1945,6 @@ async def fix_completed_status_cascades(db: AsyncSession = Depends(deps.get_db))
     """
     from app.api.utils.status_cascade import complete_production_for_order, on_production_item_completed
     from app.models.sales import SalesOrder, OrderStatus
-    from app.models.production import ProductionPlan, ProductionPlanItem, ProductionStatus
     
     try:
         # 1. 납품 완료된 수주 조사
