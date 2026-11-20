@@ -30,13 +30,16 @@ import {
     Code2,
     Palette,
     Sun,
-    Moon
+    Moon,
+    Bell,
+    BellOff
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
 import { useTheme } from '../contexts/ThemeContext';
 import usePushNotifications from '../hooks/usePushNotifications';
+import TodayDutyBanner from './TodayDutyBanner';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Fab } from '@mui/material';
 
 const SidebarItem = ({ icon: Icon, label, to, active, badge }) => {
@@ -70,7 +73,35 @@ const Layout = () => {
     const { isDark, toggleTheme } = useTheme();
     
     // 푸시 알람 구독 훅 (user.id가 존재할 때만 내부적으로 등록 수행)
-    usePushNotifications(user?.id);
+    const push = usePushNotifications(user?.id);
+
+    const handleDesktopPushClick = async () => {
+        if (!push.supported) {
+            alert('이 브라우저에서는 웹 푸시 알림이 지원되지 않습니다.');
+            return;
+        }
+        if (!push.isSubscribed || push.permission !== 'granted') {
+            const res = await push.subscribeNow();
+            if (res.ok) {
+                alert('데스크탑 알림이 활성화되었습니다!');
+            } else if (res.message) {
+                alert(res.message);
+            }
+            return;
+        }
+        if (window.confirm('알림이 활성화되어 있습니다.\n테스트 푸시 알림을 발송하시겠습니까?')) {
+            try {
+                const tRes = await push.sendTestNotification();
+                if (tRes?.sent > 0) {
+                    alert(`테스트 알림을 발송했습니다 (${tRes.sent}/${tRes.total}대).`);
+                } else {
+                    alert('알림 발송에 실패했습니다. 브라우저 알림 권한을 확인해 주세요.');
+                }
+            } catch {
+                alert('테스트 알림 발송 중 오류가 발생했습니다.');
+            }
+        }
+    };
     
     const [contactModalOpen, setContactModalOpen] = useState(false);
     const [contactForm, setContactForm] = useState({ subject: '', content: '' });
@@ -245,12 +276,27 @@ const Layout = () => {
                         </h1>
                     </div>
                     <div className="flex items-center gap-4">
-                        {/* Header Actions */}
+                        <button
+                            type="button"
+                            onClick={handleDesktopPushClick}
+                            disabled={push.subscribing}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
+                                push.isSubscribed
+                                    ? "bg-emerald-950/50 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/50"
+                                    : "bg-amber-950/50 border-amber-600/60 text-amber-300 hover:bg-amber-900/50"
+                            )}
+                            title={push.isSubscribed ? '알림 활성 상태 (클릭 시 테스트 발송)' : '클릭하여 알림 활성화'}
+                        >
+                            {push.isSubscribed ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+                            <span>{push.isSubscribed ? '알림 ON' : '알림 설정'}</span>
+                        </button>
                     </div>
                 </header>
 
                 <div className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
                     <div className="w-full mx-auto space-y-6">
+                        <TodayDutyBanner userId={user?.id} variant="desktop" />
                         <Outlet />
                     </div>
                 </div>

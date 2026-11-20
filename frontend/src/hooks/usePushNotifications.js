@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import api from '../lib/api';
 
 // Base64Url 디코딩 유틸리티
@@ -17,92 +17,176 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-export default function usePushNotifications(userId) {
-    const isSubscribedRef = useRef(false);
+function uint8ArrayToBase64Url(buf) {
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 
-    useEffect(() => {
-        if (!userId) return;
-        
-        // 브라우저 지원 여부 확인
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            console.log('Push messaging is not supported');
-            return;
+function isIosNonStandalone() {
+    const ua = navigator.userAgent || '';
+    const isIos = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    return isIos && !isStandalone;
+}
+
+export default function usePushNotifications(userId) {
+    const isSupported = typeof window !== 'undefined'
+        && 'serviceWorker' in navigator
+        && 'PushManager' in window
+        && 'Notification' in window;
+
+    const isSubscribedRef = useRef(false);
+    const [permission, setPermission] = useState(
+        typeof window !== 'undefined' && 'Notification' in window ? window.Notification.permission : 'default'
+    );
+    const [isSubscribed, setIsSubscribed] = useState(false);
+    const [subscribing, setSubscribing] = useState(false);
+
+    const syncSubscription = useCallback(async ({ requestPermission = false } = {}) => {
+        if (!userId || !isSupported) {
+            return { ok: false, reason: 'unsupported', message: '이 브라우저는 웹 푸시 알림을 지원하지 않습니다.' };
         }
 
-        const registerPush = async () => {
-            if (isSubscribedRef.current) return;
-            
-            try {
-                // 1. 서비스 워커 등록
-                const registration = await navigator.serviceWorker.register('/sw.js');
-                console.log('Service Worker registered');
+        if (isIosNonStandalone() && requestPermission) {
+            return {
+                ok: false,
+                reason: 'ios_pwa_required',
+                message: 'iPhone/iPad에서는 Safari 공유 버튼 → "홈 화면에 추가"로 앱을 설치한 뒤 실행하면 알림을 받을 수 있습니다.',
+            };
+        }
 
-                // 2. 권한 확인 (사용자에게 알림 권한 프롬프트 표시)
-                const permission = await window.Notification.requestPermission();
-                if (permission !== 'granted') {
-                    console.log('Push permission denied');
-                    return;
+        try {
+            await navigator.serviceWorker.register('/sw.js');
+            const registration = await navigator.serviceWorker.ready;
+
+            let currentPerm = window.Notification.permission;
+            if (requestPermission && currentPerm === 'default') {
+                currentPerm = await window.Notification.requestPermission();
+            }
+            setPermission(currentPerm);
+
+            if (currentPerm !== 'granted') {
+                setIsSubscribed(false);
+                isSubscribedRef.current = false;
+                return {
+                    ok: false,
+                    reason: currentPerm === 'denied' ? 'denied' : 'not_granted',
+                    message: currentPerm === 'denied'
+                        ? '브라우저 알림 권한이 차단되어 있습니다. 주소창/설정에서 이 사이트의 알림 권한을 "허용"으로 변경해 주세요.'
+                        : '알림 권한이 허용되지 않았습니다.',
+                };
+            }
+
+            // VAPID Public Key 조회 (프론트 .env 우선, 없으면 백엔드 API)
+            let publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+            if (!publicKey || publicKey.includes('YOUR_VAPID') || publicKey === '""' || publicKey === "''") {
+                const response = await api.get('/notifications/vapid-public-key');
+                publicKey = response.data?.public_key;
+            }
+            publicKey = publicKey ? publicKey.replace(/['"]/g, '').trim() : '';
+
+            if (!publicKey) {
+                console.warn('No valid VAPID Public Key found. Subscription aborted.');
+                return { ok: false, reason: 'no_vapid', message: '서버에 푸시 키(VAPID)가 설정되어 있지 않습니다.' };
+            }
+
+            const applicationServerKey = urlBase64ToUint8Array(publicKey);
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (subscription) {
+                const k1 = subscription.getKey('p256dh');
+                const k2 = subscription.getKey('auth');
+                if (!k1 || !k2) {
+                    await subscription.unsubscribe();
+                    subscription = null;
                 }
+            }
 
-                // 3. 백엔드에서 VAPID Public Key 가져오기
-                // 프론트엔드 .env 또는 백엔드 API에서 읽어옵니다.
-                let publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-                if (!publicKey || publicKey.includes('YOUR_VAPID') || publicKey === '""' || publicKey === "''") {
-                     const response = await api.get('/notifications/vapid-public-key');
-                     publicKey = response.data.public_key;
-                }
-
-                if (!publicKey || publicKey === '""' || publicKey === '') {
-                    console.error('No valid VAPID Public Key found');
-                    return;
-                }
-                
-                // .env에 따옴표가 그대로 문자열로 들어가는 것을 방지
-                publicKey = publicKey ? publicKey.replace(/['"]/g, '').trim() : '';
-                console.log('Using VAPID Public Key:', publicKey ? (publicKey.substring(0, 10) + '...') : 'EMPTY');
-
-                if (!publicKey || publicKey === '""' || publicKey === '') {
-                    console.warn('No valid VAPID Public Key found. Subscription aborted.');
-                    return;
-                }
-                
-                // 4. Push 구독
-                const applicationServerKey = urlBase64ToUint8Array(publicKey);
-                let subscription = await registration.pushManager.getSubscription();
-
-                if (!subscription) {
+            if (!subscription) {
+                try {
                     subscription = await registration.pushManager.subscribe({
                         userVisibleOnly: true,
-                        applicationServerKey: applicationServerKey
+                        applicationServerKey,
+                    });
+                } catch (subErr) {
+                    // 기존 키 불일치 등 오류 시 기존 구독 정리 후 재시도
+                    const stale = await registration.pushManager.getSubscription();
+                    if (stale) {
+                        await stale.unsubscribe();
+                    }
+                    subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey,
                     });
                 }
-
-                // 5. 서버로 구독 정보 전송 (항상 전송하여 DB 정합성 유지)
-                const p256dh = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh'))));
-                const auth = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth'))));
-
-                const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
-                const deviceType = isMobile ? 'Mobile' : 'Desktop';
-
-                const subData = {
-                    endpoint: subscription.endpoint,
-                    p256dh: p256dh.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
-                    auth: auth.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
-                    device_type: deviceType // DB에는 저장하지 않더라도 로그 확인용으로 전송
-                };
-
-                console.log(`Syncing push subscription (${deviceType}) with server...`);
-                await api.post('/notifications/subscribe', subData);
-                console.log('Push subscription synced');
-                isSubscribedRef.current = true;
-
-            } catch (error) {
-                console.error('Push notification registration failed', error);
             }
-        };
 
-        // 약간의 지연 후에 구독 로직 실행 (화면 렌더링 방해 방지)
-        setTimeout(registerPush, 2000);
+            const p256dh = uint8ArrayToBase64Url(subscription.getKey('p256dh'));
+            const auth = uint8ArrayToBase64Url(subscription.getKey('auth'));
 
-    }, [userId]);
+            const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const deviceType = isMobile ? 'Mobile' : 'Desktop';
+
+            await api.post('/notifications/subscribe', {
+                endpoint: subscription.endpoint,
+                p256dh,
+                auth,
+                device_type: deviceType,
+            });
+
+            isSubscribedRef.current = true;
+            setIsSubscribed(true);
+            return { ok: true, deviceType };
+        } catch (error) {
+            console.error('Push notification registration failed', error);
+            return { ok: false, reason: 'error', message: error?.message || '푸시 알림 등록 중 오류가 발생했습니다.' };
+        }
+    }, [userId, isSupported]);
+
+    useEffect(() => {
+        isSubscribedRef.current = false;
+        setIsSubscribed(false);
+        if (!userId || !isSupported) return;
+
+        setPermission(window.Notification.permission);
+
+        const timer = setTimeout(() => {
+            if (!isSubscribedRef.current) {
+                const perm = window.Notification.permission;
+                // granted면 조용히 동기화, default면 1회 권한 요청 시도(모바일 제스처 제한 시 조용히 실패 허용)
+                if (perm === 'granted' || perm === 'default') {
+                    syncSubscription({ requestPermission: perm === 'default' });
+                }
+            }
+        }, 1200);
+
+        return () => clearTimeout(timer);
+    }, [userId, isSupported, syncSubscription]);
+
+    const subscribeNow = useCallback(async () => {
+        setSubscribing(true);
+        try {
+            return await syncSubscription({ requestPermission: true });
+        } finally {
+            setSubscribing(false);
+        }
+    }, [syncSubscription]);
+
+    const sendTestNotification = useCallback(async () => {
+        const res = await api.post('/notifications/test');
+        return res.data;
+    }, []);
+
+    return {
+        supported: isSupported,
+        permission,
+        isSubscribed,
+        subscribing,
+        subscribeNow,
+        sendTestNotification,
+    };
 }

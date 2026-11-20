@@ -4,8 +4,8 @@ self.addEventListener('push', function(event) {
             const data = event.data.json();
             const options = {
                 body: data.body || '새로운 알림이 도착했습니다.',
-                icon: data.icon || '/vite.svg',
-                badge: '/vite.svg',
+                icon: data.icon && !data.icon.endsWith('.svg') ? data.icon : '/logo-192.png',
+                badge: '/logo-192.png',
                 vibrate: [100, 50, 100],
                 data: {
                     url: data.url || '/'
@@ -30,7 +30,8 @@ self.addEventListener('notificationclick', function(event) {
     event.notification.close();
     
     // 알림 클릭 시 지정된 URL로 이동
-    const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
+    const targetPath = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+    const urlToOpen = new URL(targetPath, self.location.origin).href;
     
     event.waitUntil(
         clients.matchAll({

@@ -1947,6 +1947,13 @@ async def startup_event():
     except Exception as e:
         print(f"Startup: DB initialization crashed: {e}")
 
+    # 서버 시작(콜드스타트/재기동) 직후 당일 미발송 공용관리 당번 알림 1회 즉시 체크
+    try:
+        from app.core.scheduler import check_common_duties_and_notify
+        asyncio.create_task(check_common_duties_and_notify())
+    except Exception as e:
+        print(f"Startup: Initial duty notify check failed: {e}")
+
 
 
 

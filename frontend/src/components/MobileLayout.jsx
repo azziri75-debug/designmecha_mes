@@ -27,22 +27,55 @@ import {
     Inventory2 as InventoryIcon,
     KeyboardArrowUp as KeyboardArrowUpIcon,
     BuildCircle as WorkOrderIcon,
+    NotificationsActive as NotificationsActiveIcon,
+    NotificationsOff as NotificationsOffIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useApprovalBadge } from '../contexts/ApprovalBadgeContext';
 import { useWorkOrderBadge } from '../contexts/WorkOrderBadgeContext';
+import usePushNotifications from '../hooks/usePushNotifications';
+import TodayDutyBanner from './TodayDutyBanner';
 
 const MobileLayout = () => {
     const { user, logout } = useAuth();
     const isAdmin = user?.user_type === 'ADMIN';
     const { waitingCount } = useApprovalBadge();
     const { workOrderCount } = useWorkOrderBadge();
+    const push = usePushNotifications(user?.id);
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
     
     const [anchorEl, setAnchorEl] = useState(null);
     const [showScrollTop, setShowScrollTop] = useState(false);
+
+    const handlePushClick = async () => {
+        if (!push.supported) {
+            alert('이 브라우저에서는 웹 푸시 알림이 지원되지 않습니다.');
+            return;
+        }
+        if (!push.isSubscribed || push.permission !== 'granted') {
+            const res = await push.subscribeNow();
+            if (res.ok) {
+                alert('모바일 알림이 활성화되었습니다!');
+            } else if (res.message) {
+                alert(res.message);
+            }
+            return;
+        }
+        if (window.confirm('이 기기는 알림이 활성화되어 있습니다.\n테스트 푸시 알림을 발송하시겠습니까?')) {
+            try {
+                const tRes = await push.sendTestNotification();
+                if (tRes?.sent > 0) {
+                    alert(`테스트 알림을 발송했습니다 (${tRes.sent}/${tRes.total}대).`);
+                } else {
+                    alert('알림 발송에 실패했습니다. 잠시 후 다시 시도하거나 알림 권한을 확인해 주세요.');
+                }
+            } catch {
+                alert('테스트 알림 발송 중 오류가 발생했습니다.');
+            }
+        }
+    };
 
     // 스크롤 위치 감지 → 상단 이동 버튼 표시 여부
     const handleScroll = useCallback(() => {
@@ -165,6 +198,20 @@ const MobileLayout = () => {
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <IconButton
+                            size="small"
+                            onClick={handlePushClick}
+                            disabled={push.subscribing}
+                            title={push.isSubscribed ? '푸시 알림 활성 (눌러서 테스트)' : '푸시 알림 활성화'}
+                            sx={{
+                                color: push.isSubscribed ? '#10b981' : '#f59e0b',
+                                bgcolor: push.isSubscribed ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.12)',
+                            }}
+                        >
+                            {push.isSubscribed
+                                ? <NotificationsActiveIcon fontSize="small" />
+                                : <NotificationsOffIcon fontSize="small" />}
+                        </IconButton>
                         <Avatar 
                             sx={{ width: 30, height: 30, bgcolor: '#3b82f6', fontSize: '0.8rem', fontWeight: 'bold' }}
                             onClick={(e) => setAnchorEl(e.currentTarget)}
@@ -176,6 +223,12 @@ const MobileLayout = () => {
                             open={Boolean(anchorEl)}
                             onClose={() => setAnchorEl(null)}
                         >
+                            <MenuItem onClick={() => { setAnchorEl(null); handlePushClick(); }}>
+                                {push.isSubscribed
+                                    ? <NotificationsActiveIcon fontSize="small" sx={{ mr: 1, color: '#10b981' }} />
+                                    : <NotificationsOffIcon fontSize="small" sx={{ mr: 1, color: '#f59e0b' }} />}
+                                {push.isSubscribed ? '푸시 알림 테스트' : '푸시 알림 활성화'}
+                            </MenuItem>
                             <MenuItem onClick={handleLogout}>
                                 <LogoutIcon fontSize="small" sx={{ mr: 1 }} /> 로그아웃
                             </MenuItem>
@@ -191,6 +244,7 @@ const MobileLayout = () => {
                 minHeight: '100vh',
                 boxSizing: 'border-box'
             }}>
+                <TodayDutyBanner userId={user?.id} variant="mobile" />
                 <Outlet />
             </Box>
 

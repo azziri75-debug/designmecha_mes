@@ -1268,6 +1268,7 @@ async def list_duty_schedules(
             "staff_name": s.staff.name if s.staff else "",
             "status": s.status,
             "note": s.note,
+            "notified_at": s.notified_at.isoformat() if s.notified_at else None,
         }
         for s in res.scalars().all()
     ]
@@ -1493,7 +1494,10 @@ async def update_duty_schedule(
     if "staff_id" in payload and payload["staff_id"] is not None:
         if current_user.user_type != "ADMIN":
             raise HTTPException(status_code=403, detail="담당자 변경은 관리자만 가능합니다.")
-        sched.staff_id = int(payload["staff_id"])
+        new_staff_id = int(payload["staff_id"])
+        if new_staff_id != sched.staff_id:
+            sched.staff_id = new_staff_id
+            sched.notified_at = None
     if "status" in payload and payload["status"] in ("ASSIGNED", "DONE", "SKIPPED"):
         if current_user.user_type != "ADMIN" and current_user.id != sched.staff_id:
             raise HTTPException(status_code=403, detail="권한이 없습니다.")
@@ -1520,3 +1524,119 @@ async def delete_duty_schedule(
     await db.delete(sched)
     await db.commit()
     return {"status": "ok"}
+
+
+@router.get("/duties/my-today")
+async def get_my_today_duties(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """오늘 로그인한 직원에게 배정된 공용관리 당번 목록을 조회합니다."""
+    today_d = now_kst().date()
+    res = await db.execute(
+        select(CommonDutySchedule)
+        .join(CommonDutyConfig, CommonDutyConfig.id == CommonDutySchedule.config_id)
+        .options(selectinload(CommonDutySchedule.config))
+        .where(
+            CommonDutySchedule.staff_id == current_user.id,
+            CommonDutySchedule.duty_date == today_d,
+            CommonDutySchedule.status.in_(["ASSIGNED", "DONE"]),
+            CommonDutyConfig.is_active == True,  # noqa: E712
+        )
+        .order_by(CommonDutySchedule.config_id.asc())
+    )
+    items = res.scalars().all()
+
+    has_unnotified = any(it.status == "ASSIGNED" and it.notified_at is None for it in items)
+    if has_unnotified:
+        try:
+            from app.core.scheduler import check_common_duties_and_notify
+            asyncio.create_task(check_common_duties_and_notify())
+        except Exception as e:
+            print(f"[DEBUG] my-today duty notify trigger failed: {e}")
+
+    return [
+        {
+            "id": it.id,
+            "config_id": it.config_id,
+            "duty_name": it.config.name if it.config else "공용관리",
+            "color": it.config.color if it.config else "#10b981",
+            "duty_date": it.duty_date.isoformat(),
+            "notify_time": it.config.notify_time if it.config else "08:30",
+            "status": it.status,
+            "note": it.note,
+            "notified_at": it.notified_at.isoformat() if it.notified_at else None,
+        }
+        for it in items
+    ]
+
+
+@router.post("/duties/schedules/{schedule_id}/notify")
+async def notify_duty_schedule_now(
+    schedule_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: Staff = Depends(deps.get_current_user),
+):
+    """관리자가 특정 공용관리 당번 담당자에게 즉시 푸시 알림을 발송합니다."""
+    if current_user.user_type != "ADMIN":
+        raise HTTPException(status_code=403, detail="관리자만 알림을 발송할 수 있습니다.")
+
+    res = await db.execute(
+        select(CommonDutySchedule)
+        .options(selectinload(CommonDutySchedule.config), selectinload(CommonDutySchedule.staff))
+        .where(CommonDutySchedule.id == schedule_id)
+    )
+    sched = res.scalar_one_or_none()
+    if not sched:
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다.")
+    if not sched.staff:
+        raise HTTPException(status_code=404, detail="담당 직원 정보를 찾을 수 없습니다.")
+
+    duty_name = sched.config.name if sched.config else "공용관리"
+    staff_name = sched.staff.name
+    today_d = now_kst().date()
+    date_label = "오늘" if sched.duty_date == today_d else f"{sched.duty_date.isoformat()}"
+
+    push_res = await send_push_notification(
+        user_id=sched.staff_id,
+        title="[공용관리 당번 알림]",
+        body=f"{staff_name}님, {date_label}은 '{duty_name}' 담당일입니다.",
+        url="/attendance",
+    )
+
+    sent = push_res.get("sent", 0) if isinstance(push_res, dict) else 0
+    total = push_res.get("total", 0) if isinstance(push_res, dict) else 0
+    vapid_ok = push_res.get("vapid_configured", True) if isinstance(push_res, dict) else True
+
+    if sent > 0:
+        sched.notified_at = now_kst()
+        await db.commit()
+        return {
+            "status": "sent",
+            "sent": sent,
+            "total": total,
+            "message": f"{staff_name}님에게 알림을 발송했습니다 (성공 {sent}/{total}대).",
+        }
+
+    if not vapid_ok:
+        return {
+            "status": "error",
+            "sent": 0,
+            "total": 0,
+            "message": "서버 VAPID 키가 설정되지 않아 푸시를 발송할 수 없습니다.",
+        }
+
+    if total == 0:
+        return {
+            "status": "no_device",
+            "sent": 0,
+            "total": 0,
+            "message": f"{staff_name}님의 등록된 알림 기기가 없습니다. 해당 직원이 모바일/PC 상단 알림(🔔) 버튼을 눌러 알림을 허용해 주세요.",
+        }
+
+    return {
+        "status": "failed",
+        "sent": 0,
+        "total": total,
+        "message": f"{staff_name}님의 등록 기기({total}대)로 발송에 실패했습니다. 기기에서 알림 권한 재허용이 필요합니다.",
+    }

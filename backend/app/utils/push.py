@@ -23,14 +23,16 @@ def _send_web_push(subscription: PushSubscription, payload: Dict[str, Any]):
             subscription_info=sub_info,
             data=json.dumps(payload),
             vapid_private_key=settings.VAPID_PRIVATE_KEY_STR,
-            vapid_claims={"sub": settings.VAPID_SUBJECT}
+            vapid_claims={"sub": settings.VAPID_SUBJECT},
+            ttl=86400,
+            headers={"Urgency": "high"},
         )
         print(f"[DEBUG] Web push success for staff_id: {subscription.staff_id}")
         return True
     except WebPushException as ex:
-        # 410 Gone = subscription is no longer valid
-        if ex.response and ex.response.status_code == 410:
-            print(f"[DEBUG] Web push subscription expired (410) for staff_id: {subscription.staff_id}")
+        # 404 Not Found / 410 Gone = subscription is no longer valid
+        if ex.response and ex.response.status_code in (404, 410):
+            print(f"[DEBUG] Web push subscription expired ({ex.response.status_code}) for staff_id: {subscription.staff_id}")
             return "EXPIRED"
         print(f"[ERROR] Web Push Error (staff_id: {subscription.staff_id}): {repr(ex)}")
         return False
@@ -42,6 +44,11 @@ async def send_push_notification(user_id: int, title: str, body: str, url: str =
     """
     특정 사용자에게 푸시 알림 발송. 만료된 토큰이 있다면 DB에서 삭제합니다.
     """
+    vapid_configured = bool(settings.VAPID_PRIVATE_KEY_STR)
+    if not vapid_configured:
+        print(f"[WARNING] [Push] VAPID_PRIVATE_KEY is empty. Push skipped for staff_id: {user_id}")
+        return {"sent": 0, "total": 0, "expired": 0, "vapid_configured": False}
+
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(PushSubscription).where(PushSubscription.staff_id == user_id))
         subscriptions: List[PushSubscription] = result.scalars().all()
@@ -49,11 +56,12 @@ async def send_push_notification(user_id: int, title: str, body: str, url: str =
         print(f"[DEBUG] [Push] Found {len(subscriptions)} subscription(s) for staff_id: {user_id}")
         
         expired_ids = []
+        sent_count = 0
         payload = {
             "title": title,
             "body": body,
             "url": url,
-            "icon": "/vite.svg"
+            "icon": "/logo-192.png"
         }
         
         for sub in subscriptions:
@@ -61,7 +69,9 @@ async def send_push_notification(user_id: int, title: str, body: str, url: str =
             # Use to_thread (available in Python 3.9+) to avoid blocking the async event loop.
             import asyncio
             status = await asyncio.to_thread(_send_web_push, sub, payload)
-            if status == "EXPIRED":
+            if status is True:
+                sent_count += 1
+            elif status == "EXPIRED":
                 expired_ids.append(sub.id)
                 
         if expired_ids:
@@ -70,6 +80,13 @@ async def send_push_notification(user_id: int, title: str, body: str, url: str =
                 if exp_sub:
                     await db.delete(exp_sub)
             await db.commit()
+
+        return {
+            "sent": sent_count,
+            "total": len(subscriptions),
+            "expired": len(expired_ids),
+            "vapid_configured": vapid_configured,
+        }
 
 async def notify_production_manager(title: str, body: str, url: str = "/"):
     """

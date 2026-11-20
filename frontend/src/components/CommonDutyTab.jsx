@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../lib/api';
 import {
-    Plus, Trash2, ArrowUp, ArrowDown, Calendar, Sparkles, Save, CheckCircle2, Clock, RefreshCw, Users, X, Search, Printer
+    Plus, Trash2, ArrowUp, ArrowDown, Calendar, Sparkles, Save, CheckCircle2, Clock, RefreshCw, Users, X, Search, Printer, Bell
 } from 'lucide-react';
 
 const WEEKDAYS = [
@@ -240,6 +240,16 @@ const CommonDutyTab = () => {
         const added = modalSelectedIds.filter(id => !memberIds.includes(id));
         setMemberIds([...kept, ...added]);
         setShowStaffModal(false);
+    };
+
+    const handleNotifyScheduleNow = async (sch) => {
+        try {
+            const res = await api.post(`/hr/duties/schedules/${sch.id}/notify`);
+            alert(res.data?.message || '알림 요청이 처리되었습니다.');
+            await fetchSchedules();
+        } catch (err) {
+            alert(err.response?.data?.detail || '알림 발송 중 오류가 발생했습니다.');
+        }
     };
 
     const openPrintModal = () => {
@@ -1014,6 +1024,7 @@ ${pagesHtml}
                                             <th className="px-3 py-2.5">요일</th>
                                             <th className="px-3 py-2.5">담당자 (대타 변경 가능)</th>
                                             <th className="px-3 py-2.5">상태</th>
+                                            <th className="px-3 py-2.5">알림</th>
                                             <th className="px-3 py-2.5">비고</th>
                                             <th className="px-3 py-2.5 text-right">관리</th>
                                         </tr>
@@ -1021,7 +1032,7 @@ ${pagesHtml}
                                     <tbody className="divide-y divide-gray-700/60 bg-gray-800/40">
                                         {schedules.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                                                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                                                     이 달에 배정된 일정이 없습니다. 상단 [자동 배정 생성] 버튼을 눌러 배정하세요.
                                                 </td>
                                             </tr>
@@ -1061,11 +1072,34 @@ ${pagesHtml}
                                                             {sch.status === 'DONE' ? '완료' : '배정됨'}
                                                         </button>
                                                     </td>
+                                                    <td className="px-3 py-2">
+                                                        {sch.notified_at ? (
+                                                            <span
+                                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-900/40 border border-emerald-700/60 text-emerald-300 text-[11px]"
+                                                                title={`발송 시각: ${sch.notified_at}`}
+                                                            >
+                                                                발송됨 {String(sch.notified_at).slice(11, 16)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-900 border border-gray-700 text-gray-400 text-[11px]">
+                                                                대기
+                                                            </span>
+                                                        )}
+                                                    </td>
                                                     <td className="px-3 py-2 text-gray-400">{sch.note || '-'}</td>
-                                                    <td className="px-3 py-2 text-right">
+                                                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleNotifyScheduleNow(sch)}
+                                                            className="text-amber-400 hover:text-amber-300 p-1 mr-1"
+                                                            title="담당자에게 지금 푸시 알림 발송"
+                                                        >
+                                                            <Bell className="w-3.5 h-3.5" />
+                                                        </button>
                                                         <button
                                                             onClick={() => handleDeleteSchedule(sch.id)}
                                                             className="text-gray-500 hover:text-red-400 p-1"
+                                                            title="일정 삭제"
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </button>

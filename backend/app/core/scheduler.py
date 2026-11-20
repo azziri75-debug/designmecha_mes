@@ -141,15 +141,28 @@ async def check_attendance_and_notify():
                     url="/attendance"
                 ))
 
+def _normalize_hhmm(raw: str) -> str:
+    """'8:30', '08:30:00' 등 시각 문자열을 'HH:MM' 형식으로 정규화합니다."""
+    val = (raw or "08:30").strip()
+    parts = val.split(":")
+    try:
+        h = int(parts[0])
+        m = int(parts[1]) if len(parts) > 1 else 0
+        if 0 <= h <= 23 and 0 <= m <= 59:
+            return f"{h:02d}:{m:02d}"
+    except (ValueError, IndexError):
+        pass
+    return "08:30"
+
+
 async def check_common_duties_and_notify():
     """
-    매 분마다 실행되어 오늘(평일·비공휴일) 배정된 공용관리 당번의 notify_time(기본 08:30)이 되면
-    해당 직원에게 웹 푸시 알림을 발송하고 notified_at을 기록.
+    매 분마다 실행되어 오늘 배정된 공용관리 당번의 notify_time(기본 08:30) 이후
+    아직 알림이 발송되지 않은(notified_at IS NULL) 건에 대해 해당 직원에게 웹 푸시 알림을 발송합니다.
+    (서버 슬립/재기동으로 정각을 놓친 경우에도 당일 20시 이전까지 재시도하며, 실제 발송 성공 시에만 notified_at을 기록)
     """
     now = now_kst()
-    if now.weekday() > 4:
-        return
-    if now.date() in kr_holidays:
+    if now.hour >= 20:
         return
 
     current_time_str = now.strftime("%H:%M")
@@ -177,22 +190,28 @@ async def check_common_duties_and_notify():
             staff = sched.staff
             if not cfg or not staff or not staff.is_active:
                 continue
-            target_time = (cfg.notify_time or "08:30").strip()
-            if current_time_str != target_time:
+            target_time = _normalize_hhmm(cfg.notify_time)
+            if current_time_str < target_time:
                 continue
 
             title = "[오늘의 공용관리 당번]"
             body = f"{staff.name}님, 오늘은 '{cfg.name}' 담당일입니다."
-            print(f"📢 [DUTY NOTIFY] {staff.name} ({staff.id}) -> {cfg.name} at {current_time_str}")
+            should_log = (current_time_str == target_time) or (now.minute % 10 == 0)
+            if should_log:
+                print(f"📢 [DUTY NOTIFY] Trying {staff.name} ({staff.id}) -> {cfg.name} at {current_time_str} (target {target_time})")
             try:
-                await send_push_notification(
+                res_push = await send_push_notification(
                     user_id=staff.id,
                     title=title,
                     body=body,
                     url="/attendance",
                 )
-                sched.notified_at = now
-                sent_any = True
+                if isinstance(res_push, dict) and res_push.get("sent", 0) > 0:
+                    sched.notified_at = now
+                    sent_any = True
+                    print(f"✅ [DUTY NOTIFY] Sent to {staff.name} ({staff.id}): {res_push}")
+                elif should_log:
+                    print(f"⚠️ [DUTY NOTIFY] No device delivered for {staff.name} ({staff.id}): {res_push}")
             except Exception as e:
                 print(f"[ERROR] Duty push failed for staff {staff.id}: {e}")
 
@@ -203,10 +222,31 @@ async def check_common_duties_and_notify():
 def start_scheduler():
     if not scheduler.running:
         # 매 1분마다 실행 (0초에 실행)
-        scheduler.add_job(check_attendance_and_notify, 'cron', minute='*')
-        # 공용관리 당번 아침 공지: 매 1분마다 체크 (항목별 notify_time, 기본 08:30 일치 시 발송)
-        scheduler.add_job(check_common_duties_and_notify, 'cron', minute='*')
+        scheduler.add_job(
+            check_attendance_and_notify,
+            'cron',
+            minute='*',
+            coalesce=True,
+            max_instances=1,
+            misfire_grace_time=30,
+        )
+        # 공용관리 당번 아침 공지: 매 1분마다 체크 (항목별 notify_time, 기본 08:30 이후 미발송분 발송)
+        scheduler.add_job(
+            check_common_duties_and_notify,
+            'cron',
+            minute='*',
+            coalesce=True,
+            max_instances=1,
+            misfire_grace_time=30,
+        )
         # 미결재 알림: 매 정각(0분) 마다 실행
-        scheduler.add_job(check_pending_approvals_and_notify, 'cron', minute='0')
+        scheduler.add_job(
+            check_pending_approvals_and_notify,
+            'cron',
+            minute='0',
+            coalesce=True,
+            max_instances=1,
+            misfire_grace_time=60,
+        )
         scheduler.start()
         print("Backend: Scheduler started (Attendance Check, Duty Notify & Approval Reminder).")
